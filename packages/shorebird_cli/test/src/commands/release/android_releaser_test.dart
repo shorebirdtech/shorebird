@@ -29,10 +29,12 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AndroidReleaser, () {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
@@ -596,15 +598,17 @@ To change the version of this release, change your app's version in your pubspec
       });
 
       test('returns value from artifactManager', () async {
+        final releaseArtifactRoot = Directory('');
         final result = await runWithOverrides(
           () => androidReleaser.getReleaseVersion(
-            releaseArtifactRoot: Directory(''),
+            releaseArtifactRoot: releaseArtifactRoot,
           ),
         );
         expect(result, releaseVersion);
         verify(
-          () =>
-              shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(''),
+          () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+            releaseArtifactRoot.path,
+          ),
         ).called(1);
       });
 
@@ -805,10 +809,10 @@ To change the version of this release, change your app's version in your pubspec
             runWithOverrides(() => androidReleaser.postReleaseInstructions),
             '''
 Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap(aabPath)}
+${lightCyan.wrap(File(aabPath).path)}
 
 Or distribute the apk:
-${lightCyan.wrap(apkPath)}
+${lightCyan.wrap(File(apkPath).path)}
 
 For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}
@@ -827,7 +831,7 @@ ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/a
             runWithOverrides(() => androidReleaser.postReleaseInstructions),
             '''
 Your next step is to upload the app bundle to the Play Store:
-${lightCyan.wrap(aabPath)}
+${lightCyan.wrap(File(aabPath).path)}
 
 For information on uploading to the Play Store, see:
 ${link(uri: Uri.parse('https://support.google.com/googleplay/android-developer/answer/9859152?hl=en'))}

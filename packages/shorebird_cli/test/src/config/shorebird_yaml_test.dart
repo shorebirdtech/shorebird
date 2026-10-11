@@ -1,8 +1,10 @@
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('ShorebirdYaml', () {
     test('can be deserialized without flavors', () {
       const yaml = '''

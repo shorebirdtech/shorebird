@@ -18,6 +18,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AppsRenameCommand, () {
     const appId = 'app-id';
     const oldName = 'Acme Mobile';

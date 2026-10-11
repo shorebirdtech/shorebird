@@ -26,8 +26,9 @@ class _TestCommand extends ShorebirdCommand {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdCommand, () {
-    final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+    final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
     final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
     final privateKeyFile = File(p.join(cryptoFixturesBasePath, 'private.pem'));
 

@@ -22,9 +22,11 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart' as helpers;
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdCliCommandRunner, () {
     const shorebirdEngineRevision = 'test-engine-revision';
     const flutterRevision = 'test-flutter-revision';

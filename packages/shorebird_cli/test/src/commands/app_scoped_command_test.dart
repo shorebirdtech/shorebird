@@ -26,6 +26,7 @@ class _TestCommand extends ShorebirdCommand with AppScopedCommand {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(AppScopedCommand, () {
     const appId = 'test-app-id';
     const flavoredAppId = 'flavored-app-id';

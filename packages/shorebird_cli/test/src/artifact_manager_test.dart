@@ -17,9 +17,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ArtifactManager, () {
     late ArtifactManager artifactManager;
     late Cache cache;
@@ -424,7 +426,7 @@ void main() {
 
     group('extractZip', () {
       test('unzips provided file to provided output path', () async {
-        final zipFile = File(p.join('test', 'fixtures', 'aabs', 'base.aab'));
+        final zipFile = File(p.join(fixturesDirectory, 'aabs', 'base.aab'));
         final tempDir = Directory.systemTemp.createTempSync();
 
         expect(tempDir.listSync(recursive: true), isEmpty);
@@ -590,7 +592,7 @@ void main() {
       test('extracts a non-empty libapp.so for every arch in the '
           'aab', () async {
         final aab = File(
-          p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+          p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
         );
 
         final dir = await ArtifactManager.extractAndroidLibappsFromAab(aab);
@@ -613,7 +615,7 @@ void main() {
 
     group('androidArchsDirectoryFromAab', () {
       late Directory projectRoot;
-      final aab = File(p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'));
+      final aab = File(p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'));
 
       Directory strippedOutLib() => Directory(
         p.join(
@@ -798,7 +800,7 @@ void main() {
 
       test('returns null when the aab contains libapp.so', () async {
         final aab = File(
-          p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+          p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
         );
 
         final result = await ArtifactManager.describeMissingLibappInAab(aab);

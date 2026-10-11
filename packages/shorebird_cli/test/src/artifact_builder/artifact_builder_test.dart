@@ -22,9 +22,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import '../fakes.dart';
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ArtifactBuilder, () {
     late Directory projectRoot;
     late Apple apple;
@@ -525,7 +527,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
-                '''Build succeeded, but it generated multiple AABs in the build directory. (a, b)''',
+                '''Build succeeded, but it generated multiple AABs in the build directory. (${File('a').path}, ${File('b').path})''',
               ),
             ),
           );
@@ -927,7 +929,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
-                '''Build succeeded, but it generated multiple APKs in the build directory. (a, b)''',
+                '''Build succeeded, but it generated multiple APKs in the build directory. (${File('a').path}, ${File('b').path})''',
               ),
             ),
           );

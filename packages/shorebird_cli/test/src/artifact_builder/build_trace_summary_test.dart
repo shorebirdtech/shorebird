@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 import 'package:shorebird_cli/src/artifact_builder/duration_distribution.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 Map<String, Object?> _event({
   required String name,
@@ -25,6 +26,7 @@ Map<String, Object?> _event({
 };
 
 void main() {
+  useTempWorkingDirectory();
   group(BuildTraceSummary, () {
     test('empty events → zero summary', () {
       final s = BuildTraceSummary.fromEvents([], platform: 'android');

@@ -9,10 +9,12 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   late ShorebirdEnv shorebirdEnv;
   late ShorebirdLogger logger;
   late ShorebirdValidator shorebirdValidator;

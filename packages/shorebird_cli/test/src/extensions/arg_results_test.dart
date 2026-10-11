@@ -14,10 +14,12 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:test/test.dart';
 
 import '../fakes.dart';
+import '../helpers.dart';
 import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   setUpAll(() {
     registerFallbackValue(FakeFile());
   });
@@ -417,7 +419,7 @@ void main() {
   });
 
   group('CodeSign', () {
-    final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+    final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
     final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
 
     late ArgParser parser;

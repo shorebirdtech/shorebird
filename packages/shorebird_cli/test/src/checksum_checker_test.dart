@@ -4,8 +4,10 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('ChecksumChecker', () {
     late File testFile;
     const checksum =

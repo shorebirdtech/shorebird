@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io' hide Platform;
 import 'dart:io' as io show Platform;
+import 'dart:io' hide Platform;
 
 import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as oauth2;
@@ -21,12 +21,14 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../fakes.dart';
+import '../helpers.dart';
 import '../matchers.dart';
 import '../mocks.dart';
 
 const shorebirdJwtIssuer = 'https://auth.shorebird.dev';
 
 void main() {
+  useTempWorkingDirectory();
   group('scoped', () {
     test('creates instance with default constructor', () {
       final instance = runScoped(

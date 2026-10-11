@@ -13,9 +13,11 @@ import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(CacheCorruptedException, () {
     test('defaults to advising a full cache wipe', () {
       const exception = CacheCorruptedException('Could not read a file.');
@@ -278,8 +280,13 @@ void main() {
     group('iosPodfileLockHash', () {
       group('when file does not exist', () {
         test('returns null', () {
+          final projectRoot = Directory.systemTemp.createTempSync();
+          File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
           expect(
-            runWithOverrides(() => shorebirdEnv.iosPodfileLockHash),
+            IOOverrides.runZoned(
+              () => runWithOverrides(() => shorebirdEnv.iosPodfileLockHash),
+              getCurrentDirectory: () => projectRoot,
+            ),
             isNull,
           );
         });
@@ -365,8 +372,13 @@ void main() {
     group('macosPodfileLockHash', () {
       group('when file does not exist', () {
         test('returns null', () {
+          final projectRoot = Directory.systemTemp.createTempSync();
+          File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
           expect(
-            runWithOverrides(() => shorebirdEnv.macosPodfileLockHash),
+            IOOverrides.runZoned(
+              () => runWithOverrides(() => shorebirdEnv.macosPodfileLockHash),
+              getCurrentDirectory: () => projectRoot,
+            ),
             isNull,
           );
         });

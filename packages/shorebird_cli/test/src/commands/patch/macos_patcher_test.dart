@@ -42,6 +42,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(MacosPatcher, () {
     late AotTools aotTools;
     late ArgParser argParser;

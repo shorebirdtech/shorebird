@@ -25,9 +25,11 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(InitCommand, () {
     const version = '1.2.3';
     const appId = 'test_app_id';

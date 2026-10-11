@@ -17,6 +17,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ReleasesListCommand, () {
     const appId = 'test-app-id';
     const shorebirdYaml = ShorebirdYaml(appId: appId);

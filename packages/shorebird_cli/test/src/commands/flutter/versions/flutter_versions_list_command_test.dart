@@ -13,6 +13,7 @@ import '../../../helpers.dart';
 import '../../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(FlutterVersionsListCommand, () {
     late Progress progress;
     late ShorebirdLogger logger;

@@ -36,6 +36,7 @@ import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PreviewCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';

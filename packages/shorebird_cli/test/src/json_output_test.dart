@@ -4,8 +4,10 @@ import 'package:args/args.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(JsonResult, () {
     group('success', () {
       test('serializes correctly', () {

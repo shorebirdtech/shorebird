@@ -17,6 +17,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PatchesListCommand, () {
     const appId = 'test-app-id';
     const releaseVersion = '1.0.0+1';

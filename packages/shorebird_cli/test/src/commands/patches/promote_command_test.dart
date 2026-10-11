@@ -18,6 +18,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PromoteCommand, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0';

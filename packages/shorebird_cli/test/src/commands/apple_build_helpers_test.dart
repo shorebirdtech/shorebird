@@ -8,10 +8,12 @@ import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   late ShorebirdLogger logger;
   late Directory tempDir;
 

@@ -20,9 +20,11 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Patcher, () {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
@@ -403,7 +405,7 @@ void main() {
     });
 
     group('signHash', () {
-      final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+      final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
       final privateKeyFile = File(
         p.join(cryptoFixturesBasePath, 'private.pem'),
       );

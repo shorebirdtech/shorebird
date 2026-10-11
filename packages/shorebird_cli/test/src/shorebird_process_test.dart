@@ -15,9 +15,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('ShorebirdProcess', () {
     const flutterStorageBaseUrlEnv = {
       'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev',

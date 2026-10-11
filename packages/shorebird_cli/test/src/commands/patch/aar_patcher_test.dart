@@ -35,6 +35,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AarPatcher, () {
     const packageName = 'com.example.my_flutter_module';
     const buildNumber = '1.0';

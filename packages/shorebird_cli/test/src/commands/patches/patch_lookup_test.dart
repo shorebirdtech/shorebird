@@ -25,6 +25,7 @@ class _TestCommand extends ShorebirdCommand with PatchLookup {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(PatchLookup, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0+1';

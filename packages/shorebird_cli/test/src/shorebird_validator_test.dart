@@ -12,9 +12,11 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdValidator, () {
     late Auth auth;
     late ShorebirdLogger logger;

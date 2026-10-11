@@ -17,6 +17,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AppsDeleteCommand, () {
     const appId = 'app-id';
     const displayName = 'Acme Mobile';

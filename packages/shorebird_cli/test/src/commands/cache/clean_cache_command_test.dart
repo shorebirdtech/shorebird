@@ -13,9 +13,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('cache clean', () {
     late Cache cache;
     late ShorebirdLogger logger;

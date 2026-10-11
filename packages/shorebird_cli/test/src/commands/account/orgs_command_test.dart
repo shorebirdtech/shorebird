@@ -15,6 +15,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(OrgsCommand, () {
     final teamMembership = OrganizationMembership(
       organization: Organization(

@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdWebConsole, () {
     test('uri returns the correct uri with the received path', () {
       expect(

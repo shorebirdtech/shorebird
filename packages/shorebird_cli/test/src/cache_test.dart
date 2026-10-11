@@ -27,9 +27,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
 

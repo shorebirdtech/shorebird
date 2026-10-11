@@ -26,6 +26,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -71,6 +72,7 @@ class _TestApplePatcher extends Patcher
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(AppleLinkerPatcherMixin, () {
     const postLinkerFlutterRevision = // cspell: disable-next-line
         'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
@@ -429,7 +431,7 @@ void main() {
               ),
             ).called(1);
             verify(progress.complete).called(1);
-            expect(bundles[Arch.arm64]!.path, equals(diffPath));
+            expect(bundles[Arch.arm64]!.path, equals(File(diffPath).path));
           });
 
           test('deletes the diff base directory after diffing', () async {

@@ -14,11 +14,13 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 // Behavior shared with WindowsPatcher is tested in desktop_patcher_test.dart;
 // this file covers only what is specific to Linux.
 void main() {
+  useTempWorkingDirectory();
   group(LinuxPatcher, () {
     late ArgParser argParser;
     late ArgResults argResults;

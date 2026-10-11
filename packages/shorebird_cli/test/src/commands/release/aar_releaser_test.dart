@@ -26,10 +26,12 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AarReleaser, () {
     const packageName = 'com.example.my_flutter_module';
     const buildNumber = '1.0';
@@ -539,7 +541,7 @@ void main() {
                 ),
               ),
             ),
-            extractedAarDir: 'path',
+            extractedAarDir: Directory('path').path,
             architectures: Arch.values,
           ),
         ).called(1);

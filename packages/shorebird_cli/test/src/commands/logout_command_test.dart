@@ -7,9 +7,11 @@ import 'package:shorebird_cli/src/commands/logout_command.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(LogoutCommand, () {
     late Auth auth;
     late ShorebirdLogger logger;

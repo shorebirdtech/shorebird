@@ -7,9 +7,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   const manifestWithInternetPermission = '''
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dev.shorebird.u_shorebird_clock">

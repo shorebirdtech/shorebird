@@ -1,8 +1,10 @@
 import 'package:shorebird_cli/src/formatters/patch_formatter.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('formatPatchDetails', () {
     PatchArtifact artifact({
       required String arch,
