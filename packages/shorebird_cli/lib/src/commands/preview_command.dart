@@ -13,7 +13,9 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -43,9 +45,10 @@ class PreviewCommand extends ShorebirdCommand {
         help: 'The ID of the device or simulator to preview the release on.',
       )
       ..addOption(
-        'app-id',
-        help: 'The ID of the app to preview the release for.',
+        CommonArguments.appIdArg.name,
+        help: CommonArguments.appIdArg.description,
       )
+      ..addOption(CommonArguments.flavorArg.name, help: appScopedFlavorHelp)
       ..addOption(
         CommonArguments.releaseVersionArg.name,
         help: CommonArguments.releaseVersionArg.description,
@@ -144,7 +147,8 @@ This is only applicable when previewing Android releases.''',
 
     _assertArgsAreValid();
 
-    final appId = await _resolveAppId();
+    final (:appId, :errorCode) = await _resolveAppId();
+    if (errorCode != null) return errorCode;
     if (appId == null) {
       logger.info('No apps found');
       return ExitCode.success.code;
@@ -226,22 +230,51 @@ This is only applicable when previewing Android releases.''',
     }
   }
 
-  /// Determines which app to preview from `--app-id`, shorebird.yaml, or a
-  /// prompt. Returns null if the user has no apps.
-  Future<String?> _resolveAppId() async {
-    if (results.wasParsed('app-id')) return results['app-id'] as String;
+  /// Determines which app to preview from `--app-id`, `--flavor` and
+  /// shorebird.yaml, or a prompt.
+  ///
+  /// Returns a null `appId` if the user has no apps, and a non-null
+  /// `errorCode` if `--flavor` can't be used.
+  Future<({String? appId, int? errorCode})> _resolveAppId() async {
+    final explicitAppId = results[CommonArguments.appIdArg.name] as String?;
+    if (explicitAppId != null) return (appId: explicitAppId, errorCode: null);
 
+    final flavor = results[CommonArguments.flavorArg.name] as String?;
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
-    if (shorebirdYaml == null) return promptForApp();
+    if (shorebirdYaml == null) {
+      if (flavor != null) {
+        return (
+          appId: null,
+          errorCode: reportError(
+            message:
+                '--flavor needs a shorebird.yaml to read the app ID from. '
+                'Run this from your Shorebird project, or pass --app-id '
+                'instead.',
+          ),
+        );
+      }
+      return (appId: await promptForApp(), errorCode: null);
+    }
+
+    final flavorError = shorebirdYaml.unknownFlavorError(flavor);
+    if (flavorError != null) {
+      return (appId: null, errorCode: reportError(message: flavorError));
+    }
+    if (flavor != null) {
+      return (appId: shorebirdYaml.getAppId(flavor: flavor), errorCode: null);
+    }
 
     final flavors = shorebirdYaml.flavors;
-    if (flavors == null) return shorebirdYaml.appId;
+    if (flavors == null) return (appId: shorebirdYaml.appId, errorCode: null);
 
     final chosenFlavor = logger.chooseOne<String>(
       'Which app flavor?',
       choices: flavors.keys.toList(),
+      hint:
+          'Pass --flavor=<flavor> to preview a specific flavor without '
+          'prompting.',
     );
-    return flavors[chosenFlavor];
+    return (appId: flavors[chosenFlavor], errorCode: null);
   }
 
   /// Chooses the release of [appId] to preview, from `--release-version` or a

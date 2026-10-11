@@ -6,8 +6,8 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
@@ -15,26 +15,22 @@ import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template get_apk_command}
 /// Generates an APK for the release with the specified version.
 /// {@endtemplate}
-class GetApksCommand extends ShorebirdCommand {
+class GetApksCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro get_apk_command}
   GetApksCommand() {
+    addAppScopeOptions();
     argParser
       ..addOption(
         CommonArguments.releaseVersionArg.name,
         help:
             'The version of the release to generate APKs for '
             '(e.g. "1.0.0+1"). Prompts for selection if omitted.',
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The build flavor to generate apks for.',
       )
       ..addOption(
         'out',
@@ -55,14 +51,8 @@ class GetApksCommand extends ShorebirdCommand {
   String get description =>
       'Generates apk(s) for the specified release version.';
 
-  /// The shorebird app ID for the current project.
-  String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
-
-  /// The build flavor, if provided.
-  late String? flavor = results.findOption(
-    CommonArguments.flavorArg.name,
-    argParser: argParser,
-  );
+  /// The app ID, from `--app-id` or shorebird.yaml. Set by [run].
+  late final String appId;
 
   /// The output directory path for the generated apks. Defaults to the
   /// project's build directory if not provided.
@@ -73,19 +63,19 @@ class GetApksCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-      );
-    } on PreconditionFailedException catch (error) {
-      return reportPreconditionFailure(error);
-    }
+    final resolved = await resolveAppId();
+    if (resolved.errorCode case final errorCode?) return errorCode;
+    appId = resolved.appId;
 
-    final flavorError = shorebirdEnv.getShorebirdYaml()!.unknownFlavorError(
-      flavor,
-    );
-    if (flavorError != null) return reportError(message: flavorError);
+    // Without a project there is no build directory to default to.
+    if (outDirectoryArg == null &&
+        shorebirdEnv.getShorebirdProjectRoot() == null) {
+      return reportError(
+        message:
+            '--out is required when not running in a Shorebird project, so '
+            'there is no build directory to write the apks to.',
+      );
+    }
 
     final Release release;
     if (results.wasParsed(CommonArguments.releaseVersionArg.name)) {

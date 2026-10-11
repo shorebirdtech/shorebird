@@ -468,6 +468,7 @@ void main() {
             body,
             values: {
               adbRef.overrideWith(() => adb),
+              isJsonModeRef.overrideWith(() => false),
               artifactManagerRef.overrideWith(() => artifactManager),
               authRef.overrideWith(() => auth),
               bundletoolRef.overrideWith(() => bundletool),
@@ -1206,8 +1207,11 @@ channel: ${track.channel}
           when(() => argResults.wasParsed('app-id')).thenReturn(false);
           when(() => argResults['app-id']).thenReturn(null);
           when(
-            () =>
-                logger.chooseOne<String>(any(), choices: any(named: 'choices')),
+            () => logger.chooseOne<String>(
+              any(),
+              choices: any(named: 'choices'),
+              hint: any(named: 'hint'),
+            ),
           ).thenReturn('dev');
         });
 
@@ -1215,8 +1219,98 @@ channel: ${track.channel}
           await runWithOverrides(command.run);
 
           verify(
-            () => logger.chooseOne<String>(any(), choices: ['dev', 'prod']),
+            () => logger.chooseOne<String>(
+              'Which app flavor?',
+              choices: ['dev', 'prod'],
+              hint:
+                  'Pass --flavor=<flavor> to preview a specific flavor '
+                  'without prompting.',
+            ),
           ).called(1);
+          verify(
+            () => codePushClientWrapper.getReleases(appId: 'dev-app-id'),
+          ).called(1);
+        });
+
+        group('when --flavor is passed', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('prod');
+          });
+
+          test('uses that flavor without prompting', () async {
+            await runWithOverrides(command.run);
+
+            verifyNever(
+              () => logger.chooseOne<String>(
+                any(),
+                choices: any(named: 'choices'),
+                hint: any(named: 'hint'),
+              ),
+            );
+            verify(
+              () => codePushClientWrapper.getReleases(appId: 'prod-app-id'),
+            ).called(1);
+          });
+        });
+
+        group('when --flavor is not defined in shorebird.yaml', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('missing');
+          });
+
+          test('exits with a usage error before fetching', () async {
+            final exitCode = await runWithOverrides(command.run);
+
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'This project does not have a flavor named "missing". Pass '
+                'one of: dev, prod (from "flavors" in shorebird.yaml).',
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+                sideloadableOnly: any(named: 'sideloadableOnly'),
+              ),
+            );
+          });
+        });
+
+        group('when --app-id is also passed', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('missing');
+            when(() => argResults['app-id']).thenReturn('explicit-app-id');
+          });
+
+          test('uses --app-id and ignores --flavor', () async {
+            await runWithOverrides(command.run);
+
+            verify(
+              () => codePushClientWrapper.getReleases(appId: 'explicit-app-id'),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when --flavor is passed outside a shorebird project', () {
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
+          when(() => argResults['app-id']).thenReturn(null);
+          when(() => argResults['flavor']).thenReturn('prod');
+        });
+
+        test('exits with a usage error without prompting', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              '--flavor needs a shorebird.yaml to read the app ID from. Run '
+              'this from your Shorebird project, or pass --app-id instead.',
+            ),
+          ).called(1);
+          verifyNever(() => codePushClientWrapper.getApps());
         });
       });
 

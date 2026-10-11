@@ -226,6 +226,73 @@ void main() {
       });
     });
 
+    group('when --app-id is passed outside a Shorebird project', () {
+      const explicitAppId = 'explicit-app-id';
+
+      setUp(() {
+        when(() => shorebirdEnv.getShorebirdProjectRoot()).thenReturn(null);
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
+        when(() => argResults['app-id']).thenReturn(explicitAppId);
+      });
+
+      test('requires --out, before fetching releases', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(ExitCode.usage.code)),
+        );
+        verify(
+          () => logger.err(
+            '--out is required when not running in a Shorebird project, so '
+            'there is no build directory to write the apks to.',
+          ),
+        ).called(1);
+        verify(
+          // checkShorebirdInitialized defaults to false.
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: true,
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        );
+      });
+
+      group('with --out', () {
+        late Directory outDirectory;
+
+        setUp(() {
+          outDirectory = Directory.systemTemp.createTempSync();
+          addTearDown(() => outDirectory.deleteSync(recursive: true));
+          when(() => argResults.wasParsed('out')).thenReturn(true);
+          when(() => argResults['out']).thenReturn(outDirectory.path);
+        });
+
+        test('uses the --app-id app', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.success.code)),
+          );
+          verify(
+            () => codePushClientWrapper.getReleases(
+              appId: explicitAppId,
+              sideloadableOnly: true,
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: explicitAppId,
+              releaseId: releaseId,
+              arch: 'aab',
+              platform: ReleasePlatform.android,
+            ),
+          ).called(1);
+        });
+      });
+    });
+
     group('when querying for releases fails', () {
       setUp(() {
         when(
