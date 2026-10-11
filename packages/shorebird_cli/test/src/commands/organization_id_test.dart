@@ -19,13 +19,16 @@ void main() {
 
   group('parseOrganizationId', () {
     test('parses an integer', () {
-      final result = parseOrganizationId('42');
+      final result = parseOrganizationId('42', memberships: const []);
       expect(result.id, equals(42));
       expect(result.error, isNull);
     });
 
-    test('explains a non-integer', () {
-      final result = parseOrganizationId('acme');
+    test('explains a non-integer and lists the organizations', () {
+      final result = parseOrganizationId(
+        'acme',
+        memberships: [membership(1, 'Acme'), membership(2, 'Beta')],
+      );
       expect(result.id, isNull);
       expect(
         result.error?.message,
@@ -33,7 +36,10 @@ void main() {
       );
       expect(
         result.error?.hint,
-        equals('Organization ids are integers, e.g. --org-id 42.'),
+        equals(
+          'Organization ids are integers, e.g. --org-id 42. '
+          'Your organizations: Acme (id: 1), Beta (id: 2).',
+        ),
       );
     });
   });

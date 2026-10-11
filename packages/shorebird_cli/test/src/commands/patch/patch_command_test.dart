@@ -441,6 +441,27 @@ void main() {
 
         group('when the release Flutter version is older', () {
           setUp(() {
+            when(() => patcher.releaseType).thenReturn(ReleaseType.ios);
+            when(
+              () => codePushClientWrapper.getRelease(
+                appId: any(named: 'appId'),
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer(
+              (_) async => Release(
+                id: release.id,
+                appId: release.appId,
+                version: release.version,
+                flutterRevision: release.flutterRevision,
+                flutterVersion: release.flutterVersion,
+                displayName: release.displayName,
+                platformStatuses: const {
+                  ReleasePlatform.ios: ReleaseStatus.active,
+                },
+                createdAt: release.createdAt,
+                updatedAt: release.updatedAt,
+              ),
+            );
             when(
               () => shorebirdFlutter.getVersion(),
             ).thenAnswer((_) async => Version(3, 0, 0));
@@ -454,8 +475,8 @@ void main() {
 
             verify(
               () => logger.err('''
-Release ${release.version} was built with Flutter $flutterRevision, but at least Flutter $minimumFlutterVersion is required to patch with `android`.
-A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release android --flutter-version=<version>')} and patch that one.
+Release ${release.version} was built with Flutter $flutterRevision, but at least Flutter $minimumFlutterVersion is required to patch with `ios`.
+A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ios --flutter-version=$minimumFlutterVersion')} and patch that one.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ).called(1);
             verifyNever(

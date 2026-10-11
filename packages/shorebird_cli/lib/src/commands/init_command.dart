@@ -92,12 +92,12 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     final Organization organization;
     final orgIdArg = results[CommonArguments.orgIdArg.name] as String?;
     if (orgIdArg != null) {
-      final (id: orgId, error: parseError) = parseOrganizationId(orgIdArg);
+      final (id: orgId, error: parseError) = parseOrganizationId(
+        orgIdArg,
+        memberships: organizationMemberships,
+      );
       if (parseError != null) {
-        usageException(
-          '${parseError.message}\n${parseError.hint}\n'
-          '${availableOrganizations(organizationMemberships)}',
-        );
+        usageException('${parseError.message}\n${parseError.hint}');
       }
 
       final (:membership, error: membershipError) = findOrganizationMembership(
