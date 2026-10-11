@@ -351,11 +351,18 @@ class Auth {
 
     final oauth2.AccessCredentials credentials;
     try {
-      credentials = oauth2.AccessCredentials.fromJson(
-        json.decode(credentialsFile.readAsStringSync()) as Map<String, dynamic>,
-      );
+      final decoded = json.decode(credentialsFile.readAsStringSync());
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Credentials are not a JSON object.');
+      }
+      credentials = oauth2.AccessCredentials.fromJson(decoded);
+      // A field of the wrong type surfaces as a TypeError from fromJson.
+      // ignore: avoid_catching_errors
+    } on TypeError {
+      _warnUnreadableCredentials();
+      return;
     } on Exception {
-      // Swallow json decode exceptions.
+      _warnUnreadableCredentials();
       return;
     }
 
@@ -373,6 +380,14 @@ class Auth {
     _email = credentials.email;
   }
 
+  // Treat an unreadable credentials file as logged out rather than crashing,
+  // so `shorebird login` and `shorebird logout` still work.
+  void _warnUnreadableCredentials() {
+    logger.warn(
+      '''Your stored credentials could not be read. Run ${lightCyan.wrap('shorebird login')} to sign in again.''',
+    );
+  }
+
   bool _isShorebirdIssued(oauth2.AccessCredentials credentials) {
     try {
       return Jwt.parse(credentials.accessToken.data).payload.iss ==
@@ -383,9 +398,14 @@ class Auth {
   }
 
   void _flushCredentials(oauth2.AccessCredentials credentials) {
-    File(credentialsFilePath)
-      ..createSync(recursive: true)
-      ..writeAsStringSync(json.encode(credentials.toJson()));
+    final file = File(credentialsFilePath)..createSync(recursive: true);
+    // The file holds a refresh token. Restrict it to the owner before the
+    // token is written, so it is never readable by others, even briefly. This
+    // checks the real host, not the scoped platform, because it is a real
+    // file. Windows has no chmod; files under the user profile are already
+    // private to the user.
+    if (!Platform.isWindows) Process.runSync('chmod', ['600', file.path]);
+    file.writeAsStringSync(json.encode(credentials.toJson()));
   }
 
   /// Deletes the locally stored credentials without revoking the server-side
