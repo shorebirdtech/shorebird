@@ -579,6 +579,70 @@ void main() {
         );
       });
 
+      test(
+        'runs --public-key-cmd once for the build key and every signature',
+        () async {
+          argResults = argParser.parse([
+            '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+            '--${CommonArguments.signCmd.name}=sign-cmd',
+          ]);
+
+          when(
+            () => codeSigner.signWithCmd(
+              data: any(named: 'data'),
+              command: any(named: 'command'),
+            ),
+          ).thenAnswer((_) async => 'cmd-signature');
+          var keyRuns = 0;
+          when(() => codeSigner.runPublicKeyCmd(any())).thenAnswer((_) async {
+            keyRuns++;
+            // A command that returned a different key each time would sign
+            // against one key and embed another if it ran more than once.
+            return 'pem-public-key-$keyRuns';
+          });
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn('encoded-key');
+          when(
+            () => codeSigner.verify(
+              message: any(named: 'message'),
+              signature: any(named: 'signature'),
+              publicKeyPem: any(named: 'publicKeyPem'),
+            ),
+          ).thenReturn(true);
+
+          final patcher = _TestPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: null,
+            target: null,
+          );
+
+          await runScoped(
+            () async {
+              // One build, then a signature per architecture.
+              await patcher.getEncodedPublicKey();
+              await patcher.signHash('arm64-hash');
+              await patcher.signHash('arm32-hash');
+              await patcher.signHash('x86_64-hash');
+
+              verify(() => codeSigner.runPublicKeyCmd('get-key-cmd')).called(1);
+              verify(
+                () => codeSigner.base64PublicKeyFromPem('pem-public-key-1'),
+              ).called(1);
+              verify(
+                () => codeSigner.verify(
+                  message: any(named: 'message'),
+                  signature: 'cmd-signature',
+                  publicKeyPem: 'pem-public-key-1',
+                ),
+              ).called(3);
+            },
+            values: {codeSignerRef.overrideWith(() => codeSigner)},
+          );
+        },
+      );
+
       test('throws ProcessExit when sign-cmd fails', () async {
         argResults = argParser.parse([
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
