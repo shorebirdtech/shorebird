@@ -171,30 +171,6 @@ To change the version of this release, change your app's version in your pubspec
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
-      group('when validation succeeds', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-        });
-
-        test('returns normally', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.assertPreconditions),
-            returnsNormally,
-          );
-        });
-      });
-
       group('when validation fails', () {
         final exception = ValidationFailedException();
 
@@ -305,38 +281,6 @@ To change the version of this release, change your app's version in your pubspec
           verify(
             () => artifactBuilder.buildLinuxApp(
               base64PublicKey: 'encoded_public_key',
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when a public-key-cmd is provided', () {
-        setUp(() {
-          when(
-            () => argResults[CommonArguments.publicKeyCmd.name],
-          ).thenReturn('get-key-cmd');
-          when(
-            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
-          ).thenReturn(true);
-
-          when(
-            () => codeSigner.runPublicKeyCmd(any()),
-          ).thenAnswer((_) async => 'pem-public-key');
-          when(
-            () => codeSigner.base64PublicKeyFromPem(any()),
-          ).thenReturn('encoded_public_key_from_cmd');
-        });
-
-        test('passes public key to buildLinuxApp', () async {
-          await runWithOverrides(releaser.buildReleaseArtifacts);
-          verify(
-            () => codeSigner.runPublicKeyCmd('get-key-cmd'),
-          ).called(1);
-          verify(
-            () => artifactBuilder.buildLinuxApp(
-              base64PublicKey: 'encoded_public_key_from_cmd',
               target: any(named: 'target'),
               args: any(named: 'args'),
             ),

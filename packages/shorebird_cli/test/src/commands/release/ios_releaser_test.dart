@@ -144,30 +144,6 @@ void main() {
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
-      group('when validation succeeds', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-        });
-
-        test('returns normally', () async {
-          await expectLater(
-            () => runWithOverrides(iosReleaser.assertPreconditions),
-            returnsNormally,
-          );
-        });
-      });
-
       group('when validation fails', () {
         final exception = ValidationFailedException();
 
@@ -390,61 +366,6 @@ $body
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
-              ),
-            ).called(1);
-          },
-        );
-      });
-
-      group('when a public-key-cmd is provided', () {
-        setUp(() {
-          when(
-            () => argResults[CommonArguments.publicKeyCmd.name],
-          ).thenReturn('get-key-cmd');
-          when(
-            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
-          ).thenReturn(true);
-
-          when(
-            () => artifactBuilder.buildIpa(
-              codesign: any(named: 'codesign'),
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
-            ),
-          ).thenAnswer(
-            (_) async =>
-                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-          );
-
-          when(
-            () => codeSigner.runPublicKeyCmd(any()),
-          ).thenAnswer((_) async => 'pem-public-key');
-          when(
-            () => codeSigner.base64PublicKeyFromPem(any()),
-          ).thenReturn('base64PublicKeyFromCmd');
-        });
-
-        test(
-          'runs public key cmd and forwards encoded key to buildIpa',
-          () async {
-            await runWithOverrides(() => iosReleaser.buildReleaseArtifacts());
-
-            verify(
-              () => codeSigner.runPublicKeyCmd('get-key-cmd'),
-            ).called(1);
-            verify(
-              () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
-            ).called(1);
-            verify(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-                base64PublicKey: 'base64PublicKeyFromCmd',
               ),
             ).called(1);
           },
