@@ -854,7 +854,7 @@ Engine • revision $shorebirdEngineRevision'''),
       });
 
       group('on ProcessExit with zero exit code', () {
-        test('does not emit JSON error', () async {
+        test('emits one success envelope', () async {
           commandRunner.addCommand(_TestCommand(ExitCode.success));
           final result = await captureStdout(
             () => runWithOverrides(
@@ -862,10 +862,9 @@ Engine • revision $shorebirdEngineRevision'''),
             ),
           );
           expect(result, equals(ExitCode.success.code));
-          expect(
-            stdoutOutput.where((line) => line.contains('"status"')),
-            isEmpty,
-          );
+          final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+          expect(json['status'], equals('success'));
+          expect(json['data'], isEmpty);
         });
       });
 
@@ -947,7 +946,7 @@ Engine • revision $shorebirdEngineRevision'''),
         verifyNever(() => shorebirdVersion.isLatest());
       });
 
-      group('on a command without JSON output', () {
+      group('on a command that writes no envelope', () {
         late _HumanOnlyCommand command;
 
         setUp(() {
@@ -990,13 +989,33 @@ Engine • revision $shorebirdEngineRevision'''),
           expect((json['meta'] as Map)['command'], equals('group leaf'));
         });
 
-        test('emits one success envelope on ProcessExit(0)', () async {
-          command.thenThrow = ProcessExit(ExitCode.success.code);
-          final (result, json) = await runJson(['--json', 'human-only']);
+        test('prints --help usage via the logger and one envelope', () async {
+          final (result, json) = await runJson([
+            '--json',
+            'human-only',
+            '--help',
+          ]);
 
           expect(result, equals(ExitCode.success.code));
+          expect(command.ran, isFalse);
           expect(json['status'], equals('success'));
+          verify(() => logger.info(command.usage)).called(1);
         });
+
+        test(
+          'prints `help <command>` via the logger and one envelope',
+          () async {
+            final (result, json) = await runJson([
+              '--json',
+              'help',
+              'human-only',
+            ]);
+
+            expect(result, equals(ExitCode.success.code));
+            expect(json['status'], equals('success'));
+            verify(() => logger.info(command.usage)).called(1);
+          },
+        );
 
         test('emits one error envelope when it fails', () async {
           command.exitCode = ExitCode.config;
@@ -1016,48 +1035,6 @@ Engine • revision $shorebirdEngineRevision'''),
           expect(result, equals(ExitCode.success.code));
           expect(stdoutOutput, equals(['hello, human']));
         });
-      });
-
-      test('is supported by exactly the commands that emit JSON', () {
-        // A command that starts emitting JSON must opt in, and one that opts
-        // in must emit it. Update this list alongside either change.
-        final supported = <String>[];
-        void visit(Iterable<Command<int>> commands) {
-          for (final command in commands) {
-            if (command is ShorebirdCommand && command.supportsJson) {
-              supported.add(command.fullCommandName);
-            }
-            visit(command.subcommands.values.toSet());
-          }
-        }
-
-        visit(ShorebirdCliCommandRunner().commands.values.toSet());
-        expect(
-          supported,
-          unorderedEquals([
-            'account apps',
-            'account orgs',
-            'account whoami',
-            'apps delete',
-            'apps list',
-            'apps rename',
-            'apps transfer',
-            'channels create',
-            'channels delete',
-            'channels list',
-            'doctor',
-            'flutter versions list',
-            'patch',
-            'patches info',
-            'patches list',
-            'patches rollback',
-            'patches rollforward',
-            'patches set-track',
-            'release',
-            'releases info',
-            'releases list',
-          ]),
-        );
       });
 
       group('on parse-time errors', () {
@@ -1258,9 +1235,6 @@ class _TestCommand extends ShorebirdCommand {
   String get name => 'test';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description => 'Test command';
 
   @override
@@ -1273,9 +1247,6 @@ class _TestCommand extends ShorebirdCommand {
 class _ChattyCommand extends ShorebirdCommand {
   @override
   String get name => 'chatty';
-
-  @override
-  bool get supportsJson => true;
 
   @override
   String get description => 'Chatty command';
@@ -1300,9 +1271,6 @@ class _FailingCommand extends ShorebirdCommand {
   String get name => 'failing';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description => 'A command that fails';
 
   @override
@@ -1324,9 +1292,6 @@ class _PreconditionCommand extends ShorebirdCommand {
   String get name => 'precondition';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description => 'A command whose precondition fails';
 
   @override
@@ -1337,9 +1302,6 @@ class _PreconditionCommand extends ShorebirdCommand {
 class _ThrowingCommand extends ShorebirdCommand {
   @override
   String get name => 'throwing';
-
-  @override
-  bool get supportsJson => true;
 
   @override
   String get description => 'A command that throws';
@@ -1363,9 +1325,6 @@ class _PromptRequiredCommand extends ShorebirdCommand {
   String get name => 'prompt-required';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description => 'Throws InteractivePromptRequiredException.';
 
   @override
@@ -1385,9 +1344,6 @@ class _CaptureModeCommand extends ShorebirdCommand {
   String get name => 'capture-mode';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description => 'Captures interactive mode flags for testing.';
 
   @override
@@ -1399,8 +1355,7 @@ class _CaptureModeCommand extends ShorebirdCommand {
   }
 }
 
-/// A command that prints human output only, so leaves
-/// [ShorebirdCommand.supportsJson] false.
+/// A command that prints human output only, never an envelope.
 class _HumanOnlyCommand extends ShorebirdCommand {
   _HumanOnlyCommand({this.name = 'human-only'});
 
@@ -1408,7 +1363,6 @@ class _HumanOnlyCommand extends ShorebirdCommand {
   final String name;
 
   ExitCode exitCode = ExitCode.success;
-  ProcessExit? thenThrow;
   bool ran = false;
 
   @override
@@ -1418,7 +1372,6 @@ class _HumanOnlyCommand extends ShorebirdCommand {
   Future<int> run() async {
     ran = true;
     stdout.writeln('hello, human');
-    if (thenThrow case final error?) throw error;
     return exitCode.code;
   }
 }

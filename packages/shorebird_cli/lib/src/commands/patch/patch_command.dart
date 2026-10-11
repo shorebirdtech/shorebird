@@ -192,9 +192,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   @override
   String get name => 'patch';
 
-  @override
-  bool get supportsJson => true;
-
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 

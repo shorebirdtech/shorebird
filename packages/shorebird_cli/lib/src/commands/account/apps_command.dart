@@ -18,9 +18,6 @@ class AccountAppsCommand extends ShorebirdCommand {
   String get name => 'apps';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description =>
       'List the apps you have access to.\n\n'
       'Example output (space-separated: app_id  display_name  '

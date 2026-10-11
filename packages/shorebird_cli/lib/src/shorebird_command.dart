@@ -56,19 +56,17 @@ abstract class ShorebirdCommand extends Command<int> {
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;
 
+  /// Prints usage through the logger rather than `print`, which writes to
+  /// the real stdout. Under `--json`, the logger's output goes to stderr and
+  /// stdout carries only the envelope.
+  @override
+  void printUsage() => logger.info(usage);
+
   /// Whether the `--json` global flag was passed.
   ///
   /// Reads from the [isJsonModeRef] scoped dependency, which is set by the
   /// command runner based on the parsed `--json` flag.
   bool get isJsonMode => read(isJsonModeRef);
-
-  /// Whether this command writes its own JSON envelope under `--json`.
-  ///
-  /// `--json` is a global flag, so every command accepts it and runs
-  /// non-interactively under it. For a command that leaves this false, the
-  /// command runner writes the envelope instead: an empty success envelope,
-  /// or an error envelope when the command fails.
-  bool get supportsJson => false;
 
   // isInteractive is a thin wrapper around the top-level getter in
   // `interactive_mode.dart`, which is directly tested via the runner's

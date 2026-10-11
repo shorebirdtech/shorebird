@@ -189,9 +189,6 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   String get name => 'release';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   Future<int> run() async {
     if (results.releaseTypes.isEmpty) {
       logger.err(

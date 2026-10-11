@@ -29,9 +29,6 @@ class ChannelsCreateCommand extends ShorebirdCommand with AppScopedCommand {
   String get name => 'create';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description =>
       'Creates a channel an app can publish to.\n\n'
       'Channels are also created automatically when a patch is published '

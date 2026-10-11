@@ -40,9 +40,6 @@ class DoctorCommand extends ShorebirdCommand {
   String get name => 'doctor';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description => 'Show information about the installed tooling.';
 
   /// Overrides [globalResults] in tests, where there is no command runner.

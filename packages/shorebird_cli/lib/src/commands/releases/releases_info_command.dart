@@ -30,9 +30,6 @@ class ReleasesInfoCommand extends ShorebirdCommand with AppScopedCommand {
   String get name => 'info';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description =>
       'Show details for a specific release.\n\n'
       'Example output:\n'

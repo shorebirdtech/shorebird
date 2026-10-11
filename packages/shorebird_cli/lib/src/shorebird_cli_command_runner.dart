@@ -15,7 +15,6 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -363,13 +362,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
           ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
-      // A command without JSON output (see [ShorebirdCommand.supportsJson])
-      // still runs under --json. Report its success, so that stdout carries
-      // exactly one envelope for it as for every other command.
+      // Every --json run leaves exactly one envelope on stdout. A command
+      // that succeeded without writing one (it has no JSON output, or it only
+      // printed usage for --help, where the exit code is null) gets an empty
+      // success envelope.
       if (isJsonMode &&
           !envelope.written &&
-          exitCode == ExitCode.success.code &&
-          _leafCommand(topLevelResults)?.supportsJson == false) {
+          (exitCode == null || exitCode == ExitCode.success.code)) {
         JsonResult.success(data: const {}, command: commandName).write();
       }
     }
@@ -402,21 +401,6 @@ ${currentRunLogFile.absolute.path}
     }
 
     return exitCode;
-  }
-
-  /// The command [topLevelResults] runs, if it is a [ShorebirdCommand].
-  ShorebirdCommand? _leafCommand(ArgResults topLevelResults) {
-    Command<int>? command;
-    var available = commands;
-    for (
-      var results = topLevelResults.command;
-      results != null;
-      results = results.command
-    ) {
-      command = available[results.name];
-      available = command?.subcommands ?? const {};
-    }
-    return command is ShorebirdCommand ? command : null;
   }
 
   /// Removes Flutter installs, engine artifacts and previews that have gone

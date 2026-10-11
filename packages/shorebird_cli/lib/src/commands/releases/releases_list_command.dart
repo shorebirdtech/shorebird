@@ -27,9 +27,6 @@ class ReleasesListCommand extends ShorebirdCommand with AppScopedCommand {
   String get name => 'list';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description =>
       'List releases for an app.\n\n'
       'Example output (one line per release):\n'

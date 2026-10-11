@@ -18,9 +18,6 @@ class OrgsCommand extends ShorebirdCommand {
   String get name => 'orgs';
 
   @override
-  bool get supportsJson => true;
-
-  @override
   String get description =>
       'List the organizations you belong to.\n\n'
       'Example output (space-separated: id  name  type  role):\n'
