@@ -947,7 +947,7 @@ Engine • revision $shorebirdEngineRevision'''),
         verifyNever(() => shorebirdVersion.isLatest());
       });
 
-      group('on a command that does not support --json', () {
+      group('on a command without JSON output', () {
         late _HumanOnlyCommand command;
 
         setUp(() {
@@ -963,60 +963,58 @@ Engine • revision $shorebirdEngineRevision'''),
           return (result, json);
         }
 
-        test('refuses it with one usage_error envelope', () async {
-          final (result, json) = await runJson(['--json', 'human-only']);
-
-          expect(result, equals(ExitCode.usage.code));
-          expect(command.ran, isFalse);
-          expect(json['status'], equals('error'));
-          final error = json['error'] as Map<String, dynamic>;
-          expect(error['code'], equals('usage_error'));
-          expect(
-            error['message'],
-            equals('`shorebird human-only` does not support --json.'),
-          );
-          expect((json['meta'] as Map)['command'], equals('human-only'));
-          verifyNever(() => logger.err(any()));
-        });
-
-        test('names the full subcommand', () async {
-          final (result, json) = await runJson(['--json', 'cache', 'clean']);
-
-          expect(result, equals(ExitCode.usage.code));
-          final error = json['error'] as Map<String, dynamic>;
-          expect(
-            error['message'],
-            equals('`shorebird cache clean` does not support --json.'),
-          );
-        });
-
-        test('leaves a group with no subcommand to the usage error', () async {
-          final (result, json) = await runJson(['--json', 'cache']);
-
-          expect(result, equals(ExitCode.usage.code));
-          final error = json['error'] as Map<String, dynamic>;
-          expect(error['message'], contains('Missing subcommand'));
-        });
-
-        test('still shows --help', () async {
-          final result = await captureStdout(
-            () => runWithOverrides(
-              () => commandRunner.run(['--json', 'human-only', '--help']),
+        test('runs it and emits one empty success envelope', () async {
+          final stderrOutput = <String>[];
+          final realStderr = stderr;
+          final (result, json) = await IOOverrides.runZoned(
+            () => runJson(['--json', 'human-only']),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrOutput,
             ),
           );
 
           expect(result, equals(ExitCode.success.code));
-          expect(command.ran, isFalse);
-          expect(stdoutOutput.join(), isNot(contains('usage_error')));
+          expect(command.ran, isTrue);
+          expect(json['status'], equals('success'));
+          expect(json['data'], isEmpty);
+          expect((json['meta'] as Map)['command'], equals('human-only'));
+          expect(stderrOutput, contains('hello, human'));
         });
 
-        test('runs it without --json', () async {
-          final result = await runWithOverrides(
-            () => commandRunner.run(['human-only']),
+        test('names the full subcommand', () async {
+          commandRunner.addCommand(_GroupCommand());
+          final (result, json) = await runJson(['--json', 'group', 'leaf']);
+
+          expect(result, equals(ExitCode.success.code));
+          expect((json['meta'] as Map)['command'], equals('group leaf'));
+        });
+
+        test('emits one success envelope on ProcessExit(0)', () async {
+          command.thenThrow = ProcessExit(ExitCode.success.code);
+          final (result, json) = await runJson(['--json', 'human-only']);
+
+          expect(result, equals(ExitCode.success.code));
+          expect(json['status'], equals('success'));
+        });
+
+        test('emits one error envelope when it fails', () async {
+          command.exitCode = ExitCode.config;
+          final (result, json) = await runJson(['--json', 'human-only']);
+
+          expect(result, equals(ExitCode.config.code));
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('process_exit'));
+        });
+
+        test('emits no envelope without --json', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(() => commandRunner.run(['human-only'])),
           );
 
           expect(result, equals(ExitCode.success.code));
-          expect(command.ran, isTrue);
+          expect(stdoutOutput, equals(['hello, human']));
         });
       });
 
@@ -1404,10 +1402,14 @@ class _CaptureModeCommand extends ShorebirdCommand {
 /// A command that prints human output only, so leaves
 /// [ShorebirdCommand.supportsJson] false.
 class _HumanOnlyCommand extends ShorebirdCommand {
-  bool ran = false;
+  _HumanOnlyCommand({this.name = 'human-only'});
 
   @override
-  String get name => 'human-only';
+  final String name;
+
+  ExitCode exitCode = ExitCode.success;
+  ProcessExit? thenThrow;
+  bool ran = false;
 
   @override
   String get description => 'Prints human output only.';
@@ -1415,6 +1417,21 @@ class _HumanOnlyCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     ran = true;
-    return ExitCode.success.code;
+    stdout.writeln('hello, human');
+    if (thenThrow case final error?) throw error;
+    return exitCode.code;
   }
+}
+
+/// A command group holding one [_HumanOnlyCommand], `leaf`.
+class _GroupCommand extends ShorebirdCommand {
+  _GroupCommand() {
+    addSubcommand(_HumanOnlyCommand(name: 'leaf'));
+  }
+
+  @override
+  String get name => 'group';
+
+  @override
+  String get description => 'A command group.';
 }

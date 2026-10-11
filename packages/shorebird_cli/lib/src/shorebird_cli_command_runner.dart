@@ -47,9 +47,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag(
         'json',
         negatable: false,
-        help:
-            'Output results in JSON format (implies non-interactive mode). '
-            'Commands without JSON output refuse it.',
+        help: 'Output results in JSON format (implies non-interactive mode).',
       )
       ..addFlag(
         'verbose',
@@ -262,14 +260,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         logger.info(versionBanner(flutterVersion: flutterVersion));
       }
       exitCode = ExitCode.success.code;
-    } else if (isJsonMode && _rejectsJson(topLevelResults)) {
-      JsonResult.error(
-        code: JsonErrorCode.usageError,
-        message: '`shorebird $commandName` does not support --json.',
-        hint: 'Run it without --json.',
-        command: commandName,
-      ).write();
-      return ExitCode.usage.code;
     } else {
       // Records whether the command wrote its own envelope, so that a failing
       // --json command always leaves exactly one on stdout: the command's if
@@ -373,6 +363,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
           ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
+      // A command without JSON output (see [ShorebirdCommand.supportsJson])
+      // still runs under --json. Report its success, so that stdout carries
+      // exactly one envelope for it as for every other command.
+      if (isJsonMode &&
+          !envelope.written &&
+          exitCode == ExitCode.success.code &&
+          _leafCommand(topLevelResults)?.supportsJson == false) {
+        JsonResult.success(data: const {}, command: commandName).write();
+      }
     }
 
     // `runCommand` returns null in when the --help flag is passed.
@@ -405,12 +404,8 @@ ${currentRunLogFile.absolute.path}
     return exitCode;
   }
 
-  /// Whether [topLevelResults] runs a command that does not support `--json`
-  /// (see [ShorebirdCommand.supportsJson]).
-  ///
-  /// Only a leaf command that will actually run counts: `--help`, and a group
-  /// such as `shorebird patches` with no subcommand, print usage instead.
-  bool _rejectsJson(ArgResults topLevelResults) {
+  /// The command [topLevelResults] runs, if it is a [ShorebirdCommand].
+  ShorebirdCommand? _leafCommand(ArgResults topLevelResults) {
     Command<int>? command;
     var available = commands;
     for (
@@ -418,15 +413,10 @@ ${currentRunLogFile.absolute.path}
       results != null;
       results = results.command
     ) {
-      if (results.options.contains('help') && results.flag('help')) {
-        return false;
-      }
       command = available[results.name];
       available = command?.subcommands ?? const {};
     }
-    return command is ShorebirdCommand &&
-        command.subcommands.isEmpty &&
-        !command.supportsJson;
+    return command is ShorebirdCommand ? command : null;
   }
 
   /// Removes Flutter installs, engine artifacts and previews that have gone
