@@ -217,7 +217,7 @@ Waiting for your authorization (the code expires in $expiry)...''';
         when(() => auth.email).thenReturn(null);
       });
 
-      test('points at the environment variable and exits with code 0', () async {
+      test('points at the environment variable and succeeds', () async {
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
