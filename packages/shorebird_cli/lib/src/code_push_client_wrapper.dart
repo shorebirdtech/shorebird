@@ -539,61 +539,14 @@ Looked in:
       );
     }
 
-    // Track which arch paths AGP didn't produce, so we can surface them at
-    // the end if zero archs uploaded. AGP omits an arch directory whenever
-    // the project filters it out via `ndk.abiFilters`, `splits.abi`, or
-    // `jniLibs.excludes`. Iterating only over present files lets a filtered
-    // release succeed instead of crashing on the first missing arch
-    // (https://github.com/shorebirdtech/shorebird/issues/3388).
-    final missingArchPaths = <String>[];
-    var uploadedArchCount = 0;
-    for (final arch in architectures) {
-      final artifactPath = p.join(
-        archsDir.path,
-        arch.androidBuildPath,
-        'libapp.so',
-      );
-      final artifact = File(artifactPath);
-      if (!artifact.existsSync()) {
-        logger.detail(
-          'Skipping ${arch.arch}: no libapp.so at $artifactPath. '
-          'This is expected if the project filters this ABI via '
-          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
-        );
-        missingArchPaths.add(artifactPath);
-        continue;
-      }
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        file: artifact,
-        name: arch.arch,
-        arch: arch.arch,
-        platform: platform,
-        canSideload: false,
-        progress: createArtifactProgress,
-      );
-      uploadedArchCount++;
-    }
-
-    if (uploadedArchCount == 0) {
-      _handleErrorAndExit(
-        Exception('No architecture artifacts found to upload.'),
-        progress: createArtifactProgress,
-        message:
-            '''
-No architecture artifacts found to upload.
-
-Shorebird looked for libapp.so under ${archsDir.path} but every requested
-architecture was missing:
-${missingArchPaths.map((p) => '  - $p').join('\n')}
-
-This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
-configuration excludes every architecture Shorebird was asked to build. Either
-relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
-to the architectures your project actually builds.''',
-      );
-    }
+    await _uploadAndroidArchArtifacts(
+      appId: appId,
+      releaseId: releaseId,
+      platform: platform,
+      archsDir: archsDir.path,
+      architectures: architectures,
+      progress: createArtifactProgress,
+    );
 
     await _uploadReleaseArtifact(
       appId: appId,
@@ -645,24 +598,14 @@ to the architectures your project actually builds.''',
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
-    for (final arch in architectures) {
-      final artifactPath = p.join(
-        extractedAarDir,
-        'jni',
-        arch.androidBuildPath,
-        'libapp.so',
-      );
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        file: File(artifactPath),
-        name: arch.arch,
-        arch: arch.arch,
-        platform: platform,
-        canSideload: false,
-        progress: createArtifactProgress,
-      );
-    }
+    await _uploadAndroidArchArtifacts(
+      appId: appId,
+      releaseId: releaseId,
+      platform: platform,
+      archsDir: p.join(extractedAarDir, 'jni'),
+      architectures: architectures,
+      progress: createArtifactProgress,
+    );
 
     await _uploadReleaseArtifact(
       appId: appId,
@@ -676,6 +619,76 @@ to the architectures your project actually builds.''',
     );
 
     createArtifactProgress.complete();
+  }
+
+  /// Uploads the libapp.so under [archsDir] for each of [architectures].
+  ///
+  /// Architectures with no libapp.so are skipped, and the release fails only
+  /// if none were uploaded. Shared by the app bundle and archive releases so
+  /// both handle ABI filtering the same way.
+  Future<void> _uploadAndroidArchArtifacts({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+    required String archsDir,
+    required Iterable<Arch> architectures,
+    required Progress progress,
+  }) async {
+    // Track which arch paths AGP didn't produce, so we can surface them at
+    // the end if zero archs uploaded. AGP omits an arch directory whenever
+    // the project filters it out via `ndk.abiFilters`, `splits.abi`, or
+    // `jniLibs.excludes`. Iterating only over present files lets a filtered
+    // release succeed instead of crashing on the first missing arch
+    // (https://github.com/shorebirdtech/shorebird/issues/3388).
+    final missingArchPaths = <String>[];
+    var uploadedArchCount = 0;
+    for (final arch in architectures) {
+      final artifactPath = p.join(
+        archsDir,
+        arch.androidBuildPath,
+        'libapp.so',
+      );
+      final artifact = File(artifactPath);
+      if (!artifact.existsSync()) {
+        logger.detail(
+          'Skipping ${arch.arch}: no libapp.so at $artifactPath. '
+          'This is expected if the project filters this ABI via '
+          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
+        );
+        missingArchPaths.add(artifactPath);
+        continue;
+      }
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: artifact,
+        name: arch.arch,
+        arch: arch.arch,
+        platform: platform,
+        canSideload: false,
+        progress: progress,
+      );
+      uploadedArchCount++;
+    }
+
+    if (uploadedArchCount == 0) {
+      _handleErrorAndExit(
+        Exception('No architecture artifacts found to upload.'),
+        progress: progress,
+        message:
+            '''
+No architecture artifacts found to upload.
+
+Shorebird looked for libapp.so under $archsDir but every requested
+architecture was missing:
+${missingArchPaths.map((p) => '  - $p').join('\n')}
+
+This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
+configuration excludes every architecture Shorebird was asked to build. Either
+relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
+to the architectures your project actually builds.''',
+      );
+    }
   }
 
   /// Uploads [file] as the [arch] release artifact for [platform], naming it

@@ -468,7 +468,10 @@ void main() {
       setUp(() {
         releaseArtifactFile = File('');
         when(
-          () => artifactManager.downloadFile(any()),
+          () => artifactManager.downloadWithProgressUpdates(
+            any(),
+            message: any(named: 'message'),
+          ),
         ).thenAnswer((_) async => releaseArtifactFile);
 
         when(
@@ -510,9 +513,13 @@ void main() {
       });
 
       group('when release artifact download fails', () {
-        final exception = Exception('error');
         setUp(() {
-          when(() => artifactManager.downloadFile(any())).thenThrow(exception);
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+            ),
+          ).thenThrow(Exception('error'));
         });
 
         test('logs error and exits with code 70', () async {
@@ -527,7 +534,72 @@ void main() {
             exitsWithCode(ExitCode.software),
           );
 
-          verify(() => progress.fail('Exception: error')).called(1);
+          verifyNever(
+            () => shorebirdAndroidArtifacts.extractAar(
+              packageName: any(named: 'packageName'),
+              buildNumber: any(named: 'buildNumber'),
+              unzipFn: any(named: 'unzipFn'),
+            ),
+          );
+        });
+      });
+
+      group('when one arch is missing from the patch build', () {
+        setUp(() {
+          patchArtifactForArch(extractedAarDirectory, Arch.arm32).deleteSync();
+        });
+
+        test('skips missing arch and returns bundles for the rest', () async {
+          final result = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expect(result.keys, unorderedEquals([Arch.arm64, Arch.x86_64]));
+          verifyNever(() => progress.fail(any()));
+          verify(
+            () => logger.warn(
+              any(
+                that: allOf(
+                  contains(
+                    'This patch does not cover every architecture in the '
+                    'release.',
+                  ),
+                  contains('Skipped: ${Arch.arm32.androidBuildPath}'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when every arch is missing from the patch build', () {
+        setUp(() {
+          for (final arch in Arch.values) {
+            patchArtifactForArch(extractedAarDirectory, arch).deleteSync();
+          }
+        });
+
+        test('fails progress and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => progress.fail(
+              any(that: contains('No patch artifacts produced')),
+            ),
+          ).called(1);
         });
       });
 

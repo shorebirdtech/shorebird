@@ -121,6 +121,31 @@ void main() {
       });
     });
 
+    group('architectures', () {
+      test('returns all architectures by default', () {
+        final architectures = runWithOverrides(
+          () => aarReleaser.architectures,
+        );
+        expect(architectures, equals(Arch.values.toSet()));
+      });
+
+      test('throws exception when unknown platform is provided', () {
+        when(
+          () => argResults['target-platform'],
+        ).thenReturn(['android-arm', 'unknown-platform']);
+        expect(
+          () => runWithOverrides(() => aarReleaser.architectures),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('Unknown target platform: unknown-platform'),
+            ),
+          ),
+        );
+      });
+    });
+
     group('minimumFlutterVersion', () {
       test('is null', () {
         // Shorebird has always had aar support, so we don't need to

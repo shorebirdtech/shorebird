@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -40,22 +39,9 @@ class AndroidReleaser extends Releaser {
   String get artifactDisplayName => 'Android app bundle';
 
   /// The architectures to build for.
-  Set<Arch> get architectures =>
-      (argResults['target-platform'] as List<String>).map((platform) {
-        final arch = AndroidArch.availableAndroidArchs.firstWhereOrNull(
-          (arch) => arch.targetPlatformCliArg == platform,
-        );
-        if (arch == null) {
-          final availablePlatforms = AndroidArch.availableAndroidArchs
-              .map((a) => a.targetPlatformCliArg)
-              .join(', ');
-          throw Exception(
-            'Unknown target platform: $platform. '
-            'Available platforms: $availablePlatforms',
-          );
-        }
-        return arch;
-      }).toSet();
+  Set<Arch> get architectures => AndroidArch.fromTargetPlatformArgs(
+    argResults['target-platform'] as List<String>,
+  );
 
   /// Whether to generate an APK in addition to the AAB.
   late bool generateApk = argResults['artifact'] as String == 'apk';
