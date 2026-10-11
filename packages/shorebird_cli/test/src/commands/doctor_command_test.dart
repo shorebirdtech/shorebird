@@ -156,6 +156,24 @@ Engine • revision $shorebirdEngineRevision
       },
     );
 
+    group('global --verbose', () {
+      setUp(() {
+        final globalResults = MockArgResults();
+        when(() => globalResults['verbose']).thenReturn(true);
+        command.testGlobalResults = globalResults;
+      });
+
+      test('prints the toolchain and network speed sections', () async {
+        await runWithOverrides(command.run);
+
+        final msg =
+            verify(() => logger.info(captureAny())).captured.first as String;
+        expect(msg, contains('Android Toolchain'));
+        verify(() => networkChecker.performGCPUploadSpeedTest()).called(1);
+        verify(() => networkChecker.performGCPDownloadSpeedTest()).called(1);
+      });
+    });
+
     group('--verbose', () {
       setUp(() {
         when(() => argResults['verbose']).thenReturn(true);
@@ -463,6 +481,16 @@ Android Toolchain
         when(() => validator.canRunInCurrentContext()).thenReturn(true);
         when(() => validator.description).thenReturn('Test Validator');
         when(() => validator.validate()).thenAnswer((_) async => []);
+        // Run the real checks, so these tests cover what JSON mode reports
+        // through the same code human mode uses.
+        when(
+          () => networkChecker.reachability(),
+        ).thenAnswer((_) => NetworkChecker().reachability());
+        when(() => doctor.validate(any())).thenAnswer(
+          (invocation) => Doctor().validate(
+            invocation.positionalArguments.first as List<Validator>,
+          ),
+        );
 
         command = runJsonWithOverrides(DoctorCommand.new)
           ..testArgResults = argResults;
@@ -515,6 +543,9 @@ Android Toolchain
         expect(v['name'], equals('Test Validator'));
         expect(v['ok'], isTrue);
         expect(v['issues'], isEmpty);
+        // JSON mode checks the same validators as human mode.
+        verify(() => doctor.validate([validator])).called(1);
+        verify(() => networkChecker.reachability()).called(1);
       });
 
       test('emits null flutter_version when lookup fails', () async {
@@ -666,6 +697,20 @@ Android Toolchain
         final speedTest = data['speed_test'] as Map<String, dynamic>;
         expect(speedTest['upload_megabytes_per_sec'], equals(1.23));
         expect(speedTest['download_megabytes_per_sec'], equals(4.56));
+      });
+
+      test('includes speed_test when the global --verbose is passed', () async {
+        final globalResults = MockArgResults();
+        when(() => globalResults['verbose']).thenReturn(true);
+        command.testGlobalResults = globalResults;
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJsonWithOverrides(command.run),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data.containsKey('speed_test'), isTrue);
       });
 
       test('omits speed_test when --verbose is not passed', () async {
