@@ -335,6 +335,19 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       throw ProcessExit(ExitCode.software.code);
     }
 
+    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: release.flutterRevision,
+    );
+
+    // Fail before downloading anything if the release's Flutter is too old.
+    await runScoped(
+      () => _assertReleaseFlutterVersionSupported(
+        patcher: patcher,
+        release: release,
+      ),
+      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    );
+
     final downloaded = await _downloadReleaseArtifacts(
       patcher: patcher,
       release: release,
@@ -347,10 +360,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         patcher: patcher,
         release: release,
         obfuscationMapFile: downloaded.obfuscationMapFile,
-      );
-
-      final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
-        flutterRevisionOverride: release.flutterRevision,
       );
 
       return await runScoped(
@@ -667,11 +676,6 @@ Building with Flutter $flutterVersionString to determine the release version...
     required File releaseArchive,
     required Directory? supplementDirectory,
   }) async {
-    await _assertReleaseFlutterVersionSupported(
-      patcher: patcher,
-      release: release,
-    );
-
     var patchArtifactFile = existingPatchArtifact;
     await cache.updateAll();
 

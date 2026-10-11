@@ -458,6 +458,14 @@ A release cannot change Flutter versions, so create a new release with a newer F
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ).called(1);
             verifyNever(
+              () => codePushClientWrapper.getReleaseArtifact(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+              ),
+            );
+            verifyNever(
               () => patcher.buildPatchArtifact(
                 releaseVersion: any(named: 'releaseVersion'),
               ),
@@ -471,6 +479,33 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               () => shorebirdFlutter.getVersion(),
             ).thenAnswer((_) async => minimumFlutterVersion);
           });
+
+          test(
+            "reads the release's Flutter version after installing it",
+            () async {
+              String? revisionWhenRead;
+              when(() => shorebirdFlutter.getVersion()).thenAnswer((_) async {
+                revisionWhenRead = shorebirdEnv.flutterRevision;
+                return minimumFlutterVersion;
+              });
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verifyInOrder([
+                () => shorebirdFlutter.installRevision(
+                  revision: release.flutterRevision,
+                ),
+                () => shorebirdFlutter.getVersion(),
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: appId,
+                  releaseId: release.id,
+                  arch: any(named: 'arch'),
+                  platform: releasePlatform,
+                ),
+              ]);
+              expect(revisionWhenRead, equals(release.flutterRevision));
+            },
+          );
 
           test('builds the patch', () async {
             await runWithOverrides(() => command.createPatch(patcher));
@@ -1914,6 +1949,43 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               ]);
             },
           );
+
+          group("when the release's Flutter version is too old", () {
+            setUp(() {
+              when(
+                () => patcher.minimumFlutterVersion,
+              ).thenReturn(Version(3, 27, 4));
+              // The CLI's own Flutter is new enough; the release's is not.
+              when(() => shorebirdFlutter.getVersion()).thenAnswer(
+                (_) async =>
+                    shorebirdEnv.flutterRevision == releaseFlutterRevision
+                    ? Version(3, 0, 0)
+                    : Version(3, 27, 4),
+              );
+            });
+
+            test('exits with code 70 after the speculative build', () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(() => patcher.buildPatchArtifact()).called(1);
+              verifyNever(
+                () =>
+                    patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+              );
+              verify(
+                () => logger.err(
+                  any(
+                    that: contains(
+                      'is required to patch with `android`',
+                    ),
+                  ),
+                ),
+              ).called(1);
+            });
+          });
 
           test(
             'updates cache with both default and release Flutter revisions',
