@@ -728,15 +728,10 @@ to the architectures your project actually builds.''',
 
 $name artifact already exists, continuing...''');
     } catch (error) {
-      // Name the file only when it is the user's own build output; a zip we
-      // staged in system temp is deleted before the user could look at it.
-      final location = p.isWithin(Directory.systemTemp.path, file.path)
-          ? ''
-          : ' (${file.path})';
       _handleErrorAndExit(
         error,
         progress: progress,
-        message: 'Error uploading $name artifact$location: $error',
+        message: 'Error uploading $name artifact: $error',
       );
     }
   }
