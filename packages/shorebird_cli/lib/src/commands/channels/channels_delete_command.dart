@@ -11,7 +11,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The channels backing Shorebird's built-in deployment tracks.
 ///
-/// These are permanent, so the CLI names them ahead of the confirmation gate.
+/// These are permanent: the server refuses to delete them (deleting one would
+/// unpublish every patch on that track), so the CLI refuses up front instead
+/// of sending a request that can only fail.
 final _defaultTrackNames = <String>{
   DeploymentTrack.stable.value,
   DeploymentTrack.beta.value,
@@ -65,6 +67,17 @@ class ChannelsDeleteCommand extends ShorebirdCommand
 
     final channelName = results['name'] as String;
 
+    if (_defaultTrackNames.contains(channelName)) {
+      return reportError(
+        message:
+            '"$channelName" is one of Shorebird\'s built-in tracks and cannot '
+            'be deleted.',
+        hint:
+            'Deleting it would unpublish every patch on that track. Only '
+            'channels you created can be deleted.',
+      );
+    }
+
     late final List<Channel> channels;
     final fetchError = await guardApiCall(
       () async =>
@@ -81,16 +94,6 @@ class ChannelsDeleteCommand extends ShorebirdCommand
       return reportError(
         message: message,
         hint: 'Available channels: $available',
-      );
-    }
-
-    final isDefaultTrack = _defaultTrackNames.contains(channelName);
-    // Say so before the gate, so a caller does not go hunting for a
-    // confirmation value that will not help them.
-    if (isDefaultTrack && !isJsonMode) {
-      logger.warn(
-        '"$channelName" is one of Shorebird\'s built-in tracks and cannot be '
-        'deleted.',
       );
     }
 
@@ -115,7 +118,6 @@ class ChannelsDeleteCommand extends ShorebirdCommand
         'app_id': appId,
         'name': channelName,
         'channel_id': channel.id,
-        'is_default_track': isDefaultTrack,
         'deleted': true,
       });
       return ExitCode.success.code;

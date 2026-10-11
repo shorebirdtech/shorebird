@@ -207,47 +207,58 @@ void main() {
         final data = json['data'] as Map<String, dynamic>;
         expect(data['name'], channelName);
         expect(data['channel_id'], qaChannel.id);
-        expect(data['is_default_track'], isFalse);
+        expect(data.containsKey('is_default_track'), isFalse);
         expect(data['deleted'], isTrue);
       });
     });
 
     group('when the channel backs a built-in track', () {
-      setUp(() {
-        when(() => argResults['name']).thenReturn('stable');
-        when(() => argResults['confirm-name']).thenReturn('stable');
-      });
-
-      test('flags is_default_track', () async {
-        final json = (await captureJson(
-          () => runWithOverrides(command.run, jsonMode: true),
-        )).json;
-        expect(
-          (json['data'] as Map<String, dynamic>)['is_default_track'],
-          isTrue,
+      void verifyNoServerCalls() {
+        verifyNever(
+          () => codePushClientWrapper.getChannels(appId: any(named: 'appId')),
         );
-      });
-
-      test('warns before the confirmation gate', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
         verifyNeverDeleted();
-        verify(
-          () => logger.warn(any(that: contains('built-in tracks'))),
-        ).called(1);
-      });
+      }
 
-      test('resolves a built-in track name to its channel id', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => codePushClientWrapper.deleteChannel(
-            appId: appId,
-            channelId: stableChannel.id,
-          ),
-        ).called(1);
-      });
+      for (final track in ['stable', 'beta', 'staging']) {
+        group(track, () {
+          setUp(() {
+            when(() => argResults['name']).thenReturn(track);
+            when(() => argResults['confirm-name']).thenReturn(track);
+          });
+
+          test('refuses before any server call', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+            verifyNoServerCalls();
+            verify(
+              () => logger.err(
+                '"$track" is one of Shorebird\'s built-in tracks and cannot '
+                'be deleted.',
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(any(that: contains('unpublish every patch'))),
+            ).called(1);
+          });
+
+          test('emits a usage_error envelope under --json', () async {
+            final (:exitCode, :json) = await captureJson(
+              () => runWithOverrides(command.run, jsonMode: true),
+            );
+            expect(exitCode, equals(ExitCode.usage.code));
+            verifyNoServerCalls();
+            final error = json['error'] as Map<String, dynamic>;
+            expect(error['code'], 'usage_error');
+            expect(
+              error['message'],
+              '"$track" is one of Shorebird\'s built-in tracks and cannot be '
+              'deleted.',
+            );
+            expect(error['hint'], contains('unpublish every patch'));
+          });
+        });
+      }
     });
   });
 }
