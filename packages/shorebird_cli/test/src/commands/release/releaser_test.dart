@@ -335,11 +335,6 @@ To change the version of this release, change your app's version in your pubspec
           final sharedFile = File(
             p.join(buildDir.path, 'shorebird', 'obfuscation_map.json'),
           )..createSync(recursive: true);
-          when(
-            () => artifactManager.getReleaseSupplementDirectory(
-              platformSubdir: 'test',
-            ),
-          ).thenReturn(supplementDir);
 
           bool? supplementExistedDuringBuild;
           await runWithOverrides(
@@ -355,12 +350,6 @@ To change the version of this release, change your app's version in your pubspec
       );
 
       test('builds normally when there is no supplement directory', () async {
-        when(
-          () => artifactManager.getReleaseSupplementDirectory(
-            platformSubdir: 'test',
-          ),
-        ).thenReturn(null);
-
         await expectLater(
           runWithOverrides(
             () => releaser.runReleaseBuild((_, _) async => 'built'),

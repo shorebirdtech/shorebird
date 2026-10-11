@@ -794,7 +794,6 @@ $body
 
       late Directory xcarchiveDirectory;
       late Directory iosAppDirectory;
-      late Directory supplementDirectory;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -804,7 +803,6 @@ $body
 
         xcarchiveDirectory = Directory.systemTemp.createTempSync();
         iosAppDirectory = Directory.systemTemp.createTempSync();
-        supplementDirectory = Directory.systemTemp.createTempSync();
         when(
           artifactManager.getXcarchiveDirectory,
         ).thenReturn(xcarchiveDirectory);
@@ -813,9 +811,6 @@ $body
             xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
           ),
         ).thenReturn(iosAppDirectory);
-        when(
-          () => artifactManager.getIosReleaseSupplementDirectory(),
-        ).thenReturn(supplementDirectory);
         when(
           () => codePushClientWrapper.createIosReleaseArtifacts(
             appId: any(named: 'appId'),

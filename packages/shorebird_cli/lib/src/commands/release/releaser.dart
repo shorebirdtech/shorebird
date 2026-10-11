@@ -246,10 +246,10 @@ To change the version of this release, change your app's version in your pubspec
   /// an older Flutter that did not clear the directory itself) cannot be
   /// uploaded as part of this release.
   void clearSupplementDirectory() {
-    final supplementDir = artifactManager.getReleaseSupplementDirectory(
-      platformSubdir: supplementPlatformSubdir,
+    final supplementDir = Directory(
+      p.join(projectRoot.path, 'build', supplementPlatformSubdir, 'shorebird'),
     );
-    if (supplementDir == null) return;
+    if (!supplementDir.existsSync()) return;
     logger.detail('Deleting stale supplement directory ${supplementDir.path}');
     supplementDir.deleteSync(recursive: true);
   }
