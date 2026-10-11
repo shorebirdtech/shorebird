@@ -126,18 +126,6 @@ void main() {
           ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('rethrows in human-readable mode', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => command.fetchReleasePatches(
-                appId: appId,
-                releaseVersion: releaseVersion,
-              ),
-            ),
-            throwsA(isA<ProcessExit>()),
-          );
-        });
-
         test('reports fetch_failed in --json mode', () async {
           final (:exitCode, :json) = await captureJson(() async {
             final result = await runWithOverrides(

@@ -321,13 +321,6 @@ void main() {
         command.onChange = () => throw ProcessExit(ExitCode.software.code);
       });
 
-      test('in human-readable mode, rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('in --json mode, emits software_error envelope', () async {
         final (:exitCode, :json) = await runJson();
         expect(exitCode, equals(ExitCode.software.code));

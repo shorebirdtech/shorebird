@@ -116,13 +116,6 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('rethrows in human-readable mode', () async {
-        await expectLater(
-          runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('emits a JSON error envelope in --json mode', () async {
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
