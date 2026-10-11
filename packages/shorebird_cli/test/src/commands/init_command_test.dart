@@ -450,7 +450,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 'message',
                 '''
 "not-an-int" is not a valid organization id.
-Organization ids are integers, e.g. --org-id 42.''',
+Organization ids are integers, e.g. --org-id 42.
+Your organizations: Test Organization (id: $organizationId).''',
               ),
             ),
           );
@@ -470,7 +471,7 @@ Organization ids are integers, e.g. --org-id 42.''',
                   'message',
                   '''
 You are not a member of organization 999999.
-Your organizations: Test Organization ($organizationId).''',
+Your organizations: Test Organization (id: $organizationId).''',
                 ),
               ),
             );
@@ -609,7 +610,7 @@ Your organizations: Test Organization ($organizationId).''',
                   'message',
                   '''
 You belong to multiple organizations. Pass --org-id=<id> to choose one.
-Your organizations: ${org1.name} (${org1.id}), ${org2.name} (${org2.id}).''',
+Your organizations: ${org1.name} (id: ${org1.id}), ${org2.name} (id: ${org2.id}).''',
                 ),
               ),
             );

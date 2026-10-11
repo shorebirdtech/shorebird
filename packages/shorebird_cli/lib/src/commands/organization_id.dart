@@ -46,7 +46,7 @@ findOrganizationMembership({
 String availableOrganizations(List<OrganizationMembership> memberships) {
   if (memberships.isEmpty) return 'You are not a member of any organization.';
   final organizations = memberships.map(
-    (m) => '${m.organization.name} (${m.organization.id})',
+    (m) => '${m.organization.name} (id: ${m.organization.id})',
   );
   return 'Your organizations: ${organizations.join(', ')}.';
 }

@@ -455,7 +455,7 @@ void main() {
             verify(
               () => logger.err('''
 Release ${release.version} was built with Flutter $flutterRevision, but at least Flutter $minimumFlutterVersion is required to patch with `android`.
-A release cannot change Flutter versions, so create a new release with a newer Flutter version and patch that one.
+A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release android --flutter-version=<version>')} and patch that one.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ).called(1);
             verifyNever(

@@ -199,7 +199,7 @@ void main() {
         expect(error['message'], 'You are not a member of organization 7.');
         expect(
           error['hint'],
-          'Your organizations: $organizationName ($organizationId).',
+          'Your organizations: $organizationName (id: $organizationId).',
         );
       });
     });

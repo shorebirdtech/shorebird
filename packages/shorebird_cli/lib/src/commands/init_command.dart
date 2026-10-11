@@ -94,7 +94,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     if (orgIdArg != null) {
       final (id: orgId, error: parseError) = parseOrganizationId(orgIdArg);
       if (parseError != null) {
-        usageException('${parseError.message}\n${parseError.hint}');
+        usageException(
+          '${parseError.message}\n${parseError.hint}\n'
+          '${availableOrganizations(organizationMemberships)}',
+        );
       }
 
       final (:membership, error: membershipError) = findOrganizationMembership(

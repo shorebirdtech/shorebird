@@ -62,7 +62,7 @@ void main() {
       );
       expect(
         result.error?.hint,
-        equals('Your organizations: Acme (1), Beta (2).'),
+        equals('Your organizations: Acme (id: 1), Beta (id: 2).'),
       );
     });
 
