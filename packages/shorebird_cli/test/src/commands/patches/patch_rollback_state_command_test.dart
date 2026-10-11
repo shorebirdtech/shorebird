@@ -374,6 +374,7 @@ void main() {
         expect(exitCode, equals(ExitCode.success.code));
         expect(json['status'], 'success');
         final data = json['data'] as Map<String, dynamic>;
+        expect(data['app_id'], appId);
         expect(data['release_version'], releaseVersion);
         expect(data['patch_number'], patchNumber);
         expect(data['action'], 'flip');
