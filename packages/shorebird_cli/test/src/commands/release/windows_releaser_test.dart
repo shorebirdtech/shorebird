@@ -144,6 +144,13 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(releaser.supplementPlatformSubdir, equals('windows'));
+        expect(releaser.supplementArtifactArch, equals('windows_supplement'));
+      });
+    });
+
     group('assertArgsAreValid', () {
       group('when release-version is passed', () {
         setUp(() {

@@ -119,6 +119,13 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(releaser.supplementPlatformSubdir, equals('macos'));
+        expect(releaser.supplementArtifactArch, equals('macos_supplement'));
+      });
+    });
+
     group('assertPreconditions', () {
       final flutterVersion = Version(3, 0, 0);
 

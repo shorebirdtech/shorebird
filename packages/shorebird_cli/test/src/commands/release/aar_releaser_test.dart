@@ -135,6 +135,13 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(aarReleaser.supplementPlatformSubdir, equals('android'));
+        expect(aarReleaser.supplementArtifactArch, equals('aar_supplement'));
+      });
+    });
+
     group('assertPreconditions', () {
       group('when validation succeeds', () {
         setUp(() {

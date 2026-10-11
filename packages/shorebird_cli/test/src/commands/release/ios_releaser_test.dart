@@ -133,6 +133,13 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(iosReleaser.supplementPlatformSubdir, equals('ios'));
+        expect(iosReleaser.supplementArtifactArch, equals('ios_supplement'));
+      });
+    });
+
     group('assertPreconditions', () {
       final flutterVersion = Version(3, 0, 0);
 
