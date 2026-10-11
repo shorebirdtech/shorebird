@@ -5,7 +5,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 const _jsonExample =
@@ -56,22 +55,16 @@ class ReleasesInfoCommand extends ShorebirdCommand with AppScopedCommand {
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
 
-    final Release release;
-    try {
-      release = await codePushClientWrapper.getRelease(
+    late final Release release;
+    final fetchError = await guardApiCall(
+      () async => release = await codePushClientWrapper.getRelease(
         appId: appId,
         releaseVersion: releaseVersion,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch release "$releaseVersion".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch release "$releaseVersion".',
+    );
+    if (fetchError != null) return fetchError;
 
     if (isJsonMode) {
       emitJsonSuccess({'release': release.toJson()});

@@ -4,7 +4,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Shared lookup of a release's patches for the `patches` subcommands.
@@ -24,32 +23,28 @@ mixin PatchLookup on ShorebirdCommand {
     required String releaseVersion,
     String? fetchFailedMessage,
   }) async {
-    try {
-      final release = await codePushClientWrapper.getRelease(
-        appId: appId,
-        releaseVersion: releaseVersion,
-      );
-      final patches = await codePushClientWrapper.getReleasePatches(
-        appId: appId,
-        releaseId: release.id,
-      );
-      return (release: release, patches: patches, errorCode: null);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message:
-              fetchFailedMessage ??
-              'Failed to fetch patches for release "$releaseVersion".',
+    late final Release release;
+    late final List<ReleasePatch> patches;
+    final fetchError = await guardApiCall(
+      () async {
+        release = await codePushClientWrapper.getRelease(
+          appId: appId,
+          releaseVersion: releaseVersion,
         );
-        return (
-          release: null,
-          patches: <ReleasePatch>[],
-          errorCode: e.exitCode,
+        patches = await codePushClientWrapper.getReleasePatches(
+          appId: appId,
+          releaseId: release.id,
         );
-      }
-      rethrow;
+      },
+      code: JsonErrorCode.fetchFailed,
+      message:
+          fetchFailedMessage ??
+          'Failed to fetch patches for release "$releaseVersion".',
+    );
+    if (fetchError != null) {
+      return (release: null, patches: <ReleasePatch>[], errorCode: fetchError);
     }
+    return (release: release, patches: patches, errorCode: null);
   }
 
   /// Finds patch [patchNumber] among [patches] of release [releaseVersion].

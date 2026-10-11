@@ -5,7 +5,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template apps_rename_command}
@@ -51,40 +50,28 @@ class AppsRenameCommand extends ShorebirdCommand with AppScopedCommand {
       return reportError(message: message);
     }
 
-    final AppMetadata app;
-    try {
-      app = await codePushClientWrapper.getApp(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final AppMetadata app;
+    final fetchError = await guardApiCall(
+      () async => app = await codePushClientWrapper.getApp(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     if (app.displayName == displayName) {
       final message = 'App "$appId" is already named "$displayName".';
       return reportError(message: message);
     }
 
-    try {
-      await codePushClientWrapper.updateApp(
+    final renameError = await guardApiCall(
+      () => codePushClientWrapper.updateApp(
         appId: appId,
         displayName: displayName,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to rename app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to rename app "$appId".',
+    );
+    if (renameError != null) return renameError;
 
     if (isJsonMode) {
       emitJsonSuccess({

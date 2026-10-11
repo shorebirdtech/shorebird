@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The channels backing Shorebird's built-in deployment tracks.
@@ -66,19 +65,14 @@ class ChannelsDeleteCommand extends ShorebirdCommand
 
     final channelName = results['name'] as String;
 
-    final List<Channel> channels;
-    try {
-      channels = await codePushClientWrapper.getChannels(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch channels for app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<Channel> channels;
+    final fetchError = await guardApiCall(
+      () async =>
+          channels = await codePushClientWrapper.getChannels(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch channels for app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     final channel = channels.firstWhereOrNull((c) => c.name == channelName);
     if (channel == null) {
@@ -106,21 +100,15 @@ class ChannelsDeleteCommand extends ShorebirdCommand
     );
     if (gateErrorCode != null) return gateErrorCode;
 
-    try {
-      await codePushClientWrapper.deleteChannel(
+    final deleteError = await guardApiCall(
+      () => codePushClientWrapper.deleteChannel(
         appId: appId,
         channelId: channel.id,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to delete channel "$channelName".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to delete channel "$channelName".',
+    );
+    if (deleteError != null) return deleteError;
 
     if (isJsonMode) {
       emitJsonSuccess({

@@ -5,7 +5,6 @@ import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template apps_transfer_command}
@@ -49,21 +48,17 @@ class AppsTransferCommand extends ShorebirdCommand with AppScopedCommand {
       return reportError(message: message, hint: hint);
     }
 
-    final AppMetadata app;
-    final List<OrganizationMembership> memberships;
-    try {
-      app = await codePushClientWrapper.getApp(appId: appId);
-      memberships = await codePushClientWrapper.getOrganizationMemberships();
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final AppMetadata app;
+    late final List<OrganizationMembership> memberships;
+    final fetchError = await guardApiCall(
+      () async {
+        app = await codePushClientWrapper.getApp(appId: appId);
+        memberships = await codePushClientWrapper.getOrganizationMemberships();
+      },
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     // Fail fast on an org the caller is not in, so the message can name it.
     final membership = memberships.firstWhereOrNull(
@@ -77,21 +72,15 @@ class AppsTransferCommand extends ShorebirdCommand with AppScopedCommand {
 
     final organizationName = membership.organization.name;
 
-    try {
-      await codePushClientWrapper.transferApp(
+    final transferError = await guardApiCall(
+      () => codePushClientWrapper.transferApp(
         organizationId: organizationId,
         appId: appId,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to transfer app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to transfer app "$appId".',
+    );
+    if (transferError != null) return transferError;
 
     if (isJsonMode) {
       // AppMetadata does not carry the source organization, and finding it

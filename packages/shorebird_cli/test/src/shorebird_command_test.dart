@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart';
@@ -296,6 +297,107 @@ void main() {
             (result.json['error'] as Map<String, dynamic>)['message'],
             equals('Something is wrong'),
           );
+        });
+      });
+    });
+
+    group('guardApiCall', () {
+      late ShorebirdLogger logger;
+
+      R runWithOverrides<R>(R Function() body, {required bool jsonMode}) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => jsonMode),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      }
+
+      Future<int?> guard(Future<void> Function() body) => command.guardApiCall(
+        body,
+        code: JsonErrorCode.fetchFailed,
+        message: 'Failed to fetch things.',
+      );
+
+      setUp(() {
+        logger = MockShorebirdLogger();
+      });
+
+      group('when the call succeeds', () {
+        for (final jsonMode in [false, true]) {
+          test('runs the call and returns null (json: $jsonMode)', () async {
+            var called = false;
+            final captured = <String>[];
+            final errorCode = await captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => called = true),
+                jsonMode: jsonMode,
+              ),
+              captured: captured,
+            );
+
+            expect(called, isTrue);
+            expect(errorCode, isNull);
+            expect(captured, isEmpty);
+          });
+        }
+      });
+
+      group('when not in JSON mode', () {
+        test('rethrows a ProcessExit and emits nothing', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw ProcessExit(70)),
+                jsonMode: false,
+              ),
+              captured: captured,
+            ),
+            throwsA(
+              isA<ProcessExit>().having((e) => e.exitCode, 'exitCode', 70),
+            ),
+          );
+          expect(captured, isEmpty);
+          verifyNever(() => logger.err(any()));
+        });
+      });
+
+      group('when in JSON mode', () {
+        test('emits one error envelope and returns the exit code', () async {
+          final result = await captureJson(
+            () async => (await runWithOverrides<Future<int?>>(
+              () => guard(() async => throw ProcessExit(70)),
+              jsonMode: true,
+            ))!,
+          );
+
+          expect(result.exitCode, equals(70));
+          expect(result.json['status'], equals('error'));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'fetch_failed',
+              'message': 'Failed to fetch things.',
+            }),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('lets other exceptions through', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw Exception('oops')),
+                jsonMode: true,
+              ),
+              captured: captured,
+            ),
+            throwsA(isA<Exception>()),
+          );
+          expect(captured, isEmpty);
         });
       });
     });
