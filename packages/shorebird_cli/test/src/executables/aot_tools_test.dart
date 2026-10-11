@@ -1061,8 +1061,11 @@ Run "aot_tools help <command>" for more information about a command.
       late int exitCode;
       late String stdout;
       late String stderr;
+      late Directory outputDirectory;
 
       setUp(() {
+        outputDirectory = Directory.systemTemp.createTempSync();
+        addTearDown(() => outputDirectory.deleteSync(recursive: true));
         exitCode = 0;
         stdout = '';
         stderr = '';
@@ -1097,6 +1100,7 @@ Run "aot_tools help <command>" for more information about a command.
               () => aotTools.generatePatchDiffBase(
                 releaseSnapshot: File('release_snapshot'),
                 analyzeSnapshotPath: 'analyze_snapshot',
+                outputDirectory: outputDirectory,
               ),
             ),
             throwsA(
@@ -1117,6 +1121,7 @@ Run "aot_tools help <command>" for more information about a command.
               () => aotTools.generatePatchDiffBase(
                 releaseSnapshot: File('release_snapshot'),
                 analyzeSnapshotPath: 'analyze_snapshot',
+                outputDirectory: outputDirectory,
               ),
             ),
             throwsA(
@@ -1157,15 +1162,17 @@ Run "aot_tools help <command>" for more information about a command.
           });
         });
 
-        test('returns path to file', () async {
+        test('returns the file it wrote into outputDirectory', () async {
           final result = await runWithOverrides(
             () => aotTools.generatePatchDiffBase(
               releaseSnapshot: File('release_snapshot'),
               analyzeSnapshotPath: 'analyze_snapshot',
+              outputDirectory: outputDirectory,
             ),
           );
 
           expect(result.existsSync(), isTrue);
+          expect(p.isWithin(outputDirectory.path, result.path), isTrue);
         });
       });
 

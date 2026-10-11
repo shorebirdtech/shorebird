@@ -41,6 +41,19 @@ mixin ApplePatcherMixin on Patcher {
   static String saveDebuggingInfoPath(String directory) =>
       p.join(p.absolute(directory), splitDebugInfoFileName);
 
+  /// Deletes [directory], a temporary directory created while patching.
+  ///
+  /// Called from `finally` blocks, so a failure is logged rather than thrown:
+  /// it must neither mask the error that is already propagating nor stop the
+  /// remaining cleanup from running.
+  void deleteTemporaryDirectory(Directory directory) {
+    try {
+      if (directory.existsSync()) directory.deleteSync(recursive: true);
+    } on FileSystemException catch (error) {
+      logger.detail('Failed to delete ${directory.path}: $error');
+    }
+  }
+
   /// The additional gen_snapshot arguments to pass when building the patch
   /// with `--split-debug-info`.
   static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) =>
@@ -181,26 +194,32 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
         artifact: ShorebirdArtifact.analyzeSnapshotIos,
       );
 
-      final File patchBaseFile;
+      final patchBaseDirectory = Directory.systemTemp.createTempSync();
       try {
-        // If the aot_tools executable supports the dump_blobs command, we
-        // can generate a stable diff base and use that to create a patch.
-        patchBaseFile = await aotTools.generatePatchDiffBase(
-          analyzeSnapshotPath: analyzeSnapshotPath,
-          releaseSnapshot: releaseArtifactFile,
-        );
-        patchBaseProgress.complete();
-      } on Exception catch (error) {
-        patchBaseProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
+        final File patchBaseFile;
+        try {
+          // If the aot_tools executable supports the dump_blobs command, we
+          // can generate a stable diff base and use that to create a patch.
+          patchBaseFile = await aotTools.generatePatchDiffBase(
+            analyzeSnapshotPath: analyzeSnapshotPath,
+            releaseSnapshot: releaseArtifactFile,
+            outputDirectory: patchBaseDirectory,
+          );
+          patchBaseProgress.complete();
+        } on Exception catch (error) {
+          patchBaseProgress.fail('$error');
+          throw ProcessExit(ExitCode.software.code);
+        }
 
-      patchFile = File(
-        await artifactManager.createDiff(
-          releaseArtifactPath: patchBaseFile.path,
-          patchArtifactPath: patchBuildFile.path,
-        ),
-      );
+        patchFile = File(
+          await artifactManager.createDiff(
+            releaseArtifactPath: patchBaseFile.path,
+            patchArtifactPath: patchBuildFile.path,
+          ),
+        );
+      } finally {
+        deleteTemporaryDirectory(patchBaseDirectory);
+      }
     } else {
       patchFile = patchBuildFile;
     }
