@@ -101,7 +101,6 @@ Command: shorebird ${args.join(' ')}
           shorebirdEnvRef,
           shorebirdFlutterRef,
           shorebirdTracerRef,
-          shorebirdToolsRef,
           shorebirdValidatorRef,
           shorebirdVersionRef,
           windowsRef,

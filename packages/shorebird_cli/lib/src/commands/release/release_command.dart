@@ -118,8 +118,6 @@ Also accepts the following special values:
         abbr: 'p',
         help: 'The platform(s) to build this release for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
-        // TODO(bryanoltman): uncomment this once https://github.com/dart-lang/args/pull/273 lands
-        // mandatory: true.
       )
       ..addFlag(
         'split-per-abi',
