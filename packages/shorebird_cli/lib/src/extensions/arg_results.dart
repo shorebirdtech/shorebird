@@ -74,7 +74,7 @@ extension OptionFinder on ArgResults {
 /// again to verify each signature), but `--public-key-cmd` is a user command
 /// that may prompt or may not return the same key twice, so it runs at most
 /// once per invocation and every caller sees the same key.
-final _resolvedPublicKeyPems = Expando<Future<String?>>('publicKeyPem');
+final _publicKeyPemCache = Expando<Future<String?>>('publicKeyPem');
 
 /// Extension on [ArgResults] to provide code signing related extensions.
 extension CodeSign on ArgResults {
@@ -86,7 +86,7 @@ extension CodeSign on ArgResults {
   /// [ProcessException] or [FormatException] if a command-based key
   /// fails.
   Future<String?> resolvePublicKeyPem() =>
-      _resolvedPublicKeyPems[this] ??= _readPublicKeyPem();
+      _publicKeyPemCache[this] ??= _readPublicKeyPem();
 
   Future<String?> _readPublicKeyPem() async {
     final publicKeyFile = file(CommonArguments.publicKeyArg.name);
