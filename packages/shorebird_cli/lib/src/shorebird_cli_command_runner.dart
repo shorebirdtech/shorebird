@@ -259,11 +259,33 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
       exitCode = ExitCode.success.code;
     } else {
+      // Records whether the command wrote its own envelope, so that a failing
+      // --json command always leaves exactly one on stdout: the command's if
+      // it wrote one, otherwise the runner's.
+      final envelope = JsonEnvelopeTracker();
       try {
-        exitCode = await super.runCommand(topLevelResults);
+        exitCode = await runScoped(
+          () => super.runCommand(topLevelResults),
+          values: {jsonEnvelopeTrackerRef.overrideWith(() => envelope)},
+        );
+        // A command that fails by returning an exit code (a failed
+        // precondition, say) may not have written an envelope. Write the
+        // same one a thrown ProcessExit gets.
+        if (isJsonMode &&
+            !envelope.written &&
+            exitCode != null &&
+            exitCode != ExitCode.success.code) {
+          JsonResult.error(
+            code: JsonErrorCode.processExit,
+            message: 'Process exited with code $exitCode.',
+            command: commandName,
+          ).write();
+        }
       } on ProcessExit catch (error) {
         exitCode = error.exitCode;
-        if (isJsonMode && error.exitCode != ExitCode.success.code) {
+        if (isJsonMode &&
+            !envelope.written &&
+            error.exitCode != ExitCode.success.code) {
           JsonResult.error(
             code: JsonErrorCode.processExit,
             message: 'Process exited with code ${error.exitCode}.',
@@ -314,7 +336,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         // the user a friendly message.
         // ignore: avoid_catches_without_on_clauses
       } catch (error, stackTrace) {
-        if (isJsonMode) {
+        if (isJsonMode && !envelope.written) {
           JsonResult.error(
             code: JsonErrorCode.softwareError,
             message: '$error',
