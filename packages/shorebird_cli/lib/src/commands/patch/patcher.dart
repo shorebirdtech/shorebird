@@ -197,6 +197,12 @@ More info: ${troubleshootingUrl.toLink()}.
     return null;
   }
 
+  /// Gets the base64-encoded public key from either --public-key-path or
+  /// --public-key-cmd, the same way releases do.
+  ///
+  /// Returns null if no public key is configured.
+  Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
+
   /// Returns the public key PEM from the configured source, or null.
   Future<String?> _resolvePublicKeyPem() async {
     try {

@@ -277,31 +277,46 @@ void main() {
         });
 
         test('passes the encoded public key to the build', () async {
-          final publicKeyFile = File(
-            p.join(Directory.systemTemp.createTempSync().path, 'key.pem'),
-          )..createSync();
+          final keyDir = Directory.systemTemp.createTempSync();
+          addTearDown(() => keyDir.deleteSync(recursive: true));
+          final publicKeyFile = File(p.join(keyDir.path, 'key.pem'))
+            ..writeAsStringSync('pem-from-file');
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
           ).thenReturn(publicKeyFile.path);
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn('encoded-public-key');
 
           await runWithOverrides(() => patcher.buildPatchArtifact());
 
           expect(patcher.builtWithPublicKey, equals('encoded-public-key'));
           verify(
-            () => codeSigner.base64PublicKey(
-              any(
-                that: isA<File>().having(
-                  (f) => f.path,
-                  'path',
-                  publicKeyFile.path,
-                ),
-              ),
-            ),
+            () => codeSigner.base64PublicKeyFromPem('pem-from-file'),
           ).called(1);
         });
+
+        test(
+          'passes a public key from --public-key-cmd to the build',
+          () async {
+            when(
+              () => argResults[CommonArguments.publicKeyCmd.name],
+            ).thenReturn('print-key');
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+            ).thenReturn(true);
+            when(
+              () => codeSigner.runPublicKeyCmd('print-key'),
+            ).thenAnswer((_) async => 'pem-from-cmd');
+            when(
+              () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
+            ).thenReturn('encoded-from-cmd');
+
+            await runWithOverrides(() => patcher.buildPatchArtifact());
+
+            expect(patcher.builtWithPublicKey, equals('encoded-from-cmd'));
+          },
+        );
 
         test('forwards additional args', () async {
           when(

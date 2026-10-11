@@ -449,7 +449,7 @@ Looked in:
         group('when the key pair is provided', () {
           setUp(() {
             when(
-              () => codeSigner.base64PublicKey(any()),
+              () => codeSigner.base64PublicKeyFromPem(any()),
             ).thenReturn('public_key_encoded');
           });
 
@@ -478,6 +478,35 @@ Looked in:
               ),
             ).called(1);
           });
+
+          test(
+            'passes a key from --public-key-cmd to buildAppBundle',
+            () async {
+              when(
+                () => argResults[CommonArguments.publicKeyCmd.name],
+              ).thenReturn('print-key');
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+              ).thenReturn(true);
+              when(
+                () => codeSigner.runPublicKeyCmd('print-key'),
+              ).thenAnswer((_) async => 'pem-from-cmd');
+              await runWithOverrides(patcher.buildPatchArtifact);
+
+              verify(
+                () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
+              ).called(1);
+
+              verify(
+                () => artifactBuilder.buildAppBundle(
+                  args: any(named: 'args'),
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  base64PublicKey: 'public_key_encoded',
+                ),
+              ).called(1);
+            },
+          );
         });
 
         test('returns the aab file', () async {

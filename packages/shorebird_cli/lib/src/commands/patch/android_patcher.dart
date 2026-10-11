@@ -98,7 +98,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       flavor: flavor,
       target: target,
       args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: await getEncodedPublicKey(),
     );
 
     // When the built .aab never packaged libapp.so, fail fast with an accurate

@@ -70,7 +70,7 @@ class AarPatcher extends Patcher {
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: await getEncodedPublicKey(),
     );
 
     return File(

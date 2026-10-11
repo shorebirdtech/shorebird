@@ -2,16 +2,19 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:test/test.dart';
 
 import '../fakes.dart';
+import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -495,6 +498,69 @@ void main() {
           );
         },
       );
+
+      group('when the public key is malformed', () {
+        late ShorebirdLogger logger;
+
+        setUp(() {
+          logger = MockShorebirdLogger();
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenThrow(RangeError('bad key'));
+        });
+
+        Future<void> expectInvalidKey(ArgResults result) => runScoped(
+          () => expectLater(
+            result.getEncodedPublicKey,
+            exitsWithCode(ExitCode.software),
+          ),
+          values: {
+            codeSignerRef.overrideWith(() => codeSigner),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+
+        test('names --public-key-path for a bad key file', () async {
+          final result = parser.parse([
+            '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          ]);
+
+          await expectInvalidKey(result);
+
+          verify(
+            () => logger.err(
+              any(
+                that: startsWith(
+                  'The --${CommonArguments.publicKeyArg.name} file is not a '
+                  'valid public key',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('names --public-key-cmd for bad command output', () async {
+          final result = parser.parse([
+            '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          ]);
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'not-a-key');
+
+          await expectInvalidKey(result);
+
+          verify(
+            () => logger.err(
+              any(
+                that: startsWith(
+                  'The --${CommonArguments.publicKeyCmd.name} output is not a '
+                  'valid public key',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
     });
   });
 }

@@ -86,7 +86,7 @@ abstract class DesktopPatcher extends Patcher {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final builtDirectory = await buildApp(
       args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: await getEncodedPublicKey(),
     );
     return builtDirectory.zipToTempFile();
   }

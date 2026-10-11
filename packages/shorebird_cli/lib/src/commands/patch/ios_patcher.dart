@@ -101,7 +101,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       flavor: flavor,
       target: target,
       args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: await getEncodedPublicKey(),
     );
 
     await buildAppleElfAotSnapshot(

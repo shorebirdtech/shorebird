@@ -89,15 +89,6 @@ extension CodeSign on ArgResults {
     return null;
   }
 
-  /// Read the public key file and encode it to base64 if any.
-  String? get encodedPublicKey {
-    final publicKeyFile = file(CommonArguments.publicKeyArg.name);
-
-    return publicKeyFile != null
-        ? codeSigner.base64PublicKey(publicKeyFile)
-        : null;
-  }
-
   /// Get base64-encoded public key from either file or command.
   ///
   /// Returns null if no public key is configured.
@@ -118,28 +109,29 @@ extension CodeSign on ArgResults {
         );
       throw ProcessExit(ExitCode.software.code);
     } on FormatException catch (e) {
-      logger
-        ..err(
-          '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
-          '${e.message}',
-        )
-        ..info(
-          'The command must print only a PEM-encoded public key to stdout.',
-        );
+      _logInvalidPublicKey('is not a valid public key: ${e.message}');
       throw ProcessExit(ExitCode.software.code);
       // Malformed PEM content causes ASN1 parsing errors (RangeError, etc.)
       // ignore: avoid_catching_errors
     } on Error catch (e) {
       // ASN1 parsing errors for malformed PEM content
+      _logInvalidPublicKey('is not a valid public key: $e');
+      throw ProcessExit(ExitCode.software.code);
+    }
+  }
+
+  /// Reports a malformed public key, naming whichever option supplied it.
+  void _logInvalidPublicKey(String problem) {
+    if (file(CommonArguments.publicKeyArg.name) != null) {
       logger
-        ..err(
-          '--${CommonArguments.publicKeyCmd.name} output is not a valid '
-          'public key: $e',
-        )
+        ..err('The --${CommonArguments.publicKeyArg.name} file $problem')
+        ..info('The file must contain only a PEM-encoded public key.');
+    } else {
+      logger
+        ..err('The --${CommonArguments.publicKeyCmd.name} output $problem')
         ..info(
           'The command must print only a PEM-encoded public key to stdout.',
         );
-      throw ProcessExit(ExitCode.software.code);
     }
   }
 }
