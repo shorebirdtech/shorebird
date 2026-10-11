@@ -136,12 +136,21 @@ class AppleArchiveDiffer extends ArchiveDiffer {
         .toList();
   }
 
+  /// Deletes [dir], ignoring failure. Used in place of
+  /// `deleteTemporarySync` inside `Isolate.run`, where scoped deps such as
+  /// `logger` are unavailable, so logging a failed delete would throw.
+  static void _deleteInIsolate(Directory dir) {
+    try {
+      dir.deleteSync(recursive: true);
+    } on FileSystemException catch (_) {}
+  }
+
   Future<String> _unsignedFileHash(ArchiveFile file, String tempRoot) async {
     final tempDir = Directory(tempRoot).createTempSync();
     try {
       return await _hashUnsignedCopy(file, p.join(tempDir.path, file.name));
     } finally {
-      tempDir.deleteTemporarySync();
+      _deleteInIsolate(tempDir);
     }
   }
 
@@ -198,7 +207,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
       final jsonFile = await _carJsonFile(file, tempDir);
       return _hash(sanitizeCarJson(jsonFile.readAsStringSync()).codeUnits);
     } finally {
-      tempDir.deleteTemporarySync();
+      _deleteInIsolate(tempDir);
     }
   }
 
