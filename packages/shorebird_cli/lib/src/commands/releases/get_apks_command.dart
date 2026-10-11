@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -9,6 +10,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -104,13 +106,36 @@ class GetApksCommand extends ShorebirdCommand {
       platform: ReleasePlatform.android,
     );
 
-    final aabFile = await _downloadAab(releaseArtifact: releaseArtifact);
-    final apksFile = File(
-      p.join(
-        Directory.systemTemp.createTempSync().path,
-        '${appId}_${release.version}.apks',
-      ),
+    // The downloaded aab, the built .apks and the extracted apks are staged
+    // in one temporary directory created here, deleted once the apks are in
+    // the output directory.
+    final stagingDirectory = Directory.systemTemp.createTempSync();
+    try {
+      return await _buildApks(
+        release: release,
+        releaseArtifact: releaseArtifact,
+        stagingDirectory: stagingDirectory,
+      );
+    } finally {
+      stagingDirectory.deleteTemporarySync();
+    }
+  }
+
+  Future<int> _buildApks({
+    required Release release,
+    required ReleaseArtifact releaseArtifact,
+    required Directory stagingDirectory,
+  }) async {
+    final aabFile = await _downloadAab(
+      releaseArtifact: releaseArtifact,
+      outputPath: p.join(stagingDirectory.path, 'release.aab'),
     );
+    final apksFile = File(
+      p.join(stagingDirectory.path, '${appId}_${release.version}.apks'),
+    );
+    final extractedDirectory = Directory(
+      p.join(stagingDirectory.path, 'extracted'),
+    )..createSync();
 
     final buildApksProgress = logger.progress(
       'Building apks for release ${release.version} (app: $appId)',
@@ -149,13 +174,22 @@ class GetApksCommand extends ShorebirdCommand {
       )..createSync(recursive: true);
     }
 
-    await extractFileToDisk(apksZipFile.path, outputDirectory.path);
-
-    final apks = outputDirectory
+    // Extract somewhere fresh first, so the apks reported are the ones this
+    // run produced rather than whatever earlier runs left in the output
+    // directory.
+    await extractFileToDisk(apksZipFile.path, extractedDirectory.path);
+    final extractedApkNames = extractedDirectory
         .listSync()
         .whereType<File>()
         .where((file) => file.path.endsWith('.apk'))
+        .map((file) => p.basename(file.path))
         .toList();
+    await copyPath(extractedDirectory.path, outputDirectory.path);
+
+    final apks = [
+      for (final name in extractedApkNames)
+        File(p.join(outputDirectory.path, name)),
+    ];
     if (apks.isNotEmpty) {
       logger.info('Generated ${apks.length} apk(s):');
       for (final file in apks) {
@@ -190,12 +224,16 @@ class GetApksCommand extends ShorebirdCommand {
     );
   }
 
-  Future<File> _downloadAab({required ReleaseArtifact releaseArtifact}) async {
+  Future<File> _downloadAab({
+    required ReleaseArtifact releaseArtifact,
+    required String outputPath,
+  }) async {
     final File artifactFile;
     try {
       artifactFile = await artifactManager.downloadWithProgressUpdates(
         Uri.parse(releaseArtifact.url),
         message: 'Downloading aab',
+        outputPath: outputPath,
       );
     } on Exception catch (_) {
       throw ProcessExit(ExitCode.software.code);

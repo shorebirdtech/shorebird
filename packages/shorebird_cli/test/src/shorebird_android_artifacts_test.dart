@@ -505,6 +505,23 @@ void main() {
 
       setUp(setUpProjectRootArtifacts);
 
+      test('deletes the temporary zip copy', () async {
+        String? zipPath;
+        await runWithOverrides(
+          () => shorebirdAndroidArtifacts.extractAar(
+            packageName: packageName,
+            buildNumber: buildNumber,
+            unzipFn: (zip, _) async {
+              zipPath = zip;
+              expect(File(zip).existsSync(), isTrue);
+            },
+          ),
+        );
+
+        expect(zipPath, isNotNull);
+        expect(Directory(p.dirname(zipPath!)).existsSync(), isFalse);
+      });
+
       test('extracts aar', () async {
         final outDir = await runWithOverrides(
           () => shorebirdAndroidArtifacts.extractAar(

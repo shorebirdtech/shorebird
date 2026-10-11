@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -567,12 +568,17 @@ class PatchArtifact extends CachedArtifact {
     String outputPath,
   ) async {
     final tempDir = Directory.systemTemp.createTempSync();
-    final artifactPath = p.join(tempDir.path, '$fileName.zip');
-    await stream.pipe(File(artifactPath).openWrite());
-    await artifactManager.extractZip(
-      zipFile: File(artifactPath),
-      outputDirectory: Directory(outputPath),
-    );
+    try {
+      final artifactPath = p.join(tempDir.path, '$fileName.zip');
+      await stream.pipe(File(artifactPath).openWrite());
+      await artifactManager.extractZip(
+        zipFile: File(artifactPath),
+        outputDirectory: Directory(outputPath),
+      );
+    } finally {
+      // Only the downloaded zip lives here; it's extracted to [outputPath].
+      tempDir.deleteTemporarySync();
+    }
   }
 
   @override

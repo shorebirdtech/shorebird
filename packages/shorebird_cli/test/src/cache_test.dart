@@ -507,6 +507,36 @@ void main() {
           });
         });
 
+        group('extractArtifact', () {
+          test('deletes the downloaded zip after extracting it', () async {
+            setOperatingSystem(NativePlatform.linux);
+            File? downloadedZip;
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenAnswer((invocation) async {
+              downloadedZip = invocation.namedArguments[#zipFile] as File;
+              expect(downloadedZip!.existsSync(), isTrue);
+            });
+            final outputDirectory = Directory.systemTemp.createTempSync();
+            addTearDown(() => outputDirectory.deleteSync(recursive: true));
+
+            await runWithOverrides(
+              () => PatchArtifact(cache: cache, platform: platform)
+                  .extractArtifact(
+                    http.ByteStream.fromBytes([1, 2, 3]),
+                    outputDirectory.path,
+                  ),
+            );
+
+            expect(downloadedZip, isNotNull);
+            expect(downloadedZip!.parent.existsSync(), isFalse);
+            expect(outputDirectory.existsSync(), isTrue);
+          });
+        });
+
         group('storageUrl', () {
           group('when on macOS', () {
             setUp(() {
