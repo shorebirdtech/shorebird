@@ -26,6 +26,20 @@ import 'fakes.dart';
 import 'matchers.dart';
 import 'mocks.dart';
 
+/// Runs [body] with [Directory.systemTemp] redirected to [systemTemp], so a
+/// test can check what [body] left behind there.
+Future<void> runWithSystemTemp(
+  Directory systemTemp,
+  Future<void> Function() body,
+) => IOOverrides.runZoned(body, getSystemTempDirectory: () => systemTemp);
+
+/// A new, empty directory to stand in for [Directory.systemTemp].
+Directory createSystemTemp() {
+  final systemTemp = Directory.systemTemp.createTempSync();
+  addTearDown(() => systemTemp.deleteSync(recursive: true));
+  return systemTemp;
+}
+
 void main() {
   group('scoped', () {
     late Auth auth;
@@ -2181,6 +2195,27 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         ).called(1);
       });
 
+      test('deletes the thinned archive and zips it creates', () async {
+        setUpProjectRoot();
+
+        final systemTemp = createSystemTemp();
+        await runWithSystemTemp(
+          systemTemp,
+          () => runWithOverrides(
+            () => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: true,
+              podfileLockHash: podfileLockHash,
+            ),
+          ),
+        );
+
+        expect(systemTemp.listSync(), isEmpty);
+      });
+
       test(
         'marks the runner as not sideloadable when not codesigned',
         () async {
@@ -2265,6 +2300,22 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           ).called(1);
         });
+
+        test('deletes the zipped bundle', () async {
+          final systemTemp = createSystemTemp();
+          await runWithSystemTemp(
+            systemTemp,
+            () => runWithOverrides(
+              () => codePushClientWrapper.createLinuxReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                bundle: releaseBundle,
+              ),
+            ),
+          );
+
+          expect(systemTemp.listSync(), isEmpty);
+        });
       });
     });
 
@@ -2330,6 +2381,23 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ),
         ).called(1);
       });
+
+      test('deletes the archived app', () async {
+        final systemTemp = createSystemTemp();
+        await runWithSystemTemp(
+          systemTemp,
+          () => runWithOverrides(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appPath: p.join(projectRoot.path, appPath),
+              podfileLockHash: 'podfile-lock-hash',
+            ),
+          ),
+        );
+
+        expect(systemTemp.listSync(), isEmpty);
+      });
     });
 
     group('createIosFrameworkReleaseArtifacts', () {
@@ -2380,6 +2448,22 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             podfileLockHash: null,
           ),
         ).called(1);
+      });
+
+      test('deletes the zipped framework', () async {
+        final systemTemp = createSystemTemp();
+        await runWithSystemTemp(
+          systemTemp,
+          () => runWithOverrides(
+            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appFrameworkPath: p.join(projectRoot.path, frameworkPath),
+            ),
+          ),
+        );
+
+        expect(systemTemp.listSync(), isEmpty);
       });
     });
 
@@ -2481,6 +2565,26 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             podfileLockHash: null,
           ),
         ).called(1);
+      });
+
+      test('deletes the zipped supplement after uploading it', () async {
+        stubCreateReleaseArtifact(null);
+
+        final systemTemp = createSystemTemp();
+        await runWithSystemTemp(systemTemp, createSupplement);
+
+        expect(systemTemp.listSync(), isEmpty);
+      });
+
+      test('deletes the zipped supplement when the upload fails', () async {
+        stubCreateReleaseArtifact(Exception('oh no'));
+
+        final systemTemp = createSystemTemp();
+        await expectLater(
+          () => runWithSystemTemp(systemTemp, createSupplement),
+          exitsWithCode(ExitCode.software),
+        );
+        expect(systemTemp.listSync(), isEmpty);
       });
     });
 
