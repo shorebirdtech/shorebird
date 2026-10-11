@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/releases/releases.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -50,6 +51,7 @@ void main() {
           artifactManagerRef.overrideWith(() => artifactManager),
           bundletoolRef.overrideWith(() => bundletool),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          isJsonModeRef.overrideWith(() => false),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -193,6 +195,33 @@ void main() {
             checkShorebirdInitialized: true,
           ),
         ).called(1);
+      });
+    });
+
+    group('when --flavor is not defined in shorebird.yaml', () {
+      setUp(() {
+        when(() => argResults.wasParsed('flavor')).thenReturn(true);
+        when(() => argResults['flavor']).thenReturn('prdo');
+        when(() => shorebirdYaml.flavors).thenReturn({'prod': 'prod-app-id'});
+      });
+
+      test('exits with a usage error before fetching releases', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(ExitCode.usage.code)),
+        );
+        verify(
+          () => logger.err(
+            'This project does not have a flavor named "prdo". Pass one of: '
+            'prod (from "flavors" in shorebird.yaml).',
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        );
       });
     });
 

@@ -31,7 +31,8 @@ mixin AppScopedCommand on ShorebirdCommand {
   /// preconditions in the process.
   ///
   /// Returns `(appId: <id>, errorCode: null)` on success, or
-  /// `(appId: '', errorCode: <code>)` if precondition validation failed.
+  /// `(appId: '', errorCode: <code>)` if precondition validation failed or
+  /// `--flavor` names a flavor shorebird.yaml doesn't define.
   Future<({String appId, int? errorCode})> resolveAppId() async {
     final explicitAppId = results[CommonArguments.appIdArg.name] as String?;
     try {
@@ -42,13 +43,17 @@ mixin AppScopedCommand on ShorebirdCommand {
     } on PreconditionFailedException catch (error) {
       return (appId: '', errorCode: error.exitCode.code);
     }
+    if (explicitAppId != null) return (appId: explicitAppId, errorCode: null);
+
     final flavor = results.findOption(
       CommonArguments.flavorArg.name,
       argParser: argParser,
     );
-    final appId =
-        explicitAppId ??
-        shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
-    return (appId: appId, errorCode: null);
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
+    final flavorError = shorebirdYaml.unknownFlavorError(flavor);
+    if (flavorError != null) {
+      return (appId: '', errorCode: reportError(message: flavorError));
+    }
+    return (appId: shorebirdYaml.getAppId(flavor: flavor), errorCode: null);
   }
 }

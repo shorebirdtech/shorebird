@@ -187,6 +187,27 @@ void main() {
       });
     });
 
+    group('when --flavor is not defined in shorebird.yaml', () {
+      setUp(() {
+        when(() => argResults.wasParsed('flavor')).thenReturn(true);
+        when(() => argResults['flavor']).thenReturn('prdo');
+      });
+
+      test('exits with usage error and does not fetch', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(any(that: contains('does not have any flavors'))),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+    });
+
     group('when an invalid patch number is provided', () {
       setUp(() {
         when(() => argResults['patch-number']).thenReturn('5');

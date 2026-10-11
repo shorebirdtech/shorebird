@@ -1,12 +1,16 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 class _TestCommand extends ShorebirdCommand with AppScopedCommand {
@@ -31,13 +35,16 @@ void main() {
     );
 
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdLogger logger;
     late ShorebirdValidator shorebirdValidator;
     late _TestCommand command;
 
-    R runWithOverrides<R>(R Function() body) {
+    R runWithOverrides<R>(R Function() body, {bool jsonMode = false}) {
       return runScoped(
         body,
         values: {
+          isJsonModeRef.overrideWith(() => jsonMode),
+          loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
@@ -50,6 +57,7 @@ void main() {
 
     setUp(() {
       shorebirdEnv = MockShorebirdEnv();
+      logger = MockShorebirdLogger();
       shorebirdValidator = MockShorebirdValidator();
       command = _TestCommand();
 
@@ -112,6 +120,64 @@ void main() {
           ]).resolveAppId,
         );
         expect(result, equals((appId: 'explicit-app-id', errorCode: null)));
+      });
+
+      group('when --flavor is not defined in shorebird.yaml', () {
+        const message =
+            'This project does not have a flavor named "prdo". Pass one of: '
+            'staging (from "flavors" in shorebird.yaml).';
+
+        test('reports a usage error listing the flavors', () async {
+          final result = await runWithOverrides(
+            commandWith(['--flavor', 'prdo']).resolveAppId,
+          );
+          expect(result, equals((appId: '', errorCode: ExitCode.usage.code)));
+          verify(() => logger.err(message)).called(1);
+        });
+
+        test('reports a usage error envelope in JSON mode', () async {
+          final result = await captureJson(() async {
+            final resolved = await runWithOverrides(
+              commandWith(['--flavor', 'prdo']).resolveAppId,
+              jsonMode: true,
+            );
+            return resolved.errorCode!;
+          });
+          expect(result.exitCode, equals(ExitCode.usage.code));
+          expect(
+            result.json['error'],
+            equals({'code': 'usage_error', 'message': message}),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('reports a usage error when the project has no flavors', () async {
+          when(
+            () => shorebirdEnv.getShorebirdYaml(),
+          ).thenReturn(const ShorebirdYaml(appId: appId));
+          final result = await runWithOverrides(
+            commandWith(['--flavor', 'staging']).resolveAppId,
+          );
+          expect(result, equals((appId: '', errorCode: ExitCode.usage.code)));
+          verify(
+            () => logger.err(
+              any(that: contains('does not have any flavors defined')),
+            ),
+          ).called(1);
+        });
+
+        test('is ignored when --app-id is passed', () async {
+          final result = await runWithOverrides(
+            commandWith([
+              '--app-id',
+              'explicit-app-id',
+              '--flavor',
+              'prdo',
+            ]).resolveAppId,
+          );
+          expect(result, equals((appId: 'explicit-app-id', errorCode: null)));
+          verifyNever(() => logger.err(any()));
+        });
       });
 
       test('returns the exit code when preconditions fail', () async {
