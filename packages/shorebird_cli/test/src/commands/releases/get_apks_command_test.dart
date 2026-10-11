@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -44,14 +45,14 @@ void main() {
 
     late GetApksCommand command;
 
-    R runWithOverrides<R>(R Function() body) {
+    R runWithOverrides<R>(R Function() body, {bool jsonMode = false}) {
       return runScoped(
         body,
         values: {
           artifactManagerRef.overrideWith(() => artifactManager),
           bundletoolRef.overrideWith(() => bundletool),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
-          isJsonModeRef.overrideWith(() => false),
+          isJsonModeRef.overrideWith(() => jsonMode),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -260,6 +261,22 @@ void main() {
         );
       });
 
+      test('reports a single usage_error envelope under --json', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, jsonMode: true),
+        );
+        expect(exitCode, equals(ExitCode.usage.code));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('usage_error'));
+        expect(
+          error['message'],
+          equals(
+            '--out is required when not running in a Shorebird project, so '
+            'there is no build directory to write the apks to.',
+          ),
+        );
+      });
+
       group('with --out', () {
         late Directory outDirectory;
 
@@ -290,6 +307,44 @@ void main() {
             ),
           ).called(1);
         });
+      });
+    });
+
+    group('when --app-id is passed inside a Shorebird project', () {
+      const explicitAppId = 'explicit-app-id';
+
+      setUp(() {
+        when(() => argResults['app-id']).thenReturn(explicitAppId);
+      });
+
+      test('skips the initialized check and uses the default output '
+          'directory', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(ExitCode.success.code)),
+        );
+        verify(
+          // checkShorebirdInitialized defaults to false.
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: true,
+          ),
+        ).called(1);
+        verify(
+          () => codePushClientWrapper.getReleases(
+            appId: explicitAppId,
+            sideloadableOnly: true,
+          ),
+        ).called(1);
+        final apkPath = p.join(
+          projectRoot.path,
+          'build',
+          'app',
+          'outputs',
+          'shorebird-apk',
+        );
+        verify(
+          () => logger.info('apk(s) generated at ${lightCyan.wrap(apkPath)}'),
+        ).called(1);
       });
     });
 

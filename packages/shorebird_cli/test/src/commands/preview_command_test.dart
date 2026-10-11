@@ -1194,6 +1194,29 @@ channel: ${track.channel}
           );
           verifyNever(() => codePushClientWrapper.getApps());
         });
+
+        group('when --flavor is passed', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('prod');
+          });
+
+          test('exits with a usage error before fetching', () async {
+            final exitCode = await runWithOverrides(command.run);
+
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                '''The project does not have any flavors defined (no "flavors" in shorebird.yaml), but --flavor was provided. Re-run without --flavor, or run "shorebird init" to detect flavors.''',
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+                sideloadableOnly: any(named: 'sideloadableOnly'),
+              ),
+            );
+          });
+        });
       });
 
       group('when in shorebird project with flavors', () {
