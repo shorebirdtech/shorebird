@@ -197,7 +197,9 @@ class RedisConnection {
     final RedisCredentials credentials;
     final provider = options.credentialsProvider;
     if (provider != null) {
-      credentials = await provider();
+      // Bounded like the socket connect, so a provider that never answers
+      // (a hung token endpoint) fails this attempt rather than the client.
+      credentials = await provider().timeout(options.timeout);
     } else if (options.password != null) {
       credentials = RedisCredentials(
         username: options.username,

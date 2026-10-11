@@ -262,6 +262,21 @@ void main() {
       expect(server.auths, hasLength(2));
     });
 
+    test('fails an attempt whose provider never answers', () async {
+      final client = RedisClient(
+        socket: RedisSocketOptions(
+          port: server.port,
+          timeout: const Duration(milliseconds: 50),
+          retryAttempts: 1,
+          credentialsProvider: () => Completer<RedisCredentials>().future,
+        ),
+      );
+      addTearDown(client.close);
+
+      await expectLater(client.connect(), throwsA(isA<SocketException>()));
+      expect(server.auths, isEmpty);
+    });
+
     test('recovers once the provider succeeds again', () async {
       var calls = 0;
       final client = RedisClient(
