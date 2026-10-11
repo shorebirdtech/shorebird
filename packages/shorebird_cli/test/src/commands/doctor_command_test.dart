@@ -468,6 +468,21 @@ Android Toolchain
           ..testArgResults = argResults;
       });
 
+      test('refuses --fix with a usage error', () async {
+        when(() => argResults['fix']).thenReturn(true);
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJsonWithOverrides(command.run),
+        );
+
+        expect(exitCode, equals(ExitCode.usage.code));
+        expect(json['status'], equals('error'));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('usage_error'));
+        expect(error['message'], equals('--fix is not supported with --json.'));
+        verifyNever(() => validator.validate());
+      });
+
       test('emits JSON success with version info and diagnostics', () async {
         const flutterVersion = '3.22.2';
         when(

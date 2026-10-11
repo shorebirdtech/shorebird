@@ -74,6 +74,7 @@ class Doctor {
 
       final fixableIssues = issues.where((issue) => issue.fix != null);
       var unresolvedIssues = issues;
+      String? fixAppliedMessage;
       if (fixableIssues.isNotEmpty) {
         if (applyFixes) {
           validatorProgress.update('Fixing');
@@ -91,16 +92,17 @@ class Doctor {
           final numIssuesFixed = issues.length - unresolvedIssues.length;
           if (numIssuesFixed > 0) {
             totalIssuesFixed += numIssuesFixed;
-            final fixAppliedMessage =
-                '''($numIssuesFixed fix${numIssuesFixed == 1 ? '' : 'es'} applied)''';
-            validatorProgress.complete(
-              '''${validator.description} ${green.wrap(fixAppliedMessage)}''',
-            );
-
-            continue;
+            fixAppliedMessage =
+                '''${validator.description} ${green.wrap('($numIssuesFixed fix${numIssuesFixed == 1 ? '' : 'es'} applied)')}''';
+            // Everything this validator found is fixed, so there is nothing
+            // left to report for it.
+            if (unresolvedIssues.isEmpty && failedFixes.isEmpty) {
+              validatorProgress.complete(fixAppliedMessage);
+              continue;
+            }
           }
         } else {
-          allFixableIssues.addAll(issues);
+          allFixableIssues.addAll(fixableIssues);
         }
       }
 
@@ -110,8 +112,8 @@ class Doctor {
         (issue) => issue.severity == ValidationIssueSeverity.error,
       );
       unresolvedErrors.isEmpty
-          ? validatorProgress.complete()
-          : validatorProgress.fail();
+          ? validatorProgress.complete(fixAppliedMessage)
+          : validatorProgress.fail(fixAppliedMessage);
 
       for (final issue in failedFixes.keys) {
         logger.err(
@@ -139,7 +141,9 @@ class Doctor {
       allIssues.addAll(unresolvedIssues);
     }
 
-    if (totalIssuesFixed > 0) {
+    // Everything that was found got fixed; the per-validator "fixes applied"
+    // lines already say so.
+    if (allIssues.isEmpty && totalIssuesFixed > 0) {
       return;
     }
 
