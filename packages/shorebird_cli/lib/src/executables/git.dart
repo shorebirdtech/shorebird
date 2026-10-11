@@ -158,12 +158,6 @@ class Git {
     return '${result.stdout}'.trim();
   }
 
-  /// Returns the status of the git repository located at [directory].
-  Future<String> status({required String directory, List<String>? args}) async {
-    final result = await git(['status', ...?args], workingDirectory: directory);
-    return '${result.stdout}'.trim();
-  }
-
   /// The output of `git symbolic-ref [revision]` for the git repository located
   /// in [directory]. If not provided, [revision] defaults to 'HEAD'.
   Future<String> symbolicRef({

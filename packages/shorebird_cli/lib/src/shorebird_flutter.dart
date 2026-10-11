@@ -52,9 +52,6 @@ class ShorebirdFlutter {
 
   /// Marker written once `flutter precache` has succeeded for an installed
   /// revision.
-  ///
-  /// Untracked, and [isUnmodified] passes `--untracked-files=no`, so its
-  /// presence does not make the checkout look dirty.
   static const precacheStampName = '.shorebird_precache';
 
   /// Suffix identifying a directory an install is still writing into.
@@ -443,15 +440,6 @@ class ShorebirdFlutter {
     _reclaimStaleDirectories(parent: flutterCache, prefix: '');
 
     return removed;
-  }
-
-  /// Whether the current revision is unmodified.
-  Future<bool> isUnmodified({String? revision}) async {
-    final status = await git.status(
-      directory: _workingDirectory(revision: revision),
-      args: ['--untracked-files=no', '--porcelain'],
-    );
-    return status.isEmpty;
   }
 
   /// Returns the current system Flutter version.

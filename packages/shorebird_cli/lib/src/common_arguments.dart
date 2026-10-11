@@ -185,14 +185,6 @@ symbolize" command with the right program symbol file is required to obtain a hu
 ''',
   );
 
-  /// An argument that allows the user to bypass interactive confirmations.
-  static const noConfirmArg = ArgumentDescriber(
-    name: 'no-confirm',
-    description: '''
-Bypass all confirmation messages. It's generally not advised to use this unless running from a script.
-''',
-  );
-
   /// Maximum character length for an app display name.
   static const appDisplayNameMaxLength = 128;
 

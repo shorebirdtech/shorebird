@@ -87,16 +87,9 @@ class SetTrackCommand extends ShorebirdCommand
       releaseVersion: releaseVersion,
     );
     if (fetched.errorCode case final errorCode?) return errorCode;
-    final patches = fetched.patches;
-
-    if (patches.isEmpty) {
-      return reportError(
-        message: 'No patches found for release "$releaseVersion".',
-      );
-    }
 
     final (:patch, errorCode: lookupError) = findPatchOrReport(
-      patches: patches,
+      patches: fetched.patches,
       patchNumber: patchNumber!,
       releaseVersion: releaseVersion,
     );

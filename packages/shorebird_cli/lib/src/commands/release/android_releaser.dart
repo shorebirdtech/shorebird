@@ -160,19 +160,18 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       flavor: flavor,
     );
 
-    final String? apkText;
+    final String apkText;
     if (generateApk) {
       final apkFile = shorebirdAndroidArtifacts.findApk(
         project: projectRoot,
         flavor: flavor,
       );
-      apkText = generateApk
-          ? '''
+      apkText =
+          '''
 
 Or distribute the apk:
 ${lightCyan.wrap(apkFile.path)}
-'''
-          : '';
+''';
     } else {
       apkText = '';
     }

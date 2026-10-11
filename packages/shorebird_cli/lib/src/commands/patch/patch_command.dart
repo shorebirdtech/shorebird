@@ -210,9 +210,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
-  /// Whether the patch is for the staging environment.
-  bool get isStaging => track == DeploymentTrack.staging;
-
   /// Whether the patch is targeting the latest release version
   /// (--release-version=latest).
   bool get useLatestRelease => results['release-version'] == 'latest';

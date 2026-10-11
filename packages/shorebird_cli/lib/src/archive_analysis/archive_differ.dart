@@ -6,9 +6,6 @@ import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 
-/// Thrown when an [ArchiveDiffer] fails to generate a [FileSetDiff].
-class DiffFailedException implements Exception {}
-
 /// {@template archive_differ}
 /// Computes content differences between two archives.
 /// {@endtemplate}

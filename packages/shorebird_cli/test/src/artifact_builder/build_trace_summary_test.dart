@@ -570,24 +570,25 @@ void main() {
       });
     });
 
-    group('tryFromFile', () {
+    group('tryReadEvents', () {
       late Directory tempDir;
       setUp(() => tempDir = Directory.systemTemp.createTempSync());
       tearDown(() => tempDir.deleteSync(recursive: true));
 
       test('returns null if file is missing', () {
-        final s = BuildTraceSummary.tryFromFile(
-          File(p.join(tempDir.path, 'missing.json')),
-          platform: 'android',
+        expect(
+          BuildTraceSummary.tryReadEvents(
+            File(p.join(tempDir.path, 'missing.json')),
+          ),
+          isNull,
         );
-        expect(s, isNull);
       });
 
       test('returns null for malformed JSON', () {
         final f = File(p.join(tempDir.path, 'bad.json'))
           ..writeAsStringSync('not json');
         expect(
-          BuildTraceSummary.tryFromFile(f, platform: 'android'),
+          BuildTraceSummary.tryReadEvents(f),
           isNull,
         );
       });
@@ -612,9 +613,11 @@ void main() {
               ),
             ]),
           );
-        final s = BuildTraceSummary.tryFromFile(f, platform: 'android');
-        expect(s, isNotNull);
-        expect(s!.flutterBuild, const Duration(milliseconds: 1500));
+        final s = BuildTraceSummary.fromEvents(
+          BuildTraceSummary.tryReadEvents(f)!,
+          platform: 'android',
+        );
+        expect(s.flutterBuild, const Duration(milliseconds: 1500));
         expect(s.dart.kernelSnapshot, const Duration(milliseconds: 1000));
         expect(s.dart.total, const Duration(milliseconds: 1000));
       });
@@ -634,16 +637,18 @@ void main() {
               ],
             }),
           );
-        final s = BuildTraceSummary.tryFromFile(f, platform: 'android');
-        expect(s, isNotNull);
-        expect(s!.flutterBuild, const Duration(milliseconds: 500));
+        final s = BuildTraceSummary.fromEvents(
+          BuildTraceSummary.tryReadEvents(f)!,
+          platform: 'android',
+        );
+        expect(s.flutterBuild, const Duration(milliseconds: 500));
       });
 
       test('returns null when the JSON root is not a list or known object', () {
         final f = File(p.join(tempDir.path, 'weird.json'))
           ..writeAsStringSync(jsonEncode({'unexpected': true}));
         expect(
-          BuildTraceSummary.tryFromFile(f, platform: 'android'),
+          BuildTraceSummary.tryReadEvents(f),
           isNull,
         );
       });
