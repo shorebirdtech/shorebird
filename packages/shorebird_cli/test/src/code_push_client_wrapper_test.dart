@@ -2112,6 +2112,109 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
+
+        test('skips archs with no libapp.so and uploads the rest', () async {
+          setUpProjectRoot();
+          const missingArch = Arch.x86_64;
+          File(
+            p.join(
+              projectRoot.path,
+              extractedAarPath,
+              'jni',
+              missingArch.androidBuildPath,
+              'libapp.so',
+            ),
+          ).deleteSync();
+
+          await runWithOverrides(
+            () async =>
+                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  aarPath: p.join(projectRoot.path, aarPath),
+                  extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+                  architectures: Arch.values,
+                ),
+          );
+
+          // One upload per surviving arch, plus one for the aar.
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+            ),
+          ).called(Arch.values.length);
+          verifyNever(
+            () => codePushClient.createReleaseArtifact(
+              appId: any(named: 'appId'),
+              artifactPath: any(named: 'artifactPath'),
+              releaseId: any(named: 'releaseId'),
+              arch: missingArch.arch,
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+            ),
+          );
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test(
+          'exits with code 70 when every requested arch is missing',
+          () async {
+            File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
+            final jniDir = p.join(projectRoot.path, extractedAarPath, 'jni');
+
+            await expectLater(
+              () async => runWithOverrides(
+                () async =>
+                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
+                      appId: app.appId,
+                      releaseId: releaseId,
+                      platform: releasePlatform,
+                      aarPath: p.join(projectRoot.path, aarPath),
+                      extractedAarDir: p.join(
+                        projectRoot.path,
+                        extractedAarPath,
+                      ),
+                      architectures: Arch.values,
+                    ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => progress.fail(
+                any(
+                  that: allOf(
+                    contains('No architecture artifacts found to upload'),
+                    contains('under $jniDir '),
+                  ),
+                ),
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            );
+          },
+        );
       });
     });
 
