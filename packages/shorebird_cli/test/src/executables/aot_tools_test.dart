@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -133,6 +134,74 @@ stdout: info
 stderr: error'''),
             ),
           ),
+        );
+      });
+
+      Future<void> expectExecFailureOutput({
+        required Stream<List<int>> Function() stdout,
+        required Stream<List<int>> Function() stderr,
+        required String expected,
+      }) async {
+        when(
+          () => process.start(
+            dartBinaryFile.path,
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {
+          final mockProcess = MockProcess();
+          when(() => mockProcess.exitCode).thenAnswer((_) async => 1);
+          when(() => mockProcess.stdout).thenAnswer((_) => stdout());
+          when(() => mockProcess.stderr).thenAnswer((_) => stderr());
+          return mockProcess;
+        });
+        await expectLater(
+          () => runWithOverrides(
+            () => aotTools.link(
+              base: base,
+              patch: patch,
+              analyzeSnapshot: analyzeSnapshot,
+              genSnapshot: genSnapshot,
+              kernel: kernel,
+              outputPath: outputPath,
+            ),
+          ),
+          throwsA(
+            isA<AotToolsExecutionFailure>().having(
+              (e) => '$e',
+              'toString',
+              contains(expected),
+            ),
+          ),
+        );
+      }
+
+      test('decodes a multi-byte character split across chunks', () async {
+        // U+2713 CHECK MARK is E2 9C 93 in UTF-8.
+        await expectExecFailureOutput(
+          stdout: () => Stream.fromIterable([
+            [0xE2, 0x9C],
+            [0x93],
+          ]),
+          stderr: () => Stream.value(utf8.encode('error')),
+          expected: 'stdout: ✓',
+        );
+      });
+
+      test('captures output written after the process exits', () async {
+        await expectExecFailureOutput(
+          stdout: () => Stream.value(utf8.encode('info')),
+          stderr: () {
+            final controller = StreamController<List<int>>();
+            unawaited(
+              Future(() async {
+                controller.add(utf8.encode('late error'));
+                await controller.close();
+              }),
+            );
+            return controller.stream;
+          },
+          expected: 'stderr: late error',
         );
       });
 
@@ -620,11 +689,13 @@ stderr: error'''),
               workingDirectory: any(named: 'workingDirectory'),
             ),
           ).thenAnswer((_) async {
-            File(p.join(workingDirectory.path, 'link.jsonl')).writeAsStringSync(
-              '''
+            File(p.join(workingDirectory.path, linkJsonPath))
+              ..createSync(recursive: true)
+              ..writeAsStringSync(
+                '''
 {"type":"link_success","base_codes_length":3036,"patch_codes_length":3036,"base_code_size":861816,"patch_code_size":861816,"linked_code_size":860460,"link_percentage":99.8426578295135}
 {"type":"link_debug","message":"wrote vmcode file to out.vmcode"}''',
-            );
+              );
 
             final mockProcess = MockProcess();
             when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
@@ -720,9 +791,9 @@ stderr: error'''),
                   },
                 },
               });
-              File(
-                p.join(workingDirectory.path, 'link.jsonl'),
-              ).writeAsStringSync('$linkFailure\n');
+              File(p.join(workingDirectory.path, linkJsonPath))
+                ..createSync(recursive: true)
+                ..writeAsStringSync('$linkFailure\n');
 
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 1);
@@ -789,9 +860,9 @@ stderr: error'''),
                 workingDirectory: any(named: 'workingDirectory'),
               ),
             ).thenAnswer((_) async {
-              File(
-                p.join(workingDirectory.path, 'link.jsonl'),
-              ).writeAsStringSync('this is not json\n');
+              File(p.join(workingDirectory.path, linkJsonPath))
+                ..createSync(recursive: true)
+                ..writeAsStringSync('this is not json\n');
 
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 1);

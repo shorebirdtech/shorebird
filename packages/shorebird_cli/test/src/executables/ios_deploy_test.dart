@@ -300,6 +300,44 @@ void main() {
         ).called(1);
       });
 
+      test('stops listening for sigint once the process exits', () async {
+        final signal = MockProcessSignal();
+        final controller = StreamController<ProcessSignal>.broadcast();
+        iosDeploy = IOSDeploy(sigint: signal);
+        when(signal.watch).thenAnswer((_) => controller.stream);
+        when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+        when(
+          () => process.exitCode,
+        ).thenAnswer((_) async => ExitCode.success.code);
+
+        await runWithOverrides(
+          () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+        );
+
+        expect(controller.hasListener, isFalse);
+        verify(
+          () => logger.detail('[ios-deploy] exited with code: 0'),
+        ).called(1);
+      });
+
+      test(
+        'does not listen for sigint when the process fails to start',
+        () async {
+          final signal = MockProcessSignal();
+          iosDeploy = IOSDeploy(sigint: signal);
+          when(
+            () => shorebirdProcess.start(any(), any()),
+          ).thenThrow(const ProcessException('ios-deploy', [], 'oops'));
+
+          final exitCode = await runWithOverrides(
+            () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+          );
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verifyNever(signal.watch);
+        },
+      );
+
       test('handles process stderr', () async {
         const message = 'test-stderr';
         final completer = Completer<int>();

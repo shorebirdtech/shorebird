@@ -160,23 +160,25 @@ Or run on an iOS simulator without code signing
     var lldbRun = RegExp(r'\(lldb\)\s*run');
 
     final launchProgress = logger.progress('Starting app');
-    late final Process launchProcess;
-
-    // If the user presses Ctrl-C, kill the ios-deploy process.
-    _sigint.watch().listen((signal) {
-      // If the debugger is attached, send the signal to the app process.
-      if (debuggerState.isAttached) launchProcess.stdin.writeln(_signalStop);
-      launchProcess.kill();
-    });
+    StreamSubscription<ProcessSignal>? sigintSubscription;
 
     try {
-      launchProcess = await process.start(iosDeployExecutable.path, [
+      final launchProcess = await process.start(iosDeployExecutable.path, [
         '--debug',
         if (deviceId != null) ...['--id', deviceId],
         '-r', // uninstall the app before reinstalling and clear app data
         '--bundle',
         bundlePath,
       ]);
+
+      // If the user presses Ctrl-C, kill the ios-deploy process. Listen only
+      // once the process exists, and stop listening when it exits so Ctrl-C
+      // behaves normally for the rest of the run.
+      sigintSubscription = _sigint.watch().listen((signal) {
+        // If the debugger is attached, send the signal to the app process.
+        if (debuggerState.isAttached) launchProcess.stdin.writeln(_signalStop);
+        launchProcess.kill();
+      });
 
       void detach() {
         if (debuggerState.isNotAttached) return;
@@ -299,7 +301,7 @@ Or run on an iOS simulator without code signing
       );
 
       final status = await launchProcess.exitCode;
-      logger.detail('[ios-deploy] exited with code: $exitCode');
+      logger.detail('[ios-deploy] exited with code: $status');
       debuggerState = _DebuggerState.detached;
       unawaited(stdoutSubscription.cancel());
       unawaited(stderrSubscription.cancel());
@@ -309,6 +311,8 @@ Or run on an iOS simulator without code signing
       debuggerState = _DebuggerState.detached;
       logger.err('[ios-deploy] failed: $exception');
       return ExitCode.software.code;
+    } finally {
+      await sigintSubscription?.cancel();
     }
   }
 
