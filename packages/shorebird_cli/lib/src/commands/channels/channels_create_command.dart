@@ -43,13 +43,12 @@ class ChannelsCreateCommand extends ShorebirdCommand with AppScopedCommand {
     if (errorCode != null) return errorCode;
 
     final channelName = results['name'] as String;
-    if (channelName.isEmpty ||
-        channelName.length > CommonArguments.trackNameMaxLength) {
-      const message =
-          'Channel name must be between 1 and '
-          '${CommonArguments.trackNameMaxLength} characters.';
-      return reportError(message: message);
-    }
+    final nameError = CommonArguments.nameError(
+      label: 'Channel name',
+      value: channelName,
+      maxLength: CommonArguments.trackNameMaxLength,
+    );
+    if (nameError != null) return reportError(message: nameError);
 
     late final List<Channel> channels;
     final fetchError = await guardApiCall(

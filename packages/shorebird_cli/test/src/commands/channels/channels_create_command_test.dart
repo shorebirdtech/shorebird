@@ -120,6 +120,14 @@ void main() {
         verifyNeverCreated();
       });
 
+      test('rejects a whitespace-only name', () async {
+        when(() => argResults['name']).thenReturn('   ');
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verifyNeverCreated();
+        verify(() => logger.err('Channel name must not be blank.')).called(1);
+      });
+
       test('rejects a name that is too long', () async {
         when(() => argResults['name']).thenReturn(
           'a' * (CommonArguments.trackNameMaxLength + 1),

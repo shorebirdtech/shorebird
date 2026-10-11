@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 const _jsonExample =
-    'shorebird patches set-track --release 1.0.0+1 --patch 1 '
+    'shorebird patches set-track --release-version 1.0.0+1 --patch-number 1 '
     '--track stable --app-id <id> --json';
 
 /// {@template set_track_command}
@@ -18,7 +18,8 @@ const _jsonExample =
 ///
 /// Sample usage:
 /// ```sh
-/// shorebird patches set-track --release=1.0.0+1 --patch=1 --track=beta
+/// shorebird patches set-track --release-version=1.0.0+1 --patch-number=1 \
+///   --track=beta
 /// ```
 ///
 /// {@endtemplate}
@@ -27,13 +28,17 @@ class SetTrackCommand extends ShorebirdCommand
   /// {@macro set_track_command}
   SetTrackCommand() {
     argParser
+      // `--release` and `--patch` were this command's original names; kept as
+      // hidden aliases so existing scripts keep working.
       ..addOption(
-        'release',
+        CommonArguments.releaseVersionArg.name,
+        aliases: const ['release'],
         help: CommonArguments.patchReleaseVersionDescription,
         mandatory: true,
       )
       ..addOption(
-        'patch',
+        CommonArguments.patchNumberArg.name,
+        aliases: const ['patch'],
         help: 'The patch number to set the track for (e.g. "1").',
         mandatory: true,
       )
@@ -63,22 +68,19 @@ class SetTrackCommand extends ShorebirdCommand
     final (:appId, :errorCode) = await resolveAppId();
     if (errorCode != null) return errorCode;
 
-    final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber(
-      option: 'patch',
-    );
+    final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
     if (patchNumberError != null) return patchNumberError;
 
-    final releaseVersion = results['release'] as String;
+    final releaseVersion =
+        results[CommonArguments.releaseVersionArg.name] as String;
     final targetChannel = results['track'] as String;
 
-    if (targetChannel.isEmpty ||
-        targetChannel.length > CommonArguments.trackNameMaxLength) {
-      return reportError(
-        message:
-            'Track name must be between 1 and '
-            '${CommonArguments.trackNameMaxLength} characters.',
-      );
-    }
+    final nameError = CommonArguments.nameError(
+      label: 'Track name',
+      value: targetChannel,
+      maxLength: CommonArguments.trackNameMaxLength,
+    );
+    if (nameError != null) return reportError(message: nameError);
 
     final fetched = await fetchReleasePatches(
       appId: appId,

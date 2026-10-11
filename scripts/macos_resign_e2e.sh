@@ -147,7 +147,7 @@ echo "void main() { print('MARKER=base'); }" >lib/main.dart
 
 INIT_ARGS=(--force --display-name "$PROJECT_NAME")
 if [[ -n "${SHOREBIRD_ORG_ID:-}" ]]; then
-    INIT_ARGS+=(--organization-id "$SHOREBIRD_ORG_ID")
+    INIT_ARGS+=(--org-id "$SHOREBIRD_ORG_ID")
 fi
 "$SHOREBIRD" init "${INIT_ARGS[@]}"
 APP_ID=$(grep 'app_id:' shorebird.yaml | awk '{print $2}')
