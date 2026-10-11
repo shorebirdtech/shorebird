@@ -1955,6 +1955,38 @@ Reason: Exited with code 70.'''),
         expect(result.kernelFile.path, equals(appDill.path));
       });
 
+      test('uses the first app.dill the build produced', () async {
+        late File firstAppDill;
+        late File secondAppDill;
+        when(
+          () => shorebirdProcess.stream(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+            onStart: any(named: 'onStart'),
+          ),
+        ).thenAnswer((_) async {
+          final now = DateTime.now();
+          // The earlier file sorts second by name, so the test can't pass on
+          // directory listing order alone.
+          secondAppDill =
+              File(p.join(projectRoot.path, '.dart_tool', 'a', 'app.dill'))
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(now.add(const Duration(seconds: 20)));
+          firstAppDill =
+              File(p.join(projectRoot.path, '.dart_tool', 'b', 'app.dill'))
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(now.add(const Duration(seconds: 10)));
+          return ExitCode.success.code;
+        });
+
+        final result = await runWithOverrides(builder.buildIosFramework);
+
+        expect(result.kernelFile.path, equals(firstAppDill.path));
+        expect(result.kernelFile.path, isNot(equals(secondAppDill.path)));
+      });
+
       test('forward arguments to flutter build', () async {
         await runWithOverrides(
           () => builder.buildIosFramework(args: ['--foo', 'bar']),

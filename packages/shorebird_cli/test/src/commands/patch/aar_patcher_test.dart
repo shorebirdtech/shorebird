@@ -156,6 +156,10 @@ void main() {
       });
     });
 
+    test('requires --release-version', () {
+      expect(patcher.requiresReleaseVersionArg, isTrue);
+    });
+
     group('assertPreconditions', () {
       group('when validation succeeds', () {
         setUp(() {

@@ -268,32 +268,8 @@ void main() {
       });
     });
 
-    group('assertArgsAreValid', () {
-      group('when release-version is not provided', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(false);
-        });
-
-        test('exits with code 64', () async {
-          await expectLater(
-            () => runWithOverrides(patcher.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-        });
-      });
-
-      group('when arguments are valid', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
-        });
-
-        test('returns normally', () {
-          expect(
-            () => runWithOverrides(patcher.assertArgsAreValid),
-            returnsNormally,
-          );
-        });
-      });
+    test('requires --release-version', () {
+      expect(patcher.requiresReleaseVersionArg, isTrue);
     });
 
     group('assertUnpatchableDiffs', () {

@@ -413,6 +413,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     } else if (shorebirdEnv.canAcceptUserInput) {
       release = await promptForRelease(patcher.releaseType);
     } else {
+      // Without a terminal to prompt in, the release version is guessed by
+      // building and reading it back out of the artifact, which some release
+      // types can't do.
+      if (patcher.requiresReleaseVersionArg) {
+        usageException(
+          'Missing required argument: --release-version. The release version '
+          "can't be determined from a ${patcher.releaseType.cliName} build, "
+          'so pass --release-version=<version> (or --release-version=latest) '
+          'when running non-interactively.',
+        );
+      }
       final flutterVersionString = await shorebirdFlutter
           .getVersionAndRevision();
       logger.warn('''

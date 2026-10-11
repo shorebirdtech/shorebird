@@ -320,6 +320,7 @@ void main() {
 
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
+      when(() => patcher.requiresReleaseVersionArg).thenReturn(false);
       when(
         () => patcher.extractReleaseVersionFromArtifact(any()),
       ).thenAnswer((_) async => releaseVersion);
@@ -1264,6 +1265,72 @@ void main() {
           () => runWithOverrides(command.run),
           exitsWithCode(ExitCode.software),
         );
+      });
+    });
+
+    group('when the patcher requires --release-version', () {
+      setUp(() {
+        when(() => patcher.requiresReleaseVersionArg).thenReturn(true);
+      });
+
+      group('when it is missing', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed('release-version'),
+          ).thenReturn(false);
+        });
+
+        test('prompts for the release when running interactively', () async {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.success.code));
+          // The release comes from the release picker, not from guessing the
+          // version out of a speculative build.
+          verify(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          ).called(1);
+          verifyNever(() => patcher.extractReleaseVersionFromArtifact(any()));
+        });
+
+        test(
+          'is a usage error before building when not interactive',
+          () async {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  startsWith('Missing required argument: --release-version.'),
+                ),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          },
+        );
+      });
+
+      test('uses it when it is provided', () async {
+        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        when(() => argResults['release-version']).thenReturn(releaseVersion);
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.getRelease(
+            appId: appId,
+            releaseVersion: releaseVersion,
+          ),
+        ).called(1);
       });
     });
 

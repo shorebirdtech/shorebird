@@ -739,9 +739,14 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   }
 
   /// Finds the app.dill file generated during the build process. Looks in the
-  /// .dart_tool directory of the provided [projectRoot] for the most recently
-  /// modified app.dill file (newer than [after]). Returns the path to the
-  /// app.dill file, or null if no app.dill file is found.
+  /// .dart_tool directory of the provided [projectRoot] for app.dill files
+  /// modified after [after] and returns the path of the earliest one, or null
+  /// if there is none.
+  ///
+  /// The earliest is the first one the build produced. A build can produce
+  /// more than one (e.g. `ios-framework` builds more than one target), and
+  /// this matches the behavior from before app.dill was found on disk, when
+  /// the first `gen_snapshot ... app.dill` line in the build output was used.
   String? _findAppDill({
     required Directory projectRoot,
     required DateTime after,
