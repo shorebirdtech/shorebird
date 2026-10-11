@@ -128,6 +128,11 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('is hidden and marked deprecated', () {
+      expect(command.hidden, isTrue);
+      expect(command.description, startsWith('(deprecated)'));
+    });
+
     test('logs warning about deprecation', () async {
       await runWithOverrides(() async {
         final result = await command.run();
