@@ -237,7 +237,7 @@ Waiting for your authorization (the code expires in $expiry)...''';
       });
     });
 
-    group('when stored credentials have expired', () {
+    group('when stored credentials are no longer valid', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
         when(() => auth.email).thenReturn(email);
@@ -248,7 +248,9 @@ Waiting for your authorization (the code expires in $expiry)...''';
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
-        verify(() => progress.fail('Your credentials have expired.')).called(1);
+        verify(
+          () => progress.fail('Your stored credentials are no longer valid.'),
+        ).called(1);
         verify(() => logger.info('Logging you in again...')).called(1);
         verify(() => auth.clearCredentials()).called(1);
         verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
@@ -291,8 +293,15 @@ Waiting for your authorization (the code expires in $expiry)...''';
         when(() => auth.email).thenReturn(email);
       });
 
-      Future<void> expectRetryShortly(ShorebirdAuthException error) async {
-        when(() => auth.hasValidCredentials()).thenThrow(error);
+      // A 429 with an OAuth error body never gets here:
+      // `hasValidCredentials` returns false for it.
+      test('tells the user to retry shortly on a bare 429', () async {
+        when(() => auth.hasValidCredentials()).thenThrow(
+          const ShorebirdAuthException(
+            'Token refresh failed (429)',
+            statusCode: HttpStatus.tooManyRequests,
+          ),
+        );
 
         final result = await runWithOverrides(command.run);
 
@@ -305,31 +314,13 @@ Waiting for your authorization (the code expires in $expiry)...''';
         );
         verifyNever(() => auth.clearCredentials());
         verifyNever(() => auth.login(prompt: any(named: 'prompt')));
-      }
-
-      test('tells the user to retry shortly on rate_limited', () async {
-        await expectRetryShortly(
-          const ShorebirdAuthException(
-            'Token refresh failed (429)',
-            statusCode: HttpStatus.tooManyRequests,
-            oauthError: 'rate_limited',
-          ),
-        );
-      });
-
-      test('tells the user to retry shortly on a bare 429', () async {
-        await expectRetryShortly(
-          const ShorebirdAuthException(
-            'Token refresh failed (429)',
-            statusCode: HttpStatus.tooManyRequests,
-          ),
-        );
       });
     });
 
     // An answer that arrived is not a network problem, and one that keeps
-    // coming would leave the user stuck without a way out.
-    group('when the credential check is refused for another reason', () {
+    // coming would leave the user stuck without a way out. An OAuth error
+    // response never gets here: `hasValidCredentials` returns false for it.
+    group('when the credential check gets a non-OAuth 4xx', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
         when(() => auth.email).thenReturn(email);
@@ -364,30 +355,7 @@ Waiting for your authorization (the code expires in $expiry)...''';
         verifyNever(() => auth.login(prompt: any(named: 'prompt')));
       }
 
-      test('reports the status, error and description', () async {
-        await expectRefusal(
-          const ShorebirdAuthException(
-            'Token refresh failed (400): ...',
-            statusCode: HttpStatus.badRequest,
-            oauthError: 'invalid_request',
-            oauthErrorDescription: 'Missing refresh_token',
-          ),
-          answered: '400 invalid_request: Missing refresh_token',
-        );
-      });
-
-      test('reports the status and error without a description', () async {
-        await expectRefusal(
-          const ShorebirdAuthException(
-            'Token refresh failed (400): ...',
-            statusCode: HttpStatus.badRequest,
-            oauthError: 'unsupported_grant_type',
-          ),
-          answered: '400 unsupported_grant_type',
-        );
-      });
-
-      test('reports only the status for a non-OAuth answer', () async {
+      test('reports the status', () async {
         await expectRefusal(
           const ShorebirdAuthException(
             'Token refresh failed (405): <html>...</html>',

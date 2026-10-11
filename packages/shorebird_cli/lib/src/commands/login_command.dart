@@ -41,9 +41,9 @@ class LoginCommand extends ShorebirdCommand {
       try {
         hasValidCredentials = await auth.hasValidCredentials();
       } on Exception catch (error) {
-        // An answer that is not `invalid_grant` says nothing about the stored
-        // credentials either, so keep them; but don't blame the network for
-        // an answer that arrived.
+        // An answer that is not an OAuth error response says nothing about
+        // the stored credentials either, so keep them; but don't blame the
+        // network for an answer that arrived.
         if (error is ShorebirdAuthException && error.isRateLimited) {
           progress.fail('Too many requests, try again shortly.');
           logger.detail('$error');
@@ -52,7 +52,7 @@ class LoginCommand extends ShorebirdCommand {
         if (error is ShorebirdAuthException && _isClientError(error)) {
           progress.fail(
             'The Shorebird auth service refused to check your credentials '
-            '(${_describeRefusal(error)}).',
+            '(${error.statusCode}).',
           );
           logger
             ..detail('$error')
@@ -61,9 +61,11 @@ class LoginCommand extends ShorebirdCommand {
               '${lightCyan.wrap('shorebird logout')} and then '
               '${lightCyan.wrap('shorebird login')}.',
             );
-          // The service answered and refused the request itself, so retrying
-          // unchanged won't help: not a temporary failure. Rate limiting and
-          // no answer stay tempFail.
+          // Something answered a 4xx that is not an OAuth error response, as
+          // a proxy or a wrongly routed request does. Retrying unchanged won't
+          // help: not a temporary failure. Rate limiting and no answer stay
+          // tempFail. An OAuth error response never reaches this branch:
+          // `hasValidCredentials` returns false for it.
           return ExitCode.software.code;
         }
         // The auth service could not answer, which says nothing about the
@@ -98,9 +100,9 @@ class LoginCommand extends ShorebirdCommand {
         return ExitCode.success.code;
       }
 
-      // The stored credentials have expired or been revoked, so discard them
-      // and log in again.
-      progress.fail('Your credentials have expired.');
+      // The auth service answered the refresh with an OAuth error, so the
+      // stored credentials will not work again: discard them and log in.
+      progress.fail('Your stored credentials are no longer valid.');
       logger.info('Logging you in again...');
       auth.clearCredentials();
     }
@@ -184,16 +186,4 @@ Waiting for your authorization (the code expires in $minutes ${minutes == 1 ? 'm
 bool _isClientError(ShorebirdAuthException error) {
   final status = error.statusCode;
   return status != null && status >= 400 && status < 500;
-}
-
-/// What the auth service answered, as `status error: description`, leaving
-/// out whatever it did not send.
-String _describeRefusal(ShorebirdAuthException error) {
-  final code = error.oauthError;
-  final description = error.oauthErrorDescription;
-  return [
-    '${error.statusCode}',
-    if (code != null) ' $code',
-    if (code != null && description != null) ': $description',
-  ].join();
 }

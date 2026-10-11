@@ -724,7 +724,7 @@ void main() {
             },
           ),
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -757,7 +757,7 @@ void main() {
             },
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -791,7 +791,7 @@ void main() {
             },
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
   });
@@ -1050,6 +1050,47 @@ void main() {
       );
     });
 
+    // A 200 that is not a token response is not an answer about the
+    // credentials either, so it must not be a rejection.
+    for (final (name, body) in [
+      ('not a JSON object', '[]'),
+      (
+        'expires_in of the wrong type',
+        jsonEncode({'access_token': 'a', 'expires_in': '900'}),
+      ),
+    ]) {
+      test('throws a non-rejection for a 200 that is $name', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response(body, HttpStatus.ok));
+
+        await expectLater(
+          refreshShorebirdCredentials(
+            oauth2.AccessCredentials(
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              'sb_rt_test',
+              [],
+            ),
+            httpClient,
+            authBaseUrl: authBaseUrl,
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'The auth service sent an unexpected token response.',
+                )
+                .having((e) => e.isCredentialRejection, 'rejection', isFalse),
+          ),
+        );
+      });
+    }
+
     test('throws when access_token is not a valid JWT', () async {
       when(
         () => httpClient.post(
@@ -1159,7 +1200,7 @@ void main() {
             authBaseUrl: authBaseUrl,
           ),
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -1193,7 +1234,7 @@ void main() {
             authBaseUrl: authBaseUrl,
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -1228,7 +1269,7 @@ void main() {
             authBaseUrl: authBaseUrl,
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
   });
@@ -1252,27 +1293,60 @@ void main() {
     });
 
     group('isCredentialRejection', () {
-      test('is true for invalid_grant', () {
-        const exception = ShorebirdAuthException(
-          'refused',
-          statusCode: HttpStatus.badRequest,
-          oauthError: 'invalid_grant',
-        );
-        expect(exception.isCredentialRejection, isTrue);
-      });
+      // Any RFC 6749 section 5.2 error response, as AppAuth treats it.
+      for (final (status, code) in [
+        (HttpStatus.badRequest, 'invalid_grant'),
+        (HttpStatus.unauthorized, 'invalid_client'),
+        (HttpStatus.badRequest, 'invalid_request'),
+        (HttpStatus.badRequest, 'unauthorized_client'),
+        (HttpStatus.badRequest, 'unsupported_grant_type'),
+        (HttpStatus.badRequest, 'invalid_scope'),
+        (HttpStatus.forbidden, 'some_future_code'),
+      ]) {
+        test('is true for a $status $code', () {
+          final exception = ShorebirdAuthException(
+            'refused',
+            statusCode: status,
+            oauthError: code,
+          );
+          expect(exception.isCredentialRejection, isTrue);
+        });
+      }
 
-      test('is false for other 4xx answers', () {
-        const rateLimited = ShorebirdAuthException(
+      // AppAuth treats a 429 like any other 4xx: an OAuth error body makes it
+      // an OAuth error.
+      test('is true for a 429 carrying an OAuth error', () {
+        const exception = ShorebirdAuthException(
           'slow down',
           statusCode: HttpStatus.tooManyRequests,
           oauthError: 'rate_limited',
         );
+        expect(exception.isCredentialRejection, isTrue);
+      });
+
+      test('is false for a 429 that is not an OAuth error response', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+        );
+        expect(exception.isCredentialRejection, isFalse);
+      });
+
+      test('is false for a 4xx that is not an OAuth error response', () {
         const notOAuth = ShorebirdAuthException(
           'unauthorized',
           statusCode: HttpStatus.unauthorized,
         );
-        expect(rateLimited.isCredentialRejection, isFalse);
         expect(notOAuth.isCredentialRejection, isFalse);
+      });
+
+      test('is false for a 5xx, even with an OAuth error body', () {
+        const exception = ShorebirdAuthException(
+          'server error',
+          statusCode: HttpStatus.internalServerError,
+          oauthError: 'server_error',
+        );
+        expect(exception.isCredentialRejection, isFalse);
       });
 
       test('is false without an answer', () {
@@ -1282,15 +1356,6 @@ void main() {
     });
 
     group('isRateLimited', () {
-      test('is true for rate_limited', () {
-        const exception = ShorebirdAuthException(
-          'slow down',
-          statusCode: HttpStatus.tooManyRequests,
-          oauthError: 'rate_limited',
-        );
-        expect(exception.isRateLimited, isTrue);
-      });
-
       test('is true for a 429 that is not an OAuth error response', () {
         const exception = ShorebirdAuthException(
           'slow down',
@@ -1299,11 +1364,11 @@ void main() {
         expect(exception.isRateLimited, isTrue);
       });
 
-      test('is false for a 429 carrying another OAuth error', () {
+      test('is false for a 429 carrying an OAuth error', () {
         const exception = ShorebirdAuthException(
-          'refused',
+          'slow down',
           statusCode: HttpStatus.tooManyRequests,
-          oauthError: 'invalid_grant',
+          oauthError: 'rate_limited',
         );
         expect(exception.isRateLimited, isFalse);
       });
