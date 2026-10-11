@@ -1194,6 +1194,31 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           },
         );
 
+        test('passes SHOREBIRD_PATCH_DD_MAX_BYTES to the linker', () async {
+          nativePlatform = TestNativePlatform(
+            environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
+          );
+
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          verify(
+            () => apple.runLinker(
+              kernelFile: any(named: 'kernelFile'),
+              aotOutputFile: any(named: 'aotOutputFile'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+              vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: 4096,
+            ),
+          ).called(1);
+        });
+
         test('bundles the local Podfile.lock hash', () async {
           when(
             () => shorebirdEnv.iosPodfileLockHash,

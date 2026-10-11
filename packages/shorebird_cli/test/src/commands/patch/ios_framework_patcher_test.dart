@@ -731,6 +731,31 @@ void main() {
           },
         );
 
+        test('passes SHOREBIRD_PATCH_DD_MAX_BYTES to the linker', () async {
+          nativePlatform = TestNativePlatform(
+            environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
+          );
+
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          verify(
+            () => apple.runLinker(
+              kernelFile: any(named: 'kernelFile'),
+              aotOutputFile: any(named: 'aotOutputFile'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+              vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: 4096,
+            ),
+          ).called(1);
+        });
+
         test('bundles no Podfile.lock hash', () async {
           final patchBundle = await runWithOverrides(
             () => patcher.createPatchArtifacts(
