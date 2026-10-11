@@ -25,12 +25,12 @@ class PromoteCommand extends ShorebirdCommand
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'release-version',
+        CommonArguments.releaseVersionArg.name,
         help: CommonArguments.patchReleaseVersionDescription,
         mandatory: true,
       )
       ..addOption(
-        'patch-number',
+        CommonArguments.patchNumberArg.name,
         help: 'The number of the patch to promote to the stable channel.',
         mandatory: true,
       );
@@ -81,7 +81,8 @@ class PromoteCommand extends ShorebirdCommand
     final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
     if (patchNumberError != null) return patchNumberError;
 
-    final releaseVersion = results['release-version'] as String;
+    final releaseVersion =
+        results[CommonArguments.releaseVersionArg.name] as String;
     final flavor = results.findOption('flavor', argParser: argParser);
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
     final flavorError = shorebirdYaml.unknownFlavorError(flavor);

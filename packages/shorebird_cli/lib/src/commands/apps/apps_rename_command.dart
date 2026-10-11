@@ -42,13 +42,12 @@ class AppsRenameCommand extends ShorebirdCommand with AppScopedCommand {
     if (errorCode != null) return errorCode;
 
     final displayName = results['name'] as String;
-    if (displayName.trim().isEmpty ||
-        displayName.length > CommonArguments.appDisplayNameMaxLength) {
-      const message =
-          'App display name must be between 1 and '
-          '${CommonArguments.appDisplayNameMaxLength} characters.';
-      return reportError(message: message);
-    }
+    final nameError = CommonArguments.nameError(
+      label: 'App display name',
+      value: displayName,
+      maxLength: CommonArguments.appDisplayNameMaxLength,
+    );
+    if (nameError != null) return reportError(message: nameError);
 
     late final AppMetadata app;
     final fetchError = await guardApiCall(

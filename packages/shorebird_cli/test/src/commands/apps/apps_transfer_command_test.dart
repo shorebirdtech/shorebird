@@ -179,7 +179,7 @@ void main() {
         verifyNeverTransferred();
         final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], 'usage_error');
-        expect(error['hint'], 'Run: shorebird account orgs');
+        expect(error['hint'], 'You are not a member of any organization.');
       });
     });
 

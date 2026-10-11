@@ -146,6 +146,18 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
     description: 'The version of the release (e.g. "1.0.0+1").',
   );
 
+  /// An argument that identifies a patch by its number within a release.
+  static const patchNumberArg = ArgumentDescriber(
+    name: 'patch-number',
+    description: 'The number of the patch (e.g. "1").',
+  );
+
+  /// An argument that identifies an organization by its id.
+  static const orgIdArg = ArgumentDescriber(
+    name: 'org-id',
+    description: 'The id of the organization (e.g. "42").',
+  );
+
   /// Help text for release version arguments in patch commands, where the
   /// version identifies which release the patch belongs to.
   static const patchReleaseVersionDescription =
@@ -186,6 +198,25 @@ Bypass all confirmation messages. It's generally not advised to use this unless 
 
   /// Maximum character length for a track name.
   static const trackNameMaxLength = 128;
+
+  /// Checks a user-supplied name (an app display name, channel or track),
+  /// returning why it is invalid, or null if it is fine.
+  ///
+  /// A name that is empty or only whitespace is rejected, as is one longer
+  /// than [maxLength] characters. [label] names the value in the message,
+  /// e.g. "Channel name".
+  static String? nameError({
+    required String label,
+    required String value,
+    required int maxLength,
+  }) {
+    if (value.trim().isEmpty) return '$label must not be blank.';
+    if (value.length > maxLength) {
+      return '$label must be at most $maxLength characters '
+          '(got ${value.length}).';
+    }
+    return null;
+  }
 
   /// Minimum valid value for [minLinkPercentage].
   static const minLinkPercentageMin = 0;

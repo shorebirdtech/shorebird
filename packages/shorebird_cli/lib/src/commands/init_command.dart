@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/organization_id.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -40,7 +40,13 @@ class InitCommand extends ShorebirdCommand {
             'Must be between 1 and '
             '${CommonArguments.appDisplayNameMaxLength} characters.',
       )
-      ..addOption('organization-id', help: 'The organization ID to use.');
+      // `--organization-id` was this command's original name; kept as a
+      // hidden alias so existing scripts keep working.
+      ..addOption(
+        CommonArguments.orgIdArg.name,
+        aliases: const ['organization-id'],
+        help: 'The id of the organization the app belongs to (e.g. "42").',
+      );
   }
 
   @override
@@ -84,32 +90,27 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     }
 
     final Organization organization;
-    final orgIdArg = results['organization-id'] as String?;
+    final orgIdArg = results[CommonArguments.orgIdArg.name] as String?;
     if (orgIdArg != null) {
-      final orgId = int.tryParse(orgIdArg);
-      if (orgId == null) {
-        usageException(
-          'Invalid --organization-id "$orgIdArg": expected a number.\n'
-          '${_availableOrganizations(organizationMemberships)}',
-        );
+      final (id: orgId, error: parseError) = parseOrganizationId(orgIdArg);
+      if (parseError != null) {
+        usageException('${parseError.message}\n${parseError.hint}');
       }
 
-      final organizationMembership = organizationMemberships.firstWhereOrNull(
-        (o) => o.organization.id == orgId,
+      final (:membership, error: membershipError) = findOrganizationMembership(
+        id: orgId!,
+        memberships: organizationMemberships,
       );
-      if (organizationMembership == null) {
-        usageException(
-          'You are not a member of an organization with id $orgId.\n'
-          '${_availableOrganizations(organizationMemberships)}',
-        );
+      if (membershipError != null) {
+        usageException('${membershipError.message}\n${membershipError.hint}');
       }
-      organization = organizationMembership.organization;
+      organization = membership!.organization;
     } else if (organizationMemberships.length > 1) {
       if (!shorebirdEnv.canAcceptUserInput) {
         usageException(
           'You belong to multiple organizations. '
-          'Pass --organization-id=<id> to choose one.\n'
-          '${_availableOrganizations(organizationMemberships)}',
+          'Pass --org-id=<id> to choose one.\n'
+          '${availableOrganizations(organizationMemberships)}',
         );
       }
       organization = logger.chooseOne(
@@ -117,7 +118,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         choices: organizationMemberships.map((o) => o.organization).toList(),
         display: (o) => o.name,
         hint:
-            'Pass --organization-id=<id> to select an organization without '
+            'Pass --org-id=<id> to select an organization without '
             'prompting.',
       );
     } else {
@@ -276,14 +277,12 @@ This app may not exist or you may not have permission to view it.''')
                 'prompting.',
           )
         : pubspecName;
-    if (displayName.isEmpty ||
-        displayName.length > CommonArguments.appDisplayNameMaxLength) {
-      usageException(
-        '--display-name must be between 1 and '
-        '${CommonArguments.appDisplayNameMaxLength} characters '
-        '(got ${displayName.length}).',
-      );
-    }
+    final nameError = CommonArguments.nameError(
+      label: 'App display name',
+      value: displayName,
+      maxLength: CommonArguments.appDisplayNameMaxLength,
+    );
+    if (nameError != null) usageException(nameError);
 
     final String appId;
     Map<String, String>? flavors;
@@ -427,12 +426,5 @@ app_id:
         .writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
-  }
-
-  String _availableOrganizations(List<OrganizationMembership> memberships) {
-    final lines = memberships.map(
-      (m) => '  ${m.organization.name} (id: ${m.organization.id})',
-    );
-    return 'Available organizations:\n${lines.join('\n')}';
   }
 }

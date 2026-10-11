@@ -27,7 +27,7 @@ class PatchesInfoCommand extends ShorebirdCommand
         mandatory: true,
       )
       ..addOption(
-        'patch-number',
+        CommonArguments.patchNumberArg.name,
         help: 'The patch number to show details for (e.g. "1").',
         mandatory: true,
       );

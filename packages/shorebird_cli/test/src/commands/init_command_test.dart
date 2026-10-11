@@ -427,10 +427,16 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
     });
 
-    group('when organization id argument is provided', () {
+    test('still accepts the original --organization-id', () {
+      final parsed = InitCommand().argParser.parse(['--organization-id=42']);
+      expect(parsed['org-id'], equals('42'));
+      expect(InitCommand().argParser.usage, isNot(contains('organization-id')));
+    });
+
+    group('when --org-id is provided', () {
       group('when arg is not a parseable int', () {
         setUp(() {
-          when(() => argResults['organization-id']).thenReturn('not-an-int');
+          when(() => argResults['org-id']).thenReturn('not-an-int');
         });
 
         test('throws a usage exception listing organizations', () async {
@@ -441,9 +447,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 (e) => e.message,
                 'message',
                 '''
-Invalid --organization-id "not-an-int": expected a number.
-Available organizations:
-  Test Organization (id: $organizationId)''',
+"not-an-int" is not a valid organization id.
+Organization ids are integers, e.g. --org-id 42.''',
               ),
             ),
           );
@@ -451,7 +456,7 @@ Available organizations:
 
         group('when no organization with matching id exists', () {
           setUp(() {
-            when(() => argResults['organization-id']).thenReturn('999999');
+            when(() => argResults['org-id']).thenReturn('999999');
           });
 
           test('throws a usage exception listing organizations', () async {
@@ -462,7 +467,7 @@ Available organizations:
                   (e) => e.message,
                   'message',
                   '''
-You are not a member of an organization with id 999999.
+You are not a member of organization 999999.
 Available organizations:
   Test Organization (id: $organizationId)''',
                 ),
@@ -474,7 +479,7 @@ Available organizations:
         group('when organization with matching id exists', () {
           setUp(() {
             when(
-              () => argResults['organization-id'],
+              () => argResults['org-id'],
             ).thenReturn('$organizationId');
           });
 
@@ -602,7 +607,7 @@ Available organizations:
                   (e) => e.message,
                   'message',
                   '''
-You belong to multiple organizations. Pass --organization-id=<id> to choose one.
+You belong to multiple organizations. Pass --org-id=<id> to choose one.
 Available organizations:
   ${org1.name} (id: ${org1.id})
   ${org2.name} (id: ${org2.id})''',
@@ -708,8 +713,7 @@ Available organizations:
                 isA<UsageException>().having(
                   (e) => e.message,
                   'message',
-                  '--display-name must be between 1 and 128 characters '
-                      '(got 0).',
+                  'App display name must not be blank.',
                 ),
               ),
             );
@@ -728,7 +732,7 @@ Available organizations:
                 isA<UsageException>().having(
                   (e) => e.message,
                   'message',
-                  '--display-name must be between 1 and 128 characters '
+                  'App display name must be at most 128 characters '
                       '(got 129).',
                 ),
               ),
