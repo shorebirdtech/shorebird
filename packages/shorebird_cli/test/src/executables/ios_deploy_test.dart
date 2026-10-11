@@ -321,6 +321,35 @@ void main() {
       });
 
       test(
+        'kills the started process when listening for sigint fails',
+        () async {
+          final signal = MockProcessSignal();
+          iosDeploy = IOSDeploy(sigint: signal);
+          when(signal.watch).thenThrow(const SignalException('watch failed'));
+
+          final exitCode = await runWithOverrides(
+            () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+          );
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(() => process.kill()).called(1);
+        },
+      );
+
+      test('does not kill the process after it exits normally', () async {
+        when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+        when(
+          () => process.exitCode,
+        ).thenAnswer((_) async => ExitCode.success.code);
+
+        await runWithOverrides(
+          () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+        );
+
+        verifyNever(() => process.kill());
+      });
+
+      test(
         'does not listen for sigint when the process fails to start',
         () async {
           final signal = MockProcessSignal();

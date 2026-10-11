@@ -161,6 +161,9 @@ Or run on an iOS simulator without code signing
 
     final launchProgress = logger.progress('Starting app');
     StreamSubscription<ProcessSignal>? sigintSubscription;
+    // Set once ios-deploy has started and cleared once it has exited, so a
+    // failure in between never leaves it running.
+    Process? runningProcess;
 
     try {
       final launchProcess = await process.start(iosDeployExecutable.path, [
@@ -170,6 +173,7 @@ Or run on an iOS simulator without code signing
         '--bundle',
         bundlePath,
       ]);
+      runningProcess = launchProcess;
 
       // If the user presses Ctrl-C, kill the ios-deploy process. Listen only
       // once the process exists, and stop listening when it exits so Ctrl-C
@@ -301,6 +305,7 @@ Or run on an iOS simulator without code signing
       );
 
       final status = await launchProcess.exitCode;
+      runningProcess = null;
       logger.detail('[ios-deploy] exited with code: $status');
       debuggerState = _DebuggerState.detached;
       unawaited(stdoutSubscription.cancel());
@@ -312,6 +317,7 @@ Or run on an iOS simulator without code signing
       logger.err('[ios-deploy] failed: $exception');
       return ExitCode.software.code;
     } finally {
+      runningProcess?.kill();
       await sigintSubscription?.cancel();
     }
   }

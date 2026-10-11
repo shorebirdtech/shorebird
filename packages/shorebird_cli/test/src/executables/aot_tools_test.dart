@@ -740,6 +740,65 @@ stderr: error'''),
         });
 
         test(
+          'reads the link report next to outputPath when no working '
+          'directory is given',
+          () async {
+            final outputDir = Directory.systemTemp.createTempSync();
+            addTearDown(() => outputDir.deleteSync(recursive: true));
+            final absoluteOutputPath = p.join(outputDir.path, 'out.vmcode');
+            when(
+              () => process.start(aotToolsPath, [
+                '--version',
+              ], workingDirectory: any(named: 'workingDirectory')),
+            ).thenAnswer((_) async {
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode('0.0.1')));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            });
+            when(
+              () => process.start(
+                aotToolsPath,
+                any(that: contains('--gen-snapshot=$genSnapshot')),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async {
+              File(p.join(outputDir.path, 'link.jsonl')).writeAsStringSync(
+                '{"type":"link_success","link_percentage":42.0}',
+              );
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            });
+
+            await expectLater(
+              runWithOverrides(
+                () => aotTools.link(
+                  base: base,
+                  patch: patch,
+                  analyzeSnapshot: analyzeSnapshot,
+                  genSnapshot: genSnapshot,
+                  kernel: kernel,
+                  outputPath: absoluteOutputPath,
+                ),
+              ),
+              completion(equals(42.0)),
+            );
+          },
+        );
+
+        test(
           'throws LinkFailureException when VM sections differ',
           () async {
             workingDirectory = Directory.systemTemp.createTempSync();
