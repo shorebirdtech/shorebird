@@ -187,7 +187,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('"one" is not a valid patch number'),
+          () => logger.err('"one" is not a valid patch number.'),
         ).called(1);
         verify(
           () => logger.info('Patch numbers are integers, e.g. --patch 1.'),
@@ -243,7 +243,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('No patches found for release $releaseVersion'),
+          () => logger.err('No patches found for release "$releaseVersion".'),
         ).called(1);
       });
     });
@@ -272,7 +272,10 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('No patch found with number $patchNumber'),
+          () => logger.err(
+            'No patch found with number $patchNumber '
+            'for release "$releaseVersion".',
+          ),
         ).called(1);
       });
     });

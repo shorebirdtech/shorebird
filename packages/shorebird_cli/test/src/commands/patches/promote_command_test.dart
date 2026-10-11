@@ -176,7 +176,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('"one" is not a valid patch number'),
+          () => logger.err('"one" is not a valid patch number.'),
         ).called(1);
         verifyNever(
           () => codePushClientWrapper.getRelease(
@@ -218,8 +218,12 @@ void main() {
           final result = await command.run();
 
           expect(result, equals(ExitCode.usage.code));
-          verify(() => logger.err('No patch found with number 5')).called(1);
-          verify(() => logger.info('Available patches: 1')).called(1);
+          verify(
+            () => logger.err(
+              'No patch found with number 5 for release "$releaseVersion".',
+            ),
+          ).called(1);
+          verify(() => logger.info('Available patches: 1.')).called(1);
         });
       });
     });

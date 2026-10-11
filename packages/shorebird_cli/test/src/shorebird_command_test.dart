@@ -223,15 +223,14 @@ void main() {
         test('logs the message and hint, returns a usage error', () {
           final exitCode = runWithOverrides(
             () => command.reportError(
-              message: 'Something is wrong',
-              jsonMessage: 'Something is wrong.',
+              message: 'Something is wrong.',
               hint: 'Try again.',
             ),
             jsonMode: false,
           );
 
           expect(exitCode, equals(ExitCode.usage.code));
-          verify(() => logger.err('Something is wrong')).called(1);
+          verify(() => logger.err('Something is wrong.')).called(1);
           verify(() => logger.info('Try again.')).called(1);
         });
 
@@ -263,8 +262,7 @@ void main() {
           final result = await captureJson(
             () async => runWithOverrides(
               () => command.reportError(
-                message: 'Something is wrong',
-                jsonMessage: 'Something is wrong.',
+                message: 'Something is wrong.',
                 hint: 'Try again.',
                 code: JsonErrorCode.fetchFailed,
               ),
@@ -284,20 +282,6 @@ void main() {
           );
           verifyNever(() => logger.err(any()));
           verifyNever(() => logger.info(any()));
-        });
-
-        test('uses the message when no JSON message is given', () async {
-          final result = await captureJson(
-            () async => runWithOverrides(
-              () => command.reportError(message: 'Something is wrong'),
-              jsonMode: true,
-            ),
-          );
-
-          expect(
-            (result.json['error'] as Map<String, dynamic>)['message'],
-            equals('Something is wrong'),
-          );
         });
       });
     });

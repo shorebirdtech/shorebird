@@ -89,8 +89,7 @@ class SetTrackCommand extends ShorebirdCommand
 
     if (patches.isEmpty) {
       return reportError(
-        message: 'No patches found for release $releaseVersion',
-        jsonMessage: 'No patches found for release "$releaseVersion".',
+        message: 'No patches found for release "$releaseVersion".',
       );
     }
 

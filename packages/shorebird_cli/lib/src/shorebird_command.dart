@@ -190,17 +190,15 @@ abstract class ShorebirdCommand extends Command<int> {
   ///
   /// With `--json`, emits an error envelope carrying [code], [message] and
   /// [hint]. Otherwise logs [message] as an error and [hint], if any, as
-  /// info. Pass [jsonMessage] when the JSON message should differ from the
-  /// human one.
+  /// info. Both modes report the same [message].
   int reportError({
     required String message,
     String? hint,
-    String? jsonMessage,
     JsonErrorCode code = JsonErrorCode.usageError,
     int? exitCode,
   }) {
     if (isJsonMode) {
-      emitJsonError(code: code, message: jsonMessage ?? message, hint: hint);
+      emitJsonError(code: code, message: message, hint: hint);
     } else {
       logger.err(message);
       if (hint != null) logger.info(hint);
