@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -94,30 +95,43 @@ class IosFrameworkPatcher extends Patcher
     Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
-    late final String releaseXcframeworkPath;
-    {
-      final tempDir = Directory.systemTemp.createTempSync();
+    final releaseXcframeworkDirectory = Directory.systemTemp.createTempSync();
+    // Only a supplement directory created here is ours to delete; one passed
+    // in belongs to the caller.
+    final fallbackSupplementDirectory = supplementDirectory == null
+        ? Directory.systemTemp.createTempSync()
+        : null;
+    try {
       await artifactManager.extractZip(
         zipFile: releaseArtifact,
-        outputDirectory: tempDir,
+        outputDirectory: releaseXcframeworkDirectory,
       );
-      releaseXcframeworkPath = tempDir.path;
+
+      unzipProgress.complete(
+        'Extracted release artifact to ${releaseXcframeworkDirectory.path}',
+      );
+      final releaseArtifactFile = File(
+        p.join(
+          releaseXcframeworkDirectory.path,
+          'ios-arm64',
+          'App.framework',
+          'App',
+        ),
+      );
+
+      // The returned bundles point at the diff or the patch build output,
+      // never into the extracted release, so it can go once this returns.
+      return await linkAndBundlePatch(
+        releaseArtifactFile: releaseArtifactFile,
+        releaseSupplementDir:
+            supplementDirectory ?? fallbackSupplementDirectory!,
+      );
+    } finally {
+      releaseXcframeworkDirectory.deleteTemporarySync();
+      if (fallbackSupplementDirectory != null) {
+        fallbackSupplementDirectory.deleteTemporarySync();
+      }
     }
-
-    final releaseSupplementDir =
-        supplementDirectory ?? Directory.systemTemp.createTempSync();
-
-    unzipProgress.complete(
-      'Extracted release artifact to $releaseXcframeworkPath',
-    );
-    final releaseArtifactFile = File(
-      p.join(releaseXcframeworkPath, 'ios-arm64', 'App.framework', 'App'),
-    );
-
-    return linkAndBundlePatch(
-      releaseArtifactFile: releaseArtifactFile,
-      releaseSupplementDir: releaseSupplementDir,
-    );
   }
 
   @override

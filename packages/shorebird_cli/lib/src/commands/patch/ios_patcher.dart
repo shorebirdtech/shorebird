@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -131,45 +132,53 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     final unzipProgress = logger.progress('Extracting release artifact');
 
-    late final String releaseXcarchivePath;
-    {
-      final tempDir = Directory.systemTemp.createTempSync();
+    final releaseXcarchiveDirectory = Directory.systemTemp.createTempSync();
+    // Only a supplement directory created here is ours to delete; one passed
+    // in belongs to the caller.
+    final fallbackSupplementDirectory = supplementDirectory == null
+        ? Directory.systemTemp.createTempSync()
+        : null;
+    try {
       await artifactManager.extractZip(
         zipFile: releaseArtifact,
-        outputDirectory: tempDir,
+        outputDirectory: releaseXcarchiveDirectory,
       );
-      releaseXcarchivePath = tempDir.path;
+
+      unzipProgress.complete();
+      final appDirectory = artifactManager.getIosAppDirectory(
+        xcarchiveDirectory: releaseXcarchiveDirectory,
+      );
+      if (appDirectory == null) {
+        logger
+          ..err(
+            'The release .xcarchive downloaded from Shorebird has no '
+            'Products/Applications/*.app directory.',
+          )
+          ..info(
+            'Re-run to download it again. If this persists, the release '
+            'artifact is damaged; create a new release with '
+            '${lightCyan.wrap('shorebird release ios')} and patch that one.',
+          );
+        throw ProcessExit(ExitCode.software.code);
+      }
+      final releaseArtifactFile = File(
+        p.join(appDirectory.path, 'Frameworks', 'App.framework', 'App'),
+      );
+
+      // The returned bundles point at the diff or the patch build output,
+      // never into the extracted release, so it can go once this returns.
+      return await linkAndBundlePatch(
+        releaseArtifactFile: releaseArtifactFile,
+        releaseSupplementDir:
+            supplementDirectory ?? fallbackSupplementDirectory!,
+        podfileLockHash: shorebirdEnv.iosPodfileLockHash,
+      );
+    } finally {
+      releaseXcarchiveDirectory.deleteTemporarySync();
+      if (fallbackSupplementDirectory != null) {
+        fallbackSupplementDirectory.deleteTemporarySync();
+      }
     }
-
-    final releaseSupplementDir =
-        supplementDirectory ?? Directory.systemTemp.createTempSync();
-
-    unzipProgress.complete();
-    final appDirectory = artifactManager.getIosAppDirectory(
-      xcarchiveDirectory: Directory(releaseXcarchivePath),
-    );
-    if (appDirectory == null) {
-      logger
-        ..err(
-          'The release .xcarchive downloaded from Shorebird has no '
-          'Products/Applications/*.app directory.',
-        )
-        ..info(
-          'Re-run to download it again. If this persists, the release '
-          'artifact is damaged; create a new release with '
-          '${lightCyan.wrap('shorebird release ios')} and patch that one.',
-        );
-      throw ProcessExit(ExitCode.software.code);
-    }
-    final releaseArtifactFile = File(
-      p.join(appDirectory.path, 'Frameworks', 'App.framework', 'App'),
-    );
-
-    return linkAndBundlePatch(
-      releaseArtifactFile: releaseArtifactFile,
-      releaseSupplementDir: releaseSupplementDir,
-      podfileLockHash: shorebirdEnv.iosPodfileLockHash,
-    );
   }
 
   @override

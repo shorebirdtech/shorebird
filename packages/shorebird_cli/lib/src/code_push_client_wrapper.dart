@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -608,24 +609,28 @@ to the architectures your project actually builds.''',
     createArtifactProgress.complete();
   }
 
-  /// Uploads windows release artifacts for a specific app/release combination.
+  /// Zips and uploads a Windows release directory.
   Future<void> createWindowsReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required String releaseZipPath,
+    required Directory releaseDirectory,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: File(releaseZipPath),
-      name: 'Windows release (exe)',
-      arch: primaryWindowsReleaseArtifactArch,
-      platform: ReleasePlatform.windows,
-      canSideload: true,
-      progress: createArtifactProgress,
-    );
+    final zippedRelease = await releaseDirectory.zipToTempFile();
+    try {
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: zippedRelease,
+        name: 'Windows release (exe)',
+        arch: primaryWindowsReleaseArtifactArch,
+        platform: ReleasePlatform.windows,
+        canSideload: true,
+        progress: createArtifactProgress,
+      );
+    } finally {
+      zippedRelease.parent.deleteTemporarySync();
+    }
     createArtifactProgress.complete();
   }
 
@@ -735,13 +740,6 @@ $name artifact already exists, continuing...''');
     return thinnedArchiveDirectory;
   }
 
-  /// Deletes [directory], a temporary directory this wrapper created to stage
-  /// an upload. Uploads read the file before returning, so it's no longer
-  /// needed whether or not the upload succeeded.
-  void _deleteTempDirectory(Directory directory) {
-    if (directory.existsSync()) directory.deleteSync(recursive: true);
-  }
-
   /// Zips and uploads a Linux release bundle.
   Future<void> createLinuxReleaseArtifacts({
     required String appId,
@@ -762,7 +760,7 @@ $name artifact already exists, continuing...''');
         progress: createArtifactProgress,
       );
     } finally {
-      _deleteTempDirectory(zippedBundle.parent);
+      zippedBundle.parent.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -795,7 +793,7 @@ $name artifact already exists, continuing...''');
         progress: createArtifactProgress,
       );
     } finally {
-      _deleteTempDirectory(tempDir);
+      tempDir.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -819,7 +817,7 @@ $name artifact already exists, continuing...''');
     try {
       zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
     } finally {
-      _deleteTempDirectory(thinnedArchiveDirectory.parent);
+      thinnedArchiveDirectory.parent.deleteTemporarySync();
     }
     try {
       await _uploadReleaseArtifact(
@@ -834,7 +832,7 @@ $name artifact already exists, continuing...''');
         progress: createArtifactProgress,
       );
     } finally {
-      _deleteTempDirectory(zippedArchive.parent);
+      zippedArchive.parent.deleteTemporarySync();
     }
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
@@ -852,7 +850,7 @@ $name artifact already exists, continuing...''');
         progress: createArtifactProgress,
       );
     } finally {
-      _deleteTempDirectory(zippedRunner.parent);
+      zippedRunner.parent.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -880,7 +878,7 @@ $name artifact already exists, continuing...''');
         progress: createArtifactProgress,
       );
     } finally {
-      _deleteTempDirectory(zippedAppFrameworkFile.parent);
+      zippedAppFrameworkFile.parent.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -917,7 +915,7 @@ $name artifact already exists, continuing...''');
         progress: createSupplementProgress,
       );
     } finally {
-      _deleteTempDirectory(zippedSupplement.parent);
+      zippedSupplement.parent.deleteTemporarySync();
     }
     createSupplementProgress.complete();
   }

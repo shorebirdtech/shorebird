@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -202,8 +203,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
       return {Arch.x86_64: x64Bundle, Arch.arm64: arm64Bundle};
     } finally {
-      deleteTemporaryDirectory(releaseAppDirectory);
-      deleteTemporaryDirectory(diffBaseDirectory);
+      releaseAppDirectory.deleteTemporarySync();
+      diffBaseDirectory.deleteTemporarySync();
     }
   }
 

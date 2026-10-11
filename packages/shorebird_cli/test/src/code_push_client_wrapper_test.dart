@@ -23,22 +23,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'matchers.dart';
 import 'mocks.dart';
-
-/// Runs [body] with [Directory.systemTemp] redirected to [systemTemp], so a
-/// test can check what [body] left behind there.
-Future<void> runWithSystemTemp(
-  Directory systemTemp,
-  Future<void> Function() body,
-) => IOOverrides.runZoned(body, getSystemTempDirectory: () => systemTemp);
-
-/// A new, empty directory to stand in for [Directory.systemTemp].
-Directory createSystemTemp() {
-  final systemTemp = Directory.systemTemp.createTempSync();
-  addTearDown(() => systemTemp.deleteSync(recursive: true));
-  return systemTemp;
-}
 
 void main() {
   group('scoped', () {
@@ -1904,11 +1891,14 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       });
 
       group('createWindowsReleaseArtifacts', () {
-        late File releaseZip;
+        late Directory releaseDirectory;
         setUp(() {
-          releaseZip = File(
-            p.join(projectRoot.path, 'path', 'to', 'release.zip'),
+          releaseDirectory = Directory(
+            p.join(projectRoot.path, 'path', 'to', 'Release'),
           )..createSync(recursive: true);
+          File(
+            p.join(releaseDirectory.path, 'app.exe'),
+          ).writeAsStringSync('exe');
         });
 
         group('when createReleaseArtifact succeeds', () {
@@ -1932,7 +1922,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               () async => codePushClientWrapper.createWindowsReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                releaseZipPath: releaseZip.path,
+                releaseDirectory: releaseDirectory,
               ),
             );
 
@@ -1940,7 +1930,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             verifyNever(() => progress.fail(any()));
             verify(
               () => codePushClient.createReleaseArtifact(
-                artifactPath: releaseZip.path,
+                artifactPath: any(
+                  named: 'artifactPath',
+                  that: endsWith('.zip'),
+                ),
                 appId: appId,
                 releaseId: releaseId,
                 arch: primaryWindowsReleaseArtifactArch,
@@ -1950,6 +1943,22 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 podfileLockHash: null,
               ),
             ).called(1);
+          });
+
+          test('deletes the zipped release', () async {
+            final systemTemp = createSystemTemp();
+            await runWithSystemTemp(
+              systemTemp,
+              () => runWithOverrides(
+                () => codePushClientWrapper.createWindowsReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  releaseDirectory: releaseDirectory,
+                ),
+              ),
+            );
+
+            expect(systemTemp.listSync(), isEmpty);
           });
         });
       });

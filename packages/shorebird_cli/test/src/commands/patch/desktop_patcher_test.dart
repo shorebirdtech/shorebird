@@ -399,6 +399,22 @@ void main() {
             ),
           );
         });
+
+        test('deletes the extracted release', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: 'app-id',
+                releaseId: 42,
+                releaseArtifact: releaseArtifact,
+              ),
+            ),
+            throwsA(isA<ProcessExit>()),
+          );
+
+          expect(extractedReleaseTo, isNotNull);
+          expect(extractedReleaseTo!.existsSync(), isFalse);
+        });
       });
 
       group('when creating the diff succeeds', () {
@@ -438,6 +454,20 @@ void main() {
           expect(p.isWithin(appDirectory.path, releasePath), isFalse);
           expect(patchPath, equals(patchArtifact.path));
           expect(p.isWithin(appDirectory.path, patchPath), isTrue);
+        });
+
+        test('deletes the extracted release', () async {
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: 'app-id',
+              releaseId: 42,
+              releaseArtifact: releaseArtifact,
+            ),
+          );
+
+          expect(extractedReleaseTo, isNotNull);
+          expect(extractedReleaseTo!.existsSync(), isFalse);
+          expect(releaseArtifact.existsSync(), isTrue);
         });
 
         test('returns an x86_64 patch artifact', () async {
@@ -541,6 +571,27 @@ void main() {
 
         expect(version, equals('1.2.3'));
         expect(patcher.versionReadFrom, equals(extractedTo));
+      });
+
+      test('deletes the extracted release', () async {
+        Directory? extractedTo;
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((invocation) async {
+          extractedTo =
+              (invocation.namedArguments[#outputDirectory] as Directory)
+                ..createSync(recursive: true);
+        });
+
+        await runWithOverrides(
+          () => patcher.extractReleaseVersionFromArtifact(File('app.zip')),
+        );
+
+        expect(extractedTo, isNotNull);
+        expect(extractedTo!.existsSync(), isFalse);
       });
     });
   });
