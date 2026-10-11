@@ -522,6 +522,10 @@ $error''');
     );
     await prepareRelease(release: release, releaser: releaser);
     await releaser.uploadReleaseArtifacts(release: release, appId: appId);
+    await releaser.uploadSupplementArtifact(
+      appId: appId,
+      releaseId: release.id,
+    );
     await finalizeRelease(release: release, releaser: releaser);
 
     logger

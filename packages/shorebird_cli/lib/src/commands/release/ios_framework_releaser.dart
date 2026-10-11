@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -71,16 +70,13 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
-    final base64PublicKey = await getEncodedPublicKey();
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-    await artifactBuilder.buildIosFramework(
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
+    await runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildIosFramework(
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      ),
     );
-    verifyObfuscationMap();
 
     // Copy release xcframework to a new directory to avoid overwriting with
     // subsequent patch builds.
@@ -121,8 +117,6 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
       releaseId: release.id,
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

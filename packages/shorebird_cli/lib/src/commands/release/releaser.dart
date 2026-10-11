@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -77,9 +78,34 @@ To change the version of this release, change your app's version in your pubspec
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
+  ///
+  /// Implementations run their Flutter build through [runReleaseBuild].
   Future<FileSystemEntity> buildReleaseArtifacts();
 
+  /// Runs a release's Flutter [build] with the arguments every release build
+  /// shares, then checks the build produced what those arguments promised.
+  ///
+  /// [build] receives the user's forwarded arguments plus the
+  /// `--split-debug-info` default and obfuscation map options (see
+  /// [addSplitDebugInfoDefault] and [addObfuscationMapArgs]), and the encoded
+  /// public key. Once it returns, [verifyObfuscationMap] checks that an
+  /// obfuscated build saved its obfuscation map.
+  Future<T> runReleaseBuild<T>(
+    Future<T> Function(List<String> buildArgs, String? base64PublicKey) build,
+  ) async {
+    final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    await addObfuscationMapArgs(buildArgs);
+    final result = await build(buildArgs, base64PublicKey);
+    verifyObfuscationMap();
+    return result;
+  }
+
   /// Uploads the release artifacts to the CodePush server.
+  ///
+  /// The supplement artifact is uploaded separately, by
+  /// [uploadSupplementArtifact].
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
@@ -149,12 +175,13 @@ To change the version of this release, change your app's version in your pubspec
 
   /// Auto-adds --split-debug-info when --obfuscate is used without it.
   void addSplitDebugInfoDefault(List<String> buildArgs) {
-    if (useObfuscation &&
-        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
-      buildArgs.add(
-        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
-      );
-    }
+    final splitDebugInfo = splitDebugInfoDefault(
+      obfuscate: useObfuscation,
+      hasSplitDebugInfo: buildArgs.any(
+        (a) => a.startsWith('--split-debug-info'),
+      ),
+    );
+    if (splitDebugInfo != null) buildArgs.add(splitDebugInfo);
   }
 
   /// Adds obfuscation-related gen_snapshot options to [buildArgs].
@@ -250,7 +277,8 @@ To change the version of this release, change your app's version in your pubspec
   }
 
   /// Uploads the supplement artifact (e.g. obfuscation map) if one was
-  /// assembled. Call this at the end of [uploadReleaseArtifacts].
+  /// assembled. `shorebird release` calls this right after
+  /// [uploadReleaseArtifacts].
   ///
   // TODO(bdero): This is a separate network call from the primary artifact
   // upload, so an interruption between the two leaves the release without its

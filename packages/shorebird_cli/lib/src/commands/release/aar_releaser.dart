@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -69,17 +68,14 @@ class AarReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final base64PublicKey = await getEncodedPublicKey();
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-    await artifactBuilder.buildAar(
-      buildNumber: buildNumber,
-      targetPlatforms: architectures,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
+    await runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildAar(
+        buildNumber: buildNumber,
+        targetPlatforms: architectures,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+      ),
     );
-    verifyObfuscationMap();
 
     // Copy release AAR to a new directory to avoid overwriting with
     // subsequent patch builds.
@@ -125,8 +121,6 @@ class AarReleaser extends Releaser {
       extractedAarDir: extractedAarDir.path,
       architectures: architectures,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

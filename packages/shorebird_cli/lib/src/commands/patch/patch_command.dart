@@ -30,6 +30,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -628,18 +629,15 @@ Building with Flutter $flutterVersionString to determine the release version...
         extraBuildArgs.add('--extra-gen-snapshot-options=--strip');
       }
     }
-    // Flutter requires --split-debug-info with --obfuscate. Auto-add it
-    // if --obfuscate will be in the build args (from the user or from
-    // the obfuscation map injection above) but --split-debug-info is not.
-    final hasObfuscate =
-        results.flagPresent('obfuscate') ||
-        extraBuildArgs.contains('--obfuscate');
-    final hasSplitDebugInfo = results.optionPresent('split-debug-info');
-    if (hasObfuscate && !hasSplitDebugInfo) {
-      extraBuildArgs.add(
-        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
-      );
-    }
+    // --obfuscate may come from the user or from the obfuscation map
+    // injection above; either way it needs --split-debug-info, as on release.
+    final splitDebugInfo = splitDebugInfoDefault(
+      obfuscate:
+          results.flagPresent('obfuscate') ||
+          extraBuildArgs.contains('--obfuscate'),
+      hasSplitDebugInfo: results.optionPresent('split-debug-info'),
+    );
+    if (splitDebugInfo != null) extraBuildArgs.add(splitDebugInfo);
     patcher.extraBuildArgs = extraBuildArgs;
   }
 
