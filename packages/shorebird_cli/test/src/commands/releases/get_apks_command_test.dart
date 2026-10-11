@@ -100,6 +100,7 @@ void main() {
         () => artifactManager.downloadWithProgressUpdates(
           any(),
           message: any(named: 'message'),
+          outputPath: any(named: 'outputPath'),
         ),
       ).thenAnswer((_) async => File(''));
 
@@ -263,6 +264,7 @@ void main() {
           () => artifactManager.downloadWithProgressUpdates(
             any(),
             message: any(named: 'message'),
+            outputPath: any(named: 'outputPath'),
           ),
         ).thenThrow(exception);
       });
@@ -441,6 +443,56 @@ void main() {
             'apk(s) generated at ${lightCyan.wrap(apkPath)}';
         verify(() => logger.info(expectedMessage)).called(1);
       });
+
+      test('does not list apks left by an earlier run', () async {
+        final staleApk = File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'app',
+            'outputs',
+            'shorebird-apk',
+            'stale.apk',
+          ),
+        )..createSync(recursive: true);
+
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(ExitCode.success.code),
+        );
+
+        verifyNever(
+          () => logger.info(any(that: contains(p.basename(staleApk.path)))),
+        );
+      });
+    });
+
+    test('deletes the staged aab and apks', () async {
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(ExitCode.success.code),
+      );
+
+      final downloadPath =
+          verify(
+                () => artifactManager.downloadWithProgressUpdates(
+                  any(),
+                  message: any(named: 'message'),
+                  outputPath: captureAny(named: 'outputPath'),
+                ),
+              ).captured.single
+              as String;
+      expect(Directory(p.dirname(downloadPath)).existsSync(), isFalse);
+      final apksPath =
+          verify(
+                () => bundletool.buildApks(
+                  bundle: any(named: 'bundle'),
+                  output: captureAny(named: 'output'),
+                  universal: any(named: 'universal'),
+                ),
+              ).captured.single
+              as String;
+      expect(Directory(p.dirname(apksPath)).existsSync(), isFalse);
     });
 
     group('when user passes --no-universal', () {
