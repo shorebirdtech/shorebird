@@ -176,7 +176,7 @@ void main() {
       test('says so', () async {
         await runWithOverrides(command.run);
         verify(
-          () => logger.err('Patch $patchNumber is already rolled back'),
+          () => logger.err('Patch $patchNumber is already rolled back.'),
         ).called(1);
       });
 

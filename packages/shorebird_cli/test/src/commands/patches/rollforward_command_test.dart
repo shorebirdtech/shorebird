@@ -180,7 +180,7 @@ void main() {
         await runWithOverrides(command.run);
         verify(
           () => logger.err(
-            'Patch $patchNumber is already active (not rolled back)',
+            'Patch $patchNumber is already active (not rolled back).',
           ),
         ).called(1);
       });

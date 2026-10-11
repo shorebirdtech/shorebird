@@ -39,7 +39,7 @@ class RollbackCommand extends PatchRollbackStateCommand {
 
   @override
   String alreadyInStateMessage(int patchNumber) =>
-      'Patch $patchNumber is already rolled back';
+      'Patch $patchNumber is already rolled back.';
 
   @override
   Future<bool> changePatchState({

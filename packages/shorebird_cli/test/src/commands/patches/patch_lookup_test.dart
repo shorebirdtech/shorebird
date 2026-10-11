@@ -198,7 +198,7 @@ void main() {
       });
 
       group('when no patch has the number', () {
-        test('lists the available patches in human-readable mode', () {
+        test('lists the available patches as the hint', () {
           final result = runWithOverrides(
             () => command.findPatchOrReport(
               patches: patches,
@@ -209,11 +209,28 @@ void main() {
 
           expect(result.patch, isNull);
           expect(result.errorCode, equals(ExitCode.usage.code));
-          verify(() => logger.err('No patch found with number 5')).called(1);
-          verify(() => logger.info('Available patches: 1, 2')).called(1);
+          verify(
+            () => logger.err(
+              'No patch found with number 5 for release "$releaseVersion".',
+            ),
+          ).called(1);
+          verify(() => logger.info('Available patches: 1, 2.')).called(1);
         });
 
-        test('reports usage_error without the hint in --json mode', () async {
+        test('gives no hint when the release has no patches', () {
+          final result = runWithOverrides(
+            () => command.findPatchOrReport(
+              patches: const [],
+              patchNumber: 5,
+              releaseVersion: releaseVersion,
+            ),
+          );
+
+          expect(result.errorCode, equals(ExitCode.usage.code));
+          verifyNever(() => logger.info(any()));
+        });
+
+        test('reports the same message and hint in --json mode', () async {
           final (:exitCode, :json) = await captureJson(() async {
             final result = runWithOverrides(
               () => command.findPatchOrReport(
@@ -236,7 +253,7 @@ void main() {
               'No patch found with number 5 for release "$releaseVersion".',
             ),
           );
-          expect(error.containsKey('hint'), isFalse);
+          expect(error['hint'], equals('Available patches: 1, 2.'));
           verifyNever(() => logger.info(any()));
         });
       });

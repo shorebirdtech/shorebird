@@ -1,8 +1,6 @@
 import 'package:collection/collection.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/json_output.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -49,9 +47,8 @@ mixin PatchLookup on ShorebirdCommand {
 
   /// Finds patch [patchNumber] among [patches] of release [releaseVersion].
   ///
-  /// When there is no such patch, reports it as a usage error (listing the
-  /// available patch numbers in human-readable mode) and returns its exit
-  /// code.
+  /// When there is no such patch, reports it as a usage error (with the
+  /// available patch numbers as the hint) and returns its exit code.
   ({ReleasePatch? patch, int? errorCode}) findPatchOrReport({
     required List<ReleasePatch> patches,
     required int patchNumber,
@@ -60,20 +57,13 @@ mixin PatchLookup on ShorebirdCommand {
     final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
     if (patch != null) return (patch: patch, errorCode: null);
 
-    if (isJsonMode) {
-      emitJsonError(
-        code: JsonErrorCode.usageError,
-        message:
-            'No patch found with number $patchNumber '
-            'for release "$releaseVersion".',
-      );
-    } else {
-      logger
-        ..err('No patch found with number $patchNumber')
-        ..info(
-          'Available patches: ${patches.map((p) => p.number).join(', ')}',
-        );
-    }
-    return (patch: null, errorCode: ExitCode.usage.code);
+    final available = patches.map((p) => p.number).join(', ');
+    final errorCode = reportError(
+      message:
+          'No patch found with number $patchNumber '
+          'for release "$releaseVersion".',
+      hint: available.isEmpty ? null : 'Available patches: $available.',
+    );
+    return (patch: null, errorCode: errorCode);
   }
 }

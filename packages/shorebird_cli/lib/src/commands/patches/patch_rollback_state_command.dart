@@ -124,8 +124,7 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     if (changeError != null) return changeError;
 
     if (!changed && results['require-change'] as bool) {
-      final message = alreadyInStateMessage(patchNumber);
-      return reportError(message: message, jsonMessage: '$message.');
+      return reportError(message: alreadyInStateMessage(patchNumber));
     }
 
     final updatedPatch = patch.copyWith(isRolledBack: targetIsRolledBack);

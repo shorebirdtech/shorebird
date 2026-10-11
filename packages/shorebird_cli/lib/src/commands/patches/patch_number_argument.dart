@@ -17,8 +17,7 @@ mixin PatchNumberArgument on ShorebirdCommand {
     if (patchNumber != null) return (patchNumber: patchNumber, errorCode: null);
 
     final errorCode = reportError(
-      message: '"$arg" is not a valid patch number',
-      jsonMessage: '"$arg" is not a valid patch number.',
+      message: '"$arg" is not a valid patch number.',
       hint: 'Patch numbers are integers, e.g. --$option 1.',
     );
     return (patchNumber: null, errorCode: errorCode);

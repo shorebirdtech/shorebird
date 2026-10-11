@@ -50,7 +50,7 @@ class _TestCommand extends PatchRollbackStateCommand {
 
   @override
   String alreadyInStateMessage(int patchNumber) =>
-      'Patch $patchNumber is already flipped';
+      'Patch $patchNumber is already flipped.';
 
   @override
   Future<bool> changePatchState({
@@ -256,7 +256,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('"one" is not a valid patch number'),
+          () => logger.err('"one" is not a valid patch number.'),
         ).called(1);
         verifyNever(
           () => codePushClientWrapper.getRelease(
@@ -282,10 +282,13 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('No patch found with number $patchNumber'),
+          () => logger.err(
+            'No patch found with number $patchNumber '
+            'for release "$releaseVersion".',
+          ),
         ).called(1);
         verify(
-          () => logger.info('Available patches: ${otherPatch.number}'),
+          () => logger.info('Available patches: ${otherPatch.number}.'),
         ).called(1);
         expect(command.calls, isEmpty);
       });
@@ -404,7 +407,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         verify(
-          () => logger.info('Patch $patchNumber is already flipped'),
+          () => logger.info('Patch $patchNumber is already flipped.'),
         ).called(1);
         verify(() => logger.info('Rolled back: yes')).called(1);
         verifyNever(() => logger.success(any()));
@@ -426,7 +429,7 @@ void main() {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.usage.code));
           verify(
-            () => logger.err('Patch $patchNumber is already flipped'),
+            () => logger.err('Patch $patchNumber is already flipped.'),
           ).called(1);
         });
 
