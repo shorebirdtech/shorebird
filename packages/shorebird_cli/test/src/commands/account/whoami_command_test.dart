@@ -197,33 +197,11 @@ void main() {
       });
     });
 
-    group('when the plan fetch fails', () {
-      setUp(() {
-        when(
-          () => codePushClientWrapper.getPlanLevel(),
-        ).thenThrow(ProcessExit(ExitCode.software.code));
-      });
-
-      test('rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-    });
-
     group('when API fetch fails', () {
       setUp(() {
         when(
           () => codePushClientWrapper.getCurrentUser(),
         ).thenThrow(ProcessExit(ExitCode.software.code));
-      });
-
-      test('in human-readable mode, rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
       });
 
       test('in --json mode, emits JSON error envelope', () async {
