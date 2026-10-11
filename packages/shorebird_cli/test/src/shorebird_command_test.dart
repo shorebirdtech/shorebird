@@ -476,6 +476,23 @@ void main() {
           );
           expect(captured, isEmpty);
         });
+
+        test('rethrows a failed precondition rather than reporting it as '
+            'its own error', () async {
+          final failure = PreconditionFailedExit(UserNotAuthorizedException());
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw failure),
+                jsonMode: true,
+              ),
+              captured: captured,
+            ),
+            throwsA(same(failure)),
+          );
+          expect(captured, isEmpty);
+        });
       });
     });
   });

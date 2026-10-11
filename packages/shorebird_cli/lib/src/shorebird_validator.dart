@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -22,6 +23,18 @@ abstract interface class PreconditionFailedException implements Exception {
 
   /// How to fix it, as plain text, if there is a known fix.
   String? get hint;
+}
+
+/// {@template precondition_failed_exit}
+/// A [ProcessExit] for a failed precondition, carrying the [failure] so the
+/// command runner can report why with `--json` instead of just the exit code.
+/// {@endtemplate}
+class PreconditionFailedExit extends ProcessExit {
+  /// {@macro precondition_failed_exit}
+  PreconditionFailedExit(this.failure) : super(failure.exitCode.code);
+
+  /// The precondition that failed.
+  final PreconditionFailedException failure;
 }
 
 /// An exception thrown when Shorebird has not been initialized.

@@ -246,6 +246,10 @@ abstract class ShorebirdCommand extends Command<int> {
     try {
       await body();
       return null;
+    } on PreconditionFailedExit {
+      // A failed precondition reports itself (as precondition_failed); don't
+      // relabel it as this call's error.
+      rethrow;
     } on ProcessExit catch (e) {
       if (!isJsonMode) rethrow;
       emitJsonError(code: code, message: message);

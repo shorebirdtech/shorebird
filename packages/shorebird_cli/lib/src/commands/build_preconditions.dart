@@ -28,18 +28,6 @@ Future<void> assertBuildPreconditions({
   }
 }
 
-/// {@template precondition_failed_exit}
-/// A [ProcessExit] for a failed precondition, carrying the [failure] so the
-/// command runner can report why with `--json` instead of just the exit code.
-/// {@endtemplate}
-class PreconditionFailedExit extends ProcessExit {
-  /// {@macro precondition_failed_exit}
-  PreconditionFailedExit(this.failure) : super(failure.exitCode.code);
-
-  /// The precondition that failed.
-  final PreconditionFailedException failure;
-}
-
 /// Exits with a config error unless pubspec.yaml declares the
 /// `androidPackage` that Android archive (aar) releases and patches need.
 void assertAndroidPackageNameConfigured() {
