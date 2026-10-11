@@ -446,15 +446,10 @@ void main() {
 
         group('when Shorebird credential refresh fails', () {
           late AuthenticatedClient client;
-          setUp(() {
-            when(
-              () => httpClient.post(
-                any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body'),
-              ),
-            ).thenThrow(Exception('refresh failed'));
+          late List<oauth2.AccessCredentials> onRefreshCredentialsCalls;
 
+          setUp(() {
+            onRefreshCredentialsCalls = [];
             final expiredShorebirdCredentials = oauth2.AccessCredentials(
               oauth2.AccessToken(
                 'Bearer',
@@ -469,31 +464,159 @@ void main() {
               credentials: expiredShorebirdCredentials,
               httpClient: httpClient,
               authServiceUri: Uri.parse('https://auth.shorebird.dev'),
+              onRefreshCredentials: onRefreshCredentialsCalls.add,
             );
           });
 
-          test('exits and logs correctly', () async {
+          void answerRefreshWith(http.Response response) {
+            when(
+              () => httpClient.post(
+                any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+              ),
+            ).thenAnswer((_) async => response);
+          }
+
+          Future<void> expectExit(ExitCode code) async {
             await expectLater(
               () => runWithOverrides(
-                () => client.get(
-                  Uri.parse('https://example.com'),
-                ),
+                () => client.get(Uri.parse('https://example.com')),
               ),
-              exitsWithCode(ExitCode.software),
+              exitsWithCode(code),
             );
-            verify(
-              () => logger.err(
-                'Failed to refresh credentials.',
+            verifyNever(() => httpClient.send(any()));
+            expect(onRefreshCredentialsCalls, isEmpty);
+          }
+
+          // Any RFC 6749 section 5.2 error response: the credentials will
+          // not refresh again.
+          group('with an OAuth error response', () {
+            for (final (status, code, description, shown) in [
+              (400, 'invalid_grant', null, 'invalid_grant'),
+              (
+                401,
+                'invalid_client',
+                'Unknown client',
+                'invalid_client: Unknown client',
               ),
-            ).called(1);
-            verify(
-              () => logger.info(
-                '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
-              ),
-            ).called(1);
-            verify(
-              () => logger.detail('Exception: refresh failed'),
-            ).called(1);
+              (400, 'unauthorized_client', null, 'unauthorized_client'),
+              // A 429 is a 4xx like any other once it carries an OAuth error.
+              (429, 'rate_limited', null, 'rate_limited'),
+            ]) {
+              test(
+                'asks the user to log in again on a $status $code',
+                () async {
+                  answerRefreshWith(
+                    http.Response(
+                      jsonEncode({
+                        'error': code,
+                        'error_description': ?description,
+                      }),
+                      status,
+                    ),
+                  );
+
+                  await expectExit(ExitCode.software);
+                  verify(
+                    () => logger.err(
+                      'The Shorebird auth service rejected your stored '
+                      'credentials ($shown).',
+                    ),
+                  ).called(1);
+                  verify(
+                    () => logger.info(
+                      'Run ${lightCyan.wrap('shorebird login')} to log in '
+                      'again.',
+                    ),
+                  ).called(1);
+                },
+              );
+            }
+          });
+
+          // No usable answer says nothing about the credentials.
+          group('without a usable answer', () {
+            Future<void> expectTransient(String reason) async {
+              await expectExit(ExitCode.tempFail);
+              verify(
+                () => logger.err(
+                  'Could not refresh your Shorebird credentials: $reason',
+                ),
+              ).called(1);
+              verifyNever(
+                () => logger.info(any(that: contains('shorebird login'))),
+              );
+            }
+
+            void verifyCheckNetwork() {
+              verify(
+                () => logger.info(
+                  'Your login is unchanged. Check your network connection '
+                  'and try again.',
+                ),
+              ).called(1);
+            }
+
+            test('reports a 5xx', () async {
+              answerRefreshWith(
+                http.Response(
+                  jsonEncode({'error': 'server_error'}),
+                  HttpStatus.badGateway,
+                ),
+              );
+              await expectTransient('The Shorebird auth service answered 502.');
+              verifyCheckNetwork();
+            });
+
+            test('reports a 429 that is not an OAuth error response', () async {
+              answerRefreshWith(
+                http.Response('Too Many Requests', HttpStatus.tooManyRequests),
+              );
+              await expectTransient('Too many requests.');
+              verify(
+                () => logger.info(
+                  'Your login is unchanged. Try again shortly.',
+                ),
+              ).called(1);
+            });
+
+            test('reports a 4xx that is not an OAuth error response', () async {
+              answerRefreshWith(
+                http.Response('<html>nope</html>', HttpStatus.forbidden),
+              );
+              await expectTransient('The Shorebird auth service answered 403.');
+              verifyCheckNetwork();
+            });
+
+            test('reports a 200 that is not a token response', () async {
+              answerRefreshWith(
+                http.Response('<html>ok</html>', HttpStatus.ok),
+              );
+              await expectTransient(
+                'The auth service sent an unexpected token response.',
+              );
+              verifyCheckNetwork();
+            });
+
+            test('reports a network failure', () async {
+              when(
+                () => httpClient.post(
+                  any(),
+                  headers: any(named: 'headers'),
+                  body: any(named: 'body'),
+                ),
+              ).thenThrow(const SocketException('no route to host'));
+              await expectTransient(
+                'Could not reach the Shorebird auth service.',
+              );
+              verifyCheckNetwork();
+              verify(
+                () => logger.detail(
+                  any(that: contains('no route to host')),
+                ),
+              ).called(1);
+            });
           });
         });
       });
@@ -712,15 +835,22 @@ void main() {
         });
       });
 
-      // An expired or revoked refresh token comes back `invalid_grant`
-      // (RFC 6749 section 5.2).
+      // Any RFC 6749 section 5.2 error response means the stored credentials
+      // will not refresh, whichever code it carries.
       group('when the refresh is refused', () {
         setUp(writeCredentials);
 
-        for (final status in [HttpStatus.badRequest, HttpStatus.unauthorized]) {
-          test('returns false for a $status invalid_grant', () async {
+        for (final (status, code) in [
+          (HttpStatus.badRequest, 'invalid_grant'),
+          (HttpStatus.unauthorized, 'invalid_grant'),
+          (HttpStatus.unauthorized, 'invalid_client'),
+          (HttpStatus.badRequest, 'invalid_request'),
+          (HttpStatus.badRequest, 'unauthorized_client'),
+          (HttpStatus.tooManyRequests, 'rate_limited'),
+        ]) {
+          test('returns false for a $status $code', () async {
             answerRefreshWith(
-              http.Response(jsonEncode({'error': 'invalid_grant'}), status),
+              http.Response(jsonEncode({'error': code}), status),
             );
             auth = buildAuth();
             expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
@@ -728,7 +858,8 @@ void main() {
         }
       });
 
-      // A 4xx that is not `invalid_grant` says nothing about the credentials.
+      // A 4xx that is not an OAuth error response, a plain 429 included,
+      // says nothing about the credentials.
       group('when the auth service refuses the request itself', () {
         setUp(writeCredentials);
 
@@ -747,21 +878,9 @@ void main() {
           );
         }
 
-        test('rethrows a 429 rate_limited', () async {
+        test('rethrows a 429 that is not an OAuth error response', () async {
           await expectRethrows(
-            http.Response(
-              jsonEncode({'error': 'rate_limited'}),
-              HttpStatus.tooManyRequests,
-            ),
-          );
-        });
-
-        test('rethrows a 400 invalid_request', () async {
-          await expectRethrows(
-            http.Response(
-              jsonEncode({'error': 'invalid_request'}),
-              HttpStatus.badRequest,
-            ),
+            http.Response('Too Many Requests', HttpStatus.tooManyRequests),
           );
         });
 
@@ -790,6 +909,16 @@ void main() {
               ),
             ),
           );
+        });
+
+        test('rethrows a 200 that is not a token response', () async {
+          answerRefreshWith(http.Response('<html>ok</html>', HttpStatus.ok));
+          auth = buildAuth();
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(isA<ShorebirdAuthException>()),
+          );
+          expect(File(auth.credentialsFilePath).existsSync(), isTrue);
         });
 
         test('rethrows a network failure', () async {

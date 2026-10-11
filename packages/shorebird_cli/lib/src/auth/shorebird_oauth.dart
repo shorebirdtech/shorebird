@@ -46,25 +46,31 @@ class ShorebirdAuthException implements Exception {
   /// Whether the auth service refused the credentials themselves, as opposed
   /// to failing to answer.
   ///
-  /// Only `invalid_grant` says that: the grant -- here, the refresh token --
-  /// is expired, revoked, or was issued to someone else (RFC 6749 section
-  /// 5.2). The status code alone is not enough. A token endpoint also answers
-  /// 4xx for rate limiting (429), for a malformed request (400
-  /// `invalid_request`, `unsupported_grant_type`), or for the wrong method
-  /// (405), none of which says anything about the credentials. A 5xx, or no
-  /// answer at all, says the service is having a bad day. Reading any of
-  /// those as a rejection would log a user out because they were rate limited
-  /// or their wifi dropped.
-  bool get isCredentialRejection => oauthError == 'invalid_grant';
-
-  /// Whether the auth service turned the request away for coming too often.
+  /// True for any RFC 6749 section 5.2 error response: a 4xx whose JSON body
+  /// carries an `error` code, whichever code it is (`invalid_grant`,
+  /// `invalid_client`, `invalid_request`, `unauthorized_client`, ...),
+  /// whichever 4xx it comes with. This is the rule the AppAuth reference
+  /// clients follow: any OAuth error from the token endpoint invalidates the
+  /// stored authorization, and network and other transient errors do not.
   ///
-  /// Keys off the `rate_limited` error code, falling back to a bare 429 only
-  /// when the body is not an OAuth error response, as when a proxy in front
-  /// of the auth service does the limiting.
+  /// Anything without a usable answer is not a rejection: no answer, a 5xx,
+  /// a 4xx whose body is not an OAuth error response (such as a plain 429),
+  /// or a 200 that is not a valid token response.
+  bool get isCredentialRejection {
+    final status = statusCode;
+    return oauthError != null &&
+        status != null &&
+        status >= 400 &&
+        status < 500;
+  }
+
+  /// Whether the auth service turned the request away for coming too often,
+  /// without saying anything about the credentials: a 429 whose body is not
+  /// an OAuth error response.
+  ///
+  /// A 429 carrying an OAuth `error` is a [isCredentialRejection] instead.
   bool get isRateLimited =>
-      oauthError == 'rate_limited' ||
-      (oauthError == null && statusCode == HttpStatus.tooManyRequests);
+      oauthError == null && statusCode == HttpStatus.tooManyRequests;
 
   @override
   String toString() => 'ShorebirdAuthException: $message';
@@ -612,12 +618,26 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
 ///   "expires_in": 900
 /// }
 /// ```
+///
+/// Throws [ShorebirdAuthException] for a body of any other shape.
 oauth2.AccessCredentials _parseTokenResponse(String responseBody) {
-  final json = jsonDecode(responseBody) as Map<String, dynamic>;
-  final accessTokenValue = json['access_token'] as String;
-  final refreshToken = json['refresh_token'] as String?;
-  final tokenType = json['token_type'] as String? ?? 'Bearer';
-  final expiresIn = json['expires_in'] as int;
+  final Object? json;
+  try {
+    json = jsonDecode(responseBody);
+  } on FormatException {
+    throw _unexpectedTokenResponse;
+  }
+  if (json is! Map<String, dynamic>) throw _unexpectedTokenResponse;
+  final accessTokenValue = json['access_token'];
+  final refreshToken = json['refresh_token'];
+  final tokenType = json['token_type'] ?? 'Bearer';
+  final expiresIn = json['expires_in'];
+  if (accessTokenValue is! String ||
+      refreshToken is! String? ||
+      tokenType is! String ||
+      expiresIn is! int) {
+    throw _unexpectedTokenResponse;
+  }
 
   // Validate the access token is a well-formed JWT.
   final Jwt jwt;
@@ -646,6 +666,10 @@ oauth2.AccessCredentials _parseTokenResponse(String responseBody) {
     [],
   );
 }
+
+const _unexpectedTokenResponse = ShorebirdAuthException(
+  'The auth service sent an unexpected token response.',
+);
 
 /// Throws a [ShorebirdAuthException] carrying the status, OAuth `error` code
 /// and body of [response], prefixed with [failure], unless the auth service

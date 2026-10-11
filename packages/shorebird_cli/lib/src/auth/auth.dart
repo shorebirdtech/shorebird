@@ -98,17 +98,65 @@ class AuthenticatedClient extends http.BaseClient {
         authBaseUrl: _authServiceUri,
       );
     } on Exception catch (e, s) {
+      if (e is shorebird_oauth.ShorebirdAuthException &&
+          e.isCredentialRejection) {
+        // The auth service answered with an OAuth error: these credentials
+        // will not refresh again, whichever error code it was.
+        logger
+          ..err(
+            'The Shorebird auth service rejected your stored credentials '
+            '(${_describeOAuthError(e)}).',
+          )
+          ..info('Run ${lightCyan.wrap('shorebird login')} to log in again.')
+          ..detail(e.toString())
+          ..detail(s.toString());
+
+        throw ProcessExit(ExitCode.software.code);
+      }
+
+      // No usable answer, which says nothing about the stored credentials.
+      // Keep them and let the next command try again.
+      final isRateLimited =
+          e is shorebird_oauth.ShorebirdAuthException && e.isRateLimited;
       logger
-        ..err('Failed to refresh credentials.')
+        ..err(
+          'Could not refresh your Shorebird credentials: '
+          '${_describeTransientFailure(e)}',
+        )
         ..info(
-          '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
+          isRateLimited
+              ? 'Your login is unchanged. Try again shortly.'
+              : 'Your login is unchanged. Check your network connection and '
+                    'try again.',
         )
         ..detail(e.toString())
         ..detail(s.toString());
 
-      throw ProcessExit(ExitCode.software.code);
+      throw ProcessExit(ExitCode.tempFail.code);
     }
   }
+}
+
+/// The OAuth `error` code of [error], with its `error_description` where the
+/// auth service sent one.
+String _describeOAuthError(shorebird_oauth.ShorebirdAuthException error) {
+  final description = error.oauthErrorDescription;
+  return [
+    '${error.oauthError}',
+    if (description != null) ': $description',
+  ].join();
+}
+
+/// Why a refresh got no usable answer, as a sentence, without echoing a
+/// response body.
+String _describeTransientFailure(Exception error) {
+  if (error is! shorebird_oauth.ShorebirdAuthException) {
+    return 'Could not reach the Shorebird auth service.';
+  }
+  if (error.isRateLimited) return 'Too many requests.';
+  final status = error.statusCode;
+  if (status != null) return 'The Shorebird auth service answered $status.';
+  return error.message;
 }
 
 /// An HTTP client that authenticates requests using an API key.
@@ -200,8 +248,12 @@ class Auth {
   /// or been revoked. Refreshed credentials are persisted so the check doubles
   /// as a refresh.
   ///
+  /// Returns false when the auth service answered the refresh with any OAuth
+  /// error response (see
+  /// [shorebird_oauth.ShorebirdAuthException.isCredentialRejection]).
+  ///
   /// Throws when the auth service could not be reached, or answered with
-  /// something other than a refusal of these credentials. That says nothing
+  /// something other than an OAuth error response. That says nothing
   /// about whether they are still good, and answering `false` would log a
   /// user out for running `shorebird login` off wifi.
   Future<bool> hasValidCredentials() async {
