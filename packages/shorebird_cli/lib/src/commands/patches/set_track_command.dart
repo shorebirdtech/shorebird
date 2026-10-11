@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 const _jsonExample =
     'shorebird patches set-track --release 1.0.0+1 --patch 1 '
@@ -100,12 +101,26 @@ class SetTrackCommand extends ShorebirdCommand
     );
     if (patch == null) return lookupError!;
 
+    // Already on the requested track: nothing to do, which is success, as it
+    // is for rollback and rollforward.
     if (patch.channel == targetChannel) {
-      return reportError(
-        message: 'Patch ${patch.number} is already in channel $targetChannel',
-        jsonMessage:
-            'Patch $patchNumber is already in channel "$targetChannel".',
+      if (isJsonMode) {
+        emitJsonSuccess(
+          _successJson(
+            appId: appId,
+            releaseVersion: releaseVersion,
+            patch: patch,
+            track: targetChannel,
+            changed: false,
+          ),
+        );
+        return ExitCode.success.code;
+      }
+      logger.info(
+        'Patch $patchNumber on release $releaseVersion is already in channel '
+        '$targetChannel.',
       );
+      return ExitCode.success.code;
     }
 
     var channel = await codePushClientWrapper.maybeGetChannel(
@@ -158,11 +173,15 @@ class SetTrackCommand extends ShorebirdCommand
     if (promoteError != null) return promoteError;
 
     if (isJsonMode) {
-      emitJsonSuccess({
-        'release_version': releaseVersion,
-        'patch_number': patchNumber,
-        'track': targetChannel,
-      });
+      emitJsonSuccess(
+        _successJson(
+          appId: appId,
+          releaseVersion: releaseVersion,
+          patch: patch.copyWith(channel: targetChannel),
+          track: targetChannel,
+          changed: true,
+        ),
+      );
       return ExitCode.success.code;
     }
 
@@ -173,4 +192,19 @@ class SetTrackCommand extends ShorebirdCommand
 
     return ExitCode.success.code;
   }
+
+  Map<String, Object?> _successJson({
+    required String appId,
+    required String releaseVersion,
+    required ReleasePatch patch,
+    required String track,
+    required bool changed,
+  }) => {
+    'app_id': appId,
+    'release_version': releaseVersion,
+    'patch_number': patch.number,
+    'track': track,
+    'changed': changed,
+    'patch': patch.toJson(),
+  };
 }

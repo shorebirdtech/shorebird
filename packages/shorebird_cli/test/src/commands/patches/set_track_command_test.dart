@@ -297,14 +297,23 @@ void main() {
         );
       });
 
-      test('exits with usage error', () async {
+      test('succeeds without promoting the patch', () async {
         final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
+        expect(result, equals(ExitCode.success.code));
         verify(
-          () => logger.err(
-            'Patch $patchNumber is already in channel ${targetChannel.name}',
+          () => logger.info(
+            'Patch $patchNumber on release $releaseVersion is already in '
+            'channel ${targetChannel.name}.',
           ),
         ).called(1);
+        verifyNever(() => logger.err(any()));
+        verifyNever(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+          ),
+        );
       });
     });
 
@@ -490,9 +499,14 @@ void main() {
           expect(exitCode, equals(ExitCode.success.code));
           expect(json['status'], 'success');
           final data = json['data'] as Map<String, dynamic>;
+          expect(data['app_id'], appId);
           expect(data['release_version'], releaseVersion);
           expect(data['patch_number'], patchNumber);
           expect(data['track'], targetChannel.name);
+          expect(data['changed'], isTrue);
+          final patch = data['patch'] as Map<String, dynamic>;
+          expect(patch['number'], patchNumber);
+          expect(patch['channel'], targetChannel.name);
         },
       );
 
@@ -616,15 +630,27 @@ void main() {
           );
         });
 
-        test('emits usage_error envelope', () async {
+        test('emits success with changed: false', () async {
           final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
           );
-          expect(exitCode, equals(ExitCode.usage.code));
-          expect(json['status'], 'error');
-          expect(
-            (json['error'] as Map<String, dynamic>)['code'],
-            'usage_error',
+          expect(exitCode, equals(ExitCode.success.code));
+          expect(json['status'], 'success');
+          final data = json['data'] as Map<String, dynamic>;
+          expect(data['app_id'], appId);
+          expect(data['release_version'], releaseVersion);
+          expect(data['patch_number'], patchNumber);
+          expect(data['track'], targetChannel.name);
+          expect(data['changed'], isFalse);
+          final patch = data['patch'] as Map<String, dynamic>;
+          expect(patch['number'], patchNumber);
+          expect(patch['channel'], targetChannel.name);
+          verifyNever(
+            () => codePushClientWrapper.promotePatch(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              channel: any(named: 'channel'),
+            ),
           );
         });
       });

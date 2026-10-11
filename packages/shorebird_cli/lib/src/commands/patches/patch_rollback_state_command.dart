@@ -132,6 +132,7 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
 
     if (isJsonMode) {
       emitJsonSuccess({
+        'app_id': appId,
         'release_version': releaseVersion,
         'patch_number': patchNumber,
         'action': name,
