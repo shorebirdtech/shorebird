@@ -2,6 +2,8 @@ export 'src/redis_client.dart'
     show
         RedisClient,
         RedisCommandOptions,
+        RedisCredentials,
+        RedisCredentialsProvider,
         RedisException,
         RedisJson,
         RedisLogger,
