@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' hide Platform;
+import 'dart:io' as io show Platform;
 
 import 'package:cli_util/cli_util.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as oauth2;
@@ -126,11 +127,12 @@ void main() {
       );
     }
 
-    Auth buildAuth() {
+    Auth buildAuth({RunProcessSync? runProcessSync}) {
       return runWithOverrides(
         () => Auth(
           credentialsDir: credentialsDir,
           httpClient: httpClient,
+          runProcessSync: runProcessSync,
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
@@ -208,7 +210,51 @@ void main() {
           test('returns false', () {
             expect(auth.isAuthenticated, isFalse);
           });
+
+          test('warns that the credentials could not be read', () {
+            verify(
+              () => logger.warn(
+                any(that: contains('could not be read')),
+              ),
+            ).called(1);
+          });
         });
+
+        for (final (description, contents) in [
+          ('a JSON value that is not an object', '[]'),
+          ('a field of the wrong type', '{"accessToken": 42}'),
+          (
+            'a non-UTC expiry',
+            '{"accessToken":{"type":"Bearer","data":"x",'
+                '"expiry":"2024-01-01T00:00:00"},"scopes":[]}',
+          ),
+        ]) {
+          group('when credentials are $description', () {
+            setUp(() {
+              File(
+                p.join(credentialsDir, 'credentials.json'),
+              ).writeAsStringSync(contents);
+              auth = buildAuth();
+            });
+
+            test('warns and treats the user as logged out', () {
+              expect(auth.isAuthenticated, isFalse);
+              verify(
+                () => logger.warn(
+                  any(that: contains('could not be read')),
+                ),
+              ).called(1);
+            });
+
+            test('logout still removes the file', () async {
+              await runWithOverrides(auth.logout);
+              expect(
+                File(p.join(credentialsDir, 'credentials.json')).existsSync(),
+                isFalse,
+              );
+            });
+          });
+        }
 
         group('when stored credentials were issued by Google', () {
           setUp(() {
@@ -762,6 +808,47 @@ void main() {
     });
 
     group('login', () {
+      test(
+        'writes the credentials file readable by the owner only',
+        () async {
+          final credentialsFile = File(
+            p.join(credentialsDir, 'credentials.json'),
+          )..writeAsStringSync('');
+          // Start from a world-readable file, as older CLIs wrote it.
+          Process.runSync('chmod', ['644', credentialsFile.path]);
+
+          await runWithOverrides(() => auth.login(prompt: (_) {}));
+
+          expect(credentialsFile.statSync().mode & 0x1ff, equals(0x180));
+        },
+        skip: io.Platform.isWindows
+            ? 'Windows has no POSIX file modes.'
+            : false,
+      );
+
+      test(
+        'logs at detail level and still writes when chmod fails',
+        () async {
+          auth = buildAuth(
+            runProcessSync: (executable, arguments) =>
+                ProcessResult(0, 1, '', 'Operation not permitted'),
+          );
+
+          await runWithOverrides(() => auth.login(prompt: (_) {}));
+
+          final credentialsPath = p.join(credentialsDir, 'credentials.json');
+          verify(
+            () => logger.detail(
+              'Failed to restrict permissions on $credentialsPath '
+              '(chmod exited 1): Operation not permitted',
+            ),
+          ).called(1);
+          expect(File(credentialsPath).existsSync(), isTrue);
+          expect(buildAuth().isAuthenticated, isTrue);
+        },
+        skip: io.Platform.isWindows ? 'Windows does not run chmod.' : false,
+      );
+
       test(
         'should set the email when claims are valid and current user exists',
         () async {
