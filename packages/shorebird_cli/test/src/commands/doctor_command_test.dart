@@ -543,6 +543,9 @@ Android Toolchain
         expect(v['name'], equals('Test Validator'));
         expect(v['ok'], isTrue);
         expect(v['issues'], isEmpty);
+        // JSON mode checks the same validators as human mode.
+        verify(() => doctor.validate([validator])).called(1);
+        verify(() => networkChecker.reachability()).called(1);
       });
 
       test('emits null flutter_version when lookup fails', () async {
