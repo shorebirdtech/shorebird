@@ -43,12 +43,6 @@ class IosPatcher extends Patcher
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
-  String get primaryReleaseArtifactArch => 'xcarchive';
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'ios_supplement';
-
-  @override
   List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
 
   @override

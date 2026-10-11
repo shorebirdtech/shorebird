@@ -64,6 +64,37 @@ enum ReleaseType {
         return ReleasePlatform.windows;
     }
   }
+
+  /// The server-side arch of this release type's primary release artifact,
+  /// the one patches are built against.
+  String get primaryArtifactArch => switch (this) {
+    ReleaseType.aar => 'aar',
+    ReleaseType.android => 'aab',
+    ReleaseType.ios => 'xcarchive',
+    ReleaseType.iosFramework => 'xcframework',
+    // A zipped copy of `build/linux/x64/release/bundle`, as produced by
+    // `flutter build linux --release`. At its top level it contains data/
+    // (flutter assets), lib/ (libapp.so and libflutter_linux_gtk.so) and the
+    // executable.
+    ReleaseType.linux => 'bundle',
+    ReleaseType.macos => 'app',
+    // A zipped copy of `build/windows/x64/runner/Release`, as produced by
+    // `flutter build windows --release`. At its top level it contains
+    // flutter.dll, the app's .exe and data/ (flutter assets and app.so).
+    ReleaseType.windows => 'win_archive',
+  };
+
+  /// The server-side arch of this release type's supplement artifact, which
+  /// holds build outputs (such as obfuscation maps) that patches need.
+  String get supplementArtifactArch => switch (this) {
+    ReleaseType.aar => 'aar_supplement',
+    ReleaseType.android => 'android_supplement',
+    ReleaseType.ios => 'ios_supplement',
+    ReleaseType.iosFramework => 'ios_framework_supplement',
+    ReleaseType.linux => 'linux_supplement',
+    ReleaseType.macos => 'macos_supplement',
+    ReleaseType.windows => 'windows_supplement',
+  };
 }
 
 /// Extension on [ArgResults] to get the release types from the CLI arguments.

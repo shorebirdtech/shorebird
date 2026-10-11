@@ -98,10 +98,11 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// The identifier used for the "primary" release artifact, usually a bundle.
   /// For example, 'aab' for Android, 'xcarchive' for iOS.
-  String get primaryReleaseArtifactArch;
+  String get primaryReleaseArtifactArch => releaseType.primaryArtifactArch;
 
   /// The identifier used for any supplementary release artifacts.
-  String? get supplementaryReleaseArtifactArch => null;
+  String? get supplementaryReleaseArtifactArch =>
+      releaseType.supplementArtifactArch;
 
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;

@@ -23,12 +23,6 @@ class LinuxPatcher extends DesktopPatcher {
   });
 
   @override
-  String get primaryReleaseArtifactArch => primaryLinuxReleaseArtifactArch;
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'linux_supplement';
-
-  @override
   ReleaseType get releaseType => ReleaseType.linux;
 
   @override

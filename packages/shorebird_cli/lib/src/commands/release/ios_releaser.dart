@@ -40,9 +40,6 @@ class IosReleaser extends Releaser with AppleReleaserMixin {
   String get supplementPlatformSubdir => 'ios';
 
   @override
-  String get supplementArtifactArch => 'ios_supplement';
-
-  @override
   String get artifactDisplayName => 'iOS app';
 
   @override

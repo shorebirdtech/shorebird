@@ -34,9 +34,6 @@ class AndroidReleaser extends Releaser {
   String get supplementPlatformSubdir => 'android';
 
   @override
-  String get supplementArtifactArch => 'android_supplement';
-
-  @override
   String get artifactDisplayName => 'Android app bundle';
 
   /// The architectures to build for.

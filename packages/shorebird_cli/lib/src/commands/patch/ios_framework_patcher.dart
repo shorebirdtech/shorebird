@@ -34,12 +34,6 @@ class IosFrameworkPatcher extends Patcher
   });
 
   @override
-  String get primaryReleaseArtifactArch => 'xcframework';
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'ios_framework_supplement';
-
-  @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
   @override

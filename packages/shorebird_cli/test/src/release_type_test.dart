@@ -21,6 +21,29 @@ void main() {
       expect(ReleaseType.windows.releasePlatform, ReleasePlatform.windows);
     });
 
+    test('primaryArtifactArch', () {
+      expect(ReleaseType.aar.primaryArtifactArch, 'aar');
+      expect(ReleaseType.android.primaryArtifactArch, 'aab');
+      expect(ReleaseType.ios.primaryArtifactArch, 'xcarchive');
+      expect(ReleaseType.iosFramework.primaryArtifactArch, 'xcframework');
+      expect(ReleaseType.linux.primaryArtifactArch, 'bundle');
+      expect(ReleaseType.macos.primaryArtifactArch, 'app');
+      expect(ReleaseType.windows.primaryArtifactArch, 'win_archive');
+    });
+
+    test('supplementArtifactArch', () {
+      expect(ReleaseType.aar.supplementArtifactArch, 'aar_supplement');
+      expect(ReleaseType.android.supplementArtifactArch, 'android_supplement');
+      expect(ReleaseType.ios.supplementArtifactArch, 'ios_supplement');
+      expect(
+        ReleaseType.iosFramework.supplementArtifactArch,
+        'ios_framework_supplement',
+      );
+      expect(ReleaseType.linux.supplementArtifactArch, 'linux_supplement');
+      expect(ReleaseType.macos.supplementArtifactArch, 'macos_supplement');
+      expect(ReleaseType.windows.supplementArtifactArch, 'windows_supplement');
+    });
+
     group('releaseTypes', () {
       late ArgParser parser;
       setUp(() {

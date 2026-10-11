@@ -4,15 +4,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 
-/// The primary release artifact architecture for Linux releases.
-/// This is a zipped copy of `build/linux/x64/release/bundle`, which is
-/// produced by the `flutter build linux --release` command. It contains, at
-/// its top level:
-///   - data/, which contains flutter assets
-///   - lib/, which contains libapp.so and libflutter_linux_gtk.so
-///   - executable_flutter_app
-const primaryLinuxReleaseArtifactArch = 'bundle';
-
 /// A reference to a [Linux] instance.
 final linuxRef = create(Linux.new);
 

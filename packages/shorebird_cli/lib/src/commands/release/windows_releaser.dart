@@ -34,9 +34,6 @@ class WindowsReleaser extends Releaser {
   String get supplementPlatformSubdir => 'windows';
 
   @override
-  String get supplementArtifactArch => 'windows_supplement';
-
-  @override
   String get artifactDisplayName => 'Windows app';
 
   @override

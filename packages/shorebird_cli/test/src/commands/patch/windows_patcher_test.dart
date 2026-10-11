@@ -79,7 +79,7 @@ void main() {
       expect(patcher.releaseType, ReleaseType.windows);
       expect(
         patcher.primaryReleaseArtifactArch,
-        primaryWindowsReleaseArtifactArch,
+        ReleaseType.windows.primaryArtifactArch,
       );
       expect(patcher.supplementaryReleaseArtifactArch, 'windows_supplement');
     });

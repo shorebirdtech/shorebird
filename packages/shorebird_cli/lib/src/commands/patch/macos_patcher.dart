@@ -62,12 +62,6 @@ class MacosPatcher extends Patcher
   bool get codesign => argResults['codesign'] == true;
 
   @override
-  String get primaryReleaseArtifactArch => 'app';
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'macos_supplement';
-
-  @override
   List<Validator> get applePlatformValidators => doctor.macosCommandValidators;
 
   @override

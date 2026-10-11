@@ -5,15 +5,6 @@ import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 
-/// The primary release artifact architecture for Windows releases.
-/// This is a zipped copy of `build/windows/x64/runner/Release`, which is
-/// produced by the `flutter build windows --release` command. It contains, at
-/// its top level:
-///   - flutter.dll
-///   - app.exe (where `app` is the name of the Flutter app)
-///   - data/, which contains flutter assets and the app.so file
-const primaryWindowsReleaseArtifactArch = 'win_archive';
-
 /// A reference to a [Windows] instance.
 final windowsRef = create(Windows.new);
 

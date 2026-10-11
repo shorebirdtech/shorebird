@@ -29,9 +29,6 @@ class LinuxReleaser extends Releaser {
   String get supplementPlatformSubdir => 'linux';
 
   @override
-  String get supplementArtifactArch => 'linux_supplement';
-
-  @override
   String get artifactDisplayName => 'Linux app';
 
   @override

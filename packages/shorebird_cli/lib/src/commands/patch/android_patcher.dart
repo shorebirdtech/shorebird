@@ -56,12 +56,6 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   ReleaseType get releaseType => ReleaseType.android;
 
   @override
-  String get primaryReleaseArtifactArch => 'aab';
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'android_supplement';
-
-  @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,

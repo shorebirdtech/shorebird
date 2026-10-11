@@ -25,12 +25,6 @@ class WindowsPatcher extends DesktopPatcher {
   });
 
   @override
-  String get primaryReleaseArtifactArch => primaryWindowsReleaseArtifactArch;
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'windows_supplement';
-
-  @override
   ReleaseType get releaseType => ReleaseType.windows;
 
   @override

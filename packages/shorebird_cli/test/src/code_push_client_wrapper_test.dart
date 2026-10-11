@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
@@ -1936,7 +1937,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 ),
                 appId: appId,
                 releaseId: releaseId,
-                arch: primaryWindowsReleaseArtifactArch,
+                arch: ReleaseType.windows.primaryArtifactArch,
                 platform: ReleasePlatform.windows,
                 hash: any(named: 'hash'),
                 canSideload: true,
@@ -2301,7 +2302,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               artifactPath: any(named: 'artifactPath', that: endsWith('.zip')),
               appId: appId,
               releaseId: releaseId,
-              arch: primaryLinuxReleaseArtifactArch,
+              arch: ReleaseType.linux.primaryArtifactArch,
               platform: ReleasePlatform.linux,
               hash: any(named: 'hash'),
               canSideload: true,

@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -506,7 +507,7 @@ This is only applicable when previewing Android releases.''',
       appId: appId,
       release: release,
       platform: platform,
-      arch: primaryLinuxReleaseArtifactArch,
+      arch: ReleaseType.linux.primaryArtifactArch,
     );
 
     if (!await _useTrackOnApp(
@@ -538,7 +539,7 @@ This is only applicable when previewing Android releases.''',
       appId: appId,
       release: release,
       platform: platform,
-      arch: primaryWindowsReleaseArtifactArch,
+      arch: ReleaseType.windows.primaryArtifactArch,
       fileExtension: 'exe',
     );
 
@@ -571,7 +572,7 @@ This is only applicable when previewing Android releases.''',
       appId: appId,
       release: release,
       platform: platform,
-      arch: 'app',
+      arch: ReleaseType.macos.primaryArtifactArch,
       fileExtension: 'app',
       extract: (archive, outputDirectory) => ditto.extract(
         source: archive.path,
@@ -646,7 +647,7 @@ This is only applicable when previewing Android releases.''',
     final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
       releaseId: release.id,
-      arch: 'aab',
+      arch: ReleaseType.android.primaryArtifactArch,
       platform: platform,
     );
 

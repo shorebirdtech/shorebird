@@ -47,9 +47,6 @@ class AarReleaser extends Releaser {
   String get supplementPlatformSubdir => 'android';
 
   @override
-  String get supplementArtifactArch => 'aar_supplement';
-
-  @override
   String get artifactDisplayName => 'Android archive';
 
   @override

@@ -37,12 +37,6 @@ class AarPatcher extends Patcher {
   String get buildNumber => argResults['build-number'] as String;
 
   @override
-  String get primaryReleaseArtifactArch => 'aar';
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'aar_supplement';
-
-  @override
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override

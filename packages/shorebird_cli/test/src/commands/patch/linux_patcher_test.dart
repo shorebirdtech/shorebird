@@ -70,7 +70,7 @@ void main() {
       expect(patcher.releaseType, ReleaseType.linux);
       expect(
         patcher.primaryReleaseArtifactArch,
-        primaryLinuxReleaseArtifactArch,
+        ReleaseType.linux.primaryArtifactArch,
       );
       expect(patcher.supplementaryReleaseArtifactArch, 'linux_supplement');
     });

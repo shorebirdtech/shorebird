@@ -37,9 +37,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   String get supplementPlatformSubdir => 'macos';
 
   @override
-  String get supplementArtifactArch => 'macos_supplement';
-
-  @override
   String get artifactDisplayName => 'macOS app';
 
   @override

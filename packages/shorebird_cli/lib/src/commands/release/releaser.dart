@@ -237,7 +237,7 @@ To change the version of this release, change your app's version in your pubspec
 
   /// Arch string for the supplement artifact on the server (e.g.
   /// 'android_supplement').
-  String get supplementArtifactArch;
+  String get supplementArtifactArch => releaseType.supplementArtifactArch;
 
   /// Assembles the supplement directory: copies the obfuscation map (if
   /// present) into the platform supplement dir. Returns the directory, or null

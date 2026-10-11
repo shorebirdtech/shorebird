@@ -43,9 +43,6 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
   String get supplementPlatformSubdir => 'ios';
 
   @override
-  String get supplementArtifactArch => 'ios_framework_supplement';
-
-  @override
   List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
 
   @override
