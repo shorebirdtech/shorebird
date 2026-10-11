@@ -492,7 +492,6 @@ void main() {
               any(),
               any(),
               environment: any(named: 'environment'),
-              mode: ProcessStartMode.normal,
             ),
           ).thenAnswer((_) async => streamProcess);
           when(
@@ -516,7 +515,6 @@ void main() {
               'git',
               ['pull'],
               environment: {},
-              mode: ProcessStartMode.normal,
             ),
           ).called(1);
           verifyNever(
