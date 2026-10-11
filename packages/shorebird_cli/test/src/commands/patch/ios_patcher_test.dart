@@ -5,7 +5,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -28,7 +27,6 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -176,6 +174,15 @@ void main() {
     group('releaseType', () {
       test('is ReleaseType.ios', () {
         expect(patcher.releaseType, ReleaseType.ios);
+      });
+    });
+
+    group('minimumFlutterVersion', () {
+      test('is minimumSupportedIosFlutterVersion', () {
+        expect(
+          patcher.minimumFlutterVersion,
+          minimumSupportedIosFlutterVersion,
+        );
       });
     });
 
@@ -523,50 +530,6 @@ This may indicate that the patch contains native changes, which cannot be applie
     });
 
     group('buildPatchArtifact', () {
-      const flutterVersionAndRevision = '3.22.2 (83305b5088)';
-      setUp(() {
-        when(
-          () => shorebirdFlutter.getVersionAndRevision(),
-        ).thenAnswer((_) async => flutterVersionAndRevision);
-        when(
-          () => shorebirdFlutter.getVersion(),
-        ).thenAnswer((_) async => Version(3, 22, 2));
-      });
-
-      group('when specified flutter version is less than minimum', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-          when(
-            () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 0, 0));
-        });
-
-        test('logs error and exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err('''
-This release was built with Flutter $flutterVersionAndRevision, but iOS patches need Flutter $minimumSupportedIosFlutterVersion or newer.
-A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ios --flutter-version=<version>')} and patch that one.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-          ).called(1);
-        });
-      });
-
       group('when build fails with ProcessException', () {
         const exception = ProcessException('flutter', [
           'build',

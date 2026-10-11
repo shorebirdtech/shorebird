@@ -66,6 +66,13 @@ void main() {
       );
     });
 
+    test('requires minimumSupportedLinuxFlutterVersion', () {
+      expect(
+        patcher.minimumFlutterVersion,
+        minimumSupportedLinuxFlutterVersion,
+      );
+    });
+
     test('identifies as the linux release type', () {
       expect(patcher.releaseType, ReleaseType.linux);
       expect(

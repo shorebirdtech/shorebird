@@ -27,6 +27,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -666,6 +667,11 @@ Building with Flutter $flutterVersionString to determine the release version...
     required File releaseArchive,
     required Directory? supplementDirectory,
   }) async {
+    await _assertReleaseFlutterVersionSupported(
+      patcher: patcher,
+      release: release,
+    );
+
     var patchArtifactFile = existingPatchArtifact;
     await cache.updateAll();
 
@@ -739,6 +745,30 @@ Building patch with Flutter $flutterVersionString
       patch: patch,
       linkPercentage: patcher.linkPercentage,
     );
+  }
+
+  /// Exits if [release] was built with a Flutter version older than
+  /// [Patcher.minimumFlutterVersion]. Must run with the release's Flutter
+  /// revision in scope. A version that can't be determined is let through.
+  Future<void> _assertReleaseFlutterVersionSupported({
+    required Patcher patcher,
+    required Release release,
+  }) async {
+    final minimumFlutterVersion = patcher.minimumFlutterVersion;
+    if (minimumFlutterVersion == null) return;
+
+    final flutterVersion = await shorebirdFlutter.getVersion();
+    if (flutterVersion == null || flutterVersion >= minimumFlutterVersion) {
+      return;
+    }
+
+    final flutterVersionAndRevision = await shorebirdFlutter
+        .getVersionAndRevision();
+    logger.err('''
+Release ${release.version} was built with Flutter $flutterVersionAndRevision, but at least Flutter $minimumFlutterVersion is required to patch with `${patcher.releaseType.cliName}`.
+A release cannot change Flutter versions, so create a new release with a newer Flutter version and patch that one.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
+    throw ProcessExit(ExitCode.software.code);
   }
 
   /// Reports a successful check and exits with success if this is a dry run.

@@ -75,6 +75,13 @@ void main() {
       );
     });
 
+    test('requires minimumSupportedWindowsFlutterVersion', () {
+      expect(
+        patcher.minimumFlutterVersion,
+        minimumSupportedWindowsFlutterVersion,
+      );
+    });
+
     test('identifies as the windows release type', () {
       expect(patcher.releaseType, ReleaseType.windows);
       expect(

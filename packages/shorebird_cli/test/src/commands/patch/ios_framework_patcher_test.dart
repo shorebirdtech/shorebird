@@ -174,6 +174,15 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is minimumSupportedIosFlutterVersion', () {
+        expect(
+          patcher.minimumFlutterVersion,
+          minimumSupportedIosFlutterVersion,
+        );
+      });
+    });
+
     group('assertPreconditions', () {
       setUp(() {
         when(() => doctor.iosCommandValidators).thenReturn([flavorValidator]);
