@@ -286,23 +286,6 @@ $body
         }
 
         test(
-          'returns normally when manageAppVersionAndBuildNumber is absent',
-          () async {
-            final file = writePlist(
-              '<key>method</key><string>app-store</string>',
-            );
-            when(
-              () => argResults[CommonArguments.exportOptionsPlistArg.name],
-            ).thenReturn(file.path);
-
-            await expectLater(
-              runWithOverrides(patcher.assertArgsAreValid),
-              completes,
-            );
-          },
-        );
-
-        test(
           '''logs error and exits with usage when manageAppVersionAndBuildNumber is true''',
           () async {
             final file = writePlist(

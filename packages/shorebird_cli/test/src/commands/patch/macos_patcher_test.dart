@@ -1451,6 +1451,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               any(that: startsWith('Failed to determine release version')),
             ),
           ).called(1);
+          verify(
+            () => logger.info(
+              any(that: startsWith('Pass --release-version=<version>')),
+            ),
+          ).called(1);
         });
       });
 

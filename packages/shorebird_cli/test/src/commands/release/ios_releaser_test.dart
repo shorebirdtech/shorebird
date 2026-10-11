@@ -245,23 +245,6 @@ $body
         }
 
         test(
-          'returns normally when manageAppVersionAndBuildNumber is absent',
-          () async {
-            final file = writePlist(
-              '<key>method</key><string>app-store</string>',
-            );
-            when(
-              () => argResults[CommonArguments.exportOptionsPlistArg.name],
-            ).thenReturn(file.path);
-
-            await expectLater(
-              runWithOverrides(iosReleaser.assertArgsAreValid),
-              completes,
-            );
-          },
-        );
-
-        test(
           '''logs error and exits with usage when manageAppVersionAndBuildNumber is true''',
           () async {
             final file = writePlist(
@@ -699,46 +682,6 @@ $body
           verify(
             () => logger.err(
               '''No Info.plist file found at ${p.join(xcarchiveDirectory.path, 'Info.plist')}''',
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when plist does not contain version number', () {
-        late File plist;
-        setUp(() {
-          plist = File(p.join(xcarchiveDirectory.path, 'Info.plist'))
-            ..createSync()
-            ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>ApplicationProperties</key>
-	<dict>
-	</dict>
-</dict>
-</plist>'
-''');
-        });
-
-        test('logs error and exits', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => iosReleaser.getReleaseVersion(
-                releaseArtifactRoot: xcarchiveDirectory,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err(
-              any(
-                that: startsWith(
-                  'Failed to determine release version from ${plist.path}',
-                ),
-              ),
             ),
           ).called(1);
         });

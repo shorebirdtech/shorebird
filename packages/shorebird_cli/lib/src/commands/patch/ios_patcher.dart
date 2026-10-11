@@ -7,9 +7,9 @@ import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
@@ -58,23 +58,11 @@ class IosPatcher extends Patcher
   String get podfileLockRelativePath => 'ios/Podfile.lock';
 
   @override
-  Future<void> assertArgsAreValid() async {
-    final exportOptionsPlistFile = argResults.file(
-      CommonArguments.exportOptionsPlistArg.name,
-    );
-    if (exportOptionsPlistFile != null) {
-      try {
-        assertValidExportOptionsPlist(exportOptionsPlistFile);
-      } on InvalidExportOptionsPlistException catch (error) {
-        logger.err(error.message);
-        throw ProcessExit(ExitCode.usage.code);
-      }
-    }
-  }
+  Future<void> assertArgsAreValid() async =>
+      argResults.assertValidExportOptionsPlistArg();
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final shouldCodesign = argResults['codesign'] == true;
     final (flutterVersionAndRevision, flutterVersion) = await (
       shorebirdFlutter.getVersionAndRevision(),
       shorebirdFlutter.getVersion(),
@@ -98,7 +86,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     // If buildIpa is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final ipaBuildResult = await artifactBuilder.buildIpa(
-      codesign: shouldCodesign,
+      codesign: argResults.codesign,
       flavor: flavor,
       target: target,
       args: buildArgs,
@@ -186,32 +174,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     final archivePath = artifactManager.getXcarchiveDirectory()?.path;
     if (archivePath == null) _noXcarchiveFound();
 
-    final plistFile = File(p.join(archivePath, 'Info.plist'));
-    if (!plistFile.existsSync()) {
-      logger
-        ..err('No Info.plist file found at ${plistFile.path}.')
-        ..info(_passReleaseVersionHint);
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    final plist = Plist(file: plistFile);
-    try {
-      return plist.versionNumber;
-    } on Exception catch (error) {
-      logger
-        ..err(
-          'Failed to determine release version from ${plistFile.path}: $error',
-        )
-        ..info(_passReleaseVersionHint);
-      throw ProcessExit(ExitCode.software.code);
-    }
+    return readReleaseVersionFromInfoPlist(
+      File(p.join(archivePath, 'Info.plist')),
+      hint: ApplePatcherMixin.passReleaseVersionHint,
+    );
   }
-
-  /// The release version is only read from the archive when the user did not
-  /// pass one, so passing one is always a way around a broken read.
-  static const _passReleaseVersionHint =
-      'Pass --release-version=<version> (or --release-version=latest) to '
-      'skip reading the version from the archive.';
 
   /// Logs that `flutter build ipa` left no .xcarchive where Shorebird looks
   /// for it and throws [ProcessExit].

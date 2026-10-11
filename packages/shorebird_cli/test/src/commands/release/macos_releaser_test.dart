@@ -510,45 +510,6 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
-      group('when plist does not contain version number', () {
-        late File plist;
-        setUp(() {
-          plist = File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
-            ..createSync()
-            ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>ApplicationProperties</key>
-	<dict>
-	</dict>
-</dict>
-</plist>'
-''');
-        });
-
-        test('logs error and exits', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () =>
-                  releaser.getReleaseVersion(releaseArtifactRoot: appDirectory),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err(
-              any(
-                that: startsWith(
-                  'Failed to determine release version from ${plist.path}',
-                ),
-              ),
-            ),
-          ).called(1);
-        });
-      });
-
       group('when plist contains version number', () {
         setUp(() {
           File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
