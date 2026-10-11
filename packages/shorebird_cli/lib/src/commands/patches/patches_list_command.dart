@@ -30,6 +30,9 @@ class PatchesListCommand extends ShorebirdCommand
   String get name => 'list';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'List patches for a release.\n\n'
       'Example output (one line per patch):\n'

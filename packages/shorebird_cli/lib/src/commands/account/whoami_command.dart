@@ -18,6 +18,9 @@ class WhoamiCommand extends ShorebirdCommand {
   String get name => 'whoami';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'Show the currently authenticated Shorebird user.\n\n'
       'Example output:\n'

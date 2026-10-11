@@ -28,6 +28,9 @@ class AppsRenameCommand extends ShorebirdCommand with AppScopedCommand {
   String get name => 'rename';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       "Changes an app's display name.\n\n"
       'Example output:\n'

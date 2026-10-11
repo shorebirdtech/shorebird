@@ -27,6 +27,9 @@ class AppsTransferCommand extends ShorebirdCommand with AppScopedCommand {
   String get name => 'transfer';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'Moves an app into a different organization.\n\n'
       "You must be able to transfer apps out of the app's current "

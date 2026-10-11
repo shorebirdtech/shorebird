@@ -38,6 +38,9 @@ class PatchesInfoCommand extends ShorebirdCommand
   String get name => 'info';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'Show details for a specific patch.\n\n'
       'Example output:\n'

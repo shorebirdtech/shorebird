@@ -20,6 +20,9 @@ class ChannelsListCommand extends ShorebirdCommand with AppScopedCommand {
   String get name => 'list';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'Lists the channels an app can publish to.\n\n'
       'Example output (space-separated: id  name):\n'

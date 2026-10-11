@@ -28,6 +28,9 @@ class AppsDeleteCommand extends ShorebirdCommand
   String get name => 'delete';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'Permanently deletes an app.\n\n'
       'Every release and patch belonging to the app is permanently removed. '

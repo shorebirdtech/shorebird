@@ -37,6 +37,9 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     );
   }
 
+  @override
+  bool get supportsJson => true;
+
   /// The rolled-back state this command puts the patch in.
   @protected
   bool get targetIsRolledBack;

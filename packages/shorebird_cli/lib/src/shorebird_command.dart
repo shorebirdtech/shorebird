@@ -62,6 +62,15 @@ abstract class ShorebirdCommand extends Command<int> {
   /// command runner based on the parsed `--json` flag.
   bool get isJsonMode => read(isJsonModeRef);
 
+  /// Whether this command honors `--json`, writing a JSON envelope to stdout
+  /// rather than human output.
+  ///
+  /// `--json` is a global flag, so every command accepts it. The command
+  /// runner refuses it up front, with a `usage_error` envelope, for commands
+  /// that leave this false, rather than letting them print human output that
+  /// a caller would try to parse.
+  bool get supportsJson => false;
+
   // isInteractive is a thin wrapper around the top-level getter in
   // `interactive_mode.dart`, which is directly tested via the runner's
   // "interactive mode" matrix. Exercising it through a ShorebirdCommand

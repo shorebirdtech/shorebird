@@ -47,6 +47,9 @@ class ChannelsDeleteCommand extends ShorebirdCommand
   String get name => 'delete';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'Deletes a channel from an app.\n\n'
       'Devices on the channel stop receiving patches.\n\n'

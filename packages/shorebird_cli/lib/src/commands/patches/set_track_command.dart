@@ -57,6 +57,9 @@ class SetTrackCommand extends ShorebirdCommand
   String get name => 'set-track';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   String get description =>
       'Sets the track of a patch.\n\n'
       'Example output:\n'

@@ -21,6 +21,9 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
   String get name => 'list';
 
   @override
+  bool get supportsJson => true;
+
+  @override
   Future<int> run() async {
     final progress = isJsonMode
         ? null

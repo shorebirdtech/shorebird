@@ -288,39 +288,5 @@ void main() {
         ).called(1);
       });
     });
-
-    group('--json', () {
-      test(
-        'refuses with structured envelope and points to set-track',
-        () async {
-          final (:exitCode, :json) = await captureJson(
-            () => runScoped(
-              command.run,
-              values: {
-                codePushClientWrapperRef.overrideWith(
-                  () => codePushClientWrapper,
-                ),
-                isJsonModeRef.overrideWith(() => true),
-                loggerRef.overrideWith(() => logger),
-                shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-                shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-              },
-            ),
-          );
-          expect(exitCode, equals(ExitCode.usage.code));
-          expect(json['status'], 'error');
-          final error = json['error'] as Map<String, dynamic>;
-          expect(error['code'], 'usage_error');
-          expect(error['hint'], contains('set-track'));
-          verifyNever(
-            () => codePushClientWrapper.promotePatch(
-              appId: any(named: 'appId'),
-              patchId: any(named: 'patchId'),
-              channel: any(named: 'channel'),
-            ),
-          );
-        },
-      );
-    });
   });
 }

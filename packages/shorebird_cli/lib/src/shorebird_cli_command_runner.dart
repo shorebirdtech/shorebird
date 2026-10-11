@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -46,7 +47,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag(
         'json',
         negatable: false,
-        help: 'Output results in JSON format (implies non-interactive mode).',
+        help:
+            'Output results in JSON format (implies non-interactive mode). '
+            'Commands without JSON output refuse it.',
       )
       ..addFlag(
         'verbose',
@@ -259,6 +262,14 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         logger.info(versionBanner(flutterVersion: flutterVersion));
       }
       exitCode = ExitCode.success.code;
+    } else if (isJsonMode && _rejectsJson(topLevelResults)) {
+      JsonResult.error(
+        code: JsonErrorCode.usageError,
+        message: '`shorebird $commandName` does not support --json.',
+        hint: 'Run it without --json.',
+        command: commandName,
+      ).write();
+      return ExitCode.usage.code;
     } else {
       // Records whether the command wrote its own envelope, so that a failing
       // --json command always leaves exactly one on stdout: the command's if
@@ -392,6 +403,30 @@ ${currentRunLogFile.absolute.path}
     }
 
     return exitCode;
+  }
+
+  /// Whether [topLevelResults] runs a command that does not support `--json`
+  /// (see [ShorebirdCommand.supportsJson]).
+  ///
+  /// Only a leaf command that will actually run counts: `--help`, and a group
+  /// such as `shorebird patches` with no subcommand, print usage instead.
+  bool _rejectsJson(ArgResults topLevelResults) {
+    Command<int>? command;
+    var available = commands;
+    for (
+      var results = topLevelResults.command;
+      results != null;
+      results = results.command
+    ) {
+      if (results.options.contains('help') && results.flag('help')) {
+        return false;
+      }
+      command = available[results.name];
+      available = command?.subcommands ?? const {};
+    }
+    return command is ShorebirdCommand &&
+        command.subcommands.isEmpty &&
+        !command.supportsJson;
   }
 
   /// Removes Flutter installs, engine artifacts and previews that have gone
