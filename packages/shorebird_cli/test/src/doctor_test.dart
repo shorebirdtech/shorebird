@@ -61,6 +61,45 @@ with multiple lines''',
       when(() => errorValidator.description).thenReturn('error validator');
     });
 
+    group('validate', () {
+      test('returns what each runnable validator found, silently', () async {
+        final skippedValidator = MockValidator();
+        when(skippedValidator.canRunInCurrentContext).thenReturn(false);
+
+        final results = await runWithOverrides(
+          () => doctor.validate([
+            noIssuesValidator,
+            warningValidator,
+            errorValidator,
+            skippedValidator,
+          ]),
+        );
+
+        expect(
+          results.map((r) => r.name),
+          equals([
+            'no issues validator',
+            'warning validator',
+            'error validator',
+          ]),
+        );
+        // Warnings don't fail a validator; errors do.
+        expect(results.map((r) => r.ok), equals([true, true, false]));
+        expect(
+          results.last.toJson(),
+          equals({
+            'name': 'error validator',
+            'ok': false,
+            'issues': [
+              {'severity': 'error', 'message': 'error'},
+            ],
+          }),
+        );
+        verifyNever(skippedValidator.validate);
+        verifyZeroInteractions(logger);
+      });
+    });
+
     group('runValidators', () {
       test('prints messages when warnings and errors found', () async {
         final validators = [warningValidator, errorValidator];

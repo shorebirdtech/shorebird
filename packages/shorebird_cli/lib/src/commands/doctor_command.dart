@@ -1,16 +1,16 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version_info.dart';
 
 /// {@template doctor_command}
@@ -42,11 +42,34 @@ class DoctorCommand extends ShorebirdCommand {
   @override
   String get description => 'Show information about the installed tooling.';
 
+  /// Overrides [globalResults] in tests, where there is no command runner.
+  @visibleForTesting
+  ArgResults? testGlobalResults;
+
+  /// Whether to include the toolchain and network speed sections. Either
+  /// `shorebird doctor --verbose` or the global `shorebird --verbose doctor`
+  /// turns them on.
+  bool get _verbose =>
+      results['verbose'] == true ||
+      (testGlobalResults ?? globalResults)?['verbose'] == true;
+
+  /// The Gradle version of the project in the current directory, or null if
+  /// there is no Gradle wrapper or its version can't be determined.
+  Future<String?> _gradleVersion() async {
+    if (!gradlew.exists(Directory.current.path)) return null;
+    try {
+      return await gradlew.version(Directory.current.path);
+    } on Exception catch (error) {
+      logger.detail('Unable to determine Gradle version.\n$error');
+      return null;
+    }
+  }
+
   @override
   Future<int> run() async {
     if (isJsonMode) return _runJson();
 
-    final verbose = results['verbose'] == true;
+    final verbose = _verbose;
     final shouldFix = results['fix'] == true;
     final flutterVersion = await tryGetFlutterVersion();
     final output = StringBuffer()
@@ -68,14 +91,7 @@ class DoctorCommand extends ShorebirdCommand {
         }
       }
 
-      String? gradlewVersion;
-      if (gradlew.exists(Directory.current.path)) {
-        try {
-          gradlewVersion = await gradlew.version(Directory.current.path);
-        } on Exception catch (error) {
-          logger.detail('Unable to determine Gradle version.\n$error');
-        }
-      }
+      final gradlewVersion = await _gradleVersion();
 
       output.writeln('''
 
@@ -154,52 +170,14 @@ Android Toolchain
       javaVersion = java.version;
     }
 
-    String? gradleVersion;
-    if (gradlew.exists(Directory.current.path)) {
-      try {
-        gradleVersion = await gradlew.version(Directory.current.path);
-      } on Exception {
-        // Gradle version detection can fail — report as null.
-      }
-    }
-
-    // Direct HTTP checks — avoids networkChecker.checkReachability which
-    // logs to the terminal instead of returning structured data.
-    final networkResults = await Future.wait(
-      NetworkChecker.urlsToCheck.map((url) async {
-        try {
-          await httpClient.get(url);
-          return {'url': '$url', 'reachable': true};
-        } on Exception {
-          return {'url': '$url', 'reachable': false};
-        }
-      }),
+    final gradleVersion = await _gradleVersion();
+    final reachability = await networkChecker.reachability();
+    final validatorResults = await doctor.validate(
+      doctor.initAndDoctorValidators,
     );
 
-    // Direct validator calls — avoids doctor.runValidators which logs
-    // to the terminal instead of returning structured data.
-    final validatorResults = <Map<String, dynamic>>[];
-    for (final validator in doctor.initAndDoctorValidators) {
-      if (!validator.canRunInCurrentContext()) continue;
-      final issues = await validator.validate();
-      validatorResults.add({
-        'name': validator.description,
-        'ok': !issues.any(
-          (i) => i.severity == ValidationIssueSeverity.error,
-        ),
-        'issues': issues
-            .map(
-              (i) => {
-                'severity': i.severity.name,
-                'message': i.message,
-              },
-            )
-            .toList(),
-      });
-    }
-
     Map<String, dynamic>? speedTest;
-    if (results['verbose'] == true) {
+    if (_verbose) {
       double? uploadMbPerSec;
       double? downloadMbPerSec;
       try {
@@ -228,9 +206,9 @@ Android Toolchain
         'java_version': javaVersion,
         'gradle_version': gradleVersion,
       },
-      'network': networkResults,
+      'network': [for (final result in reachability) result.toJson()],
       'speed_test': ?speedTest,
-      'validators': validatorResults,
+      'validators': [for (final result in validatorResults) result.toJson()],
     });
     return ExitCode.success.code;
   }

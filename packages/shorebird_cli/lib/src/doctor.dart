@@ -11,6 +11,38 @@ final doctorRef = create(Doctor.new);
 /// The [Doctor] instance available in the current zone.
 Doctor get doctor => read(doctorRef);
 
+/// {@template validator_result}
+/// The issues one validator found.
+/// {@endtemplate}
+class ValidatorResult {
+  /// {@macro validator_result}
+  const ValidatorResult({required this.name, required this.issues});
+
+  /// The validator's description.
+  final String name;
+
+  /// The issues the validator found.
+  final List<ValidationIssue> issues;
+
+  /// Whether the validator passed. Only errors fail a validator; warnings
+  /// don't.
+  bool get ok => !hasErrors(issues);
+
+  /// Whether any of [issues] is an error.
+  static bool hasErrors(Iterable<ValidationIssue> issues) =>
+      issues.any((issue) => issue.severity == ValidationIssueSeverity.error);
+
+  /// The JSON representation of this result.
+  Map<String, Object> toJson() => {
+    'name': name,
+    'ok': ok,
+    'issues': [
+      for (final issue in issues)
+        {'severity': issue.severity.name, 'message': issue.message},
+    ],
+  };
+}
+
 /// {@template doctor}
 /// A class that provides a set of validators to check the current environment
 /// for potential issues.
@@ -48,6 +80,19 @@ class Doctor {
     ShorebirdYamlAssetValidator(),
     TrackedLockFilesValidator(),
   ];
+
+  /// Runs each of [validators] that can run in the current context and returns
+  /// what each found, without logging or applying fixes.
+  Future<List<ValidatorResult>> validate(List<Validator> validators) async {
+    return [
+      for (final validator in validators)
+        if (validator.canRunInCurrentContext())
+          ValidatorResult(
+            name: validator.description,
+            issues: await validator.validate(),
+          ),
+    ];
+  }
 
   /// Run the provided [validators]. If [applyFixes] is `true`, any validation
   /// issues that can be automatically fixed will be.
@@ -108,12 +153,9 @@ class Doctor {
 
       // The validator should only fail if there are errors (warnings don't
       // cause failure).
-      final unresolvedErrors = unresolvedIssues.where(
-        (issue) => issue.severity == ValidationIssueSeverity.error,
-      );
-      unresolvedErrors.isEmpty
-          ? validatorProgress.complete(fixAppliedMessage)
-          : validatorProgress.fail(fixAppliedMessage);
+      ValidatorResult.hasErrors(unresolvedIssues)
+          ? validatorProgress.fail(fixAppliedMessage)
+          : validatorProgress.complete(fixAppliedMessage);
 
       for (final issue in failedFixes.keys) {
         logger.err(
