@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -1406,23 +1407,22 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
       });
 
       group('when Info.plist does not exist', () {
-        setUp(() {
-          try {
-            File(
-              p.join(appDirectory.path, 'Contents', 'Info.plist'),
-            ).deleteSync(recursive: true);
-          } on Exception {
-            // ignore
-          }
-        });
+        test('logs error and hint and exits with code 70', () async {
+          final infoPlist = File(
+            p.join(appDirectory.path, 'Contents', 'Info.plist'),
+          );
+          expect(infoPlist.existsSync(), isFalse);
 
-        test('exit with code 70', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.extractReleaseVersionFromArtifact(File('')),
             ),
             exitsWithCode(ExitCode.software),
           );
+          verify(
+            () => logger.err('No Info.plist file found at ${infoPlist.path}'),
+          ).called(1);
+          verify(() => logger.info(passReleaseVersionHint)).called(1);
         });
       });
 

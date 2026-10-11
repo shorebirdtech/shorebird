@@ -1,12 +1,10 @@
 import 'dart:io';
 
-import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:test/test.dart';
 
@@ -116,77 +114,6 @@ $body
         ),
       ).called(1);
       verifyNever(() => logger.info(any()));
-    });
-  });
-
-  group('AppleBuildArgs', () {
-    late ArgResults argResults;
-
-    setUp(() {
-      argResults = MockArgResults();
-    });
-
-    group('codesign', () {
-      test('is true only when the flag is true', () {
-        when(() => argResults['codesign']).thenReturn(true);
-        expect(argResults.codesign, isTrue);
-
-        when(() => argResults['codesign']).thenReturn(false);
-        expect(argResults.codesign, isFalse);
-
-        when(() => argResults['codesign']).thenReturn(null);
-        expect(argResults.codesign, isFalse);
-      });
-    });
-
-    group('assertValidExportOptionsPlistArg', () {
-      void stubExportOptionsPlist(String? path) {
-        when(
-          () => argResults[CommonArguments.exportOptionsPlistArg.name],
-        ).thenReturn(path);
-      }
-
-      test('returns normally when no plist is passed', () {
-        stubExportOptionsPlist(null);
-        expect(
-          () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
-          returnsNormally,
-        );
-      });
-
-      test(
-        'returns normally when manageAppVersionAndBuildNumber is absent',
-        () {
-          stubExportOptionsPlist(
-            writePlist('<key>method</key><string>app-store</string>').path,
-          );
-          expect(
-            () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
-            returnsNormally,
-          );
-        },
-      );
-
-      test(
-        'logs error and exits with usage when '
-        'manageAppVersionAndBuildNumber is true',
-        () {
-          stubExportOptionsPlist(
-            writePlist(
-              '<key>manageAppVersionAndBuildNumber</key><true/>',
-            ).path,
-          );
-          expect(
-            () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
-            exitsWithCode(ExitCode.usage),
-          );
-          verify(
-            () => logger.err(
-              any(that: contains('manageAppVersionAndBuildNumber')),
-            ),
-          ).called(1);
-        },
-      );
     });
   });
 }

@@ -37,13 +37,6 @@ mixin ApplePatcherMixin on Patcher {
   /// so existing release artifacts remain referenceable.
   static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
 
-  /// Logged when the release version cannot be read from the build. The
-  /// version is only read when the user did not pass one, so passing one is
-  /// always a way around a broken read.
-  static const passReleaseVersionHint =
-      'Pass --release-version=<version> (or --release-version=latest) to '
-      'skip reading the version from the build.';
-
   /// Resolves the absolute path inside [directory] where gen_snapshot should
   /// write the split debug info file.
   static String saveDebuggingInfoPath(String directory) =>

@@ -86,7 +86,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     // If buildIpa is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final ipaBuildResult = await artifactBuilder.buildIpa(
-      codesign: argResults.codesign,
+      codesign: argResults.appleCodesign,
       flavor: flavor,
       target: target,
       args: buildArgs,
@@ -176,7 +176,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     return readReleaseVersionFromInfoPlist(
       File(p.join(archivePath, 'Info.plist')),
-      hint: ApplePatcherMixin.passReleaseVersionHint,
+      hint: passReleaseVersionHint,
     );
   }
 

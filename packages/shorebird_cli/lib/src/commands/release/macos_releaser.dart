@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -53,7 +54,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    if (!argResults.codesign) {
+    if (!argResults.appleCodesign) {
       logger
         ..info(
           '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
@@ -65,7 +66,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
 
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildMacos(
-        codesign: argResults.codesign,
+        codesign: argResults.appleCodesign,
         flavor: flavor,
         target: target,
         args: buildArgs,

@@ -606,4 +606,101 @@ void main() {
       });
     });
   });
+
+  group('AppleArgs', () {
+    late ArgResults argResults;
+    late ShorebirdLogger logger;
+    late Directory tempDir;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {loggerRef.overrideWith(() => logger)},
+      );
+    }
+
+    setUp(() {
+      argResults = MockArgResults();
+      logger = MockShorebirdLogger();
+      tempDir = Directory.systemTemp.createTempSync('apple_args_');
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    group('appleCodesign', () {
+      test('is true only when the flag is true', () {
+        when(() => argResults['codesign']).thenReturn(true);
+        expect(argResults.appleCodesign, isTrue);
+
+        when(() => argResults['codesign']).thenReturn(false);
+        expect(argResults.appleCodesign, isFalse);
+
+        when(() => argResults['codesign']).thenReturn(null);
+        expect(argResults.appleCodesign, isFalse);
+      });
+    });
+
+    group('assertValidExportOptionsPlistArg', () {
+      void stubExportOptionsPlist(String? body) {
+        String? path;
+        if (body != null) {
+          path =
+              (File(p.join(tempDir.path, 'ExportOptions.plist'))
+                    ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+$body
+</dict>
+</plist>
+'''))
+                  .path;
+        }
+        when(
+          () => argResults[CommonArguments.exportOptionsPlistArg.name],
+        ).thenReturn(path);
+      }
+
+      test('returns normally when no plist is passed', () {
+        stubExportOptionsPlist(null);
+        expect(
+          () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
+          returnsNormally,
+        );
+      });
+
+      test(
+        'returns normally when manageAppVersionAndBuildNumber is absent',
+        () {
+          stubExportOptionsPlist('<key>method</key><string>app-store</string>');
+          expect(
+            () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
+            returnsNormally,
+          );
+        },
+      );
+
+      test(
+        'logs error and exits with usage when '
+        'manageAppVersionAndBuildNumber is true',
+        () {
+          stubExportOptionsPlist(
+            '<key>manageAppVersionAndBuildNumber</key><true/>',
+          );
+          expect(
+            () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
+            exitsWithCode(ExitCode.usage),
+          );
+          verify(
+            () => logger.err(
+              any(that: contains('manageAppVersionAndBuildNumber')),
+            ),
+          ).called(1);
+        },
+      );
+    });
+  });
 }

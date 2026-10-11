@@ -98,7 +98,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     // If buildMacos is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final macosBuildResult = await artifactBuilder.buildMacos(
-      codesign: argResults.codesign,
+      codesign: argResults.appleCodesign,
       flavor: flavor,
       target: target,
       args: buildArgs,
@@ -249,7 +249,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     return readReleaseVersionFromInfoPlist(
       File(p.join(appPath, 'Contents', 'Info.plist')),
-      hint: ApplePatcherMixin.passReleaseVersionHint,
+      hint: passReleaseVersionHint,
     );
   }
 }

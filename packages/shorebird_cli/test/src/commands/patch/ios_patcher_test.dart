@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -1288,19 +1289,22 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
     });
 
     group('extractReleaseVersionFromArtifact', () {
+      late File infoPlist;
+
       setUp(() {
-        when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
-          Directory(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'framework',
-              'Release',
-              'App.xcframework',
-            ),
+        final xcarchiveDirectory = Directory(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'archive',
+            'Runner.xcarchive',
           ),
         );
+        infoPlist = File(p.join(xcarchiveDirectory.path, 'Info.plist'));
+        when(
+          () => artifactManager.getXcarchiveDirectory(),
+        ).thenReturn(xcarchiveDirectory);
       });
 
       group('when xcarchive directory does not exist', () {
@@ -1324,47 +1328,23 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
       });
 
       group('when Info.plist does not exist', () {
-        setUp(() {
-          try {
-            File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'framework',
-                'Release',
-                'App.xcframework',
-                'Info.plist',
-              ),
-            ).deleteSync(recursive: true);
-          } on Exception {
-            // ignore
-          }
-        });
-
-        test('exit with code 70', () async {
+        test('logs error and hint and exits with code 70', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.extractReleaseVersionFromArtifact(File('')),
             ),
             exitsWithCode(ExitCode.software),
           );
+          verify(
+            () => logger.err('No Info.plist file found at ${infoPlist.path}'),
+          ).called(1);
+          verify(() => logger.info(passReleaseVersionHint)).called(1);
         });
       });
 
       group('when empty Info.plist does exist', () {
         setUp(() {
-          File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'framework',
-                'Release',
-                'App.xcframework',
-                'Info.plist',
-              ),
-            )
+          infoPlist
             ..createSync(recursive: true)
             ..writeAsStringSync('''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1397,17 +1377,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
 
       group('when Info.plist does exist', () {
         setUp(() {
-          File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'framework',
-                'Release',
-                'App.xcframework',
-                'Info.plist',
-              ),
-            )
+          infoPlist
             ..createSync(recursive: true)
             ..writeAsStringSync('''
 <?xml version="1.0" encoding="UTF-8"?>
