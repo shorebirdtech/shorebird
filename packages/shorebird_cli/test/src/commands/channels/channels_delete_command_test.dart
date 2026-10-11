@@ -255,6 +255,7 @@ void main() {
               '"$track" is one of Shorebird\'s built-in tracks and cannot be '
               'deleted.',
             );
+            expect(error['hint'], contains('unpublish every patch'));
           });
         });
       }
