@@ -127,11 +127,12 @@ void main() {
       );
     }
 
-    Auth buildAuth() {
+    Auth buildAuth({RunProcessSync? runProcessSync}) {
       return runWithOverrides(
         () => Auth(
           credentialsDir: credentialsDir,
           httpClient: httpClient,
+          runProcessSync: runProcessSync,
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
@@ -222,6 +223,11 @@ void main() {
         for (final (description, contents) in [
           ('a JSON value that is not an object', '[]'),
           ('a field of the wrong type', '{"accessToken": 42}'),
+          (
+            'a non-UTC expiry',
+            '{"accessToken":{"type":"Bearer","data":"x",'
+                '"expiry":"2024-01-01T00:00:00"},"scopes":[]}',
+          ),
         ]) {
           group('when credentials are $description', () {
             setUp(() {
@@ -818,6 +824,29 @@ void main() {
         skip: io.Platform.isWindows
             ? 'Windows has no POSIX file modes.'
             : false,
+      );
+
+      test(
+        'logs at detail level and still writes when chmod fails',
+        () async {
+          auth = buildAuth(
+            runProcessSync: (executable, arguments) =>
+                ProcessResult(0, 1, '', 'Operation not permitted'),
+          );
+
+          await runWithOverrides(() => auth.login(prompt: (_) {}));
+
+          final credentialsPath = p.join(credentialsDir, 'credentials.json');
+          verify(
+            () => logger.detail(
+              'Failed to restrict permissions on $credentialsPath '
+              '(chmod exited 1): Operation not permitted',
+            ),
+          ).called(1);
+          expect(File(credentialsPath).existsSync(), isTrue);
+          expect(buildAuth().isAuthenticated, isTrue);
+        },
+        skip: io.Platform.isWindows ? 'Windows does not run chmod.' : false,
       );
 
       test(

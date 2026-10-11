@@ -48,6 +48,10 @@ typedef ObtainCredentialsViaDeviceLogin =
       required void Function(shorebird_oauth.DeviceAuthorization) userPrompt,
     });
 
+/// Runs a process synchronously, as [Process.runSync] does.
+typedef RunProcessSync =
+    ProcessResult Function(String executable, List<String> arguments);
+
 /// Callback when credentials are refreshed.
 typedef OnRefreshCredentials =
     void Function(oauth2.AccessCredentials credentials);
@@ -138,7 +142,9 @@ class Auth {
     ObtainCredentialsViaLoopbackLogin? obtainCredentialsViaLoopbackLogin,
     ObtainCredentialsViaDeviceLogin? obtainCredentialsViaDeviceLogin,
     CodePushClientBuilder? buildCodePushClient,
+    RunProcessSync? runProcessSync,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
+       _runProcessSync = runProcessSync ?? Process.runSync,
        _credentialsDir =
            credentialsDir ?? BaseDirectories(executableName).configHome,
        _authServiceUri = authServiceUri ?? shorebirdEnv.authServiceUri,
@@ -160,6 +166,7 @@ class Auth {
   final ObtainCredentialsViaLoopbackLogin _obtainCredentialsViaLoopbackLogin;
   final ObtainCredentialsViaDeviceLogin _obtainCredentialsViaDeviceLogin;
   final CodePushClientBuilder _buildCodePushClient;
+  final RunProcessSync _runProcessSync;
   String? _apiKey;
 
   /// The path to the credentials file.
@@ -361,6 +368,12 @@ class Auth {
     } on TypeError {
       _warnUnreadableCredentials();
       return;
+      // An invalid value, such as a non-UTC expiry, surfaces as an
+      // ArgumentError from AccessToken's constructor.
+      // ignore: avoid_catching_errors
+    } on ArgumentError {
+      _warnUnreadableCredentials();
+      return;
     } on Exception {
       _warnUnreadableCredentials();
       return;
@@ -403,8 +416,17 @@ class Auth {
     // token is written, so it is never readable by others, even briefly. This
     // checks the real host, not the scoped platform, because it is a real
     // file. Windows has no chmod; files under the user profile are already
-    // private to the user.
-    if (!Platform.isWindows) Process.runSync('chmod', ['600', file.path]);
+    // private to the user. A missing chmod throws, so the token is never
+    // written without the restriction having been attempted.
+    if (!Platform.isWindows) {
+      final result = _runProcessSync('chmod', ['600', file.path]);
+      if (result.exitCode != 0) {
+        logger.detail(
+          'Failed to restrict permissions on ${file.path} '
+          '(chmod exited ${result.exitCode}): ${result.stderr}',
+        );
+      }
+    }
     file.writeAsStringSync(json.encode(credentials.toJson()));
   }
 
