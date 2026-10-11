@@ -111,9 +111,7 @@ class IosFrameworkPatcher extends Patcher
         outputDirectory: releaseXcframeworkDirectory,
       );
 
-      unzipProgress.complete(
-        'Extracted release artifact to ${releaseXcframeworkDirectory.path}',
-      );
+      unzipProgress.complete();
       final releaseArtifactFile = File(
         p.join(
           releaseXcframeworkDirectory.path,

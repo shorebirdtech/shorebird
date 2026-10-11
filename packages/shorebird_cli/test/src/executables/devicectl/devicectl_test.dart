@@ -231,6 +231,66 @@ void main() {
         });
       });
 
+      group('when the temp directory cannot be deleted', () {
+        late ShorebirdLogger logger;
+
+        setUp(() {
+          exitCode = ExitCode.success;
+          jsonOutput = 'invalid json';
+          logger = MockShorebirdLogger();
+          when(
+            () => process.run(any(), any()),
+          ).thenAnswer((invocation) async {
+            final args = invocation.positionalArguments.last as List<String>;
+            final jsonFile = File(args.last)..writeAsStringSync(jsonOutput);
+            // A read-only subdirectory holding a file makes the recursive
+            // delete of the temp directory fail.
+            final locked = Directory(p.join(jsonFile.parent.path, 'locked'))
+              ..createSync();
+            File(p.join(locked.path, 'file')).createSync();
+            Process.runSync('chmod', ['555', locked.path]);
+            addTearDown(() {
+              if (!locked.existsSync()) return;
+              Process.runSync('chmod', ['755', locked.path]);
+              jsonFile.parent.deleteSync(recursive: true);
+            });
+            return processResult;
+          });
+        });
+
+        test(
+          'logs the failed delete and throws the original error',
+          () async {
+            await expectLater(
+              runScoped(
+                () => runWithOverrides(
+                  () => devicectl.installApp(
+                    runnerApp: runnerApp,
+                    deviceId: deviceId,
+                  ),
+                ),
+                values: {loggerRef.overrideWith(() => logger)},
+              ),
+              throwsA(
+                isA<DevicectlException>().having(
+                  (e) => e.underlyingException,
+                  'underlyingException',
+                  isA<FormatException>(),
+                ),
+              ),
+            );
+            verify(
+              () => logger.detail(any(that: startsWith('Failed to delete '))),
+            ).called(1);
+          },
+          testOn: '!windows',
+          // Root ignores directory permissions, so the delete would succeed.
+          skip: !Platform.isWindows && _isRoot()
+              ? 'Running as root, which can delete read-only directories'
+              : false,
+        );
+      });
+
       group('when install succeeds', () {
         setUp(() {
           exitCode = ExitCode.success;
@@ -1130,3 +1190,5 @@ void main() {
     });
   });
 }
+
+bool _isRoot() => '${Process.runSync('id', ['-u']).stdout}'.trim() == '0';

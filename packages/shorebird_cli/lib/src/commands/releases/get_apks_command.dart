@@ -187,8 +187,8 @@ class GetApksCommand extends ShorebirdCommand with AppScopedCommand {
       }
     } else {
       logger.err(
-        'Failed to extract apks from ${apksZipFile.path} '
-        'to ${outputDirectory.path}',
+        'No apks found in the generated .apks archive for release '
+        '${release.version}.',
       );
       return ExitCode.software.code;
     }
