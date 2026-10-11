@@ -96,14 +96,6 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 
-  /// The identifier used for the "primary" release artifact, usually a bundle.
-  /// For example, 'aab' for Android, 'xcarchive' for iOS.
-  String get primaryReleaseArtifactArch => releaseType.primaryArtifactArch;
-
-  /// The identifier used for any supplementary release artifacts.
-  String? get supplementaryReleaseArtifactArch =>
-      releaseType.supplementArtifactArch;
-
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
 

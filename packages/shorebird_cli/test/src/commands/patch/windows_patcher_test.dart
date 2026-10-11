@@ -77,11 +77,6 @@ void main() {
 
     test('identifies as the windows release type', () {
       expect(patcher.releaseType, ReleaseType.windows);
-      expect(
-        patcher.primaryReleaseArtifactArch,
-        ReleaseType.windows.primaryArtifactArch,
-      );
-      expect(patcher.supplementaryReleaseArtifactArch, 'windows_supplement');
     });
 
     test('validates with the windows validators on windows', () {

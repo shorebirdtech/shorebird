@@ -181,21 +181,6 @@ void main() {
       );
     });
 
-    group('primaryReleaseArtifactArch', () {
-      test('is "app"', () {
-        expect(patcher.primaryReleaseArtifactArch, 'app');
-      });
-    });
-
-    group('supplementaryReleaseArtifactArch', () {
-      test('is "macos_supplement"', () {
-        expect(
-          patcher.supplementaryReleaseArtifactArch,
-          'macos_supplement',
-        );
-      });
-    });
-
     group('releaseType', () {
       test('is ReleaseType.macos', () {
         expect(patcher.releaseType, ReleaseType.macos);

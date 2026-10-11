@@ -153,12 +153,6 @@ void main() {
       );
     });
 
-    group('primaryReleaseArtifactArch', () {
-      test('is "aab"', () {
-        expect(patcher.primaryReleaseArtifactArch, equals('aab'));
-      });
-    });
-
     group('assertPreconditions', () {
       setUp(() {
         when(

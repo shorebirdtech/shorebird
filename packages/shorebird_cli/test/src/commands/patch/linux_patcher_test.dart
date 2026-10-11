@@ -68,11 +68,6 @@ void main() {
 
     test('identifies as the linux release type', () {
       expect(patcher.releaseType, ReleaseType.linux);
-      expect(
-        patcher.primaryReleaseArtifactArch,
-        ReleaseType.linux.primaryArtifactArch,
-      );
-      expect(patcher.supplementaryReleaseArtifactArch, 'linux_supplement');
     });
 
     test('validates with the linux validators on linux', () {

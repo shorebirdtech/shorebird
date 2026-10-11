@@ -160,18 +160,6 @@ void main() {
       );
     });
 
-    group('primaryReleaseArtifactArch', () {
-      test('is "xcarchive"', () {
-        expect(patcher.primaryReleaseArtifactArch, 'xcarchive');
-      });
-    });
-
-    group('supplementaryReleaseArtifactArch', () {
-      test('is "ios_supplement"', () {
-        expect(patcher.supplementaryReleaseArtifactArch, 'ios_supplement');
-      });
-    });
-
     group('releaseType', () {
       test('is ReleaseType.ios', () {
         expect(patcher.releaseType, ReleaseType.ios);

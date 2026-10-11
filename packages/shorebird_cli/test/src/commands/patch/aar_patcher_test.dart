@@ -150,12 +150,6 @@ void main() {
       });
     });
 
-    group('primaryReleaseArtifactArch', () {
-      test('is aar', () {
-        expect(patcher.primaryReleaseArtifactArch, equals('aar'));
-      });
-    });
-
     test('requires --release-version', () {
       expect(patcher.requiresReleaseVersionArg, isTrue);
     });

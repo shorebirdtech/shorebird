@@ -483,23 +483,22 @@ Building with Flutter $flutterVersionString to determine the release version...
     required Patcher patcher,
     required Release release,
   }) async {
-    final releasePlatform = patcher.releaseType.releasePlatform;
+    final releaseType = patcher.releaseType;
+    final releasePlatform = releaseType.releasePlatform;
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
       releaseId: release.id,
-      arch: patcher.primaryReleaseArtifactArch,
+      arch: releaseType.primaryArtifactArch,
       platform: releasePlatform,
     );
 
-    final supplementalArtifact =
-        patcher.supplementaryReleaseArtifactArch != null
-        ? await codePushClientWrapper.maybeGetReleaseArtifact(
-            appId: appId,
-            releaseId: release.id,
-            arch: patcher.supplementaryReleaseArtifactArch!,
-            platform: releasePlatform,
-          )
-        : null;
+    final supplementalArtifact = await codePushClientWrapper
+        .maybeGetReleaseArtifact(
+          appId: appId,
+          releaseId: release.id,
+          arch: releaseType.supplementArtifactArch,
+          platform: releasePlatform,
+        );
 
     final releaseArchive = await downloadReleaseArtifact(
       releaseArtifact: releaseArtifact,

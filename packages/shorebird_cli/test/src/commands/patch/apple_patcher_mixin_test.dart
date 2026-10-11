@@ -41,9 +41,6 @@ class _TestApplePatcher extends Patcher
   List<Validator> get applePlatformValidators => const [];
 
   @override
-  String get primaryReleaseArtifactArch => 'test';
-
-  @override
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override

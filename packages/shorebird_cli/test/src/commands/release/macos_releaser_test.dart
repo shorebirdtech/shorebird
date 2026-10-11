@@ -120,9 +120,8 @@ void main() {
     });
 
     group('supplement', () {
-      test('uploads under the platform supplement names', () {
+      test('uses the platform supplement subdirectory', () {
         expect(releaser.supplementPlatformSubdir, equals('macos'));
-        expect(releaser.supplementArtifactArch, equals('macos_supplement'));
       });
     });
 

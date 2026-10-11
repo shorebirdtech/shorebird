@@ -139,12 +139,8 @@ void main() {
     });
 
     group('supplement', () {
-      test('uploads under the platform supplement names', () {
+      test('uses the platform supplement subdirectory', () {
         expect(androidReleaser.supplementPlatformSubdir, equals('android'));
-        expect(
-          androidReleaser.supplementArtifactArch,
-          equals('android_supplement'),
-        );
       });
     });
 

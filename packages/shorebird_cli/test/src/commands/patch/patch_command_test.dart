@@ -303,7 +303,7 @@ void main() {
         () => codePushClientWrapper.maybeGetReleaseArtifact(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          arch: 'supplement',
+          arch: 'android_supplement',
           platform: ReleasePlatform.android,
         ),
       ).thenAnswer((_) async => supplementArtifact);
@@ -330,7 +330,6 @@ void main() {
         ),
       ).thenAnswer((_) async => File(''));
       when(() => patcher.releaseType).thenReturn(ReleaseType.android);
-      when(() => patcher.primaryReleaseArtifactArch).thenReturn('aab');
       when(
         () => patcher.createPatchArtifacts(
           appId: any(named: 'appId'),
@@ -586,13 +585,7 @@ void main() {
           },
         );
 
-        group('when a supplemental release artifact exists', () {
-          setUp(() {
-            when(
-              () => patcher.supplementaryReleaseArtifactArch,
-            ).thenReturn('supplement');
-          });
-
+        group('supplement artifact', () {
           test('downloads the supplemental release artifact', () async {
             await runWithOverrides(() => command.createPatch(patcher));
 
@@ -600,7 +593,7 @@ void main() {
               () => codePushClientWrapper.maybeGetReleaseArtifact(
                 appId: appId,
                 releaseId: release.id,
-                arch: 'supplement',
+                arch: 'android_supplement',
                 platform: releasePlatform,
               ),
             ).called(1);
@@ -632,26 +625,29 @@ void main() {
             expect(supplementDirectory.existsSync(), isFalse);
           });
 
-          group('when the artifact is not found', () {
+          group('when the release has no supplement artifact', () {
             setUp(() {
               when(
-                () => codePushClientWrapper.getReleaseArtifact(
+                () => codePushClientWrapper.maybeGetReleaseArtifact(
                   appId: appId,
                   releaseId: release.id,
-                  arch: 'supplement',
+                  arch: 'android_supplement',
                   platform: releasePlatform,
                 ),
-              ).thenThrow(CodePushNotFoundException(message: 'Not found'));
+              ).thenAnswer((_) async => null);
             });
 
-            test('gracefully continues to create patch', () async {
+            test('creates the patch without a supplement', () async {
               await runWithOverrides(() => command.createPatch(patcher));
               verify(
                 () => patcher.createPatchArtifacts(
                   appId: appId,
                   releaseId: release.id,
                   releaseArtifact: any(named: 'releaseArtifact'),
-                  supplementDirectory: any(named: 'supplementDirectory'),
+                  supplementDirectory: any(
+                    named: 'supplementDirectory',
+                    that: isNull,
+                  ),
                 ),
               ).called(1);
             });
@@ -809,7 +805,7 @@ void main() {
                     () => codePushClientWrapper.maybeGetReleaseArtifact(
                       appId: any(named: 'appId'),
                       releaseId: any(named: 'releaseId'),
-                      arch: 'supplement',
+                      arch: 'ios_supplement',
                       platform: ReleasePlatform.ios,
                     ),
                   ).thenAnswer((_) async => supplementArtifact);
@@ -1395,7 +1391,13 @@ void main() {
           () => codePushClientWrapper.getReleaseArtifact(
             appId: appId,
             releaseId: release.id,
-            arch: patcher.primaryReleaseArtifactArch,
+            arch: 'aab',
+            platform: releasePlatform,
+          ),
+          () => codePushClientWrapper.maybeGetReleaseArtifact(
+            appId: appId,
+            releaseId: release.id,
+            arch: 'android_supplement',
             platform: releasePlatform,
           ),
           () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
@@ -1408,6 +1410,7 @@ void main() {
             appId: appId,
             releaseId: release.id,
             releaseArtifact: any(named: 'releaseArtifact'),
+            supplementDirectory: any(named: 'supplementDirectory'),
           ),
           () => patcher.updatedCreatePatchMetadata(
             any(
@@ -1617,7 +1620,13 @@ void main() {
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
               releaseId: release.id,
-              arch: patcher.primaryReleaseArtifactArch,
+              arch: 'aab',
+              platform: releasePlatform,
+            ),
+            () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: appId,
+              releaseId: release.id,
+              arch: 'android_supplement',
               platform: releasePlatform,
             ),
             () => patcher.assertUnpatchableDiffs(
@@ -1629,6 +1638,7 @@ void main() {
               appId: appId,
               releaseId: release.id,
               releaseArtifact: any(named: 'releaseArtifact'),
+              supplementDirectory: any(named: 'supplementDirectory'),
             ),
             () => patcher.uploadPatchArtifacts(
               appId: appId,

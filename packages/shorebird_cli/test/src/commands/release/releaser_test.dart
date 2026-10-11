@@ -34,9 +34,6 @@ class _TestReleaser extends Releaser {
   String get supplementPlatformSubdir => 'test';
 
   @override
-  String get supplementArtifactArch => 'test_supplement';
-
-  @override
   String get postReleaseInstructions => '';
 
   @override
@@ -504,7 +501,7 @@ To change the version of this release, change your app's version in your pubspec
             releaseId: 1,
             platform: ReleasePlatform.linux,
             supplementDirectoryPath: supplementDir.path,
-            arch: 'test_supplement',
+            arch: 'linux_supplement',
           ),
         ).called(1);
       });

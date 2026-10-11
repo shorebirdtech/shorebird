@@ -235,10 +235,6 @@ To change the version of this release, change your app's version in your pubspec
   /// 'ios'). Used to construct `build/<platformSubdir>/shorebird/`.
   String get supplementPlatformSubdir;
 
-  /// Arch string for the supplement artifact on the server (e.g.
-  /// 'android_supplement').
-  String get supplementArtifactArch => releaseType.supplementArtifactArch;
-
   /// Assembles the supplement directory: copies the obfuscation map (if
   /// present) into the platform supplement dir. Returns the directory, or null
   /// if empty.
@@ -296,7 +292,7 @@ To change the version of this release, change your app's version in your pubspec
         releaseId: releaseId,
         platform: releaseType.releasePlatform,
         supplementDirectoryPath: supplementDir.path,
-        arch: supplementArtifactArch,
+        arch: releaseType.supplementArtifactArch,
       );
     }
   }

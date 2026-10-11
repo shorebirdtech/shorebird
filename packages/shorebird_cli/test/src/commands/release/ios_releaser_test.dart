@@ -134,9 +134,8 @@ void main() {
     });
 
     group('supplement', () {
-      test('uploads under the platform supplement names', () {
+      test('uses the platform supplement subdirectory', () {
         expect(iosReleaser.supplementPlatformSubdir, equals('ios'));
-        expect(iosReleaser.supplementArtifactArch, equals('ios_supplement'));
       });
     });
 

@@ -44,21 +44,6 @@ void main() {
       });
     });
 
-    group('supplementaryReleaseArtifactArch', () {
-      test("defaults to the release type's supplement arch", () {
-        expect(
-          _TestPatcher(
-            argParser: MockArgParser(),
-            argResults: MockArgResults(),
-            flavor: null,
-            target: null,
-            releaseType: ReleaseType.android,
-          ).supplementaryReleaseArtifactArch,
-          'android_supplement',
-        );
-      });
-    });
-
     group('obfuscationGenSnapshotArgs', () {
       late ArgResults argResults;
       late _TestPatcher patcher;
@@ -865,9 +850,6 @@ class _TestPatcher extends Patcher {
   Future<String> extractReleaseVersionFromArtifact(File artifact) {
     throw UnimplementedError();
   }
-
-  @override
-  String get primaryReleaseArtifactArch => throw UnimplementedError();
 
   @override
   ReleaseType get releaseType {

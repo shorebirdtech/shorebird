@@ -81,9 +81,6 @@ class _TestDesktopPatcher extends DesktopPatcher {
   }
 
   @override
-  String get primaryReleaseArtifactArch => 'test';
-
-  @override
   ReleaseType get releaseType => ReleaseType.linux;
 }
 

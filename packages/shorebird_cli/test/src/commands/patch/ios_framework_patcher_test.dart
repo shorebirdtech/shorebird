@@ -153,21 +153,6 @@ void main() {
       );
     });
 
-    group('primaryReleaseArtifactArch', () {
-      test('is "xcframework"', () {
-        expect(patcher.primaryReleaseArtifactArch, 'xcframework');
-      });
-    });
-
-    group('supplementaryReleaseArtifactArch', () {
-      test('is "ios_framework_supplement"', () {
-        expect(
-          patcher.supplementaryReleaseArtifactArch,
-          'ios_framework_supplement',
-        );
-      });
-    });
-
     group('releaseType', () {
       test('is ReleaseType.iosFramework', () {
         expect(patcher.releaseType, ReleaseType.iosFramework);
