@@ -132,8 +132,8 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         engineConfig = const EngineConfig.empty();
       } else {
         // Only some local engine args were provided, this is invalid.
-        throw ArgumentError(
-          '''local-engine, local-engine-src, and local-engine-host must all be provided''',
+        usageException(
+          '''--local-engine, --local-engine-src-path, and --local-engine-host must all be provided together''',
         );
       }
 

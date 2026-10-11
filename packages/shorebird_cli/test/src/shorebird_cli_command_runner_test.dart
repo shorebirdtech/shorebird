@@ -384,12 +384,36 @@ Engine • revision $shorebirdEngineRevision'''),
       });
 
       group('when some local engine args are provided', () {
-        test('throws ArgumentException', () async {
-          await expectLater(
-            () async => runWithOverrides(
-              () => commandRunner.run(['--local-engine', 'foo']),
+        test('exits with a usage error naming the flags', () async {
+          final result = await runWithOverrides(
+            () => commandRunner.run(['--local-engine', 'foo']),
+          );
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              '''--local-engine, --local-engine-src-path, and --local-engine-host must all be provided together''',
             ),
-            throwsArgumentError,
+          ).called(1);
+        });
+
+        test('emits a single usage_error envelope in --json mode', () async {
+          final stdoutOutput = <String>[];
+          final result = await helpers.captureStdout<int>(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', '--local-engine', 'foo']),
+            ),
+            captured: stdoutOutput,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          expect(stdoutOutput, hasLength(1));
+          final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('usage_error'));
+          expect(
+            error['message'],
+            equals(
+              '''--local-engine, --local-engine-src-path, and --local-engine-host must all be provided together''',
+            ),
           );
         });
       });

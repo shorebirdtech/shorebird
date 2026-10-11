@@ -667,7 +667,70 @@ void main() {
               '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
             ),
           ).called(1);
+          verify(() => progress.cancel()).called(1);
         });
+
+        test('fails the download progress when the request throws', () async {
+          when(
+            () => httpClient.send(any()),
+          ).thenThrow(const SocketException('test'));
+
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            throwsA(isA<CacheUpdateFailure>()),
+          );
+          verify(() => progress.fail()).called(greaterThanOrEqualTo(1));
+        });
+
+        test('logs a missing checksum only when there is none', () async {
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
+
+          verifyNever(
+            () => logger.detail(
+              '''No checksum provided for bundletool.jar, skipping file corruption validation''',
+            ),
+          );
+          verify(
+            () => logger.detail(
+              '''No checksum provided for patch, skipping file corruption validation''',
+            ),
+          ).called(greaterThanOrEqualTo(1));
+        });
+
+        test(
+          'fails when making an executable artifact executable fails',
+          () async {
+            when(() => chmodProcess.exitCode).thenAnswer((_) async => 1);
+
+            await expectLater(
+              runWithOverrides(() => cache.updateAll(Duration.zero)),
+              throwsA(
+                isA<CacheUpdateFailure>().having(
+                  (e) => e.message,
+                  'message',
+                  contains('executable: chmod exited with code 1'),
+                ),
+              ),
+            );
+            // Retried, so the step fails once per attempt.
+            verify(
+              () => progress.fail('Failed to make patch executable'),
+            ).called(3);
+            // No stamp means the next run downloads the artifact again.
+            final patchArtifact = runWithOverrides(
+              () => cache.getArtifactDirectory('patch'),
+            );
+            final stamps = patchArtifact.existsSync()
+                ? patchArtifact
+                      .listSync(recursive: true)
+                      .where((entity) => entity.path.endsWith('.stamp'))
+                : const <FileSystemEntity>[];
+            expect(stamps, isEmpty);
+          },
+        );
 
         test('downloads correct artifacts', () async {
           final patchArtifactDirectory = runWithOverrides(

@@ -155,6 +155,120 @@ void main() {
     );
 
     test(
+      '''returns successful result if the INTERNET permission is not the first attribute''',
+      () async {
+        writeManifestToPath(
+          '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission tools:node="replace" android:name="android.permission.INTERNET"/>
+</manifest>
+''',
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+
+        expect(results, isEmpty);
+      },
+    );
+
+    test(
+      '''returns successful result when the android namespace uses a different prefix''',
+      () async {
+        writeManifestToPath(
+          '''
+<manifest xmlns:a="http://schemas.android.com/apk/res/android">
+    <uses-permission a:name="android.permission.INTERNET"/>
+</manifest>
+''',
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+
+        expect(results, isEmpty);
+      },
+    );
+
+    group('when the INTERNET permission is removed with tools:node', () {
+      const removedManifest = '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:t="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" t:node="remove"/>
+</manifest>
+''';
+
+      test('returns an error with no fix', () async {
+        writeManifestToPath(
+          removedManifest,
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+
+        expect(
+          results,
+          equals([
+            ValidationIssue(
+              severity: ValidationIssueSeverity.error,
+              message:
+                  '''${p.join('android', 'app', 'src', 'main', 'AndroidManifest.xml')} removes the INTERNET permission with tools:node="remove", but Shorebird needs it to download patches.''',
+            ),
+          ]),
+        );
+        expect(results.single.fix, isNull);
+      });
+
+      test('passes when another entry grants the permission', () async {
+        writeManifestToPath(
+          '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+</manifest>
+''',
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+
+        expect(results, isEmpty);
+      });
+    });
+
+    test(
+      'returns an error without throwing for a uses-permission with no '
+      'attributes',
+      () async {
+        writeManifestToPath(
+          '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission/>
+</manifest>
+''',
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.error);
+      },
+    );
+
+    test(
       'returns an error if AndroidManifest.xml file does not exist',
       () async {
         Directory(
