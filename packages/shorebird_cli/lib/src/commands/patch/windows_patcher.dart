@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/windows_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -32,6 +33,9 @@ class WindowsPatcher extends DesktopPatcher {
 
   @override
   ReleaseType get releaseType => ReleaseType.windows;
+
+  @override
+  Version? get minimumFlutterVersion => minimumSupportedWindowsFlutterVersion;
 
   @override
   List<Validator> get commandValidators => doctor.windowsCommandValidators;

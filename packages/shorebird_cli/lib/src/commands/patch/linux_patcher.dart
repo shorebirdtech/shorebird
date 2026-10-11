@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/linux_bundle_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -30,6 +31,9 @@ class LinuxPatcher extends DesktopPatcher {
 
   @override
   ReleaseType get releaseType => ReleaseType.linux;
+
+  @override
+  Version? get minimumFlutterVersion => minimumSupportedLinuxFlutterVersion;
 
   @override
   List<Validator> get commandValidators => doctor.linuxCommandValidators;

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -17,9 +18,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -43,6 +42,9 @@ class IosPatcher extends Patcher
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
+  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
+
+  @override
   String get primaryReleaseArtifactArch => 'xcarchive';
 
   @override
@@ -63,20 +65,6 @@ class IosPatcher extends Patcher
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final (flutterVersionAndRevision, flutterVersion) = await (
-      shorebirdFlutter.getVersionAndRevision(),
-      shorebirdFlutter.getVersion(),
-    ).wait;
-
-    if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
-        minimumSupportedIosFlutterVersion) {
-      logger.err('''
-This release was built with Flutter $flutterVersionAndRevision, but iOS patches need Flutter $minimumSupportedIosFlutterVersion or newer.
-A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ios --flutter-version=<version>')} and patch that one.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
     final buildArgs = [
       ...argResults.forwardedArgs,
       ...extraBuildArgs,

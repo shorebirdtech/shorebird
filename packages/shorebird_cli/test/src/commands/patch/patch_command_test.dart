@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -26,6 +27,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -425,6 +427,114 @@ void main() {
             artifacts: patchArtifactBundles,
           ),
         ).called(1);
+      });
+
+      group('when the patcher has a minimum Flutter version', () {
+        final minimumFlutterVersion = Version(3, 27, 4);
+
+        setUp(() {
+          when(
+            () => patcher.minimumFlutterVersion,
+          ).thenReturn(minimumFlutterVersion);
+        });
+
+        group('when the release Flutter version is older', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => Version(3, 0, 0));
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(() => command.createPatch(patcher)),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err('''
+Release ${release.version} was built with Flutter $flutterRevision, but at least Flutter $minimumFlutterVersion is required to patch with `android`.
+A release cannot change Flutter versions, so create a new release with a newer Flutter version and patch that one.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.getReleaseArtifact(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          });
+        });
+
+        group('when the release Flutter version is supported', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => minimumFlutterVersion);
+          });
+
+          test(
+            "reads the release's Flutter version after installing it",
+            () async {
+              String? revisionWhenRead;
+              when(() => shorebirdFlutter.getVersion()).thenAnswer((_) async {
+                revisionWhenRead = shorebirdEnv.flutterRevision;
+                return minimumFlutterVersion;
+              });
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verifyInOrder([
+                () => shorebirdFlutter.installRevision(
+                  revision: release.flutterRevision,
+                ),
+                () => shorebirdFlutter.getVersion(),
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: appId,
+                  releaseId: release.id,
+                  arch: any(named: 'arch'),
+                  platform: releasePlatform,
+                ),
+              ]);
+              expect(revisionWhenRead, equals(release.flutterRevision));
+            },
+          );
+
+          test('builds the patch', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when the release Flutter version is unknown', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => null);
+          });
+
+          test('builds the patch', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).called(1);
+          });
+        });
       });
 
       group('flavor validation', () {
@@ -1839,6 +1949,43 @@ void main() {
               ]);
             },
           );
+
+          group("when the release's Flutter version is too old", () {
+            setUp(() {
+              when(
+                () => patcher.minimumFlutterVersion,
+              ).thenReturn(Version(3, 27, 4));
+              // The CLI's own Flutter is new enough; the release's is not.
+              when(() => shorebirdFlutter.getVersion()).thenAnswer(
+                (_) async =>
+                    shorebirdEnv.flutterRevision == releaseFlutterRevision
+                    ? Version(3, 0, 0)
+                    : Version(3, 27, 4),
+              );
+            });
+
+            test('exits with code 70 after the speculative build', () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(() => patcher.buildPatchArtifact()).called(1);
+              verifyNever(
+                () =>
+                    patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+              );
+              verify(
+                () => logger.err(
+                  any(
+                    that: contains(
+                      'is required to patch with `android`',
+                    ),
+                  ),
+                ),
+              ).called(1);
+            });
+          });
 
           test(
             'updates cache with both default and release Flutter revisions',

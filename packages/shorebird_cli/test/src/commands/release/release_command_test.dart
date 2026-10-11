@@ -1073,8 +1073,9 @@ $exception'''),
 
       test('exits with code 64 if flutter version is not supported', () async {
         final releaser = MockReleaser();
-        const releaseType = ReleaseType.android;
-        when(() => releaser.releaseType).thenReturn(releaseType);
+        when(
+          () => releaser.releaseType,
+        ).thenReturn(ReleaseType.iosFramework);
         when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
         final laterFlutterVersion = Version(3, 23, 0);
         expect(laterFlutterVersion, greaterThan(flutterVersion));
@@ -1087,7 +1088,7 @@ $exception'''),
         );
         verify(
           () => logger.err('''
-At least Flutter $laterFlutterVersion is required to release with `${releaseType.name}`.
+At least Flutter $laterFlutterVersion is required to release with `ios-framework`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         ).called(1);
       });
