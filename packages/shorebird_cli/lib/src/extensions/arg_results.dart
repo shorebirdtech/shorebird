@@ -68,14 +68,27 @@ extension OptionFinder on ArgResults {
   }
 }
 
+/// The public key PEM already resolved for each parse.
+///
+/// A release or patch needs the key more than once (for each build, and
+/// again to verify each signature), but `--public-key-cmd` is a user command
+/// that may prompt or may not return the same key twice, so it runs at most
+/// once per invocation and every caller sees the same key.
+final _publicKeyPemCache = Expando<Future<String?>>('publicKeyPem');
+
 /// Extension on [ArgResults] to provide code signing related extensions.
 extension CodeSign on ArgResults {
   /// Resolves the public key PEM string from the configured source.
   ///
+  /// The result is resolved once per parse and reused by later calls.
+  ///
   /// Returns null if no public key is configured. Throws
   /// [ProcessException] or [FormatException] if a command-based key
   /// fails.
-  Future<String?> resolvePublicKeyPem() async {
+  Future<String?> resolvePublicKeyPem() =>
+      _publicKeyPemCache[this] ??= _readPublicKeyPem();
+
+  Future<String?> _readPublicKeyPem() async {
     final publicKeyFile = file(CommonArguments.publicKeyArg.name);
     if (publicKeyFile != null) {
       return publicKeyFile.readAsStringSync();

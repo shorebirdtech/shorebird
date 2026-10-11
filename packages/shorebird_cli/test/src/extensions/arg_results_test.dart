@@ -437,6 +437,49 @@ void main() {
         codeSigner = MockCodeSigner();
       });
 
+      test('runs --public-key-cmd once per parse', () async {
+        final result = parser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=print-key',
+        ]);
+        when(
+          () => codeSigner.runPublicKeyCmd(any()),
+        ).thenAnswer((_) async => 'pem');
+        when(
+          () => codeSigner.base64PublicKeyFromPem(any()),
+        ).thenReturn('encoded-key');
+
+        await runScoped(
+          () async {
+            expect(await result.getEncodedPublicKey(), equals('encoded-key'));
+            expect(await result.getEncodedPublicKey(), equals('encoded-key'));
+            expect(await result.resolvePublicKeyPem(), equals('pem'));
+            verify(() => codeSigner.runPublicKeyCmd('print-key')).called(1);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
+      test('resolves each parse separately', () async {
+        final first = parser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=print-key',
+        ]);
+        final second = parser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=print-key',
+        ]);
+        when(
+          () => codeSigner.runPublicKeyCmd(any()),
+        ).thenAnswer((_) async => 'pem');
+
+        await runScoped(
+          () async {
+            await first.resolvePublicKeyPem();
+            await second.resolvePublicKeyPem();
+            verify(() => codeSigner.runPublicKeyCmd('print-key')).called(2);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
       test('returns null when no public key configured', () async {
         final args = <String>[];
         final result = parser.parse(args);
