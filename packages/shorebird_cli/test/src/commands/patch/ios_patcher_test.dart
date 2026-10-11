@@ -857,7 +857,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         group('when the key pair is provided', () {
           setUp(() {
             when(
-              () => codeSigner.base64PublicKey(any()),
+              () => codeSigner.base64PublicKeyFromPem(any()),
             ).thenReturn('public_key_encoded');
           });
 
@@ -875,6 +875,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(key.path);
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: 'public_key_encoded',
+              ),
+            ).called(1);
+          });
+
+          test('passes a key from --public-key-cmd to buildIpa', () async {
+            when(
+              () => argResults[CommonArguments.publicKeyCmd.name],
+            ).thenReturn('print-key');
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+            ).thenReturn(true);
+            when(
+              () => codeSigner.runPublicKeyCmd('print-key'),
+            ).thenAnswer((_) async => 'public_key');
             await runWithOverrides(patcher.buildPatchArtifact);
 
             verify(

@@ -514,7 +514,7 @@ void main() {
         group('when the key pair is provided', () {
           setUp(() {
             when(
-              () => codeSigner.base64PublicKey(any()),
+              () => codeSigner.base64PublicKeyFromPem(any()),
             ).thenReturn('public_key_encoded');
             when(
               () => artifactBuilder.buildIosFramework(
@@ -548,6 +548,29 @@ void main() {
               ),
             ).called(1);
           });
+
+          test(
+            'passes a key from --public-key-cmd to buildIosFramework',
+            () async {
+              when(
+                () => argResults[CommonArguments.publicKeyCmd.name],
+              ).thenReturn('print-key');
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+              ).thenReturn(true);
+              when(
+                () => codeSigner.runPublicKeyCmd('print-key'),
+              ).thenAnswer((_) async => 'public_key');
+              await runWithOverrides(patcher.buildPatchArtifact);
+
+              verify(
+                () => artifactBuilder.buildIosFramework(
+                  args: any(named: 'args'),
+                  base64PublicKey: 'public_key_encoded',
+                ),
+              ).called(1);
+            },
+          );
         });
 
         test('returns zipped xcframework', () async {

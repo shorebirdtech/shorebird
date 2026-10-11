@@ -89,15 +89,6 @@ extension CodeSign on ArgResults {
     return null;
   }
 
-  /// Read the public key file and encode it to base64 if any.
-  String? get encodedPublicKey {
-    final publicKeyFile = file(CommonArguments.publicKeyArg.name);
-
-    return publicKeyFile != null
-        ? codeSigner.base64PublicKey(publicKeyFile)
-        : null;
-  }
-
   /// Get base64-encoded public key from either file or command.
   ///
   /// Returns null if no public key is configured.

@@ -72,7 +72,7 @@ class IosFrameworkPatcher extends Patcher
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final buildResult = await artifactBuilder.buildIosFramework(
       args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: await getEncodedPublicKey(),
     );
 
     await buildAppleElfAotSnapshot(
