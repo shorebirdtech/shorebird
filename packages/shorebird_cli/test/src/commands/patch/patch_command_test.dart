@@ -50,6 +50,7 @@ class _FakeRelease extends Fake with Equatable implements Release {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(PatchCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';

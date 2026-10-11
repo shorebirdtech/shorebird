@@ -15,6 +15,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(WhoamiCommand, () {
     const user = PrivateUser(
       id: 1,

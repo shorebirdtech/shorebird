@@ -13,9 +13,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PatchDiffChecker, () {
     const assetsDiffPrettyString = 'assets diff pretty string';
     const nativeDiffPrettyString = 'native diff pretty string';

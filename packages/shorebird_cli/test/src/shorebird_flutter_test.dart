@@ -19,9 +19,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdFlutter, () {
     const flutterRevision = 'flutter-revision';
     late Directory shorebirdRoot;

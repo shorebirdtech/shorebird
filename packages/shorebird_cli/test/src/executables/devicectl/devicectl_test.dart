@@ -11,11 +11,13 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Devicectl, () {
-    final fixturesPath = p.join('test', 'fixtures', 'devicectl');
+    final fixturesPath = p.join(fixturesDirectory, 'devicectl');
 
     const deviceId = 'DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF';
 

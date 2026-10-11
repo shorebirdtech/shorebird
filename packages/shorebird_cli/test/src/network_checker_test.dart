@@ -14,9 +14,11 @@ import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(NetworkChecker, () {
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;

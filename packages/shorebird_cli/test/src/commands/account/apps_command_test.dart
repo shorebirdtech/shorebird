@@ -15,6 +15,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AccountAppsCommand, () {
     final appWithReleases = AppMetadata(
       appId: '01H000000000000000000ABCDE',

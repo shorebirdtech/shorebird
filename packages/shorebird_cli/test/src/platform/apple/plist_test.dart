@@ -6,8 +6,10 @@ import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/platform/apple/invalid_export_options_plist_exception.dart';
 import 'package:shorebird_cli/src/platform/apple/plist.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('Plist', () {
     late Directory tempDir;
 

@@ -13,9 +13,11 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Apple, () {
     late AotTools aotTools;
     late Apple apple;
@@ -99,7 +101,7 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           return;
         }
 
-        final fixturesDir = Directory(p.join('test', 'fixtures', 'xcschemes'));
+        final fixturesDir = Directory(p.join(fixturesDirectory, 'xcschemes'));
         for (final file in fixturesDir.listSync().whereType<File>()) {
           final destination = File(
             p.join(projectRoot.path, schemesPath, p.basename(file.path)),
@@ -497,7 +499,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           expect(result.linkPercentage, isNull);
 
           verify(
-            () => logger.err('Unable to find analyze_snapshot at '),
+            () => logger.err(
+              'Unable to find analyze_snapshot at ${File('').path}',
+            ),
           ).called(1);
         });
       });

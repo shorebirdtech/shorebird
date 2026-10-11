@@ -23,6 +23,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(GetApksCommand, () {
     const appId = 'test-app-id';
     const releaseId = 123;

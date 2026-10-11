@@ -70,6 +70,7 @@ class _TestCommand extends PatchRollbackStateCommand {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(PatchRollbackStateCommand, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0';

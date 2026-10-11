@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -61,6 +62,7 @@ class _TestReleaser extends Releaser {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(Releaser, () {
     late ArgResults argResults;
     late ArtifactManager artifactManager;

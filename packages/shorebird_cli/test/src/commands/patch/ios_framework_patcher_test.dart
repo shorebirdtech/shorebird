@@ -41,6 +41,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(IosFrameworkPatcher, () {
     late AotTools aotTools;
     late Apple apple;

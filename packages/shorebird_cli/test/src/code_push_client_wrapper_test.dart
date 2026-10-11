@@ -28,6 +28,7 @@ import 'matchers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('scoped', () {
     late Auth auth;
     late http.Client httpClient;
@@ -1813,7 +1814,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             }
             // A real aab containing base/lib/<arch>/libapp.so for three arches.
             final aab = File(
-              p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+              p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
             );
 
             await runWithOverrides(

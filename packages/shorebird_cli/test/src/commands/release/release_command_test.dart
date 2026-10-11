@@ -32,6 +32,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ReleaseCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';

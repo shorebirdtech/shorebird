@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/executables/devicectl/nserror.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(NSError, () {
     test('(de)serialization', () {
       const error = NSError(

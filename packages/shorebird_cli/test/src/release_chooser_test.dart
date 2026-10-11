@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 Release _release(String version, DateTime createdAt) {
@@ -20,6 +21,7 @@ Release _release(String version, DateTime createdAt) {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group('chooseRelease', () {
     late ShorebirdLogger logger;
 

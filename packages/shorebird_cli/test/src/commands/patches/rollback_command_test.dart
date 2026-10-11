@@ -19,6 +19,7 @@ import '../../mocks.dart';
 // Shared behavior is tested in patch_rollback_state_command_test.dart; this
 // covers only what is specific to rollback.
 void main() {
+  useTempWorkingDirectory();
   group(RollbackCommand, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0';

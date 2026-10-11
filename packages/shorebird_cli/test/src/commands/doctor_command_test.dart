@@ -24,6 +24,7 @@ import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('doctor', () {
     const shorebirdEngineRevision = 'test-engine-revision';
     const shorebirdFlutterRevision = 'test-flutter-revision';

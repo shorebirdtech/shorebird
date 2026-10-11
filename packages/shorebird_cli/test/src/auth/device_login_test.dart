@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 /// A JWT the token response parser accepts, issued by [issuer].
@@ -37,6 +38,7 @@ http.Response _oauthError(String error) =>
     _json({'error': error, 'error_description': 'x'}, status: 400);
 
 void main() {
+  useTempWorkingDirectory();
   group('obtainCredentialsViaDeviceLogin', () {
     final authBaseUrl = Uri.parse('https://auth.shorebird.dev');
     final deviceAuthorizationJson = {

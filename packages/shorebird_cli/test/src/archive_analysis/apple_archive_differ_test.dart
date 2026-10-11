@@ -11,10 +11,12 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
-  final xcarchiveFixturesBasePath = p.join('test', 'fixtures', 'xcarchives');
+  useTempWorkingDirectory();
+  final xcarchiveFixturesBasePath = p.join(fixturesDirectory, 'xcarchives');
   final baseIpaPath = p.join(xcarchiveFixturesBasePath, 'base.xcarchive.zip');
   final baseChangedUuidPath = p.join(
     xcarchiveFixturesBasePath,
@@ -38,8 +40,7 @@ void main() {
   );
 
   final xcframeworkFixturesBasePath = p.join(
-    'test',
-    'fixtures',
+    fixturesDirectory,
     'xcframeworks',
   );
   final baseXcframeworkPath = p.join(
@@ -201,7 +202,7 @@ void main() {
       });
 
       group('layered icon renditions', () {
-        final fixturesPath = p.join('test', 'fixtures', 'assetutil');
+        final fixturesPath = p.join(fixturesDirectory, 'assetutil');
         String readFixture(String name) =>
             File(p.join(fixturesPath, name)).readAsStringSync();
 

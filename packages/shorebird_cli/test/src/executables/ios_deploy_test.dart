@@ -14,9 +14,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(IOSDeploy, () {
     late ShorebirdLogger logger;
     late TestNativePlatform platform;
@@ -164,8 +166,9 @@ void main() {
       test('detaches on process stopped', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) =>
-              File('test/fixtures/ios-deploy/process_stopped.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_stopped.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -189,7 +192,9 @@ void main() {
       test('kills process on process exited', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) => File('test/fixtures/ios-deploy/process_exited.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_exited.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -212,8 +217,9 @@ void main() {
       test('kills process on process detached', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) =>
-              File('test/fixtures/ios-deploy/process_detached.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_detached.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -236,8 +242,9 @@ void main() {
       test('handles process resuming', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) =>
-              File('test/fixtures/ios-deploy/process_resuming.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_resuming.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -278,7 +285,7 @@ void main() {
         when(signal.watch).thenAnswer((_) => controller.stream);
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) => File('test/fixtures/ios-deploy/success.txt').openRead(),
+          (_) => File('$fixturesDirectory/ios-deploy/success.txt').openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -394,7 +401,7 @@ void main() {
       test('exits with code 0 on success', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) => File('test/fixtures/ios-deploy/success.txt').openRead(),
+          (_) => File('$fixturesDirectory/ios-deploy/success.txt').openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';

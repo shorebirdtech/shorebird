@@ -9,9 +9,11 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdCachedArtifacts, () {
     const engineRevision = 'engine-revision';
     late Cache cache;
@@ -236,7 +238,7 @@ void main() {
     }
 
     setUp(() {
-      localEngineSrcPath = 'local_engine_src_path';
+      localEngineSrcPath = p.join(Directory.current.path, 'local_engine_src');
       localEngine = 'local_engine';
       engineConfig = MockEngineConfig();
       artifacts = const ShorebirdLocalEngineArtifacts();

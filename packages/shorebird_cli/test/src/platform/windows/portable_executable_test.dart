@@ -4,8 +4,10 @@ import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/platform/windows/portable_executable.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PortableExecutable, () {
     group('when no .rdata section exists', () {
       late File file;
@@ -33,8 +35,7 @@ void main() {
     group('when given a valid exe', () {
       late File file;
       final winArchivesFixturesBasePath = p.join(
-        'test',
-        'fixtures',
+        fixturesDirectory,
         'win_archives',
       );
       final releasePath = p.join(winArchivesFixturesBasePath, 'release.zip');

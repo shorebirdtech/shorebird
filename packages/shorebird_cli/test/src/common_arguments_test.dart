@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(CommonArguments, () {
     group('nameError', () {
       String? nameError(String value) => CommonArguments.nameError(

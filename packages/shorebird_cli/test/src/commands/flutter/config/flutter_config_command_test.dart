@@ -6,9 +6,11 @@ import 'package:shorebird_cli/src/commands/flutter/config/flutter_config_command
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../../../helpers.dart';
 import '../../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(FlutterConfigCommand, () {
     late ShorebirdProcess process;
     late ArgResults argResults;

@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 /// Builds a JWT string with the given [issuer] for testing.
@@ -46,6 +47,7 @@ Uri _redirectUri(Uri loginUri) =>
     Uri.parse(loginUri.queryParameters['redirect_uri']!);
 
 void main() {
+  useTempWorkingDirectory();
   late ShorebirdEnv shorebirdEnv;
 
   setUpAll(() {

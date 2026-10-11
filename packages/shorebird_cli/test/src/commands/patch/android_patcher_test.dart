@@ -38,6 +38,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AndroidPatcher, () {
     late ArgParser argParser;
     late ArgResults argResults;
@@ -760,7 +761,7 @@ Looked in:
             ),
           ).thenAnswer(
             (_) async =>
-                File(p.join('test', 'fixtures', 'aabs', 'changed_asset.aab')),
+                File(p.join(fixturesDirectory, 'aabs', 'changed_asset.aab')),
           );
           when(
             () => artifactManager.createDiff(

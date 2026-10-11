@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -88,6 +89,7 @@ class _TestDesktopPatcher extends DesktopPatcher {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(DesktopPatcher, () {
     late ArgParser argParser;
     late ArgResults argResults;
@@ -542,7 +544,7 @@ void main() {
                   that: isA<File>().having(
                     (f) => f.path,
                     'path',
-                    equals('private-key.pem'),
+                    equals(File('private-key.pem').path),
                   ),
                 ),
               ),
