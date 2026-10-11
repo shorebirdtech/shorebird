@@ -381,6 +381,15 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     await patcher.assertArgsAreValid();
     assertSigningArgsValid();
 
+    // A new track is created on first publish, so reject a name that
+    // `channels create` and `patches set-track` would also reject.
+    final trackNameError = CommonArguments.nameError(
+      label: 'Track name',
+      value: results['track'] as String,
+      maxLength: CommonArguments.trackNameMaxLength,
+    );
+    if (trackNameError != null) usageException(trackNameError);
+
     try {
       await shorebirdValidator.validateFlavors(
         flavorArg: flavor,

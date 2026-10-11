@@ -183,6 +183,26 @@ void main() {
       });
     });
 
+    group('when the target org is not one of the user\'s orgs', () {
+      setUp(() {
+        when(() => argResults['org-id']).thenReturn('7');
+      });
+
+      test('lists the user\'s orgs on one line under --json', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, jsonMode: true),
+        );
+        expect(exitCode, equals(ExitCode.usage.code));
+        verifyNeverTransferred();
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['message'], 'You are not a member of organization 7.');
+        expect(
+          error['hint'],
+          'Your organizations: $organizationName ($organizationId).',
+        );
+      });
+    });
+
     group('when the fetch fails', () {
       setUp(() {
         when(

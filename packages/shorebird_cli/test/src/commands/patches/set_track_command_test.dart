@@ -161,6 +161,18 @@ void main() {
         expect(parsed['patch-number'], equals('2'));
       });
 
+      test('uses the last value when old and new names are both passed', () {
+        final parsed = SetTrackCommand().argParser.parse([
+          '--release=1.0.0+1',
+          '--release-version=2.0.0+1',
+          '--patch-number=2',
+          '--patch=3',
+          '--track=beta',
+        ]);
+        expect(parsed['release-version'], equals('2.0.0+1'));
+        expect(parsed['patch-number'], equals('3'));
+      });
+
       test('lists only the canonical names in help', () {
         final usage = SetTrackCommand().argParser.usage;
         expect(usage, contains('--release-version'));

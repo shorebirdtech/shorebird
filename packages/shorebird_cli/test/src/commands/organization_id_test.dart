@@ -60,11 +60,7 @@ void main() {
       );
       expect(
         result.error?.hint,
-        equals(
-          'Available organizations:\n'
-          '  Acme (id: 1)\n'
-          '  Beta (id: 2)',
-        ),
+        equals('Your organizations: Acme (1), Beta (2).'),
       );
     });
 

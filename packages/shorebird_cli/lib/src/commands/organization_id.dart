@@ -41,11 +41,12 @@ findOrganizationMembership({
   );
 }
 
-/// Lists [memberships]' organizations with their ids, for a hint.
+/// Lists [memberships]' organizations with their ids on one line, for a hint
+/// that reads the same in human and JSON output.
 String availableOrganizations(List<OrganizationMembership> memberships) {
   if (memberships.isEmpty) return 'You are not a member of any organization.';
-  final lines = memberships.map(
-    (m) => '  ${m.organization.name} (id: ${m.organization.id})',
+  final organizations = memberships.map(
+    (m) => '${m.organization.name} (${m.organization.id})',
   );
-  return 'Available organizations:\n${lines.join('\n')}';
+  return 'Your organizations: ${organizations.join(', ')}.';
 }

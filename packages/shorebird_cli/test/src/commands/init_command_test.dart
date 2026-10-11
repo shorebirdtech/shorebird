@@ -468,8 +468,7 @@ Organization ids are integers, e.g. --org-id 42.''',
                   'message',
                   '''
 You are not a member of organization 999999.
-Available organizations:
-  Test Organization (id: $organizationId)''',
+Your organizations: Test Organization ($organizationId).''',
                 ),
               ),
             );
@@ -608,9 +607,7 @@ Available organizations:
                   'message',
                   '''
 You belong to multiple organizations. Pass --org-id=<id> to choose one.
-Available organizations:
-  ${org1.name} (id: ${org1.id})
-  ${org2.name} (id: ${org2.id})''',
+Your organizations: ${org1.name} (${org1.id}), ${org2.name} (${org2.id}).''',
                 ),
               ),
             );
@@ -707,6 +704,25 @@ Available organizations:
           });
 
           test('throws a usage exception naming --display-name', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  'App display name must not be blank.',
+                ),
+              ),
+            );
+          });
+        });
+
+        group('when display name is only whitespace', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('   ');
+          });
+
+          test('throws a usage exception', () async {
             await expectLater(
               runWithOverrides(command.run),
               throwsA(

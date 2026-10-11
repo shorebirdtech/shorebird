@@ -1285,6 +1285,49 @@ void main() {
       });
     });
 
+    group('when --track is blank', () {
+      setUp(() {
+        when(() => argResults['track']).thenReturn('   ');
+      });
+
+      test('is a usage error before building', () async {
+        await expectLater(
+          runWithOverrides(() => command.createPatch(patcher)),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              equals('Track name must not be blank.'),
+            ),
+          ),
+        );
+        verifyNever(
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+    });
+
+    group('when --track is too long', () {
+      setUp(() {
+        when(() => argResults['track']).thenReturn('a' * 129);
+      });
+
+      test('is a usage error before building', () async {
+        await expectLater(
+          runWithOverrides(() => command.createPatch(patcher)),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              equals('Track name must be at most 128 characters (got 129).'),
+            ),
+          ),
+        );
+      });
+    });
+
     group('when flutter install fails', () {
       final error = Exception('Failed to install Flutter revision.');
 
