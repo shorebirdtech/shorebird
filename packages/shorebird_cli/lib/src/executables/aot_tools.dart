@@ -418,7 +418,10 @@ class AotTools {
 
   /// Uses the analyze_snapshot executable to write the data and isolate
   /// snapshots contained in [releaseSnapshot]. Returns the generated diff base
-  /// file, written into [outputDirectory], which the caller owns and deletes.
+  /// file, written into [outputDirectory].
+  ///
+  /// [outputDirectory] must already exist. It is owned by the caller, which
+  /// deletes it once the diff base is no longer needed.
   Future<File> generatePatchDiffBase({
     required File releaseSnapshot,
     required String analyzeSnapshotPath,

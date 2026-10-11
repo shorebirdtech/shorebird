@@ -199,6 +199,64 @@ void main() {
       });
     });
 
+    group('deleteTemporaryDirectory', () {
+      test('deletes the directory and its contents', () {
+        final directory = Directory.systemTemp.createTempSync();
+        File(p.join(directory.path, 'nested', 'file')).createSync(
+          recursive: true,
+        );
+
+        runWithOverrides(() => patcher.deleteTemporaryDirectory(directory));
+
+        expect(directory.existsSync(), isFalse);
+      });
+
+      test('does nothing when the directory does not exist', () {
+        final directory = Directory(
+          p.join(Directory.systemTemp.path, 'shorebird-does-not-exist'),
+        );
+
+        expect(
+          () => runWithOverrides(
+            () => patcher.deleteTemporaryDirectory(directory),
+          ),
+          returnsNormally,
+        );
+      });
+
+      test(
+        'logs instead of throwing when the directory cannot be deleted',
+        () {
+          final parent = Directory.systemTemp.createTempSync();
+          final directory = Directory(p.join(parent.path, 'locked'))
+            ..createSync();
+          File(p.join(directory.path, 'file')).createSync();
+          // Without write permission on the parent, the directory can't be
+          // removed from it.
+          Process.runSync('chmod', ['555', parent.path]);
+          addTearDown(() {
+            Process.runSync('chmod', ['755', parent.path]);
+            parent.deleteSync(recursive: true);
+          });
+
+          expect(
+            () => runWithOverrides(
+              () => patcher.deleteTemporaryDirectory(directory),
+            ),
+            returnsNormally,
+          );
+          verify(
+            () => logger.detail(
+              any(that: startsWith('Failed to delete ${directory.path}')),
+            ),
+          ).called(1);
+        },
+        skip: p.style == p.Style.windows
+            ? 'chmod is not available on Windows'
+            : null,
+      );
+    });
+
     group('assertPreconditions', () {
       setUp(() {
         when(() => doctor.iosCommandValidators).thenReturn([flavorValidator]);

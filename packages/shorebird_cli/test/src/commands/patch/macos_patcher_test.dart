@@ -1083,6 +1083,34 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         );
       });
 
+      group('when creating diff fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+            ),
+          ).thenThrow(Exception('Failed to create diff'));
+        });
+
+        test('fails progress and exits with software error code', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => logger.progress('Creating patch artifacts')).called(1);
+          verify(
+            () => progress.fail('Exception: Failed to create diff'),
+          ).called(1);
+        });
+      });
+
       group('when the engine publishes macOS analyze_snapshot', () {
         /// Checks that the directories createPatchArtifacts extracted the
         /// release into and wrote diff bases into no longer exist.

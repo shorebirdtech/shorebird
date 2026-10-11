@@ -41,6 +41,19 @@ mixin ApplePatcherMixin on Patcher {
   static String saveDebuggingInfoPath(String directory) =>
       p.join(p.absolute(directory), splitDebugInfoFileName);
 
+  /// Deletes [directory], a temporary directory created while patching.
+  ///
+  /// Called from `finally` blocks, so a failure is logged rather than thrown:
+  /// it must neither mask the error that is already propagating nor stop the
+  /// remaining cleanup from running.
+  void deleteTemporaryDirectory(Directory directory) {
+    try {
+      if (directory.existsSync()) directory.deleteSync(recursive: true);
+    } on FileSystemException catch (error) {
+      logger.detail('Failed to delete ${directory.path}: $error');
+    }
+  }
+
   /// The additional gen_snapshot arguments to pass when building the patch
   /// with `--split-debug-info`.
   static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) =>
@@ -205,7 +218,7 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
           ),
         );
       } finally {
-        patchBaseDirectory.deleteSync(recursive: true);
+        deleteTemporaryDirectory(patchBaseDirectory);
       }
     } else {
       patchFile = patchBuildFile;

@@ -202,8 +202,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
       return {Arch.x86_64: x64Bundle, Arch.arm64: arm64Bundle};
     } finally {
-      releaseAppDirectory.deleteSync(recursive: true);
-      diffBaseDirectory.deleteSync(recursive: true);
+      deleteTemporaryDirectory(releaseAppDirectory);
+      deleteTemporaryDirectory(diffBaseDirectory);
     }
   }
 
