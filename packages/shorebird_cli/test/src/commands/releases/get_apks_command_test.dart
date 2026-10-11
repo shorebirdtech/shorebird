@@ -678,8 +678,8 @@ void main() {
         );
         verify(
           () => logger.err(
-            'Failed to extract apks for release $releaseVersion: '
-            'the generated .apks archive contained no apks.',
+            'No apks found in the generated .apks archive for release '
+            '$releaseVersion.',
           ),
         ).called(1);
       });

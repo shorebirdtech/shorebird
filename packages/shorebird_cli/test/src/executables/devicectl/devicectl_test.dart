@@ -250,6 +250,7 @@ void main() {
             File(p.join(locked.path, 'file')).createSync();
             Process.runSync('chmod', ['555', locked.path]);
             addTearDown(() {
+              if (!locked.existsSync()) return;
               Process.runSync('chmod', ['755', locked.path]);
               jsonFile.parent.deleteSync(recursive: true);
             });
@@ -283,6 +284,10 @@ void main() {
             ).called(1);
           },
           testOn: '!windows',
+          // Root ignores directory permissions, so the delete would succeed.
+          skip: !Platform.isWindows && _isRoot()
+              ? 'Running as root, which can delete read-only directories'
+              : false,
         );
       });
 
@@ -1185,3 +1190,5 @@ void main() {
     });
   });
 }
+
+bool _isRoot() => '${Process.runSync('id', ['-u']).stdout}'.trim() == '0';
