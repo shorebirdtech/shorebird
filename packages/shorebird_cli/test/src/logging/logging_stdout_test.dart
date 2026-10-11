@@ -114,10 +114,10 @@ void main() {
     });
 
     test('add decodes UTF-8 bytes when logging to file', () {
-      final bytes = utf8.encode('héllo ✓');
+      final bytes = utf8.encode('price: 5 € ✓');
       loggingStdout.add(bytes);
       verify(() => baseStdout.add(bytes)).called(1);
-      expect(logFile.readAsStringSync(), contains('héllo ✓'));
+      expect(logFile.readAsStringSync(), contains('price: 5 € ✓'));
     });
 
     test('add logs malformed UTF-8 without throwing', () {
