@@ -56,6 +56,12 @@ abstract class ShorebirdCommand extends Command<int> {
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;
 
+  /// Prints usage through the logger rather than `print`, which writes to
+  /// the real stdout. Under `--json`, the logger's output goes to stderr and
+  /// stdout carries only the envelope.
+  @override
+  void printUsage() => logger.info(usage);
+
   /// Whether the `--json` global flag was passed.
   ///
   /// Reads from the [isJsonModeRef] scoped dependency, which is set by the

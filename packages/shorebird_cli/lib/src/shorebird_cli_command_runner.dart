@@ -362,6 +362,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
           ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
+      // Every --json run leaves exactly one envelope on stdout. A command
+      // that succeeded without writing one (it has no JSON output, or it only
+      // printed usage for --help, where the exit code is null) gets an empty
+      // success envelope.
+      if (isJsonMode &&
+          !envelope.written &&
+          (exitCode == null || exitCode == ExitCode.success.code)) {
+        JsonResult.success(data: const {}, command: commandName).write();
+      }
     }
 
     // `runCommand` returns null in when the --help flag is passed.
