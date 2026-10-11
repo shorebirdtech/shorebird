@@ -1222,60 +1222,35 @@ void main() {
       });
     });
 
-    group('getIosReleaseSupplementDirectory', () {
+    group('getReleaseSupplementDirectory', () {
+      Directory? getDirectory({bool create = false}) => runWithOverrides(
+        () => artifactManager.getReleaseSupplementDirectory(
+          platformSubdir: 'ios',
+          create: create,
+        ),
+      );
+
+      String expectedPath() =>
+          p.join(projectRoot.path, 'build', 'ios', 'shorebird');
+
       group('when the directory does not exist', () {
         test('returns null', () {
-          expect(
-            runWithOverrides(artifactManager.getIosReleaseSupplementDirectory),
-            isNull,
-          );
+          expect(getDirectory(), isNull);
+        });
+
+        test('creates the directory when create is true', () {
+          expect(getDirectory(create: true)?.path, equals(expectedPath()));
+          expect(Directory(expectedPath()).existsSync(), isTrue);
         });
       });
 
       group('when the directory exists', () {
         setUp(() {
-          Directory(
-            p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-          ).createSync(recursive: true);
+          Directory(expectedPath()).createSync(recursive: true);
         });
 
         test('returns path to the directory', () {
-          expect(
-            runWithOverrides(
-              artifactManager.getIosReleaseSupplementDirectory,
-            )?.path,
-            equals(p.join(projectRoot.path, 'build', 'ios', 'shorebird')),
-          );
-        });
-      });
-    });
-
-    group('getMacosReleaseSupplementDirectory', () {
-      group('when the directory does not exist', () {
-        test('returns null', () {
-          expect(
-            runWithOverrides(
-              artifactManager.getMacosReleaseSupplementDirectory,
-            ),
-            isNull,
-          );
-        });
-      });
-
-      group('when the directory exists', () {
-        setUp(() {
-          Directory(
-            p.join(projectRoot.path, 'build', 'macos', 'shorebird'),
-          ).createSync(recursive: true);
-        });
-
-        test('returns path to the directory', () {
-          expect(
-            runWithOverrides(
-              artifactManager.getMacosReleaseSupplementDirectory,
-            )?.path,
-            equals(p.join(projectRoot.path, 'build', 'macos', 'shorebird')),
-          );
+          expect(getDirectory()?.path, equals(expectedPath()));
         });
       });
     });

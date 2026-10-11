@@ -319,6 +319,45 @@ To change the version of this release, change your app's version in your pubspec
         },
       );
 
+      test(
+        'deletes the supplement directory before building, leaving the rest '
+        'of the build directory alone',
+        () async {
+          final buildDir = Directory(p.join(projectRoot.path, 'build'));
+          final supplementDir = Directory(
+            p.join(buildDir.path, 'test', 'shorebird'),
+          );
+          File(p.join(supplementDir.path, 'App.ct.link'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('stale');
+          final siblingFile = File(p.join(buildDir.path, 'test', 'output'))
+            ..writeAsStringSync('keep');
+          final sharedFile = File(
+            p.join(buildDir.path, 'shorebird', 'obfuscation_map.json'),
+          )..createSync(recursive: true);
+
+          bool? supplementExistedDuringBuild;
+          await runWithOverrides(
+            () => releaser.runReleaseBuild((_, _) async {
+              supplementExistedDuringBuild = supplementDir.existsSync();
+            }),
+          );
+
+          expect(supplementExistedDuringBuild, isFalse);
+          expect(siblingFile.existsSync(), isTrue);
+          expect(sharedFile.existsSync(), isTrue);
+        },
+      );
+
+      test('builds normally when there is no supplement directory', () async {
+        await expectLater(
+          runWithOverrides(
+            () => releaser.runReleaseBuild((_, _) async => 'built'),
+          ),
+          completion(equals('built')),
+        );
+      });
+
       test('exits after the build when it saved no obfuscation map', () async {
         setObfuscate(enabled: true);
         var built = false;

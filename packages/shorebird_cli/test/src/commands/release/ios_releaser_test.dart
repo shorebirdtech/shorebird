@@ -410,25 +410,6 @@ $body
         });
       });
 
-      group('when stale build/ios/shorebird directory exists', () {
-        late Directory shorebirdSupplementDir;
-
-        setUp(() {
-          shorebirdSupplementDir = Directory(
-            p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-          )..createSync(recursive: true);
-          when(
-            () => artifactManager.getIosReleaseSupplementDirectory(),
-          ).thenReturn(shorebirdSupplementDir);
-        });
-
-        test('deletes the directory', () async {
-          expect(shorebirdSupplementDir.existsSync(), isTrue);
-          await runWithOverrides(iosReleaser.buildReleaseArtifacts);
-          expect(shorebirdSupplementDir.existsSync(), isFalse);
-        });
-      });
-
       group('when platform was specified via arg results rest', () {
         setUp(() {
           when(() => argResults.rest).thenReturn(['ios', '--verbose']);
@@ -813,7 +794,6 @@ $body
 
       late Directory xcarchiveDirectory;
       late Directory iosAppDirectory;
-      late Directory supplementDirectory;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -823,7 +803,6 @@ $body
 
         xcarchiveDirectory = Directory.systemTemp.createTempSync();
         iosAppDirectory = Directory.systemTemp.createTempSync();
-        supplementDirectory = Directory.systemTemp.createTempSync();
         when(
           artifactManager.getXcarchiveDirectory,
         ).thenReturn(xcarchiveDirectory);
@@ -832,9 +811,6 @@ $body
             xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
           ),
         ).thenReturn(iosAppDirectory);
-        when(
-          () => artifactManager.getIosReleaseSupplementDirectory(),
-        ).thenReturn(supplementDirectory);
         when(
           () => codePushClientWrapper.createIosReleaseArtifacts(
             appId: any(named: 'appId'),

@@ -85,14 +85,16 @@ To change the version of this release, change your app's version in your pubspec
   /// Runs a release's Flutter [build] with the arguments every release build
   /// shares, then checks the build produced what those arguments promised.
   ///
-  /// [build] receives the user's forwarded arguments plus the
-  /// `--split-debug-info` default and obfuscation map options (see
+  /// Before building, [clearSupplementDirectory] removes the previous build's
+  /// supplement output. [build] receives the user's forwarded arguments plus
+  /// the `--split-debug-info` default and obfuscation map options (see
   /// [addSplitDebugInfoDefault] and [addObfuscationMapArgs]), and the encoded
   /// public key. Once it returns, [verifyObfuscationMap] checks that an
   /// obfuscated build saved its obfuscation map.
   Future<T> runReleaseBuild<T>(
     Future<T> Function(List<String> buildArgs, String? base64PublicKey) build,
   ) async {
+    clearSupplementDirectory();
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
@@ -238,6 +240,19 @@ To change the version of this release, change your app's version in your pubspec
   /// Arch string for the supplement artifact on the server (e.g.
   /// 'android_supplement').
   String get supplementArtifactArch;
+
+  /// Deletes `build/<supplementPlatformSubdir>/shorebird/` if it exists, so
+  /// that files a previous build left there (e.g. link supplements written by
+  /// an older Flutter that did not clear the directory itself) cannot be
+  /// uploaded as part of this release.
+  void clearSupplementDirectory() {
+    final supplementDir = Directory(
+      p.join(projectRoot.path, 'build', supplementPlatformSubdir, 'shorebird'),
+    );
+    if (!supplementDir.existsSync()) return;
+    logger.detail('Deleting stale supplement directory ${supplementDir.path}');
+    supplementDir.deleteSync(recursive: true);
+  }
 
   /// Assembles the supplement directory: copies the obfuscation map (if
   /// present) into the platform supplement dir. Returns the directory, or null
