@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 
 const _jsonExample =
     'shorebird patches set-track --release 1.0.0+1 --patch 1 '
@@ -143,24 +142,20 @@ class SetTrackCommand extends ShorebirdCommand
       );
     }
 
-    try {
-      await codePushClientWrapper.promotePatch(
+    // Non-null here; bind it so the closure below keeps the promotion.
+    final trackChannel = channel;
+    final promoteError = await guardApiCall(
+      () => codePushClientWrapper.promotePatch(
         appId: appId,
         patchId: patch.id,
-        channel: channel,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message:
-              'Failed to set track for patch $patchNumber '
-              'of release "$releaseVersion".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+        channel: trackChannel,
+      ),
+      code: JsonErrorCode.softwareError,
+      message:
+          'Failed to set track for patch $patchNumber '
+          'of release "$releaseVersion".',
+    );
+    if (promoteError != null) return promoteError;
 
     if (isJsonMode) {
       emitJsonSuccess({

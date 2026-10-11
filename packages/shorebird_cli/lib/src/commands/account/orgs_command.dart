@@ -4,7 +4,6 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template orgs_command}
@@ -38,19 +37,14 @@ class OrgsCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
-    final List<OrganizationMembership> memberships;
-    try {
-      memberships = await codePushClientWrapper.getOrganizationMemberships();
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch organizations.',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<OrganizationMembership> memberships;
+    final fetchError = await guardApiCall(
+      () async => memberships = await codePushClientWrapper
+          .getOrganizationMemberships(),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch organizations.',
+    );
+    if (fetchError != null) return fetchError;
 
     if (isJsonMode) {
       emitJsonSuccess({

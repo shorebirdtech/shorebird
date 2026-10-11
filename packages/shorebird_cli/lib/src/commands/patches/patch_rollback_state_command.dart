@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 
 /// {@template patch_rollback_state_command}
 /// Shared implementation of `shorebird patches rollback` and
@@ -110,26 +109,19 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
 
     // Only the POST can say whether the patch changed: the read above can go
     // stale, and the server answers 304 when there was nothing to do.
-    final bool changed;
-    try {
-      changed = await changePatchState(
+    late final bool changed;
+    final changeError = await guardApiCall(
+      () async => changed = await changePatchState(
         appId: appId,
         releaseId: fetched.release!.id,
         patchId: patch.id,
         patchNumber: patch.number,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message:
-              'Failed to $verb patch $patchNumber '
-              'of release "$releaseVersion".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message:
+          'Failed to $verb patch $patchNumber of release "$releaseVersion".',
+    );
+    if (changeError != null) return changeError;
 
     if (!changed && results['require-change'] as bool) {
       final message = alreadyInStateMessage(patchNumber);

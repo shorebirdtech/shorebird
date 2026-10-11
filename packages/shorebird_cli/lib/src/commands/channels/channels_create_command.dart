@@ -6,7 +6,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template channels_create_command}
@@ -52,19 +51,14 @@ class ChannelsCreateCommand extends ShorebirdCommand with AppScopedCommand {
       return reportError(message: message);
     }
 
-    final List<Channel> channels;
-    try {
-      channels = await codePushClientWrapper.getChannels(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch channels for app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<Channel> channels;
+    final fetchError = await guardApiCall(
+      () async =>
+          channels = await codePushClientWrapper.getChannels(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch channels for app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     final existing = channels.firstWhereOrNull((c) => c.name == channelName);
     if (existing != null) {
@@ -72,22 +66,16 @@ class ChannelsCreateCommand extends ShorebirdCommand with AppScopedCommand {
       return reportError(message: message);
     }
 
-    final Channel channel;
-    try {
-      channel = await codePushClientWrapper.createChannel(
+    late final Channel channel;
+    final createError = await guardApiCall(
+      () async => channel = await codePushClientWrapper.createChannel(
         appId: appId,
         name: channelName,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to create channel "$channelName".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to create channel "$channelName".',
+    );
+    if (createError != null) return createError;
 
     if (isJsonMode) {
       emitJsonSuccess({

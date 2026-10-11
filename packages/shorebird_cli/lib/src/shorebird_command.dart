@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Signature for a function which takes a list of bytes and returns a hash.
@@ -204,6 +205,33 @@ abstract class ShorebirdCommand extends Command<int> {
       if (hint != null) logger.info(hint);
     }
     return exitCode ?? ExitCode.usage.code;
+  }
+
+  /// Runs [body], an API call (or a few) that reports its own failures by
+  /// throwing [ProcessExit], and returns null if it succeeds.
+  ///
+  /// With `--json`, a [ProcessExit] is reported as an error envelope carrying
+  /// [code] and [message], and its exit code is returned for the caller to
+  /// return from `run`. The failure is reported here rather than in the
+  /// command runner, so the runner never sees it and doesn't emit a second
+  /// envelope. Otherwise the [ProcessExit] is rethrown, and the error the
+  /// call already logged stands.
+  ///
+  /// [body] typically assigns `late final` locals that the caller reads once
+  /// this returns null.
+  Future<int?> guardApiCall(
+    Future<void> Function() body, {
+    required JsonErrorCode code,
+    required String message,
+  }) async {
+    try {
+      await body();
+      return null;
+    } on ProcessExit catch (e) {
+      if (!isJsonMode) rethrow;
+      emitJsonError(code: code, message: message);
+      return e.exitCode;
+    }
   }
 }
 
