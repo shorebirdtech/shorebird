@@ -56,7 +56,7 @@ class InitCommand extends ShorebirdCommand {
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
-      return e.exitCode.code;
+      return reportPreconditionFailure(e);
     }
 
     try {

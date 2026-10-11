@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart' hide logger;
@@ -15,6 +16,7 @@ import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -716,6 +718,76 @@ Engine • revision $shorebirdEngineRevision'''),
         });
       });
 
+      group('when a precondition fails', () {
+        Future<(int?, Map<String, dynamic>)> runSingleEnvelope(
+          ShorebirdCommand command,
+        ) async {
+          commandRunner.addCommand(command);
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', command.name]),
+            ),
+          );
+          expect(stdoutOutput, hasLength(1));
+          final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          return (result, json['error'] as Map<String, dynamic>);
+        }
+
+        test('a reported failure emits one precondition_failed envelope '
+            'with its message and hint', () async {
+          final (result, error) = await runSingleEnvelope(
+            _PreconditionCommand(),
+          );
+          expect(result, equals(ExitCode.noUser.code));
+          expect(
+            error,
+            equals({
+              'code': 'precondition_failed',
+              'message': UserNotAuthorizedException().message,
+              'hint': UserNotAuthorizedException().hint,
+            }),
+          );
+        });
+
+        test('a thrown PreconditionFailedExit emits one precondition_failed '
+            'envelope with its message and hint', () async {
+          final (result, error) = await runSingleEnvelope(
+            _FailingCommand(
+              thenThrow: PreconditionFailedExit(
+                ShorebirdNotInitializedException(),
+              ),
+            ),
+          );
+          expect(result, equals(ExitCode.config.code));
+          expect(
+            error,
+            equals({
+              'code': 'precondition_failed',
+              'message': ShorebirdNotInitializedException().message,
+              'hint': ShorebirdNotInitializedException().hint,
+            }),
+          );
+        });
+
+        test('a thrown PreconditionFailedExit writes nothing without '
+            '--json', () async {
+          commandRunner.addCommand(
+            _FailingCommand(
+              thenThrow: PreconditionFailedExit(UserNotAuthorizedException()),
+            ),
+          );
+          final result = await captureStdout(
+            () => runWithOverrides(() => commandRunner.run(['failing'])),
+          );
+          expect(result, equals(ExitCode.noUser.code));
+          expect(
+            stdoutOutput.where((line) => line.contains('"status"')),
+            isEmpty,
+          );
+        });
+      });
+
       group('when a command already wrote an envelope', () {
         Future<Map<String, dynamic>> runSingleEnvelope(
           _FailingCommand command,
@@ -1120,6 +1192,20 @@ class _FailingCommand extends ShorebirdCommand {
     }
     return ExitCode.config.code;
   }
+}
+
+/// A command whose precondition check fails (the user isn't logged in) and
+/// reports it the way commands do, with [reportPreconditionFailure].
+class _PreconditionCommand extends ShorebirdCommand {
+  @override
+  String get name => 'precondition';
+
+  @override
+  String get description => 'A command whose precondition fails';
+
+  @override
+  Future<int> run() async =>
+      reportPreconditionFailure(UserNotAuthorizedException());
 }
 
 class _ThrowingCommand extends ShorebirdCommand {

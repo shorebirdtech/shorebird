@@ -139,7 +139,7 @@ This is only applicable when previewing Android releases.''',
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+      return reportPreconditionFailure(error);
     }
 
     _assertArgsAreValid();

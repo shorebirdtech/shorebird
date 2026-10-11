@@ -75,7 +75,7 @@ class PromoteCommand extends ShorebirdCommand
         checkShorebirdInitialized: true,
       );
     } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+      return reportPreconditionFailure(error);
     }
 
     final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();

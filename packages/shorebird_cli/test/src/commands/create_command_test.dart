@@ -4,6 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -25,6 +26,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          isJsonModeRef.overrideWith(() => false),
           processRef.overrideWith(() => process),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },

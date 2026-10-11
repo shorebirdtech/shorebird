@@ -82,6 +82,22 @@ void main() {
         exitsWithCode(exception.exitCode),
       );
     });
+
+    test('carries the failure for the runner to report', () async {
+      final exception = UserNotAuthorizedException();
+      stubValidatePreconditions(throws: exception);
+
+      await expectLater(
+        () => runWithOverrides(assertBuildPreconditions),
+        throwsA(
+          isA<PreconditionFailedExit>().having(
+            (e) => e.failure,
+            'failure',
+            same(exception),
+          ),
+        ),
+      );
+    });
   });
 
   group('assertAndroidPackageNameConfigured', () {
