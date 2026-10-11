@@ -294,6 +294,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         }
       } on UsageException catch (e) {
         if (isJsonMode) {
+          if (envelope.written) return ExitCode.usage.code;
           final subcommand = commandNameFromResults(topLevelResults);
           final hint = subcommand == null
               ? 'Run: shorebird --help'
@@ -314,6 +315,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         return ExitCode.usage.code;
       } on InteractivePromptRequiredException catch (e) {
         if (isJsonMode) {
+          if (envelope.written) return ExitCode.usage.code;
           JsonResult.error(
             code: JsonErrorCode.interactivePromptRequired,
             message: e.promptText,

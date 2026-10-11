@@ -724,6 +724,30 @@ Engine • revision $shorebirdEngineRevision'''),
           expect(error['message'], equals('own envelope'));
         });
 
+        test('and throws UsageException, does not add a second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(
+              reports: true,
+              thenThrow: UsageException('bad usage', 'usage'),
+            ),
+          );
+          expect(error['message'], equals('own envelope'));
+        });
+
+        test('and throws InteractivePromptRequiredException, does not add a '
+            'second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(
+              reports: true,
+              thenThrow: const InteractivePromptRequiredException(
+                promptText: 'Continue?',
+                hint: 'Pass --force',
+              ),
+            ),
+          );
+          expect(error['message'], equals('own envelope'));
+        });
+
         test('and throws an error, does not add a second', () async {
           final error = await runSingleEnvelope(
             _FailingCommand(reports: true, thenThrow: StateError('boom')),
