@@ -19,6 +19,23 @@ final isJsonModeRef = create(() => false);
 /// what tests capture.
 final jsonSinkRef = create<io.IOSink>(() => io.stdout);
 
+/// {@template json_envelope_tracker}
+/// Records whether a [JsonResult] has been written during a command run.
+///
+/// The runner binds one per command so that, when a `--json` command fails
+/// without having written an envelope itself, it can write exactly one on
+/// the command's behalf, and never a second one when it already has.
+/// {@endtemplate}
+class JsonEnvelopeTracker {
+  /// Whether an envelope has been written.
+  bool written = false;
+}
+
+/// A reference to the [JsonEnvelopeTracker] for the current command run.
+///
+/// Unbound (null) outside a command run, where nothing is tracked.
+final jsonEnvelopeTrackerRef = create<JsonEnvelopeTracker?>(() => null);
+
 /// Whether JSON output mode is active in the current zone.
 ///
 /// Off wherever nothing has said otherwise, so code that consults it can
@@ -183,5 +200,6 @@ class JsonResult {
   /// Writes this result to stdout as a single JSON line.
   void write() {
     read(jsonSinkRef, orElse: () => io.stdout).writeln(jsonEncode(toJson()));
+    read(jsonEnvelopeTrackerRef, orElse: () => null)?.written = true;
   }
 }

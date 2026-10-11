@@ -655,6 +655,107 @@ Engine • revision $shorebirdEngineRevision'''),
         });
       });
 
+      group('when a command fails without writing an envelope', () {
+        test('emits exactly one error envelope', () async {
+          // e.g. a failed precondition (not logged in, not initialized),
+          // which commands report by returning its exit code.
+          commandRunner.addCommand(_FailingCommand());
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'failing']),
+            ),
+          );
+          expect(result, equals(ExitCode.config.code));
+          expect(stdoutOutput, hasLength(1));
+          final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('process_exit'));
+          expect(
+            error['message'],
+            equals('Process exited with code ${ExitCode.config.code}.'),
+          );
+          final meta = json['meta'] as Map<String, dynamic>;
+          expect(meta['command'], equals('failing'));
+        });
+
+        test('writes nothing without --json', () async {
+          commandRunner.addCommand(_FailingCommand());
+          final result = await captureStdout(
+            () => runWithOverrides(() => commandRunner.run(['failing'])),
+          );
+          expect(result, equals(ExitCode.config.code));
+          expect(
+            stdoutOutput.where((line) => line.contains('"status"')),
+            isEmpty,
+          );
+        });
+      });
+
+      group('when a command already wrote an envelope', () {
+        Future<Map<String, dynamic>> runSingleEnvelope(
+          _FailingCommand command,
+        ) async {
+          commandRunner.addCommand(command);
+          await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'failing']),
+            ),
+          );
+          expect(stdoutOutput, hasLength(1));
+          final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+          return json['error'] as Map<String, dynamic>;
+        }
+
+        test('and returns a failure, does not add a second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(reports: true),
+          );
+          expect(error['message'], equals('own envelope'));
+        });
+
+        test('and throws ProcessExit, does not add a second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(
+              reports: true,
+              thenThrow: ProcessExit(ExitCode.software.code),
+            ),
+          );
+          expect(error['message'], equals('own envelope'));
+        });
+
+        test('and throws UsageException, does not add a second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(
+              reports: true,
+              thenThrow: UsageException('bad usage', 'usage'),
+            ),
+          );
+          expect(error['message'], equals('own envelope'));
+        });
+
+        test('and throws InteractivePromptRequiredException, does not add a '
+            'second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(
+              reports: true,
+              thenThrow: const InteractivePromptRequiredException(
+                promptText: 'Continue?',
+                hint: 'Pass --force',
+              ),
+            ),
+          );
+          expect(error['message'], equals('own envelope'));
+        });
+
+        test('and throws an error, does not add a second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(reports: true, thenThrow: StateError('boom')),
+          );
+          expect(error['message'], equals('own envelope'));
+        });
+      });
+
       group('on ProcessExit with zero exit code', () {
         test('does not emit JSON error', () async {
           commandRunner.addCommand(_TestCommand(ExitCode.success));
@@ -968,6 +1069,32 @@ class _ChattyCommand extends ShorebirdCommand {
     stdout.writeln('hello, human');
     if (isJsonMode) emitJsonSuccess({'said': 'hello'});
     return ExitCode.success.code;
+  }
+}
+
+/// Fails by returning [ExitCode.config], optionally after writing its own
+/// error envelope ([reports]) and optionally throwing [thenThrow] afterwards.
+class _FailingCommand extends ShorebirdCommand {
+  _FailingCommand({this.reports = false, this.thenThrow});
+
+  final bool reports;
+  final Object? thenThrow;
+
+  @override
+  String get name => 'failing';
+
+  @override
+  String get description => 'A command that fails';
+
+  @override
+  Future<int> run() async {
+    if (reports) {
+      emitJsonError(code: JsonErrorCode.usageError, message: 'own envelope');
+    }
+    if (thenThrow case final error?) {
+      Error.throwWithStackTrace(error, StackTrace.current);
+    }
+    return ExitCode.config.code;
   }
 }
 
