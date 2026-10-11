@@ -183,12 +183,12 @@ void main() {
       });
     });
 
-    group('when the target org is not one of the user\'s orgs', () {
+    group("when the target org is not one of the user's orgs", () {
       setUp(() {
         when(() => argResults['org-id']).thenReturn('7');
       });
 
-      test('lists the user\'s orgs on one line under --json', () async {
+      test("lists the user's orgs on one line under --json", () async {
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
         );
