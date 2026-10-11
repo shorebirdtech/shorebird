@@ -5,9 +5,9 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -30,9 +30,6 @@ class IosReleaser extends Releaser with AppleReleaserMixin {
     required super.target,
   });
 
-  /// Whether to codesign the release.
-  bool get codesign => argResults['codesign'] == true;
-
   @override
   ReleaseType get releaseType => ReleaseType.ios;
 
@@ -51,18 +48,7 @@ class IosReleaser extends Releaser with AppleReleaserMixin {
   @override
   Future<void> assertArgsAreValid() async {
     assertReleaseVersionFlagNotProvided();
-
-    final exportOptionsPlistFile = argResults.file(
-      CommonArguments.exportOptionsPlistArg.name,
-    );
-    if (exportOptionsPlistFile != null) {
-      try {
-        assertValidExportOptionsPlist(exportOptionsPlistFile);
-      } on InvalidExportOptionsPlistException catch (error) {
-        logger.err(error.message);
-        throw ProcessExit(ExitCode.usage.code);
-      }
-    }
+    argResults.assertValidExportOptionsPlistArg();
   }
 
   @override
@@ -70,7 +56,7 @@ class IosReleaser extends Releaser with AppleReleaserMixin {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    if (!codesign) {
+    if (!argResults.appleCodesign) {
       logger
         ..info(
           '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
@@ -88,7 +74,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
 
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIpa(
-        codesign: codesign,
+        codesign: argResults.appleCodesign,
         flavor: flavor,
         target: target,
         args: buildArgs,
@@ -128,7 +114,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
     // so we must verify the .ipa was actually produced. Otherwise we would
     // report a successful release and point the user at an .ipa that does not
     // exist. See https://github.com/shorebirdtech/shorebird/issues/3807.
-    if (codesign && artifactManager.getIpa() == null) {
+    if (argResults.appleCodesign && artifactManager.getIpa() == null) {
       logger.err(
         '''
 Unable to find generated IPA. This usually means that the IPA export step of "flutter build ipa" failed (for example, due to a missing or invalid code signing certificate). Review the build output above for the underlying error.
@@ -144,22 +130,9 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
-  }) async {
-    final plistFile = File(p.join(releaseArtifactRoot.path, 'Info.plist'));
-    if (!plistFile.existsSync()) {
-      logger.err('No Info.plist file found at ${plistFile.path}');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    try {
-      return Plist(file: plistFile).versionNumber;
-    } on Exception catch (error) {
-      logger.err(
-        '''Failed to determine release version from ${plistFile.path}: $error''',
-      );
-      throw ProcessExit(ExitCode.software.code);
-    }
-  }
+  }) async => readReleaseVersionFromInfoPlist(
+    File(p.join(releaseArtifactRoot.path, 'Info.plist')),
+  );
 
   @override
   Future<void> uploadReleaseArtifacts({
@@ -174,7 +147,7 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
       runnerPath: artifactManager
           .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
           .path,
-      isCodesigned: codesign,
+      isCodesigned: argResults.appleCodesign,
       podfileLockHash: shorebirdEnv.iosPodfileLockHash,
     );
   }
@@ -184,7 +157,7 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
     final relativeArchivePath = p.relative(
       artifactManager.getXcarchiveDirectory()!.path,
     );
-    if (codesign) {
+    if (argResults.appleCodesign) {
       const ipaSearchString = 'build/ios/ipa/*.ipa';
       return '''
 

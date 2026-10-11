@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -58,9 +59,6 @@ class MacosPatcher extends Patcher
   @override
   ReleaseType get releaseType => ReleaseType.macos;
 
-  /// Whether to codesign the release.
-  bool get codesign => argResults['codesign'] == true;
-
   @override
   String get primaryReleaseArtifactArch => 'app';
 
@@ -100,7 +98,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     // If buildMacos is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final macosBuildResult = await artifactBuilder.buildMacos(
-      codesign: codesign,
+      codesign: argResults.appleCodesign,
       flavor: flavor,
       target: target,
       args: buildArgs,
@@ -249,20 +247,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final plistFile = File(p.join(appPath, 'Contents', 'Info.plist'));
-    if (!plistFile.existsSync()) {
-      logger.err('No Info.plist file found at ${plistFile.path}.');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    final plist = Plist(file: plistFile);
-    try {
-      return plist.versionNumber;
-    } on Exception catch (error) {
-      logger.err(
-        'Failed to determine release version from ${plistFile.path}: $error',
-      );
-      throw ProcessExit(ExitCode.software.code);
-    }
+    return readReleaseVersionFromInfoPlist(
+      File(p.join(appPath, 'Contents', 'Info.plist')),
+      hint: passReleaseVersionHint,
+    );
   }
 }

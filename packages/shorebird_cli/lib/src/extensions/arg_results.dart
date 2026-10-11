@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
@@ -145,6 +146,33 @@ extension CodeSign on ArgResults {
         ..info(
           'The command must print only a PEM-encoded public key to stdout.',
         );
+    }
+  }
+}
+
+/// Extension on [ArgResults] for Apple-only arguments shared by
+/// `shorebird release` and `shorebird patch`.
+extension AppleArgs on ArgResults {
+  /// Whether to sign the Apple app bundle with Apple code signing
+  /// (`--codesign`, on by default).
+  ///
+  /// Unrelated to [CodeSign], which handles Shorebird patch signing keys.
+  bool get appleCodesign => this['codesign'] == true;
+
+  /// Validates the `--export-options-plist` file, if one was passed.
+  ///
+  /// Logs an error and exits with [ExitCode.usage] if the plist would make
+  /// Xcode rewrite the build number. See [assertValidExportOptionsPlist].
+  void assertValidExportOptionsPlistArg() {
+    final exportOptionsPlistFile = file(
+      CommonArguments.exportOptionsPlistArg.name,
+    );
+    if (exportOptionsPlistFile == null) return;
+    try {
+      assertValidExportOptionsPlist(exportOptionsPlistFile);
+    } on InvalidExportOptionsPlistException catch (error) {
+      logger.err(error.message);
+      throw ProcessExit(ExitCode.usage.code);
     }
   }
 }
