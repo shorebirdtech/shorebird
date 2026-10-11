@@ -40,7 +40,14 @@ class PromoteCommand extends ShorebirdCommand
   String get name => 'promote';
 
   @override
-  String get description => 'Promotes a patch to the "stable" channel.';
+  String get description =>
+      '(deprecated) Promotes a patch to the "stable" channel. Use '
+      '`shorebird patches set-track --track=stable` instead.';
+
+  // Deprecated: hidden from help, but still runnable so existing scripts keep
+  // working until it is removed.
+  @override
+  bool get hidden => true;
 
   @override
   Future<int> run() async {
