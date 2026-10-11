@@ -1168,15 +1168,19 @@ void main() {
           expect(result!.path, equals(ipaFile.path));
         });
 
-        test('returns null when multiple ipa files exist', () {
-          File(p.join(ipaBuildDirectory.path, 'Runner2.ipa')).createSync();
+        test('returns the most recently modified ipa when several exist', () {
+          final oldIpaFile = File(p.join(ipaBuildDirectory.path, 'Zed.ipa'))
+            ..createSync();
+          final newIpaFile = File(p.join(ipaBuildDirectory.path, 'My App.ipa'))
+            ..createSync();
+          ipaFile.setLastModifiedSync(DateTime(2023));
+          oldIpaFile.setLastModifiedSync(DateTime(2024));
+          newIpaFile.setLastModifiedSync(DateTime(2025));
 
-          expect(runWithOverrides(artifactManager.getIpa), isNull);
-          verify(
-            () => logger.detail(
-              'More than one .ipa file found in ${ipaBuildDirectory.path}',
-            ),
-          );
+          final result = runWithOverrides(artifactManager.getIpa);
+
+          expect(result, isNotNull);
+          expect(result!.path, equals(newIpaFile.path));
         });
 
         test('returns null when no ipa files exist', () {
