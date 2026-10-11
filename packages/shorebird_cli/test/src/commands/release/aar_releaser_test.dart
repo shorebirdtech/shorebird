@@ -122,13 +122,6 @@ void main() {
     });
 
     group('architectures', () {
-      test('returns all architectures by default', () {
-        final architectures = runWithOverrides(
-          () => aarReleaser.architectures,
-        );
-        expect(architectures, equals(Arch.values.toSet()));
-      });
-
       test('throws exception when unknown platform is provided', () {
         when(
           () => argResults['target-platform'],

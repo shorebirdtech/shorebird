@@ -2171,6 +2171,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           'exits with code 70 when every requested arch is missing',
           () async {
             File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
+            final jniDir = p.join(projectRoot.path, extractedAarPath, 'jni');
 
             await expectLater(
               () async => runWithOverrides(
@@ -2193,7 +2194,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             verify(
               () => progress.fail(
                 any(
-                  that: contains('No architecture artifacts found to upload'),
+                  that: allOf(
+                    contains('No architecture artifacts found to upload'),
+                    contains('under $jniDir '),
+                  ),
                 ),
               ),
             ).called(1);
