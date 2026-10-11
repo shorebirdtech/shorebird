@@ -15,23 +15,12 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// Signature for a function which takes a list of bytes and returns a hash.
-typedef HashFunction = String Function(List<int> bytes);
-
 /// Signature for a function which takes a path to a zip file.
 typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
 
 /// Signature for a function which builds a [CodePushClient].
 typedef CodePushClientBuilder =
     CodePushClient Function({required http.Client httpClient, Uri? hostedUri});
-
-/// Signature for a function which starts a process (e.g. [Process.start]).
-typedef StartProcess =
-    Future<Process> Function(
-      String executable,
-      List<String> arguments, {
-      bool runInShell,
-    });
 
 /// {@template shorebird_command}
 /// A command in the Shorebird CLI.

@@ -11,10 +11,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 /// Marker whose modification time records when a cached, per-revision
 /// directory (a Flutter install, or an engine revision's artifacts) was last
 /// used.
-///
-/// Untracked in a Flutter checkout, and `git status` is run there with
-/// `--untracked-files=no`, so its presence does not make the checkout look
-/// dirty.
 const lastUsedStampName = '.shorebird_last_used';
 
 /// How long a cached Flutter install, engine artifact or preview can go

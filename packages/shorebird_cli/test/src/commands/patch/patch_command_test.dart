@@ -1055,10 +1055,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           ).thenReturn(DeploymentTrack.staging.channel);
         });
 
-        test('isStaging returns true', () {
-          expect(command.isStaging, isTrue);
-        });
-
         test('logs correct summary', () async {
           final expectedSummary = [
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',

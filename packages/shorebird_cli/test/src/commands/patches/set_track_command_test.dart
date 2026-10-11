@@ -289,7 +289,10 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('No patches found for release "$releaseVersion".'),
+          () => logger.err(
+            'No patch found with number $patchNumber '
+            'for release "$releaseVersion".',
+          ),
         ).called(1);
       });
     });

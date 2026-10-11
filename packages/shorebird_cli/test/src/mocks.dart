@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
-import 'package:jwt/jwt.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -47,8 +45,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 class MockAbi extends Mock implements LocalAbi {}
 
-class MockAccessCredentials extends Mock implements AccessCredentials {}
-
 class MockAdb extends Mock implements Adb {}
 
 class MockAndroidSdk extends Mock implements AndroidSdk {}
@@ -68,8 +64,6 @@ class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
 class MockArgParser extends Mock implements ArgParser {}
 
 class MockArgResults extends Mock implements ArgResults {}
-
-class MockCommand extends Mock implements Command<int> {}
 
 /// A runner mock stubbed just enough for [Command.usageException] to build
 /// its usage text.
@@ -134,10 +128,6 @@ class MockIOSDeploy extends Mock implements IOSDeploy {}
 class MockIOSink extends Mock implements IOSink {}
 
 class MockJava extends Mock implements Java {}
-
-class MockJwtHeader extends Mock implements JwtHeader {}
-
-class MockJwtPayload extends Mock implements JwtPayload {}
 
 class MockLinux extends Mock implements Linux {}
 

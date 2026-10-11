@@ -87,12 +87,6 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
       when(
-        () => git.status(
-          directory: p.join(flutterDirectory.parent.path, flutterRevision),
-          args: ['--untracked-files=no', '--porcelain'],
-        ),
-      ).thenAnswer((_) async => '');
-      when(
         () => git.fetch(directory: any(named: 'directory')),
       ).thenAnswer((_) async {});
       when(
@@ -1925,71 +1919,6 @@ origin/flutter_release/3.10.6''';
           expect(precacheStamp.existsSync(), isTrue);
         });
       });
-    });
-
-    group('isPorcelain', () {
-      test('returns true when status is empty', () async {
-        await expectLater(
-          runWithOverrides(() => shorebirdFlutter.isUnmodified()),
-          completion(isTrue),
-        );
-        verify(
-          () => git.status(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            args: ['--untracked-files=no', '--porcelain'],
-          ),
-        ).called(1);
-      });
-
-      test('returns false when status is not empty', () async {
-        when(
-          () => git.status(
-            directory: any(named: 'directory'),
-            args: any(named: 'args'),
-          ),
-        ).thenAnswer((_) async => 'M some/file');
-        await expectLater(
-          runWithOverrides(() => shorebirdFlutter.isUnmodified()),
-          completion(isFalse),
-        );
-        verify(
-          () => git.status(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            args: ['--untracked-files=no', '--porcelain'],
-          ),
-        ).called(1);
-      });
-
-      test(
-        'throws ProcessException when git command exits non-zero code',
-        () async {
-          const errorMessage = 'oh no!';
-          when(
-            () => git.status(
-              directory: any(named: 'directory'),
-              args: any(named: 'args'),
-            ),
-          ).thenThrow(
-            ProcessException(
-              'git',
-              ['status'],
-              errorMessage,
-              ExitCode.software.code,
-            ),
-          );
-
-          expect(
-            runWithOverrides(() => shorebirdFlutter.isUnmodified()),
-            throwsA(
-              isA<ProcessException>().having(
-                (e) => e.message,
-                'message',
-                errorMessage,
-              ),
-            ),
-          );
-        },
-      );
     });
 
     group('formatVersion', () {
