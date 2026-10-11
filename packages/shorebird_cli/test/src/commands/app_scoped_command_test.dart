@@ -124,12 +124,12 @@ void main() {
 
       group('when --flavor is not defined in shorebird.yaml', () {
         const message =
-            'This project does not have a flavor named "prdo". Pass one of: '
+            'This project does not have a flavor named "missing". Pass one of: '
             'staging (from "flavors" in shorebird.yaml).';
 
         test('reports a usage error listing the flavors', () async {
           final result = await runWithOverrides(
-            commandWith(['--flavor', 'prdo']).resolveAppId,
+            commandWith(['--flavor', 'missing']).resolveAppId,
           );
           expect(result, equals((appId: '', errorCode: ExitCode.usage.code)));
           verify(() => logger.err(message)).called(1);
@@ -138,7 +138,7 @@ void main() {
         test('reports a usage error envelope in JSON mode', () async {
           final result = await captureJson(() async {
             final resolved = await runWithOverrides(
-              commandWith(['--flavor', 'prdo']).resolveAppId,
+              commandWith(['--flavor', 'missing']).resolveAppId,
               jsonMode: true,
             );
             return resolved.errorCode!;
@@ -172,7 +172,7 @@ void main() {
               '--app-id',
               'explicit-app-id',
               '--flavor',
-              'prdo',
+              'missing',
             ]).resolveAppId,
           );
           expect(result, equals((appId: 'explicit-app-id', errorCode: null)));

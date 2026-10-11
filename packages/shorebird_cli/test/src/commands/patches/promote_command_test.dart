@@ -190,7 +190,7 @@ void main() {
     group('when --flavor is not defined in shorebird.yaml', () {
       setUp(() {
         when(() => argResults.wasParsed('flavor')).thenReturn(true);
-        when(() => argResults['flavor']).thenReturn('prdo');
+        when(() => argResults['flavor']).thenReturn('missing');
       });
 
       test('exits with usage error and does not fetch', () async {

@@ -201,7 +201,7 @@ void main() {
     group('when --flavor is not defined in shorebird.yaml', () {
       setUp(() {
         when(() => argResults.wasParsed('flavor')).thenReturn(true);
-        when(() => argResults['flavor']).thenReturn('prdo');
+        when(() => argResults['flavor']).thenReturn('missing');
         when(() => shorebirdYaml.flavors).thenReturn({'prod': 'prod-app-id'});
       });
 
@@ -212,7 +212,7 @@ void main() {
         );
         verify(
           () => logger.err(
-            'This project does not have a flavor named "prdo". Pass one of: '
+            'This project does not have a flavor named "missing". Pass one of: '
             'prod (from "flavors" in shorebird.yaml).',
           ),
         ).called(1);
