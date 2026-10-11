@@ -155,6 +155,49 @@ void main() {
     );
 
     test(
+      '''returns successful result if the INTERNET permission is not the first attribute''',
+      () async {
+        writeManifestToPath(
+          '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission tools:node="replace" android:name="android.permission.INTERNET"/>
+</manifest>
+''',
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+
+        expect(results, isEmpty);
+      },
+    );
+
+    test(
+      'returns an error without throwing for a uses-permission with no '
+      'attributes',
+      () async {
+        writeManifestToPath(
+          '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission/>
+</manifest>
+''',
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        );
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.error);
+      },
+    );
+
+    test(
       'returns an error if AndroidManifest.xml file does not exist',
       () async {
         Directory(

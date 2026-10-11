@@ -384,13 +384,16 @@ Engine • revision $shorebirdEngineRevision'''),
       });
 
       group('when some local engine args are provided', () {
-        test('throws ArgumentException', () async {
-          await expectLater(
-            () async => runWithOverrides(
-              () => commandRunner.run(['--local-engine', 'foo']),
-            ),
-            throwsArgumentError,
+        test('exits with a usage error naming the flags', () async {
+          final result = await runWithOverrides(
+            () => commandRunner.run(['--local-engine', 'foo']),
           );
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              '''--local-engine, --local-engine-src-path, and --local-engine-host must all be provided together''',
+            ),
+          ).called(1);
         });
       });
     });

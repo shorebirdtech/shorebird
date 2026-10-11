@@ -84,9 +84,10 @@ The command you are running must be run within a Flutter app project that suppor
       return false;
     }
 
-    final attribute = element.attributes.first;
-    return attribute.qualifiedName == 'android:name' &&
-        attribute.value == 'android.permission.INTERNET';
+    // Look the attribute up by name: it isn't necessarily the first one, e.g.
+    // `<uses-permission tools:node="replace" android:name="...">`.
+    return element.getAttribute('android:name') ==
+        'android.permission.INTERNET';
   }
 
   void _addInternetPermissionToFile(String path) {

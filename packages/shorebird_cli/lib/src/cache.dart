@@ -381,6 +381,7 @@ abstract class CachedArtifact {
     try {
       response = await httpClient.send(request);
     } catch (error) {
+      updateProgress.fail();
       throw CacheUpdateFailure('''
 Failed to download $fileName: $error
 If you're behind a firewall/proxy, please, make sure shorebird_cli is
@@ -392,6 +393,7 @@ allowed to access $url.''');
         logger.detail(
           '[cache] optional artifact: "$fileName" was not found, skipping...',
         );
+        updateProgress.cancel();
         return;
       }
 
@@ -413,25 +415,30 @@ allowed to access $url.''');
     }
 
     final expectedChecksum = checksum;
-    if (expectedChecksum != null) {
-      if (!checksumChecker.checkFile(file, expectedChecksum)) {
-        extractProgress.fail();
-        // Delete the artifact directory, so if the download is retried, it will
-        // be re-downloaded.
-        artifactDirectory.deleteSync(recursive: true);
-        throw CacheUpdateFailure(
-          '''Failed to download $fileName: checksum mismatch''',
-        );
-      } else {
-        logger.detail(
-          '''No checksum provided for $fileName, skipping file corruption validation''',
-        );
-      }
+    if (expectedChecksum == null) {
+      logger.detail(
+        '''No checksum provided for $fileName, skipping file corruption validation''',
+      );
+    } else if (!checksumChecker.checkFile(file, expectedChecksum)) {
+      extractProgress.fail();
+      // Delete the artifact directory, so if the download is retried, it will
+      // be re-downloaded.
+      artifactDirectory.deleteSync(recursive: true);
+      throw CacheUpdateFailure(
+        '''Failed to download $fileName: checksum mismatch''',
+      );
     }
 
     if (!platform.isWindows && isExecutable) {
       final result = await process.start('chmod', ['+x', file.path]);
-      await result.exitCode;
+      final exitCode = await result.exitCode;
+      if (exitCode != 0) {
+        extractProgress.fail();
+        // No stamp is written, so the next run downloads the artifact again.
+        throw CacheUpdateFailure(
+          '''Failed to make $fileName executable: chmod exited with code $exitCode''',
+        );
+      }
     }
 
     extractProgress.complete();

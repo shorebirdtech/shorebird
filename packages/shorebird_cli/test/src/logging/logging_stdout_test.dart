@@ -113,6 +113,18 @@ void main() {
       expect(logFile.readAsStringSync(), contains('message'));
     });
 
+    test('add decodes UTF-8 bytes when logging to file', () {
+      final bytes = utf8.encode('héllo ✓');
+      loggingStdout.add(bytes);
+      verify(() => baseStdout.add(bytes)).called(1);
+      expect(logFile.readAsStringSync(), contains('héllo ✓'));
+    });
+
+    test('add logs malformed UTF-8 without throwing', () {
+      loggingStdout.add([0x61, 0xff, 0x62]);
+      expect(logFile.readAsStringSync(), contains('a�b'));
+    });
+
     test('addError forwards to baseStdout, logs to file', () {
       loggingStdout.addError('error');
       verify(() => baseStdout.addError('error')).called(1);
@@ -145,6 +157,14 @@ void main() {
       loggingStdout.writeAll(['message']);
       verify(() => baseStdout.writeAll(['message'])).called(1);
       expect(logFile.readAsStringSync(), contains('message'));
+    });
+
+    test('writeAll logs the objects joined by the separator', () {
+      loggingStdout.writeAll(['a', 'b', 'c'], '-');
+      verify(() => baseStdout.writeAll(['a', 'b', 'c'], '-')).called(1);
+      final log = logFile.readAsStringSync();
+      expect(log, contains('a-b-c'));
+      expect(log, isNot(contains('[a, b, c]')));
     });
 
     test('writeCharCode forwards to baseStdout, logs as string to file', () {
