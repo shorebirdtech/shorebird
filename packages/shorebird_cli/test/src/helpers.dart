@@ -24,17 +24,33 @@ const unsupportedOperatingSystem = NativePlatform.fuchsia;
 /// [Directory.current], because the working directory belongs to the whole
 /// process: test files run concurrently in isolates of one process, and the
 /// test runner resolves paths such as its coverage output against it. The
-/// overrides are per isolate, and so per test file.
+/// overrides are per isolate, and `dart test` runs each test file in its own
+/// isolate. A runner that bundles every file into one isolate, as
+/// `very_good test` does, calls this once per file while declaring tests, so
+/// every file shares the temporary directory of the last call. That is still
+/// outside the checkout, and is deleted after the last file's tests.
 ///
 /// Read files checked in to this package with [packagePath] or
 /// [fixturesDirectory].
+///
+/// This does not cover:
+/// - The destination of `copy` and `rename`, which `dart:io` passes to the
+///   operating system as given, so a relative one resolves against the real
+///   working directory. [IOOverrides] has no hook for it.
+/// - Code run in another isolate, such as an `Isolate.run` body, which does
+///   not inherit [IOOverrides.global].
+/// - Subprocesses started without a `workingDirectory`, or with a relative
+///   one, which run in the real working directory.
+/// - Absolute made-up paths, such as `/path/to/file`.
 void useTempWorkingDirectory() {
   // A runner that bundles test files into one isolate calls this once per
   // file, and by the second call the current directory is a temporary one.
   _packageDirectory ??= Directory.current.path;
   final root = Directory.systemTemp.createTempSync('shorebird_cli_test_');
-  // Nested, so that `File('').parent` is still a directory this file owns.
-  final workingDirectory = Directory(p.join(root.path, 'cwd'))..createSync();
+  // Nested, so that `File('').parent.parent` is still a directory this file
+  // owns.
+  final workingDirectory = Directory(p.join(root.path, 'parent', 'cwd'))
+    ..createSync(recursive: true);
   IOOverrides.global = _TempWorkingDirectoryOverrides(workingDirectory.path);
   tearDownAll(() {
     try {

@@ -33,7 +33,7 @@ void main() {
   test('relative paths resolve into the system temp directory', () {
     final systemTemp = Directory.systemTemp.path;
     expect(p.isWithin(systemTemp, Directory.current.path), isTrue);
-    expect(p.isWithin(systemTemp, File('').parent.path), isTrue);
+    expect(p.isWithin(systemTemp, File('').parent.parent.path), isTrue);
     expect(p.isWithin(systemTemp, File('a/b').path), isTrue);
     expect(() => Directory.current = systemTemp, throwsUnsupportedError);
   });
