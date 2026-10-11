@@ -53,7 +53,6 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Doctor doctor;
-    late Directory flutterDirectory;
     late Directory projectRoot;
     late EngineConfig engineConfig;
     late FlavorValidator flavorValidator;
@@ -176,26 +175,6 @@ void main() {
     group('releaseType', () {
       test('is ReleaseType.ios', () {
         expect(patcher.releaseType, ReleaseType.ios);
-      });
-    });
-
-    group('linkPercentage', () {
-      group('when linking has not occurred', () {
-        test('returns null', () {
-          expect(patcher.linkPercentage, isNull);
-        });
-      });
-
-      group('when linking has occurred', () {
-        const linkPercentage = 42.1337;
-
-        setUp(() {
-          patcher.lastBuildLinkPercentage = linkPercentage;
-        });
-
-        test('returns correct link percentage', () {
-          expect(patcher.linkPercentage, equals(linkPercentage));
-        });
       });
     });
 
@@ -960,8 +939,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
     group('createPatchArtifacts', () {
       const postLinkerFlutterRevision = // cspell: disable-next-line
           'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
-      const preLinkerFlutterRevision =
-          '83305b5088e6fe327fb3334a73ff190828d85713';
       const appId = 'appId';
       const arch = 'aarch64';
       const releaseId = 1;
@@ -1103,39 +1080,31 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         });
       });
 
-      group('when uses linker', () {
-        const linkPercentage = 50.0;
-        late File analyzeSnapshotFile;
-        late File genSnapshotFile;
+      group('when linking', () {
+        late Directory appDirectory;
 
         setUp(() {
-          final shorebirdRoot = Directory.systemTemp.createTempSync();
-          flutterDirectory = Directory(
-            p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
-          );
-          genSnapshotFile = File(
+          appDirectory = Directory(
             p.join(
-              flutterDirectory.path,
-              'bin',
-              'cache',
-              'artifacts',
-              'engine',
-              'ios-release',
-              'gen_snapshot_arm64',
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              'App.xcframework',
+              'Products',
+              'Applications',
+              'Runner.app',
             ),
           );
-          analyzeSnapshotFile = File(
-            p.join(
-              flutterDirectory.path,
-              'bin',
-              'cache',
-              'artifacts',
-              'engine',
-              'ios-release',
-              'analyze_snapshot_arm64',
+          when(
+            () => artifactManager.getIosAppDirectory(
+              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
             ),
-          )..createSync(recursive: true);
-
+          ).thenReturn(appDirectory);
+          when(
+            () => shorebirdEnv.flutterRevision,
+          ).thenReturn(postLinkerFlutterRevision);
           when(
             () => apple.runLinker(
               kernelFile: any(named: 'kernelFile'),
@@ -1143,467 +1112,94 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               releaseArtifact: any(named: 'releaseArtifact'),
               splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
               vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
-            (_) async =>
-                const LinkResult.success(linkPercentage: linkPercentage),
+            (_) async => const LinkResult.success(linkPercentage: 100),
           );
-          when(
-            aotTools.isGeneratePatchDiffBaseSupported,
-          ).thenAnswer((_) async => false);
-          when(
-            () => artifactManager.getIosAppDirectory(
-              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-            ),
-          ).thenReturn(Directory(p.join(projectRoot.path, 'build', 'ios')));
-          when(
-            () => artifactManager.getIosAppDirectory(
-              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-            ),
-          ).thenReturn(Directory(p.join(projectRoot.path, 'build', 'ios')));
-          when(
-            () => artifactManager.getIosAppDirectory(
-              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-            ),
-          ).thenReturn(
-            Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'framework',
-                'Release',
-                'App.xcframework',
-                'Products',
-                'Applications',
-                'Runner.app',
-              ),
-            ),
-          );
-          when(
-            () => shorebirdEnv.flutterRevision,
-          ).thenReturn(postLinkerFlutterRevision);
           when(
             () => shorebirdArtifacts.getArtifactPath(
               artifact: ShorebirdArtifact.analyzeSnapshotIos,
             ),
-          ).thenReturn(analyzeSnapshotFile.path);
+          ).thenReturn('path/to/analyze_snapshot');
           when(
-            () => shorebirdArtifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshotIos,
+            aotTools.isGeneratePatchDiffBaseSupported,
+          ).thenAnswer((_) async => true);
+          when(
+            () => aotTools.generatePatchDiffBase(
+              analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+              releaseSnapshot: any(named: 'releaseSnapshot'),
+              outputDirectory: any(named: 'outputDirectory'),
             ),
-          ).thenReturn(genSnapshotFile.path);
+          ).thenAnswer((invocation) async {
+            final outputDirectory =
+                invocation.namedArguments[#outputDirectory] as Directory;
+            return File(p.join(outputDirectory.path, 'diff_base'))
+              ..createSync();
+          });
+          when(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+            ),
+          ).thenAnswer((_) async => 'path/to/diff');
+          setUpProjectRootArtifacts();
         });
 
-        group('ddMaxBytes', () {
-          setUp(setUpProjectRootArtifacts);
-
-          test('passes no ddMaxBytes to runLinker by default', () async {
+        // The link, diff and bundle steps themselves are tested once in
+        // apple_patcher_mixin_test.dart; these cover the iOS wiring.
+        test(
+          'links against the App binary in the release .app, using the '
+          'release supplement',
+          () async {
             await runWithOverrides(
               () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: releaseId,
                 releaseArtifact: releaseArtifactFile,
+                supplementDirectory: supplementDirectory,
               ),
             );
 
-            final captured = verify(
+            verify(
               () => apple.runLinker(
                 kernelFile: any(named: 'kernelFile'),
                 aotOutputFile: any(named: 'aotOutputFile'),
-                releaseArtifact: any(named: 'releaseArtifact'),
+                releaseArtifact: any(
+                  named: 'releaseArtifact',
+                  that: isA<File>().having(
+                    (f) => f.path,
+                    'path',
+                    p.join(
+                      appDirectory.path,
+                      'Frameworks',
+                      'App.framework',
+                      'App',
+                    ),
+                  ),
+                ),
                 splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
                 vmCodeFile: any(named: 'vmCodeFile'),
-                ddMaxBytes: captureAny(named: 'ddMaxBytes'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
-            ).captured;
-            expect(captured, equals([null]));
-          });
-
-          group('when SHOREBIRD_PATCH_DD_MAX_BYTES is set', () {
-            setUp(() {
-              nativePlatform = TestNativePlatform(
-                environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
-              );
-              when(
-                () => apple.runLinker(
-                  kernelFile: any(named: 'kernelFile'),
-                  aotOutputFile: any(named: 'aotOutputFile'),
-                  releaseArtifact: any(named: 'releaseArtifact'),
-                  splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
-                  vmCodeFile: any(named: 'vmCodeFile'),
-                  ddMaxBytes: any(named: 'ddMaxBytes'),
-                ),
-              ).thenAnswer(
-                (_) async =>
-                    const LinkResult.success(linkPercentage: linkPercentage),
-              );
-            });
-
-            test('passes ddMaxBytes to runLinker', () async {
-              await runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                  releaseArtifact: releaseArtifactFile,
-                ),
-              );
-
-              verify(
-                () => apple.runLinker(
-                  kernelFile: any(named: 'kernelFile'),
-                  aotOutputFile: any(named: 'aotOutputFile'),
-                  releaseArtifact: any(named: 'releaseArtifact'),
-                  splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
-                  vmCodeFile: any(named: 'vmCodeFile'),
-                  ddMaxBytes: 4096,
-                ),
-              ).called(1);
-            });
-          });
-        });
-
-        group('when linking fails', () {
-          group('when .app does not exist', () {
-            setUp(() {
-              when(
-                () => artifactManager.getIosAppDirectory(
-                  xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-                ),
-              ).thenReturn(null);
-            });
-
-            test('logs error and exits with code 70', () async {
-              await expectLater(
-                () => runWithOverrides(
-                  () => patcher.createPatchArtifacts(
-                    appId: appId,
-                    releaseId: releaseId,
-                    releaseArtifact: releaseArtifactFile,
-                  ),
-                ),
-                exitsWithCode(ExitCode.software),
-              );
-
-              verify(
-                () => logger.err(
-                  'The release .xcarchive downloaded from Shorebird has no '
-                  'Products/Applications/*.app directory.',
-                ),
-              ).called(1);
-              verify(
-                () => logger.info(
-                  any(that: startsWith('Re-run to download it again.')),
-                ),
-              ).called(1);
-            });
-          });
-        });
-
-        group('when generate patch diff base is supported', () {
-          setUp(() {
-            when(
-              () => aotTools.isGeneratePatchDiffBaseSupported(),
-            ).thenAnswer((_) async => true);
-            when(
-              () => aotTools.generatePatchDiffBase(
-                analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
-                releaseSnapshot: any(named: 'releaseSnapshot'),
-                outputDirectory: any(named: 'outputDirectory'),
+            ).called(1);
+            verify(
+              () => apple.copySupplementFilesToSnapshotDirs(
+                releaseSupplementDir: supplementDirectory,
+                releaseSnapshotDir: any(named: 'releaseSnapshotDir'),
+                patchSupplementDir: any(named: 'patchSupplementDir'),
+                patchSnapshotDir: any(named: 'patchSnapshotDir'),
               ),
-            ).thenAnswer((_) async => File(''));
-          });
+            ).called(1);
+          },
+        );
 
-          group('when we fail to generate patch diff base', () {
-            setUp(() {
-              when(
-                () => aotTools.generatePatchDiffBase(
-                  analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
-                  releaseSnapshot: any(named: 'releaseSnapshot'),
-                  outputDirectory: any(named: 'outputDirectory'),
-                ),
-              ).thenThrow(Exception('oops'));
+        test('passes SHOREBIRD_PATCH_DD_MAX_BYTES to the linker', () async {
+          nativePlatform = TestNativePlatform(
+            environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
+          );
 
-              setUpProjectRootArtifacts();
-            });
-
-            test('logs error and exits with code 70', () async {
-              await expectLater(
-                () => runWithOverrides(
-                  () => patcher.createPatchArtifacts(
-                    appId: appId,
-                    releaseId: releaseId,
-                    releaseArtifact: releaseArtifactFile,
-                  ),
-                ),
-                exitsWithCode(ExitCode.software),
-              );
-
-              verify(() => progress.fail('Exception: oops')).called(1);
-            });
-
-            test('deletes the diff base directory', () async {
-              await expectLater(
-                () => runWithOverrides(
-                  () => patcher.createPatchArtifacts(
-                    appId: appId,
-                    releaseId: releaseId,
-                    releaseArtifact: releaseArtifactFile,
-                  ),
-                ),
-                exitsWithCode(ExitCode.software),
-              );
-
-              final outputDirectory =
-                  verify(
-                        () => aotTools.generatePatchDiffBase(
-                          analyzeSnapshotPath: any(
-                            named: 'analyzeSnapshotPath',
-                          ),
-                          releaseSnapshot: any(named: 'releaseSnapshot'),
-                          outputDirectory: captureAny(named: 'outputDirectory'),
-                        ),
-                      ).captured.single
-                      as Directory;
-              expect(outputDirectory.existsSync(), isFalse);
-            });
-          });
-
-          group('when linking and patch diff generation succeeds', () {
-            const diffPath = 'path/to/diff';
-
-            setUp(() {
-              when(
-                () => artifactManager.createDiff(
-                  releaseArtifactPath: any(named: 'releaseArtifactPath'),
-                  patchArtifactPath: any(named: 'patchArtifactPath'),
-                ),
-              ).thenAnswer((_) async => diffPath);
-              setUpProjectRootArtifacts();
-            });
-
-            test('returns linked patch artifact in patch bundle', () async {
-              final patchBundle = await runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                  releaseArtifact: releaseArtifactFile,
-                ),
-              );
-
-              expect(patchBundle, hasLength(1));
-              expect(
-                patchBundle[Arch.arm64],
-                isA<PatchArtifactBundle>().having(
-                  (b) => b.path,
-                  'path',
-                  endsWith(diffPath),
-                ),
-              );
-            });
-
-            test('deletes the diff base directory after diffing', () async {
-              await runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                  releaseArtifact: releaseArtifactFile,
-                ),
-              );
-
-              final outputDirectory =
-                  verify(
-                        () => aotTools.generatePatchDiffBase(
-                          analyzeSnapshotPath: any(
-                            named: 'analyzeSnapshotPath',
-                          ),
-                          releaseSnapshot: any(named: 'releaseSnapshot'),
-                          outputDirectory: captureAny(named: 'outputDirectory'),
-                        ),
-                      ).captured.single
-                      as Directory;
-              expect(outputDirectory.existsSync(), isFalse);
-            });
-
-            test('leaves no temporary files behind', () async {
-              final systemTemp = createSystemTemp();
-              await runWithSystemTemp(
-                systemTemp,
-                () => runWithOverrides(
-                  () => patcher.createPatchArtifacts(
-                    appId: appId,
-                    releaseId: releaseId,
-                    releaseArtifact: releaseArtifactFile,
-                  ),
-                ),
-              );
-
-              expect(systemTemp.listSync(), isEmpty);
-            });
-
-            test('keeps a supplement directory it was given', () async {
-              await runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                  releaseArtifact: releaseArtifactFile,
-                  supplementDirectory: supplementDirectory,
-                ),
-              );
-
-              expect(supplementDirectory.existsSync(), isTrue);
-            });
-
-            group('when class table link info & debug info are present', () {
-              setUp(() {
-                File(
-                  p.join(supplementDirectory.path, 'App.ct.link'),
-                ).createSync(recursive: true);
-                File(
-                  p.join(supplementDirectory.path, 'App.class_table.json'),
-                ).createSync(recursive: true);
-              });
-
-              test('returns linked patch artifact in patch bundle', () async {
-                final patchBundle = await runWithOverrides(
-                  () => patcher.createPatchArtifacts(
-                    appId: appId,
-                    releaseId: releaseId,
-                    releaseArtifact: releaseArtifactFile,
-                    supplementDirectory: supplementDirectory,
-                  ),
-                );
-
-                expect(patchBundle, hasLength(1));
-                expect(
-                  patchBundle[Arch.arm64],
-                  isA<PatchArtifactBundle>().having(
-                    (b) => b.path,
-                    'path',
-                    endsWith(diffPath),
-                  ),
-                );
-              });
-
-              test('sets link percentage', () async {
-                expect(patcher.linkPercentage, isNull);
-                await runWithOverrides(
-                  () => patcher.createPatchArtifacts(
-                    appId: appId,
-                    releaseId: releaseId,
-                    releaseArtifact: releaseArtifactFile,
-                    supplementDirectory: supplementDirectory,
-                  ),
-                );
-                expect(patcher.linkPercentage, isNotNull);
-              });
-            });
-
-            group('when code signing the patch', () {
-              setUp(() {
-                final tempDir = Directory.systemTemp.createTempSync();
-                final privateKey = File(
-                  p.join(tempDir.path, 'test-private.pem'),
-                )..createSync();
-                final publicKey = File(p.join(tempDir.path, 'test-public.pem'))
-                  ..writeAsStringSync('public-key-pem');
-
-                when(
-                  () => argResults[CommonArguments.privateKeyArg.name],
-                ).thenReturn(privateKey.path);
-                when(
-                  () => argResults[CommonArguments.publicKeyArg.name],
-                ).thenReturn(publicKey.path);
-
-                when(
-                  () => codeSigner.sign(
-                    message: any(named: 'message'),
-                    privateKeyPemFile: any(named: 'privateKeyPemFile'),
-                  ),
-                ).thenAnswer((invocation) {
-                  final message = invocation.namedArguments[#message] as String;
-                  return '$message-signature';
-                });
-                when(
-                  () => codeSigner.verify(
-                    message: any(named: 'message'),
-                    signature: any(named: 'signature'),
-                    publicKeyPem: any(named: 'publicKeyPem'),
-                  ),
-                ).thenReturn(true);
-              });
-
-              test(
-                '''returns patch artifact bundles with proper hash signatures''',
-                () async {
-                  final result = await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  );
-
-                  // Hash the patch artifacts and append '-signature' to get the
-                  // expected signatures, per the mock of [codeSigner.sign]
-                  // above.
-                  const expectedSignature =
-                      '''e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-signature''';
-
-                  expect(
-                    result.values.first.hashSignature,
-                    equals(expectedSignature),
-                  );
-                },
-              );
-            });
-          });
-        });
-
-        group('when generate patch diff base is not supported', () {
-          setUp(() {
-            when(
-              aotTools.isGeneratePatchDiffBaseSupported,
-            ).thenAnswer((_) async => false);
-            setUpProjectRootArtifacts();
-          });
-
-          test('returns vmcode file as patch file', () async {
-            final patchBundle = await runWithOverrides(
-              () => patcher.createPatchArtifacts(
-                appId: appId,
-                releaseId: releaseId,
-                releaseArtifact: releaseArtifactFile,
-              ),
-            );
-
-            expect(patchBundle, hasLength(1));
-            expect(
-              patchBundle[Arch.arm64],
-              isA<PatchArtifactBundle>().having(
-                (b) => b.path,
-                'path',
-                endsWith('out.vmcode'),
-              ),
-            );
-          });
-        });
-      });
-
-      group('when does not use linker', () {
-        setUp(() {
-          when(
-            () => shorebirdEnv.flutterRevision,
-          ).thenReturn(preLinkerFlutterRevision);
-          when(
-            () => aotTools.isGeneratePatchDiffBaseSupported(),
-          ).thenAnswer((_) async => false);
-
-          setUpProjectRootArtifacts();
-        });
-
-        test('returns base patch artifact in patch bundle', () async {
-          final patchArtifacts = await runWithOverrides(
+          await runWithOverrides(
             () => patcher.createPatchArtifacts(
               appId: appId,
               releaseId: releaseId,
@@ -1611,37 +1207,23 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           );
 
-          expect(patchArtifacts, hasLength(1));
-          verifyNever(
-            () => aotTools.link(
-              base: any(named: 'base'),
-              patch: any(named: 'patch'),
-              analyzeSnapshot: any(named: 'analyzeSnapshot'),
-              genSnapshot: any(named: 'genSnapshot'),
-              kernel: any(named: 'kernel'),
-              outputPath: any(named: 'outputPath'),
+          verify(
+            () => apple.runLinker(
+              kernelFile: any(named: 'kernelFile'),
+              aotOutputFile: any(named: 'aotOutputFile'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+              vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: 4096,
             ),
-          );
+          ).called(1);
         });
-      });
 
-      group('when podfile lock hash is not null', () {
-        setUp(() {
+        test('bundles the local Podfile.lock hash', () async {
           when(
             () => shorebirdEnv.iosPodfileLockHash,
           ).thenReturn('podfile-lock-hash');
 
-          when(
-            () => shorebirdEnv.flutterRevision,
-          ).thenReturn(preLinkerFlutterRevision);
-          when(
-            () => aotTools.isGeneratePatchDiffBaseSupported(),
-          ).thenAnswer((_) async => false);
-
-          setUpProjectRootArtifacts();
-        });
-
-        test('returns patch artifact bundle with podfile lock hash', () async {
           final patchBundle = await runWithOverrides(
             () => patcher.createPatchArtifacts(
               appId: appId,
@@ -1650,54 +1232,75 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           );
 
-          expect(patchBundle, hasLength(1));
           expect(
-            patchBundle[Arch.arm64],
-            isA<PatchArtifactBundle>().having(
-              (b) => b.podfileLockHash,
-              'podfileLockHash',
-              equals('podfile-lock-hash'),
-            ),
+            patchBundle[Arch.arm64]!.podfileLockHash,
+            equals('podfile-lock-hash'),
           );
         });
-      });
 
-      group('when podfile lock hash is null', () {
-        setUp(() {
-          when(() => shorebirdEnv.iosPodfileLockHash).thenReturn(null);
-
-          when(
-            () => shorebirdEnv.flutterRevision,
-          ).thenReturn(preLinkerFlutterRevision);
-          when(
-            () => aotTools.isGeneratePatchDiffBaseSupported(),
-          ).thenAnswer((_) async => false);
-
-          setUpProjectRootArtifacts();
-        });
-
-        test(
-          'returns patch artifact bundle without podfile lock hash',
-          () async {
-            final patchBundle = await runWithOverrides(
+        test('leaves no temporary files behind', () async {
+          final systemTemp = createSystemTemp();
+          await runWithSystemTemp(
+            systemTemp,
+            () => runWithOverrides(
               () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: releaseId,
                 releaseArtifact: releaseArtifactFile,
               ),
+            ),
+          );
+
+          expect(systemTemp.listSync(), isEmpty);
+        });
+
+        test('keeps a supplement directory it was given', () async {
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+              supplementDirectory: supplementDirectory,
+            ),
+          );
+
+          expect(supplementDirectory.existsSync(), isTrue);
+        });
+
+        group('when the release .app does not exist', () {
+          setUp(() {
+            when(
+              () => artifactManager.getIosAppDirectory(
+                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+              ),
+            ).thenReturn(null);
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
             );
 
-            expect(patchBundle, hasLength(1));
-            expect(
-              patchBundle[Arch.arm64],
-              isA<PatchArtifactBundle>().having(
-                (b) => b.podfileLockHash,
-                'podfileLockHash',
-                isNull,
+            verify(
+              () => logger.err(
+                'The release .xcarchive downloaded from Shorebird has no '
+                'Products/Applications/*.app directory.',
               ),
-            );
-          },
-        );
+            ).called(1);
+            verify(
+              () => logger.info(
+                any(that: startsWith('Re-run to download it again.')),
+              ),
+            ).called(1);
+          });
+        });
       });
     });
 
