@@ -95,22 +95,16 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
-    final base64PublicKey = await getEncodedPublicKey();
-
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-
-    await artifactBuilder.buildIpa(
-      codesign: codesign,
-      flavor: flavor,
-      target: target,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
+    await runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildIpa(
+        codesign: codesign,
+        flavor: flavor,
+        target: target,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      ),
     );
-
-    verifyObfuscationMap();
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
     if (xcarchiveDirectory == null) {
@@ -192,8 +186,6 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
       isCodesigned: codesign,
       podfileLockHash: shorebirdEnv.iosPodfileLockHash,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

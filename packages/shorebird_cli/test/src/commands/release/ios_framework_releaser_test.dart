@@ -131,6 +131,16 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(iosFrameworkReleaser.supplementPlatformSubdir, equals('ios'));
+        expect(
+          iosFrameworkReleaser.supplementArtifactArch,
+          equals('ios_framework_supplement'),
+        );
+      });
+    });
+
     group('assertArgsAreValid', () {
       group('when split-per-abi is true', () {
         setUp(() {

@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -92,19 +91,21 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final base64PublicKey = await getEncodedPublicKey();
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-    final aab = await artifactBuilder.buildAppBundle(
-      flavor: flavor,
-      target: target,
-      targetPlatforms: architectures,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
+    // The APK is built after the obfuscation map check, with the same
+    // arguments as the AAB.
+    final (aab, buildArgs, base64PublicKey) = await runReleaseBuild(
+      (buildArgs, base64PublicKey) async => (
+        await artifactBuilder.buildAppBundle(
+          flavor: flavor,
+          target: target,
+          targetPlatforms: architectures,
+          args: buildArgs,
+          base64PublicKey: base64PublicKey,
+        ),
+        buildArgs,
+        base64PublicKey,
+      ),
     );
-
-    verifyObfuscationMap();
 
     if (generateApk) {
       logger.info('Building APK');
@@ -159,8 +160,6 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       architectures: architectures,
       flavor: flavor,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

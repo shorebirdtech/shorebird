@@ -138,6 +138,16 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(androidReleaser.supplementPlatformSubdir, equals('android'));
+        expect(
+          androidReleaser.supplementArtifactArch,
+          equals('android_supplement'),
+        );
+      });
+    });
+
     group('architectures', () {
       test('returns all architectures by default', () {
         final architectures = runWithOverrides(

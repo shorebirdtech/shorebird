@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -50,16 +49,13 @@ class LinuxReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final base64PublicKey = await getEncodedPublicKey();
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-    await artifactBuilder.buildLinuxApp(
-      target: target,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
+    await runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildLinuxApp(
+        target: target,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+      ),
     );
-    verifyObfuscationMap();
 
     return artifactManager.linuxBundleDirectory;
   }
@@ -88,7 +84,5 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
       releaseId: release.id,
       bundle: artifactManager.linuxBundleDirectory,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 }

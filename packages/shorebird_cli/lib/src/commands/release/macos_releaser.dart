@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -66,22 +65,16 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
         );
     }
 
-    final base64PublicKey = await getEncodedPublicKey();
-
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-
-    await artifactBuilder.buildMacos(
-      codesign: codesign,
-      flavor: flavor,
-      target: target,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
+    await runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildMacos(
+        codesign: codesign,
+        flavor: flavor,
+        target: target,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      ),
     );
-
-    verifyObfuscationMap();
 
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
@@ -131,8 +124,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
       appPath: appDirectory.path,
       podfileLockHash: shorebirdEnv.macosPodfileLockHash,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

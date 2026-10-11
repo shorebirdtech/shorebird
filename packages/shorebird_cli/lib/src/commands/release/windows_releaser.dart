@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -55,17 +54,13 @@ class WindowsReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final base64PublicKey = await getEncodedPublicKey();
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-    final result = await artifactBuilder.buildWindowsApp(
-      target: target,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
+    return runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildWindowsApp(
+        target: target,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+      ),
     );
-    verifyObfuscationMap();
-    return result;
   }
 
   @override
@@ -96,8 +91,6 @@ class WindowsReleaser extends Releaser {
       releaseId: release.id,
       releaseDirectory: releaseDir,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

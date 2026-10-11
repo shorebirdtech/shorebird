@@ -259,6 +259,80 @@ To change the version of this release, change your app's version in your pubspec
       });
     });
 
+    group('runReleaseBuild', () {
+      setUp(() {
+        when(() => argResults.rest).thenReturn(['--dart-define=FOO=bar']);
+        when(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: any(named: 'platform'),
+            flutterRevision: any(named: 'flutterRevision'),
+          ),
+        ).thenAnswer((_) async => true);
+      });
+
+      test('builds with the forwarded args and returns the result', () async {
+        List<String>? receivedArgs;
+        final result = await runWithOverrides(
+          () => releaser.runReleaseBuild((buildArgs, base64PublicKey) async {
+            receivedArgs = buildArgs;
+            expect(base64PublicKey, isNull);
+            return 'built';
+          }),
+        );
+
+        expect(result, equals('built'));
+        expect(receivedArgs, equals(['--dart-define=FOO=bar']));
+      });
+
+      test(
+        'adds the split-debug-info and obfuscation map args, then verifies '
+        'the map the build saved',
+        () async {
+          setObfuscate(enabled: true);
+          List<String>? receivedArgs;
+          final saveMapArg =
+              '--extra-gen-snapshot-options='
+              '--save-obfuscation-map=${obfuscationMapPath()}';
+
+          await runWithOverrides(
+            () => releaser.runReleaseBuild((buildArgs, _) async {
+              receivedArgs = buildArgs;
+              File(obfuscationMapPath()).createSync(recursive: true);
+            }),
+          );
+
+          expect(
+            receivedArgs,
+            equals([
+              '--dart-define=FOO=bar',
+              '--obfuscate',
+              '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+              saveMapArg,
+              '--extra-gen-snapshot-options=--strip',
+            ]),
+          );
+          verify(
+            () => logger.detail(
+              'Obfuscation map saved to ${obfuscationMapPath()}',
+            ),
+          ).called(1);
+        },
+      );
+
+      test('exits after the build when it saved no obfuscation map', () async {
+        setObfuscate(enabled: true);
+        var built = false;
+
+        await expectLater(
+          () => runWithOverrides(
+            () => releaser.runReleaseBuild((_, _) async => built = true),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+        expect(built, isTrue);
+      });
+    });
+
     group('verifyObfuscationMap', () {
       test('is a no-op without obfuscation', () {
         expect(

@@ -178,6 +178,12 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
       when(
+        () => releaser.uploadSupplementArtifact(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
         () => releaser.postReleaseInstructions,
       ).thenReturn(postReleaseInstructions);
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
@@ -353,6 +359,10 @@ void main() {
           releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
         ),
         () => releaser.uploadReleaseArtifacts(release: release, appId: appId),
+        () => releaser.uploadSupplementArtifact(
+          appId: appId,
+          releaseId: release.id,
+        ),
         () => logger.success('''
 
 ✅ Published Release ${release.version}!'''),
