@@ -266,7 +266,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       try {
         exitCode = await runScoped(
           () => super.runCommand(topLevelResults),
-          values: {jsonEnvelopeTrackerRef.overrideWith(() => envelope)},
+          values: {
+            jsonEnvelopeTrackerRef.overrideWith(() => envelope),
+          },
         );
         // A command that fails by returning an exit code (a failed
         // precondition, say) may not have written an envelope. Write the
