@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
@@ -16,7 +15,6 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -47,12 +45,7 @@ class IosFrameworkPatcher extends Patcher
   List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
 
   @override
-  Future<void> assertArgsAreValid() async {
-    if (!argResults.wasParsed('release-version')) {
-      logger.err('Missing required argument: --release-version');
-      throw ProcessExit(ExitCode.usage.code);
-    }
-  }
+  bool get requiresReleaseVersionArg => true;
 
   @override
   Future<DiffStatus> assertUnpatchableDiffs({

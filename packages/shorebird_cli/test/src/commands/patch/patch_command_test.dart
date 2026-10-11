@@ -320,6 +320,7 @@ void main() {
 
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
+      when(() => patcher.requiresReleaseVersionArg).thenReturn(false);
       when(
         () => patcher.extractReleaseVersionFromArtifact(any()),
       ).thenAnswer((_) async => releaseVersion);
@@ -1263,6 +1264,45 @@ void main() {
         await expectLater(
           () => runWithOverrides(command.run),
           exitsWithCode(ExitCode.software),
+        );
+      });
+    });
+
+    group('when the patcher requires --release-version', () {
+      setUp(() {
+        when(() => patcher.requiresReleaseVersionArg).thenReturn(true);
+      });
+
+      test(
+        'exits with usage error before building when it is missing',
+        () async {
+          when(() => argResults.wasParsed('release-version')).thenReturn(false);
+
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.usage),
+          );
+
+          verify(
+            () => logger.err('Missing required argument: --release-version'),
+          ).called(1);
+          verifyNever(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          );
+        },
+      );
+
+      test('continues when it is provided', () async {
+        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        when(() => argResults['release-version']).thenReturn(releaseVersion);
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(
+          () => logger.err('Missing required argument: --release-version'),
         );
       });
     });

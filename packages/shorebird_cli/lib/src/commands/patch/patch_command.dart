@@ -366,6 +366,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// flavors, exiting otherwise.
   Future<void> _assertCanPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
+    if (patcher.requiresReleaseVersionArg &&
+        !results.wasParsed(CommonArguments.releaseVersionArg.name)) {
+      logger.err('Missing required argument: --release-version');
+      throw ProcessExit(ExitCode.usage.code);
+    }
     await patcher.assertArgsAreValid();
     assertSigningArgsValid();
 

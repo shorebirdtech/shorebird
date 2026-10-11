@@ -46,6 +46,9 @@ class AarPatcher extends Patcher {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
+  bool get requiresReleaseVersionArg => true;
+
+  @override
   Future<void> assertPreconditions() async {
     await assertBuildPreconditions();
     assertAndroidPackageNameConfigured();

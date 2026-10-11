@@ -112,6 +112,13 @@ More info: ${troubleshootingUrl.toLink()}.
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid() async {}
 
+  /// Whether `--release-version` must be passed explicitly.
+  ///
+  /// True for release types whose version can't be read back out of a built
+  /// artifact ([extractReleaseVersionFromArtifact] is unimplemented), so the
+  /// patch command can reject a missing `--release-version` before building.
+  bool get requiresReleaseVersionArg => false;
+
   /// Compares the release and patch artifacts to determine if the patch can be
   /// cleanly applied to the release.
   Future<DiffStatus> assertUnpatchableDiffs({

@@ -1497,6 +1497,34 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             completion('1.2.3+1'),
           );
         });
+
+        group('when flavor is provided', () {
+          const flavor = 'my-flavor';
+
+          setUp(() {
+            patcher = MacosPatcher(
+              argParser: argParser,
+              argResults: argResults,
+              flavor: flavor,
+              target: null,
+            );
+            when(
+              () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+            ).thenReturn(appDirectory);
+          });
+
+          test('reads the version from the flavored app', () async {
+            await expectLater(
+              runWithOverrides(
+                () => patcher.extractReleaseVersionFromArtifact(File('')),
+              ),
+              completion('1.2.3+1'),
+            );
+            verify(
+              () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+            ).called(1);
+          });
+        });
       });
     });
 

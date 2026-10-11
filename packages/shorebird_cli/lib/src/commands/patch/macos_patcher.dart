@@ -242,7 +242,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    final appPath = artifactManager.getMacOSAppDirectory()?.path;
+    final appPath = artifactManager.getMacOSAppDirectory(flavor: flavor)?.path;
     if (appPath == null) {
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
