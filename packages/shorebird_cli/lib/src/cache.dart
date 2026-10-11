@@ -433,7 +433,7 @@ allowed to access $url.''');
       final result = await process.start('chmod', ['+x', file.path]);
       final exitCode = await result.exitCode;
       if (exitCode != 0) {
-        extractProgress.fail();
+        extractProgress.fail('Failed to make $fileName executable');
         // No stamp is written, so the next run downloads the artifact again.
         throw CacheUpdateFailure(
           '''Failed to make $fileName executable: chmod exited with code $exitCode''',

@@ -52,18 +52,32 @@ The command you are running must be run within a Flutter app project that suppor
       ];
     }
 
-    if (!_androidManifestHasInternetPermission(manifestFilePath)) {
+    final internetPermissions = _internetPermissionElements(manifestFilePath);
+    if (internetPermissions.any((element) => !_isRemoveMarker(element))) {
+      return [];
+    }
+
+    if (internetPermissions.isNotEmpty) {
+      // Every INTERNET entry is a `tools:node="remove"` marker, which strips
+      // the permission from the merged manifest. Adding a granting entry next
+      // to it would conflict, so there is no automatic fix.
       return [
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
           message:
-              '$_mainAndroidManifestPath is missing the INTERNET permission.',
-          fix: () => _addInternetPermissionToFile(manifestFilePath),
+              '''$_mainAndroidManifestPath removes the INTERNET permission with tools:node="remove", but Shorebird needs it to download patches.''',
         ),
       ];
     }
 
-    return [];
+    return [
+      ValidationIssue(
+        severity: ValidationIssueSeverity.error,
+        message:
+            '$_mainAndroidManifestPath is missing the INTERNET permission.',
+        fix: () => _addInternetPermissionToFile(manifestFilePath),
+      ),
+    ];
   }
 
   Directory? get _androidSrcDirectory {
@@ -72,11 +86,15 @@ The command you are running must be run within a Flutter app project that suppor
     return Directory(p.join(root.path, 'android', 'app', 'src'));
   }
 
-  bool _androidManifestHasInternetPermission(String path) {
+  static const _androidNamespace = 'http://schemas.android.com/apk/res/android';
+  static const _toolsNamespace = 'http://schemas.android.com/tools';
+
+  /// The `<uses-permission>` elements that name the INTERNET permission.
+  List<XmlElement> _internetPermissionElements(String path) {
     final xmlDocument = XmlDocument.parse(File(path).readAsStringSync());
-    return xmlDocument.rootElement.childElements.any(
-      _isInternetPermissionElement,
-    );
+    return xmlDocument.rootElement.childElements
+        .where(_isInternetPermissionElement)
+        .toList();
   }
 
   bool _isInternetPermissionElement(XmlElement element) {
@@ -84,11 +102,17 @@ The command you are running must be run within a Flutter app project that suppor
       return false;
     }
 
-    // Look the attribute up by name: it isn't necessarily the first one, e.g.
-    // `<uses-permission tools:node="replace" android:name="...">`.
-    return element.getAttribute('android:name') ==
+    // Look the attribute up by namespace rather than position or prefix: it
+    // isn't necessarily the first attribute (e.g. after `tools:node`), and the
+    // namespace can be bound to any prefix.
+    return element.getAttribute('name', namespaceUri: _androidNamespace) ==
         'android.permission.INTERNET';
   }
+
+  /// Whether [element] removes the permission from the merged manifest rather
+  /// than granting it.
+  bool _isRemoveMarker(XmlElement element) =>
+      element.getAttribute('node', namespaceUri: _toolsNamespace) == 'remove';
 
   void _addInternetPermissionToFile(String path) {
     final file = File(path);

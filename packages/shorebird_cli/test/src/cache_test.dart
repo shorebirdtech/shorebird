@@ -703,7 +703,6 @@ void main() {
         test(
           'fails when making an executable artifact executable fails',
           () async {
-            setOperatingSystem(NativePlatform.macOS);
             when(() => chmodProcess.exitCode).thenAnswer((_) async => 1);
 
             await expectLater(
@@ -716,7 +715,20 @@ void main() {
                 ),
               ),
             );
-            verify(() => progress.fail()).called(greaterThanOrEqualTo(1));
+            // Retried, so the step fails once per attempt.
+            verify(
+              () => progress.fail('Failed to make patch executable'),
+            ).called(3);
+            // No stamp means the next run downloads the artifact again.
+            final patchArtifact = runWithOverrides(
+              () => cache.getArtifactDirectory('patch'),
+            );
+            final stamps = patchArtifact.existsSync()
+                ? patchArtifact
+                      .listSync(recursive: true)
+                      .where((entity) => entity.path.endsWith('.stamp'))
+                : const <FileSystemEntity>[];
+            expect(stamps, isEmpty);
           },
         );
 
