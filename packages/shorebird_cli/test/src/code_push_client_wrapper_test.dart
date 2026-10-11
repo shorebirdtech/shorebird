@@ -2627,12 +2627,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         await expectLater(createSupplement, exitsWithCode(ExitCode.software));
         verify(
           () => progress.fail(
-            any(
-              that: allOf(
-                startsWith('Error uploading supplement artifact ('),
-                endsWith('ios_supplement.zip): Exception: oh no'),
-              ),
-            ),
+            'Error uploading supplement artifact: Exception: oh no',
           ),
         ).called(1);
         verifyNever(() => progress.complete());

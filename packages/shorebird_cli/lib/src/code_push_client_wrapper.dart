@@ -731,7 +731,7 @@ $name artifact already exists, continuing...''');
       _handleErrorAndExit(
         error,
         progress: progress,
-        message: 'Error uploading $name artifact (${file.path}): $error',
+        message: 'Error uploading $name artifact: $error',
       );
     }
   }
@@ -849,7 +849,7 @@ $name artifact already exists, continuing...''');
     }
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
-    logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
+    logger.detail('[archive] zipped runner.app');
     try {
       await _uploadReleaseArtifact(
         appId: appId,

@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/devicectl/nserror.dart';
 import 'package:shorebird_cli/src/executables/idevicesyslog.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -506,7 +507,7 @@ class Devicectl {
 
       return json;
     } finally {
-      tempDir.deleteSync(recursive: true);
+      tempDir.deleteTemporarySync();
     }
   }
 

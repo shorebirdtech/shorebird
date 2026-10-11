@@ -638,7 +638,6 @@ void main() {
 
     group('when apks extraction fails', () {
       late Directory outDirectory;
-      late String apksFilePath;
 
       setUp(() {
         outDirectory = Directory.systemTemp.createTempSync();
@@ -666,7 +665,6 @@ void main() {
         ).thenAnswer((invocation) async {
           final apksFile = await createEmptyTempApksFile();
           final outputPath = invocation.namedArguments[#output] as String;
-          apksFilePath = outputPath;
           apksFile.renameSync(outputPath);
         });
       });
@@ -678,10 +676,12 @@ void main() {
           runWithOverrides(command.run),
           completion(ExitCode.software.code),
         );
-        final expectedMessage =
-            'Failed to extract apks from $apksFilePath.zip '
-            'to ${outDirectory.path}';
-        verify(() => logger.err(expectedMessage)).called(1);
+        verify(
+          () => logger.err(
+            'Failed to extract apks for release $releaseVersion: '
+            'the generated .apks archive contained no apks.',
+          ),
+        ).called(1);
       });
     });
   });
