@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -40,19 +41,6 @@ mixin ApplePatcherMixin on Patcher {
   /// write the split debug info file.
   static String saveDebuggingInfoPath(String directory) =>
       p.join(p.absolute(directory), splitDebugInfoFileName);
-
-  /// Deletes [directory], a temporary directory created while patching.
-  ///
-  /// Called from `finally` blocks, so a failure is logged rather than thrown:
-  /// it must neither mask the error that is already propagating nor stop the
-  /// remaining cleanup from running.
-  void deleteTemporaryDirectory(Directory directory) {
-    try {
-      if (directory.existsSync()) directory.deleteSync(recursive: true);
-    } on FileSystemException catch (error) {
-      logger.detail('Failed to delete ${directory.path}: $error');
-    }
-  }
 
   /// The additional gen_snapshot arguments to pass when building the patch
   /// with `--split-debug-info`.
@@ -218,7 +206,7 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
           ),
         );
       } finally {
-        deleteTemporaryDirectory(patchBaseDirectory);
+        patchBaseDirectory.deleteTemporarySync();
       }
     } else {
       patchFile = patchBuildFile;

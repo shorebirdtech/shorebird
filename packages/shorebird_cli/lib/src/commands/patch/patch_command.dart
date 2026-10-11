@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -337,29 +338,39 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       release: release,
     );
 
-    await _configureObfuscation(
-      patcher: patcher,
-      release: release,
-      obfuscationMapFile: downloaded.obfuscationMapFile,
-    );
-
-    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
-      flutterRevisionOverride: release.flutterRevision,
-    );
-
-    return await runScoped(
-      () => _buildAndPublishPatch(
+    // The extracted supplement (including any obfuscation map the build loads)
+    // is needed until the patch is built and published.
+    try {
+      await _configureObfuscation(
         patcher: patcher,
-        app: app,
         release: release,
-        existingPatchArtifact: resolved.patchArtifactFile,
-        inferredReleaseVersion: resolved.inferredReleaseVersion,
-        releaseArtifact: downloaded.releaseArtifact,
-        releaseArchive: downloaded.releaseArchive,
-        supplementDirectory: downloaded.supplementDirectory,
-      ),
-      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
-    );
+        obfuscationMapFile: downloaded.obfuscationMapFile,
+      );
+
+      final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+        flutterRevisionOverride: release.flutterRevision,
+      );
+
+      return await runScoped(
+        () => _buildAndPublishPatch(
+          patcher: patcher,
+          app: app,
+          release: release,
+          existingPatchArtifact: resolved.patchArtifactFile,
+          inferredReleaseVersion: resolved.inferredReleaseVersion,
+          releaseArtifact: downloaded.releaseArtifact,
+          releaseArchive: downloaded.releaseArchive,
+          supplementDirectory: downloaded.supplementDirectory,
+        ),
+        values: {
+          shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
+        },
+      );
+    } finally {
+      if (downloaded.supplementDirectory case final directory?) {
+        directory.deleteTemporarySync();
+      }
+    }
   }
 
   /// Checks that [patcher] can build a patch with the given arguments and

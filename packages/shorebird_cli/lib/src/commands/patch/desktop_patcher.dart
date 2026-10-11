@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -103,35 +104,43 @@ abstract class DesktopPatcher extends Patcher {
       appDirectory.path,
       ...dartLibraryPathSegments,
     ]);
-    final tempDir = Directory.systemTemp.createTempSync();
-    final zipPath = p.join(tempDir.path, 'patch.zip');
-    final zipFile = releaseArtifact.copySync(zipPath);
-    await artifactManager.extractZip(
-      zipFile: zipFile,
-      outputDirectory: tempDir,
-    );
+    final releaseDirectory = Directory.systemTemp.createTempSync();
+    try {
+      await artifactManager.extractZip(
+        zipFile: releaseArtifact,
+        outputDirectory: releaseDirectory,
+      );
 
-    final bundle = await createDiffBundle(
-      arch: Arch.x86_64,
-      releaseArtifactPath: p.joinAll([
-        tempDir.path,
-        ...dartLibraryPathSegments,
-      ]),
-      patchArtifactPath: patchArtifactPath,
-      progress: createDiffProgress,
-    );
-    createDiffProgress.complete();
+      // The diff is written to its own temporary directory, so the extracted
+      // release can go once it has been diffed against.
+      final bundle = await createDiffBundle(
+        arch: Arch.x86_64,
+        releaseArtifactPath: p.joinAll([
+          releaseDirectory.path,
+          ...dartLibraryPathSegments,
+        ]),
+        patchArtifactPath: patchArtifactPath,
+        progress: createDiffProgress,
+      );
+      createDiffProgress.complete();
 
-    return {Arch.x86_64: bundle};
+      return {Arch.x86_64: bundle};
+    } finally {
+      releaseDirectory.deleteTemporarySync();
+    }
   }
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
     final outputDirectory = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: artifact,
-      outputDirectory: outputDirectory,
-    );
-    return versionFromAppDirectory(outputDirectory);
+    try {
+      await artifactManager.extractZip(
+        zipFile: artifact,
+        outputDirectory: outputDirectory,
+      );
+      return await versionFromAppDirectory(outputDirectory);
+    } finally {
+      outputDirectory.deleteTemporarySync();
+    }
   }
 }

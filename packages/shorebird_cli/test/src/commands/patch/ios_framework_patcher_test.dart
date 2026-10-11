@@ -957,6 +957,35 @@ void main() {
               );
             });
 
+            test('leaves no temporary files behind', () async {
+              final systemTemp = createSystemTemp();
+              await runWithSystemTemp(
+                systemTemp,
+                () => runWithOverrides(
+                  () => patcher.createPatchArtifacts(
+                    appId: appId,
+                    releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
+                  ),
+                ),
+              );
+
+              expect(systemTemp.listSync(), isEmpty);
+            });
+
+            test('keeps a supplement directory it was given', () async {
+              await runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                  supplementDirectory: supplementDirectory,
+                ),
+              );
+
+              expect(supplementDirectory.existsSync(), isTrue);
+            });
+
             group('when class table link info & debug info are present', () {
               setUp(() {
                 when(

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -92,12 +91,10 @@ class WindowsReleaser extends Releaser {
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final zippedRelease = await releaseDir.zipToTempFile();
-
     await codePushClientWrapper.createWindowsReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      releaseZipPath: zippedRelease.path,
+      releaseDirectory: releaseDir,
     );
 
     await uploadSupplementArtifact(appId: appId, releaseId: release.id);

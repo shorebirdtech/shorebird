@@ -16,6 +16,20 @@ File createTempFile(String name) {
     ..createSync();
 }
 
+/// Runs [body] with [Directory.systemTemp] redirected to [systemTemp], so a
+/// test can check what [body] left behind there.
+Future<void> runWithSystemTemp(
+  Directory systemTemp,
+  Future<void> Function() body,
+) => IOOverrides.runZoned(body, getSystemTempDirectory: () => systemTemp);
+
+/// A new, empty directory to stand in for [Directory.systemTemp].
+Directory createSystemTemp() {
+  final systemTemp = Directory.systemTemp.createTempSync();
+  addTearDown(() => systemTemp.deleteSync(recursive: true));
+  return systemTemp;
+}
+
 /// Runs [body] while capturing stdout writes into [captured].
 ///
 /// If [hasTerminal] is provided, the captured stdout reports that value for

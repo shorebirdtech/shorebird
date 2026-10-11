@@ -596,6 +596,24 @@ void main() {
             ).called(1);
           });
 
+          test('deletes the extracted supplement once patched', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            final supplementDirectory =
+                verify(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: release.id,
+                        releaseArtifact: any(named: 'releaseArtifact'),
+                        supplementDirectory: captureAny(
+                          named: 'supplementDirectory',
+                        ),
+                      ),
+                    ).captured.single
+                    as Directory;
+            expect(supplementDirectory.existsSync(), isFalse);
+          });
+
           group('when the artifact is not found', () {
             setUp(() {
               when(

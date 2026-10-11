@@ -471,7 +471,7 @@ To change the version of this release, change your app's version in your pubspec
             () => codePushClientWrapper.createWindowsReleaseArtifacts(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
-              releaseZipPath: any(named: 'releaseZipPath'),
+              releaseDirectory: any(named: 'releaseDirectory'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -485,7 +485,7 @@ To change the version of this release, change your app's version in your pubspec
             () => codePushClientWrapper.createWindowsReleaseArtifacts(
               appId: appId,
               releaseId: releaseId,
-              releaseZipPath: any(named: 'releaseZipPath'),
+              releaseDirectory: any(named: 'releaseDirectory'),
             ),
           ).called(1);
         });
