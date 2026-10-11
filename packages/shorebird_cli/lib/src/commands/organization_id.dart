@@ -6,8 +6,12 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// that takes one.
 typedef OrganizationIdError = ({String message, String hint});
 
-/// Parses an `--org-id` value, returning the id or why it is invalid.
-({int? id, OrganizationIdError? error}) parseOrganizationId(String arg) {
+/// Parses an `--org-id` value, returning the id or why it is invalid. An
+/// invalid value's hint lists [memberships] so the user can pick a valid id.
+({int? id, OrganizationIdError? error}) parseOrganizationId(
+  String arg, {
+  required List<OrganizationMembership> memberships,
+}) {
   final id = int.tryParse(arg);
   if (id != null) return (id: id, error: null);
   return (
@@ -16,7 +20,8 @@ typedef OrganizationIdError = ({String message, String hint});
       message: '"$arg" is not a valid organization id.',
       hint:
           'Organization ids are integers, e.g. '
-          '--${CommonArguments.orgIdArg.name} 42.',
+          '--${CommonArguments.orgIdArg.name} 42. '
+          '${availableOrganizations(memberships)}',
     ),
   );
 }
@@ -46,7 +51,7 @@ findOrganizationMembership({
 String availableOrganizations(List<OrganizationMembership> memberships) {
   if (memberships.isEmpty) return 'You are not a member of any organization.';
   final organizations = memberships.map(
-    (m) => '${m.organization.name} (${m.organization.id})',
+    (m) => '${m.organization.name} (id: ${m.organization.id})',
   );
   return 'Your organizations: ${organizations.join(', ')}.';
 }

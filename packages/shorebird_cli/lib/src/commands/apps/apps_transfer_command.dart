@@ -41,13 +41,6 @@ class AppsTransferCommand extends ShorebirdCommand with AppScopedCommand {
     final (:appId, :errorCode) = await resolveAppId();
     if (errorCode != null) return errorCode;
 
-    final (id: organizationId, error: parseError) = parseOrganizationId(
-      results[CommonArguments.orgIdArg.name] as String,
-    );
-    if (parseError != null) {
-      return reportError(message: parseError.message, hint: parseError.hint);
-    }
-
     late final AppMetadata app;
     late final List<OrganizationMembership> memberships;
     final fetchError = await guardApiCall(
@@ -59,6 +52,15 @@ class AppsTransferCommand extends ShorebirdCommand with AppScopedCommand {
       message: 'Failed to fetch app "$appId".',
     );
     if (fetchError != null) return fetchError;
+
+    // Parsed after the fetch so an invalid id's hint can list the user's orgs.
+    final (id: organizationId, error: parseError) = parseOrganizationId(
+      results[CommonArguments.orgIdArg.name] as String,
+      memberships: memberships,
+    );
+    if (parseError != null) {
+      return reportError(message: parseError.message, hint: parseError.hint);
+    }
 
     // Fail fast on an org the caller is not in, so the message can name it.
     final (:membership, error: membershipError) = findOrganizationMembership(

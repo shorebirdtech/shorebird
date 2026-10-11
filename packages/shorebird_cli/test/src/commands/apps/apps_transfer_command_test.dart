@@ -142,14 +142,21 @@ void main() {
         verifyNeverTransferred();
       });
 
-      test('emits a usage_error envelope under --json', () async {
+      test('emits a usage_error envelope listing orgs under --json', () async {
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
         );
         expect(exitCode, equals(ExitCode.usage.code));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], 'usage_error');
         expect(
-          (json['error'] as Map<String, dynamic>)['code'],
-          'usage_error',
+          error['message'],
+          '"not-a-number" is not a valid organization id.',
+        );
+        expect(
+          error['hint'],
+          'Organization ids are integers, e.g. --org-id 42. '
+          'Your organizations: $organizationName (id: $organizationId).',
         );
       });
     });
@@ -199,7 +206,7 @@ void main() {
         expect(error['message'], 'You are not a member of organization 7.');
         expect(
           error['hint'],
-          'Your organizations: $organizationName ($organizationId).',
+          'Your organizations: $organizationName (id: $organizationId).',
         );
       });
     });
