@@ -86,15 +86,6 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
         );
     }
 
-    // Delete the Shorebird supplement directory if it exists.
-    // This is to ensure that we don't accidentally upload stale artifacts
-    // when building with older versions of Flutter.
-    final shorebirdSupplementDir = artifactManager
-        .getIosReleaseSupplementDirectory();
-    if (shorebirdSupplementDir?.existsSync() ?? false) {
-      shorebirdSupplementDir!.deleteSync(recursive: true);
-    }
-
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIpa(
         codesign: codesign,
