@@ -255,6 +255,15 @@ with multiple lines''',
                 'fixable warning validator ${green.wrap('(1 fix applied)')}',
               ),
             ).called(1);
+            // The fixed validator is reported once, as a failure, never also
+            // as a completion. The only completion is the second,
+            // warning-only validator's.
+            verifyNever(
+              () => progress.complete(
+                'fixable warning validator ${green.wrap('(1 fix applied)')}',
+              ),
+            );
+            verify(() => progress.complete(any())).called(1);
             verify(
               () => logger.info(
                 '  ${validationError.displayMessage!}',
