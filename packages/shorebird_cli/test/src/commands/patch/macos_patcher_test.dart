@@ -862,8 +862,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ).thenReturn(true);
             when(
               () => codeSigner.runPublicKeyCmd('print-key'),
-            ).thenAnswer((_) async => 'public_key');
+            ).thenAnswer((_) async => 'pem-from-cmd');
             await runWithOverrides(patcher.buildPatchArtifact);
+
+            verify(
+              () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
+            ).called(1);
 
             verify(
               () => artifactBuilder.buildMacos(
