@@ -140,6 +140,7 @@ void main() {
       ).thenReturn(Directory(p.join(projectRoot.path, 'build')));
 
       when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(projectRoot);
+      when(shorebirdEnv.getFlutterProjectRoot).thenReturn(projectRoot);
 
       builder = ArtifactBuilder();
     });
@@ -650,6 +651,287 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       });
     });
 
+    group('generated shorebird.yaml', () {
+      // The generated (bundled) shorebird.yaml that Shorebird's Flutter writes
+      // into flutter_assets, as opposed to the project's own shorebird.yaml.
+      const generatedShorebirdYaml = ['flutter_assets', 'shorebird.yaml'];
+
+      late File projectShorebirdYaml;
+      late List<File> appIntermediates;
+      late File moduleIntermediate;
+      late File desktopIntermediate;
+      // Copies made from the intermediates, including other platforms'
+      // finished products.
+      late List<File> otherCopies;
+      late Set<String> existingDuringBuild;
+
+      File createProjectFile(List<String> segments) =>
+          File(p.joinAll([projectRoot.path, ...segments]))
+            ..createSync(recursive: true);
+
+      List<File> allFiles() => [
+        projectShorebirdYaml,
+        ...appIntermediates,
+        moduleIntermediate,
+        desktopIntermediate,
+        ...otherCopies,
+      ];
+
+      Set<String> pathsExcept(List<File> deleted) => {
+        for (final file in allFiles())
+          if (!deleted.contains(file)) file.path,
+      };
+
+      setUp(() {
+        when(
+          () => shorebirdAndroidArtifacts.findApk(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenReturn(File('app-release.apk'));
+        when(
+          () => shorebirdAndroidArtifacts.findAab(
+            project: any(named: 'project'),
+            flavor: any(named: 'flavor'),
+          ),
+        ).thenReturn(File('app-release.aab'));
+        when(
+          () => artifactManager.getWindowsReleaseDirectory(),
+        ).thenReturn(Directory('Release'));
+
+        projectShorebirdYaml = createProjectFile(['shorebird.yaml']);
+        appIntermediates = [
+          for (final variant in ['release', 'prodRelease'])
+            createProjectFile([
+              'build',
+              'app',
+              'intermediates',
+              'flutter',
+              variant,
+              ...generatedShorebirdYaml,
+            ]),
+        ];
+        moduleIntermediate = createProjectFile([
+          '.android',
+          'Flutter',
+          'build',
+          'intermediates',
+          'flutter',
+          'release',
+          ...generatedShorebirdYaml,
+        ]);
+        desktopIntermediate = createProjectFile([
+          'build',
+          ...generatedShorebirdYaml,
+        ]);
+        otherCopies = [
+          createProjectFile([
+            'build',
+            'app',
+            'intermediates',
+            'assets',
+            'release',
+            'mergeReleaseAssets',
+            ...generatedShorebirdYaml,
+          ]),
+          createProjectFile([
+            'build',
+            'host',
+            'outputs',
+            'repo',
+            'flutter_release-1.0',
+            'assets',
+            ...generatedShorebirdYaml,
+          ]),
+          createProjectFile([
+            'build',
+            'ios',
+            'archive',
+            'Runner.xcarchive',
+            'Products',
+            'Applications',
+            'Runner.app',
+            'Frameworks',
+            'App.framework',
+            ...generatedShorebirdYaml,
+          ]),
+          createProjectFile([
+            'build',
+            'ios',
+            'framework',
+            'Release',
+            'App.xcframework',
+            'ios-arm64',
+            'App.framework',
+            ...generatedShorebirdYaml,
+          ]),
+          createProjectFile([
+            'build',
+            'macos',
+            'Build',
+            'Products',
+            'Release',
+            'Runner.app',
+            'Contents',
+            'Frameworks',
+            'App.framework',
+            'Resources',
+            ...generatedShorebirdYaml,
+          ]),
+          createProjectFile([
+            'build',
+            'linux',
+            'x64',
+            'release',
+            'bundle',
+            'data',
+            ...generatedShorebirdYaml,
+          ]),
+          createProjectFile([
+            'build',
+            'windows',
+            'x64',
+            'runner',
+            'Release',
+            'data',
+            ...generatedShorebirdYaml,
+          ]),
+        ];
+
+        when(
+          () => shorebirdProcess.stream(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+            onStart: any(named: 'onStart'),
+          ),
+        ).thenAnswer((_) async {
+          existingDuringBuild = {
+            for (final file in allFiles())
+              if (file.existsSync()) file.path,
+          };
+          // Apple builds look for the app.dill the build wrote.
+          File(
+              p.join(
+                projectRoot.path,
+                '.dart_tool',
+                'flutter_build',
+                'app.dill',
+              ),
+            )
+            ..createSync(recursive: true)
+            ..setLastModifiedSync(
+              DateTime.now().add(const Duration(seconds: 10)),
+            );
+          return ExitCode.success.code;
+        });
+      });
+
+      test(
+        'apk deletes only the Gradle intermediate copies before building',
+        () async {
+          await runWithOverrides(() => builder.buildApk());
+
+          expect(existingDuringBuild, equals(pathsExcept(appIntermediates)));
+        },
+      );
+
+      test(
+        'appbundle deletes only the Gradle intermediate copies before building',
+        () async {
+          await runWithOverrides(() => builder.buildAppBundle());
+
+          expect(existingDuringBuild, equals(pathsExcept(appIntermediates)));
+        },
+      );
+
+      test(
+        'aar deletes only the Flutter module intermediate copy before building',
+        () async {
+          await runWithOverrides(() => builder.buildAar(buildNumber: '1.0'));
+
+          expect(
+            existingDuringBuild,
+            equals(pathsExcept([moduleIntermediate])),
+          );
+        },
+      );
+
+      test(
+        'linux deletes only the flutter assemble copy before building',
+        () async {
+          await runWithOverrides(() => builder.buildLinuxApp());
+
+          expect(
+            existingDuringBuild,
+            equals(pathsExcept([desktopIntermediate])),
+          );
+        },
+      );
+
+      test(
+        'windows deletes only the flutter assemble copy before building',
+        () async {
+          await runWithOverrides(() => builder.buildWindowsApp());
+
+          expect(
+            existingDuringBuild,
+            equals(pathsExcept([desktopIntermediate])),
+          );
+        },
+      );
+
+      test('ipa deletes no generated shorebird.yaml', () async {
+        await runWithOverrides(() => builder.buildIpa());
+
+        expect(existingDuringBuild, equals(pathsExcept([])));
+      });
+
+      test("never deletes or changes the project's shorebird.yaml", () async {
+        projectShorebirdYaml.writeAsStringSync('app_id: my-app-id');
+
+        await runWithOverrides(() async {
+          await builder.buildApk();
+          await builder.buildAppBundle();
+          await builder.buildAar(buildNumber: '1.0');
+          await builder.buildLinuxApp();
+          await builder.buildWindowsApp();
+          await builder.buildIpa();
+        });
+
+        expect(projectShorebirdYaml.readAsStringSync(), 'app_id: my-app-id');
+      });
+
+      group('when a copy cannot be deleted', () {
+        setUp(() {
+          // A non-empty directory where the file would be cannot be deleted
+          // as a file.
+          appIntermediates.first.deleteSync();
+          File(
+            p.join(appIntermediates.first.path, 'child'),
+          ).createSync(recursive: true);
+        });
+
+        test('logs it and builds anyway', () async {
+          await runWithOverrides(() => builder.buildApk());
+
+          verify(
+            () => logger.detail(
+              any(
+                that: startsWith(
+                  'Failed to delete generated shorebird.yaml at '
+                  '${appIntermediates.first.path}: ',
+                ),
+              ),
+            ),
+          ).called(1);
+          expect(appIntermediates.last.existsSync(), isFalse);
+          expect(projectShorebirdYaml.existsSync(), isTrue);
+        });
+      });
+    });
+
     group('buildApk', () {
       setUp(() {
         when(
@@ -904,70 +1186,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               onStart: any(named: 'onStart'),
             ),
           ).called(1);
-        });
-      });
-
-      group('when a previous build left a shorebird.yaml behind', () {
-        late File builtShorebirdYaml;
-        late File mergedShorebirdYaml;
-        late File otherAsset;
-        late File otherShorebirdYaml;
-
-        File createBuildFile(List<String> segments) =>
-            File(p.joinAll([projectRoot.path, 'build', ...segments]))
-              ..createSync(recursive: true);
-
-        setUp(() {
-          builtShorebirdYaml = createBuildFile([
-            'app',
-            'intermediates',
-            'flutter',
-            'release',
-            'flutter_assets',
-            'shorebird.yaml',
-          ]);
-          mergedShorebirdYaml = createBuildFile([
-            'app',
-            'intermediates',
-            'assets',
-            'release',
-            'mergeReleaseAssets',
-            'flutter_assets',
-            'shorebird.yaml',
-          ]);
-          otherAsset = createBuildFile([
-            'app',
-            'intermediates',
-            'flutter',
-            'release',
-            'flutter_assets',
-            'AssetManifest.bin',
-          ]);
-          otherShorebirdYaml = createBuildFile(['shorebird.yaml']);
-        });
-
-        test('deletes it before running flutter build', () async {
-          var existedDuringBuild = true;
-          when(
-            () => shorebirdProcess.stream(
-              any(),
-              any(),
-              environment: any(named: 'environment'),
-              runInShell: any(named: 'runInShell'),
-              onStart: any(named: 'onStart'),
-            ),
-          ).thenAnswer((_) async {
-            existedDuringBuild =
-                builtShorebirdYaml.existsSync() ||
-                mergedShorebirdYaml.existsSync();
-            return ExitCode.success.code;
-          });
-
-          await runWithOverrides(() => builder.buildApk());
-
-          expect(existedDuringBuild, isFalse);
-          expect(otherAsset.existsSync(), isTrue);
-          expect(otherShorebirdYaml.existsSync(), isTrue);
         });
       });
 

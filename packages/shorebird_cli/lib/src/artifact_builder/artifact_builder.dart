@@ -406,7 +406,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ...args,
     ];
 
-    _deleteBuiltShorebirdYamls();
+    _deleteGeneratedShorebirdYamls(command);
     final buildStart = clock.now();
     final exitCode = await process.stream(
       executable,
@@ -436,30 +436,89 @@ Reason: Exited with code $exitCode.''',
     return buildStart;
   }
 
-  /// Deletes every shorebird.yaml a previous build copied into a
-  /// `flutter_assets` directory under the build directory.
+  /// Deletes the generated (bundled) shorebird.yaml files that
+  /// `flutter build [command]` regenerates, see [_generatedShorebirdYamls].
   ///
-  /// Flutter writes the public key into the built shorebird.yaml from the
-  /// `SHOREBIRD_PUBLIC_KEY` environment variable, which neither Flutter's build
-  /// system nor Gradle track as an input. When nothing else changed since the
-  /// last build, both skip the step that writes it, and the app ships the
-  /// previous build's shorebird.yaml with a stale or missing key. A missing
-  /// output makes both rerun that step, so this forces a fresh shorebird.yaml
-  /// without invalidating the rest of the build.
-  void _deleteBuiltShorebirdYamls() {
-    final buildDirectory = shorebirdEnv.buildDirectory;
-    if (!buildDirectory.existsSync()) return;
-    final builtShorebirdYamls = buildDirectory
-        .listSync(recursive: true, followLinks: false)
-        .whereType<File>()
-        .where(
-          (file) =>
-              p.basename(file.path) == 'shorebird.yaml' &&
-              p.basename(file.parent.path) == 'flutter_assets',
+  /// There are two different files named shorebird.yaml. The project's
+  /// shorebird.yaml is checked in at the project root and is never touched
+  /// here. The generated (bundled) shorebird.yaml is the one Shorebird's
+  /// Flutter writes into `flutter_assets` from the project's, adding keys
+  /// such as `patch_public_key`.
+  ///
+  /// Flutter writes `patch_public_key` from the `SHOREBIRD_PUBLIC_KEY`
+  /// environment variable, which neither Flutter's build system nor Gradle
+  /// track as an input. When nothing else changed since the last build, both
+  /// skip the step that writes the generated shorebird.yaml, and the app ships
+  /// the previous build's copy with a stale or missing key. Flutter's build
+  /// system and Gradle both rerun a step whose output is missing, so deleting
+  /// the generated copy makes this build write a fresh one. Flutter's own
+  /// cache still skips the targets whose outputs are intact, such as the AOT
+  /// snapshot.
+  ///
+  /// This is best effort: a file that cannot be deleted is logged and the
+  /// build goes ahead.
+  void _deleteGeneratedShorebirdYamls(String command) {
+    for (final file in _generatedShorebirdYamls(command)) {
+      try {
+        file.deleteSync();
+      } on PathNotFoundException {
+        // Nothing to delete.
+      } on FileSystemException catch (error) {
+        logger.detail(
+          'Failed to delete generated shorebird.yaml at ${file.path}: $error',
         );
-    for (final file in builtShorebirdYamls) {
-      file.deleteSync();
+      }
     }
+  }
+
+  /// The generated (bundled) shorebird.yaml files that `flutter build
+  /// [command]` writes in intermediate directories and copies into its
+  /// products from there.
+  ///
+  /// Only intermediate copies are listed. Finished products, including other
+  /// platforms' (e.g. an .xcarchive or a Linux bundle), are left alone.
+  List<File> _generatedShorebirdYamls(String command) {
+    final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
+    final buildDirectory = shorebirdEnv.buildDirectory;
+    return switch (command) {
+      // Each Gradle project of an app builds into build/<project name>.
+      'apk' || 'appbundle' => [
+        for (final gradleBuildDirectory in _subdirectories(buildDirectory))
+          ..._gradleGeneratedShorebirdYamls(gradleBuildDirectory),
+      ],
+      // A module's Flutter Gradle project builds into .android/Flutter/build.
+      'aar' => _gradleGeneratedShorebirdYamls(
+        Directory(p.join(projectRoot.path, '.android', 'Flutter', 'build')),
+      ),
+      // `flutter assemble --output=build`, which the CMake install step copies
+      // into the bundle.
+      'linux' || 'windows' => [
+        File(p.join(buildDirectory.path, 'flutter_assets', 'shorebird.yaml')),
+      ],
+      // Apple builds delete Flutter's build cache instead, see
+      // [_buildAppleKernel].
+      _ => const [],
+    };
+  }
+
+  /// The generated shorebird.yaml that the Flutter Gradle task wrote for each
+  /// build variant of the Gradle project building into [gradleBuildDirectory].
+  /// Gradle copies it into the archive from there.
+  List<File> _gradleGeneratedShorebirdYamls(Directory gradleBuildDirectory) {
+    final flutterIntermediates = Directory(
+      p.join(gradleBuildDirectory.path, 'intermediates', 'flutter'),
+    );
+    return [
+      for (final variantDirectory in _subdirectories(flutterIntermediates))
+        File(p.join(variantDirectory.path, 'flutter_assets', 'shorebird.yaml')),
+    ];
+  }
+
+  /// The directories directly inside [directory], or none if it does not
+  /// exist.
+  List<Directory> _subdirectories(Directory directory) {
+    if (!directory.existsSync()) return const [];
+    return directory.listSync().whereType<Directory>().toList();
   }
 
   /// Runs an Apple `flutter build [command]` (see [_runFlutterBuild]) and
