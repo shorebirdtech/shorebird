@@ -104,7 +104,7 @@ the underlying `flutter build` failure must be resolved for Shorebird to
 build a release.
 
 • If `flutter build` completes successfully, please ensure that you are
-providing the desired flutter version to the release command via 
+providing the desired flutter version to the release command via
 the `--flutter-version` option. If you do not specify a `--flutter-version`
 Shorebird will default to the latest stable version of Flutter.
 We strongly encourage always specifying an explicit Flutter version:

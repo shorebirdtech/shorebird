@@ -172,6 +172,53 @@ void main() {
       expect(callCount, equals(2));
     });
 
+    test('truncated and full prompts share one hint', () {
+      final releases = List.generate(
+        15,
+        (i) => _release('1.0.$i', DateTime(2025, 1, i + 1)),
+      );
+
+      var callCount = 0;
+      when(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+          hint: any(named: 'hint'),
+        ),
+      ).thenAnswer((invocation) {
+        callCount++;
+        final choices = invocation.namedArguments[#choices] as List<Release>;
+        return callCount == 1 ? showAllReleaseSentinel : choices.first;
+      });
+
+      runWithOverrides(
+        () => chooseRelease(
+          releases: releases,
+          action: 'preview',
+        ),
+      );
+
+      final hints = verify(
+        () => logger.chooseOne<Release>(
+          any(),
+          choices: any(named: 'choices'),
+          display: any(named: 'display'),
+          hint: captureAny(named: 'hint'),
+        ),
+      ).captured;
+      expect(
+        hints,
+        equals(
+          List.filled(
+            2,
+            'Pass --release-version=<version> to preview a specific release '
+            'without prompting.',
+          ),
+        ),
+      );
+    });
+
     test('returns directly when user picks from truncated list', () {
       final releases = List.generate(
         15,
