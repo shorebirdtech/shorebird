@@ -22,6 +22,26 @@ class RedisException implements Exception {
   String toString() => message;
 }
 
+/// {@template redis_credentials}
+/// A username and password to authenticate a connection with.
+/// {@endtemplate}
+class RedisCredentials {
+  /// {@macro redis_credentials}
+  const RedisCredentials({required this.password, this.username = 'default'});
+
+  /// The username sent with `AUTH`.
+  final String username;
+
+  /// The password sent with `AUTH`.
+  final String password;
+}
+
+/// Supplies the credentials for one connection.
+///
+/// Called before every connect and reconnect, so a server whose passwords
+/// are short-lived tokens is always sent one that is valid at that moment.
+typedef RedisCredentialsProvider = Future<RedisCredentials> Function();
+
 /// {@template redis_socket_options}
 /// Options for connecting to a Redis server.
 /// {@endtemplate}
@@ -32,6 +52,9 @@ class RedisSocketOptions {
     this.port = 6379,
     this.username = 'default',
     this.password,
+    this.credentialsProvider,
+    this.tls = false,
+    this.securityContext,
     this.timeout = const Duration(seconds: 30),
     this.retryInterval = const Duration(seconds: 1),
     this.retryAttempts = 10,
@@ -56,6 +79,25 @@ class RedisSocketOptions {
   /// The password for authenticating to the Redis server.
   /// Defaults to null.
   final String? password;
+
+  /// Supplies credentials for each connection, in place of [username] and
+  /// [password]. Called on every connect and reconnect.
+  ///
+  /// Use this when the password is a short-lived token, such as an IAM
+  /// access token for a managed cloud cache. A connection whose provider
+  /// throws, or whose `AUTH` is refused, counts as a failed connection
+  /// attempt.
+  /// Defaults to null.
+  final RedisCredentialsProvider? credentialsProvider;
+
+  /// Whether to connect over TLS.
+  /// Defaults to false.
+  final bool tls;
+
+  /// The [SecurityContext] for a TLS connection, for example one that
+  /// trusts only the server's own CA. Null uses the platform's trusted roots.
+  /// Ignored unless [tls] is true.
+  final SecurityContext? securityContext;
 
   /// The delay between connection attempts.
   /// Defaults to 1 second.
