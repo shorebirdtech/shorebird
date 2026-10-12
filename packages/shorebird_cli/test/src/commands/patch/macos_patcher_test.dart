@@ -491,6 +491,44 @@ This may indicate that the patch contains native changes, which cannot be applie
             });
           });
         });
+
+        group('when release has no podspec lock hash', () {
+          // Releases made before Podfile.lock hashes were recorded have
+          // nothing to compare against, so the native diff passes through
+          // without a warning or prompt.
+          const releaseArtifact = ReleaseArtifact(
+            id: 0,
+            releaseId: 0,
+            arch: 'aarch64',
+            platform: ReleasePlatform.macos,
+            hash: '#',
+            size: 42,
+            url: 'https://example.com',
+            canSideload: true,
+          );
+
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+          });
+
+          test(
+            'returns diff status without warning or prompting',
+            () async {
+              final diffStatus = await runWithOverrides(
+                () => patcher.assertUnpatchableDiffs(
+                  releaseArtifact: releaseArtifact,
+                  releaseArchive: File(''),
+                  patchArchive: File(''),
+                ),
+              );
+              expect(diffStatus, equals(nativeChangeDiffStatus));
+              verifyNever(() => logger.warn(any()));
+              verifyNever(
+                () => logger.confirm(any(), hint: any(named: 'hint')),
+              );
+            },
+          );
+        });
       });
     });
 
