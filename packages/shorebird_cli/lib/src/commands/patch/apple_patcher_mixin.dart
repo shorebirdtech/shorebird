@@ -17,7 +17,6 @@ import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart' show platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -158,9 +157,7 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
         splitDebugInfoArgs: appleGenSnapshotArgs,
         aotOutputFile: File(aotOutputPath),
         vmCodeFile: File(vmcodeOutputPath),
-        ddMaxBytes: int.tryParse(
-          platform.environment['SHOREBIRD_PATCH_DD_MAX_BYTES'] ?? '',
-        ),
+        ddMaxBytes: ddMaxBytes,
       );
       final linkPercentage = result.linkPercentage;
       final exitCode = result.exitCode;

@@ -1167,6 +1167,31 @@ This may indicate that the patch contains native changes, which cannot be applie
           ).called(1);
         });
 
+        test('passes --dd-max-bytes to the linker', () async {
+          when(
+            () => argResults[CommonArguments.ddMaxBytesArg.name],
+          ).thenReturn('8192');
+
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          verify(
+            () => apple.runLinker(
+              kernelFile: any(named: 'kernelFile'),
+              aotOutputFile: any(named: 'aotOutputFile'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+              vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: 8192,
+            ),
+          ).called(1);
+        });
+
         test('bundles the local Podfile.lock hash', () async {
           when(
             () => shorebirdEnv.iosPodfileLockHash,

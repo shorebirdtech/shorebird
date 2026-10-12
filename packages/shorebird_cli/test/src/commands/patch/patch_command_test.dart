@@ -392,7 +392,60 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('accepts a hidden --dd-max-bytes option with no default', () {
+      final option =
+          PatchCommand().argParser.options[CommonArguments.ddMaxBytesArg.name]!;
+      expect(option.hide, isTrue);
+      expect(option.defaultsTo, isNull);
+      expect(option.help, equals(CommonArguments.ddMaxBytesArg.description));
+    });
+
     group('run', () {
+      group('--dd-max-bytes', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn(releaseVersion);
+        });
+
+        void setDdMaxBytes(String value) {
+          when(
+            () => argResults[CommonArguments.ddMaxBytesArg.name],
+          ).thenReturn(value);
+        }
+
+        for (final value in ['-1', 'lots', '1.5', '']) {
+          test('rejects "$value" before building', () async {
+            setDdMaxBytes(value);
+
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '--dd-max-bytes must be a non-negative integer '
+                      '(got $value).',
+                ),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          });
+        }
+
+        for (final value in ['0', '10000']) {
+          test('accepts "$value"', () async {
+            setDdMaxBytes(value);
+
+            final exitCode = await runWithOverrides(command.run);
+
+            expect(exitCode, equals(ExitCode.success.code));
+          });
+        }
+      });
+
       group('when --staging is passed', () {
         setUp(() {
           when(() => argResults.wasParsed('staging')).thenReturn(true);

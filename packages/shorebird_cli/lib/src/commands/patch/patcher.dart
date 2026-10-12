@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/extensions/iterable.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart' show platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -315,6 +316,24 @@ More info: ${troubleshootingUrl.toLink()}.
   /// Returns `null` if the platform does not use a linker or if the linking
   /// step has not yet been run.
   double? get linkPercentage => null;
+
+  /// The environment variable read for the linker's DD cascade byte
+  /// threshold when `--dd-max-bytes` isn't given. Predates the flag and is
+  /// kept so existing CI scripts keep working.
+  static const ddMaxBytesEnvironmentVariable = 'SHOREBIRD_PATCH_DD_MAX_BYTES';
+
+  /// The Dynamic Dispatch table cascade byte threshold to pass to the linker.
+  ///
+  /// Comes from `--dd-max-bytes`, or from [ddMaxBytesEnvironmentVariable]
+  /// when the flag isn't given. Unlike `Releaser.ddMaxBytes`, `0` is passed
+  /// through rather than mapped to null: the linker reads `0` as "disable
+  /// DD", while null leaves the linker on its own default.
+  int? get ddMaxBytes {
+    final value =
+        argResults[CommonArguments.ddMaxBytesArg.name] as String? ??
+        platform.environment[ddMaxBytesEnvironmentVariable];
+    return value == null ? null : int.tryParse(value);
+  }
 
   /// The value of `--split-debug-info-path` if specified.
   String? get splitDebugInfoPath {

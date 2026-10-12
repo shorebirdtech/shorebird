@@ -353,6 +353,50 @@ void main() {
           },
         );
 
+        test('passes --dd-max-bytes to the linker', () async {
+          when(
+            () => argResults[CommonArguments.ddMaxBytesArg.name],
+          ).thenReturn('0');
+
+          await linkAndBundle();
+
+          verify(
+            () => apple.runLinker(
+              kernelFile: any(named: 'kernelFile'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+              aotOutputFile: any(named: 'aotOutputFile'),
+              vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: 0,
+            ),
+          ).called(1);
+        });
+
+        test(
+          'prefers --dd-max-bytes over SHOREBIRD_PATCH_DD_MAX_BYTES',
+          () async {
+            testPlatform = TestNativePlatform(
+              environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
+            );
+            when(
+              () => argResults[CommonArguments.ddMaxBytesArg.name],
+            ).thenReturn('8192');
+
+            await linkAndBundle();
+
+            verify(
+              () => apple.runLinker(
+                kernelFile: any(named: 'kernelFile'),
+                releaseArtifact: any(named: 'releaseArtifact'),
+                splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                aotOutputFile: any(named: 'aotOutputFile'),
+                vmCodeFile: any(named: 'vmCodeFile'),
+                ddMaxBytes: 8192,
+              ),
+            ).called(1);
+          },
+        );
+
         test('records the link percentage and metadata', () async {
           const linkMetadata = {'link': 'metadata'};
           stubLinkResult(

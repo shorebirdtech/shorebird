@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -161,7 +162,7 @@ To change the version of this release, change your app's version in your pubspec
   /// Returns null when DD should be disabled: the option is absent, or the
   /// value is `0` (the user's "disable DD" knob), or the value is malformed.
   int? get ddMaxBytes {
-    final value = argResults['dd-max-bytes'] as String?;
+    final value = argResults[CommonArguments.ddMaxBytesArg.name] as String?;
     if (value == null) return null;
     final parsed = int.tryParse(value);
     return (parsed != null && parsed > 0) ? parsed : null;
