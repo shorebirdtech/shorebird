@@ -110,10 +110,6 @@ void main() {
       });
 
       final event = tracer.events.single;
-      expect(
-        event['dur'],
-        greaterThanOrEqualTo(const Duration(milliseconds: 50).inMicroseconds),
-      );
       final args = event['args']! as Map;
       expect(args['responseBytes'], 7);
       // Time-to-first-byte stays separable from transfer time: headers

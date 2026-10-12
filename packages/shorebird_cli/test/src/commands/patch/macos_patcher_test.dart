@@ -356,6 +356,13 @@ void main() {
               canSideload: true,
             );
 
+            setUp(() {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+              when(
+                () => logger.confirm(any(), hint: any(named: 'hint')),
+              ).thenReturn(true);
+            });
+
             test('does not warn of native changes', () async {
               final diffStatus = await runWithOverrides(
                 () => patcher.assertUnpatchableDiffs(
@@ -501,6 +508,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
           setUp(() {
             when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+            when(
+              () => logger.confirm(any(), hint: any(named: 'hint')),
+            ).thenReturn(true);
           });
 
           test(
