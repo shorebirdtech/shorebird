@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -14,7 +13,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -111,21 +109,10 @@ void main() {
 
     group('ddMaxBytes', () {
       late ArgResults argResults;
-      late Map<String, String> environment;
       late _TestPatcher patcher;
-
-      int? readDdMaxBytes() => runScoped(
-        () => patcher.ddMaxBytes,
-        values: {
-          platformRef.overrideWith(
-            () => TestNativePlatform(environment: environment),
-          ),
-        },
-      );
 
       setUp(() {
         argResults = MockArgResults();
-        environment = {};
         patcher = _TestPatcher(
           argParser: MockArgParser(),
           argResults: argResults,
@@ -134,40 +121,22 @@ void main() {
         );
       });
 
-      test('is null when neither the flag nor the env var is set', () {
-        expect(readDdMaxBytes(), isNull);
+      test('is null when --dd-max-bytes is not given', () {
+        expect(patcher.ddMaxBytes, isNull);
       });
 
       test('is the --dd-max-bytes value', () {
         when(
           () => argResults[CommonArguments.ddMaxBytesArg.name],
         ).thenReturn('4096');
-        expect(readDdMaxBytes(), equals(4096));
+        expect(patcher.ddMaxBytes, equals(4096));
       });
 
       test('passes 0 through so the linker disables DD', () {
         when(
           () => argResults[CommonArguments.ddMaxBytesArg.name],
         ).thenReturn('0');
-        expect(readDdMaxBytes(), equals(0));
-      });
-
-      test('falls back to SHOREBIRD_PATCH_DD_MAX_BYTES', () {
-        environment = {Patcher.ddMaxBytesEnvironmentVariable: '2048'};
-        expect(readDdMaxBytes(), equals(2048));
-      });
-
-      test('prefers --dd-max-bytes over SHOREBIRD_PATCH_DD_MAX_BYTES', () {
-        environment = {Patcher.ddMaxBytesEnvironmentVariable: '2048'};
-        when(
-          () => argResults[CommonArguments.ddMaxBytesArg.name],
-        ).thenReturn('4096');
-        expect(readDdMaxBytes(), equals(4096));
-      });
-
-      test('ignores a malformed SHOREBIRD_PATCH_DD_MAX_BYTES', () {
-        environment = {Patcher.ddMaxBytesEnvironmentVariable: 'lots'};
-        expect(readDdMaxBytes(), isNull);
+        expect(patcher.ddMaxBytes, equals(0));
       });
     });
 

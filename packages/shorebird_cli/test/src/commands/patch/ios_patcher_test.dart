@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/testing.dart';
+import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -23,7 +23,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -67,7 +66,6 @@ void main() {
     late ShorebirdValidator shorebirdValidator;
     late XcodeBuild xcodeBuild;
     late IosPatcher patcher;
-    NativePlatform? nativePlatform;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -84,8 +82,6 @@ void main() {
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
-          if (nativePlatform != null)
-            platformRef.overrideWith(() => nativePlatform!),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -107,7 +103,6 @@ void main() {
     });
 
     setUp(() {
-      nativePlatform = null;
       aotTools = MockAotTools();
       apple = MockApple();
       argParser = MockArgParser();
@@ -1141,31 +1136,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             ).called(1);
           },
         );
-
-        test('passes SHOREBIRD_PATCH_DD_MAX_BYTES to the linker', () async {
-          nativePlatform = TestNativePlatform(
-            environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
-          );
-
-          await runWithOverrides(
-            () => patcher.createPatchArtifacts(
-              appId: appId,
-              releaseId: releaseId,
-              releaseArtifact: releaseArtifactFile,
-            ),
-          );
-
-          verify(
-            () => apple.runLinker(
-              kernelFile: any(named: 'kernelFile'),
-              aotOutputFile: any(named: 'aotOutputFile'),
-              releaseArtifact: any(named: 'releaseArtifact'),
-              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
-              vmCodeFile: any(named: 'vmCodeFile'),
-              ddMaxBytes: 4096,
-            ),
-          ).called(1);
-        });
 
         test('passes --dd-max-bytes to the linker', () async {
           when(
