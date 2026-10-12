@@ -313,11 +313,7 @@ void main() {
             ),
           );
           expect(diffStatus, equals(noChangeDiffStatus));
-          verifyNever(
-            () => logger.warn(
-              '''Your macos/Podfile.lock is different from the one used to build the release.''',
-            ),
-          );
+          verifyNever(() => logger.warn(any()));
         });
       });
 
@@ -347,7 +343,7 @@ void main() {
         });
 
         group('when release has podspec lock hash', () {
-          group('when release podspec lock hash does not match patch', () {
+          group('when release podspec lock hash matches patch', () {
             const releaseArtifact = ReleaseArtifact(
               id: 0,
               releaseId: 0,
@@ -360,6 +356,13 @@ void main() {
               canSideload: true,
             );
 
+            setUp(() {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+              when(
+                () => logger.confirm(any(), hint: any(named: 'hint')),
+              ).thenReturn(true);
+            });
+
             test('does not warn of native changes', () async {
               final diffStatus = await runWithOverrides(
                 () => patcher.assertUnpatchableDiffs(
@@ -369,11 +372,7 @@ void main() {
                 ),
               );
               expect(diffStatus, equals(nativeChangeDiffStatus));
-              verifyNever(
-                () => logger.warn(
-                  '''Your macos/Podfile.lock is different from the one used to build the release.''',
-                ),
-              );
+              verifyNever(() => logger.warn(any()));
             });
           });
 
@@ -490,6 +489,47 @@ This may indicate that the patch contains native changes, which cannot be applie
               );
             });
           });
+        });
+
+        group('when release has no podspec lock hash', () {
+          // Releases made before Podfile.lock hashes were recorded have
+          // nothing to compare against, so the native diff passes through
+          // without a warning or prompt.
+          const releaseArtifact = ReleaseArtifact(
+            id: 0,
+            releaseId: 0,
+            arch: 'aarch64',
+            platform: ReleasePlatform.macos,
+            hash: '#',
+            size: 42,
+            url: 'https://example.com',
+            canSideload: true,
+          );
+
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+            when(
+              () => logger.confirm(any(), hint: any(named: 'hint')),
+            ).thenReturn(true);
+          });
+
+          test(
+            'returns diff status without warning or prompting',
+            () async {
+              final diffStatus = await runWithOverrides(
+                () => patcher.assertUnpatchableDiffs(
+                  releaseArtifact: releaseArtifact,
+                  releaseArchive: File(''),
+                  patchArchive: File(''),
+                ),
+              );
+              expect(diffStatus, equals(nativeChangeDiffStatus));
+              verifyNever(() => logger.warn(any()));
+              verifyNever(
+                () => logger.confirm(any(), hint: any(named: 'hint')),
+              );
+            },
+          );
         });
       });
     });

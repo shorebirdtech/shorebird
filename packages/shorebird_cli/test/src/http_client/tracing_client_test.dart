@@ -110,14 +110,18 @@ void main() {
       });
 
       final event = tracer.events.single;
-      expect(
-        event['dur'],
-        greaterThanOrEqualTo(const Duration(milliseconds: 50).inMicroseconds),
-      );
       final args = event['args']! as Map;
       expect(args['responseBytes'], 7);
-      // Time-to-first-byte stays separable from transfer time.
-      expect(args['ttfbMs'], lessThan(50));
+      // Time-to-first-byte stays separable from transfer time: headers
+      // arrived before the 50ms body delay began, so the span must cover
+      // ttfb plus that whole delay. Holds regardless of machine load.
+      final ttfbMs = args['ttfbMs']! as int;
+      expect(
+        event['dur'],
+        greaterThanOrEqualTo(
+          Duration(milliseconds: ttfbMs + 50).inMicroseconds,
+        ),
+      );
     });
 
     test('propagates pause and resume to the upstream body', () async {
