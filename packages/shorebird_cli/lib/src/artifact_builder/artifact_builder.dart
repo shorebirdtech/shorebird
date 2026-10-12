@@ -446,11 +446,27 @@ Reason: Exited with code $exitCode.''',
     required int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
-    // is necessary because we always look for a recently modified app.dill.
-    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
-    if (dartToolDir.existsSync()) {
-      dartToolDir.deleteSync(recursive: true);
+    // Delete Flutter's build cache so every target re-runs. We look for a
+    // recently modified app.dill, which a skipped kernel step would not write.
+    // A cached build would also be stale here: the SHOREBIRD_PUBLIC_KEY and
+    // (on iOS only; the macOS DD pass is skipped) SHOREBIRD_DD_MAX_BYTES
+    // environment variables change the build's output but are not inputs
+    // Flutter's build system tracks.
+    final flutterBuildDir = _flutterBuildDirectory(projectRoot);
+    if (flutterBuildDir.existsSync()) {
+      flutterBuildDir.deleteSync(recursive: true);
+    }
+    // Delete .dart_tool/version so `flutter build` runs `pub get` with
+    // Shorebird's Flutter. After the previous build we reset
+    // package_config.json with the system Flutter (see
+    // [_runShorebirdBuildCommand]), and Flutter skips `pub get` when this file
+    // matches its version, which can be shared by several Flutter checkouts.
+    // The rest of .dart_tool (build_runner and native asset caches) is kept.
+    final dartToolVersionFile = File(
+      p.join(projectRoot.path, '.dart_tool', 'version'),
+    );
+    if (dartToolVersionFile.existsSync()) {
+      dartToolVersionFile.deleteSync();
     }
 
     String? appDillPath;
@@ -738,8 +754,14 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     return artifactManager.getWindowsReleaseDirectory();
   }
 
+  /// The directory under [projectRoot] where Flutter's build system keeps its
+  /// cache and intermediate outputs, including app.dill.
+  Directory _flutterBuildDirectory(Directory projectRoot) =>
+      Directory(p.join(projectRoot.path, '.dart_tool', 'flutter_build'));
+
   /// Finds the app.dill file generated during the build process. Looks in the
-  /// .dart_tool directory of the provided [projectRoot] for app.dill files
+  /// .dart_tool/flutter_build directory of the provided [projectRoot] (Flutter
+  /// writes it to `flutter_build/<build hash>/app.dill`) for app.dill files
   /// modified after [after] and returns the path of the earliest one, or null
   /// if there is none.
   ///
@@ -751,9 +773,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     required Directory projectRoot,
     required DateTime after,
   }) {
-    final dartToolDirectory = Directory(p.join(projectRoot.path, '.dart_tool'));
-    if (!dartToolDirectory.existsSync()) return null;
-    return dartToolDirectory
+    final flutterBuildDir = _flutterBuildDirectory(projectRoot);
+    if (!flutterBuildDir.existsSync()) return null;
+    return flutterBuildDir
         .listSync(recursive: true)
         .where(
           (e) =>
