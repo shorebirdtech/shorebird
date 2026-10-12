@@ -907,6 +907,70 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         });
       });
 
+      group('when a previous build left a shorebird.yaml behind', () {
+        late File builtShorebirdYaml;
+        late File mergedShorebirdYaml;
+        late File otherAsset;
+        late File otherShorebirdYaml;
+
+        File createBuildFile(List<String> segments) =>
+            File(p.joinAll([projectRoot.path, 'build', ...segments]))
+              ..createSync(recursive: true);
+
+        setUp(() {
+          builtShorebirdYaml = createBuildFile([
+            'app',
+            'intermediates',
+            'flutter',
+            'release',
+            'flutter_assets',
+            'shorebird.yaml',
+          ]);
+          mergedShorebirdYaml = createBuildFile([
+            'app',
+            'intermediates',
+            'assets',
+            'release',
+            'mergeReleaseAssets',
+            'flutter_assets',
+            'shorebird.yaml',
+          ]);
+          otherAsset = createBuildFile([
+            'app',
+            'intermediates',
+            'flutter',
+            'release',
+            'flutter_assets',
+            'AssetManifest.bin',
+          ]);
+          otherShorebirdYaml = createBuildFile(['shorebird.yaml']);
+        });
+
+        test('deletes it before running flutter build', () async {
+          var existedDuringBuild = true;
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            existedDuringBuild =
+                builtShorebirdYaml.existsSync() ||
+                mergedShorebirdYaml.existsSync();
+            return ExitCode.success.code;
+          });
+
+          await runWithOverrides(() => builder.buildApk());
+
+          expect(existedDuringBuild, isFalse);
+          expect(otherAsset.existsSync(), isTrue);
+          expect(otherShorebirdYaml.existsSync(), isTrue);
+        });
+      });
+
       group('when multiple artifacts are found', () {
         setUp(() {
           when(

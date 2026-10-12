@@ -406,6 +406,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ...args,
     ];
 
+    _deleteBuiltShorebirdYamls();
     final buildStart = clock.now();
     final exitCode = await process.stream(
       executable,
@@ -433,6 +434,32 @@ Reason: Exited with code $exitCode.''',
     }
 
     return buildStart;
+  }
+
+  /// Deletes every shorebird.yaml a previous build copied into a
+  /// `flutter_assets` directory under the build directory.
+  ///
+  /// Flutter writes the public key into the built shorebird.yaml from the
+  /// `SHOREBIRD_PUBLIC_KEY` environment variable, which neither Flutter's build
+  /// system nor Gradle track as an input. When nothing else changed since the
+  /// last build, both skip the step that writes it, and the app ships the
+  /// previous build's shorebird.yaml with a stale or missing key. A missing
+  /// output makes both rerun that step, so this forces a fresh shorebird.yaml
+  /// without invalidating the rest of the build.
+  void _deleteBuiltShorebirdYamls() {
+    final buildDirectory = shorebirdEnv.buildDirectory;
+    if (!buildDirectory.existsSync()) return;
+    final builtShorebirdYamls = buildDirectory
+        .listSync(recursive: true, followLinks: false)
+        .whereType<File>()
+        .where(
+          (file) =>
+              p.basename(file.path) == 'shorebird.yaml' &&
+              p.basename(file.parent.path) == 'flutter_assets',
+        );
+    for (final file in builtShorebirdYamls) {
+      file.deleteSync();
+    }
   }
 
   /// Runs an Apple `flutter build [command]` (see [_runFlutterBuild]) and
