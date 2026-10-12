@@ -313,11 +313,7 @@ void main() {
             ),
           );
           expect(diffStatus, equals(noChangeDiffStatus));
-          verifyNever(
-            () => logger.warn(
-              '''Your macos/Podfile.lock is different from the one used to build the release.''',
-            ),
-          );
+          verifyNever(() => logger.warn(any()));
         });
       });
 
@@ -347,7 +343,7 @@ void main() {
         });
 
         group('when release has podspec lock hash', () {
-          group('when release podspec lock hash does not match patch', () {
+          group('when release podspec lock hash matches patch', () {
             const releaseArtifact = ReleaseArtifact(
               id: 0,
               releaseId: 0,
@@ -369,11 +365,7 @@ void main() {
                 ),
               );
               expect(diffStatus, equals(nativeChangeDiffStatus));
-              verifyNever(
-                () => logger.warn(
-                  '''Your macos/Podfile.lock is different from the one used to build the release.''',
-                ),
-              );
+              verifyNever(() => logger.warn(any()));
             });
           });
 

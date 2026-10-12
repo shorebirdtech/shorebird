@@ -347,11 +347,7 @@ $body
             ),
           );
           expect(diffStatus, equals(noChangeDiffStatus));
-          verifyNever(
-            () => logger.warn(
-              '''Your ios/Podfile.lock is different from the one used to build the release.''',
-            ),
-          );
+          verifyNever(() => logger.warn(any()));
         });
       });
 
@@ -403,11 +399,7 @@ $body
                 ),
               );
               expect(diffStatus, equals(nativeChangeDiffStatus));
-              verifyNever(
-                () => logger.warn(
-                  '''Your ios/Podfile.lock is different from the one used to build the release.''',
-                ),
-              );
+              verifyNever(() => logger.warn(any()));
             });
           });
 
