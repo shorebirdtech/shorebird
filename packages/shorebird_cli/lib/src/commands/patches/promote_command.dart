@@ -22,7 +22,9 @@ class PromoteCommand extends ShorebirdCommand
     argParser
       ..addOption(
         'flavor',
-        help: 'The product flavor to use when building the app.',
+        help:
+            'The product flavor whose app ID to use from shorebird.yaml '
+            '(e.g. "prod").',
       )
       ..addOption(
         CommonArguments.releaseVersionArg.name,
@@ -120,7 +122,7 @@ class PromoteCommand extends ShorebirdCommand
       logger.err(
         '''
 No production channel found for app $appId.
-      
+
 This is a bug and should never happen. Please file an issue at https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=fix%3A+''',
       );
       return ExitCode.software.code;
