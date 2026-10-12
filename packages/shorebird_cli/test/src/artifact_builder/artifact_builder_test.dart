@@ -1439,16 +1439,21 @@ Reason: Exited with code 70.'''),
       );
 
       group('when .dart_tool directory exists', () {
-        late File foo;
+        late File packageConfig;
+        late File buildCache;
         setUp(() {
-          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
-            ..createSync(recursive: true);
+          packageConfig = File(
+            p.join(projectRoot.path, '.dart_tool', 'package_config.json'),
+          )..createSync(recursive: true);
+          buildCache = File(
+            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'a.stamp'),
+          )..createSync(recursive: true);
         });
 
-        test('deletes .dart_tool directory before building', () async {
-          expect(foo.existsSync(), isTrue);
+        test('deletes only the flutter_build cache before building', () async {
           await runWithOverrides(builder.buildMacos);
-          expect(foo.existsSync(), isFalse);
+          expect(packageConfig.existsSync(), isTrue);
+          expect(buildCache.existsSync(), isFalse);
         });
       });
 
@@ -1636,16 +1641,21 @@ Reason: Exited with code 70.'''),
       });
 
       group('when .dart_tool directory exists', () {
-        late File foo;
+        late File packageConfig;
+        late File buildCache;
         setUp(() {
-          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
-            ..createSync(recursive: true);
+          packageConfig = File(
+            p.join(projectRoot.path, '.dart_tool', 'package_config.json'),
+          )..createSync(recursive: true);
+          buildCache = File(
+            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'a.stamp'),
+          )..createSync(recursive: true);
         });
 
-        test('deletes .dart_tool directory before building', () async {
-          expect(foo.existsSync(), isTrue);
+        test('deletes only the flutter_build cache before building', () async {
           await runWithOverrides(builder.buildIpa);
-          expect(foo.existsSync(), isFalse);
+          expect(packageConfig.existsSync(), isTrue);
+          expect(buildCache.existsSync(), isFalse);
         });
       });
 
@@ -1929,16 +1939,21 @@ Reason: Exited with code 70.'''),
       );
 
       group('when .dart_tool directory exists', () {
-        late File foo;
+        late File packageConfig;
+        late File buildCache;
         setUp(() {
-          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
-            ..createSync(recursive: true);
+          packageConfig = File(
+            p.join(projectRoot.path, '.dart_tool', 'package_config.json'),
+          )..createSync(recursive: true);
+          buildCache = File(
+            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'a.stamp'),
+          )..createSync(recursive: true);
         });
 
-        test('deletes .dart_tool directory before building', () async {
-          expect(foo.existsSync(), isTrue);
+        test('deletes only the flutter_build cache before building', () async {
           await runWithOverrides(builder.buildIosFramework);
-          expect(foo.existsSync(), isFalse);
+          expect(packageConfig.existsSync(), isTrue);
+          expect(buildCache.existsSync(), isFalse);
         });
       });
 

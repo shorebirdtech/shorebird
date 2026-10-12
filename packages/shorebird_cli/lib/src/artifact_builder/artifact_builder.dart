@@ -446,11 +446,18 @@ Reason: Exited with code $exitCode.''',
     required int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
-    // is necessary because we always look for a recently modified app.dill.
-    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
-    if (dartToolDir.existsSync()) {
-      dartToolDir.deleteSync(recursive: true);
+    // Delete Flutter's build cache so every target re-runs. We look for a
+    // recently modified app.dill, which a skipped kernel step would not write.
+    // A cached build would also be stale here: the SHOREBIRD_PUBLIC_KEY and
+    // SHOREBIRD_DD_MAX_BYTES environment variables change the build's output
+    // but are not inputs Flutter's build system tracks. The rest of
+    // .dart_tool (package_config.json, build_runner and native asset caches)
+    // is kept.
+    final flutterBuildDir = Directory(
+      p.join(projectRoot.path, '.dart_tool', 'flutter_build'),
+    );
+    if (flutterBuildDir.existsSync()) {
+      flutterBuildDir.deleteSync(recursive: true);
     }
 
     String? appDillPath;
