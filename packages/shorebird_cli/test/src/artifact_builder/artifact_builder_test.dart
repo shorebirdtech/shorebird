@@ -903,6 +903,47 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         expect(projectShorebirdYaml.readAsStringSync(), 'app_id: my-app-id');
       });
 
+      group('when a directory cannot be listed', () {
+        late Directory flutterIntermediates;
+
+        setUp(() {
+          // A file where the directory would be cannot be listed.
+          flutterIntermediates = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'app',
+              'intermediates',
+              'flutter',
+            ),
+          )..deleteSync(recursive: true);
+          File(flutterIntermediates.path).createSync();
+        });
+
+        test('logs it and builds anyway', () async {
+          await runWithOverrides(() => builder.buildApk());
+
+          verify(
+            () => logger.detail(
+              any(
+                that: startsWith(
+                  'Failed to list ${flutterIntermediates.path}: ',
+                ),
+              ),
+            ),
+          ).called(1);
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              ['build', 'apk', '--release'],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when a copy cannot be deleted', () {
         setUp(() {
           // A non-empty directory where the file would be cannot be deleted

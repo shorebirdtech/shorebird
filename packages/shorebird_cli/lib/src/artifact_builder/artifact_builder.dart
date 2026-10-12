@@ -455,8 +455,8 @@ Reason: Exited with code $exitCode.''',
   /// cache still skips the targets whose outputs are intact, such as the AOT
   /// snapshot.
   ///
-  /// This is best effort: a file that cannot be deleted is logged and the
-  /// build goes ahead.
+  /// This is best effort: a file that cannot be deleted or a directory that
+  /// cannot be listed is logged and the build goes ahead.
   void _deleteGeneratedShorebirdYamls(String command) {
     for (final file in _generatedShorebirdYamls(command)) {
       try {
@@ -515,10 +515,19 @@ Reason: Exited with code $exitCode.''',
   }
 
   /// The directories directly inside [directory], or none if it does not
-  /// exist.
+  /// exist or cannot be listed.
   List<Directory> _subdirectories(Directory directory) {
-    if (!directory.existsSync()) return const [];
-    return directory.listSync().whereType<Directory>().toList();
+    try {
+      return directory
+          .listSync(followLinks: false)
+          .whereType<Directory>()
+          .toList();
+    } on PathNotFoundException {
+      return const [];
+    } on FileSystemException catch (error) {
+      logger.detail('Failed to list ${directory.path}: $error');
+      return const [];
+    }
   }
 
   /// Runs an Apple `flutter build [command]` (see [_runFlutterBuild]) and
