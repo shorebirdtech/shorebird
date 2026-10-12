@@ -1387,11 +1387,20 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-            ..createSync(recursive: true)
-            ..setLastModifiedSync(
-              DateTime.now().add(const Duration(seconds: 10)),
-            );
+          appDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'h',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(
+                  DateTime.now().add(const Duration(seconds: 10)),
+                );
 
           return ExitCode.success.code;
         });
@@ -1440,20 +1449,37 @@ Reason: Exited with code 70.'''),
 
       group('when .dart_tool directory exists', () {
         late File packageConfig;
+        late File buildRunnerCache;
+        late File versionFile;
         late File buildCache;
         setUp(() {
-          packageConfig = File(
-            p.join(projectRoot.path, '.dart_tool', 'package_config.json'),
+          File dartToolFile(List<String> parts) => File(
+            p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
           )..createSync(recursive: true);
-          buildCache = File(
-            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'a.stamp'),
-          )..createSync(recursive: true);
+          packageConfig = dartToolFile(['package_config.json']);
+          buildRunnerCache = dartToolFile([
+            'build',
+            'entrypoint',
+            'build.dart',
+          ]);
+          versionFile = dartToolFile(['version']);
+          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
         });
 
-        test('deletes only the flutter_build cache before building', () async {
+        test('deletes the flutter_build cache before building', () async {
+          await runWithOverrides(builder.buildMacos);
+          expect(buildCache.existsSync(), isFalse);
+        });
+
+        test('deletes .dart_tool/version so pub get re-runs', () async {
+          await runWithOverrides(builder.buildMacos);
+          expect(versionFile.existsSync(), isFalse);
+        });
+
+        test('keeps the rest of .dart_tool', () async {
           await runWithOverrides(builder.buildMacos);
           expect(packageConfig.existsSync(), isTrue);
-          expect(buildCache.existsSync(), isFalse);
+          expect(buildRunnerCache.existsSync(), isTrue);
         });
       });
 
@@ -1630,11 +1656,20 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-            ..createSync(recursive: true)
-            ..setLastModifiedSync(
-              DateTime.now().add(const Duration(seconds: 10)),
-            );
+          appDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'h',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(
+                  DateTime.now().add(const Duration(seconds: 10)),
+                );
 
           return ExitCode.success.code;
         });
@@ -1642,20 +1677,67 @@ Reason: Exited with code 70.'''),
 
       group('when .dart_tool directory exists', () {
         late File packageConfig;
+        late File buildRunnerCache;
+        late File versionFile;
         late File buildCache;
         setUp(() {
-          packageConfig = File(
-            p.join(projectRoot.path, '.dart_tool', 'package_config.json'),
+          File dartToolFile(List<String> parts) => File(
+            p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
           )..createSync(recursive: true);
-          buildCache = File(
-            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'a.stamp'),
-          )..createSync(recursive: true);
+          packageConfig = dartToolFile(['package_config.json']);
+          buildRunnerCache = dartToolFile([
+            'build',
+            'entrypoint',
+            'build.dart',
+          ]);
+          versionFile = dartToolFile(['version']);
+          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
         });
 
-        test('deletes only the flutter_build cache before building', () async {
+        test('deletes the flutter_build cache before building', () async {
+          await runWithOverrides(builder.buildIpa);
+          expect(buildCache.existsSync(), isFalse);
+        });
+
+        test('deletes .dart_tool/version so pub get re-runs', () async {
+          await runWithOverrides(builder.buildIpa);
+          expect(versionFile.existsSync(), isFalse);
+        });
+
+        test('keeps the rest of .dart_tool', () async {
           await runWithOverrides(builder.buildIpa);
           expect(packageConfig.existsSync(), isTrue);
-          expect(buildCache.existsSync(), isFalse);
+          expect(buildRunnerCache.existsSync(), isTrue);
+        });
+
+        test('ignores app.dill files outside flutter_build', () async {
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            File(p.join(projectRoot.path, '.dart_tool', 'build', 'app.dill'))
+              ..createSync(recursive: true)
+              ..setLastModifiedSync(
+                DateTime.now().add(const Duration(seconds: 10)),
+              );
+            return ExitCode.success.code;
+          });
+
+          await expectLater(
+            () => runWithOverrides(builder.buildIpa),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                'Unable to find app.dill file.',
+              ),
+            ),
+          );
         });
       });
 
@@ -1886,11 +1968,20 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-            ..createSync(recursive: true)
-            ..setLastModifiedSync(
-              DateTime.now().add(const Duration(seconds: 10)),
-            );
+          appDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'h',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(
+                  DateTime.now().add(const Duration(seconds: 10)),
+                );
 
           return ExitCode.success.code;
         });
@@ -1940,20 +2031,37 @@ Reason: Exited with code 70.'''),
 
       group('when .dart_tool directory exists', () {
         late File packageConfig;
+        late File buildRunnerCache;
+        late File versionFile;
         late File buildCache;
         setUp(() {
-          packageConfig = File(
-            p.join(projectRoot.path, '.dart_tool', 'package_config.json'),
+          File dartToolFile(List<String> parts) => File(
+            p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
           )..createSync(recursive: true);
-          buildCache = File(
-            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'a.stamp'),
-          )..createSync(recursive: true);
+          packageConfig = dartToolFile(['package_config.json']);
+          buildRunnerCache = dartToolFile([
+            'build',
+            'entrypoint',
+            'build.dart',
+          ]);
+          versionFile = dartToolFile(['version']);
+          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
         });
 
-        test('deletes only the flutter_build cache before building', () async {
+        test('deletes the flutter_build cache before building', () async {
+          await runWithOverrides(builder.buildIosFramework);
+          expect(buildCache.existsSync(), isFalse);
+        });
+
+        test('deletes .dart_tool/version so pub get re-runs', () async {
+          await runWithOverrides(builder.buildIosFramework);
+          expect(versionFile.existsSync(), isFalse);
+        });
+
+        test('keeps the rest of .dart_tool', () async {
           await runWithOverrides(builder.buildIosFramework);
           expect(packageConfig.existsSync(), isTrue);
-          expect(buildCache.existsSync(), isFalse);
+          expect(buildRunnerCache.existsSync(), isTrue);
         });
       });
 
@@ -1988,11 +2096,27 @@ Reason: Exited with code 70.'''),
           // The earlier file sorts second by name, so the test can't pass on
           // directory listing order alone.
           secondAppDill =
-              File(p.join(projectRoot.path, '.dart_tool', 'a', 'app.dill'))
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'a',
+                    'app.dill',
+                  ),
+                )
                 ..createSync(recursive: true)
                 ..setLastModifiedSync(now.add(const Duration(seconds: 20)));
           firstAppDill =
-              File(p.join(projectRoot.path, '.dart_tool', 'b', 'app.dill'))
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'b',
+                    'app.dill',
+                  ),
+                )
                 ..createSync(recursive: true)
                 ..setLastModifiedSync(now.add(const Duration(seconds: 10)));
           return ExitCode.success.code;
