@@ -316,6 +316,17 @@ More info: ${troubleshootingUrl.toLink()}.
   /// step has not yet been run.
   double? get linkPercentage => null;
 
+  /// The Dynamic Dispatch table cascade byte threshold to pass to the linker,
+  /// from `--dd-max-bytes`.
+  ///
+  /// Unlike `Releaser.ddMaxBytes`, `0` is passed through rather than mapped
+  /// to null: the linker reads `0` as "disable DD", while null leaves the
+  /// linker on its own default.
+  int? get ddMaxBytes {
+    final value = argResults[CommonArguments.ddMaxBytesArg.name] as String?;
+    return value == null ? null : int.tryParse(value);
+  }
+
   /// The value of `--split-debug-info-path` if specified.
   String? get splitDebugInfoPath {
     return argResults.findOption(

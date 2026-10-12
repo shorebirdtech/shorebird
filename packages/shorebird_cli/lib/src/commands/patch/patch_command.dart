@@ -170,6 +170,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         CommonArguments.minLinkPercentage.name,
         help: CommonArguments.minLinkPercentage.description,
         defaultsTo: CommonArguments.minLinkPercentage.defaultValue,
+      )
+      ..addOption(
+        CommonArguments.ddMaxBytesArg.name,
+        hide: true,
+        help: CommonArguments.ddMaxBytesArg.description,
       );
   }
 
@@ -224,6 +229,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
       );
       return ExitCode.usage.code;
+    }
+
+    final ddMaxBytes = results[CommonArguments.ddMaxBytesArg.name] as String?;
+    if (ddMaxBytes != null && (int.tryParse(ddMaxBytes) ?? -1) < 0) {
+      usageException(
+        '--${CommonArguments.ddMaxBytesArg.name} must be a non-negative '
+        'integer (got $ddMaxBytes).',
+      );
     }
 
     if (results.wasParsed('staging')) {

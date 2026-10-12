@@ -210,6 +210,22 @@ symbolize" command with the right program symbol file is required to obtain a hu
     return null;
   }
 
+  /// The Dynamic Dispatch table cascade byte threshold, shared by
+  /// `shorebird release` (forwarded to the Flutter build) and
+  /// `shorebird patch` (forwarded to the linker).
+  ///
+  /// Hidden from `--help` on both commands: changing it off the default is
+  /// almost never the right call for end users. It exists for internal
+  /// testing of the cascade limiter.
+  static const ddMaxBytesArg = ArgumentDescriber(
+    name: 'dd-max-bytes',
+    description:
+        'Dynamic Dispatch table cascade byte threshold. '
+        'Functions whose transitive caller tree exceeds this many bytes '
+        'are routed through the indirect dispatch table. '
+        'Set to 0 to disable.',
+  );
+
   /// Minimum valid value for [minLinkPercentage].
   static const minLinkPercentageMin = 0;
 

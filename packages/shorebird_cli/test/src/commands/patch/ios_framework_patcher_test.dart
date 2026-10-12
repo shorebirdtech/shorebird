@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/testing.dart';
+import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -22,7 +22,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -58,7 +57,6 @@ void main() {
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late PatchDiffChecker patchDiffChecker;
-    late TestNativePlatform nativePlatform;
     late Progress progress;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdProcess shorebirdProcess;
@@ -83,7 +81,6 @@ void main() {
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
-          platformRef.overrideWith(() => nativePlatform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -105,7 +102,6 @@ void main() {
 
     setUp(() {
       apple = MockApple();
-      nativePlatform = TestNativePlatform(environment: {});
       aotTools = MockAotTools();
       argParser = MockArgParser();
       argResults = MockArgResults();
@@ -741,10 +737,10 @@ void main() {
           },
         );
 
-        test('passes SHOREBIRD_PATCH_DD_MAX_BYTES to the linker', () async {
-          nativePlatform = TestNativePlatform(
-            environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
-          );
+        test('passes --dd-max-bytes to the linker', () async {
+          when(
+            () => argResults[CommonArguments.ddMaxBytesArg.name],
+          ).thenReturn('8192');
 
           await runWithOverrides(
             () => patcher.createPatchArtifacts(
@@ -761,7 +757,7 @@ void main() {
               releaseArtifact: any(named: 'releaseArtifact'),
               splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
               vmCodeFile: any(named: 'vmCodeFile'),
-              ddMaxBytes: 4096,
+              ddMaxBytes: 8192,
             ),
           ).called(1);
         });

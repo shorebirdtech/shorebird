@@ -107,6 +107,39 @@ void main() {
       });
     });
 
+    group('ddMaxBytes', () {
+      late ArgResults argResults;
+      late _TestPatcher patcher;
+
+      setUp(() {
+        argResults = MockArgResults();
+        patcher = _TestPatcher(
+          argParser: MockArgParser(),
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+      });
+
+      test('is null when --dd-max-bytes is not given', () {
+        expect(patcher.ddMaxBytes, isNull);
+      });
+
+      test('is the --dd-max-bytes value', () {
+        when(
+          () => argResults[CommonArguments.ddMaxBytesArg.name],
+        ).thenReturn('4096');
+        expect(patcher.ddMaxBytes, equals(4096));
+      });
+
+      test('passes 0 through so the linker disables DD', () {
+        when(
+          () => argResults[CommonArguments.ddMaxBytesArg.name],
+        ).thenReturn('0');
+        expect(patcher.ddMaxBytes, equals(0));
+      });
+    });
+
     group('assertArgsAreValid', () {
       test('has no validations by default', () {
         expect(

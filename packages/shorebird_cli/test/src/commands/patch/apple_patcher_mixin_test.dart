@@ -5,7 +5,6 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -17,7 +16,6 @@ import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -98,7 +96,6 @@ void main() {
     late Directory releaseSupplementDirectory;
     late File releaseArtifactFile;
     late _TestApplePatcher patcher;
-    TestNativePlatform? testPlatform;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -110,8 +107,6 @@ void main() {
           codeSignerRef.overrideWith(() => codeSigner),
           engineConfigRef.overrideWith(() => engineConfig),
           loggerRef.overrideWith(() => logger),
-          if (testPlatform != null)
-            platformRef.overrideWith(() => testPlatform!),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -147,7 +142,6 @@ void main() {
     });
 
     setUp(() {
-      testPlatform = null;
       aotTools = MockAotTools();
       apple = MockApple();
       argParser = MockArgParser();
@@ -331,27 +325,24 @@ void main() {
           expect(captured, equals([null]));
         });
 
-        test(
-          'passes SHOREBIRD_PATCH_DD_MAX_BYTES to the linker when set',
-          () async {
-            testPlatform = TestNativePlatform(
-              environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
-            );
+        test('passes --dd-max-bytes to the linker', () async {
+          when(
+            () => argResults[CommonArguments.ddMaxBytesArg.name],
+          ).thenReturn('0');
 
-            await linkAndBundle();
+          await linkAndBundle();
 
-            verify(
-              () => apple.runLinker(
-                kernelFile: any(named: 'kernelFile'),
-                releaseArtifact: any(named: 'releaseArtifact'),
-                splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
-                aotOutputFile: any(named: 'aotOutputFile'),
-                vmCodeFile: any(named: 'vmCodeFile'),
-                ddMaxBytes: 4096,
-              ),
-            ).called(1);
-          },
-        );
+          verify(
+            () => apple.runLinker(
+              kernelFile: any(named: 'kernelFile'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+              aotOutputFile: any(named: 'aotOutputFile'),
+              vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: 0,
+            ),
+          ).called(1);
+        });
 
         test('records the link percentage and metadata', () async {
           const linkMetadata = {'link': 'metadata'};
