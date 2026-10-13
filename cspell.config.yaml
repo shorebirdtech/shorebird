@@ -140,6 +140,7 @@ words:
   - storepass # From .github/workflows/e2e.yaml
   - storyboardc
   - subpackages
+  - symbolicate
   - symbolication
   - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
@@ -153,6 +154,7 @@ words:
   - udid # Unique Device Identifier
   - unanalyzed
   - unawaited
+  - uncollectible # Stripe invoice status
   - unmockable
   - unobfuscated
   - unpadded
