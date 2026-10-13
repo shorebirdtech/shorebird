@@ -77,7 +77,7 @@ void main() {
     test('has correct description', () {
       expect(
         command.description,
-        startsWith('List the organizations you belong to.'),
+        startsWith('List your organizations, including ones where you only'),
       );
     });
 

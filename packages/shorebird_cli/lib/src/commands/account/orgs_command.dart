@@ -8,7 +8,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template orgs_command}
 /// `shorebird account orgs`
-/// List the organizations the current user belongs to.
+/// List the current user's organizations, including ones where they only
+/// collaborate on an app.
 /// {@endtemplate}
 class OrgsCommand extends ShorebirdCommand {
   /// {@macro orgs_command}
@@ -19,7 +20,8 @@ class OrgsCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'List the organizations you belong to.\n\n'
+      'List your organizations, including ones where you only collaborate on '
+      'an app.\n\n'
       'Example output (space-separated: id  name  type  role):\n'
       '  1  Acme Corp  team  admin\n'
       '  2  user@example.com  personal  owner\n\n'
