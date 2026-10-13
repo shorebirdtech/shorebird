@@ -8,13 +8,46 @@ import 'package:shorebird_cli/src/version.dart';
 /// A reference to whether JSON output mode is active.
 final isJsonModeRef = create(() => false);
 
+/// Where a [JsonResult] is written: the process's stdout.
+///
+/// In `--json` mode the runner sends everything else bound for stdout (human
+/// log lines, progress, subprocess output) to stderr, so that stdout carries
+/// the envelope and nothing else. That redirect is an `IOOverrides` zone
+/// inside which `io.stdout` *is* stderr, so the runner binds this ref to the
+/// real stdout from outside the zone. Where nothing has bound it, the
+/// envelope goes to whatever `io.stdout` means in the current zone, which is
+/// what tests capture.
+final jsonSinkRef = create<io.IOSink>(() => io.stdout);
+
+/// {@template json_envelope_tracker}
+/// Records whether a [JsonResult] has been written during a command run.
+///
+/// The runner binds one per command so that, when a `--json` command fails
+/// without having written an envelope itself, it can write exactly one on
+/// the command's behalf, and never a second one when it already has.
+/// {@endtemplate}
+class JsonEnvelopeTracker {
+  /// Whether an envelope has been written.
+  bool written = false;
+}
+
+/// A reference to the [JsonEnvelopeTracker] for the current command run.
+///
+/// Unbound (null) outside a command run, where nothing is tracked.
+final jsonEnvelopeTrackerRef = create<JsonEnvelopeTracker?>(() => null);
+
 /// Whether JSON output mode is active in the current zone.
-bool get isJsonMode => read(isJsonModeRef);
+///
+/// Off wherever nothing has said otherwise, so code that consults it can
+/// run under a scope that never mentions it.
+bool get isJsonMode => read(isJsonModeRef, orElse: () => false);
 
 /// Builds the subcommand name from [ArgResults] by walking the command chain
-/// (e.g. "doctor" for `shorebird doctor`, "patch ios" for `shorebird patch ios`).
+/// (e.g. "doctor" for `shorebird doctor`, "patch ios" for
+/// `shorebird patch ios`).
 ///
-/// Returns `null` when no subcommand was recognized (bare `shorebird` invocation).
+/// Returns `null` when no subcommand was recognized (bare `shorebird`
+/// invocation).
 String? commandNameFromResults(ArgResults topLevelResults) {
   final parts = <String>[];
   var command = topLevelResults.command;
@@ -48,6 +81,10 @@ enum JsonErrorCode {
 
   /// A network fetch or data retrieval failed.
   fetchFailed('fetch_failed'),
+
+  /// A precondition for running the command wasn't met: not logged in, not
+  /// in a Shorebird project, a doctor check failed, or an unsupported host.
+  preconditionFailed('precondition_failed'),
 
   /// The CLI required interactive input but no terminal/stdin was available
   /// (or the user passed `--json`).
@@ -93,7 +130,7 @@ class JsonError {
   final String message;
 
   /// An optional actionable recovery step
-  /// (e.g. "Run: shorebird login:ci").
+  /// (e.g. "Run: shorebird login").
   final String? hint;
 
   /// Serializes this error to a JSON-compatible map.
@@ -166,6 +203,7 @@ class JsonResult {
 
   /// Writes this result to stdout as a single JSON line.
   void write() {
-    io.stdout.writeln(jsonEncode(toJson()));
+    read(jsonSinkRef, orElse: () => io.stdout).writeln(jsonEncode(toJson()));
+    read(jsonEnvelopeTrackerRef, orElse: () => null)?.written = true;
   }
 }

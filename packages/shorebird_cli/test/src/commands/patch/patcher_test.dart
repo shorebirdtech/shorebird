@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -17,11 +19,12 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../mocks.dart';
 
-class FakeFile extends Fake implements File {}
-
 void main() {
+  useTempWorkingDirectory();
   group(Patcher, () {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
@@ -54,6 +57,86 @@ void main() {
           ).supplementaryReleaseArtifactArch,
           isNull,
         );
+      });
+    });
+
+    group('obfuscationGenSnapshotArgs', () {
+      late ArgResults argResults;
+      late _TestPatcher patcher;
+
+      setUp(() {
+        argResults = MockArgResults();
+        when(
+          () => argResults.wasParsed(CommonArguments.splitDebugInfoArg.name),
+        ).thenReturn(true);
+        when(
+          () => argResults[CommonArguments.splitDebugInfoArg.name],
+        ).thenReturn('symbols');
+        patcher = _TestPatcher(
+          argParser: MockArgParser(),
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+      });
+
+      test('is empty when not obfuscating', () {
+        expect(patcher.obfuscationGenSnapshotArgs, isEmpty);
+      });
+
+      test('loads the obfuscation map when one is set', () {
+        patcher
+          ..obfuscate = true
+          ..obfuscationMapPath = 'map.json';
+        expect(
+          patcher.obfuscationGenSnapshotArgs,
+          equals([
+            '--obfuscate',
+            '--load-obfuscation-map=map.json',
+            '--strip',
+          ]),
+        );
+      });
+
+      test('obfuscates without a map when none is set', () {
+        patcher.obfuscate = true;
+        expect(
+          patcher.obfuscationGenSnapshotArgs,
+          equals(['--obfuscate', '--strip']),
+        );
+      });
+    });
+
+    group('ddMaxBytes', () {
+      late ArgResults argResults;
+      late _TestPatcher patcher;
+
+      setUp(() {
+        argResults = MockArgResults();
+        patcher = _TestPatcher(
+          argParser: MockArgParser(),
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+      });
+
+      test('is null when --dd-max-bytes is not given', () {
+        expect(patcher.ddMaxBytes, isNull);
+      });
+
+      test('is the --dd-max-bytes value', () {
+        when(
+          () => argResults[CommonArguments.ddMaxBytesArg.name],
+        ).thenReturn('4096');
+        expect(patcher.ddMaxBytes, equals(4096));
+      });
+
+      test('passes 0 through so the linker disables DD', () {
+        when(
+          () => argResults[CommonArguments.ddMaxBytesArg.name],
+        ).thenReturn('0');
+        expect(patcher.ddMaxBytes, equals(0));
       });
     });
 
@@ -216,7 +299,7 @@ void main() {
             track: any(named: 'track'),
             patchArtifactBundles: any(named: 'patchArtifactBundles'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenAnswer((_) async => const Patch(id: 1, number: 1));
         await runScoped(
           () async {
             await patcher.uploadPatchArtifacts(
@@ -244,8 +327,118 @@ void main() {
       });
     });
 
+    group('createDiffBundle', () {
+      late ArtifactManager artifactManager;
+      late Progress progress;
+      late Directory tempDir;
+      late File patchArtifact;
+      late File diffFile;
+      late _TestPatcher patcher;
+
+      setUp(() {
+        artifactManager = MockArtifactManager();
+        progress = MockProgress();
+        tempDir = Directory.systemTemp.createTempSync();
+        patchArtifact = File(p.join(tempDir.path, 'libapp.so'))
+          ..writeAsStringSync('patch');
+        diffFile = File(p.join(tempDir.path, 'diff.patch'))
+          ..writeAsStringSync('diff!');
+        // No signing options passed, so signHash signs nothing.
+        final argParser = ArgParser()
+          ..addOption(CommonArguments.publicKeyArg.name)
+          ..addOption(CommonArguments.privateKeyArg.name)
+          ..addOption(CommonArguments.publicKeyCmd.name)
+          ..addOption(CommonArguments.signCmd.name);
+        patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argParser.parse([]),
+          flavor: null,
+          target: null,
+        );
+      });
+
+      tearDown(() => tempDir.deleteSync(recursive: true));
+
+      Future<PatchArtifactBundle> runWithOverrides(
+        Future<PatchArtifactBundle> Function() body,
+      ) {
+        return runScoped(
+          body,
+          values: {artifactManagerRef.overrideWith(() => artifactManager)},
+        );
+      }
+
+      test('diffs against the release and describes the patch', () async {
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenAnswer((_) async => diffFile.path);
+
+        final bundle = await runWithOverrides(
+          () => patcher.createDiffBundle(
+            arch: Arch.arm64,
+            releaseArtifactPath: 'release.so',
+            patchArtifactPath: patchArtifact.path,
+            progress: progress,
+            podfileLockHash: 'podfile-lock-hash',
+          ),
+        );
+
+        verify(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: 'release.so',
+            patchArtifactPath: patchArtifact.path,
+          ),
+        ).called(1);
+        expect(bundle.arch, equals(Arch.arm64.arch));
+        expect(bundle.path, equals(diffFile.path));
+        // The hash is of the full patch artifact, not of the diff.
+        expect(
+          bundle.hash,
+          equals(
+            // sha256 of 'patch'
+            'a4895eb44afc336fecbba6e520cd67e178dace0276655d102fceffa8e5f70570',
+          ),
+        );
+        expect(bundle.size, equals(diffFile.lengthSync()));
+        expect(bundle.hashSignature, isNull);
+        expect(bundle.podfileLockHash, equals('podfile-lock-hash'));
+        verifyNever(() => progress.fail(any()));
+      });
+
+      test('fails progress and exits when the diff fails', () async {
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenThrow(Exception('diff failed'));
+
+        await expectLater(
+          () => runWithOverrides(
+            () => patcher.createDiffBundle(
+              arch: Arch.x86_64,
+              releaseArtifactPath: 'release.so',
+              patchArtifactPath: patchArtifact.path,
+              progress: progress,
+            ),
+          ),
+          throwsA(
+            isA<ProcessExit>().having(
+              (e) => e.exitCode,
+              'exitCode',
+              ExitCode.software.code,
+            ),
+          ),
+        );
+        verify(() => progress.fail('Exception: diff failed')).called(1);
+      });
+    });
+
     group('signHash', () {
-      final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+      final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
       final privateKeyFile = File(
         p.join(cryptoFixturesBasePath, 'private.pem'),
       );
@@ -420,6 +613,70 @@ void main() {
           values: {codeSignerRef.overrideWith(() => codeSigner)},
         );
       });
+
+      test(
+        'runs --public-key-cmd once for the build key and every signature',
+        () async {
+          argResults = argParser.parse([
+            '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+            '--${CommonArguments.signCmd.name}=sign-cmd',
+          ]);
+
+          when(
+            () => codeSigner.signWithCmd(
+              data: any(named: 'data'),
+              command: any(named: 'command'),
+            ),
+          ).thenAnswer((_) async => 'cmd-signature');
+          var keyRuns = 0;
+          when(() => codeSigner.runPublicKeyCmd(any())).thenAnswer((_) async {
+            keyRuns++;
+            // A command that returned a different key each time would sign
+            // against one key and embed another if it ran more than once.
+            return 'pem-public-key-$keyRuns';
+          });
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn('encoded-key');
+          when(
+            () => codeSigner.verify(
+              message: any(named: 'message'),
+              signature: any(named: 'signature'),
+              publicKeyPem: any(named: 'publicKeyPem'),
+            ),
+          ).thenReturn(true);
+
+          final patcher = _TestPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: null,
+            target: null,
+          );
+
+          await runScoped(
+            () async {
+              // One build, then a signature per architecture.
+              await patcher.getEncodedPublicKey();
+              await patcher.signHash('arm64-hash');
+              await patcher.signHash('arm32-hash');
+              await patcher.signHash('x86_64-hash');
+
+              verify(() => codeSigner.runPublicKeyCmd('get-key-cmd')).called(1);
+              verify(
+                () => codeSigner.base64PublicKeyFromPem('pem-public-key-1'),
+              ).called(1);
+              verify(
+                () => codeSigner.verify(
+                  message: any(named: 'message'),
+                  signature: 'cmd-signature',
+                  publicKeyPem: 'pem-public-key-1',
+                ),
+              ).called(3);
+            },
+            values: {codeSignerRef.overrideWith(() => codeSigner)},
+          );
+        },
+      );
 
       test('throws ProcessExit when sign-cmd fails', () async {
         argResults = argParser.parse([

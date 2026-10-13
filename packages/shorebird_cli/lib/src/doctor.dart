@@ -11,6 +11,38 @@ final doctorRef = create(Doctor.new);
 /// The [Doctor] instance available in the current zone.
 Doctor get doctor => read(doctorRef);
 
+/// {@template validator_result}
+/// The issues one validator found.
+/// {@endtemplate}
+class ValidatorResult {
+  /// {@macro validator_result}
+  const ValidatorResult({required this.name, required this.issues});
+
+  /// The validator's description.
+  final String name;
+
+  /// The issues the validator found.
+  final List<ValidationIssue> issues;
+
+  /// Whether the validator passed. Only errors fail a validator; warnings
+  /// don't.
+  bool get ok => !hasErrors(issues);
+
+  /// Whether any of [issues] is an error.
+  static bool hasErrors(Iterable<ValidationIssue> issues) =>
+      issues.any((issue) => issue.severity == ValidationIssueSeverity.error);
+
+  /// The JSON representation of this result.
+  Map<String, Object> toJson() => {
+    'name': name,
+    'ok': ok,
+    'issues': [
+      for (final issue in issues)
+        {'severity': issue.severity.name, 'message': issue.message},
+    ],
+  };
+}
+
 /// {@template doctor}
 /// A class that provides a set of validators to check the current environment
 /// for potential issues.
@@ -49,6 +81,19 @@ class Doctor {
     TrackedLockFilesValidator(),
   ];
 
+  /// Runs each of [validators] that can run in the current context and returns
+  /// what each found, without logging or applying fixes.
+  Future<List<ValidatorResult>> validate(List<Validator> validators) async {
+    return [
+      for (final validator in validators)
+        if (validator.canRunInCurrentContext())
+          ValidatorResult(
+            name: validator.description,
+            issues: await validator.validate(),
+          ),
+    ];
+  }
+
   /// Run the provided [validators]. If [applyFixes] is `true`, any validation
   /// issues that can be automatically fixed will be.
   Future<void> runValidators(
@@ -74,6 +119,7 @@ class Doctor {
 
       final fixableIssues = issues.where((issue) => issue.fix != null);
       var unresolvedIssues = issues;
+      String? fixAppliedMessage;
       if (fixableIssues.isNotEmpty) {
         if (applyFixes) {
           validatorProgress.update('Fixing');
@@ -91,27 +137,25 @@ class Doctor {
           final numIssuesFixed = issues.length - unresolvedIssues.length;
           if (numIssuesFixed > 0) {
             totalIssuesFixed += numIssuesFixed;
-            final fixAppliedMessage =
-                '''($numIssuesFixed fix${numIssuesFixed == 1 ? '' : 'es'} applied)''';
-            validatorProgress.complete(
-              '''${validator.description} ${green.wrap(fixAppliedMessage)}''',
-            );
-
-            continue;
+            fixAppliedMessage =
+                '''${validator.description} ${green.wrap('($numIssuesFixed fix${numIssuesFixed == 1 ? '' : 'es'} applied)')}''';
+            // Everything this validator found is fixed, so there is nothing
+            // left to report for it.
+            if (unresolvedIssues.isEmpty && failedFixes.isEmpty) {
+              validatorProgress.complete(fixAppliedMessage);
+              continue;
+            }
           }
         } else {
-          allFixableIssues.addAll(issues);
+          allFixableIssues.addAll(fixableIssues);
         }
       }
 
       // The validator should only fail if there are errors (warnings don't
       // cause failure).
-      final unresolvedErrors = unresolvedIssues.where(
-        (issue) => issue.severity == ValidationIssueSeverity.error,
-      );
-      unresolvedErrors.isEmpty
-          ? validatorProgress.complete()
-          : validatorProgress.fail();
+      ValidatorResult.hasErrors(unresolvedIssues)
+          ? validatorProgress.fail(fixAppliedMessage)
+          : validatorProgress.complete(fixAppliedMessage);
 
       for (final issue in failedFixes.keys) {
         logger.err(
@@ -139,7 +183,9 @@ class Doctor {
       allIssues.addAll(unresolvedIssues);
     }
 
-    if (totalIssuesFixed > 0) {
+    // Everything that was found got fixed; the per-validator "fixes applied"
+    // lines already say so.
+    if (allIssues.isEmpty && totalIssuesFixed > 0) {
       return;
     }
 

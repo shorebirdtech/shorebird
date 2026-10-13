@@ -31,7 +31,7 @@ final _serverErrorPattern = RegExp(
 
 /// Pattern that extracts the hostname from a git remote URL in stderr.
 /// Matches URLs like `https://github.com/org/repo.git/`.
-final _remoteHostPattern = RegExp(r"https?://([^/']+)");
+final _remoteHostPattern = RegExp("https?://([^/']+)");
 
 String _buildServerErrorMessage(String stderr) {
   final hostMatch = _remoteHostPattern.firstMatch(stderr);
@@ -155,12 +155,6 @@ class Git {
       '--verify',
       revision,
     ], workingDirectory: directory);
-    return '${result.stdout}'.trim();
-  }
-
-  /// Returns the status of the git repository located at [directory].
-  Future<String> status({required String directory, List<String>? args}) async {
-    final result = await git(['status', ...?args], workingDirectory: directory);
     return '${result.stdout}'.trim();
   }
 

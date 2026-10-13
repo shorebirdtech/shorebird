@@ -1,3 +1,4 @@
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -24,34 +25,19 @@ class FlavorValidator extends Validator {
   @override
   Future<List<ValidationIssue>> validate() async {
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
-    final projectFlavors = shorebirdYaml.flavors;
-    if (projectFlavors == null && flavorArg != null) {
-      return [
-        ValidationIssue.error(
-          message:
-              '''The project does not have any flavors defined, but the --flavor argument was provided''',
-        ),
-      ];
+    final flavorError = shorebirdYaml.unknownFlavorError(flavorArg);
+    if (flavorError != null) {
+      return [ValidationIssue.error(message: flavorError)];
     }
 
+    final projectFlavors = shorebirdYaml.flavors;
     if (projectFlavors != null && flavorArg == null) {
       return [
         ValidationIssue.warning(
           message:
               '''
-The project has flavors ${projectFlavors.keys}, but no --flavor argument was provided.
-The default app id ${shorebirdYaml.appId} will be used.''',
-        ),
-      ];
-    }
-
-    if (projectFlavors != null &&
-        flavorArg != null &&
-        !projectFlavors.containsKey(flavorArg)) {
-      return [
-        ValidationIssue.error(
-          message:
-              '''This project does not have a flavor named "$flavorArg". Available flavors: ${projectFlavors.keys}''',
+The project has flavors ${projectFlavors.keys.join(', ')}, but no --flavor argument was provided.
+The default app id ${shorebirdYaml.appId} will be used. Pass --flavor=<name> to target a flavor.''',
         ),
       ];
     }

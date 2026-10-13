@@ -75,9 +75,6 @@ class UserInfo extends Equatable {
   @JsonKey(name: 'NSUnderlyingError')
   final NSUnderlyingError? underlyingError;
 
-  /// An empty [UserInfo] instance.
-  static const nullInfo = UserInfo();
-
   /// Creates a [UserInfo] from [Json].
   static UserInfo fromJson(Json json) => _$UserInfoFromJson(json);
 

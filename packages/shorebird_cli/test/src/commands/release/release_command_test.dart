@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -13,6 +14,8 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -24,10 +27,12 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ReleaseCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
@@ -174,9 +179,16 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
       when(
+        () => releaser.uploadSupplementArtifact(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
         () => releaser.postReleaseInstructions,
       ).thenReturn(postReleaseInstructions);
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
+      when(() => releaser.useObfuscation).thenReturn(false);
       when(
         () => releaser.updatedReleaseMetadata(any()),
       ).thenAnswer((_) async => UpdateReleaseMetadata.forTest());
@@ -348,6 +360,10 @@ void main() {
           releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
         ),
         () => releaser.uploadReleaseArtifacts(release: release, appId: appId),
+        () => releaser.uploadSupplementArtifact(
+          appId: appId,
+          releaseId: release.id,
+        ),
         () => logger.success('''
 
 ✅ Published Release ${release.version}!'''),
@@ -397,6 +413,132 @@ void main() {
             );
             verify(() => logger.info('fix it')).called(1);
           });
+        });
+      });
+    });
+
+    group('--json', () {
+      Future<T> runJson<T>(Future<T> Function() body) => runScoped(
+        body,
+        values: {isJsonModeRef.overrideWith(() => true)},
+      );
+
+      setUp(() {
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => release);
+      });
+
+      // The release is already published by the time the refresh runs, so a
+      // failure there must not turn a successful run into a failed one --
+      // and getRelease, which this used to call, exits the process with a
+      // message about publishing patches.
+      test(
+        'falls back to the release in hand when the refetch fails',
+        () async {
+          var calls = 0;
+          when(
+            () => codePushClientWrapper.maybeGetRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer((_) async {
+            // ensureVersionIsReleasable and getOrCreateRelease each look the
+            // version up before the build; the refresh is the one after it.
+            if (++calls <= 2) return release;
+            throw ProcessExit(ExitCode.software.code);
+          });
+
+          final (:exitCode, :json) = await captureJson(
+            () => runJson(() => runWithOverrides(command.run)),
+          );
+
+          expect(exitCode, equals(ExitCode.success.code));
+          expect(json['status'], equals('success'));
+          expect(
+            (json['data'] as Map<String, dynamic>)['releases'],
+            equals([release.toJson()]),
+          );
+        },
+      );
+
+      test('emits the published release, re-fetched after finalize', () async {
+        final finalized = Release(
+          id: release.id,
+          appId: release.appId,
+          version: release.version,
+          flutterRevision: release.flutterRevision,
+          displayName: release.displayName,
+          platformStatuses: const {
+            ReleasePlatform.android: ReleaseStatus.active,
+          },
+          createdAt: release.createdAt,
+          updatedAt: release.updatedAt,
+        );
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => finalized);
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJson(() => runWithOverrides(command.run)),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['status'], equals('success'));
+        expect(
+          json['data'],
+          equals({
+            'app_id': appId,
+            'platforms': ['android'],
+            'releases': [finalized.toJson()],
+          }),
+        );
+      });
+
+      test('emits nothing but the envelope on stdout', () async {
+        // Human progress lines are still logged; the runner routes them to
+        // stderr in JSON mode. Here the logger is a mock, so the check is
+        // that the command itself writes only the envelope.
+        await captureJson(
+          () => runJson(() => runWithOverrides(command.run)),
+        );
+      });
+
+      group('with --dry-run', () {
+        setUp(() {
+          when(() => argResults['dry-run']).thenReturn(true);
+        });
+
+        test('emits what would have been released', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runJson(() => runWithOverrides(command.run)),
+              captured: captured,
+            ),
+            exitsWithCode(ExitCode.success),
+          );
+
+          expect(captured, hasLength(1));
+          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+          expect(envelope['status'], equals('success'));
+          expect(
+            envelope['data'],
+            equals({
+              'dry_run': true,
+              'app_id': appId,
+              'platform': 'android',
+              'release_version': release.version,
+              'flutter_revision': flutterRevision,
+            }),
+          );
+          verifyNever(() => logger.info('No issues detected.'));
         });
       });
     });
@@ -548,13 +690,31 @@ void main() {
               flavorArg: any(named: 'flavorArg'),
               releasePlatform: any(named: 'releasePlatform'),
             ),
-          ).thenThrow(ValidationFailedException());
+          ).thenThrow(
+            ValidationFailedException(
+              message: 'Flavors are not supported on this platform.',
+            ),
+          );
         });
 
         test('exits with code 78 (config)', () async {
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithCode(ExitCode.config),
+          );
+        });
+
+        test('carries the flavor failure for the runner to report as '
+            'precondition_failed', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            throwsA(
+              isA<PreconditionFailedExit>().having(
+                (e) => e.failure.message,
+                'failure.message',
+                'Flavors are not supported on this platform.',
+              ),
+            ),
           );
         });
       });
@@ -873,6 +1033,7 @@ $exception'''),
     group('assertArgsAreValid', () {
       test('calls releaser.assertArgsAreValid', () async {
         final releaser = MockReleaser();
+        when(() => releaser.useObfuscation).thenReturn(false);
         when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
         await runWithOverrides(() => command.assertArgsAreValid(releaser));
         verify(releaser.assertArgsAreValid).called(1);
@@ -895,6 +1056,7 @@ $exception'''),
 
           test('logs a warning', () async {
             final releaser = MockReleaser();
+            when(() => releaser.useObfuscation).thenReturn(false);
             when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
             await runWithOverrides(() => command.assertArgsAreValid(releaser));
             verify(
@@ -912,8 +1074,9 @@ $exception'''),
 
       test('exits with code 64 if flutter version is not supported', () async {
         final releaser = MockReleaser();
-        const releaseType = ReleaseType.android;
-        when(() => releaser.releaseType).thenReturn(releaseType);
+        when(
+          () => releaser.releaseType,
+        ).thenReturn(ReleaseType.iosFramework);
         when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
         final laterFlutterVersion = Version(3, 23, 0);
         expect(laterFlutterVersion, greaterThan(flutterVersion));
@@ -926,9 +1089,67 @@ $exception'''),
         );
         verify(
           () => logger.err('''
-At least Flutter $laterFlutterVersion is required to release with `${releaseType.name}`.
+At least Flutter $laterFlutterVersion is required to release with `ios-framework`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         ).called(1);
+      });
+
+      group('when obfuscating below the obfuscation map floor', () {
+        late MockReleaser releaser;
+        final oldFlutterVersion = Version(3, 38, 9);
+
+        setUp(() {
+          expect(oldFlutterVersion, lessThan(minimumObfuscationFlutterVersion));
+          releaser = MockReleaser();
+          when(() => releaser.useObfuscation).thenReturn(true);
+          when(() => releaser.minimumFlutterVersion).thenReturn(null);
+          when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => oldFlutterVersion);
+        });
+
+        test('exits for iOS, whose patches link against the release', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(
+            () => logger.err(
+              'Obfuscation on iOS requires Flutter '
+              '$minimumObfuscationFlutterVersion or later '
+              '(current: $oldFlutterVersion).',
+            ),
+          ).called(1);
+        });
+
+        test('allows Android, whose patches are complete snapshots', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.android);
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+          verify(releaser.assertArgsAreValid).called(1);
+        });
+
+        test('checks the --flutter-version target, not the CLI pin', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          when(() => argResults['flutter-version']).thenReturn('3.38.9');
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(() => shorebirdFlutter.resolveFlutterVersion('3.38.9'));
+        });
+
+        test('checks the CLI pin when no --flutter-version is given', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(
+            () => shorebirdFlutter.resolveFlutterVersion(flutterRevision),
+          );
+        });
       });
     });
 

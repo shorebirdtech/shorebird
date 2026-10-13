@@ -1,30 +1,25 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:crypto/crypto.dart';
-import 'package:io/io.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
-import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/build_preconditions.dart';
+import 'package:shorebird_cli/src/commands/patch/android_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template aar_patcher}
 /// Functions to patch an AAR release.
 /// {@endtemplate}
-class AarPatcher extends Patcher {
+class AarPatcher extends Patcher with AndroidPatcherMixin {
   /// {@macro aar_patcher}
   AarPatcher({
     required super.argResults,
@@ -47,20 +42,12 @@ class AarPatcher extends Patcher {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
+  bool get requiresReleaseVersionArg => true;
 
-    if (shorebirdEnv.androidPackageName == null) {
-      logger.err('Could not find androidPackage in pubspec.yaml.');
-      throw ProcessExit(ExitCode.config.code);
-    }
+  @override
+  Future<void> assertPreconditions() async {
+    await assertBuildPreconditions();
+    assertAndroidPackageNameConfigured();
   }
 
   @override
@@ -82,7 +69,7 @@ class AarPatcher extends Patcher {
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: await getEncodedPublicKey(),
     );
 
     return File(
@@ -99,74 +86,24 @@ class AarPatcher extends Patcher {
     required int releaseId,
     required File releaseArtifact,
     Directory? supplementDirectory,
+    Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
-    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+    final releaseArtifactPaths = await downloadAndroidReleaseArtifacts(
       appId: appId,
       releaseId: releaseId,
-      architectures: AndroidArch.availableAndroidArchs,
-      platform: releaseType.releasePlatform,
+      downloadMessageTimeout: downloadMessageTimeout,
     );
-
-    final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
-    );
-
-    for (final releaseArtifact in releaseArtifacts.entries) {
-      try {
-        final releaseArtifactFile = await artifactManager.downloadFile(
-          Uri.parse(releaseArtifact.value.url),
-        );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
-      } on Exception catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
-    }
-
-    downloadReleaseArtifactProgress.complete();
 
     final extractedAarDirectory = await shorebirdAndroidArtifacts.extractAar(
       packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
       unzipFn: extractFileToDisk,
     );
-    final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
 
-    final createDiffProgress = logger.progress('Creating artifacts');
-    for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-      final arch = releaseArtifactPath.key;
-      final artifactPath = p.join(
-        extractedAarDirectory.path,
-        'jni',
-        arch.androidBuildPath,
-        'libapp.so',
-      );
-      logger.detail('Creating artifact for $artifactPath');
-      final patchArtifact = File(artifactPath);
-      final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-      final hashSignature = await signHash(hash);
-
-      try {
-        final diffPath = await artifactManager.createDiff(
-          releaseArtifactPath: releaseArtifactPath.value,
-          patchArtifactPath: artifactPath,
-        );
-        patchArtifactBundles[arch] = PatchArtifactBundle(
-          arch: arch.arch,
-          path: diffPath,
-          hash: hash,
-          size: await File(diffPath).length(),
-          hashSignature: hashSignature,
-        );
-      } on Exception catch (error) {
-        createDiffProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
-    }
-    createDiffProgress.complete();
-
-    return patchArtifactBundles;
+    return createAndroidPatchArtifactBundles(
+      releaseArtifactPaths: releaseArtifactPaths,
+      patchArchsDir: Directory(p.join(extractedAarDirectory.path, 'jni')),
+    );
   }
 
   @override

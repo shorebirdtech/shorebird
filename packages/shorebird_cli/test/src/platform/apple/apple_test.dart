@@ -3,7 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -13,14 +13,16 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Apple, () {
     late AotTools aotTools;
     late Apple apple;
     late Progress progress;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
@@ -41,14 +43,13 @@ void main() {
     setUp(() {
       aotTools = MockAotTools();
       apple = Apple();
-      platform = MockPlatform();
+      platform = TestNativePlatform(environment: {});
       progress = MockProgress();
       logger = MockShorebirdLogger();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
 
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.environment).thenReturn({});
 
       when(
         () => aotTools.getLinkMetadata(
@@ -100,7 +101,7 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           return;
         }
 
-        final fixturesDir = Directory(p.join('test', 'fixtures', 'xcschemes'));
+        final fixturesDir = Directory(p.join(fixturesDirectory, 'xcschemes'));
         for (final file in fixturesDir.listSync().whereType<File>()) {
           final destination = File(
             p.join(projectRoot.path, schemesPath, p.basename(file.path)),
@@ -498,7 +499,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           expect(result.linkPercentage, isNull);
 
           verify(
-            () => logger.err('Unable to find analyze_snapshot at '),
+            () => logger.err(
+              'Unable to find analyze_snapshot at ${File('').path}',
+            ),
           ).called(1);
         });
       });
@@ -550,6 +553,79 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
         });
 
+        /// Runs the linker against [releaseArtifact] and returns the names of
+        /// the snapshots dumped into the debug info directory.
+        ///
+        /// runLinker deletes that directory before returning, so it is listed
+        /// while link metadata is read from it.
+        Future<Set<String>> linkAndListDumpedSnapshots(
+          File releaseArtifact,
+        ) async {
+          Set<String>? snapshotFiles;
+          when(
+            () => aotTools.getLinkMetadata(
+              debugDir: any(named: 'debugDir'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((invocation) async {
+            final debugDir = invocation.namedArguments[#debugDir] as String;
+            snapshotFiles = Directory(p.join(debugDir, 'snapshots'))
+                .listSync()
+                .whereType<File>()
+                .map((f) => p.basename(f.path))
+                .toSet();
+            return {};
+          });
+
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: releaseArtifact,
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+
+          expect(snapshotFiles, isNotNull);
+          return snapshotFiles!;
+        }
+
+        test('deletes the debug info directory and its zip', () async {
+          final tempRoot = Directory.systemTemp.createTempSync();
+          addTearDown(() => tempRoot.deleteSync(recursive: true));
+
+          await IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => apple.runLinker(
+                aotOutputFile: aotOutputFile,
+                kernelFile: File('missing'),
+                releaseArtifact: File('missing'),
+                vmCodeFile: File('missing'),
+                splitDebugInfoArgs: [],
+              ),
+            ),
+            getSystemTempDirectory: () => tempRoot,
+          );
+
+          verify(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              genSnapshot: any(named: 'genSnapshot'),
+              kernel: any(named: 'kernel'),
+              outputPath: any(named: 'outputPath'),
+              workingDirectory: any(named: 'workingDirectory'),
+              dumpDebugInfoPath: any(
+                named: 'dumpDebugInfoPath',
+                that: startsWith(tempRoot.path),
+              ),
+            ),
+          ).called(1);
+          expect(tempRoot.listSync(), isEmpty);
+        });
+
         test('dumps debug info', () async {
           await runWithOverrides(
             () => apple.runLinker(
@@ -588,54 +664,19 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             ..writeAsStringSync('release');
 
           // Create intermediate patch snapshots alongside out.aot.
-          File(p.join(buildDirectory.path, 'out.ct.aot'))
-            ..writeAsStringSync('ct');
-          File(p.join(buildDirectory.path, 'out.preDdOptimized.aot'))
-            ..writeAsStringSync('preDdOptimized');
-          File(p.join(buildDirectory.path, 'out.optimized.aot'))
-            ..writeAsStringSync('optimized');
+          File(
+            p.join(buildDirectory.path, 'out.ct.aot'),
+          ).writeAsStringSync('ct');
+          File(
+            p.join(buildDirectory.path, 'out.preDdOptimized.aot'),
+          ).writeAsStringSync('preDdOptimized');
+          File(
+            p.join(buildDirectory.path, 'out.optimized.aot'),
+          ).writeAsStringSync('optimized');
 
-          // Capture the dumpDebugInfoPath so we can inspect it.
-          String? capturedDebugInfoPath;
-          when(
-            () => aotTools.link(
-              base: any(named: 'base'),
-              patch: any(named: 'patch'),
-              analyzeSnapshot: any(named: 'analyzeSnapshot'),
-              genSnapshot: any(named: 'genSnapshot'),
-              kernel: any(named: 'kernel'),
-              outputPath: any(named: 'outputPath'),
-              workingDirectory: any(named: 'workingDirectory'),
-              additionalArgs: any(named: 'additionalArgs'),
-              dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
-            ),
-          ).thenAnswer((invocation) async {
-            capturedDebugInfoPath =
-                invocation.namedArguments[#dumpDebugInfoPath] as String?;
-            return linkPercentage;
-          });
-
-          await runWithOverrides(
-            () => apple.runLinker(
-              aotOutputFile: aotOutputFile,
-              kernelFile: File('missing'),
-              releaseArtifact: releaseArtifactFile,
-              vmCodeFile: File('missing'),
-              splitDebugInfoArgs: [],
-            ),
+          final snapshotFiles = await linkAndListDumpedSnapshots(
+            releaseArtifactFile,
           );
-
-          expect(capturedDebugInfoPath, isNotNull);
-          final snapshotsDir = Directory(
-            p.join(capturedDebugInfoPath!, 'snapshots'),
-          );
-          expect(snapshotsDir.existsSync(), isTrue);
-
-          final snapshotFiles = snapshotsDir
-              .listSync()
-              .whereType<File>()
-              .map((f) => p.basename(f.path))
-              .toSet();
           expect(
             snapshotFiles,
             containsAll(<String>[
@@ -654,43 +695,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           final releaseArtifactFile = File(p.join(releaseDir.path, 'App'))
             ..writeAsStringSync('release');
 
-          String? capturedDebugInfoPath;
-          when(
-            () => aotTools.link(
-              base: any(named: 'base'),
-              patch: any(named: 'patch'),
-              analyzeSnapshot: any(named: 'analyzeSnapshot'),
-              genSnapshot: any(named: 'genSnapshot'),
-              kernel: any(named: 'kernel'),
-              outputPath: any(named: 'outputPath'),
-              workingDirectory: any(named: 'workingDirectory'),
-              additionalArgs: any(named: 'additionalArgs'),
-              dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
-            ),
-          ).thenAnswer((invocation) async {
-            capturedDebugInfoPath =
-                invocation.namedArguments[#dumpDebugInfoPath] as String?;
-            return linkPercentage;
-          });
-
-          await runWithOverrides(
-            () => apple.runLinker(
-              aotOutputFile: aotOutputFile,
-              kernelFile: File('missing'),
-              releaseArtifact: releaseArtifactFile,
-              vmCodeFile: File('missing'),
-              splitDebugInfoArgs: [],
-            ),
+          final snapshotFiles = await linkAndListDumpedSnapshots(
+            releaseArtifactFile,
           );
-
-          final snapshotsDir = Directory(
-            p.join(capturedDebugInfoPath!, 'snapshots'),
-          );
-          final snapshotFiles = snapshotsDir
-              .listSync()
-              .whereType<File>()
-              .map((f) => p.basename(f.path))
-              .toSet();
           // Only release + patch should be present (no ct/optimized).
           expect(snapshotFiles, equals(<String>{'App', 'out.aot'}));
         });
@@ -700,9 +707,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
 
           setUp(() {
             codemagicExportDir = Directory.systemTemp.createTempSync();
-            when(
-              () => platform.environment,
-            ).thenReturn({'CM_EXPORT_DIR': codemagicExportDir.path});
+            platform = platform.copyWith(
+              environment: {'CM_EXPORT_DIR': codemagicExportDir.path},
+            );
           });
 
           test('copies debug info to codemagic exports', () async {
@@ -728,9 +735,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           });
 
           test('gracefully handles errors', () async {
-            when(
-              () => platform.environment,
-            ).thenReturn({'CM_EXPORT_DIR': 'invalid path'});
+            platform = platform.copyWith(
+              environment: {'CM_EXPORT_DIR': 'invalid path'},
+            );
             await runWithOverrides(
               () => apple.runLinker(
                 aotOutputFile: aotOutputFile,

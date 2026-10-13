@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -20,6 +18,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PromoteCommand, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0';
@@ -130,6 +129,11 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('is hidden and marked deprecated', () {
+      expect(command.hidden, isTrue);
+      expect(command.description, startsWith('(deprecated)'));
+    });
+
     test('logs warning about deprecation', () async {
       await runWithOverrides(() async {
         final result = await command.run();
@@ -164,6 +168,47 @@ void main() {
       });
     });
 
+    group('when --patch-number is not an integer', () {
+      setUp(() {
+        when(() => argResults['patch-number']).thenReturn('one');
+      });
+
+      test('exits with usage error and does not fetch', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('"one" is not a valid patch number.'),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+    });
+
+    group('when --flavor is not defined in shorebird.yaml', () {
+      setUp(() {
+        when(() => argResults.wasParsed('flavor')).thenReturn(true);
+        when(() => argResults['flavor']).thenReturn('missing');
+      });
+
+      test('exits with usage error and does not fetch', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(any(that: contains('does not have any flavors'))),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+    });
+
     group('when an invalid patch number is provided', () {
       setUp(() {
         when(() => argResults['patch-number']).thenReturn('5');
@@ -174,8 +219,12 @@ void main() {
           final result = await command.run();
 
           expect(result, equals(ExitCode.usage.code));
-          verify(() => logger.err('No patch found with number 5')).called(1);
-          verify(() => logger.info('Available patches: 1')).called(1);
+          verify(
+            () => logger.err(
+              'No patch found with number 5 for release "$releaseVersion".',
+            ),
+          ).called(1);
+          verify(() => logger.info('Available patches: 1.')).called(1);
         });
       });
     });
@@ -244,8 +293,7 @@ void main() {
       test(
         'refuses with structured envelope and points to set-track',
         () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runScoped(
               command.run,
               values: {
@@ -258,13 +306,10 @@ void main() {
                 shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
               },
             ),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          expect(captured, hasLength(1));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
-          final error = decoded['error'] as Map<String, dynamic>;
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
+          final error = json['error'] as Map<String, dynamic>;
           expect(error['code'], 'usage_error');
           expect(error['hint'], contains('set-track'));
           verifyNever(

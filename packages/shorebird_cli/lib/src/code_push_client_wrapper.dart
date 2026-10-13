@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -118,14 +119,10 @@ class CodePushClientWrapper {
 
   /// Fetches the currently authenticated user.
   Future<PrivateUser> getCurrentUser() async {
-    final progress = logger.progress('Fetching account');
-    final PrivateUser? user;
-    try {
-      user = await codePushClient.getCurrentUser();
-      progress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: progress);
-    }
+    final user = await _withProgress(
+      'Fetching account',
+      codePushClient.getCurrentUser,
+    );
     if (user == null) {
       logger.err('Could not find current user.');
       throw ProcessExit(ExitCode.software.code);
@@ -135,42 +132,21 @@ class CodePushClientWrapper {
 
   /// Fetches the plan level for the current user, e.g. `free`, `pro`,
   /// `business` or `enterprise`. Null when the server does not report one.
-  Future<String?> getPlanLevel() async {
-    final progress = logger.progress('Fetching plan');
-    final String? level;
-    try {
-      level = await codePushClient.getPlanLevel();
-      progress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: progress);
-    }
-    return level;
+  Future<String?> getPlanLevel() {
+    return _withProgress('Fetching plan', codePushClient.getPlanLevel);
   }
 
   /// Fetches the organization memberships for the current user.
-  Future<List<OrganizationMembership>> getOrganizationMemberships() async {
-    final progress = logger.progress('Fetching organizations');
-    final List<OrganizationMembership> memberships;
-    try {
-      memberships = await codePushClient.getOrganizationMemberships();
-      progress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: progress);
-    }
-
-    return memberships;
+  Future<List<OrganizationMembership>> getOrganizationMemberships() {
+    return _withProgress(
+      'Fetching organizations',
+      codePushClient.getOrganizationMemberships,
+    );
   }
 
   /// Fetches the apps for the current user.
-  Future<List<AppMetadata>> getApps() async {
-    final fetchAppsProgress = logger.progress('Fetching apps');
-    try {
-      final apps = await codePushClient.getApps();
-      fetchAppsProgress.complete();
-      return apps;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchAppsProgress);
-    }
+  Future<List<AppMetadata>> getApps() {
+    return _withProgress('Fetching apps', codePushClient.getApps);
   }
 
   /// Returns [AppMetadata] for the provided [appId].
@@ -189,9 +165,27 @@ This app may not exist or you may not have permission to view it.''');
 
   /// Returns [AppMetadata] for the provided [appId] or null if the app does not
   /// exist.
+  ///
+  /// This asks the server for the one app rather than downloading the whole
+  /// account and filtering locally. `getApps` is unpaginated, so the old
+  /// approach cost O(apps on the account) on every `release`, `patch` and
+  /// `init` -- on a large account that is megabytes and seconds to resolve an
+  /// id the caller already had.
   Future<AppMetadata?> maybeGetApp({required String appId}) async {
-    final apps = await getApps();
-    return apps.firstWhereOrNull((a) => a.appId == appId);
+    final fetchAppProgress = logger.progress('Fetching app');
+    try {
+      final app = await codePushClient.getApp(appId: appId);
+      fetchAppProgress.complete();
+      return app;
+    } on CodePushForbiddenException {
+      // The app exists but belongs to someone else. Callers surface this the
+      // same way as "no such app", which is what the list-and-filter approach
+      // did: an app you cannot see simply was not in the list.
+      fetchAppProgress.complete();
+      return null;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchAppProgress);
+    }
   }
 
   /// Fetches the channels for the given [appId] and channel [name].
@@ -199,105 +193,75 @@ This app may not exist or you may not have permission to view it.''');
   Future<Channel?> maybeGetChannel({
     required String appId,
     required String name,
-  }) async {
-    final fetchChannelsProgress = logger.progress('Fetching channels');
-    try {
+  }) {
+    return _withProgress('Fetching channels', () async {
       final channels = await codePushClient.getChannels(appId: appId);
-      final channel = channels.firstWhereOrNull(
-        (channel) => channel.name == name,
-      );
-      fetchChannelsProgress.complete();
-      return channel;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchChannelsProgress);
-    }
+      return channels.firstWhereOrNull((channel) => channel.name == name);
+    });
   }
 
   /// Fetches all channels for the provided [appId].
-  Future<List<Channel>> getChannels({required String appId}) async {
-    final fetchChannelsProgress = logger.progress('Fetching channels');
-    try {
-      final channels = await codePushClient.getChannels(appId: appId);
-      fetchChannelsProgress.complete();
-      return channels;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchChannelsProgress);
-    }
+  Future<List<Channel>> getChannels({required String appId}) {
+    return _withProgress(
+      'Fetching channels',
+      () => codePushClient.getChannels(appId: appId),
+    );
   }
 
   /// Creates a channel for the provided [appId] with the given [name].
   Future<Channel> createChannel({
     required String appId,
     required String name,
-  }) async {
-    final createChannelProgress = logger.progress('Creating channel');
-    try {
-      final channel = await codePushClient.createChannel(
-        appId: appId,
-        channel: name,
-      );
-      createChannelProgress.complete();
-      return channel;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: createChannelProgress);
-    }
+  }) {
+    return _withProgress(
+      'Creating channel',
+      () => codePushClient.createChannel(appId: appId, channel: name),
+    );
   }
 
   /// Deletes the channel with the provided [channelId] from [appId].
   Future<void> deleteChannel({
     required String appId,
     required int channelId,
-  }) async {
-    final deleteChannelProgress = logger.progress('Deleting channel');
-    try {
-      await codePushClient.deleteChannel(appId: appId, channelId: channelId);
-      deleteChannelProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: deleteChannelProgress);
-    }
+  }) {
+    return _withProgress(
+      'Deleting channel',
+      () => codePushClient.deleteChannel(appId: appId, channelId: channelId),
+    );
   }
 
   /// Renames the app with the provided [appId] to [displayName].
   Future<void> updateApp({
     required String appId,
     required String displayName,
-  }) async {
-    final updateAppProgress = logger.progress('Renaming app');
-    try {
-      await codePushClient.updateApp(appId: appId, displayName: displayName);
-      updateAppProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: updateAppProgress);
-    }
+  }) {
+    return _withProgress(
+      'Renaming app',
+      () => codePushClient.updateApp(appId: appId, displayName: displayName),
+    );
   }
 
   /// Deletes the app with the provided [appId], along with every release and
   /// patch belonging to it.
-  Future<void> deleteApp({required String appId}) async {
-    final deleteAppProgress = logger.progress('Deleting app');
-    try {
-      await codePushClient.deleteApp(appId: appId);
-      deleteAppProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: deleteAppProgress);
-    }
+  Future<void> deleteApp({required String appId}) {
+    return _withProgress(
+      'Deleting app',
+      () => codePushClient.deleteApp(appId: appId),
+    );
   }
 
   /// Moves the app with the provided [appId] into [organizationId].
   Future<void> transferApp({
     required int organizationId,
     required String appId,
-  }) async {
-    final transferAppProgress = logger.progress('Transferring app');
-    try {
-      await codePushClient.transferApp(
+  }) {
+    return _withProgress(
+      'Transferring app',
+      () => codePushClient.transferApp(
         organizationId: organizationId,
         appId: appId,
-      );
-      transferAppProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: transferAppProgress);
-    }
+      ),
+    );
   }
 
   /// Prints an error message and exits with code 70 if [release] is in an
@@ -346,18 +310,14 @@ Please create a release using "shorebird release" and try again.
   Future<List<Release>> getReleases({
     required String appId,
     bool sideloadableOnly = false,
-  }) async {
-    final fetchReleasesProgress = logger.progress('Fetching releases');
-    try {
-      final releases = await codePushClient.getReleases(
+  }) {
+    return _withProgress(
+      'Fetching releases',
+      () => codePushClient.getReleases(
         appId: appId,
         sideloadableOnly: sideloadableOnly,
-      );
-      fetchReleasesProgress.complete();
-      return releases;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchReleasesProgress);
-    }
+      ),
+    );
   }
 
   /// Fetches the release for the given [appId] and [releaseVersion] or null if
@@ -374,18 +334,11 @@ Please create a release using "shorebird release" and try again.
   Future<List<ReleasePatch>> getReleasePatches({
     required String appId,
     required int releaseId,
-  }) async {
-    final fetchReleasePatchesProgress = logger.progress('Fetching patches');
-    try {
-      final patches = await codePushClient.getPatches(
-        appId: appId,
-        releaseId: releaseId,
-      );
-      fetchReleasePatchesProgress.complete();
-      return patches;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchReleasePatchesProgress);
-    }
+  }) {
+    return _withProgress(
+      'Fetching patches',
+      () => codePushClient.getPatches(appId: appId, releaseId: releaseId),
+    );
   }
 
   /// Creates a release for the given [appId], [version], [flutterRevision], and
@@ -428,20 +381,17 @@ Please create a release using "shorebird release" and try again.
     required ReleasePlatform platform,
     required ReleaseStatus status,
     Json? metadata,
-  }) async {
-    final updateStatusProgress = logger.progress('Updating release status');
-    try {
-      await codePushClient.updateReleaseStatus(
+  }) {
+    return _withProgress(
+      'Updating release status',
+      () => codePushClient.updateReleaseStatus(
         appId: appId,
         releaseId: releaseId,
         platform: platform,
         status: status,
         metadata: metadata,
-      );
-      updateStatusProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: updateStatusProgress);
-    }
+      ),
+    );
   }
 
   /// Returns release artifacts for the given [appId], [releaseId],
@@ -488,11 +438,8 @@ Please create a release using "shorebird release" and try again.
     required int releaseId,
     required String arch,
     required ReleasePlatform platform,
-  }) async {
-    final fetchReleaseArtifactProgress = logger.progress(
-      'Fetching $arch artifact',
-    );
-    try {
+  }) {
+    return _withProgress('Fetching $arch artifact', () async {
       final artifacts = await codePushClient.getReleaseArtifacts(
         appId: appId,
         releaseId: releaseId,
@@ -505,11 +452,8 @@ Please create a release using "shorebird release" and try again.
               '''No artifact found for architecture $arch in release $releaseId''',
         );
       }
-      fetchReleaseArtifactProgress.complete();
       return artifacts.first;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
-    }
+    });
   }
 
   /// Fetches a release artifact for the given [appId], [releaseId], [arch], and
@@ -595,141 +539,50 @@ Looked in:
       );
     }
 
-    // Track which arch paths AGP didn't produce, so we can surface them at
-    // the end if zero archs uploaded. AGP omits an arch directory whenever
-    // the project filters it out via `ndk.abiFilters`, `splits.abi`, or
-    // `jniLibs.excludes`. Iterating only over present files lets a filtered
-    // release succeed instead of crashing on the first missing arch
-    // (https://github.com/shorebirdtech/shorebird/issues/3388).
-    final missingArchPaths = <String>[];
-    var uploadedArchCount = 0;
-    for (final arch in architectures) {
-      final artifactPath = p.join(
-        archsDir.path,
-        arch.androidBuildPath,
-        'libapp.so',
-      );
-      final artifact = File(artifactPath);
-      if (!artifact.existsSync()) {
-        logger.detail(
-          'Skipping ${arch.arch}: no libapp.so at $artifactPath. '
-          'This is expected if the project filters this ABI via '
-          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
-        );
-        missingArchPaths.add(artifactPath);
-        continue;
-      }
-      final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Uploading artifact for $artifactPath');
+    await _uploadAndroidArchArtifacts(
+      appId: appId,
+      releaseId: releaseId,
+      platform: platform,
+      archsDir: archsDir.path,
+      architectures: architectures,
+      progress: createArtifactProgress,
+    );
 
-      try {
-        await codePushClient.createReleaseArtifact(
-          appId: appId,
-          releaseId: releaseId,
-          artifactPath: artifact.path,
-          arch: arch.arch,
-          platform: platform,
-          hash: hash,
-          canSideload: false,
-          podfileLockHash: null,
-        );
-        uploadedArchCount++;
-      } on CodePushConflictException catch (_) {
-        uploadedArchCount++;
-        // Newlines are due to how logger.info interacts with logger.progress.
-        logger.info('''
-
-${arch.arch} artifact already exists, continuing...''');
-      } catch (error) {
-        _handleErrorAndExit(
-          error,
-          progress: createArtifactProgress,
-          message: 'Error uploading ${artifact.path}: $error',
-        );
-      }
-    }
-
-    if (uploadedArchCount == 0) {
-      _handleErrorAndExit(
-        Exception('No architecture artifacts found to upload.'),
-        progress: createArtifactProgress,
-        message:
-            '''
-No architecture artifacts found to upload.
-
-Shorebird looked for libapp.so under ${archsDir.path} but every requested
-architecture was missing:
-${missingArchPaths.map((p) => '  - $p').join('\n')}
-
-This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
-configuration excludes every architecture Shorebird was asked to build. Either
-relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
-to the architectures your project actually builds.''',
-      );
-    }
-
-    try {
-      logger.detail('Uploading artifact for $aabPath');
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: aabPath,
-        arch: 'aab',
-        platform: platform,
-        hash: sha256.convert(await File(aabPath).readAsBytes()).toString(),
-        canSideload: true,
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info('''
-
-aab artifact already exists, continuing...''');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading $aabPath: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: File(aabPath),
+      name: 'aab',
+      arch: 'aab',
+      platform: platform,
+      canSideload: true,
+      progress: createArtifactProgress,
+    );
 
     createArtifactProgress.complete();
   }
 
-  /// Uploads windows release artifacts for a specific app/release combination.
+  /// Zips and uploads a Windows release directory.
   Future<void> createWindowsReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required String projectRoot,
-    required String releaseZipPath,
+    required Directory releaseDirectory,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-
+    final zippedRelease = await releaseDirectory.zipToTempFile();
     try {
-      // logger.detail('Uploading artifact for $aabPath');
-      await codePushClient.createReleaseArtifact(
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: releaseZipPath,
+        file: zippedRelease,
+        name: 'Windows release (exe)',
         arch: primaryWindowsReleaseArtifactArch,
         platform: ReleasePlatform.windows,
-        hash: sha256
-            .convert(await File(releaseZipPath).readAsBytes())
-            .toString(),
         canSideload: true,
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info('''
-
-Windows release (exe) artifact already exists, continuing...''');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
         progress: createArtifactProgress,
-        message: 'Error uploading: $error',
       );
+    } finally {
+      zippedRelease.parent.deleteTemporarySync();
     }
     createArtifactProgress.complete();
   }
@@ -745,68 +598,142 @@ Windows release (exe) artifact already exists, continuing...''');
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
+    await _uploadAndroidArchArtifacts(
+      appId: appId,
+      releaseId: releaseId,
+      platform: platform,
+      archsDir: p.join(extractedAarDir, 'jni'),
+      architectures: architectures,
+      progress: createArtifactProgress,
+    );
+
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: File(aarPath),
+      name: 'aar',
+      arch: 'aar',
+      platform: platform,
+      canSideload: false,
+      progress: createArtifactProgress,
+    );
+
+    createArtifactProgress.complete();
+  }
+
+  /// Uploads the libapp.so under [archsDir] for each of [architectures].
+  ///
+  /// Architectures with no libapp.so are skipped, and the release fails only
+  /// if none were uploaded. Shared by the app bundle and archive releases so
+  /// both handle ABI filtering the same way.
+  Future<void> _uploadAndroidArchArtifacts({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+    required String archsDir,
+    required Iterable<Arch> architectures,
+    required Progress progress,
+  }) async {
+    // Track which arch paths AGP didn't produce, so we can surface them at
+    // the end if zero archs uploaded. AGP omits an arch directory whenever
+    // the project filters it out via `ndk.abiFilters`, `splits.abi`, or
+    // `jniLibs.excludes`. Iterating only over present files lets a filtered
+    // release succeed instead of crashing on the first missing arch
+    // (https://github.com/shorebirdtech/shorebird/issues/3388).
+    final missingArchPaths = <String>[];
+    var uploadedArchCount = 0;
     for (final arch in architectures) {
       final artifactPath = p.join(
-        extractedAarDir,
-        'jni',
+        archsDir,
         arch.androidBuildPath,
         'libapp.so',
       );
       final artifact = File(artifactPath);
-      final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Uploading artifact for $artifactPath');
-
-      try {
-        await codePushClient.createReleaseArtifact(
-          appId: appId,
-          releaseId: releaseId,
-          artifactPath: artifact.path,
-          arch: arch.arch,
-          platform: platform,
-          hash: hash,
-          canSideload: false,
-          podfileLockHash: null,
+      if (!artifact.existsSync()) {
+        logger.detail(
+          'Skipping ${arch.arch}: no libapp.so at $artifactPath. '
+          'This is expected if the project filters this ABI via '
+          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
         );
-      } on CodePushConflictException catch (_) {
-        // Newlines are due to how logger.info interacts with logger.progress.
-        logger.info('''
-
-${arch.arch} artifact already exists, continuing...''');
-      } catch (error) {
-        _handleErrorAndExit(
-          error,
-          progress: createArtifactProgress,
-          message: 'Error uploading ${artifact.path}: $error',
-        );
+        missingArchPaths.add(artifactPath);
+        continue;
       }
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: artifact,
+        name: arch.arch,
+        arch: arch.arch,
+        platform: platform,
+        canSideload: false,
+        progress: progress,
+      );
+      uploadedArchCount++;
     }
 
+    if (uploadedArchCount == 0) {
+      _handleErrorAndExit(
+        Exception('No architecture artifacts found to upload.'),
+        progress: progress,
+        message:
+            '''
+No architecture artifacts found to upload.
+
+Shorebird looked for libapp.so under $archsDir but every requested
+architecture was missing:
+${missingArchPaths.map((p) => '  - $p').join('\n')}
+
+This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
+configuration excludes every architecture Shorebird was asked to build. Either
+relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
+to the architectures your project actually builds.''',
+      );
+    }
+  }
+
+  /// Uploads [file] as the [arch] release artifact for [platform], naming it
+  /// [name] in log and error messages.
+  ///
+  /// The server reuses the artifacts of a release that is not yet active, so a
+  /// retried release uploads over them rather than conflicting. A conflict
+  /// therefore only means the artifact was just created, and the release can
+  /// continue. Every platform handles it the same way. Any other failure fails
+  /// [progress] and exits.
+  Future<void> _uploadReleaseArtifact({
+    required String appId,
+    required int releaseId,
+    required File file,
+    required String name,
+    required String arch,
+    required ReleasePlatform platform,
+    required bool canSideload,
+    required Progress progress,
+    String? podfileLockHash,
+  }) async {
+    logger.detail('Uploading $name artifact from ${file.path}');
     try {
-      logger.detail('Uploading artifact for $aarPath');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: aarPath,
-        arch: 'aar',
+        artifactPath: file.path,
+        arch: arch,
         platform: platform,
-        hash: sha256.convert(await File(aarPath).readAsBytes()).toString(),
-        canSideload: false,
-        podfileLockHash: null,
+        hash: sha256.convert(await file.readAsBytes()).toString(),
+        canSideload: canSideload,
+        podfileLockHash: podfileLockHash,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
       logger.info('''
 
-aar artifact already exists, continuing...''');
+$name artifact already exists, continuing...''');
     } catch (error) {
       _handleErrorAndExit(
         error,
-        progress: createArtifactProgress,
-        message: 'Error uploading $aarPath: $error',
+        progress: progress,
+        message: 'Error uploading $name artifact: $error',
       );
     }
-
-    createArtifactProgress.complete();
   }
 
   /// Removes all .dylib files from the given .xcarchive to reduce the size of
@@ -835,22 +762,18 @@ aar artifact already exists, continuing...''');
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final zippedBundle = await Directory(bundle.path).zipToTempFile();
     try {
-      await codePushClient.createReleaseArtifact(
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zippedBundle.path,
+        file: zippedBundle,
+        name: 'bundle',
         arch: primaryLinuxReleaseArtifactArch,
         platform: ReleasePlatform.linux,
-        hash: sha256.convert(await zippedBundle.readAsBytes()).toString(),
         canSideload: true,
-        podfileLockHash: null,
-      );
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
         progress: createArtifactProgress,
-        message: 'Error uploading bundle: $error',
       );
+    } finally {
+      zippedBundle.parent.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -861,31 +784,29 @@ aar artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required String appPath,
-    required bool isCodesigned,
     required String? podfileLockHash,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
-    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
-    await ditto.archive(source: appPath, destination: zippedApp.path);
-
     try {
-      await codePushClient.createReleaseArtifact(
+      final zippedApp = File(
+        p.join(tempDir.path, '${p.basename(appPath)}.zip'),
+      );
+      await ditto.archive(source: appPath, destination: zippedApp.path);
+
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zippedApp.path,
+        file: zippedApp,
+        name: 'app',
         arch: 'app',
         platform: ReleasePlatform.macos,
-        hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
         canSideload: true,
         podfileLockHash: podfileLockHash,
-      );
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
         progress: createArtifactProgress,
-        message: 'Error uploading app: $error',
       );
+    } finally {
+      tempDir.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -905,45 +826,44 @@ aar artifact already exists, continuing...''');
     final thinnedArchiveDirectory = await _thinXcarchive(
       xcarchivePath: xcarchivePath,
     );
-    final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
+    final File zippedArchive;
     try {
-      await codePushClient.createReleaseArtifact(
+      zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
+    } finally {
+      thinnedArchiveDirectory.parent.deleteTemporarySync();
+    }
+    try {
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zippedArchive.path,
+        file: zippedArchive,
+        name: 'xcarchive',
         arch: 'xcarchive',
         platform: ReleasePlatform.ios,
-        hash: sha256.convert(await zippedArchive.readAsBytes()).toString(),
         canSideload: false,
         podfileLockHash: podfileLockHash,
-      );
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
         progress: createArtifactProgress,
-        message: 'Error uploading xcarchive: $error',
       );
+    } finally {
+      zippedArchive.parent.deleteTemporarySync();
     }
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
+    logger.detail('[archive] zipped runner.app');
     try {
-      logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
-      await codePushClient.createReleaseArtifact(
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zippedRunner.path,
+        file: zippedRunner,
+        name: 'runner.app',
         arch: 'runner',
         platform: ReleasePlatform.ios,
-        hash: sha256.convert(await zippedRunner.readAsBytes()).toString(),
         canSideload: isCodesigned,
         podfileLockHash: podfileLockHash,
-      );
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
         progress: createArtifactProgress,
-        message: 'Error uploading runner.app: $error',
       );
+    } finally {
+      zippedRunner.parent.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -960,24 +880,18 @@ aar artifact already exists, continuing...''');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     final zippedAppFrameworkFile = await appFrameworkDirectory.zipToTempFile();
     try {
-      await codePushClient.createReleaseArtifact(
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zippedAppFrameworkFile.path,
+        file: zippedAppFrameworkFile,
+        name: 'xcframework',
         arch: 'xcframework',
         platform: ReleasePlatform.ios,
-        hash: sha256
-            .convert(await zippedAppFrameworkFile.readAsBytes())
-            .toString(),
         canSideload: false,
-        podfileLockHash: null,
-      );
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
         progress: createArtifactProgress,
-        message: 'Error uploading xcframework: $error',
       );
+    } finally {
+      zippedAppFrameworkFile.parent.deleteTemporarySync();
     }
 
     createArtifactProgress.complete();
@@ -998,28 +912,23 @@ aar artifact already exists, continuing...''');
       supplementDirectoryPath,
     ).zipToTempFile(name: arch);
     try {
-      await codePushClient.createReleaseArtifact(
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: zippedSupplement.path,
+        file: zippedSupplement,
+        name: 'supplement',
         arch: arch,
         platform: platform,
-        hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
         // Supplements are auxiliary snapshot metadata used during patching and
         // can't produce a working app on their own, so sideloading isn't
-        // applicable.
-        canSideload: false,
-        // Supplement artifacts contain only Dart snapshot metadata (e.g. class
+        // applicable. They contain only Dart snapshot metadata (e.g. class
         // tables, dispatch tables) and have no dependency on native pods, so
-        // the podfile lock hash is not applicable here.
-        podfileLockHash: null,
-      );
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
+        // no podfile lock hash is passed either.
+        canSideload: false,
         progress: createSupplementProgress,
-        message: 'Error uploading supplement artifacts: $error',
       );
+    } finally {
+      zippedSupplement.parent.deleteTemporarySync();
     }
     createSupplementProgress.complete();
   }
@@ -1030,19 +939,15 @@ aar artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required Json metadata,
-  }) async {
-    final createPatchProgress = logger.progress('Creating patch');
-    try {
-      final patch = await codePushClient.createPatch(
+  }) {
+    return _withProgress(
+      'Creating patch',
+      () => codePushClient.createPatch(
         appId: appId,
         releaseId: releaseId,
         metadata: metadata,
-      );
-      createPatchProgress.complete();
-      return patch;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: createPatchProgress);
-    }
+      ),
+    );
   }
 
   /// Uploads patch artifacts for a specific app/patch combination.
@@ -1078,20 +983,15 @@ aar artifact already exists, continuing...''');
     required String appId,
     required int patchId,
     required Channel channel,
-  }) async {
-    final promotePatchProgress = logger.progress(
+  }) {
+    return _withProgress(
       'Promoting patch to ${channel.name}',
-    );
-    try {
-      await codePushClient.promotePatch(
+      () => codePushClient.promotePatch(
         appId: appId,
         patchId: patchId,
         channelId: channel.id,
-      );
-      promotePatchProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: promotePatchProgress);
-    }
+      ),
+    );
   }
 
   /// Rolls back the patch identified by [patchId] under [releaseId]. Returns
@@ -1161,7 +1061,7 @@ aar artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].
-  Future<void> publishPatch({
+  Future<Patch> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1189,6 +1089,7 @@ aar artifact already exists, continuing...''');
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
 
     logger.success('\n✅ Published Patch ${patch.number}!');
+    return patch;
   }
 
   /// Returns a GCP download link for measuring download speed.
@@ -1199,6 +1100,20 @@ aar artifact already exists, continuing...''');
   /// Returns a GCP upload link for measuring upload speed.
   Future<Uri> getGCPUploadSpeedTestUrl() {
     return codePushClient.getGCPUploadSpeedTestUrl();
+  }
+
+  /// Runs [body] under a progress spinner showing [message], completing the
+  /// spinner on success. Any error fails the spinner and exits with code 70
+  /// via [_handleErrorAndExit].
+  Future<T> _withProgress<T>(String message, Future<T> Function() body) async {
+    final progress = logger.progress(message);
+    try {
+      final result = await body();
+      progress.complete();
+      return result;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
   }
 
   /// Prints an appropriate error message for the given error and exits with

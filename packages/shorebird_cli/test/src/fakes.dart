@@ -15,9 +15,9 @@ class FakeChannel extends Fake implements Channel {}
 
 class FakeDiffStatus extends Fake implements DiffStatus {}
 
-class FakeIOSink extends Fake implements IOSink {}
+class FakeFile extends Fake implements File {}
 
-class FakeRelease extends Fake implements Release {}
+class FakeIOSink extends Fake implements IOSink {}
 
 class FakeReleaseArtifact extends Fake implements ReleaseArtifact {}
 

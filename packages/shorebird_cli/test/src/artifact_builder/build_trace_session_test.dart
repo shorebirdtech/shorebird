@@ -1,8 +1,10 @@
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(BuildTraceSession, () {
     test('holds commandStartedAt', () {
       final started = DateTime.utc(2026, 4, 17, 12, 30);

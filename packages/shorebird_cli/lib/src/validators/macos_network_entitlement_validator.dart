@@ -75,70 +75,39 @@ The command you are running must be run within a Flutter app project that suppor
       ];
     }
 
-    final issues = <ValidationIssue>[];
-    if (!hasNetworkClientEntitlement(plistFile: _releaseEntitlementsPlist!)) {
-      issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message:
-              '''${_releaseEntitlementsPlist!.path} is missing the Outgoing Connections ($networkClientEntitlementKey) entitlement.''',
-          fix: () => addNetworkEntitlementToPlist(_releaseEntitlementsPlist!),
-        ),
-      );
-    }
-
-    if (!hasAllowUnsignedExecutableMemoryEntitlement(
-      plistFile: _releaseEntitlementsPlist!,
-    )) {
-      issues.add(
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message:
-              '''${_releaseEntitlementsPlist!.path} is missing the Allow Unsigned Executable Memory ($allowUnsignedExecutableMemoryKey) entitlement.''',
-          fix: () => addAllowUnsignedExecutableMemoryEntitlementToPlist(
-            _releaseEntitlementsPlist!,
+    final plistFile = _releaseEntitlementsPlist!;
+    return [
+      for (final MapEntry(key: key, value: name)
+          in _requiredEntitlements.entries)
+        if (!hasEntitlement(plistFile: plistFile, key: key))
+          ValidationIssue(
+            severity: ValidationIssueSeverity.error,
+            message:
+                '${plistFile.path} is missing the $name ($key) entitlement.',
+            fix: () => addEntitlementToPlist(plistFile, key: key),
           ),
-        ),
-      );
-    }
-
-    return issues;
+    ];
   }
 
-  /// Whether the given entitlements plist file has the network client
-  /// entitlement.
-  @visibleForTesting
-  static bool hasNetworkClientEntitlement({required File plistFile}) =>
-      Plist(file: plistFile).properties[networkClientEntitlementKey] == true;
+  /// The entitlements Shorebird needs, mapped to their display names.
+  static const _requiredEntitlements = {
+    networkClientEntitlementKey: 'Outgoing Connections',
+    allowUnsignedExecutableMemoryKey: 'Allow Unsigned Executable Memory',
+  };
 
-  /// Adds the network client entitlement to the given entitlements plist file.
+  /// Whether the given entitlements plist file has the entitlement [key].
   @visibleForTesting
-  static void addNetworkEntitlementToPlist(File entitlementsPlist) {
-    final plist = Plist(file: entitlementsPlist);
-    plist.properties[networkClientEntitlementKey] = true;
-    entitlementsPlist.writeAsStringSync(plist.toString());
-  }
+  static bool hasEntitlement({required File plistFile, required String key}) =>
+      Plist(file: plistFile).properties[key] == true;
 
-  /// Whether the given entitlements plist file has the allow unsigned
-  /// executable memory entitlement.
+  /// Adds the entitlement [key] to the given entitlements plist file.
   @visibleForTesting
-  static bool hasAllowUnsignedExecutableMemoryEntitlement({
-    required File plistFile,
+  static void addEntitlementToPlist(
+    File entitlementsPlist, {
+    required String key,
   }) {
-    return Plist(
-          file: plistFile,
-        ).properties[allowUnsignedExecutableMemoryKey] ==
-        true;
-  }
-
-  /// Adds the allow unsigned executable memory entitlement to the given
-  /// entitlements plist file.
-  @visibleForTesting
-  static void addAllowUnsignedExecutableMemoryEntitlementToPlist(
-    File entitlementsPlist,
-  ) {
     final plist = Plist(file: entitlementsPlist);
-    plist.properties[allowUnsignedExecutableMemoryKey] = true;
+    plist.properties[key] = true;
     entitlementsPlist.writeAsStringSync(plist.toString());
   }
 }

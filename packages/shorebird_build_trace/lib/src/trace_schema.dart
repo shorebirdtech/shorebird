@@ -19,9 +19,8 @@ library;
 /// Chrome Trace Event `cat` values emitted by the producers.
 ///
 /// Producers emit via [wireName]. Consumers (shorebird_cli) parse via
-/// [tryParse], which returns null for unknown values so callers can
-/// map them to [TraceCategory.unknown] and the switch stays
-/// exhaustive. Adding a new category here is safe: older consumers
+/// [parse], which maps unknown values to [TraceCategory.unknown] so the
+/// switch stays exhaustive. Adding a new category here is safe: older consumers
 /// see it as `unknown` (dropped), newer consumers bucket it.
 enum TraceCategory {
   /// Flutter-tool setup / teardown and outer `flutter build <target>`
@@ -65,7 +64,7 @@ enum TraceCategory {
   const TraceCategory(this.wireName);
 
   /// The exact string a producer emits on the `cat` field. Read by
-  /// consumers via [tryParse].
+  /// consumers via [parse].
   final String wireName;
 
   /// Total parse: returns [unknown] for a null or unrecognized wire
@@ -227,7 +226,7 @@ enum SetupPhase {
 }
 
 /// Phases identified by the CocoaPods verbose-output parser. Producer
-/// side (flutter_tools) picks the value, [PhaseTracker] stringifies it
+/// side (flutter_tools) picks the value, `PhaseTracker` stringifies it
 /// with [TraceNames.podInstallNamePrefix] as prefix. Consumer side
 /// (shorebird_cli) matches the assembled span name against this enum's
 /// [wireName]s.

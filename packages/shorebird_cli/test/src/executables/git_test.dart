@@ -8,9 +8,11 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Git, () {
     late ShorebirdProcessResult processResult;
     late ShorebirdProcess process;
@@ -40,10 +42,10 @@ void main() {
 
     group('server error detection', () {
       test('includes github.com and status link for GitHub URLs', () async {
+        const githubUrl = 'https://github.com/shorebirdtech/flutter.git/';
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
-          "fatal: unable to access 'https://github.com/"
-          "shorebirdtech/flutter.git/': "
+          "fatal: unable to access '$githubUrl': "
           'The requested URL returned error: 500',
         );
         expect(
@@ -64,10 +66,10 @@ void main() {
       });
 
       test('includes host name for non-GitHub URLs', () async {
+        const gitlabUrl = 'https://gitlab.com/org/repo.git/';
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
-          "fatal: unable to access 'https://gitlab.com/"
-          "org/repo.git/': "
+          "fatal: unable to access '$gitlabUrl': "
           'The requested URL returned error: 502',
         );
         expect(
@@ -432,50 +434,6 @@ origin/flutter_release/3.10.6''';
           () => runWithOverrides(
             () => git.revParse(directory: directory, revision: revision),
           ),
-          throwsA(
-            isA<ProcessException>().having((e) => e.message, 'message', error),
-          ),
-        );
-      });
-    });
-
-    group('status', () {
-      const directory = './output';
-
-      test('executes correct command', () async {
-        const output = 'status';
-        when(() => processResult.stdout).thenReturn(output);
-        await expectLater(
-          runWithOverrides(() => git.status(directory: directory)),
-          completion(equals(output)),
-        );
-        verify(
-          () => process.run('git', ['status'], workingDirectory: directory),
-        ).called(1);
-      });
-
-      test('executes correct command w/args', () async {
-        const output = 'status';
-        const args = ['--porcelain'];
-        when(() => processResult.stdout).thenReturn(output);
-        await expectLater(
-          runWithOverrides(() => git.status(directory: directory, args: args)),
-          completion(equals(output)),
-        );
-        verify(
-          () => process.run('git', [
-            'status',
-            ...args,
-          ], workingDirectory: directory),
-        ).called(1);
-      });
-
-      test('throws ProcessException if process exits with error', () async {
-        const error = 'oops';
-        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
-        when(() => processResult.stderr).thenReturn(error);
-        expect(
-          () => runWithOverrides(() => git.status(directory: directory)),
           throwsA(
             isA<ProcessException>().having((e) => e.message, 'message', error),
           ),

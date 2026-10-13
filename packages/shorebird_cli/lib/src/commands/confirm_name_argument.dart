@@ -1,6 +1,3 @@
-import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/json_output.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// The name of the option that gates irreversible deletes.
@@ -30,18 +27,6 @@ mixin ConfirmNameArgument on ShorebirdCommand {
     final message = provided == null
         ? 'Deleting $resourceDescription requires --$confirmNameArgName.'
         : '--$confirmNameArgName "$provided" does not match "$expected".';
-
-    if (isJsonMode) {
-      emitJsonError(
-        code: JsonErrorCode.usageError,
-        message: message,
-        hint: hint,
-      );
-    } else {
-      logger
-        ..err(message)
-        ..info(hint);
-    }
-    return ExitCode.usage.code;
+    return reportError(message: message, hint: hint);
   }
 }

@@ -8,13 +8,14 @@ import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/http_client/tracing_client.dart';
 import 'package:test/test.dart';
 
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
+import '../fakes.dart';
+import '../helpers.dart';
+import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   setUpAll(() {
-    registerFallbackValue(_FakeBaseRequest());
+    registerFallbackValue(FakeBaseRequest());
   });
 
   group(TracingClient, () {
@@ -28,7 +29,7 @@ void main() {
     );
 
     setUp(() {
-      inner = _MockHttpClient();
+      inner = MockHttpClient();
       tracer = ShorebirdTracer();
       client = TracingClient(httpClient: inner);
     });
@@ -109,14 +110,18 @@ void main() {
       });
 
       final event = tracer.events.single;
-      expect(
-        event['dur'],
-        greaterThanOrEqualTo(const Duration(milliseconds: 50).inMicroseconds),
-      );
       final args = event['args']! as Map;
       expect(args['responseBytes'], 7);
-      // Time-to-first-byte stays separable from transfer time.
-      expect(args['ttfbMs'], lessThan(50));
+      // Time-to-first-byte stays separable from transfer time: headers
+      // arrived before the 50ms body delay began, so the span must cover
+      // ttfb plus that whole delay. Holds regardless of machine load.
+      final ttfbMs = args['ttfbMs']! as int;
+      expect(
+        event['dur'],
+        greaterThanOrEqualTo(
+          Duration(milliseconds: ttfbMs + 50).inMicroseconds,
+        ),
+      );
     });
 
     test('propagates pause and resume to the upstream body', () async {
@@ -135,9 +140,7 @@ void main() {
         );
         final response = await client.send(req);
         final received = <int>[];
-        final subscription = response.stream.listen(received.addAll);
-
-        subscription.pause();
+        final subscription = response.stream.listen(received.addAll)..pause();
         controller.add(utf8.encode('ab'));
         await Future<void>.delayed(Duration.zero);
         expect(received, isEmpty, reason: 'paused: nothing delivered');
@@ -148,6 +151,7 @@ void main() {
 
         await controller.close();
         await subscription.asFuture<void>();
+        await subscription.cancel();
       });
 
       expect((tracer.events.single['args']! as Map)['responseBytes'], 2);

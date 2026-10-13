@@ -11,9 +11,8 @@ import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
-
-class MockHttpClient extends Mock implements http.Client {}
 
 /// Builds a JWT string with the given [issuer] for testing.
 ///
@@ -35,7 +34,20 @@ String _buildTestJwt({String issuer = 'https://auth.shorebird.dev'}) {
   return '$header.$payload.dGVzdA';
 }
 
+/// The auth service's redirect back to the `redirect_uri` of [loginUri],
+/// carrying [params] and the `state` the login sent.
+Uri _redirectTo(Uri loginUri, Map<String, String> params) {
+  return _redirectUri(loginUri).replace(
+    queryParameters: {'state': loginUri.queryParameters['state'], ...params},
+  );
+}
+
+/// The `redirect_uri` the authorization request at [loginUri] names.
+Uri _redirectUri(Uri loginUri) =>
+    Uri.parse(loginUri.queryParameters['redirect_uri']!);
+
 void main() {
+  useTempWorkingDirectory();
   late ShorebirdEnv shorebirdEnv;
 
   setUpAll(() {
@@ -84,16 +96,16 @@ void main() {
         ),
       );
 
+      late Uri loginUri;
       final credentials = await runWithOverrides(
         () => obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
+            loginUri = Uri.parse(url);
             // Simulate the browser redirect with an auth code.
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -102,7 +114,7 @@ void main() {
       expect(credentials.accessToken.type, equals('Bearer'));
       expect(credentials.accessToken.data, equals(testJwt));
       expect(credentials.refreshToken, equals('sb_rt_test'));
-      expect(credentials.idToken, equals(testJwt));
+      expect(credentials.idToken, isNull);
       expect(credentials.scopes, isEmpty);
 
       final captured = verify(
@@ -117,9 +129,28 @@ void main() {
       final body = captured[1] as Map<String, String>;
       expect(body['grant_type'], equals('authorization_code'));
       expect(body['code'], equals('test_code'));
+      expect(body['client_id'], equals('shorebird-cli'));
+      // The exchange names the exact redirect URI the authorization request
+      // sent (RFC 6749 section 4.1.3).
+      expect(
+        body['redirect_uri'],
+        equals(loginUri.queryParameters['redirect_uri']),
+      );
+      // The verifier sent to /token is the one the login URL's challenge
+      // was derived from.
+      final codeVerifier = body['code_verifier']!;
+      expect(codeVerifier, hasLength(43));
+      expect(
+        loginUri.queryParameters['code_challenge'],
+        equals(codeChallengeFor(codeVerifier)),
+      );
+      expect(
+        loginUri.queryParameters['code_challenge_method'],
+        equals('S256'),
+      );
     });
 
-    test('constructs correct login URL with continue parameter', () async {
+    test('sends a standard authorization request for shorebird-cli', () async {
       final testJwt = _buildTestJwt();
       when(
         () => httpClient.post(
@@ -147,9 +178,8 @@ void main() {
           userPrompt: (url) {
             capturedUrl = url;
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -159,11 +189,32 @@ void main() {
       expect(loginUri.host, equals('auth.shorebird.dev'));
       expect(loginUri.path, contains('/login'));
       expect(
-        loginUri.queryParameters['continue'],
-        allOf(
-          startsWith('http://localhost:'),
-          contains('/callback'),
-        ),
+        loginUri.queryParameters.keys,
+        unorderedEquals([
+          'response_type',
+          'client_id',
+          'redirect_uri',
+          'scope',
+          'state',
+          'code_challenge',
+          'code_challenge_method',
+        ]),
+      );
+      expect(loginUri.queryParameters['response_type'], equals('code'));
+      expect(loginUri.queryParameters['client_id'], equals('shorebird-cli'));
+      expect(loginUri.queryParameters['scope'], equals('api'));
+      expect(loginUri.queryParameters['state'], hasLength(43));
+      // The registered loopback redirect, on whatever port the CLI bound, with
+      // no query: the auth service compares path and query exactly.
+      final redirectUri = _redirectUri(loginUri);
+      expect(redirectUri.scheme, equals('http'));
+      expect(redirectUri.host, equals('localhost'));
+      expect(redirectUri.port, isNonZero);
+      expect(redirectUri.path, equals('/callback'));
+      expect(redirectUri.hasQuery, isFalse);
+      expect(
+        loginUri.queryParameters['redirect_uri'],
+        equals('http://localhost:${redirectUri.port}/callback'),
       );
     });
 
@@ -200,9 +251,8 @@ void main() {
           userPrompt: (url) {
             capturedUrl = url;
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -248,15 +298,14 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            final callbackUri = Uri.parse(continueUrl);
+            final callbackUri = _redirectUri(loginUri);
             final baseUrl = 'http://localhost:${callbackUri.port}';
             // Send a favicon request first — should be ignored.
             // Use .ignore() because the server may close before responding.
             http.get(Uri.parse('$baseUrl/favicon.ico')).ignore();
             // Then send the actual callback with auth code.
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -266,28 +315,169 @@ void main() {
       expect(credentials.refreshToken, equals('sb_rt_test'));
     });
 
-    test('throws when redirect contains error parameter', () async {
-      await expectLater(
-        obtainCredentialsViaLoopbackLogin(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            unawaited(
-              http.get(
-                Uri.parse('$continueUrl?error=invalid_redirect'),
-              ),
-            );
-          },
+    group('when the callback carries an error', () {
+      void verifyNoTokenRequest() => verifyNever(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
         ),
-        throwsA(
-          isA<ShorebirdAuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('invalid_redirect'),
+      );
+
+      test('throws with the error and its description', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              unawaited(
+                http.get(
+                  _redirectTo(Uri.parse(url), {
+                    'error': 'access_denied',
+                    'error_description': 'The user denied the request.',
+                  }),
+                ),
+              );
+            },
           ),
-        ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              equals(
+                'Authentication failed: access_denied '
+                '(The user denied the request.)',
+              ),
+            ),
+          ),
+        );
+        verifyNoTokenRequest();
+      });
+
+      test('throws with the error when it has no state', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              unawaited(
+                http.get(
+                  _redirectUri(Uri.parse(url)).replace(
+                    queryParameters: {'error': 'invalid_request'},
+                  ),
+                ),
+              );
+            },
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              equals('Authentication failed: invalid_request'),
+            ),
+          ),
+        );
+        verifyNoTokenRequest();
+      });
+
+      test('reports a mismatch when its state is wrong', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              unawaited(
+                http.get(
+                  _redirectTo(Uri.parse(url), {
+                    'error': 'access_denied',
+                    'state': 'not-the-state',
+                  }),
+                ),
+              );
+            },
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              contains('did not match this login request'),
+            ),
+          ),
+        );
+        verifyNoTokenRequest();
+      });
+    });
+
+    for (final (description, state) in [
+      ('does not match', 'not-the-state'),
+      ('is missing', null),
+    ]) {
+      test('throws when the callback state $description', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              final loginUri = Uri.parse(url);
+              final callbackUri = _redirectUri(loginUri);
+              unawaited(
+                http.get(
+                  callbackUri.replace(
+                    queryParameters: {
+                      'code': 'test_code',
+                      'state': ?state,
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              contains('did not match this login request'),
+            ),
+          ),
+        );
+        verifyNever(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        );
+      });
+    }
+
+    test('two logins use different state and verifiers', () async {
+      final loginUris = <Uri>[];
+      for (var i = 0; i < 2; i++) {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              loginUris.add(Uri.parse(url));
+              unawaited(
+                http.get(
+                  _redirectTo(Uri.parse(url), {
+                    'error': 'access_denied',
+                  }),
+                ),
+              );
+            },
+          ),
+          throwsA(isA<ShorebirdAuthException>()),
+        );
+      }
+      expect(
+        loginUris[0].queryParameters['state'],
+        isNot(equals(loginUris[1].queryParameters['state'])),
+      );
+      expect(
+        loginUris[0].queryParameters['code_challenge'],
+        isNot(equals(loginUris[1].queryParameters['code_challenge'])),
       );
     });
 
@@ -298,9 +488,8 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(Uri.parse(continueUrl)),
+              http.get(_redirectTo(loginUri, {})),
             );
           },
         ),
@@ -331,10 +520,9 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             // Use .ignore() to suppress connection errors when the server
             // closes after the token exchange failure.
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
           },
         ),
         throwsA(
@@ -343,6 +531,45 @@ void main() {
             'message',
             contains('Token exchange failed (401)'),
           ),
+        ),
+      );
+    });
+
+    test('carries the status and OAuth error of a refused exchange', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            'error': 'invalid_grant',
+            'error_description': 'Code already used',
+          }),
+          HttpStatus.badRequest,
+        ),
+      );
+
+      await expectLater(
+        obtainCredentialsViaLoopbackLogin(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrl,
+          userPrompt: (url) {
+            final loginUri = Uri.parse(url);
+            http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
+          },
+        ),
+        throwsA(
+          isA<ShorebirdAuthException>()
+              .having((e) => e.statusCode, 'statusCode', HttpStatus.badRequest)
+              .having((e) => e.oauthError, 'oauthError', 'invalid_grant')
+              .having(
+                (e) => e.oauthErrorDescription,
+                'description',
+                'Code already used',
+              ),
         ),
       );
     });
@@ -393,8 +620,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
@@ -435,8 +661,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
@@ -467,8 +692,7 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
           },
         ),
         throwsA(isA<SocketException>()),
@@ -496,12 +720,11 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -530,12 +753,11 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -565,12 +787,91 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
+      );
+    });
+  });
+
+  group('revokeShorebirdRefreshToken', () {
+    late MockHttpClient httpClient;
+
+    setUp(() {
+      httpClient = MockHttpClient();
+    });
+
+    test('posts the refresh token to the revocation endpoint', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
+
+      await revokeShorebirdRefreshToken(
+        'sb_rt_test',
+        httpClient,
+        authBaseUrl: Uri.parse('https://auth.shorebird.dev/base'),
+      );
+
+      final captured = verify(
+        () => httpClient.post(
+          captureAny(),
+          headers: any(named: 'headers'),
+          body: captureAny(named: 'body'),
+        ),
+      ).captured;
+      expect(
+        captured[0],
+        equals(Uri.parse('https://auth.shorebird.dev/base/revoke')),
+      );
+      expect(
+        captured[1],
+        equals({
+          'token': 'sb_rt_test',
+          'token_type_hint': 'refresh_token',
+          'client_id': 'shorebird-cli',
+        }),
+      );
+    });
+
+    test('throws when the auth service does not answer 200', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          '{"error":"invalid_client"}',
+          HttpStatus.unauthorized,
+        ),
+      );
+
+      await expectLater(
+        revokeShorebirdRefreshToken(
+          'sb_rt_test',
+          httpClient,
+          authBaseUrl: Uri.parse('https://auth.shorebird.dev'),
+        ),
+        throwsA(
+          isA<ShorebirdAuthException>()
+              .having(
+                (e) => e.message,
+                'message',
+                contains('Token revocation failed (401)'),
+              )
+              .having(
+                (e) => e.statusCode,
+                'statusCode',
+                HttpStatus.unauthorized,
+              ),
+        ),
       );
     });
   });
@@ -618,7 +919,7 @@ void main() {
       expect(credentials.accessToken.type, equals('Bearer'));
       expect(credentials.accessToken.data, equals(testJwt));
       expect(credentials.refreshToken, equals('sb_rt_new'));
-      expect(credentials.idToken, equals(testJwt));
+      expect(credentials.idToken, isNull);
       expect(credentials.scopes, isEmpty);
 
       final captured = verify(
@@ -633,6 +934,7 @@ void main() {
       final body = captured[1] as Map<String, String>;
       expect(body['grant_type'], equals('refresh_token'));
       expect(body['refresh_token'], equals('sb_rt_old'));
+      expect(body['client_id'], equals('shorebird-cli'));
     });
 
     test('throws when no refresh token is available', () async {
@@ -690,6 +992,39 @@ void main() {
       );
     });
 
+    test('carries the OAuth error of a refused refresh', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({'error': 'invalid_grant'}),
+          HttpStatus.badRequest,
+        ),
+      );
+
+      await expectLater(
+        refreshShorebirdCredentials(
+          oauth2.AccessCredentials(
+            AccessToken('Bearer', '', DateTime.timestamp()),
+            'sb_rt_revoked',
+            [],
+          ),
+          httpClient,
+          authBaseUrl: authBaseUrl,
+        ),
+        throwsA(
+          isA<ShorebirdAuthException>()
+              .having((e) => e.oauthError, 'oauthError', 'invalid_grant')
+              .having((e) => e.oauthErrorDescription, 'description', isNull)
+              .having((e) => e.isCredentialRejection, 'rejection', isTrue),
+        ),
+      );
+    });
+
     test('throws with message on network error', () async {
       when(
         () => httpClient.post(
@@ -714,6 +1049,47 @@ void main() {
         throwsA(isA<SocketException>()),
       );
     });
+
+    // A 200 that is not a token response is not an answer about the
+    // credentials either, so it must not be a rejection.
+    for (final (name, body) in [
+      ('not a JSON object', '[]'),
+      (
+        'expires_in of the wrong type',
+        jsonEncode({'access_token': 'a', 'expires_in': '900'}),
+      ),
+    ]) {
+      test('throws a non-rejection for a 200 that is $name', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response(body, HttpStatus.ok));
+
+        await expectLater(
+          refreshShorebirdCredentials(
+            oauth2.AccessCredentials(
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              'sb_rt_test',
+              [],
+            ),
+            httpClient,
+            authBaseUrl: authBaseUrl,
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'The auth service sent an unexpected token response.',
+                )
+                .having((e) => e.isCredentialRejection, 'rejection', isFalse),
+          ),
+        );
+      });
+    }
 
     test('throws when access_token is not a valid JWT', () async {
       when(
@@ -824,7 +1200,7 @@ void main() {
             authBaseUrl: authBaseUrl,
           ),
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -858,7 +1234,7 @@ void main() {
             authBaseUrl: authBaseUrl,
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
       );
     });
 
@@ -893,7 +1269,16 @@ void main() {
             authBaseUrl: authBaseUrl,
           ),
         ),
-        throwsA(isA<TypeError>()),
+        throwsA(isA<ShorebirdAuthException>()),
+      );
+    });
+  });
+
+  group('codeChallengeFor', () {
+    test('matches the RFC 7636 appendix B example', () {
+      expect(
+        codeChallengeFor('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'),
+        equals('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'),
       );
     });
   });
@@ -905,6 +1290,96 @@ void main() {
         exception.toString(),
         equals('ShorebirdAuthException: test error'),
       );
+    });
+
+    group('isCredentialRejection', () {
+      // Any RFC 6749 section 5.2 error response, as AppAuth treats it.
+      for (final (status, code) in [
+        (HttpStatus.badRequest, 'invalid_grant'),
+        (HttpStatus.unauthorized, 'invalid_client'),
+        (HttpStatus.badRequest, 'invalid_request'),
+        (HttpStatus.badRequest, 'unauthorized_client'),
+        (HttpStatus.badRequest, 'unsupported_grant_type'),
+        (HttpStatus.badRequest, 'invalid_scope'),
+        (HttpStatus.forbidden, 'some_future_code'),
+      ]) {
+        test('is true for a $status $code', () {
+          final exception = ShorebirdAuthException(
+            'refused',
+            statusCode: status,
+            oauthError: code,
+          );
+          expect(exception.isCredentialRejection, isTrue);
+        });
+      }
+
+      // AppAuth treats a 429 like any other 4xx: an OAuth error body makes it
+      // an OAuth error.
+      test('is true for a 429 carrying an OAuth error', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+          oauthError: 'rate_limited',
+        );
+        expect(exception.isCredentialRejection, isTrue);
+      });
+
+      test('is false for a 429 that is not an OAuth error response', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+        );
+        expect(exception.isCredentialRejection, isFalse);
+      });
+
+      test('is false for a 4xx that is not an OAuth error response', () {
+        const notOAuth = ShorebirdAuthException(
+          'unauthorized',
+          statusCode: HttpStatus.unauthorized,
+        );
+        expect(notOAuth.isCredentialRejection, isFalse);
+      });
+
+      test('is false for a 5xx, even with an OAuth error body', () {
+        const exception = ShorebirdAuthException(
+          'server error',
+          statusCode: HttpStatus.internalServerError,
+          oauthError: 'server_error',
+        );
+        expect(exception.isCredentialRejection, isFalse);
+      });
+
+      test('is false without an answer', () {
+        const exception = ShorebirdAuthException('no network');
+        expect(exception.isCredentialRejection, isFalse);
+      });
+    });
+
+    group('isRateLimited', () {
+      test('is true for a 429 that is not an OAuth error response', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+        );
+        expect(exception.isRateLimited, isTrue);
+      });
+
+      test('is false for a 429 carrying an OAuth error', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+          oauthError: 'rate_limited',
+        );
+        expect(exception.isRateLimited, isFalse);
+      });
+
+      test('is false for other answers', () {
+        const exception = ShorebirdAuthException(
+          'bad gateway',
+          statusCode: HttpStatus.badGateway,
+        );
+        expect(exception.isRateLimited, isFalse);
+      });
     });
   });
 }

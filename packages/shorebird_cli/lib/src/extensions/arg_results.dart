@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
@@ -68,14 +69,27 @@ extension OptionFinder on ArgResults {
   }
 }
 
+/// The public key PEM already resolved for each parse.
+///
+/// A release or patch needs the key more than once (for each build, and
+/// again to verify each signature), but `--public-key-cmd` is a user command
+/// that may prompt or may not return the same key twice, so it runs at most
+/// once per invocation and every caller sees the same key.
+final _publicKeyPemCache = Expando<Future<String?>>('publicKeyPem');
+
 /// Extension on [ArgResults] to provide code signing related extensions.
 extension CodeSign on ArgResults {
   /// Resolves the public key PEM string from the configured source.
   ///
+  /// The result is resolved once per parse and reused by later calls.
+  ///
   /// Returns null if no public key is configured. Throws
   /// [ProcessException] or [FormatException] if a command-based key
   /// fails.
-  Future<String?> resolvePublicKeyPem() async {
+  Future<String?> resolvePublicKeyPem() =>
+      _publicKeyPemCache[this] ??= _readPublicKeyPem();
+
+  Future<String?> _readPublicKeyPem() async {
     final publicKeyFile = file(CommonArguments.publicKeyArg.name);
     if (publicKeyFile != null) {
       return publicKeyFile.readAsStringSync();
@@ -87,15 +101,6 @@ extension CodeSign on ArgResults {
     }
 
     return null;
-  }
-
-  /// Read the public key file and encode it to base64 if any.
-  String? get encodedPublicKey {
-    final publicKeyFile = file(CommonArguments.publicKeyArg.name);
-
-    return publicKeyFile != null
-        ? codeSigner.base64PublicKey(publicKeyFile)
-        : null;
   }
 
   /// Get base64-encoded public key from either file or command.
@@ -118,28 +123,56 @@ extension CodeSign on ArgResults {
         );
       throw ProcessExit(ExitCode.software.code);
     } on FormatException catch (e) {
-      logger
-        ..err(
-          '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
-          '${e.message}',
-        )
-        ..info(
-          'The command must print only a PEM-encoded public key to stdout.',
-        );
+      _logInvalidPublicKey('is not a valid public key: ${e.message}');
       throw ProcessExit(ExitCode.software.code);
       // Malformed PEM content causes ASN1 parsing errors (RangeError, etc.)
       // ignore: avoid_catching_errors
     } on Error catch (e) {
       // ASN1 parsing errors for malformed PEM content
+      _logInvalidPublicKey('is not a valid public key: $e');
+      throw ProcessExit(ExitCode.software.code);
+    }
+  }
+
+  /// Reports a malformed public key, naming whichever option supplied it.
+  void _logInvalidPublicKey(String problem) {
+    if (file(CommonArguments.publicKeyArg.name) != null) {
       logger
-        ..err(
-          '--${CommonArguments.publicKeyCmd.name} output is not a valid '
-          'public key: $e',
-        )
+        ..err('The --${CommonArguments.publicKeyArg.name} file $problem')
+        ..info('The file must contain only a PEM-encoded public key.');
+    } else {
+      logger
+        ..err('The --${CommonArguments.publicKeyCmd.name} output $problem')
         ..info(
           'The command must print only a PEM-encoded public key to stdout.',
         );
-      throw ProcessExit(ExitCode.software.code);
+    }
+  }
+}
+
+/// Extension on [ArgResults] for Apple-only arguments shared by
+/// `shorebird release` and `shorebird patch`.
+extension AppleArgs on ArgResults {
+  /// Whether to sign the Apple app bundle with Apple code signing
+  /// (`--codesign`, on by default).
+  ///
+  /// Unrelated to [CodeSign], which handles Shorebird patch signing keys.
+  bool get appleCodesign => this['codesign'] == true;
+
+  /// Validates the `--export-options-plist` file, if one was passed.
+  ///
+  /// Logs an error and exits with [ExitCode.usage] if the plist would make
+  /// Xcode rewrite the build number. See [assertValidExportOptionsPlist].
+  void assertValidExportOptionsPlistArg() {
+    final exportOptionsPlistFile = file(
+      CommonArguments.exportOptionsPlistArg.name,
+    );
+    if (exportOptionsPlistFile == null) return;
+    try {
+      assertValidExportOptionsPlist(exportOptionsPlistFile);
+    } on InvalidExportOptionsPlistException catch (error) {
+      logger.err(error.message);
+      throw ProcessExit(ExitCode.usage.code);
     }
   }
 }

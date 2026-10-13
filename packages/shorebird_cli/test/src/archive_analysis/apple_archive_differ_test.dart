@@ -11,10 +11,12 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
-  final xcarchiveFixturesBasePath = p.join('test', 'fixtures', 'xcarchives');
+  useTempWorkingDirectory();
+  final xcarchiveFixturesBasePath = p.join(fixturesDirectory, 'xcarchives');
   final baseIpaPath = p.join(xcarchiveFixturesBasePath, 'base.xcarchive.zip');
   final baseChangedUuidPath = p.join(
     xcarchiveFixturesBasePath,
@@ -38,8 +40,7 @@ void main() {
   );
 
   final xcframeworkFixturesBasePath = p.join(
-    'test',
-    'fixtures',
+    fixturesDirectory,
     'xcframeworks',
   );
   final baseXcframeworkPath = p.join(
@@ -201,7 +202,7 @@ void main() {
       });
 
       group('layered icon renditions', () {
-        final fixturesPath = p.join('test', 'fixtures', 'assetutil');
+        final fixturesPath = p.join(fixturesDirectory, 'assetutil');
         String readFixture(String name) =>
             File(p.join(fixturesPath, name)).readAsStringSync();
 
@@ -330,6 +331,23 @@ void main() {
             });
           }
         });
+
+        test('leaves no temporary files behind', () async {
+          final expected = await differ.changedFiles(
+            baseIpaPath,
+            changedCarXcarchivePath,
+          );
+          final systemTemp = createSystemTemp();
+          late FileSetDiff fileSetDiff;
+          await runWithSystemTemp(systemTemp, () async {
+            fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+          });
+          expect(fileSetDiff.changedPaths, equals(expected.changedPaths));
+          expect(systemTemp.listSync(), isEmpty);
+        });
       });
 
       group('changedFiles', () {
@@ -454,6 +472,51 @@ void main() {
                 equals(diffOutput),
               );
             });
+          });
+
+          test('leaves no temporary files behind', () async {
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+            final systemTemp = createSystemTemp();
+            await runWithSystemTemp(
+              systemTemp,
+              () => runWithOverrides(
+                () => differ.availableAssetDiffs(
+                  fileSetDiff: fileSetDiff,
+                  oldArchivePath: baseIpaPath,
+                  newArchivePath: changedCarXcarchivePath,
+                ),
+              ),
+            );
+            expect(systemTemp.listSync(), isEmpty);
+          });
+
+          test('releases the archives it reads', () async {
+            // Windows refuses to delete a file that is still open, so this
+            // fails there if the differ leaks a file handle.
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+            final tempDir = Directory.systemTemp.createTempSync();
+            final oldPath = p.join(tempDir.path, 'old.zip');
+            final newPath = p.join(tempDir.path, 'new.zip');
+            File(baseIpaPath).copySync(oldPath);
+            File(changedCarXcarchivePath).copySync(newPath);
+
+            await runWithOverrides(
+              () => differ.availableAssetDiffs(
+                fileSetDiff: fileSetDiff,
+                oldArchivePath: oldPath,
+                newArchivePath: newPath,
+              ),
+            );
+
+            File(oldPath).deleteSync();
+            File(newPath).deleteSync();
+            tempDir.deleteSync(recursive: true);
           });
         });
 

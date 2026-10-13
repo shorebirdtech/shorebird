@@ -1,21 +1,25 @@
 // cspell:ignore asdfasdf
+import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('ShorebirdProcess', () {
     const flutterStorageBaseUrlEnv = {
       'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev',
@@ -23,7 +27,7 @@ void main() {
 
     late EngineConfig engineConfig;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ShorebirdProcessResult runProcessResult;
@@ -45,7 +49,7 @@ void main() {
     setUp(() {
       engineConfig = const EngineConfig.empty();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       processWrapper = MockProcessWrapper();
       runProcessResult = MockProcessResult();
       startProcess = MockProcess();
@@ -63,8 +67,6 @@ void main() {
       when(() => runProcessResult.exitCode).thenReturn(ExitCode.success.code);
 
       when(() => logger.level).thenReturn(Level.info);
-
-      when(() => platform.isWindows).thenReturn(false);
     });
 
     test('ShorebirdProcessResult can be instantiated as a const', () {
@@ -119,7 +121,7 @@ void main() {
       });
 
       test('sanitizes executable on windows', () async {
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         await runWithOverrides(
@@ -284,7 +286,7 @@ void main() {
       });
 
       test('sanitizes executable on windows', () {
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         runWithOverrides(
@@ -468,6 +470,74 @@ void main() {
         expect(exit, ExitCode.success.code);
         expect(identical(received, streamProcess), isTrue);
       });
+
+      group('in json mode', () {
+        late _CapturingIOSink capturedStderr;
+
+        R runInJsonMode<R>(R Function() body) {
+          return runScoped(
+            () => IOOverrides.runZoned(body, stderr: () => capturedStderr),
+            values: {
+              engineConfigRef.overrideWith(() => engineConfig),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+            },
+          );
+        }
+
+        setUp(() {
+          capturedStderr = _CapturingIOSink();
+          when(
+            () => processWrapper.start(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+            ),
+          ).thenAnswer((_) async => streamProcess);
+          when(
+            () => streamProcess.stdout,
+          ).thenAnswer((_) => Stream.value(utf8.encode('built app.aab')));
+          when(
+            () => streamProcess.stderr,
+          ).thenAnswer((_) => Stream.value(utf8.encode('a gradle warning')));
+        });
+
+        // inheritStdio hands the child our real fd 1, where IOOverrides
+        // cannot follow it -- the one stream the caller is parsing as JSON.
+        test('pipes rather than inheriting stdio', () async {
+          await expectLater(
+            runInJsonMode(() => shorebirdProcess.stream('git', ['pull'])),
+            completion(equals(ExitCode.success.code)),
+          );
+
+          verify(
+            () => processWrapper.start(
+              'git',
+              ['pull'],
+              environment: {},
+            ),
+          ).called(1);
+          verifyNever(
+            () => processWrapper.start(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              mode: ProcessStartMode.inheritStdio,
+            ),
+          );
+        });
+
+        test("forwards both of the child's streams to stderr", () async {
+          await runInJsonMode(() => shorebirdProcess.stream('git', ['pull']));
+
+          expect(
+            utf8.decode(capturedStderr.bytes),
+            allOf(contains('built app.aab'), contains('a gradle warning')),
+          );
+        });
+      });
     });
 
     group('start', () {
@@ -507,7 +577,7 @@ void main() {
       });
 
       test('sanitizes executable on windows', () async {
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         await runWithOverrides(
@@ -598,4 +668,19 @@ void main() {
       );
     });
   });
+}
+
+/// A [Stdout] that keeps what was written to it, so a test can read back
+/// what a child process's output was forwarded to.
+class _CapturingIOSink implements Stdout {
+  final bytes = <int>[];
+
+  @override
+  void add(List<int> data) => bytes.addAll(data);
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  void noSuchMethod(Invocation invocation) {}
 }

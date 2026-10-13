@@ -1,38 +1,36 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:io/io.dart' show copyPath;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template get_apk_command}
 /// Generates an APK for the release with the specified version.
 /// {@endtemplate}
-class GetApksCommand extends ShorebirdCommand {
+class GetApksCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro get_apk_command}
   GetApksCommand() {
+    addAppScopeOptions();
     argParser
       ..addOption(
         CommonArguments.releaseVersionArg.name,
         help:
             'The version of the release to generate APKs for '
             '(e.g. "1.0.0+1"). Prompts for selection if omitted.',
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The build flavor to generate apks for.',
       )
       ..addOption(
         'out',
@@ -53,14 +51,8 @@ class GetApksCommand extends ShorebirdCommand {
   String get description =>
       'Generates apk(s) for the specified release version.';
 
-  /// The shorebird app ID for the current project.
-  String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
-
-  /// The build flavor, if provided.
-  late String? flavor = results.findOption(
-    CommonArguments.flavorArg.name,
-    argParser: argParser,
-  );
+  /// The app ID, from `--app-id` or shorebird.yaml. Set by [run].
+  late final String appId;
 
   /// The output directory path for the generated apks. Defaults to the
   /// project's build directory if not provided.
@@ -71,13 +63,18 @@ class GetApksCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
+    final resolved = await resolveAppId();
+    if (resolved.errorCode case final errorCode?) return errorCode;
+    appId = resolved.appId;
+
+    // Without a project there is no build directory to default to.
+    if (outDirectoryArg == null &&
+        shorebirdEnv.getShorebirdProjectRoot() == null) {
+      return reportError(
+        message:
+            '--out is required when not running in a Shorebird project, so '
+            'there is no build directory to write the apks to.',
       );
-    } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
     }
 
     final Release release;
@@ -99,13 +96,36 @@ class GetApksCommand extends ShorebirdCommand {
       platform: ReleasePlatform.android,
     );
 
-    final aabFile = await _downloadAab(releaseArtifact: releaseArtifact);
-    final apksFile = File(
-      p.join(
-        Directory.systemTemp.createTempSync().path,
-        '${appId}_${release.version}.apks',
-      ),
+    // The downloaded aab, the built .apks and the extracted apks are staged
+    // in one temporary directory created here, deleted once the apks are in
+    // the output directory.
+    final stagingDirectory = Directory.systemTemp.createTempSync();
+    try {
+      return await _buildApks(
+        release: release,
+        releaseArtifact: releaseArtifact,
+        stagingDirectory: stagingDirectory,
+      );
+    } finally {
+      stagingDirectory.deleteTemporarySync();
+    }
+  }
+
+  Future<int> _buildApks({
+    required Release release,
+    required ReleaseArtifact releaseArtifact,
+    required Directory stagingDirectory,
+  }) async {
+    final aabFile = await _downloadAab(
+      releaseArtifact: releaseArtifact,
+      outputPath: p.join(stagingDirectory.path, 'release.aab'),
     );
+    final apksFile = File(
+      p.join(stagingDirectory.path, '${appId}_${release.version}.apks'),
+    );
+    final extractedDirectory = Directory(
+      p.join(stagingDirectory.path, 'extracted'),
+    )..createSync();
 
     final buildApksProgress = logger.progress(
       'Building apks for release ${release.version} (app: $appId)',
@@ -144,13 +164,22 @@ class GetApksCommand extends ShorebirdCommand {
       )..createSync(recursive: true);
     }
 
-    await extractFileToDisk(apksZipFile.path, outputDirectory.path);
-
-    final apks = outputDirectory
+    // Extract somewhere fresh first, so the apks reported are the ones this
+    // run produced rather than whatever earlier runs left in the output
+    // directory.
+    await extractFileToDisk(apksZipFile.path, extractedDirectory.path);
+    final extractedApkNames = extractedDirectory
         .listSync()
         .whereType<File>()
         .where((file) => file.path.endsWith('.apk'))
+        .map((file) => p.basename(file.path))
         .toList();
+    await copyPath(extractedDirectory.path, outputDirectory.path);
+
+    final apks = [
+      for (final name in extractedApkNames)
+        File(p.join(outputDirectory.path, name)),
+    ];
     if (apks.isNotEmpty) {
       logger.info('Generated ${apks.length} apk(s):');
       for (final file in apks) {
@@ -158,8 +187,8 @@ class GetApksCommand extends ShorebirdCommand {
       }
     } else {
       logger.err(
-        'Failed to extract apks from ${apksZipFile.path} '
-        'to ${outputDirectory.path}',
+        'No apks found in the generated .apks archive for release '
+        '${release.version}.',
       );
       return ExitCode.software.code;
     }
@@ -185,12 +214,16 @@ class GetApksCommand extends ShorebirdCommand {
     );
   }
 
-  Future<File> _downloadAab({required ReleaseArtifact releaseArtifact}) async {
+  Future<File> _downloadAab({
+    required ReleaseArtifact releaseArtifact,
+    required String outputPath,
+  }) async {
     final File artifactFile;
     try {
       artifactFile = await artifactManager.downloadWithProgressUpdates(
         Uri.parse(releaseArtifact.url),
         message: 'Downloading aab',
+        outputPath: outputPath,
       );
     } on Exception catch (_) {
       throw ProcessExit(ExitCode.software.code);

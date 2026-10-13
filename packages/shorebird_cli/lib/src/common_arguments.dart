@@ -146,6 +146,18 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
     description: 'The version of the release (e.g. "1.0.0+1").',
   );
 
+  /// An argument that identifies a patch by its number within a release.
+  static const patchNumberArg = ArgumentDescriber(
+    name: 'patch-number',
+    description: 'The number of the patch (e.g. "1").',
+  );
+
+  /// An argument that identifies an organization by its id.
+  static const orgIdArg = ArgumentDescriber(
+    name: 'org-id',
+    description: 'The id of the organization (e.g. "42").',
+  );
+
   /// Help text for release version arguments in patch commands, where the
   /// version identifies which release the patch belongs to.
   static const patchReleaseVersionDescription =
@@ -173,19 +185,46 @@ symbolize" command with the right program symbol file is required to obtain a hu
 ''',
   );
 
-  /// An argument that allows the user to bypass interactive confirmations.
-  static const noConfirmArg = ArgumentDescriber(
-    name: 'no-confirm',
-    description: '''
-Bypass all confirmation messages. It's generally not advised to use this unless running from a script.
-''',
-  );
-
   /// Maximum character length for an app display name.
   static const appDisplayNameMaxLength = 128;
 
   /// Maximum character length for a track name.
   static const trackNameMaxLength = 128;
+
+  /// Checks a user-supplied name (an app display name, channel or track),
+  /// returning why it is invalid, or null if it is fine.
+  ///
+  /// A name that is empty or only whitespace is rejected, as is one longer
+  /// than [maxLength] characters. [label] names the value in the message,
+  /// e.g. "Channel name".
+  static String? nameError({
+    required String label,
+    required String value,
+    required int maxLength,
+  }) {
+    if (value.trim().isEmpty) return '$label must not be blank.';
+    if (value.length > maxLength) {
+      return '$label must be at most $maxLength characters '
+          '(got ${value.length}).';
+    }
+    return null;
+  }
+
+  /// The Dynamic Dispatch table cascade byte threshold, shared by
+  /// `shorebird release` (forwarded to the Flutter build) and
+  /// `shorebird patch` (forwarded to the linker).
+  ///
+  /// Hidden from `--help` on both commands: changing it off the default is
+  /// almost never the right call for end users. It exists for internal
+  /// testing of the cascade limiter.
+  static const ddMaxBytesArg = ArgumentDescriber(
+    name: 'dd-max-bytes',
+    description:
+        'Dynamic Dispatch table cascade byte threshold. '
+        'Functions whose transitive caller tree exceeds this many bytes '
+        'are routed through the indirect dispatch table. '
+        'Set to 0 to disable.',
+  );
 
   /// Minimum valid value for [minLinkPercentage].
   static const minLinkPercentageMin = 0;

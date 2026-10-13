@@ -38,6 +38,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AndroidPatcher, () {
     late ArgParser argParser;
     late ArgResults argResults;
@@ -449,7 +450,7 @@ Looked in:
         group('when the key pair is provided', () {
           setUp(() {
             when(
-              () => codeSigner.base64PublicKey(any()),
+              () => codeSigner.base64PublicKeyFromPem(any()),
             ).thenReturn('public_key_encoded');
           });
 
@@ -478,6 +479,35 @@ Looked in:
               ),
             ).called(1);
           });
+
+          test(
+            'passes a key from --public-key-cmd to buildAppBundle',
+            () async {
+              when(
+                () => argResults[CommonArguments.publicKeyCmd.name],
+              ).thenReturn('print-key');
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+              ).thenReturn(true);
+              when(
+                () => codeSigner.runPublicKeyCmd('print-key'),
+              ).thenAnswer((_) async => 'pem-from-cmd');
+              await runWithOverrides(patcher.buildPatchArtifact);
+
+              verify(
+                () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
+              ).called(1);
+
+              verify(
+                () => artifactBuilder.buildAppBundle(
+                  args: any(named: 'args'),
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  base64PublicKey: 'public_key_encoded',
+                ),
+              ).called(1);
+            },
+          );
         });
 
         test('returns the aab file', () async {
@@ -497,7 +527,6 @@ Looked in:
         hash: '#',
         size: 42,
         url: 'https://example.com',
-        podfileLockHash: null,
         canSideload: true,
       );
 
@@ -732,7 +761,7 @@ Looked in:
             ),
           ).thenAnswer(
             (_) async =>
-                File(p.join('test', 'fixtures', 'aabs', 'changed_asset.aab')),
+                File(p.join(fixturesDirectory, 'aabs', 'changed_asset.aab')),
           );
           when(
             () => artifactManager.createDiff(
@@ -935,19 +964,6 @@ Looked in:
           );
         },
       );
-    });
-
-    group('patchArtifactForDiffCheck', () {
-      late File aabFile;
-      setUp(() {
-        aabFile = File('');
-        when(
-          () => shorebirdAndroidArtifacts.findAab(
-            project: any(named: 'project'),
-            flavor: any(named: 'flavor'),
-          ),
-        ).thenReturn(aabFile);
-      });
     });
 
     group('updatedCreatePatchMetadata', () {

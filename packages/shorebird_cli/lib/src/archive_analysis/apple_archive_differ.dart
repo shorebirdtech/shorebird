@@ -1,4 +1,5 @@
-// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets actool
+// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec
+// cspell:words xcassets actool
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -11,6 +12,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/platform/apple/macho.dart';
 
 /// {@template apple_archive_differ}
@@ -81,23 +83,42 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     required String archivePath,
     required PathHashes pathHashes,
   }) async {
-    return Isolate.run(() async {
-      for (final file in _filesToUnsign(archivePath)) {
-        pathHashes[file.name] = await _unsignedFileHash(file);
-      }
+    // Resolved here because the isolate below does not inherit IOOverrides.
+    final tempRoot = Directory.systemTemp.path;
+    return Isolate.run(
+      () => _withArchive(archivePath, (archive) async {
+        for (final file in _filesToUnsign(archive)) {
+          pathHashes[file.name] = await _unsignedFileHash(file, tempRoot);
+        }
 
-      for (final file in _carFiles(archivePath)) {
-        pathHashes[file.name] = await _sanitizedCarFileHash(file);
-      }
+        for (final file in _carFiles(archive)) {
+          pathHashes[file.name] = await _sanitizedCarFileHash(file, tempRoot);
+        }
 
-      return pathHashes;
-    });
+        return pathHashes;
+      }),
+    );
   }
 
-  List<ArchiveFile> _filesToUnsign(String archivePath) {
-    return ZipDecoder()
-        .decodeStream(InputFileStream(archivePath))
-        .files
+  /// Decodes the zip at [archivePath], runs [body] on it, and closes the
+  /// underlying file afterwards.
+  ///
+  /// [ArchiveFile] contents are read lazily from the open file, so all work
+  /// that reads file contents must happen inside [body].
+  static Future<T> _withArchive<T>(
+    String archivePath,
+    Future<T> Function(Archive archive) body,
+  ) async {
+    final input = InputFileStream(archivePath);
+    try {
+      return await body(ZipDecoder().decodeStream(input));
+    } finally {
+      await input.close();
+    }
+  }
+
+  List<ArchiveFile> _filesToUnsign(Archive archive) {
+    return archive.files
         .where((file) => file.isFile)
         .where(
           (file) =>
@@ -109,17 +130,31 @@ class AppleArchiveDiffer extends ArchiveDiffer {
         .toList();
   }
 
-  List<ArchiveFile> _carFiles(String archivePath) {
-    return ZipDecoder()
-        .decodeStream(InputFileStream(archivePath))
-        .files
+  List<ArchiveFile> _carFiles(Archive archive) {
+    return archive.files
         .where((file) => file.isFile && p.basename(file.name) == 'Assets.car')
         .toList();
   }
 
-  Future<String> _unsignedFileHash(ArchiveFile file) async {
-    final tempDir = Directory.systemTemp.createTempSync();
-    final outPath = p.join(tempDir.path, file.name);
+  /// Deletes [dir], ignoring failure. Used in place of
+  /// `deleteTemporarySync` inside `Isolate.run`, where scoped deps such as
+  /// `logger` are unavailable, so logging a failed delete would throw.
+  static void _deleteInIsolate(Directory dir) {
+    try {
+      dir.deleteSync(recursive: true);
+    } on FileSystemException catch (_) {}
+  }
+
+  Future<String> _unsignedFileHash(ArchiveFile file, String tempRoot) async {
+    final tempDir = Directory(tempRoot).createTempSync();
+    try {
+      return await _hashUnsignedCopy(file, p.join(tempDir.path, file.name));
+    } finally {
+      _deleteInIsolate(tempDir);
+    }
+  }
+
+  Future<String> _hashUnsignedCopy(ArchiveFile file, String outPath) async {
     final outputStream = OutputFileStream(outPath);
     file.writeContent(outputStream);
     await outputStream.close();
@@ -141,13 +176,12 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     return _hash(bytes);
   }
 
-  /// Writes a json description of a .car file to a temporary location and
-  /// returns the [File].
+  /// Writes a .car file and a json description of it into [outDir] and
+  /// returns the json [File].
   ///
   /// Equivalent of running `xcrun assetutil --info /path/to/Assets.car > outfile.json`.
-  Future<File> _carJsonFile(ArchiveFile file) async {
-    final tempDir = Directory.systemTemp.createTempSync();
-    final outPath = p.join(tempDir.path, file.name);
+  Future<File> _carJsonFile(ArchiveFile file, Directory outDir) async {
+    final outPath = p.join(outDir.path, file.name);
     final outputStream = OutputFileStream(outPath);
     file.writeContent(outputStream);
     await outputStream.close();
@@ -164,9 +198,17 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   /// Uses assetutil to write a json description of a .car file to disk and
   /// hashes the contents of that file, less the values that vary
   /// build-to-build for reasons unrelated to asset content.
-  Future<String> _sanitizedCarFileHash(ArchiveFile file) async {
-    final jsonFile = await _carJsonFile(file);
-    return _hash(sanitizeCarJson(jsonFile.readAsStringSync()).codeUnits);
+  Future<String> _sanitizedCarFileHash(
+    ArchiveFile file,
+    String tempRoot,
+  ) async {
+    final tempDir = Directory(tempRoot).createTempSync();
+    try {
+      final jsonFile = await _carJsonFile(file, tempDir);
+      return _hash(sanitizeCarJson(jsonFile.readAsStringSync()).codeUnits);
+    } finally {
+      _deleteInIsolate(tempDir);
+    }
   }
 
   /// Keys in the `assetutil --info` header block that describe the toolchain
@@ -281,23 +323,32 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     final diffs = <String>[];
     for (final changedPath in fileSetDiff.changedPaths) {
       if (changedPath.endsWith('.car')) {
-        final oldCarFile = ZipDecoder()
-            .decodeStream(InputFileStream(oldArchivePath))
-            .files
-            .firstWhere((file) => file.name == changedPath);
-        final newCarFile = ZipDecoder()
-            .decodeStream(InputFileStream(newArchivePath))
-            .files
-            .firstWhere((file) => file.name == changedPath);
-        final oldCarJsonFile = await _carJsonFile(oldCarFile);
-        final newCarJsonFile = await _carJsonFile(newCarFile);
-        final diffResult = await diff.run(
-          oldCarJsonFile.path,
-          newCarJsonFile.path,
-          colorMode: DiffColorMode.always,
-          unified: true,
-        );
-        diffs.add(diffResult.stdout as String);
+        final tempDir = Directory.systemTemp.createTempSync();
+        try {
+          final oldCarJsonFile = await _withArchive(
+            oldArchivePath,
+            (archive) => _carJsonFile(
+              archive.files.firstWhere((file) => file.name == changedPath),
+              Directory(p.join(tempDir.path, 'old')),
+            ),
+          );
+          final newCarJsonFile = await _withArchive(
+            newArchivePath,
+            (archive) => _carJsonFile(
+              archive.files.firstWhere((file) => file.name == changedPath),
+              Directory(p.join(tempDir.path, 'new')),
+            ),
+          );
+          final diffResult = await diff.run(
+            oldCarJsonFile.path,
+            newCarJsonFile.path,
+            colorMode: DiffColorMode.always,
+            unified: true,
+          );
+          diffs.add(diffResult.stdout as String);
+        } finally {
+          tempDir.deleteTemporarySync();
+        }
       }
     }
     return diffs.join('\n');

@@ -8,11 +8,13 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 class _FakeDirectory extends Fake implements Directory {}
 
 void main() {
+  useTempWorkingDirectory();
   group(PubspecEditor, () {
     late ShorebirdEnv shorebirdEnv;
     late PubspecEditor pubspecEditor;

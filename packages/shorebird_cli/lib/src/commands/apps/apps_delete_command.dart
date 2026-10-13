@@ -1,35 +1,27 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template apps_delete_command}
 /// `shorebird apps delete`
 /// Permanently delete an app and every artifact belonging to it.
 /// {@endtemplate}
-class AppsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
+class AppsDeleteCommand extends ShorebirdCommand
+    with AppScopedCommand, ConfirmNameArgument {
   /// {@macro apps_delete_command}
   AppsDeleteCommand() {
-    argParser
-      ..addOption(
-        confirmNameArgName,
-        help:
-            "The app's current display name. Must match exactly, which is how "
-            'the delete is confirmed.',
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      confirmNameArgName,
+      help:
+          "The app's current display name. Must match exactly, which is how "
+          'the delete is confirmed.',
+    );
+    addAppScopeOptions();
   }
 
   @override
@@ -53,21 +45,17 @@ class AppsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
     final (:appId, :errorCode) = await resolveAppId();
     if (errorCode != null) return errorCode;
 
-    final AppMetadata app;
-    final List<Release> releases;
-    try {
-      app = await codePushClientWrapper.getApp(appId: appId);
-      releases = await codePushClientWrapper.getReleases(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final AppMetadata app;
+    late final List<Release> releases;
+    final fetchError = await guardApiCall(
+      () async {
+        app = await codePushClientWrapper.getApp(appId: appId);
+        releases = await codePushClientWrapper.getReleases(appId: appId);
+      },
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     final platforms = <String>{
       for (final release in releases)
@@ -80,18 +68,12 @@ class AppsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
     );
     if (gateErrorCode != null) return gateErrorCode;
 
-    try {
-      await codePushClientWrapper.deleteApp(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to delete app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    final deleteError = await guardApiCall(
+      () => codePushClientWrapper.deleteApp(appId: appId),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to delete app "$appId".',
+    );
+    if (deleteError != null) return deleteError;
 
     if (isJsonMode) {
       emitJsonSuccess({

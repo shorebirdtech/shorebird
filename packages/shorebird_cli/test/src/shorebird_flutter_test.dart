@@ -1,14 +1,15 @@
-// cspell:words revis precaches
+// cspell:words revis precaches ENOTEMPTY
 import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -18,16 +19,18 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdFlutter, () {
     const flutterRevision = 'flutter-revision';
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
     late Git git;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdEnv targetShorebirdEnv;
@@ -58,7 +61,7 @@ void main() {
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       targetShorebirdEnv = MockShorebirdEnv();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       process = MockShorebirdProcess();
       versionProcessResult = MockShorebirdProcessResult();
       precacheProcessResult = MockShorebirdProcessResult();
@@ -84,12 +87,6 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
       when(
-        () => git.status(
-          directory: p.join(flutterDirectory.parent.path, flutterRevision),
-          args: ['--untracked-files=no', '--porcelain'],
-        ),
-      ).thenAnswer((_) async => '');
-      when(
         () => git.fetch(directory: any(named: 'directory')),
       ).thenAnswer((_) async {});
       when(
@@ -107,8 +104,6 @@ void main() {
         ),
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.isMacOS).thenReturn(false);
-      when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -141,7 +136,7 @@ void main() {
     group('precacheArgs', () {
       group('when running on macOS', () {
         setUp(() {
-          when(() => platform.isMacOS).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
         });
 
         test('includes ios in platform list', () async {
@@ -154,7 +149,7 @@ void main() {
 
       group('when not running on macOS', () {
         setUp(() {
-          when(() => platform.isMacOS).thenReturn(false);
+          platform = platform.copyWith(operatingSystem: NativePlatform.linux);
         });
 
         test('does not include ios in platform list', () {
@@ -1183,6 +1178,40 @@ origin/flutter_release/3.10.6''';
         );
       });
 
+      test('records the use of an already installed revision', () async {
+        createCheckout();
+        precacheStamp.createSync();
+        final now = DateTime(2026, 10, 9);
+
+        await withClock(
+          Clock.fixed(now),
+          () => runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          ),
+        );
+
+        final lastUsed = File(
+          p.join(targetDirectory.path, lastUsedStampName),
+        );
+        expect(lastUsed.lastModifiedSync(), equals(now));
+      });
+
+      test('records the use of a newly installed revision', () async {
+        final now = DateTime(2026, 10, 9);
+
+        await withClock(
+          Clock.fixed(now),
+          () => runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          ),
+        );
+
+        final lastUsed = File(
+          p.join(targetDirectory.path, lastUsedStampName),
+        );
+        expect(lastUsed.lastModifiedSync(), equals(now));
+      });
+
       group('when the checkout completed but precache did not', () {
         setUp(createCheckout);
 
@@ -1297,15 +1326,30 @@ origin/flutter_release/3.10.6''';
         test(
           'reports when the incomplete install cannot be moved aside',
           () async {
-            // Making the parent read-only is the portable way to block a
-            // rename of a child that is otherwise perfectly movable.
-            final parent = targetDirectory.parent;
-            Process.runSync('chmod', ['a-w', parent.path]);
-            addTearDown(() => Process.runSync('chmod', ['u+w', parent.path]));
+            // The rename is blocked by occupying the name it moves to, not by
+            // locking the parent's mode bits. `chmod a-w` only stops a process
+            // without CAP_DAC_OVERRIDE, so a mode-based version of this test
+            // passes as an unprivileged CI user and fails as root -- in a
+            // container, a devcontainer, or a root self-hosted runner.
+            // Renaming onto a non-empty directory is ENOTEMPTY for every uid,
+            // and reaches the same FileSystemException on the same line.
+            //
+            // The destination is _reclaimablePath(dir, tag: 'old'), which is
+            // this pid and this instant, so a fixed clock is what makes it
+            // nameable from out here.
+            final now = DateTime.now();
+            final asideDirectory = Directory(
+              '${targetDirectory.path}.$pid.old'
+              '.${now.millisecondsSinceEpoch}.tmp',
+            )..createSync(recursive: true);
+            File(p.join(asideDirectory.path, 'occupied')).createSync();
 
             await expectLater(
-              runWithOverrides(
-                () => shorebirdFlutter.installRevision(revision: revision),
+              withClock(
+                Clock.fixed(now),
+                () => runWithOverrides(
+                  () => shorebirdFlutter.installRevision(revision: revision),
+                ),
               ),
               throwsA(isA<CacheCorruptedException>()),
             );
@@ -1419,7 +1463,9 @@ origin/flutter_release/3.10.6''';
         test(
           'keeps a Windows install whose launcher is flutter.bat',
           () async {
-            when(() => platform.isWindows).thenReturn(true);
+            platform = platform.copyWith(
+              operatingSystem: NativePlatform.windows,
+            );
             File(
               p.join(targetDirectory.path, 'bin', 'flutter.bat'),
             ).createSync(recursive: true);
@@ -1875,71 +1921,6 @@ origin/flutter_release/3.10.6''';
       });
     });
 
-    group('isPorcelain', () {
-      test('returns true when status is empty', () async {
-        await expectLater(
-          runWithOverrides(() => shorebirdFlutter.isUnmodified()),
-          completion(isTrue),
-        );
-        verify(
-          () => git.status(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            args: ['--untracked-files=no', '--porcelain'],
-          ),
-        ).called(1);
-      });
-
-      test('returns false when status is not empty', () async {
-        when(
-          () => git.status(
-            directory: any(named: 'directory'),
-            args: any(named: 'args'),
-          ),
-        ).thenAnswer((_) async => 'M some/file');
-        await expectLater(
-          runWithOverrides(() => shorebirdFlutter.isUnmodified()),
-          completion(isFalse),
-        );
-        verify(
-          () => git.status(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            args: ['--untracked-files=no', '--porcelain'],
-          ),
-        ).called(1);
-      });
-
-      test(
-        'throws ProcessException when git command exits non-zero code',
-        () async {
-          const errorMessage = 'oh no!';
-          when(
-            () => git.status(
-              directory: any(named: 'directory'),
-              args: any(named: 'args'),
-            ),
-          ).thenThrow(
-            ProcessException(
-              'git',
-              ['status'],
-              errorMessage,
-              ExitCode.software.code,
-            ),
-          );
-
-          expect(
-            runWithOverrides(() => shorebirdFlutter.isUnmodified()),
-            throwsA(
-              isA<ProcessException>().having(
-                (e) => e.message,
-                'message',
-                errorMessage,
-              ),
-            ),
-          );
-        },
-      );
-    });
-
     group('formatVersion', () {
       test('returns the correct formatted value', () {
         expect(
@@ -1965,6 +1946,214 @@ origin/flutter_release/3.10.6''';
             equals('unknown (771d07b2cf)'),
           );
         });
+      });
+    });
+
+    group('pruneUnusedRevisions', () {
+      const pinned = '1111111111111111111111111111111111111111';
+      const running = '2222222222222222222222222222222222222222';
+      const stale = '3333333333333333333333333333333333333333';
+      const recent = '4444444444444444444444444444444444444444';
+      final now = DateTime(2026, 10, 9);
+      late Directory flutterCache;
+
+      Directory install(String revision, {DateTime? lastUsed}) {
+        final directory = Directory(p.join(flutterCache.path, revision))
+          ..createSync(recursive: true);
+        if (lastUsed != null) {
+          File(p.join(directory.path, lastUsedStampName))
+            ..createSync()
+            ..setLastModifiedSync(lastUsed);
+        }
+        return directory;
+      }
+
+      DateTime lastUsedOf(String revision) => File(
+        p.join(flutterCache.path, revision, lastUsedStampName),
+      ).lastModifiedSync();
+
+      List<String> prune({DateTime? at}) => withClock(
+        Clock.fixed(at ?? now),
+        () => runWithOverrides(shorebirdFlutter.pruneUnusedRevisions),
+      );
+
+      setUp(() {
+        flutterCache = flutterDirectory.parent;
+        when(() => shorebirdEnv.flutterRevision).thenReturn(pinned);
+        platform = platform.copyWith(
+          resolvedExecutable: p.join(
+            flutterCache.path,
+            running,
+            'bin',
+            'cache',
+            'dart-sdk',
+            'bin',
+            'dart',
+          ),
+        );
+      });
+
+      test('removes revisions unused for longer than the max age', () {
+        final staleDirectory = install(
+          stale,
+          lastUsed: now.subtract(const Duration(days: 31)),
+        );
+        final recentDirectory = install(
+          recent,
+          lastUsed: now.subtract(const Duration(days: 29)),
+        );
+
+        expect(prune(), equals([stale]));
+        expect(staleDirectory.existsSync(), isFalse);
+        expect(recentDirectory.existsSync(), isTrue);
+        expect(
+          flutterCache.listSync().map((e) => p.basename(e.path)),
+          isNot(contains(endsWith('.tmp'))),
+        );
+      });
+
+      test("falls back to the directory's mtime without a marker", () {
+        final directory = install(stale);
+        final installed = directory.statSync().modified;
+
+        expect(prune(at: installed.add(const Duration(days: 29))), isEmpty);
+        expect(directory.existsSync(), isTrue);
+
+        expect(
+          prune(at: installed.add(const Duration(days: 31))),
+          equals([stale]),
+        );
+        expect(directory.existsSync(), isFalse);
+      });
+
+      test('keeps the pinned revision and records its use', () {
+        final directory = install(
+          pinned,
+          lastUsed: now.subtract(const Duration(days: 365)),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        expect(lastUsedOf(pinned), equals(now));
+      });
+
+      test('keeps the revision running this process and records its use', () {
+        final directory = install(
+          running,
+          lastUsed: now.subtract(const Duration(days: 365)),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        expect(lastUsedOf(running), equals(now));
+      });
+
+      test('recognizes the running revision through a symlinked root', () {
+        final realCache = Directory.systemTemp.createTempSync();
+        final linkedCache = Link(
+          p.join(Directory.systemTemp.createTempSync().path, 'linked'),
+        )..createSync(realCache.path);
+        flutterCache = Directory(linkedCache.path);
+        when(
+          () => shorebirdEnv.flutterDirectory,
+        ).thenReturn(Directory(p.join(linkedCache.path, 'flutter')));
+        platform = platform.copyWith(
+          resolvedExecutable: p.join(
+            realCache.resolveSymbolicLinksSync(),
+            running,
+            'bin',
+            'cache',
+            'dart-sdk',
+            'bin',
+            'dart',
+          ),
+        );
+        final directory = install(
+          running,
+          lastUsed: now.subtract(const Duration(days: 365)),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+      });
+
+      test('protects only the pin when running from outside the cache', () {
+        platform = platform.copyWith(resolvedExecutable: '/usr/bin/dart');
+        install(running, lastUsed: now.subtract(const Duration(days: 31)));
+
+        expect(prune(), equals([running]));
+      });
+
+      test('keeps going when a use cannot be recorded', () {
+        // A directory where the marker file belongs makes recording fail.
+        Directory(
+          p.join(flutterCache.path, pinned, lastUsedStampName),
+        ).createSync(recursive: true);
+        install(stale, lastUsed: now.subtract(const Duration(days: 31)));
+
+        expect(prune(), equals([stale]));
+        verify(
+          () => logger.detail(any(that: contains('Failed to record use'))),
+        ).called(1);
+      });
+
+      test('skips a revision it cannot move aside', () {
+        final directory = install(
+          stale,
+          lastUsed: now.subtract(const Duration(days: 31)),
+        );
+        // The clock is fixed, so the move's destination is predictable.
+        // Occupying it makes the rename fail.
+        File(
+          p.join(
+            '${directory.path}.$pid.unused.${now.millisecondsSinceEpoch}.tmp',
+            'occupied',
+          ),
+        ).createSync(recursive: true);
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        verify(
+          () => logger.detail(any(that: contains('Failed to move aside'))),
+        ).called(1);
+      });
+
+      test('leaves directories that are not revisions alone', () {
+        final other = Directory(p.join(flutterCache.path, 'not-a-revision'))
+          ..createSync(recursive: true);
+
+        expect(prune(at: now.add(const Duration(days: 365))), isEmpty);
+        expect(other.existsSync(), isTrue);
+      });
+
+      test('reclaims directories a failed removal left behind', () {
+        final leftover = Directory(
+          p.join(
+            flutterCache.path,
+            '$stale.9999.unused.'
+            '${now.subtract(const Duration(days: 2)).millisecondsSinceEpoch}'
+            '.tmp',
+          ),
+        )..createSync(recursive: true);
+        final inProgress = Directory(
+          p.join(
+            flutterCache.path,
+            '$recent.9999.${now.millisecondsSinceEpoch}.tmp',
+          ),
+        )..createSync(recursive: true);
+
+        prune();
+
+        expect(leftover.existsSync(), isFalse);
+        expect(inProgress.existsSync(), isTrue);
+      });
+
+      test('does nothing when no Flutter has been installed', () {
+        when(() => shorebirdEnv.flutterDirectory).thenReturn(
+          Directory(p.join(shorebirdRoot.path, 'missing', 'flutter')),
+        );
+
+        expect(prune(), isEmpty);
       });
     });
   });

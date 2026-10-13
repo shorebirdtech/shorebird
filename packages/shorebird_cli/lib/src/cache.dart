@@ -9,7 +9,9 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -54,6 +56,17 @@ class Cache {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsArtifact(cache: this, platform: platform));
+    if (platform.isMacOS) {
+      for (final targetArch in AnalyzeSnapshotMacosArtifact.targetArchs) {
+        registerArtifact(
+          AnalyzeSnapshotMacosArtifact(
+            cache: this,
+            platform: platform,
+            targetArch: targetArch,
+          ),
+        );
+      }
+    }
   }
 
   /// Register a new [CachedArtifact] with the cache.
@@ -76,23 +89,74 @@ class Cache {
       phase: SetupPhase.shorebirdCache,
       body: () async {
         for (final artifact in _artifacts) {
-          if (await artifact.isValid()) {
-            continue;
+          if (!await artifact.isValid()) {
+            await retry(
+              artifact.update,
+              maxAttempts: 3,
+              delayFactor: retryDelayFactor,
+              onRetry: (e) {
+                logger
+                  ..detail('Failed to update ${artifact.fileName}, retrying...')
+                  ..detail(e.toString());
+              },
+            );
           }
-
-          await retry(
-            artifact.update,
-            maxAttempts: 3,
-            delayFactor: retryDelayFactor,
-            onRetry: (e) {
-              logger
-                ..detail('Failed to update ${artifact.fileName}, retrying...')
-                ..detail(e.toString());
-            },
-          );
+          _markRevisionUsed(artifact);
         }
       },
     );
+  }
+
+  /// Records the use of [artifact]'s per-engine-revision directory, if it
+  /// has one, so [pruneUnusedArtifacts] keeps it.
+  void _markRevisionUsed(CachedArtifact artifact) {
+    final directory = artifact.file.parent;
+    if (!revisionDirectoryPattern.hasMatch(p.basename(directory.path))) return;
+    if (directory.existsSync()) markUsed(directory);
+  }
+
+  /// Removes per-engine-revision artifact directories (for example
+  /// `bin/cache/artifacts/aot-tools/<engine revision>`) that have not been
+  /// used within [unusedCacheMaxAge], and returns the paths removed.
+  ///
+  /// Never removes the pinned Flutter's engine revision, and records it as
+  /// used, so it gets the full [unusedCacheMaxAge] once it stops being
+  /// pinned. Reads the pin from [shorebirdEnv], so call this outside any
+  /// `flutterRevisionOverride` scope. Does nothing when the pinned engine
+  /// revision cannot be read, since it cannot then be protected.
+  ///
+  /// Artifacts that live directly in their artifact directory (`patch`,
+  /// `bundletool`) are replaced in place on update and are never pruned. A
+  /// partially deleted revision directory fails [CachedArtifact.isValid] and
+  /// is downloaded again on its next use.
+  List<String> pruneUnusedArtifacts() {
+    final artifactsDirectory = shorebirdArtifactsDirectory;
+    if (!artifactsDirectory.existsSync()) return const [];
+
+    final String pinned;
+    try {
+      pinned = shorebirdEnv.shorebirdEngineRevision;
+    } on CacheCorruptedException catch (error) {
+      logger.detail('Not pruning artifacts: $error');
+      return const [];
+    }
+
+    final removed = <String>[];
+    for (final artifactDirectory
+        in artifactsDirectory.listSync().whereType<Directory>()) {
+      for (final revisionDirectory
+          in artifactDirectory.listSync().whereType<Directory>()) {
+        if (p.basename(revisionDirectory.path) == pinned) {
+          markUsed(revisionDirectory);
+          continue;
+        }
+        if (!isUnusedRevisionDirectory(revisionDirectory)) continue;
+        if (deleteIgnoringErrors(revisionDirectory)) {
+          removed.add(revisionDirectory.path);
+        }
+      }
+    }
+    return removed;
   }
 
   /// Get a named directory from with the cache's artifact directory;
@@ -110,6 +174,104 @@ class Cache {
       p.join(shorebirdPreviewsDirectory.path, p.withoutExtension(name)),
     );
   }
+
+  /// Suffix of the marker recording when a cached preview artifact was last
+  /// used.
+  ///
+  /// The marker sits beside the artifact rather than inside it: an extra file
+  /// in an `.app` bundle's root would break its code signature.
+  static const previewLastUsedSuffix = '.shorebird_last_used';
+
+  /// Records that the preview artifact at [artifactPath] was used just now.
+  void markPreviewUsed(String artifactPath) =>
+      touchStamp(File('$artifactPath$previewLastUsedSuffix'));
+
+  /// The most previews [pruneUnusedPreviews] keeps, however recently used.
+  static const maxCachedPreviews = 10;
+
+  /// Removes cached previews (`bin/cache/previews/<app>/<artifact>`) beyond
+  /// the [maxCachedPreviews] most recently used, and any not used within
+  /// [unusedCacheMaxAge], and returns the paths removed.
+  ///
+  /// A preview is every artifact sharing a name up to its extension (see
+  /// [_previewName]), so an Android release's `.aab` and the `.apks` built
+  /// from it count once. Also
+  /// removes markers whose artifact is gone and app directories left empty.
+  /// A pruned preview is downloaded again on its next run.
+  List<String> pruneUnusedPreviews() {
+    final previewsDirectory = shorebirdPreviewsDirectory;
+    if (!previewsDirectory.existsSync()) return const [];
+    final appDirectories = previewsDirectory
+        .listSync()
+        .whereType<Directory>()
+        .toList();
+
+    final previews = <String, List<FileSystemEntity>>{};
+    for (final appDirectory in appDirectories) {
+      for (final artifact in appDirectory.listSync()) {
+        if (artifact.path.endsWith(previewLastUsedSuffix)) continue;
+        previews
+            .putIfAbsent(_previewName(artifact.path), () => [])
+            .add(artifact);
+      }
+    }
+
+    DateTime lastUsedOf(List<FileSystemEntity> artifacts) => artifacts
+        .map(
+          (artifact) => stampedTime(
+            stamp: File('${artifact.path}$previewLastUsedSuffix'),
+            fallback: artifact,
+          ),
+        )
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+
+    final byRecency = [
+      for (final artifacts in previews.values)
+        (artifacts: artifacts, lastUsed: lastUsedOf(artifacts)),
+    ]..sort((a, b) => b.lastUsed.compareTo(a.lastUsed));
+
+    final removed = <String>[];
+    for (final (index, preview) in byRecency.indexed) {
+      if (index < maxCachedPreviews && !isUnusedSince(preview.lastUsed)) {
+        continue;
+      }
+      for (final artifact in preview.artifacts) {
+        if (deleteIgnoringErrors(artifact)) removed.add(artifact.path);
+      }
+    }
+
+    for (final appDirectory in appDirectories) {
+      for (final stamp in appDirectory.listSync().whereType<File>()) {
+        if (!stamp.path.endsWith(previewLastUsedSuffix)) continue;
+        final artifactPath = stamp.path.substring(
+          0,
+          stamp.path.length - previewLastUsedSuffix.length,
+        );
+        if (FileSystemEntity.typeSync(artifactPath) ==
+            FileSystemEntityType.notFound) {
+          deleteIgnoringErrors(stamp);
+        }
+      }
+      if (appDirectory.listSync().isEmpty) deleteIgnoringErrors(appDirectory);
+    }
+    return removed;
+  }
+
+  /// The preview a cached artifact at [path] belongs to: its path without the
+  /// file extension, if it has one.
+  ///
+  /// Names are `<platform>_<version>_<artifact id>[.<extension>]`, and the
+  /// version has dots of its own, so `linux_1.0.0_42` has no extension to
+  /// strip. Only a purely alphabetic suffix (`.aab`, `.apks`, `.app`, `.exe`)
+  /// is one.
+  static String _previewName(String path) {
+    final extension = p.extension(path);
+    return _previewExtension.hasMatch(extension)
+        ? path.substring(0, path.length - extension.length)
+        : path;
+  }
+
+  static final _previewExtension = RegExp(r'^\.[a-z]+$');
 
   /// The Shorebird cache directory.
   static Directory get shorebirdCacheDirectory {
@@ -154,7 +316,7 @@ abstract class CachedArtifact {
   final Cache cache;
 
   /// The platform to use.
-  final Platform platform;
+  final NativePlatform platform;
 
   /// The on-disk name of the artifact.
   String get fileName;
@@ -220,6 +382,7 @@ abstract class CachedArtifact {
     try {
       response = await httpClient.send(request);
     } catch (error) {
+      updateProgress.fail();
       throw CacheUpdateFailure('''
 Failed to download $fileName: $error
 If you're behind a firewall/proxy, please, make sure shorebird_cli is
@@ -231,6 +394,7 @@ allowed to access $url.''');
         logger.detail(
           '[cache] optional artifact: "$fileName" was not found, skipping...',
         );
+        updateProgress.cancel();
         return;
       }
 
@@ -252,25 +416,30 @@ allowed to access $url.''');
     }
 
     final expectedChecksum = checksum;
-    if (expectedChecksum != null) {
-      if (!checksumChecker.checkFile(file, expectedChecksum)) {
-        extractProgress.fail();
-        // Delete the artifact directory, so if the download is retried, it will
-        // be re-downloaded.
-        artifactDirectory.deleteSync(recursive: true);
-        throw CacheUpdateFailure(
-          '''Failed to download $fileName: checksum mismatch''',
-        );
-      } else {
-        logger.detail(
-          '''No checksum provided for $fileName, skipping file corruption validation''',
-        );
-      }
+    if (expectedChecksum == null) {
+      logger.detail(
+        '''No checksum provided for $fileName, skipping file corruption validation''',
+      );
+    } else if (!checksumChecker.checkFile(file, expectedChecksum)) {
+      extractProgress.fail();
+      // Delete the artifact directory, so if the download is retried, it will
+      // be re-downloaded.
+      artifactDirectory.deleteSync(recursive: true);
+      throw CacheUpdateFailure(
+        '''Failed to download $fileName: checksum mismatch''',
+      );
     }
 
     if (!platform.isWindows && isExecutable) {
       final result = await process.start('chmod', ['+x', file.path]);
-      await result.exitCode;
+      final exitCode = await result.exitCode;
+      if (exitCode != 0) {
+        extractProgress.fail('Failed to make $fileName executable');
+        // No stamp is written, so the next run downloads the artifact again.
+        throw CacheUpdateFailure(
+          '''Failed to make $fileName executable: chmod exited with code $exitCode''',
+        );
+      }
     }
 
     extractProgress.complete();
@@ -329,6 +498,57 @@ class AotToolsArtifact extends CachedArtifact {
   String? get checksum => null;
 }
 
+/// {@template analyze_snapshot_macos_artifact}
+/// The macOS analyze_snapshot executable for one target architecture.
+/// Used to extract the Dart snapshot regions of a macOS release, which macOS
+/// patches are diffed against.
+/// {@endtemplate}
+class AnalyzeSnapshotMacosArtifact extends CachedArtifact {
+  /// {@macro analyze_snapshot_macos_artifact}
+  AnalyzeSnapshotMacosArtifact({
+    required super.cache,
+    required super.platform,
+    required this.targetArch,
+  });
+
+  /// The target architectures with a published analyze_snapshot.
+  static const targetArchs = ['arm64', 'x64'];
+
+  /// The architecture of the snapshots this executable reads.
+  final String targetArch;
+
+  /// The artifact name for the given [targetArch].
+  static String fileNameFor(String targetArch) =>
+      'analyze-snapshot-macos-$targetArch';
+
+  @override
+  String get fileName => fileNameFor(targetArch);
+
+  @override
+  bool get isExecutable => true;
+
+  /// Only published for engines whose updater patches macOS against the Dart
+  /// snapshot regions rather than the whole App binary.
+  @override
+  bool get required => false;
+
+  @override
+  File get file => File(
+    p.join(
+      cache.getArtifactDirectory(fileName).path,
+      shorebirdEnv.shorebirdEngineRevision,
+      fileName,
+    ),
+  );
+
+  @override
+  Future<String> get storageUrl async =>
+      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
+
+  @override
+  String? get checksum => null;
+}
+
 /// {@template patch_artifact}
 /// The patch artifact which is used to apply binary patches.
 /// {@endtemplate}
@@ -348,12 +568,17 @@ class PatchArtifact extends CachedArtifact {
     String outputPath,
   ) async {
     final tempDir = Directory.systemTemp.createTempSync();
-    final artifactPath = p.join(tempDir.path, '$fileName.zip');
-    await stream.pipe(File(artifactPath).openWrite());
-    await artifactManager.extractZip(
-      zipFile: File(artifactPath),
-      outputDirectory: Directory(outputPath),
-    );
+    try {
+      final artifactPath = p.join(tempDir.path, '$fileName.zip');
+      await stream.pipe(File(artifactPath).openWrite());
+      await artifactManager.extractZip(
+        zipFile: File(artifactPath),
+        outputDirectory: Directory(outputPath),
+      );
+    } finally {
+      // Only the downloaded zip lives here; it's extracted to [outputPath].
+      tempDir.deleteTemporarySync();
+    }
   }
 
   @override

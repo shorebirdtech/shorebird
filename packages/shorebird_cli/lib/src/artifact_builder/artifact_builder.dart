@@ -104,7 +104,7 @@ the underlying `flutter build` failure must be resolved for Shorebird to
 build a release.
 
 • If `flutter build` completes successfully, please ensure that you are
-providing the desired flutter version to the release command via 
+providing the desired flutter version to the release command via
 the `--flutter-version` option. If you do not specify a `--flutter-version`
 Shorebird will default to the latest stable version of Flutter.
 We strongly encourage always specifying an explicit Flutter version:
@@ -188,63 +188,33 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     String? base64PublicKey,
     int? ddMaxBytes,
   }) async {
-    await _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-      final arguments = [
-        'build',
-        'appbundle',
-        '--release',
-        if (flavor != null) '--flavor=$flavor',
-        if (target != null) '--target=$target',
-        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        ...await _traceArgs('appbundle'),
-        ...args,
-      ];
-
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
-
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build AAB.
-Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          fixRecommendation: _androidBuildFixRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
-    });
+    final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+    await _runShorebirdBuildCommand(
+      () => _runFlutterBuild(
+        command: 'appbundle',
+        description: 'AAB',
+        flags: [
+          '--release',
+          if (flavor != null) '--flavor=$flavor',
+          if (target != null) '--target=$target',
+          if (targetPlatformArgs != null)
+            '--target-platform=$targetPlatformArgs',
+        ],
+        args: args,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+        fixRecommendation: _androidBuildFixRecommendation,
+      ),
+    );
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    try {
-      return shorebirdAndroidArtifacts.findAab(
+    return _findBuiltArtifact(
+      'AAB',
+      () => shorebirdAndroidArtifacts.findAab(
         project: projectRoot,
         flavor: flavor,
-      );
-    } on MultipleArtifactsFoundException catch (error) {
-      throw ArtifactBuildException(
-        'Build succeeded, but it generated multiple AABs in the '
-        'build directory. ${error.foundArtifacts.map((e) => e.path)}',
-      );
-    } on ArtifactNotFoundException catch (error) {
-      throw ArtifactBuildException(
-        'Build succeeded, but could not find the AAB in the build directory. '
-        'Expected to find ${error.artifactName}',
-      );
-    }
+      ),
+    );
   }
 
   /// Builds an APK using `flutter build apk`. Runs `flutter pub get` with the
@@ -259,67 +229,38 @@ Reason: Exited with code $exitCode.''',
     String? base64PublicKey,
     int? ddMaxBytes,
   }) async {
-    await _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-      final arguments = [
-        'build',
-        'apk',
-        '--release',
-        if (flavor != null) '--flavor=$flavor',
-        if (target != null) '--target=$target',
-        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        // TODO(bryanoltman): reintroduce coverage when we can support this.
-        // See https://github.com/shorebirdtech/shorebird/issues/1141.
-        // coverage:ignore-start
-        if (splitPerAbi) '--split-per-abi',
-        // coverage:ignore-end
-        ...await _traceArgs('apk'),
-        ...args,
-      ];
+    final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+    await _runShorebirdBuildCommand(
+      () => _runFlutterBuild(
+        command: 'apk',
+        description: 'APK',
+        flags: [
+          '--release',
+          if (flavor != null) '--flavor=$flavor',
+          if (target != null) '--target=$target',
+          if (targetPlatformArgs != null)
+            '--target-platform=$targetPlatformArgs',
+          // TODO(bryanoltman): reintroduce coverage when we can support this.
+          // See https://github.com/shorebirdtech/shorebird/issues/1141.
+          // coverage:ignore-start
+          if (splitPerAbi) '--split-per-abi',
+          // coverage:ignore-end
+        ],
+        args: args,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+        fixRecommendation: _androidBuildFixRecommendation,
+      ),
+    );
 
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
-
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build APK.
-Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          fixRecommendation: _androidBuildFixRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
-    });
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    try {
-      return shorebirdAndroidArtifacts.findApk(
+    return _findBuiltArtifact(
+      'APK',
+      () => shorebirdAndroidArtifacts.findApk(
         project: projectRoot,
         flavor: flavor,
-      );
-    } on MultipleArtifactsFoundException catch (error) {
-      throw ArtifactBuildException(
-        'Build succeeded, but it generated multiple APKs in the '
-        'build directory. ${error.foundArtifacts.map((e) => e.path)}',
-      );
-    } on ArtifactNotFoundException catch (error) {
-      throw ArtifactBuildException(
-        'Build succeeded, but could not find the APK in the build directory. '
-        'Expected to find ${error.artifactName}',
-      );
-    }
+      ),
+    );
   }
 
   /// Builds an AAR using `flutter build aar`. Runs `flutter pub get` with the
@@ -332,45 +273,24 @@ Reason: Exited with code $exitCode.''',
     String? base64PublicKey,
     int? ddMaxBytes,
   }) async {
-    return _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-      final arguments = [
-        'build',
-        'aar',
-        '--no-debug',
-        '--no-profile',
-        '--build-number=$buildNumber',
-        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        ...await _traceArgs('aar'),
-        ...args,
-      ];
-
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
-
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build AAR.
-Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          fixRecommendation: _androidBuildFixRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
-    });
+    final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+    await _runShorebirdBuildCommand(
+      () => _runFlutterBuild(
+        command: 'aar',
+        description: 'AAR',
+        flags: [
+          '--no-debug',
+          '--no-profile',
+          '--build-number=$buildNumber',
+          if (targetPlatformArgs != null)
+            '--target-platform=$targetPlatformArgs',
+        ],
+        args: args,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+        fixRecommendation: _androidBuildFixRecommendation,
+      ),
+    );
   }
 
   /// Builds a Linux desktop application by running `flutter build linux
@@ -381,42 +301,16 @@ Reason: Exited with code $exitCode.''',
     String? base64PublicKey,
     int? ddMaxBytes,
   }) async {
-    await _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final arguments = [
-        'build',
-        'linux',
-        '--release',
-        if (target != null) '--target=$target',
-        ...await _traceArgs('linux'),
-        ...args,
-      ];
-
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
-
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build linux app.
-Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
-    });
+    await _runShorebirdBuildCommand(
+      () => _runFlutterBuild(
+        command: 'linux',
+        description: 'linux app',
+        flags: ['--release', if (target != null) '--target=$target'],
+        args: args,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      ),
+    );
   }
 
   /// Builds a macOS app using `flutter build macos`. Runs `flutter pub get`
@@ -429,65 +323,20 @@ Reason: Exited with code $exitCode.''',
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
-  }) async {
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
-    // is necessary because we always look for a recently modified app.dill.
-    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
-    if (dartToolDir.existsSync()) {
-      dartToolDir.deleteSync(recursive: true);
-    }
-    String? appDillPath;
-    await _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final arguments = [
-        'build',
-        'macos',
+  }) {
+    return _buildAppleKernel(
+      command: 'macos',
+      description: 'macOS app',
+      flags: [
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        ...await _traceArgs('macos'),
-        ...args,
-      ];
-      final buildStart = clock.now();
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
-
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build macOS app.
-Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
-
-      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
-    });
-
-    if (appDillPath == null) {
-      throw ArtifactBuildException(
-        'Unable to find app.dill file.',
-        fixRecommendation:
-            '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
-      );
-    }
-
-    return AppleBuildResult(kernelFile: File(appDillPath!));
+      ],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
+    );
   }
 
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build
@@ -499,55 +348,137 @@ Reason: Exited with code $exitCode.''',
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
-  }) async {
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
-    // is necessary because we always look for a recently modified app.dill.
-    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
-    if (dartToolDir.existsSync()) {
-      dartToolDir.deleteSync(recursive: true);
-    }
-
-    String? appDillPath;
-    await _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final arguments = [
-        'build',
-        'ipa',
+  }) {
+    return _buildAppleKernel(
+      command: 'ipa',
+      description: 'IPA',
+      flags: [
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        ...await _traceArgs('ipa'),
-        ...args,
-      ];
+      ],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
+    );
+  }
 
-      final buildStart = clock.now();
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
+  /// Builds a release iOS framework (.xcframework) for the current project.
+  Future<AppleBuildResult> buildIosFramework({
+    List<String> args = const [],
+    String? base64PublicKey,
+    int? ddMaxBytes,
+  }) {
+    return _buildAppleKernel(
+      command: 'ios-framework',
+      description: 'iOS framework',
+      flags: ['--no-debug', '--no-profile'],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
+    );
+  }
 
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build IPA.
+  /// Runs `flutter build [command]` with [flags], the tracing args and [args],
+  /// using Shorebird's fork of Flutter.
+  ///
+  /// Throws an [ArtifactBuildException] naming [description] if the build
+  /// fails, with [fixRecommendation] applied to the full command. Returns the
+  /// time just before `flutter` was spawned, so callers can find the files the
+  /// build produced.
+  Future<DateTime> _runFlutterBuild({
+    required String command,
+    required String description,
+    required List<String> flags,
+    required List<String> args,
+    required String? base64PublicKey,
+    required int? ddMaxBytes,
+    String Function(String buildCommand) fixRecommendation =
+        runVanillaFlutterBuildRecommendation,
+  }) async {
+    const executable = 'flutter';
+    final arguments = [
+      'build',
+      command,
+      ...flags,
+      ...await _traceArgs(command),
+      ...args,
+    ];
+
+    final buildStart = clock.now();
+    final exitCode = await process.stream(
+      executable,
+      arguments,
+      environment: buildEnvironment(
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      ),
+      // Never run in shell because we always have a fully resolved
+      // executable path.
+      runInShell: false,
+      onStart: _emitFlutterSpawnFlow,
+    );
+
+    if (exitCode != ExitCode.success.code) {
+      throw ArtifactBuildException(
+        '''
+Failed to build $description.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
+        fixRecommendation: fixRecommendation(
+          [executable, ...arguments].join(' '),
+        ),
+      );
+    }
 
+    return buildStart;
+  }
+
+  /// Runs an Apple `flutter build [command]` (see [_runFlutterBuild]) and
+  /// returns the app.dill it produced.
+  Future<AppleBuildResult> _buildAppleKernel({
+    required String command,
+    required String description,
+    required List<String> flags,
+    required List<String> args,
+    required String? base64PublicKey,
+    required int? ddMaxBytes,
+  }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete Flutter's build cache so every target re-runs. We look for a
+    // recently modified app.dill, which a skipped kernel step would not write.
+    // A cached build would also be stale here: the SHOREBIRD_PUBLIC_KEY and
+    // (on iOS only; the macOS DD pass is skipped) SHOREBIRD_DD_MAX_BYTES
+    // environment variables change the build's output but are not inputs
+    // Flutter's build system tracks.
+    final flutterBuildDir = _flutterBuildDirectory(projectRoot);
+    if (flutterBuildDir.existsSync()) {
+      flutterBuildDir.deleteSync(recursive: true);
+    }
+    // Delete .dart_tool/version so `flutter build` runs `pub get` with
+    // Shorebird's Flutter. After the previous build we reset
+    // package_config.json with the system Flutter (see
+    // [_runShorebirdBuildCommand]), and Flutter skips `pub get` when this file
+    // matches its version, which can be shared by several Flutter checkouts.
+    // The rest of .dart_tool (build_runner and native asset caches) is kept.
+    final dartToolVersionFile = File(
+      p.join(projectRoot.path, '.dart_tool', 'version'),
+    );
+    if (dartToolVersionFile.existsSync()) {
+      dartToolVersionFile.deleteSync();
+    }
+
+    String? appDillPath;
+    await _runShorebirdBuildCommand(() async {
+      final buildStart = await _runFlutterBuild(
+        command: command,
+        description: description,
+        flags: flags,
+        args: args,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      );
       appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
@@ -562,69 +493,22 @@ Reason: Exited with code $exitCode.''',
     return AppleBuildResult(kernelFile: File(appDillPath!));
   }
 
-  /// Builds a release iOS framework (.xcframework) for the current project.
-  Future<AppleBuildResult> buildIosFramework({
-    List<String> args = const [],
-    String? base64PublicKey,
-    int? ddMaxBytes,
-  }) async {
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
-    // is necessary because we always look for a recently modified app.dill.
-    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
-    if (dartToolDir.existsSync()) {
-      dartToolDir.deleteSync(recursive: true);
-    }
-    String? appDillPath;
-    await _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final arguments = [
-        'build',
-        'ios-framework',
-        '--no-debug',
-        '--no-profile',
-        ...await _traceArgs('ios-framework'),
-        ...args,
-      ];
-
-      final buildStart = clock.now();
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
-
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build iOS framework.
-Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
-
-      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
-    });
-
-    if (appDillPath == null) {
+  /// Returns the artifact found by [find], turning a missing or ambiguous
+  /// [name] (e.g. "AAB") into an [ArtifactBuildException].
+  File _findBuiltArtifact(String name, File Function() find) {
+    try {
+      return find();
+    } on MultipleArtifactsFoundException catch (error) {
       throw ArtifactBuildException(
-        'Unable to find app.dill file.',
-        fixRecommendation:
-            '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
+        'Build succeeded, but it generated multiple ${name}s in the '
+        'build directory. ${error.foundArtifacts.map((e) => e.path)}',
+      );
+    } on ArtifactNotFoundException catch (error) {
+      throw ArtifactBuildException(
+        'Build succeeded, but could not find the $name in the build directory. '
+        'Expected to find ${error.artifactName}',
       );
     }
-
-    return AppleBuildResult(kernelFile: File(appDillPath!));
   }
 
   /// Prepares build tracing for the current command invocation. Populates
@@ -680,7 +564,7 @@ Reason: Exited with code $exitCode.''',
 
   /// Returns the user's home directory as understood by the OS, or
   /// null if neither `HOME` nor `USERPROFILE` is set. Reads from the
-  /// scoped [platform] (same pattern as e.g. `android_studio.dart`)
+  /// scoped `platform` (same pattern as e.g. `android_studio.dart`)
   /// rather than static `Platform.environment` so tests can inject a
   /// fake environment.
   Directory? _homeDirectory() {
@@ -856,57 +740,42 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     String? base64PublicKey,
     int? ddMaxBytes,
   }) async {
-    await _runShorebirdBuildCommand(() async {
-      const executable = 'flutter';
-      final arguments = [
-        'build',
-        'windows',
-        '--release',
-        if (target != null) '--target=$target',
-        ...await _traceArgs('windows'),
-        ...args,
-      ];
-
-      final exitCode = await process.stream(
-        executable,
-        arguments,
-        environment: buildEnvironment(
-          base64PublicKey: base64PublicKey,
-          ddMaxBytes: ddMaxBytes,
-        ),
-        // Never run in shell because we always have a fully resolved
-        // executable path.
-        runInShell: false,
-        onStart: _emitFlutterSpawnFlow,
-      );
-
-      if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
-Failed to build windows app.
-Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
-            [executable, ...arguments].join(' '),
-          ),
-        );
-      }
-    });
+    await _runShorebirdBuildCommand(
+      () => _runFlutterBuild(
+        command: 'windows',
+        description: 'windows app',
+        flags: ['--release', if (target != null) '--target=$target'],
+        args: args,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      ),
+    );
 
     return artifactManager.getWindowsReleaseDirectory();
   }
 
+  /// The directory under [projectRoot] where Flutter's build system keeps its
+  /// cache and intermediate outputs, including app.dill.
+  Directory _flutterBuildDirectory(Directory projectRoot) =>
+      Directory(p.join(projectRoot.path, '.dart_tool', 'flutter_build'));
+
   /// Finds the app.dill file generated during the build process. Looks in the
-  /// .dart_tool directory of the provided [projectRoot] for the most recently
-  /// modified app.dill file (newer than [after]). Returns the path to the
-  /// app.dill file, or null if no app.dill file is found.
+  /// .dart_tool/flutter_build directory of the provided [projectRoot] (Flutter
+  /// writes it to `flutter_build/<build hash>/app.dill`) for app.dill files
+  /// modified after [after] and returns the path of the earliest one, or null
+  /// if there is none.
+  ///
+  /// The earliest is the first one the build produced. A build can produce
+  /// more than one (e.g. `ios-framework` builds more than one target), and
+  /// this matches the behavior from before app.dill was found on disk, when
+  /// the first `gen_snapshot ... app.dill` line in the build output was used.
   String? _findAppDill({
     required Directory projectRoot,
     required DateTime after,
   }) {
-    final dartToolDirectory = Directory(p.join(projectRoot.path, '.dart_tool'));
-    if (!dartToolDirectory.existsSync()) return null;
-    return dartToolDirectory
+    final flutterBuildDir = _flutterBuildDirectory(projectRoot);
+    if (!flutterBuildDir.existsSync()) return null;
+    return flutterBuildDir
         .listSync(recursive: true)
         .where(
           (e) =>

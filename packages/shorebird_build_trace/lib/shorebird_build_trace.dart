@@ -7,10 +7,10 @@
 ///
 /// The goal is one wire format + one set of tracing helpers across the
 /// three codebases that contribute events. Each consumer configures a
-/// single [BuildTracer] and emits via the provided helpers
-/// ([BuildTracer.trace], [BuildTracer.traceAsync],
-/// [BuildTracer.timeSubprocess], [BuildTracer.timeSubprocessAsync],
-/// [BuildTracer.recordNetworkSpan], [PhaseTracker]); this library owns
+/// single `BuildTracer` and emits via the provided helpers
+/// (`BuildTracer.trace`, `BuildTracer.traceAsync`,
+/// `BuildTracer.timeSubprocess`, `BuildTracer.timeSubprocessAsync`,
+/// `BuildTracer.recordNetworkSpan`, `PhaseTracker`); this library owns
 /// the JSON shape, the metadata/flow event types, and merging with
 /// existing trace files.
 library;

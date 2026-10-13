@@ -22,9 +22,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import '../fakes.dart';
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ArtifactBuilder, () {
     late Directory projectRoot;
     late Apple apple;
@@ -359,10 +361,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 7));
-          // Flutter registers --shorebird-trace with `hide: !verboseHelp`, so it
-          // only appears in verbose help. Model that: plain `-h` omits the flag,
-          // `-h -v` includes it. Probing without `-v` (the original bug) would
-          // miss it and silently disable tracing on every supported build.
+          // Flutter registers --shorebird-trace with `hide: !verboseHelp`,
+          // so it only appears in verbose help. Model that: plain `-h` omits
+          // the flag, `-h -v` includes it. Probing without `-v` (the
+          // original bug) would miss it and silently disable tracing on
+          // every supported build.
           when(
             () => shorebirdProcess.run(
               'flutter',
@@ -524,7 +527,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
-                '''Build succeeded, but it generated multiple AABs in the build directory. (a, b)''',
+                '''Build succeeded, but it generated multiple AABs in the build directory. (${File('a').path}, ${File('b').path})''',
               ),
             ),
           );
@@ -838,7 +841,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             expect(summary['platform'], 'android');
             expect(summary['version'], 9);
             // 500ms kernel + 200ms aot
-            expect((summary['dart'] as Map)['totalMs'], 700);
+            expect((summary['dart']! as Map)['totalMs'], 700);
             expect(summary['flutterBuildMs'], 3000);
             expect(summary['shorebirdOverheadMs'], isNonNegative);
             final dart = summary['dart']! as Map<String, Object?>;
@@ -926,7 +929,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
-                '''Build succeeded, but it generated multiple APKs in the build directory. (a, b)''',
+                '''Build succeeded, but it generated multiple APKs in the build directory. (${File('a').path}, ${File('b').path})''',
               ),
             ),
           );
@@ -1028,7 +1031,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -1230,7 +1233,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -1384,11 +1387,20 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-            ..createSync(recursive: true)
-            ..setLastModifiedSync(
-              DateTime.now().add(const Duration(seconds: 10)),
-            );
+          appDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'h',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(
+                  DateTime.now().add(const Duration(seconds: 10)),
+                );
 
           return ExitCode.success.code;
         });
@@ -1407,7 +1419,7 @@ Reason: Exited with code 70.'''),
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -1436,16 +1448,38 @@ Reason: Exited with code 70.'''),
       );
 
       group('when .dart_tool directory exists', () {
-        late File foo;
+        late File packageConfig;
+        late File buildRunnerCache;
+        late File versionFile;
+        late File buildCache;
         setUp(() {
-          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
-            ..createSync(recursive: true);
+          File dartToolFile(List<String> parts) => File(
+            p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
+          )..createSync(recursive: true);
+          packageConfig = dartToolFile(['package_config.json']);
+          buildRunnerCache = dartToolFile([
+            'build',
+            'entrypoint',
+            'build.dart',
+          ]);
+          versionFile = dartToolFile(['version']);
+          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
         });
 
-        test('deletes .dart_tool directory before building', () async {
-          expect(foo.existsSync(), isTrue);
+        test('deletes the flutter_build cache before building', () async {
           await runWithOverrides(builder.buildMacos);
-          expect(foo.existsSync(), isFalse);
+          expect(buildCache.existsSync(), isFalse);
+        });
+
+        test('deletes .dart_tool/version so pub get re-runs', () async {
+          await runWithOverrides(builder.buildMacos);
+          expect(versionFile.existsSync(), isFalse);
+        });
+
+        test('keeps the rest of .dart_tool', () async {
+          await runWithOverrides(builder.buildMacos);
+          expect(packageConfig.existsSync(), isTrue);
+          expect(buildRunnerCache.existsSync(), isTrue);
         });
       });
 
@@ -1622,27 +1656,88 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-            ..createSync(recursive: true)
-            ..setLastModifiedSync(
-              DateTime.now().add(const Duration(seconds: 10)),
-            );
+          appDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'h',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(
+                  DateTime.now().add(const Duration(seconds: 10)),
+                );
 
           return ExitCode.success.code;
         });
       });
 
       group('when .dart_tool directory exists', () {
-        late File foo;
+        late File packageConfig;
+        late File buildRunnerCache;
+        late File versionFile;
+        late File buildCache;
         setUp(() {
-          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
-            ..createSync(recursive: true);
+          File dartToolFile(List<String> parts) => File(
+            p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
+          )..createSync(recursive: true);
+          packageConfig = dartToolFile(['package_config.json']);
+          buildRunnerCache = dartToolFile([
+            'build',
+            'entrypoint',
+            'build.dart',
+          ]);
+          versionFile = dartToolFile(['version']);
+          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
         });
 
-        test('deletes .dart_tool directory before building', () async {
-          expect(foo.existsSync(), isTrue);
+        test('deletes the flutter_build cache before building', () async {
           await runWithOverrides(builder.buildIpa);
-          expect(foo.existsSync(), isFalse);
+          expect(buildCache.existsSync(), isFalse);
+        });
+
+        test('deletes .dart_tool/version so pub get re-runs', () async {
+          await runWithOverrides(builder.buildIpa);
+          expect(versionFile.existsSync(), isFalse);
+        });
+
+        test('keeps the rest of .dart_tool', () async {
+          await runWithOverrides(builder.buildIpa);
+          expect(packageConfig.existsSync(), isTrue);
+          expect(buildRunnerCache.existsSync(), isTrue);
+        });
+
+        test('ignores app.dill files outside flutter_build', () async {
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            File(p.join(projectRoot.path, '.dart_tool', 'build', 'app.dill'))
+              ..createSync(recursive: true)
+              ..setLastModifiedSync(
+                DateTime.now().add(const Duration(seconds: 10)),
+              );
+            return ExitCode.success.code;
+          });
+
+          await expectLater(
+            () => runWithOverrides(builder.buildIpa),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                'Unable to find app.dill file.',
+              ),
+            ),
+          );
         });
       });
 
@@ -1873,11 +1968,20 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-            ..createSync(recursive: true)
-            ..setLastModifiedSync(
-              DateTime.now().add(const Duration(seconds: 10)),
-            );
+          appDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'h',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(
+                  DateTime.now().add(const Duration(seconds: 10)),
+                );
 
           return ExitCode.success.code;
         });
@@ -1896,7 +2000,7 @@ Reason: Exited with code 70.'''),
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -1926,16 +2030,38 @@ Reason: Exited with code 70.'''),
       );
 
       group('when .dart_tool directory exists', () {
-        late File foo;
+        late File packageConfig;
+        late File buildRunnerCache;
+        late File versionFile;
+        late File buildCache;
         setUp(() {
-          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
-            ..createSync(recursive: true);
+          File dartToolFile(List<String> parts) => File(
+            p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
+          )..createSync(recursive: true);
+          packageConfig = dartToolFile(['package_config.json']);
+          buildRunnerCache = dartToolFile([
+            'build',
+            'entrypoint',
+            'build.dart',
+          ]);
+          versionFile = dartToolFile(['version']);
+          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
         });
 
-        test('deletes .dart_tool directory before building', () async {
-          expect(foo.existsSync(), isTrue);
+        test('deletes the flutter_build cache before building', () async {
           await runWithOverrides(builder.buildIosFramework);
-          expect(foo.existsSync(), isFalse);
+          expect(buildCache.existsSync(), isFalse);
+        });
+
+        test('deletes .dart_tool/version so pub get re-runs', () async {
+          await runWithOverrides(builder.buildIosFramework);
+          expect(versionFile.existsSync(), isFalse);
+        });
+
+        test('keeps the rest of .dart_tool', () async {
+          await runWithOverrides(builder.buildIosFramework);
+          expect(packageConfig.existsSync(), isTrue);
+          expect(buildRunnerCache.existsSync(), isTrue);
         });
       });
 
@@ -1952,6 +2078,54 @@ Reason: Exited with code 70.'''),
           ),
         ).called(1);
         expect(result.kernelFile.path, equals(appDill.path));
+      });
+
+      test('uses the first app.dill the build produced', () async {
+        late File firstAppDill;
+        late File secondAppDill;
+        when(
+          () => shorebirdProcess.stream(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+            onStart: any(named: 'onStart'),
+          ),
+        ).thenAnswer((_) async {
+          final now = DateTime.now();
+          // The earlier file sorts second by name, so the test can't pass on
+          // directory listing order alone.
+          secondAppDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'a',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(now.add(const Duration(seconds: 20)));
+          firstAppDill =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    '.dart_tool',
+                    'flutter_build',
+                    'b',
+                    'app.dill',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..setLastModifiedSync(now.add(const Duration(seconds: 10)));
+          return ExitCode.success.code;
+        });
+
+        final result = await runWithOverrides(builder.buildIosFramework);
+
+        expect(result.kernelFile.path, equals(firstAppDill.path));
+        expect(result.kernelFile.path, isNot(equals(secondAppDill.path)));
       });
 
       test('forward arguments to flutter build', () async {
@@ -2188,7 +2362,7 @@ Reason: Exited with code 70.'''),
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',

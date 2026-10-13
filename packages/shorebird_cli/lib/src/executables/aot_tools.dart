@@ -220,24 +220,23 @@ class AotTools {
       final stdout = StringBuffer();
       final stderr = StringBuffer();
 
-      final stdoutSubscription = subprocess.stdout.map(utf8.decode).listen((
-        data,
-      ) {
-        logger.detail(data);
-        stdout.write(data);
-      });
-
-      final stderrSubscription = subprocess.stderr.map(utf8.decode).listen((
-        data,
-      ) {
-        logger.detail(data);
-        stderr.write(data);
-      });
+      // Decode as a stream so a multi-byte character split across chunks is
+      // reassembled, and wait for both streams to finish so no trailing output
+      // is lost.
+      const decoder = Utf8Decoder(allowMalformed: true);
+      final streamsDone = Future.wait([
+        subprocess.stdout.transform<String>(decoder).listen((data) {
+          logger.detail(data);
+          stdout.write(data);
+        }).asFuture<void>(),
+        subprocess.stderr.transform<String>(decoder).listen((data) {
+          logger.detail(data);
+          stderr.write(data);
+        }).asFuture<void>(),
+      ]);
 
       final exitCode = await subprocess.exitCode;
-
-      stdoutSubscription.cancel().ignore();
-      stderrSubscription.cancel().ignore();
+      await streamsDone;
 
       return ShorebirdProcessResult(
         exitCode: exitCode,
@@ -338,6 +337,11 @@ class AotTools {
     // We use the json lines format. https://jsonlines.org
     const linkJson = 'link.jsonl';
     final outputDir = p.dirname(outputPath);
+    // aot-tools resolves --redirect-to against its own working directory, so
+    // read the report back from the same place it was written.
+    final linkJsonFile = File(
+      p.join(workingDirectory ?? '', outputDir, linkJson),
+    );
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
     try {
       await _exec([
@@ -358,10 +362,8 @@ class AotTools {
         if (additionalArgs.isNotEmpty) ...['--', ...additionalArgs],
       ], workingDirectory: workingDirectory);
     } on AotToolsExecutionFailure catch (e) {
-      if (linkerUsesGenSnapshot && workingDirectory != null) {
-        final linkFailure = _extractLinkFailure(
-          File(p.join(workingDirectory, linkJson)),
-        );
+      if (linkerUsesGenSnapshot) {
+        final linkFailure = _extractLinkFailure(linkJsonFile);
         if (linkFailure != null) {
           throw LinkFailureException(execFailure: e, linkFailure: linkFailure);
         }
@@ -369,9 +371,7 @@ class AotTools {
       rethrow;
     }
 
-    return linkerUsesGenSnapshot
-        ? _extractLinkPercentage(File(p.join(workingDirectory!, linkJson)))
-        : null;
+    return linkerUsesGenSnapshot ? _extractLinkPercentage(linkJsonFile) : null;
   }
 
   /// Returns the first `link_failure` event in the link JSONL output, or
@@ -418,13 +418,16 @@ class AotTools {
 
   /// Uses the analyze_snapshot executable to write the data and isolate
   /// snapshots contained in [releaseSnapshot]. Returns the generated diff base
-  /// file.
+  /// file, written into [outputDirectory].
+  ///
+  /// [outputDirectory] must already exist. It is owned by the caller, which
+  /// deletes it once the diff base is no longer needed.
   Future<File> generatePatchDiffBase({
     required File releaseSnapshot,
     required String analyzeSnapshotPath,
+    required Directory outputDirectory,
   }) async {
-    final tmpDir = Directory.systemTemp.createTempSync();
-    final outFile = File(p.join(tmpDir.path, 'diff_base'));
+    final outFile = File(p.join(outputDirectory.path, 'diff_base'));
     await _exec([
       'dump_blobs',
       '--analyze-snapshot=$analyzeSnapshotPath',

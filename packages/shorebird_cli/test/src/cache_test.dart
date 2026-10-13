@@ -3,17 +3,19 @@ import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/abi.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -25,9 +27,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
 
@@ -38,7 +42,7 @@ void main() {
     late Directory shorebirdRoot;
     late http.Client httpClient;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Process chmodProcess;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
@@ -64,17 +68,11 @@ void main() {
       );
     }
 
-    void setMockPlatform(String name) {
-      assert(
-        Platform.operatingSystemValues.contains(name),
-        'Unrecognized platform name',
-      );
-      when(() => platform.isMacOS).thenReturn(name == 'macos');
-      when(() => platform.isWindows).thenReturn(name == 'windows');
-      when(() => platform.isLinux).thenReturn(name == 'linux');
-      when(() => platform.isAndroid).thenReturn(name == 'android');
-      when(() => platform.isFuchsia).thenReturn(name == 'fuchsia');
-      when(() => platform.isIOS).thenReturn(name == 'ios');
+    /// Switches the platform to [operatingSystem] and rebuilds [cache], which
+    /// captures the platform when its artifacts are registered.
+    void setOperatingSystem(String operatingSystem) {
+      platform = platform.copyWith(operatingSystem: operatingSystem);
+      cache = runWithOverrides(Cache.new);
     }
 
     setUpAll(() {
@@ -90,7 +88,10 @@ void main() {
       checksumChecker = MockChecksumChecker();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(
+        environment: {},
+        operatingSystem: NativePlatform.macOS,
+      );
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -121,8 +122,6 @@ void main() {
       ).thenReturn('test-flutter-revision');
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
-      when(() => platform.environment).thenReturn({});
-      setMockPlatform(Platform.macOS);
       when(
         () => shorebirdProcess.start(any(), any()),
       ).thenAnswer((_) async => chmodProcess);
@@ -195,12 +194,297 @@ void main() {
       });
     });
 
+    group('pruneUnusedPreviews', () {
+      final now = DateTime(2026, 10, 9);
+
+      /// Creates a cached preview artifact last used [age] ago.
+      FileSystemEntity preview(
+        String app,
+        String name, {
+        required Duration age,
+        bool isDirectory = false,
+      }) {
+        final path = runWithOverrides(
+          () => p.join(Cache.shorebirdPreviewsDirectory.path, app, name),
+        );
+        final artifact = isDirectory
+            ? (Directory(path)..createSync(recursive: true))
+            : (File(path)..createSync(recursive: true));
+        File('$path${Cache.previewLastUsedSuffix}')
+          ..createSync()
+          ..setLastModifiedSync(now.subtract(age));
+        return artifact;
+      }
+
+      List<String> prune() => withClock(
+        Clock.fixed(now),
+        () => runWithOverrides(() => cache.pruneUnusedPreviews()),
+      );
+
+      test('removes previews unused for longer than the max age', () {
+        final stale = preview(
+          'app',
+          'ios_1.0.0_1.app',
+          age: const Duration(days: 31),
+          isDirectory: true,
+        );
+        final recent = preview(
+          'app',
+          'ios_1.0.1_2.app',
+          age: const Duration(days: 29),
+          isDirectory: true,
+        );
+
+        expect(prune(), equals([stale.path]));
+        expect(stale.existsSync(), isFalse);
+        expect(
+          File('${stale.path}${Cache.previewLastUsedSuffix}').existsSync(),
+          isFalse,
+        );
+        expect(recent.existsSync(), isTrue);
+      });
+
+      test('keeps only the most recently used previews across apps', () {
+        final previews = [
+          for (var i = 0; i <= Cache.maxCachedPreviews; i++)
+            preview(
+              'app-${i % 2}',
+              'android_1.0.${i}_$i.aab',
+              age: Duration(days: i),
+            ),
+        ];
+
+        expect(prune(), equals([previews.last.path]));
+        expect(
+          previews.take(Cache.maxCachedPreviews).every((p) => p.existsSync()),
+          isTrue,
+        );
+      });
+
+      test('counts artifacts that share a name as one preview', () {
+        final aab = preview(
+          'app',
+          'android_1.0.0_1.aab',
+          age: const Duration(days: 40),
+        );
+        // The .apks is rebuilt from the .aab on every run, so its use counts
+        // for both.
+        final apks = preview(
+          'app',
+          'android_1.0.0_1.apks',
+          age: const Duration(days: 1),
+        );
+
+        expect(prune(), isEmpty);
+        expect(aab.existsSync(), isTrue);
+        expect(apks.existsSync(), isTrue);
+      });
+
+      test('does not group previews by the dots in their version', () {
+        // Linux previews have no extension, so a naive one would be `.0_42`.
+        final previews = [
+          for (var i = 0; i <= Cache.maxCachedPreviews; i++)
+            preview('app', 'linux_1.0.${i}_$i', age: Duration(days: i)),
+        ];
+
+        expect(prune(), equals([previews.last.path]));
+      });
+
+      test('ages a preview without a marker by its mtime', () {
+        final artifact = runWithOverrides(
+          () => File(
+            p.join(
+              Cache.shorebirdPreviewsDirectory.path,
+              'app',
+              'android_1.0.0_1.aab',
+            ),
+          ),
+        )..createSync(recursive: true);
+        final created = artifact.statSync().modified;
+
+        expect(
+          withClock(
+            Clock.fixed(created.add(const Duration(days: 31))),
+            () => runWithOverrides(() => cache.pruneUnusedPreviews()),
+          ),
+          equals([artifact.path]),
+        );
+      });
+
+      test('removes orphaned markers and empty app directories', () {
+        final kept = preview(
+          'kept-app',
+          'ios_1.0.0_1.app',
+          age: Duration.zero,
+          isDirectory: true,
+        );
+        final orphan = File(
+          '${kept.parent.path}/ios_0.9.0_0.app${Cache.previewLastUsedSuffix}',
+        )..createSync();
+        final emptied = preview(
+          'emptied-app',
+          'ios_1.0.0_2.app',
+          age: const Duration(days: 31),
+          isDirectory: true,
+        );
+
+        prune();
+
+        expect(orphan.existsSync(), isFalse);
+        expect(kept.existsSync(), isTrue);
+        expect(emptied.parent.existsSync(), isFalse);
+      });
+
+      test('does nothing when no previews have been downloaded', () {
+        expect(prune(), isEmpty);
+      });
+    });
+
+    group('markPreviewUsed', () {
+      test('records the use beside the artifact', () {
+        final now = DateTime(2026, 10, 9);
+        final directory = Directory.systemTemp.createTempSync();
+        // The app's preview directory does not exist before its first
+        // download.
+        final path = p.join(directory.path, 'app-id', 'ios_1.0.0_1.app');
+
+        withClock(
+          Clock.fixed(now),
+          () => runWithOverrides(() => cache.markPreviewUsed(path)),
+        );
+
+        expect(
+          File('$path${Cache.previewLastUsedSuffix}').lastModifiedSync(),
+          equals(now),
+        );
+      });
+    });
+
+    group('pruneUnusedArtifacts', () {
+      const pinned = '1111111111111111111111111111111111111111';
+      const stale = '3333333333333333333333333333333333333333';
+      const recent = '4444444444444444444444444444444444444444';
+      final now = DateTime(2026, 10, 9);
+
+      Directory revisionDirectory(
+        String artifact,
+        String revision, {
+        DateTime? lastUsed,
+      }) {
+        final directory = Directory(
+          p.join(Cache.shorebirdArtifactsDirectory.path, artifact, revision),
+        )..createSync(recursive: true);
+        if (lastUsed != null) {
+          File(p.join(directory.path, lastUsedStampName))
+            ..createSync()
+            ..setLastModifiedSync(lastUsed);
+        }
+        return directory;
+      }
+
+      List<String> prune() => withClock(
+        Clock.fixed(now),
+        () => runWithOverrides(() => cache.pruneUnusedArtifacts()),
+      );
+
+      setUp(() {
+        when(() => shorebirdEnv.shorebirdEngineRevision).thenReturn(pinned);
+      });
+
+      test('removes engine revisions unused for longer than the max age', () {
+        final old = now.subtract(const Duration(days: 31));
+        final staleAotTools = runWithOverrides(
+          () => revisionDirectory('aot-tools', stale, lastUsed: old),
+        );
+        final staleAnalyzeSnapshot = runWithOverrides(
+          () => revisionDirectory(
+            'analyze-snapshot-macos-arm64',
+            stale,
+            lastUsed: old,
+          ),
+        );
+        final recentAotTools = runWithOverrides(
+          () => revisionDirectory(
+            'aot-tools',
+            recent,
+            lastUsed: now.subtract(const Duration(days: 29)),
+          ),
+        );
+
+        expect(
+          prune(),
+          unorderedEquals([staleAotTools.path, staleAnalyzeSnapshot.path]),
+        );
+        expect(staleAotTools.existsSync(), isFalse);
+        expect(staleAnalyzeSnapshot.existsSync(), isFalse);
+        expect(recentAotTools.existsSync(), isTrue);
+      });
+
+      test('keeps the pinned engine revision and records its use', () {
+        final directory = runWithOverrides(
+          () => revisionDirectory(
+            'aot-tools',
+            pinned,
+            lastUsed: now.subtract(const Duration(days: 365)),
+          ),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        expect(
+          File(
+            p.join(directory.path, lastUsedStampName),
+          ).lastModifiedSync(),
+          equals(now),
+        );
+      });
+
+      test('never removes artifacts stored without a revision', () {
+        final patch = runWithOverrides(
+          () => File(
+            p.join(Cache.shorebirdArtifactsDirectory.path, 'patch', 'patch'),
+          ),
+        )..createSync(recursive: true);
+
+        expect(
+          withClock(
+            Clock.fixed(now.add(const Duration(days: 365))),
+            () => runWithOverrides(() => cache.pruneUnusedArtifacts()),
+          ),
+          isEmpty,
+        );
+        expect(patch.existsSync(), isTrue);
+      });
+
+      test('does nothing when the pinned engine revision is unreadable', () {
+        final directory = runWithOverrides(
+          () => revisionDirectory(
+            'aot-tools',
+            stale,
+            lastUsed: now.subtract(const Duration(days: 31)),
+          ),
+        );
+        when(
+          () => shorebirdEnv.shorebirdEngineRevision,
+        ).thenThrow(
+          const CacheCorruptedException('Could not read engine.version.'),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+      });
+
+      test('does nothing when no artifacts have been downloaded', () {
+        expect(prune(), isEmpty);
+      });
+    });
+
     group('updateAll', () {
       group('patch', () {
         group('fileName', () {
           group('when on Windows', () {
             setUp(() {
-              setMockPlatform(Platform.windows);
+              setOperatingSystem(NativePlatform.windows);
             });
 
             test('has exe extension', () {
@@ -213,7 +497,7 @@ void main() {
 
           group('when not on Windows', () {
             setUp(() {
-              setMockPlatform(Platform.linux);
+              setOperatingSystem(NativePlatform.linux);
             });
 
             test('does not have exe extension', () {
@@ -225,10 +509,40 @@ void main() {
           });
         });
 
+        group('extractArtifact', () {
+          test('deletes the downloaded zip after extracting it', () async {
+            setOperatingSystem(NativePlatform.linux);
+            File? downloadedZip;
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenAnswer((invocation) async {
+              downloadedZip = invocation.namedArguments[#zipFile] as File;
+              expect(downloadedZip!.existsSync(), isTrue);
+            });
+            final outputDirectory = Directory.systemTemp.createTempSync();
+            addTearDown(() => outputDirectory.deleteSync(recursive: true));
+
+            await runWithOverrides(
+              () => PatchArtifact(cache: cache, platform: platform)
+                  .extractArtifact(
+                    http.ByteStream.fromBytes([1, 2, 3]),
+                    outputDirectory.path,
+                  ),
+            );
+
+            expect(downloadedZip, isNotNull);
+            expect(downloadedZip!.parent.existsSync(), isFalse);
+            expect(outputDirectory.existsSync(), isTrue);
+          });
+        });
+
         group('storageUrl', () {
           group('when on macOS', () {
             setUp(() {
-              setMockPlatform(Platform.macOS);
+              setOperatingSystem(NativePlatform.macOS);
             });
 
             test(
@@ -281,7 +595,7 @@ void main() {
 
           group('when on Linux', () {
             setUp(() {
-              setMockPlatform(Platform.linux);
+              setOperatingSystem(NativePlatform.linux);
             });
 
             test('uses linux-x64', () async {
@@ -295,7 +609,7 @@ void main() {
 
           group('when on Windows', () {
             setUp(() {
-              setMockPlatform(Platform.windows);
+              setOperatingSystem(NativePlatform.windows);
             });
 
             test('uses windows-x64', () async {
@@ -385,7 +699,70 @@ void main() {
               '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
             ),
           ).called(1);
+          verify(() => progress.cancel()).called(1);
         });
+
+        test('fails the download progress when the request throws', () async {
+          when(
+            () => httpClient.send(any()),
+          ).thenThrow(const SocketException('test'));
+
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            throwsA(isA<CacheUpdateFailure>()),
+          );
+          verify(() => progress.fail()).called(greaterThanOrEqualTo(1));
+        });
+
+        test('logs a missing checksum only when there is none', () async {
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
+
+          verifyNever(
+            () => logger.detail(
+              '''No checksum provided for bundletool.jar, skipping file corruption validation''',
+            ),
+          );
+          verify(
+            () => logger.detail(
+              '''No checksum provided for patch, skipping file corruption validation''',
+            ),
+          ).called(greaterThanOrEqualTo(1));
+        });
+
+        test(
+          'fails when making an executable artifact executable fails',
+          () async {
+            when(() => chmodProcess.exitCode).thenAnswer((_) async => 1);
+
+            await expectLater(
+              runWithOverrides(() => cache.updateAll(Duration.zero)),
+              throwsA(
+                isA<CacheUpdateFailure>().having(
+                  (e) => e.message,
+                  'message',
+                  contains('executable: chmod exited with code 1'),
+                ),
+              ),
+            );
+            // Retried, so the step fails once per attempt.
+            verify(
+              () => progress.fail('Failed to make patch executable'),
+            ).called(3);
+            // No stamp means the next run downloads the artifact again.
+            final patchArtifact = runWithOverrides(
+              () => cache.getArtifactDirectory('patch'),
+            );
+            final stamps = patchArtifact.existsSync()
+                ? patchArtifact
+                      .listSync(recursive: true)
+                      .where((entity) => entity.path.endsWith('.stamp'))
+                : const <FileSystemEntity>[];
+            expect(stamps, isEmpty);
+          },
+        );
 
         test('downloads correct artifacts', () async {
           final patchArtifactDirectory = runWithOverrides(
@@ -443,8 +820,47 @@ void main() {
           });
         });
 
+        test('records the use of per-engine-revision artifacts', () async {
+          const engineRevision = '5555555555555555555555555555555555555555';
+          final now = DateTime(2026, 10, 9);
+          when(
+            () => shorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn(engineRevision);
+          setOperatingSystem(NativePlatform.macOS);
+
+          await withClock(
+            Clock.fixed(now),
+            () => runWithOverrides(() => cache.updateAll(Duration.zero)),
+          );
+
+          File stamp(String artifact) => File(
+            p.join(
+              runWithOverrides(() => cache.getArtifactDirectory(artifact)).path,
+              engineRevision,
+              lastUsedStampName,
+            ),
+          );
+          expect(stamp('aot-tools').lastModifiedSync(), equals(now));
+          expect(
+            stamp('analyze-snapshot-macos-arm64').lastModifiedSync(),
+            equals(now),
+          );
+          // Not stored per revision, so there is nothing to record.
+          expect(
+            File(
+              p.join(
+                runWithOverrides(
+                  () => cache.getArtifactDirectory('patch'),
+                ).path,
+                lastUsedStampName,
+              ),
+            ).existsSync(),
+            isFalse,
+          );
+        });
+
         test('pulls correct artifact for MacOS', () async {
-          setMockPlatform(Platform.macOS);
+          setOperatingSystem(NativePlatform.macOS);
 
           await expectLater(
             runWithOverrides(() => cache.updateAll(Duration.zero)),
@@ -462,13 +878,15 @@ void main() {
             perEngine('patch-darwin-x64.zip'),
             'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
             perEngine('aot-tools.dill'),
+            perEngine('analyze-snapshot-macos-arm64'),
+            perEngine('analyze-snapshot-macos-x64'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
         });
 
         test('pulls correct artifact for Windows', () async {
-          setMockPlatform(Platform.windows);
+          setOperatingSystem(NativePlatform.windows);
 
           await expectLater(
             runWithOverrides(() => cache.updateAll(Duration.zero)),
@@ -492,7 +910,7 @@ void main() {
         });
 
         test('pulls correct artifact for Linux', () async {
-          setMockPlatform(Platform.linux);
+          setOperatingSystem(NativePlatform.linux);
 
           await expectLater(
             runWithOverrides(() => cache.updateAll(Duration.zero)),
@@ -523,7 +941,7 @@ void main() {
     late ChecksumChecker checksumChecker;
     late http.Client httpClient;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late _TestCachedArtifact cachedArtifact;
 
@@ -548,7 +966,7 @@ void main() {
       checksumChecker = MockChecksumChecker();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform();
       progress = MockProgress();
 
       when(() => httpClient.send(any())).thenAnswer(

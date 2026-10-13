@@ -1,3 +1,5 @@
+# cspell:words cmdline sdkmanager
+
 name: e2e
 
 concurrency:
@@ -25,51 +27,52 @@ env:
   # Google-refresh-token format it replaced it does not authenticate against
   # both. A single workflow-level token would silently 401 half the matrix.
   #
-  # Host toolchain for `dart test integration_test`, not the version under test.
-  # Must ship a Dart new enough for the SDK constraints in the root pubspec.
+  # Host toolchain for `flutter create` in the patch job's "default" leg, not
+  # the version under test.
   FLUTTER_VERSION: 3.47.1
 
 jobs:
   patch:
+    # Without this the job name lists every matrix value, android-packages
+    # included.
+    name: patch (${{ matrix.flutter-version }})
     # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
     # unrelated jobs that would only burn runner time.
     if: ${{ !inputs.cli_ref }}
     strategy:
       fail-fast: false
       matrix:
-        flutter-version:
-          [
-            3.41.2,
-            3.38.9,
-            3.35.5,
-            3.35.4,
-            3.35.3,
-            3.35.2,
-            3.32.8,
-            3.32.7,
-            3.32.6,
-            3.32.5,
-            3.32.4,
-            3.32.3,
-            3.32.2,
-            3.32.1,
-            3.32.0,
-            3.29.3,
-            3.29.2,
-            3.29.1,
-            3.29.0,
-            3.27.2,
-            3.27.1,
-            3.27.0,
-            3.24.5,
-            3.24.4,
-            3.24.3,
-            3.24.1,
-            3.24.0,
-            3.22.3,
-            3.22.2,
-            3.19.6,
-          ]
+        # The newest patch of each minor line within the documented support
+        # window (Flutter releases from the last two years). Older patch
+        # releases of a line ship frozen engines, so they repeat the newest
+        # one's coverage. "default" omits --flutter-version, testing the
+        # Flutter this CLI revision pins.
+        #
+        # android-packages are the SDK packages the leg's build would
+        # otherwise download mid-build (the runner image lacks them). They
+        # are installed up front, and the e2e step fails if the build still
+        # downloads anything, naming the package to add here.
+        include:
+          - flutter-version: default
+            android-packages: ndk;28.2.13676358
+          - flutter-version: 3.47.5
+            android-packages: ndk;28.2.13676358
+          # 3.29 through 3.44 point AGP at an empty CMakeLists.txt to make it
+          # fetch the NDK, so AGP also wants its default CMake.
+          - flutter-version: 3.44.9
+            android-packages: ndk;28.2.13676358 cmake;3.22.1
+          - flutter-version: 3.41.9
+            android-packages: ndk;28.2.13676358 cmake;3.22.1
+          - flutter-version: 3.38.10
+            android-packages: ndk;28.2.13676358 cmake;3.22.1
+          - flutter-version: 3.35.7
+            android-packages: ndk;27.0.12077973 cmake;3.22.1
+          - flutter-version: 3.32.8
+            android-packages: ndk;26.3.11579264 cmake;3.22.1
+          - flutter-version: 3.29.3
+            android-packages: ndk;26.3.11579264 cmake;3.22.1
+          - flutter-version: 3.27.4
+            android-packages: build-tools;33.0.1
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -106,8 +109,19 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ matrix.flutter-version }}
-          cache: true
+          flutter-version: ${{ matrix.flutter-version == 'default' && env.FLUTTER_VERSION || matrix.flutter-version }}
+          # 30 Flutter versions at 1-2 GB each overflow the repo's 10 GB
+          # Actions cache, evicting the cli job's entries. A Linux download
+          # costs about as much as a restore.
+          cache: false
+
+      # A bad download fails this step instead of `shorebird release`
+      # mid-build. Unquoted so the list splits into one argument per package.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        env:
+          ANDROID_PACKAGES: ${{ matrix.android-packages }}
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -145,7 +159,7 @@ jobs:
           api-level: 29
           arch: x86_64
           target: default
-          script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
+          script: ./scripts/no_android_sdk_downloads.sh ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
     strategy:
@@ -155,9 +169,17 @@ jobs:
         # branch selects the API host as well as the ref, so a cli_ref dispatch
         # drops the stable leg rather than pointing unreleased code at prod.
         branch: ${{ inputs.cli_ref && fromJSON('["main"]') || fromJSON('["stable", "main"]') }}
+        # The stable leg runs the released, unchanging CLI against prod, so it
+        # checks the server. One OS answers that.
+        exclude:
+          - os: macos-latest
+            branch: stable
+          - os: windows-latest
+            branch: stable
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # Windows takes ~12 minutes.
+    timeout-minutes: 30
 
     env:
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
@@ -208,12 +230,9 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: 🎯 Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
+      # Only runs the test file; shorebird uses its own pinned Flutter.
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test

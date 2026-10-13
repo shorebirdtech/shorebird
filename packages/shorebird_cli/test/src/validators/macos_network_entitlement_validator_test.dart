@@ -7,9 +7,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(MacosEntitlementsValidator, () {
     const entitlementsPlistWithoutEntitlements = '''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -152,15 +154,17 @@ void main() {
             );
             expect(networkIssue.fix, isNotNull);
             expect(
-              MacosEntitlementsValidator.hasNetworkClientEntitlement(
+              MacosEntitlementsValidator.hasEntitlement(
                 plistFile: releaseEntitlementsFile(),
+                key: MacosEntitlementsValidator.networkClientEntitlementKey,
               ),
               isFalse,
             );
             runWithOverrides(() => networkIssue.fix!());
             expect(
-              MacosEntitlementsValidator.hasNetworkClientEntitlement(
+              MacosEntitlementsValidator.hasEntitlement(
                 plistFile: releaseEntitlementsFile(),
+                key: MacosEntitlementsValidator.networkClientEntitlementKey,
               ),
               isTrue,
             );
@@ -175,19 +179,19 @@ void main() {
             );
             expect(unsignedMemoryIssue.fix, isNotNull);
             expect(
-              // This is just a very long method name.
-              // ignore: lines_longer_than_80_chars
-              MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
+              MacosEntitlementsValidator.hasEntitlement(
                 plistFile: releaseEntitlementsFile(),
+                key:
+                    MacosEntitlementsValidator.allowUnsignedExecutableMemoryKey,
               ),
               isFalse,
             );
             runWithOverrides(() => unsignedMemoryIssue.fix!());
             expect(
-              // This is just a very long method name.
-              // ignore: lines_longer_than_80_chars
-              MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
+              MacosEntitlementsValidator.hasEntitlement(
                 plistFile: releaseEntitlementsFile(),
+                key:
+                    MacosEntitlementsValidator.allowUnsignedExecutableMemoryKey,
               ),
               isTrue,
             );

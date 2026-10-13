@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 import 'package:shorebird_cli/src/artifact_builder/duration_distribution.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 Map<String, Object?> _event({
   required String name,
@@ -25,6 +26,7 @@ Map<String, Object?> _event({
 };
 
 void main() {
+  useTempWorkingDirectory();
   group(BuildTraceSummary, () {
     test('empty events → zero summary', () {
       final s = BuildTraceSummary.fromEvents([], platform: 'android');
@@ -291,6 +293,164 @@ void main() {
       );
     });
 
+    test('macos trace → xcode stats populated under the ios key', () {
+      final events = [
+        _event(
+          name: 'pod install',
+          cat: 'subprocess',
+          ts: 0,
+          dur: 4_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'Build target Runner',
+          cat: 'xcode_subsection',
+          ts: 5_000_000,
+          dur: 20_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'xcode build',
+          cat: 'xcode',
+          ts: 4_000_000,
+          dur: 30_000_000,
+          tid: 2,
+        ),
+        _event(
+          name: 'flutter build macos',
+          cat: 'flutter',
+          ts: 0,
+          dur: 40_000_000,
+          tid: 1,
+        ),
+      ];
+      final s = BuildTraceSummary.fromEvents(events, platform: 'macos');
+
+      expect(s.platform, 'macos');
+      expect(s.android, isNull);
+      expect(s.ios, isNotNull);
+      expect(s.ios!.podInstall.duration, const Duration(seconds: 4));
+      expect(s.ios!.xcode.subsectionDistribution.count, 1);
+      expect(s.native.build, const Duration(seconds: 30));
+      expect(s.toJson()['ios'], isNotNull);
+    });
+
+    test('linux trace → no platform-specific stats', () {
+      final s = BuildTraceSummary.fromEvents([], platform: 'linux');
+      expect(s.android, isNull);
+      expect(s.ios, isNull);
+    });
+
+    group('native.compile', () {
+      // gen_snapshot inside gradle: [10s, 13s) within [5s, 35s).
+      final nested = _event(
+        name: 'aot_android_asset_bundle',
+        cat: 'assemble',
+        ts: 10_000_000,
+        dur: 3_000_000,
+        tid: 1,
+      );
+      final gradle = _event(
+        name: 'gradle bundleRelease',
+        cat: 'gradle',
+        ts: 5_000_000,
+        dur: 30_000_000,
+        tid: 2,
+      );
+
+      test('subtracts assemble time that ran inside the native build', () {
+        final s = BuildTraceSummary.fromEvents([
+          nested,
+          gradle,
+        ], platform: 'android');
+        expect(s.native.build, const Duration(seconds: 30));
+        expect(s.native.compile, const Duration(seconds: 27));
+      });
+
+      test('does not subtract assemble time that ran beside it', () {
+        // ios-framework builds App.framework in-process ([0s, 8s)), then
+        // runs xcodebuild for plugins ([10s, 20s)). None of the assemble
+        // work is inside xcodebuild, so native compile is the full span.
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 0,
+            dur: 8_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'xcode build plugins (iphoneos)',
+            cat: 'xcode',
+            ts: 10_000_000,
+            dur: 10_000_000,
+            tid: 2,
+          ),
+        ], platform: 'ios');
+        expect(s.native.build, const Duration(seconds: 10));
+        expect(s.native.compile, const Duration(seconds: 10));
+      });
+
+      test('subtracts only the overlapping portion', () {
+        // assemble [0s, 8s) straddles the start of xcode [6s, 16s).
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 0,
+            dur: 8_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'xcode build',
+            cat: 'xcode',
+            ts: 6_000_000,
+            dur: 10_000_000,
+            tid: 2,
+          ),
+        ], platform: 'ios');
+        expect(s.native.compile, const Duration(seconds: 8));
+      });
+
+      test('treats an assemble event without ts as nested', () {
+        // Older producers emitted no timestamps; they all nested
+        // assemble inside the native build, so keep subtracting.
+        final s = BuildTraceSummary.fromEvents([
+          {
+            'ph': 'X',
+            'name': 'kernel_snapshot',
+            'cat': 'assemble',
+            'dur': 3_000_000,
+            'pid': 1,
+            'tid': 1,
+          },
+          gradle,
+        ], platform: 'android');
+        expect(s.native.compile, const Duration(seconds: 27));
+      });
+
+      test('clamps at zero', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 5_000_000,
+            dur: 30_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 5_000_000,
+            dur: 30_000_000,
+            tid: 1,
+          ),
+          gradle,
+        ], platform: 'android');
+        expect(s.native.compile, Duration.zero);
+      });
+    });
+
     test('toJson shape is nested and omits the other platform', () {
       final events = [
         _event(
@@ -410,24 +570,25 @@ void main() {
       });
     });
 
-    group('tryFromFile', () {
+    group('tryReadEvents', () {
       late Directory tempDir;
       setUp(() => tempDir = Directory.systemTemp.createTempSync());
       tearDown(() => tempDir.deleteSync(recursive: true));
 
       test('returns null if file is missing', () {
-        final s = BuildTraceSummary.tryFromFile(
-          File(p.join(tempDir.path, 'missing.json')),
-          platform: 'android',
+        expect(
+          BuildTraceSummary.tryReadEvents(
+            File(p.join(tempDir.path, 'missing.json')),
+          ),
+          isNull,
         );
-        expect(s, isNull);
       });
 
       test('returns null for malformed JSON', () {
         final f = File(p.join(tempDir.path, 'bad.json'))
           ..writeAsStringSync('not json');
         expect(
-          BuildTraceSummary.tryFromFile(f, platform: 'android'),
+          BuildTraceSummary.tryReadEvents(f),
           isNull,
         );
       });
@@ -452,9 +613,11 @@ void main() {
               ),
             ]),
           );
-        final s = BuildTraceSummary.tryFromFile(f, platform: 'android');
-        expect(s, isNotNull);
-        expect(s!.flutterBuild, const Duration(milliseconds: 1500));
+        final s = BuildTraceSummary.fromEvents(
+          BuildTraceSummary.tryReadEvents(f)!,
+          platform: 'android',
+        );
+        expect(s.flutterBuild, const Duration(milliseconds: 1500));
         expect(s.dart.kernelSnapshot, const Duration(milliseconds: 1000));
         expect(s.dart.total, const Duration(milliseconds: 1000));
       });
@@ -474,16 +637,18 @@ void main() {
               ],
             }),
           );
-        final s = BuildTraceSummary.tryFromFile(f, platform: 'android');
-        expect(s, isNotNull);
-        expect(s!.flutterBuild, const Duration(milliseconds: 500));
+        final s = BuildTraceSummary.fromEvents(
+          BuildTraceSummary.tryReadEvents(f)!,
+          platform: 'android',
+        );
+        expect(s.flutterBuild, const Duration(milliseconds: 500));
       });
 
       test('returns null when the JSON root is not a list or known object', () {
         final f = File(p.join(tempDir.path, 'weird.json'))
           ..writeAsStringSync(jsonEncode({'unexpected': true}));
         expect(
-          BuildTraceSummary.tryFromFile(f, platform: 'android'),
+          BuildTraceSummary.tryReadEvents(f),
           isNull,
         );
       });
@@ -607,7 +772,7 @@ void main() {
     });
 
     group('gradle task kinds', () {
-      Map<String, Object?> _gradle(String kind, int durMs) => _event(
+      Map<String, Object?> gradle(String kind, int durMs) => _event(
         name: kind,
         cat: 'gradle_task',
         ts: 0,
@@ -618,19 +783,19 @@ void main() {
 
       test('all kinds populate their respective buckets', () {
         final s = BuildTraceSummary.fromEvents([
-          _gradle('kotlin_compile', 10),
-          _gradle('java_compile', 20),
-          _gradle('dex', 30),
-          _gradle('resources', 40),
-          _gradle('transform', 50),
-          _gradle('r8_minify', 60),
-          _gradle('lint', 70),
-          _gradle('flutter_gradle_plugin', 80),
-          _gradle('bundle', 90),
-          _gradle('packaging', 100),
-          _gradle('aidl', 110),
-          _gradle('native_link', 120),
-          _gradle('gradle_scaffold', 130),
+          gradle('kotlin_compile', 10),
+          gradle('java_compile', 20),
+          gradle('dex', 30),
+          gradle('resources', 40),
+          gradle('transform', 50),
+          gradle('r8_minify', 60),
+          gradle('lint', 70),
+          gradle('flutter_gradle_plugin', 80),
+          gradle('bundle', 90),
+          gradle('packaging', 100),
+          gradle('aidl', 110),
+          gradle('native_link', 120),
+          gradle('gradle_scaffold', 130),
         ], platform: 'android');
 
         final g = s.android!.gradle;

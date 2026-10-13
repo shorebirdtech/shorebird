@@ -5,7 +5,7 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -14,12 +14,14 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(IOSDeploy, () {
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late Process process;
@@ -41,7 +43,7 @@ void main() {
 
     setUp(() {
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform();
       shorebirdProcess = MockShorebirdProcess();
       process = MockProcess();
       progress = MockProgress();
@@ -164,8 +166,9 @@ void main() {
       test('detaches on process stopped', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) =>
-              File('test/fixtures/ios-deploy/process_stopped.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_stopped.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -189,7 +192,9 @@ void main() {
       test('kills process on process exited', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) => File('test/fixtures/ios-deploy/process_exited.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_exited.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -212,8 +217,9 @@ void main() {
       test('kills process on process detached', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) =>
-              File('test/fixtures/ios-deploy/process_detached.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_detached.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -236,8 +242,9 @@ void main() {
       test('handles process resuming', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) =>
-              File('test/fixtures/ios-deploy/process_resuming.txt').openRead(),
+          (_) => File(
+            '$fixturesDirectory/ios-deploy/process_resuming.txt',
+          ).openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -278,7 +285,7 @@ void main() {
         when(signal.watch).thenAnswer((_) => controller.stream);
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) => File('test/fixtures/ios-deploy/success.txt').openRead(),
+          (_) => File('$fixturesDirectory/ios-deploy/success.txt').openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
@@ -299,6 +306,73 @@ void main() {
           ]),
         ).called(1);
       });
+
+      test('stops listening for sigint once the process exits', () async {
+        final signal = MockProcessSignal();
+        final controller = StreamController<ProcessSignal>.broadcast();
+        iosDeploy = IOSDeploy(sigint: signal);
+        when(signal.watch).thenAnswer((_) => controller.stream);
+        when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+        when(
+          () => process.exitCode,
+        ).thenAnswer((_) async => ExitCode.success.code);
+
+        await runWithOverrides(
+          () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+        );
+
+        expect(controller.hasListener, isFalse);
+        verify(
+          () => logger.detail('[ios-deploy] exited with code: 0'),
+        ).called(1);
+      });
+
+      test(
+        'kills the started process when listening for sigint fails',
+        () async {
+          final signal = MockProcessSignal();
+          iosDeploy = IOSDeploy(sigint: signal);
+          when(signal.watch).thenThrow(const SignalException('watch failed'));
+
+          final exitCode = await runWithOverrides(
+            () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+          );
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(() => process.kill()).called(1);
+        },
+      );
+
+      test('does not kill the process after it exits normally', () async {
+        when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+        when(
+          () => process.exitCode,
+        ).thenAnswer((_) async => ExitCode.success.code);
+
+        await runWithOverrides(
+          () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+        );
+
+        verifyNever(() => process.kill());
+      });
+
+      test(
+        'does not listen for sigint when the process fails to start',
+        () async {
+          final signal = MockProcessSignal();
+          iosDeploy = IOSDeploy(sigint: signal);
+          when(
+            () => shorebirdProcess.start(any(), any()),
+          ).thenThrow(const ProcessException('ios-deploy', [], 'oops'));
+
+          final exitCode = await runWithOverrides(
+            () => iosDeploy.installAndLaunchApp(bundlePath: 'test-bundle-path'),
+          );
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verifyNever(signal.watch);
+        },
+      );
 
       test('handles process stderr', () async {
         const message = 'test-stderr';
@@ -327,7 +401,7 @@ void main() {
       test('exits with code 0 on success', () async {
         final completer = Completer<int>();
         when(() => process.stdout).thenAnswer(
-          (_) => File('test/fixtures/ios-deploy/success.txt').openRead(),
+          (_) => File('$fixturesDirectory/ios-deploy/success.txt').openRead(),
         );
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';

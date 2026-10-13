@@ -1,17 +1,17 @@
 import 'dart:convert';
+import 'dart:io' as io show Platform;
 import 'dart:io' hide Platform;
 
 import 'package:cli_util/cli_util.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as oauth2;
 import 'package:http/http.dart' as http;
-import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -21,15 +21,14 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../fakes.dart';
+import '../helpers.dart';
 import '../matchers.dart';
 import '../mocks.dart';
 
-const googleJwtIssuer = 'https://accounts.google.com';
-const microsoftJwtIssuer =
-    'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0';
 const shorebirdJwtIssuer = 'https://auth.shorebird.dev';
 
 void main() {
+  useTempWorkingDirectory();
   group('scoped', () {
     test('creates instance with default constructor', () {
       final instance = runScoped(
@@ -42,23 +41,22 @@ void main() {
       );
       expect(
         instance.credentialsFilePath,
-        p.join(applicationConfigHome(executableName), 'credentials.json'),
+        p.join(BaseDirectories(executableName).configHome, 'credentials.json'),
       );
     });
   });
 
   group('JwtClaims', () {
     group('email', () {
-      test('returns null when idToken is not a valid jwt', () {
+      test('returns null when the access token is not a valid jwt', () {
         final credentials = oauth2.AccessCredentials(
           oauth2.AccessToken(
             'Bearer',
-            'accessToken',
+            'not a valid jwt',
             DateTime.now().add(const Duration(minutes: 10)).toUtc(),
           ),
           '',
           [],
-          idToken: 'not a valid jwt',
         );
 
         expect(credentials.email, isNull);
@@ -66,102 +64,12 @@ void main() {
     });
   });
 
-  group('OauthAuthProvider', () {
-    late Jwt jwt;
-    late JwtPayload payload;
-    late ShorebirdEnv shorebirdEnv;
-
-    R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
-      );
-    }
-
-    setUp(() {
-      payload = MockJwtPayload();
-      jwt = Jwt(
-        header: MockJwtHeader(),
-        payload: payload,
-        signature: 'signature',
-      );
-      shorebirdEnv = MockShorebirdEnv();
-      when(() => shorebirdEnv.jwtIssuer).thenReturn(shorebirdJwtIssuer);
-    });
-
-    group('authProvider', () {
-      group('when issuer is login.microsoft.online', () {
-        setUp(() {
-          when(() => payload.iss).thenReturn(microsoftJwtIssuer);
-        });
-
-        test('returns AuthProvider.microsoft', () {
-          runWithOverrides(() {
-            expect(jwt.authProvider, equals(AuthProvider.microsoft));
-          });
-        });
-      });
-
-      group('when issuer is accounts.google.com', () {
-        setUp(() {
-          when(() => payload.iss).thenReturn(googleJwtIssuer);
-        });
-
-        test('returns AuthProvider.google', () {
-          runWithOverrides(() {
-            expect(jwt.authProvider, equals(AuthProvider.google));
-          });
-        });
-      });
-
-      group('when issuer is auth.shorebird.dev', () {
-        setUp(() {
-          when(() => payload.iss).thenReturn(shorebirdJwtIssuer);
-        });
-
-        test('returns AuthProvider.shorebird', () {
-          runWithOverrides(() {
-            expect(
-              jwt.authProvider,
-              equals(AuthProvider.shorebird),
-            );
-          });
-        });
-      });
-
-      group('when issuer is unknown', () {
-        setUp(() {
-          when(() => payload.iss).thenReturn('https://example.com');
-        });
-
-        test('throws exception', () {
-          runWithOverrides(() {
-            expect(
-              () => jwt.authProvider,
-              throwsA(
-                isA<Exception>().having(
-                  (e) => e.toString(),
-                  'message',
-                  'Exception: Unknown jwt issuer: https://example.com',
-                ),
-              ),
-            );
-          });
-        });
-      });
-    });
-  });
-
   group(Auth, () {
-    const idToken = // cspell:disable-next-line
+    // Issued by accounts.google.com, as stored by CLI versions that supported
+    // Google login.
+    const googleIdToken = // cspell:disable-next-line
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
-    const refreshToken = 'shorebird-token';
-    const ciToken = CiToken(
-      refreshToken: refreshToken,
-      authProvider: AuthProvider.google,
-    );
+    const refreshToken = 'sb_rt_test';
     // Decoded payload:
     // {
     //   "iss": "https://auth.shorebird.dev",
@@ -173,28 +81,35 @@ void main() {
     //   "exp": 6789
     // }
     // cspell:disable-next-line
-    const shorebirdIdToken =
+    const shorebirdAccessToken =
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2F1dGguc2hvcmViaXJkLmRldiIsImF1ZCI6InNob3JlYmlyZCIsInN1YiI6IjEyMzQ1IiwiZW1haWwiOiJ0ZXN0QGVtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpYXQiOjEyMzQsImV4cCI6Njc4OX0.dGVzdA''';
-    const shorebirdCiToken = CiToken(
-      refreshToken: 'sb_rt_test',
-      authProvider: AuthProvider.shorebird,
-    );
     const email = 'test@email.com';
-    const user = PrivateUser(id: 42, email: email, jwtIssuer: googleJwtIssuer);
+    const user = PrivateUser(
+      id: 42,
+      email: email,
+      jwtIssuer: shorebirdJwtIssuer,
+    );
     const scopes = <String>[];
     final accessToken = oauth2.AccessToken(
       'Bearer',
-      'accessToken',
+      shorebirdAccessToken,
       DateTime.now().add(const Duration(minutes: 10)).toUtc(),
     );
 
     late oauth2.AccessCredentials accessCredentials;
+    final deviceAuthorization = DeviceAuthorization(
+      deviceCode: 'device-code',
+      userCode: 'BEST-CAKE',
+      verificationUri: Uri.parse('https://auth.shorebird.dev/device'),
+      expiresIn: const Duration(minutes: 15),
+      interval: const Duration(seconds: 5),
+    );
     late String credentialsDir;
     late http.Client httpClient;
     late CodePushClient codePushClient;
     late ShorebirdLogger logger;
     late Auth auth;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdEnv shorebirdEnv;
 
     setUpAll(() {
@@ -214,11 +129,12 @@ void main() {
       );
     }
 
-    Auth buildAuth() {
+    Auth buildAuth({RunProcessSync? runProcessSync}) {
       return runWithOverrides(
         () => Auth(
           credentialsDir: credentialsDir,
           httpClient: httpClient,
+          runProcessSync: runProcessSync,
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
@@ -231,6 +147,15 @@ void main() {
               }) async {
                 return accessCredentials;
               },
+          obtainCredentialsViaDeviceLogin:
+              ({
+                required http.Client httpClient,
+                required Uri authBaseUrl,
+                required void Function(DeviceAuthorization) userPrompt,
+              }) async {
+                userPrompt(deviceAuthorization);
+                return accessCredentials;
+              },
         ),
       );
     }
@@ -241,22 +166,30 @@ void main() {
       ).writeAsStringSync(jsonEncode(accessCredentials.toJson()));
     }
 
+    void answerRefreshWith(http.Response response) {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer((_) async => response);
+    }
+
     setUp(() {
       accessCredentials = oauth2.AccessCredentials(
         accessToken,
         refreshToken,
         scopes,
-        idToken: idToken,
       );
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = MockHttpClient();
       codePushClient = MockCodePushClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(environment: {});
       shorebirdEnv = MockShorebirdEnv();
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
-      when(() => platform.environment).thenReturn(<String, String>{});
       when(() => shorebirdEnv.jwtIssuer).thenReturn(shorebirdJwtIssuer);
       when(
         () => shorebirdEnv.authServiceUri,
@@ -279,391 +212,141 @@ void main() {
           test('returns false', () {
             expect(auth.isAuthenticated, isFalse);
           });
-        });
-      });
 
-      group('token', () {
-        test('does not require an onRefreshCredentials callback', () {
-          expect(
-            () => AuthenticatedClient.token(
-              token: ciToken,
-              httpClient: httpClient,
-              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-              refreshCredentials:
-                  (
-                    clientId,
-                    credentials,
-                    client, {
-                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-                  }) async => accessCredentials,
-            ),
-            returnsNormally,
-          );
-        });
-
-        test(
-          'refreshes and uses new token when credentials are expired.',
-          () async {
-            when(() => httpClient.send(any())).thenAnswer(
-              (_) async =>
-                  http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
-            );
-
-            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-
-            final client = AuthenticatedClient.token(
-              token: ciToken,
-              httpClient: httpClient,
-              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-              onRefreshCredentials: onRefreshCredentialsCalls.add,
-              refreshCredentials:
-                  (
-                    clientId,
-                    credentials,
-                    client, {
-                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-                  }) async => accessCredentials,
-            );
-
-            await runWithOverrides(
-              () => client.get(Uri.parse('https://example.com')),
-            );
-
-            expect(
-              onRefreshCredentialsCalls,
-              equals([
-                isA<oauth2.AccessCredentials>().having(
-                  (c) => c.idToken,
-                  'token',
-                  idToken,
-                ),
-              ]),
-            );
-            final captured = verify(
-              () => httpClient.send(captureAny()),
-            ).captured;
-            expect(captured, hasLength(1));
-            final request = captured.first as http.BaseRequest;
-            expect(request.headers['Authorization'], equals('Bearer $idToken'));
-          },
-        );
-
-        group('when refreshing the token fails', () {
-          late AuthenticatedClient client;
-          setUp(() {
-            when(() => httpClient.send(any())).thenAnswer(
-              (_) async => http.StreamedResponse(
-                const Stream.empty(),
-                HttpStatus.badRequest,
-              ),
-            );
-
-            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-
-            client = AuthenticatedClient.token(
-              token: ciToken,
-              httpClient: httpClient,
-              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-              onRefreshCredentials: onRefreshCredentialsCalls.add,
-              refreshCredentials:
-                  (
-                    clientId,
-                    credentials,
-                    client, {
-                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-                  }) async => throw Exception('error.'),
-            );
-          });
-
-          test('exits and logs correctly', () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => client.get(Uri.parse('https://example.com')),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
+          test('warns that the credentials could not be read', () {
             verify(
-              () => logger.err('Failed to refresh credentials.'),
-            ).called(1);
-            verify(
-              () => logger.info(
-                '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
+              () => logger.warn(
+                any(that: contains('could not be read')),
               ),
             ).called(1);
-            verify(() => logger.detail('Exception: error.')).called(1);
           });
         });
 
-        test('uses valid token when credentials valid.', () async {
-          when(() => httpClient.send(any())).thenAnswer(
-            (_) async =>
-                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
-          );
-          final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-          final client = AuthenticatedClient.token(
-            token: ciToken,
-            httpClient: httpClient,
-            authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-            onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials:
-                (
-                  clientId,
-                  credentials,
-                  client, {
-                  AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-                }) async => accessCredentials,
-          );
-
-          await runWithOverrides(() async {
-            await client.get(Uri.parse('https://example.com'));
-            await client.get(Uri.parse('https://example.com'));
-          });
-
-          expect(onRefreshCredentialsCalls.length, equals(1));
-          final captured = verify(() => httpClient.send(captureAny())).captured;
-          expect(captured, hasLength(2));
-          var request = captured.first as http.BaseRequest;
-          expect(request.headers['Authorization'], equals('Bearer $idToken'));
-          request = captured.last as http.BaseRequest;
-          expect(request.headers['Authorization'], equals('Bearer $idToken'));
-        });
-
-        group('when token is Shorebird', () {
-          test(
-            'refreshes via Shorebird and uses new token',
-            () async {
-              when(() => httpClient.send(any())).thenAnswer(
-                (_) async => http.StreamedResponse(
-                  const Stream.empty(),
-                  HttpStatus.ok,
-                ),
-              );
-              when(
-                () => httpClient.post(
-                  any(),
-                  headers: any(named: 'headers'),
-                  body: any(named: 'body'),
-                ),
-              ).thenAnswer(
-                (_) async => http.Response(
-                  jsonEncode({
-                    'access_token': shorebirdIdToken,
-                    'refresh_token': 'sb_rt_new',
-                    'token_type': 'Bearer',
-                    'expires_in': 900,
-                  }),
-                  HttpStatus.ok,
-                ),
-              );
-
-              final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-              final client = AuthenticatedClient.token(
-                token: shorebirdCiToken,
-                httpClient: httpClient,
-                authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-                onRefreshCredentials: onRefreshCredentialsCalls.add,
-              );
-
-              await runWithOverrides(
-                () => client.get(
-                  Uri.parse('https://example.com'),
-                ),
-              );
-
-              expect(onRefreshCredentialsCalls, hasLength(1));
-              expect(
-                onRefreshCredentialsCalls.first.refreshToken,
-                equals('sb_rt_new'),
-              );
-              final captured = verify(
-                () => httpClient.send(captureAny()),
-              ).captured;
-              expect(captured, hasLength(1));
-              final request = captured.first as http.BaseRequest;
-              expect(
-                request.headers['Authorization'],
-                equals('Bearer $shorebirdIdToken'),
-              );
-              verify(
-                () => httpClient.post(
-                  Uri.parse('https://auth.shorebird.dev/token'),
-                  headers: any(named: 'headers'),
-                  body: any(named: 'body'),
-                ),
-              ).called(1);
-            },
-          );
-
-          group('when Shorebird refresh fails', () {
-            late AuthenticatedClient client;
+        for (final (description, contents) in [
+          ('a JSON value that is not an object', '[]'),
+          ('a field of the wrong type', '{"accessToken": 42}'),
+          (
+            'a non-UTC expiry',
+            '{"accessToken":{"type":"Bearer","data":"x",'
+                '"expiry":"2024-01-01T00:00:00"},"scopes":[]}',
+          ),
+        ]) {
+          group('when credentials are $description', () {
             setUp(() {
-              when(
-                () => httpClient.post(
-                  any(),
-                  headers: any(named: 'headers'),
-                  body: any(named: 'body'),
-                ),
-              ).thenThrow(Exception('refresh failed'));
-
-              client = AuthenticatedClient.token(
-                token: shorebirdCiToken,
-                httpClient: httpClient,
-                authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-              );
+              File(
+                p.join(credentialsDir, 'credentials.json'),
+              ).writeAsStringSync(contents);
+              auth = buildAuth();
             });
 
-            test('exits and logs correctly', () async {
-              await expectLater(
-                () => runWithOverrides(
-                  () => client.get(
-                    Uri.parse('https://example.com'),
-                  ),
-                ),
-                exitsWithCode(ExitCode.software),
-              );
+            test('warns and treats the user as logged out', () {
+              expect(auth.isAuthenticated, isFalse);
               verify(
-                () => logger.err(
-                  'Failed to refresh credentials.',
+                () => logger.warn(
+                  any(that: contains('could not be read')),
                 ),
-              ).called(1);
-              verify(
-                () => logger.info(
-                  '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
-                ),
-              ).called(1);
-              verify(
-                () => logger.detail('Exception: refresh failed'),
               ).called(1);
             });
+
+            test('logout still removes the file', () async {
+              await runWithOverrides(auth.logout);
+              expect(
+                File(p.join(credentialsDir, 'credentials.json')).existsSync(),
+                isFalse,
+              );
+            });
+          });
+        }
+
+        group('when stored credentials were issued by Google', () {
+          setUp(() {
+            accessCredentials = oauth2.AccessCredentials(
+              oauth2.AccessToken(
+                'Bearer',
+                'ya29.google-access-token',
+                DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+              ),
+              refreshToken,
+              scopes,
+              idToken: googleIdToken,
+            );
+            writeCredentials();
+            auth = buildAuth();
+          });
+
+          test('returns false and tells the user to log in again', () {
+            expect(auth.isAuthenticated, isFalse);
+            expect(auth.email, isNull);
+            expect(auth.client, same(httpClient));
+            verify(
+              () => logger.warn(
+                '''Your stored credentials are no longer valid. Run ${lightCyan.wrap('shorebird login')} to sign in again.''',
+              ),
+            ).called(1);
+          });
+
+          test('allows logging in again', () async {
+            accessCredentials = oauth2.AccessCredentials(
+              accessToken,
+              refreshToken,
+              scopes,
+            );
+            await runWithOverrides(() => auth.login(prompt: (_) {}));
+            expect(auth.isAuthenticated, isTrue);
+            expect(buildAuth().email, equals(email));
+          });
+        });
+
+        group('when stored credentials also carry the token as idToken', () {
+          // How CLI versions before the access token was sent as itself
+          // wrote credentials.json.
+          setUp(() {
+            accessCredentials = oauth2.AccessCredentials(
+              accessToken,
+              refreshToken,
+              scopes,
+              idToken: shorebirdAccessToken,
+            );
+            writeCredentials();
+            auth = buildAuth();
+          });
+
+          test('loads them', () {
+            expect(auth.isAuthenticated, isTrue);
+            expect(auth.email, equals(email));
+          });
+        });
+
+        group('when the stored access token is not a JWT', () {
+          setUp(() {
+            accessCredentials = oauth2.AccessCredentials(
+              oauth2.AccessToken(
+                'Bearer',
+                'opaque',
+                DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+              ),
+              refreshToken,
+              scopes,
+            );
+            writeCredentials();
+            auth = buildAuth();
+          });
+
+          test('returns false', () {
+            expect(auth.isAuthenticated, isFalse);
+            verify(() => logger.warn(any())).called(1);
           });
         });
       });
 
       group('credentials', () {
-        test(
-          'refreshes and uses new token when credentials are expired.',
-          () async {
-            when(() => httpClient.send(any())).thenAnswer(
-              (_) async =>
-                  http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
-            );
-
-            const expiredIdToken = // cspell:disable-next-line
-                '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
-            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-            final expiredCredentials = oauth2.AccessCredentials(
-              oauth2.AccessToken(
-                'Bearer',
-                'accessToken',
-                DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
-              ),
-              '',
-              [],
-              idToken: expiredIdToken,
-            );
-
-            final client = AuthenticatedClient.credentials(
-              credentials: expiredCredentials,
-              httpClient: httpClient,
-              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-              onRefreshCredentials: onRefreshCredentialsCalls.add,
-              refreshCredentials:
-                  (
-                    clientId,
-                    credentials,
-                    client, {
-                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-                  }) async => accessCredentials,
-            );
-
-            await runWithOverrides(
-              () => client.get(Uri.parse('https://example.com')),
-            );
-
-            expect(
-              onRefreshCredentialsCalls,
-              equals([
-                isA<oauth2.AccessCredentials>().having(
-                  (c) => c.idToken,
-                  'token',
-                  idToken,
-                ),
-              ]),
-            );
-            final captured = verify(
-              () => httpClient.send(captureAny()),
-            ).captured;
-            expect(captured, hasLength(1));
-            final request = captured.first as http.BaseRequest;
-            expect(request.headers['Authorization'], equals('Bearer $idToken'));
-          },
-        );
-
-        group('when refreshing the token fails', () {
-          late AuthenticatedClient client;
-          setUp(() {
-            when(() => httpClient.send(any())).thenAnswer(
-              (_) async => http.StreamedResponse(
-                const Stream.empty(),
-                HttpStatus.badRequest,
-              ),
-            );
-
-            const expiredIdToken = // cspell:disable-next-line
-                '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
-            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-            final expiredCredentials = oauth2.AccessCredentials(
-              oauth2.AccessToken(
-                'Bearer',
-                'accessToken',
-                DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
-              ),
-              '',
-              [],
-              idToken: expiredIdToken,
-            );
-
-            client = AuthenticatedClient.credentials(
-              credentials: expiredCredentials,
-              httpClient: httpClient,
-              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
-              onRefreshCredentials: onRefreshCredentialsCalls.add,
-              refreshCredentials:
-                  (
-                    clientId,
-                    credentials,
-                    client, {
-                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-                  }) async => throw Exception('error.'),
-            );
-          });
-
-          test('exits and logs correctly', () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => client.get(Uri.parse('https://example.com')),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(
-              () => logger.err('Failed to refresh credentials.'),
-            ).called(1);
-            verify(
-              () => logger.info(
-                '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
-              ),
-            ).called(1);
-            verify(() => logger.detail('Exception: error.')).called(1);
-          });
-        });
-
         test('uses valid token when credentials valid.', () async {
           when(() => httpClient.send(any())).thenAnswer(
             (_) async =>
                 http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
           );
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-          final client = AuthenticatedClient.credentials(
+          final client = AuthenticatedClient(
             credentials: accessCredentials,
             httpClient: httpClient,
             authServiceUri: Uri.parse('https://auth.shorebird.dev'),
@@ -678,7 +361,10 @@ void main() {
           final captured = verify(() => httpClient.send(captureAny())).captured;
           expect(captured, hasLength(1));
           final request = captured.first as http.BaseRequest;
-          expect(request.headers['Authorization'], equals('Bearer $idToken'));
+          expect(
+            request.headers['Authorization'],
+            equals('Bearer $shorebirdAccessToken'),
+          );
         });
 
         group('when expired credentials have Shorebird issuer', () {
@@ -700,7 +386,7 @@ void main() {
               ).thenAnswer(
                 (_) async => http.Response(
                   jsonEncode({
-                    'access_token': shorebirdIdToken,
+                    'access_token': shorebirdAccessToken,
                     'refresh_token': 'sb_rt_rotated',
                     'token_type': 'Bearer',
                     'expires_in': 900,
@@ -718,10 +404,9 @@ void main() {
                 ),
                 'sb_rt_old',
                 [],
-                idToken: shorebirdIdToken,
               );
 
-              final client = AuthenticatedClient.credentials(
+              final client = AuthenticatedClient(
                 credentials: expiredShorebirdCredentials,
                 httpClient: httpClient,
                 authServiceUri: Uri.parse('https://auth.shorebird.dev'),
@@ -746,7 +431,7 @@ void main() {
               final request = captured.first as http.BaseRequest;
               expect(
                 request.headers['Authorization'],
-                equals('Bearer $shorebirdIdToken'),
+                equals('Bearer $shorebirdAccessToken'),
               );
               verify(
                 () => httpClient.post(
@@ -761,15 +446,10 @@ void main() {
 
         group('when Shorebird credential refresh fails', () {
           late AuthenticatedClient client;
-          setUp(() {
-            when(
-              () => httpClient.post(
-                any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body'),
-              ),
-            ).thenThrow(Exception('refresh failed'));
+          late List<oauth2.AccessCredentials> onRefreshCredentialsCalls;
 
+          setUp(() {
+            onRefreshCredentialsCalls = [];
             final expiredShorebirdCredentials = oauth2.AccessCredentials(
               oauth2.AccessToken(
                 'Bearer',
@@ -778,38 +458,165 @@ void main() {
               ),
               'sb_rt_old',
               [],
-              idToken: shorebirdIdToken,
             );
 
-            client = AuthenticatedClient.credentials(
+            client = AuthenticatedClient(
               credentials: expiredShorebirdCredentials,
               httpClient: httpClient,
               authServiceUri: Uri.parse('https://auth.shorebird.dev'),
+              onRefreshCredentials: onRefreshCredentialsCalls.add,
             );
           });
 
-          test('exits and logs correctly', () async {
+          void answerRefreshWith(http.Response response) {
+            when(
+              () => httpClient.post(
+                any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+              ),
+            ).thenAnswer((_) async => response);
+          }
+
+          Future<void> expectExit(ExitCode code) async {
             await expectLater(
               () => runWithOverrides(
-                () => client.get(
-                  Uri.parse('https://example.com'),
-                ),
+                () => client.get(Uri.parse('https://example.com')),
               ),
-              exitsWithCode(ExitCode.software),
+              exitsWithCode(code),
             );
-            verify(
-              () => logger.err(
-                'Failed to refresh credentials.',
+            verifyNever(() => httpClient.send(any()));
+            expect(onRefreshCredentialsCalls, isEmpty);
+          }
+
+          // Any RFC 6749 section 5.2 error response: the credentials will
+          // not refresh again.
+          group('with an OAuth error response', () {
+            for (final (status, code, description, shown) in [
+              (400, 'invalid_grant', null, 'invalid_grant'),
+              (
+                401,
+                'invalid_client',
+                'Unknown client',
+                'invalid_client: Unknown client',
               ),
-            ).called(1);
-            verify(
-              () => logger.info(
-                '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
-              ),
-            ).called(1);
-            verify(
-              () => logger.detail('Exception: refresh failed'),
-            ).called(1);
+              (400, 'unauthorized_client', null, 'unauthorized_client'),
+              // A 429 is a 4xx like any other once it carries an OAuth error.
+              (429, 'rate_limited', null, 'rate_limited'),
+            ]) {
+              test(
+                'asks the user to log in again on a $status $code',
+                () async {
+                  answerRefreshWith(
+                    http.Response(
+                      jsonEncode({
+                        'error': code,
+                        'error_description': ?description,
+                      }),
+                      status,
+                    ),
+                  );
+
+                  await expectExit(ExitCode.software);
+                  verify(
+                    () => logger.err(
+                      'The Shorebird auth service rejected your stored '
+                      'credentials ($shown).',
+                    ),
+                  ).called(1);
+                  verify(
+                    () => logger.info(
+                      'Run ${lightCyan.wrap('shorebird login')} to log in '
+                      'again.',
+                    ),
+                  ).called(1);
+                },
+              );
+            }
+          });
+
+          // No usable answer says nothing about the credentials.
+          group('without a usable answer', () {
+            Future<void> expectTransient(String reason) async {
+              await expectExit(ExitCode.tempFail);
+              verify(
+                () => logger.err(
+                  'Could not refresh your Shorebird credentials: $reason',
+                ),
+              ).called(1);
+              verifyNever(
+                () => logger.info(any(that: contains('shorebird login'))),
+              );
+            }
+
+            void verifyCheckNetwork() {
+              verify(
+                () => logger.info(
+                  'Your login is unchanged. Check your network connection '
+                  'and try again.',
+                ),
+              ).called(1);
+            }
+
+            test('reports a 5xx', () async {
+              answerRefreshWith(
+                http.Response(
+                  jsonEncode({'error': 'server_error'}),
+                  HttpStatus.badGateway,
+                ),
+              );
+              await expectTransient('The Shorebird auth service answered 502.');
+              verifyCheckNetwork();
+            });
+
+            test('reports a 429 that is not an OAuth error response', () async {
+              answerRefreshWith(
+                http.Response('Too Many Requests', HttpStatus.tooManyRequests),
+              );
+              await expectTransient('Too many requests.');
+              verify(
+                () => logger.info(
+                  'Your login is unchanged. Try again shortly.',
+                ),
+              ).called(1);
+            });
+
+            test('reports a 4xx that is not an OAuth error response', () async {
+              answerRefreshWith(
+                http.Response('<html>nope</html>', HttpStatus.forbidden),
+              );
+              await expectTransient('The Shorebird auth service answered 403.');
+              verifyCheckNetwork();
+            });
+
+            test('reports a 200 that is not a token response', () async {
+              answerRefreshWith(
+                http.Response('<html>ok</html>', HttpStatus.ok),
+              );
+              await expectTransient(
+                'The auth service sent an unexpected token response.',
+              );
+              verifyCheckNetwork();
+            });
+
+            test('reports a network failure', () async {
+              when(
+                () => httpClient.post(
+                  any(),
+                  headers: any(named: 'headers'),
+                  body: any(named: 'body'),
+                ),
+              ).thenThrow(const SocketException('no route to host'));
+              await expectTransient(
+                'Could not reach the Shorebird auth service.',
+              );
+              verifyCheckNetwork();
+              verify(
+                () => logger.detail(
+                  any(that: contains('no route to host')),
+                ),
+              ).called(1);
+            });
           });
         });
       });
@@ -836,14 +643,19 @@ void main() {
         final captured = verify(() => httpClient.send(captureAny())).captured;
         expect(captured, hasLength(1));
         final request = captured.first as http.BaseRequest;
-        expect(request.headers['Authorization'], equals('Bearer $idToken'));
+        expect(
+          request.headers['Authorization'],
+          equals('Bearer $shorebirdAccessToken'),
+        );
       });
 
       group('when SHOREBIRD_TOKEN is an API key', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'sb_api_abc123',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
         });
 
         test('parses as API key and sets isAuthenticated', () {
@@ -861,9 +673,11 @@ void main() {
         });
 
         test('trims whitespace from API key', () {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: '  sb_api_abc123  \n',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: '  sb_api_abc123  \n',
+            },
+          );
           auth = buildAuth();
           expect(auth.isAuthenticated, isTrue);
         });
@@ -904,84 +718,45 @@ void main() {
         });
       });
 
-      group('when token is invalid', () {
+      group('when SHOREBIRD_TOKEN is not an API key', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'not a base64 string',
-          });
-        });
-
-        test(
-          'logs and throws error when token string is not valid',
-          () async {
-            expect(buildAuth, throwsA(isFormatException));
-            verify(
-              () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
-            ).called(1);
-            verify(
-              () => logger.err(
-                'Failed to parse $shorebirdTokenEnvVar. Expected an API key '
-                '(sb_api_...) or a legacy CI token.',
+          platform = platform.copyWith(
+            environment: {
+              // A legacy `shorebird login:ci` token.
+              shorebirdTokenEnvVar: base64Encode(
+                utf8.encode(
+                  jsonEncode({
+                    'refresh_token': 'refresh',
+                    'auth_provider': 'google',
+                  }),
+                ),
               ),
-            ).called(1);
-            verifyNever(
-              () => logger.detail(
-                '[env] $shorebirdTokenEnvVar parsed as legacy CiToken',
+            },
+          );
+        });
+
+        test('logs an error and exits', () {
+          expect(buildAuth, exitsWithCode(ExitCode.config));
+          verify(
+            () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
+          ).called(1);
+          verify(
+            () => logger.err(
+              '$shorebirdTokenEnvVar is not a Shorebird API key '
+              '(API keys start with sb_api_).',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  'CI tokens from `shorebird login:ci` are no longer '
+                  'supported.',
+                ),
               ),
-            );
-          },
-        );
-      });
-
-      group('when token has leading or trailing spaces and newlines', () {
-        setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar:
-                '''
-    ${ciToken.toBase64()}  
-              
-''',
-          });
+            ),
+          ).called(1);
         });
-
-        test('trims string', () {
-          auth = buildAuth();
-          final client = auth.client;
-          expect(client, isA<http.Client>());
-          expect(client, isA<AuthenticatedClient>());
-        });
-      });
-
-      test('returns an authenticated client '
-          'when a token and token provider is present.', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
-        );
-        when(() => platform.environment).thenReturn(<String, String>{
-          shorebirdTokenEnvVar: ciToken.toBase64(),
-        });
-        auth = buildAuth();
-        final client = auth.client;
-        expect(client, isA<http.Client>());
-        expect(client, isA<AuthenticatedClient>());
-        verify(
-          () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
-        ).called(1);
-        verify(
-          () => logger.warn(
-            'SHOREBIRD_TOKEN contains a legacy CI token from '
-            '`shorebird login:ci`. '
-            'This format is deprecated and will stop working in a future '
-            'release. '
-            'Create an API key at https://console.shorebird.dev instead.',
-          ),
-        ).called(1);
-        verify(
-          () => logger.detail(
-            '[env] $shorebirdTokenEnvVar parsed as legacy CiToken',
-          ),
-        ).called(1);
       });
 
       test(
@@ -994,7 +769,217 @@ void main() {
       );
     });
 
+    group('hasValidCredentials', () {
+      group('when there are no credentials', () {
+        test('returns false', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+        });
+      });
+
+      group('when authenticated via API key', () {
+        setUp(() {
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
+          auth = buildAuth();
+        });
+
+        test('returns true without refreshing', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isTrue);
+        });
+      });
+
+      group('when stored credentials are malformed', () {
+        setUp(() {
+          accessCredentials = oauth2.AccessCredentials(
+            oauth2.AccessToken(
+              'Bearer',
+              'not a valid jwt',
+              DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+            ),
+            refreshToken,
+            scopes,
+          );
+          writeCredentials();
+          auth = buildAuth();
+        });
+
+        test('returns false', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+        });
+      });
+
+      group('when stored credentials can be refreshed', () {
+        setUp(() {
+          writeCredentials();
+          answerRefreshWith(
+            http.Response(
+              jsonEncode({
+                'access_token': shorebirdAccessToken,
+                'refresh_token': 'sb_rt_rotated',
+                'token_type': 'Bearer',
+                'expires_in': 900,
+              }),
+              HttpStatus.ok,
+            ),
+          );
+          auth = buildAuth();
+        });
+
+        test('returns true and persists the refreshed credentials', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isTrue);
+          expect(auth.email, equals(email));
+          expect(File(auth.credentialsFilePath).existsSync(), isTrue);
+        });
+      });
+
+      // Any RFC 6749 section 5.2 error response means the stored credentials
+      // will not refresh, whichever code it carries.
+      group('when the refresh is refused', () {
+        setUp(writeCredentials);
+
+        for (final (status, code) in [
+          (HttpStatus.badRequest, 'invalid_grant'),
+          (HttpStatus.unauthorized, 'invalid_grant'),
+          (HttpStatus.unauthorized, 'invalid_client'),
+          (HttpStatus.badRequest, 'invalid_request'),
+          (HttpStatus.badRequest, 'unauthorized_client'),
+          (HttpStatus.tooManyRequests, 'rate_limited'),
+        ]) {
+          test('returns false for a $status $code', () async {
+            answerRefreshWith(
+              http.Response(jsonEncode({'error': code}), status),
+            );
+            auth = buildAuth();
+            expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+          });
+        }
+      });
+
+      // A 4xx that is not an OAuth error response, a plain 429 included,
+      // says nothing about the credentials.
+      group('when the auth service refuses the request itself', () {
+        setUp(writeCredentials);
+
+        Future<void> expectRethrows(http.Response response) async {
+          answerRefreshWith(response);
+          auth = buildAuth();
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(
+              isA<ShorebirdAuthException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                response.statusCode,
+              ),
+            ),
+          );
+        }
+
+        test('rethrows a 429 that is not an OAuth error response', () async {
+          await expectRethrows(
+            http.Response('Too Many Requests', HttpStatus.tooManyRequests),
+          );
+        });
+
+        test('rethrows a 4xx that is not an OAuth error response', () async {
+          await expectRethrows(
+            http.Response('Unauthorized', HttpStatus.unauthorized),
+          );
+        });
+      });
+
+      // Answering false here would log the user out over a bad connection,
+      // which is not what a failure to reach the auth service means.
+      group('when the auth service cannot answer', () {
+        setUp(writeCredentials);
+
+        test('rethrows a 5xx', () async {
+          answerRefreshWith(http.Response('bad gateway', 502));
+          auth = buildAuth();
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(
+              isA<ShorebirdAuthException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                502,
+              ),
+            ),
+          );
+        });
+
+        test('rethrows a 200 that is not a token response', () async {
+          answerRefreshWith(http.Response('<html>ok</html>', HttpStatus.ok));
+          auth = buildAuth();
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(isA<ShorebirdAuthException>()),
+          );
+          expect(File(auth.credentialsFilePath).existsSync(), isTrue);
+        });
+
+        test('rethrows a network failure', () async {
+          when(
+            () => httpClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenThrow(const SocketException('no route to host'));
+          auth = buildAuth();
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(isA<SocketException>()),
+          );
+        });
+      });
+    });
+
     group('login', () {
+      test(
+        'writes the credentials file readable by the owner only',
+        () async {
+          final credentialsFile = File(
+            p.join(credentialsDir, 'credentials.json'),
+          )..writeAsStringSync('');
+          // Start from a world-readable file, as older CLIs wrote it.
+          Process.runSync('chmod', ['644', credentialsFile.path]);
+
+          await runWithOverrides(() => auth.login(prompt: (_) {}));
+
+          expect(credentialsFile.statSync().mode & 0x1ff, equals(0x180));
+        },
+        skip: io.Platform.isWindows
+            ? 'Windows has no POSIX file modes.'
+            : false,
+      );
+
+      test(
+        'logs at detail level and still writes when chmod fails',
+        () async {
+          auth = buildAuth(
+            runProcessSync: (executable, arguments) =>
+                ProcessResult(0, 1, '', 'Operation not permitted'),
+          );
+
+          await runWithOverrides(() => auth.login(prompt: (_) {}));
+
+          final credentialsPath = p.join(credentialsDir, 'credentials.json');
+          verify(
+            () => logger.detail(
+              'Failed to restrict permissions on $credentialsPath '
+              '(chmod exited 1): Operation not permitted',
+            ),
+          ).called(1);
+          expect(File(credentialsPath).existsSync(), isTrue);
+          expect(buildAuth().isAuthenticated, isTrue);
+        },
+        skip: io.Platform.isWindows ? 'Windows does not run chmod.' : false,
+      );
+
       test(
         'should set the email when claims are valid and current user exists',
         () async {
@@ -1029,9 +1014,11 @@ void main() {
       test(
         'throws UserAlreadyLoggedInException when authenticated via API key',
         () async {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'sb_api_abc123',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
           auth = buildAuth();
 
           await expectLater(
@@ -1052,10 +1039,13 @@ void main() {
       group('when login credentials are corrupted', () {
         setUp(() {
           accessCredentials = oauth2.AccessCredentials(
-            accessToken,
+            oauth2.AccessToken(
+              'Bearer',
+              'not a valid jwt',
+              DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+            ),
             refreshToken,
             scopes,
-            idToken: 'not a valid jwt',
           );
           writeCredentials();
           auth = buildAuth();
@@ -1088,19 +1078,71 @@ void main() {
       });
     });
 
+    group('loginWithDeviceCode', () {
+      test('prompts with the device code and stores credentials', () async {
+        final prompts = <DeviceAuthorization>[];
+        await runWithOverrides(
+          () => auth.loginWithDeviceCode(prompt: prompts.add),
+        );
+
+        expect(prompts, equals([deviceAuthorization]));
+        expect(auth.email, email);
+        expect(auth.isAuthenticated, isTrue);
+        // Stored where the loopback login stores them, so a fresh Auth
+        // loads, refreshes and revokes them the same way.
+        final reloaded = buildAuth();
+        expect(reloaded.email, email);
+        expect(reloaded.isAuthenticated, isTrue);
+        expect(
+          jsonDecode(File(auth.credentialsFilePath).readAsStringSync()),
+          equals(jsonDecode(jsonEncode(accessCredentials.toJson()))),
+        );
+      });
+
+      test('throws UserAlreadyLoggedInException if user is authenticated', () {
+        writeCredentials();
+        auth = buildAuth();
+
+        expect(
+          runWithOverrides(() => auth.loginWithDeviceCode(prompt: (_) {})),
+          throwsA(isA<UserAlreadyLoggedInException>()),
+        );
+      });
+
+      test('throws UserNotFoundException when user does not exist', () async {
+        when(
+          () => codePushClient.getCurrentUser(),
+        ).thenAnswer((_) async => null);
+
+        await expectLater(
+          runWithOverrides(() => auth.loginWithDeviceCode(prompt: (_) {})),
+          throwsA(isA<UserNotFoundException>()),
+        );
+        expect(auth.isAuthenticated, isFalse);
+      });
+    });
+
     group('logout', () {
+      void stubRevocation(Future<http.Response> Function() answer) {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) => answer());
+      }
+
+      setUp(() {
+        stubRevocation(() async => http.Response('', HttpStatus.ok));
+      });
+
       test('clears session and wipes state', () async {
         await runWithOverrides(
           () => auth.login(prompt: (_) {}),
         );
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
-
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
-        );
 
         await runWithOverrides(() => auth.logout());
         expect(auth.email, isNull);
@@ -1115,21 +1157,17 @@ void main() {
         );
         expect(File(auth.credentialsFilePath).existsSync(), isTrue);
 
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
-        );
-
         await runWithOverrides(() => auth.logout());
         expect(File(auth.credentialsFilePath).existsSync(), isFalse);
       });
 
       group('when authenticated via API key', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'sb_api_abc123',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
           auth = buildAuth();
         });
 
@@ -1139,111 +1177,110 @@ void main() {
           // _apiKey is not cleared by _clearCredentials, so the instance
           // still considers itself authenticated.
           expect(auth.isAuthenticated, isTrue);
+          verifyNever(
+            () => httpClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          );
         });
       });
 
-      group('when authenticated via CI token', () {
-        setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: ciToken.toBase64(),
-          });
-          auth = buildAuth();
-        });
-
-        test('remains authenticated because env var is still set', () async {
-          expect(auth.isAuthenticated, isTrue);
-          await runWithOverrides(() => auth.logout());
-          // _token is not cleared by _clearCredentials, so the instance
-          // still considers itself authenticated.
-          expect(auth.isAuthenticated, isTrue);
-        });
-      });
-
-      test('revokes server session with refresh token', () async {
+      test('revokes the refresh token at the revocation endpoint', () async {
         await runWithOverrides(
           () => auth.login(prompt: (_) {}),
         );
 
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
-        );
-
-        await runWithOverrides(() => auth.logout());
+        expect(await runWithOverrides(() => auth.logout()), isTrue);
 
         final captured = verify(
           () => httpClient.post(
             captureAny(),
-            headers: captureAny(named: 'headers'),
+            headers: any(named: 'headers'),
+            body: captureAny(named: 'body'),
           ),
         ).captured;
 
-        final uri = captured[0] as Uri;
-        expect(uri.path, contains('api/logout'));
-
-        final headers = captured[1] as Map<String, String>;
-        expect(headers['Authorization'], equals('Bearer $refreshToken'));
+        expect(
+          captured[0],
+          equals(Uri.parse('https://auth.shorebird.dev/revoke')),
+        );
+        expect(
+          captured[1],
+          equals({
+            'token': refreshToken,
+            'token_type_hint': 'refresh_token',
+            'client_id': 'shorebird-cli',
+          }),
+        );
       });
 
-      test('logs detail when server returns non-2xx', () async {
-        await runWithOverrides(
-          () => auth.login(prompt: (_) {}),
-        );
+      test(
+        'reports failure and clears credentials when the server refuses',
+        () async {
+          await runWithOverrides(
+            () => auth.login(prompt: (_) {}),
+          );
+          stubRevocation(
+            () async => http.Response(
+              '{"error":"internal_error"}',
+              HttpStatus.internalServerError,
+            ),
+          );
 
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"error":"gone"}', 500),
-        );
+          expect(await runWithOverrides(() => auth.logout()), isFalse);
+          expect(auth.isAuthenticated, isFalse);
+          expect(File(auth.credentialsFilePath).existsSync(), isFalse);
+          verify(
+            () => logger.detail(
+              any(that: contains('Token revocation failed (500)')),
+            ),
+          ).called(1);
+        },
+      );
 
-        await runWithOverrides(() => auth.logout());
-        expect(auth.isAuthenticated, isFalse);
+      test(
+        'reports failure and clears credentials when the server is unreachable',
+        () async {
+          await runWithOverrides(
+            () => auth.login(prompt: (_) {}),
+          );
+          expect(auth.isAuthenticated, isTrue);
+          stubRevocation(
+            () async => throw const SocketException('no internet'),
+          );
 
-        verify(
-          () => logger.detail(
-            any(that: contains('Session revocation returned 500')),
-          ),
-        ).called(1);
-      });
-
-      test('clears credentials even if server revocation fails', () async {
-        await runWithOverrides(
-          () => auth.login(prompt: (_) {}),
-        );
-        expect(auth.isAuthenticated, isTrue);
-
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenThrow(const SocketException('no internet'));
-
-        await runWithOverrides(() => auth.logout());
-        expect(auth.email, isNull);
-        expect(auth.isAuthenticated, isFalse);
-      });
+          expect(await runWithOverrides(() => auth.logout()), isFalse);
+          expect(auth.email, isNull);
+          expect(auth.isAuthenticated, isFalse);
+          expect(File(auth.credentialsFilePath).existsSync(), isFalse);
+          verify(
+            () => logger.detail(any(that: contains('no internet'))),
+          ).called(1);
+        },
+      );
 
       test('skips revocation when no refresh token', () async {
         accessCredentials = oauth2.AccessCredentials(
           accessToken,
           null, // no refresh token
           scopes,
-          idToken: idToken,
         );
         auth = buildAuth();
         writeCredentials();
         auth = buildAuth();
 
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
-        );
-
-        await runWithOverrides(() => auth.logout());
+        expect(await runWithOverrides(() => auth.logout()), isTrue);
 
         verifyNever(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
         );
+        expect(File(auth.credentialsFilePath).existsSync(), isFalse);
       });
     });
 
@@ -1251,40 +1288,6 @@ void main() {
       test('closes the underlying httpClient', () {
         auth.close();
         verify(() => httpClient.close()).called(1);
-      });
-    });
-  });
-
-  group('OauthValues', () {
-    group('clientId', () {
-      test('returns a ClientId for google', () {
-        expect(AuthProvider.google.clientId, isNotNull);
-      });
-
-      test('returns a ClientId for microsoft', () {
-        expect(AuthProvider.microsoft.clientId, isNotNull);
-      });
-
-      test('throws UnsupportedError for shorebird', () {
-        expect(
-          () => AuthProvider.shorebird.clientId,
-          throwsA(
-            isA<UnsupportedError>().having(
-              (e) => e.message,
-              'message',
-              'Shorebird auth does not use a client ID',
-            ),
-          ),
-        );
-      });
-    });
-
-    group('authEndpoints', () {
-      test('throws UnsupportedError for shorebird', () {
-        expect(
-          () => AuthProvider.shorebird.authEndpoints,
-          throwsA(isA<UnsupportedError>()),
-        );
       });
     });
   });

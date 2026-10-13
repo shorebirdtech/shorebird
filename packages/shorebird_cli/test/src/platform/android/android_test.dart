@@ -7,9 +7,11 @@ import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('AndroidArch', () {
     late LocalAbi abi;
     late EngineConfig engineConfig;

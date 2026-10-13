@@ -2,11 +2,19 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 class _TestCommand extends ShorebirdCommand {
@@ -18,8 +26,9 @@ class _TestCommand extends ShorebirdCommand {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdCommand, () {
-    final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+    final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
     final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
     final privateKeyFile = File(p.join(cryptoFixturesBasePath, 'private.pem'));
 
@@ -191,6 +200,284 @@ void main() {
           ]).assertPublicKeyArgsValid,
           throwsUsage('--public-key-path: no file found at /nope/public.pem.'),
         );
+      });
+    });
+
+    group('reportError', () {
+      late ShorebirdLogger logger;
+
+      R runWithOverrides<R>(R Function() body, {required bool jsonMode}) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => jsonMode),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      }
+
+      setUp(() {
+        logger = MockShorebirdLogger();
+      });
+
+      group('when not in JSON mode', () {
+        test('logs the message and hint, returns a usage error', () {
+          final exitCode = runWithOverrides(
+            () => command.reportError(
+              message: 'Something is wrong.',
+              hint: 'Try again.',
+            ),
+            jsonMode: false,
+          );
+
+          expect(exitCode, equals(ExitCode.usage.code));
+          verify(() => logger.err('Something is wrong.')).called(1);
+          verify(() => logger.info('Try again.')).called(1);
+        });
+
+        test('logs no hint when none is given', () {
+          runWithOverrides(
+            () => command.reportError(message: 'Something is wrong'),
+            jsonMode: false,
+          );
+
+          verify(() => logger.err('Something is wrong')).called(1);
+          verifyNever(() => logger.info(any()));
+        });
+
+        test('returns the given exit code', () {
+          final exitCode = runWithOverrides(
+            () => command.reportError(
+              message: 'Something is wrong',
+              exitCode: ExitCode.software.code,
+            ),
+            jsonMode: false,
+          );
+
+          expect(exitCode, equals(ExitCode.software.code));
+        });
+      });
+
+      group('when in JSON mode', () {
+        test('emits an error envelope and logs nothing', () async {
+          final result = await captureJson(
+            () async => runWithOverrides(
+              () => command.reportError(
+                message: 'Something is wrong.',
+                hint: 'Try again.',
+                code: JsonErrorCode.fetchFailed,
+              ),
+              jsonMode: true,
+            ),
+          );
+
+          expect(result.exitCode, equals(ExitCode.usage.code));
+          expect(result.json['status'], equals('error'));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'fetch_failed',
+              'message': 'Something is wrong.',
+              'hint': 'Try again.',
+            }),
+          );
+          verifyNever(() => logger.err(any()));
+          verifyNever(() => logger.info(any()));
+        });
+      });
+    });
+
+    group('reportPreconditionFailure', () {
+      late ShorebirdLogger logger;
+
+      R runWithOverrides<R>(R Function() body, {required bool jsonMode}) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => jsonMode),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      }
+
+      setUp(() {
+        logger = MockShorebirdLogger();
+      });
+
+      test('in human mode, prints nothing more and returns the exit code', () {
+        final exitCode = runWithOverrides(
+          () => command.reportPreconditionFailure(UserNotAuthorizedException()),
+          jsonMode: false,
+        );
+
+        expect(exitCode, equals(ExitCode.noUser.code));
+        verifyZeroInteractions(logger);
+      });
+
+      test('in human mode, writes nothing to stdout', () async {
+        final captured = <String>[];
+        await captureStdout(
+          () async => runWithOverrides(
+            () => command.reportPreconditionFailure(
+              ShorebirdNotInitializedException(),
+            ),
+            jsonMode: false,
+          ),
+          captured: captured,
+        );
+        expect(captured, isEmpty);
+      });
+
+      final failures = <String, PreconditionFailedException>{
+        'logged out': UserNotAuthorizedException(),
+        'not initialized': ShorebirdNotInitializedException(),
+        'validators failed': ValidationFailedException(
+          message: 'Aborting due to validation errors. Missing thing.',
+          hint: '1 issue can be fixed automatically.',
+        ),
+        'unsupported OS': UnsupportedOperatingSystemException(
+          message: 'This command is only supported on macos.',
+        ),
+      };
+      for (final MapEntry(key: name, value: failure) in failures.entries) {
+        test('in JSON mode, emits precondition_failed for $name', () async {
+          final result = await captureJson(
+            () async => runWithOverrides(
+              () => command.reportPreconditionFailure(failure),
+              jsonMode: true,
+            ),
+          );
+
+          expect(result.exitCode, equals(failure.exitCode.code));
+          expect(result.json['status'], equals('error'));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'precondition_failed',
+              'message': failure.message,
+              if (failure.hint != null) 'hint': failure.hint,
+            }),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+      }
+    });
+
+    group('guardApiCall', () {
+      late ShorebirdLogger logger;
+
+      R runWithOverrides<R>(R Function() body, {required bool jsonMode}) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => jsonMode),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      }
+
+      Future<int?> guard(Future<void> Function() body) => command.guardApiCall(
+        body,
+        code: JsonErrorCode.fetchFailed,
+        message: 'Failed to fetch things.',
+      );
+
+      setUp(() {
+        logger = MockShorebirdLogger();
+      });
+
+      group('when the call succeeds', () {
+        for (final jsonMode in [false, true]) {
+          test('runs the call and returns null (json: $jsonMode)', () async {
+            var called = false;
+            final captured = <String>[];
+            final errorCode = await captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => called = true),
+                jsonMode: jsonMode,
+              ),
+              captured: captured,
+            );
+
+            expect(called, isTrue);
+            expect(errorCode, isNull);
+            expect(captured, isEmpty);
+          });
+        }
+      });
+
+      group('when not in JSON mode', () {
+        test('rethrows a ProcessExit and emits nothing', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw ProcessExit(70)),
+                jsonMode: false,
+              ),
+              captured: captured,
+            ),
+            throwsA(
+              isA<ProcessExit>().having((e) => e.exitCode, 'exitCode', 70),
+            ),
+          );
+          expect(captured, isEmpty);
+          verifyNever(() => logger.err(any()));
+        });
+      });
+
+      group('when in JSON mode', () {
+        test('emits one error envelope and returns the exit code', () async {
+          final result = await captureJson(
+            () async => (await runWithOverrides<Future<int?>>(
+              () => guard(() async => throw ProcessExit(70)),
+              jsonMode: true,
+            ))!,
+          );
+
+          expect(result.exitCode, equals(70));
+          expect(result.json['status'], equals('error'));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'fetch_failed',
+              'message': 'Failed to fetch things.',
+            }),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('lets other exceptions through', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw Exception('oops')),
+                jsonMode: true,
+              ),
+              captured: captured,
+            ),
+            throwsA(isA<Exception>()),
+          );
+          expect(captured, isEmpty);
+        });
+
+        test('rethrows a failed precondition rather than reporting it as '
+            'its own error', () async {
+          final failure = PreconditionFailedExit(UserNotAuthorizedException());
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw failure),
+                jsonMode: true,
+              ),
+              captured: captured,
+            ),
+            throwsA(same(failure)),
+          );
+          expect(captured, isEmpty);
+        });
       });
     });
   });

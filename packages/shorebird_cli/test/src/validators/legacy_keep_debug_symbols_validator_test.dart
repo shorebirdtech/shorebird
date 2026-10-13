@@ -9,9 +9,11 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(LegacyKeepDebugSymbolsValidator, () {
     const flutterRevision = 'aaaa1111bbbb2222cccc3333dddd4444eeee5555';
 
@@ -19,7 +21,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
 
-    String kotlinGradleWithLegacyLine = '''
+    const kotlinGradleWithLegacyLine = '''
 android {
   buildTypes {
     release {
@@ -29,7 +31,7 @@ android {
 }
 ''';
 
-    String groovyGradleWithLegacyPlusEquals = '''
+    const groovyGradleWithLegacyPlusEquals = '''
 android {
   buildTypes {
     release {
@@ -39,7 +41,7 @@ android {
 }
 ''';
 
-    String cleanGradle = '''
+    const cleanGradle = '''
 android {
   buildTypes {
     release {
