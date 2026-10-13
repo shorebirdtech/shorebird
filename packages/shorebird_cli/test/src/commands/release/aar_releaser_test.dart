@@ -243,6 +243,8 @@ void main() {
         });
 
         test('exits with code 64 and logs example', () async {
+          when(() => argResults['release-version']).thenReturn(null);
+
           await expectLater(
             () => runWithOverrides(aarReleaser.assertArgsAreValid),
             exitsWithCode(ExitCode.usage),
@@ -251,10 +253,11 @@ void main() {
             () => logger.err(
               any(
                 that: allOf([
-                  contains('--release-version=$releaseVersionExample'),
-                  contains('Add '),
-                  contains('to your command'),
                   contains('Android app'),
+                  contains(
+                    'shorebird release aar '
+                    '--release-version=$releaseVersionExample',
+                  ),
                 ]),
               ),
             ),
@@ -264,7 +267,7 @@ void main() {
 
       group('when arguments are valid', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0+1');
         });
 
         test('returns normally', () {
@@ -277,7 +280,7 @@ void main() {
 
       group('when --obfuscate is not passed', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0+1');
         });
 
         test('returns normally', () async {

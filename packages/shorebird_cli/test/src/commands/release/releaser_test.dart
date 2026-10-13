@@ -121,7 +121,7 @@ void main() {
 
     group('assertReleaseVersionProvided', () {
       test('returns normally when --release-version was provided', () {
-        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        when(() => argResults['release-version']).thenReturn('1.0.0+1');
 
         expect(
           () => runWithOverrides(
@@ -134,7 +134,7 @@ void main() {
       });
 
       test('logs error and exits with usage code when missing', () {
-        when(() => argResults.wasParsed('release-version')).thenReturn(false);
+        when(() => argResults['release-version']).thenReturn(null);
 
         expect(
           () => runWithOverrides(
@@ -151,9 +151,36 @@ Missing required argument: --release-version
 Pass the version of the Android app that embeds this module
 (e.g. $releaseVersionExample).
 
-Add ${lightCyan.wrap('--release-version=$releaseVersionExample')} to your command''',
+Example:
+  ${lightCyan.wrap('shorebird release linux --release-version=$releaseVersionExample')}''',
           ),
         ).called(1);
+      });
+
+      test('logs error and exits with usage code when empty', () {
+        when(() => argResults['release-version']).thenReturn('');
+
+        expect(
+          () => runWithOverrides(
+            () =>
+                releaser.assertReleaseVersionProvided(hostAppLabel: 'Android'),
+          ),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(() => logger.err(any())).called(1);
+      });
+
+      test('logs error and exits with usage code for latest', () {
+        when(() => argResults['release-version']).thenReturn('latest');
+
+        expect(
+          () => runWithOverrides(
+            () =>
+                releaser.assertReleaseVersionProvided(hostAppLabel: 'Android'),
+          ),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(() => logger.err(any())).called(1);
       });
     });
 
