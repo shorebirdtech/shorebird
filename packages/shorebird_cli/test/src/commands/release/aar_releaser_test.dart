@@ -242,11 +242,22 @@ void main() {
           when(() => argResults.wasParsed('release-version')).thenReturn(false);
         });
 
-        test('exits with code 64', () async {
+        test('exits with code 64 and logs example', () async {
           await expectLater(
             () => runWithOverrides(aarReleaser.assertArgsAreValid),
             exitsWithCode(ExitCode.usage),
           );
+          verify(
+            () => logger.err(
+              any(
+                that: allOf([
+                  contains('--release-version=$releaseVersionExample'),
+                  contains('release aar'),
+                  contains('Android app'),
+                ]),
+              ),
+            ),
+          ).called(1);
         });
       });
 

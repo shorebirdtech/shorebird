@@ -144,16 +144,27 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      group('when split-per-abi is true', () {
+      group('when release-version was not provided', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(false);
         });
 
-        test('exits with code 64', () async {
+        test('exits with code 64 and logs example', () async {
           await expectLater(
             () => runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
             exitsWithCode(ExitCode.usage),
           );
+          verify(
+            () => logger.err(
+              any(
+                that: allOf([
+                  contains('--release-version=$releaseVersionExample'),
+                  contains('release ios-framework'),
+                  contains('iOS app'),
+                ]),
+              ),
+            ),
+          ).called(1);
         });
       });
 

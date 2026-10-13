@@ -64,7 +64,7 @@ abstract class Releaser {
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).
   /// Call from [assertArgsAreValid] in releasers that read the version from
-  /// the built app.
+  /// the built app. Opposite of `assertReleaseVersionProvided` for add-to-app.
   void assertReleaseVersionFlagNotProvided() {
     if (argResults.wasParsed('release-version')) {
       logger.err(
