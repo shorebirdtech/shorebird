@@ -1,3 +1,4 @@
+// cspell:words undetailed
 import 'package:dex/src/dex_parser.dart';
 
 /// The kind of difference found between two DEX files.

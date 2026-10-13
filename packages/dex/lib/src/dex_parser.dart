@@ -1,4 +1,4 @@
-// cspell:words uleb sleb mutf Ljava insns annot iget iput sget sput
+// cspell:words uleb sleb mutf Ljava insn insns annot iget iput sget sput
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -853,9 +853,10 @@ class DexCanonicalInstruction {
 
   /// [tokens] rendered for output, holding back what was not asked for.
   ///
-  /// With [showLiterals] unset, a string literal becomes its length and the
-  /// token list is cut to [limit], because a payload's tokens are the app's
-  /// own constant data and a large one is a single unbounded line. Escaping is
+  /// The two are independent. With [showLiterals] unset a string literal
+  /// becomes its length, and a non-null [limit] cuts the token list whatever
+  /// [showLiterals] says, because a payload's tokens are the app's own
+  /// constant data and a large one is a single unbounded line. Escaping is
   /// undone either way, so a signature reads as it was written.
   String render({required bool showLiterals, int? limit}) {
     var parts = _tokenList().map((token) {
