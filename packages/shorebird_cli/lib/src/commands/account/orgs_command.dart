@@ -26,8 +26,8 @@ class OrgsCommand extends ShorebirdCommand {
       'Type is "personal" or "team".\n'
       'Role is "owner", "admin", "appManager", "developer", "viewer", or '
       '"none".\n'
-      '"none": you collaborate on an app in the organization but are not a '
-      'member.\n\n'
+      'A role of "none" means you are not a member but collaborate on an '
+      'app.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird account orgs --json')}';
 
   @override
