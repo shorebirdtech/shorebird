@@ -634,7 +634,7 @@ void main() {
         ).called(1);
       });
 
-      test('throws exception on a non-success status code', () async {
+      test('throws StripeApiException on a non-success status code', () async {
         when(
           () => httpClient.post(any(), headers: any(named: 'headers')),
         ).thenAnswer(
@@ -643,7 +643,7 @@ void main() {
 
         await expectLater(
           () => stripeApi.voidInvoice(invoiceId: 'in_123'),
-          throwsException,
+          throwsA(isA<StripeApiException>()),
         );
       });
     });
