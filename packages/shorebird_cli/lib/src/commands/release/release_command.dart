@@ -135,11 +135,9 @@ Also accepts the following special values:
       )
       ..addOption(
         'release-version',
-        help:
-            '''
-The version of the associated release (e.g. "$releaseVersionExample").
-For aar / ios-framework: the version of the Android or iOS host app
-that embeds this module (aar and ios-framework only).''',
+        help: '''
+The version of the Android or iOS host app that embeds this module
+(e.g. "$releaseVersionExample"). Required for aar and ios-framework only.''',
       )
       ..addMultiOption(
         'target-platform',

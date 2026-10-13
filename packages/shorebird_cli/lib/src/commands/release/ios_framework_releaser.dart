@@ -7,9 +7,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
-import 'package:shorebird_cli/src/commands/release/assert_release_version_provided.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -50,13 +48,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
 
   @override
   Future<void> assertArgsAreValid() async {
-    assertReleaseVersionProvided(
-      argResults: argResults,
-      hostAppLabel: 'iOS',
-      exampleCommand:
-          'shorebird release ${releaseType.cliName} '
-          '--release-version=$releaseVersionExample',
-    );
+    assertReleaseVersionProvided(hostAppLabel: 'iOS');
   }
 
   @override

@@ -61,10 +61,31 @@ abstract class Releaser {
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid();
 
+  /// Requires `--release-version` for add-to-app releases (aar, ios-framework).
+  ///
+  /// Presence-only: empty values and `latest` still pass. Opposite of
+  /// [assertReleaseVersionFlagNotProvided].
+  void assertReleaseVersionProvided({required String hostAppLabel}) {
+    if (argResults.wasParsed('release-version')) {
+      return;
+    }
+
+    logger.err(
+      '''
+Missing required argument: --release-version
+
+Pass the version of the $hostAppLabel app that embeds this module
+(e.g. $releaseVersionExample).
+
+Add ${lightCyan.wrap('--release-version=$releaseVersionExample')} to your command''',
+    );
+    throw ProcessExit(ExitCode.usage.code);
+  }
+
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).
   /// Call from [assertArgsAreValid] in releasers that read the version from
-  /// the built app. Opposite of `assertReleaseVersionProvided` for add-to-app.
+  /// the built app. Opposite of [assertReleaseVersionProvided] for add-to-app.
   void assertReleaseVersionFlagNotProvided() {
     if (argResults.wasParsed('release-version')) {
       logger.err(

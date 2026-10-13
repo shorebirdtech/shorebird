@@ -7,9 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
-import 'package:shorebird_cli/src/commands/release/assert_release_version_provided.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -57,13 +55,7 @@ class AarReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    assertReleaseVersionProvided(
-      argResults: argResults,
-      hostAppLabel: 'Android',
-      exampleCommand:
-          'shorebird release ${releaseType.cliName} '
-          '--release-version=$releaseVersionExample',
-    );
+    assertReleaseVersionProvided(hostAppLabel: 'Android');
   }
 
   @override

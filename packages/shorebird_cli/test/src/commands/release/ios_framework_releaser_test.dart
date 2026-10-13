@@ -159,7 +159,8 @@ void main() {
               any(
                 that: allOf([
                   contains('--release-version=$releaseVersionExample'),
-                  contains('release ios-framework'),
+                  contains('Add '),
+                  contains('to your command'),
                   contains('iOS app'),
                 ]),
               ),

@@ -252,7 +252,8 @@ void main() {
               any(
                 that: allOf([
                   contains('--release-version=$releaseVersionExample'),
-                  contains('release aar'),
+                  contains('Add '),
+                  contains('to your command'),
                   contains('Android app'),
                 ]),
               ),
