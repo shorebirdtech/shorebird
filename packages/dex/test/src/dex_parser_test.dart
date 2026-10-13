@@ -180,6 +180,13 @@ void main() {
 
         expect(rendered[3], '283,S:hello ');
         expect(code.instructionAddresses[4], 10);
+
+        // Swapping the halves makes the index 15 << 16, past the fixture's 20
+        // strings. Reading only the low half would resolve it instead of
+        // throwing, which is what pins the shift rather than the width.
+        bytes[at + 2] = 0;
+        bytes[at + 4] = 15;
+        expect(() => parser.parse(bytes), throwsRangeError);
       });
     });
 

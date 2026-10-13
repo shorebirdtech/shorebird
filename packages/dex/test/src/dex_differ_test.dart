@@ -472,7 +472,7 @@ void main() {
         );
       });
 
-      test('a four-parameter method resolves to a single token', () {
+      test('a one-parameter method reference reads plainly', () {
         final dex = parseDexFixture('pool_refs.dex');
         final tokens = dex.classDefs.first.classData!.virtualMethods
             .firstWhere((m) => m.method.methodName == 'matches')
@@ -568,6 +568,28 @@ void main() {
         expect(payloadOnly.describe(limit: 4), isNot(contains(',7,0,8,0')));
       });
 
+      test('a lone payload is hidden by the token cap, not the side cap', () {
+        final dex = parseDexFixture('payloads.dex');
+        final code = dex.classDefs.first.classData!.virtualMethods
+            .firstWhere((m) => m.method.methodName == 'filled')
+            .code!;
+        final result = DexDiffResult(
+          differences: [
+            DexDifference(
+              kind: DexDifferenceKind.bytecodeChanged,
+              description: 'LPayloads;: bytecode changed in filled',
+              codeDiff: DexCodeDiff(
+                oldRegion: [code.instructionAt(code.instructionCount - 1)],
+              ),
+            ),
+          ],
+        );
+
+        // One instruction, so the per-side cap cannot fire and only the token
+        // cap is left to report the payload as withheld.
+        expect(result.hasHiddenCodeDiff, isTrue);
+      });
+
       test('a method compares equal to itself', () {
         final dex = parseDexFixture('payloads.dex');
         expect(differ.diff(dex, dex).differences, isEmpty);
@@ -596,6 +618,36 @@ void main() {
         expect(DexCodeDiff(oldRegion: region).exceeds(2), isTrue);
         expect(DexCodeDiff(newRegion: region).exceeds(2), isTrue);
         expect(DexCodeDiff(oldRegion: region).exceeds(3), isFalse);
+      });
+
+      test('reports hidden detail at the method cap boundary', () {
+        DexDiffResult resultWith(int methods) => DexDiffResult(
+          differences: [
+            for (var i = 0; i < methods; i++)
+              DexDifference(
+                kind: DexDifferenceKind.bytecodeChanged,
+                description: 'LFoo;: bytecode changed in LFoo;.m$i()V',
+                codeDiff: DexCodeDiff(
+                  oldRegion: [
+                    DexCanonicalInstruction(address: 0, tokens: '$i,'),
+                  ],
+                ),
+              ),
+          ],
+        );
+
+        final atLimit = resultWith(DexDiffResult.defaultDetailedMethodLimit);
+        expect(atLimit.hasHiddenCodeDiff, isFalse);
+        expect(atLimit.describe(), isNot(contains('not detailed')));
+
+        final overLimit = resultWith(
+          DexDiffResult.defaultDetailedMethodLimit + 1,
+        );
+        expect(overLimit.hasHiddenCodeDiff, isTrue);
+        expect(
+          overLimit.describe(),
+          contains('... 1 more changed methods not detailed'),
+        );
       });
 
       test('caps detailed methods and counts the rest', () {
