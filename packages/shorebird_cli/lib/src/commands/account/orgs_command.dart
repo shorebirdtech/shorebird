@@ -8,8 +8,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template orgs_command}
 /// `shorebird account orgs`
-/// List the current user's organizations, including ones where they only
-/// collaborate on an app.
+/// List the organizations the current user can access.
 /// {@endtemplate}
 class OrgsCommand extends ShorebirdCommand {
   /// {@macro orgs_command}
@@ -20,14 +19,15 @@ class OrgsCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'List your organizations, including ones where you only collaborate on '
-      'an app.\n\n'
+      'List the organizations you can access.\n\n'
       'Example output (space-separated: id  name  type  role):\n'
       '  1  Acme Corp  team  admin\n'
       '  2  user@example.com  personal  owner\n\n'
-      'Type is "personal" or "team". Role is "owner", "admin", "appManager",\n'
-      '"developer", "viewer", or "none" (you collaborate on one of the\n'
-      "organization's apps but are not a member).\n\n"
+      'Type is "personal" or "team".\n'
+      'Role is "owner", "admin", "appManager", "developer", "viewer", or '
+      '"none".\n'
+      '"none": you collaborate on an app in the organization but are not a '
+      'member.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird account orgs --json')}';
 
   @override
