@@ -725,6 +725,191 @@ void main() {
         });
       });
 
+      String signed({
+        required DateTime iat,
+        required DateTime exp,
+        String kid = rsaJwkKid,
+        pc.RSAPrivateKey? privateKey,
+      }) => _createSignedJwt(
+        header: {'alg': 'RS256', 'kid': kid, 'typ': 'JWT'},
+        payload: {
+          'iss': rsaJwkIssuer,
+          'aud': rsaJwkAudience,
+          'sub': 'test-user-123',
+          'iat': iat.millisecondsSinceEpoch ~/ 1000,
+          'exp': exp.millisecondsSinceEpoch ~/ 1000,
+        },
+        privateKey: privateKey ?? rsaKeyPair.privateKey,
+      );
+
+      Future<Jwt> verifyAt(DateTime time, String encoded) =>
+          withClock(Clock.fixed(time), () {
+            return verify(
+              encoded,
+              audience: {rsaJwkAudience},
+              issuer: rsaJwkIssuer,
+              publicKeysUrl: rsaJwkPublicKeysUrl,
+              jwksFormat: JwksFormat.rsaJwk,
+            );
+          });
+
+      group('key rotation', () {
+        const rotatedKid = 'test-rsa-key-2';
+        late pc.AsymmetricKeyPair<pc.RSAPublicKey, pc.RSAPrivateKey> rotated;
+        late int fetches;
+        final start = DateTime(2024, 6, 1, 0, 15);
+
+        setUp(() {
+          rotated = _generateRsaKeyPair();
+          fetches = 0;
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response(
+              keyStoreResponseBody,
+              HttpStatus.ok,
+              headers: {'cache-control': 'max-age=3600'},
+            );
+          };
+        });
+
+        void publishRotatedKey() {
+          final decoded = json.decode(rsaJwkKeyStoreJson) as Map;
+          keyStoreResponseBody = json.encode({
+            'keys': [
+              ...decoded['keys'] as List,
+              {
+                'kty': 'RSA',
+                'use': 'sig',
+                'kid': rotatedKid,
+                'n': _encodeBigInt(rotated.publicKey.modulus!),
+                'e': _encodeBigInt(rotated.publicKey.exponent!),
+              },
+            ],
+          });
+        }
+
+        String rotatedToken() => signed(
+          iat: start,
+          exp: start.add(const Duration(minutes: 15)),
+          kid: rotatedKid,
+          privateKey: rotated.privateKey,
+        );
+
+        test(
+          'fetches the keys again for a key id the cache has not seen',
+          () async {
+            await verifyAt(start, rsaJwkToken);
+            expect(fetches, 1);
+            publishRotatedKey();
+
+            final later = start.add(const Duration(minutes: 1));
+            final jwt = await verifyAt(later, rotatedToken());
+            expect(jwt.header.kid, rotatedKid);
+            expect(fetches, 2);
+          },
+        );
+
+        test('fetches again at most once per 30 seconds', () async {
+          await verifyAt(start, rsaJwkToken);
+          final soon = start.add(const Duration(seconds: 10));
+          await expectLater(
+            () => verifyAt(soon, rotatedToken()),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Invalid key id.',
+              ),
+            ),
+          );
+          expect(fetches, 1);
+        });
+
+        test('rejects a key id still unknown after fetching again', () async {
+          await verifyAt(start, rsaJwkToken);
+          final later = start.add(const Duration(minutes: 1));
+          await expectLater(
+            () => verifyAt(later, rotatedToken()),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Invalid key id.',
+              ),
+            ),
+          );
+          expect(fetches, 2);
+        });
+      });
+
+      test('caches keys served without a Cache-Control header', () async {
+        var fetches = 0;
+        getOverride = (Uri uri) async {
+          fetches++;
+          return Response(keyStoreResponseBody, HttpStatus.ok);
+        };
+        final time = DateTime(2024, 6, 1, 0, 15);
+        await verifyAt(time, rsaJwkToken);
+        await verifyAt(time, rsaJwkToken);
+        expect(fetches, 1);
+      });
+
+      group('clock skew', () {
+        final now = DateTime(2024, 6, 1, 12);
+
+        test('accepts a token issued up to 30 seconds ahead', () async {
+          final iat = now.add(const Duration(seconds: 20));
+          final jwt = await verifyAt(
+            now,
+            signed(iat: iat, exp: iat.add(const Duration(minutes: 15))),
+          );
+          expect(jwt, isA<Jwt>());
+        });
+
+        test('rejects a token issued further ahead', () async {
+          final iat = now.add(const Duration(seconds: 40));
+          await expectLater(
+            () => verifyAt(
+              now,
+              signed(iat: iat, exp: iat.add(const Duration(minutes: 15))),
+            ),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Token issued at a future time.',
+              ),
+            ),
+          );
+        });
+
+        test('accepts a token expired up to 30 seconds ago', () async {
+          final exp = now.subtract(const Duration(seconds: 20));
+          final jwt = await verifyAt(
+            now,
+            signed(iat: exp.subtract(const Duration(minutes: 15)), exp: exp),
+          );
+          expect(jwt, isA<Jwt>());
+        });
+
+        test('rejects a token expired longer ago', () async {
+          final exp = now.subtract(const Duration(seconds: 40));
+          await expectLater(
+            () => verifyAt(
+              now,
+              signed(iat: exp.subtract(const Duration(minutes: 15)), exp: exp),
+            ),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Token has expired.',
+              ),
+            ),
+          );
+        });
+      });
+
       test('rejects a jwt signed with a different key', () async {
         // Provide a different public key in the JWKS so signature won't match.
         final wrongKeyPair = _generateRsaKeyPair();

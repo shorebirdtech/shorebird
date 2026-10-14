@@ -16,6 +16,24 @@ import 'package:ttl_cache/ttl_cache.dart';
 @visibleForTesting
 final publicKeyStores = TtlCache<String, PublicKeyStore>();
 
+/// When each URL's keys were last fetched, so an unknown key id fetches them
+/// again at most once per [_minRefetchInterval].
+final _fetchedAt = <String, DateTime>{};
+
+/// How long keys are cached when the response sets no `max-age`. jose's
+/// `createRemoteJWKSet` uses the same default (`cacheMaxAge`, 10 minutes).
+const _defaultMaxAge = Duration(minutes: 10);
+
+/// The least time between two fetches of one URL's keys triggered by an
+/// unknown key id. jose's `createRemoteJWKSet` waits the same 30 seconds by
+/// default.
+const _minRefetchInterval = Duration(seconds: 30);
+
+/// How far `exp`, `iat` and `auth_time` may be off from this machine's clock,
+/// for issuers whose clocks drift from ours. The same 30 seconds auth allows
+/// the upstream ID tokens it verifies.
+const _clockSkew = Duration(seconds: 30);
+
 Future<PublicKeyStore?> _getPublicKeys(
   String url, {
   required JwksFormat jwksFormat,
@@ -24,16 +42,32 @@ Future<PublicKeyStore?> _getPublicKeys(
   if (store != null) {
     return store;
   }
+  return _fetchPublicKeys(url, jwksFormat: jwksFormat);
+}
 
+/// Whether an unknown key id may fetch [url]'s keys again now: the signer may
+/// have rotated to a key published after the cached set was fetched (RFC 7517
+/// section 4.5, `kid`).
+bool _mayFetchAgain(String url) {
+  final fetchedAt = _fetchedAt[url];
+  return fetchedAt == null ||
+      clock.now().difference(fetchedAt) >= _minRefetchInterval;
+}
+
+Future<PublicKeyStore?> _fetchPublicKeys(
+  String url, {
+  required JwksFormat jwksFormat,
+}) async {
   final get = getOverride ?? http.get;
   final response = await get(Uri.parse(url));
+  _fetchedAt[url] = clock.now();
 
   if (response.statusCode != HttpStatus.ok) {
     throw const JwtVerificationFailure('Could not fetch public keys.');
   }
-  final maxAgeRegExp = RegExp(r'max-age=(\d+)');
-  final match = maxAgeRegExp.firstMatch(response.headers['cache-control']!);
-  final maxAge = int.parse(match!.group(1)!);
+  final maxAge = RegExp(
+    r'max-age=(\d+)',
+  ).firstMatch(response.headers['cache-control'] ?? '')?.group(1);
 
   final publicKeyStore = PublicKeyStore.tryDeserialize(
     json.decode(response.body) as Map<String, dynamic>,
@@ -44,7 +78,11 @@ Future<PublicKeyStore?> _getPublicKeys(
     return null;
   }
 
-  publicKeyStores.set(url, publicKeyStore, ttl: Duration(seconds: maxAge));
+  publicKeyStores.set(
+    url,
+    publicKeyStore,
+    ttl: maxAge == null ? _defaultMaxAge : Duration(seconds: int.parse(maxAge)),
+  );
 
   return publicKeyStore;
 }
@@ -120,10 +158,15 @@ Future<Jwt> verify(
     throw JwtVerificationFailure(e.message);
   }
 
-  final publicKeys = await _getPublicKeys(
+  var publicKeys = await _getPublicKeys(
     publicKeysUrl,
     jwksFormat: jwksFormat,
   );
+  if (publicKeys != null &&
+      !publicKeys.keyIds.contains(jwt.header.kid) &&
+      _mayFetchAgain(publicKeysUrl)) {
+    publicKeys = await _fetchPublicKeys(publicKeysUrl, jwksFormat: jwksFormat);
+  }
   if (publicKeys == null) {
     throw JwtVerificationFailure(
       'Invalid public keys returned by $publicKeysUrl.',
@@ -170,12 +213,12 @@ void _verifyPayload(JwtPayload payload, String issuer, Set<String> audience) {
   final now = clock.now();
 
   final exp = DateTime.fromMillisecondsSinceEpoch(payload.exp * 1000);
-  if (exp.isBefore(now)) {
+  if (exp.add(_clockSkew).isBefore(now)) {
     throw const JwtVerificationFailure('Token has expired.');
   }
 
   final iat = DateTime.fromMillisecondsSinceEpoch(payload.iat * 1000);
-  if (iat.isAfter(now)) {
+  if (iat.subtract(_clockSkew).isAfter(now)) {
     throw const JwtVerificationFailure('Token issued at a future time.');
   }
 
@@ -183,7 +226,7 @@ void _verifyPayload(JwtPayload payload, String issuer, Set<String> audience) {
     final authTime = DateTime.fromMillisecondsSinceEpoch(
       payload.authTime! * 1000,
     );
-    if (authTime.isAfter(now)) {
+    if (authTime.subtract(_clockSkew).isAfter(now)) {
       throw const JwtVerificationFailure('Authenticated at a future time.');
     }
   }
