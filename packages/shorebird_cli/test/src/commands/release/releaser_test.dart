@@ -8,6 +8,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -116,6 +117,71 @@ void main() {
       when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
 
       releaser = _TestReleaser(argResults: argResults);
+    });
+
+    group('assertReleaseVersionProvided', () {
+      test('returns normally when --release-version was provided', () {
+        when(() => argResults['release-version']).thenReturn('1.0.0+1');
+
+        expect(
+          () => runWithOverrides(
+            () =>
+                releaser.assertReleaseVersionProvided(hostAppLabel: 'Android'),
+          ),
+          returnsNormally,
+        );
+        verifyNever(() => logger.err(any()));
+      });
+
+      test('logs error and exits with usage code when missing', () {
+        when(() => argResults['release-version']).thenReturn(null);
+
+        expect(
+          () => runWithOverrides(
+            () =>
+                releaser.assertReleaseVersionProvided(hostAppLabel: 'Android'),
+          ),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(
+          () => logger.err(
+            '''
+Missing required argument: --release-version
+
+Pass the version of the Android app that embeds this module
+(e.g. $releaseVersionExample).
+
+Example:
+  ${lightCyan.wrap('shorebird release linux --release-version=$releaseVersionExample')}''',
+          ),
+        ).called(1);
+      });
+
+      test('logs error and exits with usage code when empty', () {
+        when(() => argResults['release-version']).thenReturn('');
+
+        expect(
+          () => runWithOverrides(
+            () =>
+                releaser.assertReleaseVersionProvided(hostAppLabel: 'Android'),
+          ),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(() => logger.err(any())).called(1);
+      });
+
+      test('logs error and exits with usage code for latest', () {
+        when(() => argResults['release-version']).thenReturn('latest');
+
+        expect(
+          () => runWithOverrides(
+            () =>
+                releaser.assertReleaseVersionProvided(hostAppLabel: 'Android'),
+          ),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(() => logger.err(any())).called(1);
+      });
     });
 
     group('assertReleaseVersionFlagNotProvided', () {

@@ -61,10 +61,35 @@ abstract class Releaser {
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid();
 
+  /// Requires a concrete `--release-version` for add-to-app releases
+  /// (aar, ios-framework). Rejects missing, blank, and `latest` values.
+  /// Opposite of [assertReleaseVersionFlagNotProvided].
+  void assertReleaseVersionProvided({required String hostAppLabel}) {
+    final value = argResults['release-version'] as String?;
+    if (value != null && value.trim().isNotEmpty && value.trim() != 'latest') {
+      return;
+    }
+
+    final exampleCommand =
+        'shorebird release ${releaseType.cliName} '
+        '--release-version=$releaseVersionExample';
+    logger.err(
+      '''
+Missing required argument: --release-version
+
+Pass the version of the $hostAppLabel app that embeds this module
+(e.g. $releaseVersionExample).
+
+Example:
+  ${lightCyan.wrap(exampleCommand)}''',
+    );
+    throw ProcessExit(ExitCode.usage.code);
+  }
+
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).
   /// Call from [assertArgsAreValid] in releasers that read the version from
-  /// the built app.
+  /// the built app. Opposite of [assertReleaseVersionProvided] for add-to-app.
   void assertReleaseVersionFlagNotProvided() {
     if (argResults.wasParsed('release-version')) {
       logger.err(

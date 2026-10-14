@@ -22,6 +22,9 @@ class ArgumentDescriber {
   final String? defaultValue;
 }
 
+/// Example value for `--release-version` help and error messages.
+const releaseVersionExample = '1.0.0+1';
+
 /// A class that houses the name of arguments that are shared between different
 /// commands and layers.
 class CommonArguments {
@@ -143,7 +146,7 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
   /// more thoroughly explains what the release version is used for.
   static const releaseVersionArg = ArgumentDescriber(
     name: 'release-version',
-    description: 'The version of the release (e.g. "1.0.0+1").',
+    description: 'The version of the release (e.g. "$releaseVersionExample").',
   );
 
   /// An argument that identifies a patch by its number within a release.
@@ -161,7 +164,8 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
   /// Help text for release version arguments in patch commands, where the
   /// version identifies which release the patch belongs to.
   static const patchReleaseVersionDescription =
-      'The version of the release the patch belongs to (e.g. "1.0.0+1").';
+      'The version of the release the patch belongs to '
+      '(e.g. "$releaseVersionExample").';
 
   /// The Flutter --obfuscate argument.
   static const obfuscateArg = ArgumentDescriber(
