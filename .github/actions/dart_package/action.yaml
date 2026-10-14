@@ -72,6 +72,7 @@ runs:
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: |
+        # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
         dart pub global activate coverage 1.15.1
         dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=${{inputs.workspace_root}}/.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
 
