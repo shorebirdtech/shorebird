@@ -1196,6 +1196,15 @@ void main() {
             Directory(credentialsDir).listSync().map((e) => p.basename(e.path)),
             equals(['credentials.json']),
           );
+          // Windows refuses the rename while the file is open, so the
+          // credentials are written in place. Elsewhere the rename succeeds.
+          void wroteInPlace() =>
+              logger.detail(any(that: contains('writing it in place')));
+          if (io.Platform.isWindows) {
+            verify(wroteInPlace).called(1);
+          } else {
+            verifyNever(wroteInPlace);
+          }
         },
       );
 

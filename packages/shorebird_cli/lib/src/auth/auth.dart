@@ -578,13 +578,16 @@ class Auth {
     temp.writeAsStringSync(contents, flush: true);
     try {
       temp.renameSync(credentialsFilePath);
-    } on FileSystemException {
+    } on FileSystemException catch (error) {
       // Windows refuses to replace a file another process has open, such as
       // another shorebird command reading it or an antivirus scanner. Write
       // in place instead, which Windows allows, rather than lose credentials
       // the auth service has already rotated. A process reading at that
       // moment may see a partial file, which it treats as unreadable.
-      if (!Platform.isWindows) rethrow;
+      logger.detail(
+        'Could not replace $credentialsFilePath ($error); writing it in '
+        'place.',
+      );
       File(credentialsFilePath).writeAsStringSync(contents, flush: true);
     }
   }
