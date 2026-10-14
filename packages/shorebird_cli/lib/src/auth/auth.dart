@@ -312,7 +312,20 @@ class Auth {
       return _useCredentials(stored);
     }
     final refreshed = await _refreshWithAuthService(stored);
-    _flushCredentials(refreshed);
+    try {
+      _flushCredentials(refreshed);
+    } on FileSystemException catch (error) {
+      // The refresh succeeded, so this command can carry on with the new
+      // credentials. The file still holds the rotated refresh token, which
+      // the auth service will reject once its grace window has passed.
+      logger
+        ..warn(
+          'Could not save your refreshed Shorebird credentials to '
+          '$credentialsFilePath. You may need to run '
+          '${lightCyan.wrap('shorebird login')} again.',
+        )
+        ..detail(error.toString());
+    }
     return _useCredentials(refreshed);
   }
 
@@ -532,9 +545,20 @@ class Auth {
   /// file in the same directory, then renamed over it. Other shorebird
   /// processes read the file at any time, so they must see either the old
   /// credentials or the new ones, never a partial write.
+  ///
+  /// Deletes the temporary file if the write fails, since it holds a refresh
+  /// token.
   void _flushCredentials(oauth2.AccessCredentials credentials) {
     final temp = File('$credentialsFilePath.$pid.tmp')
       ..createSync(recursive: true);
+    try {
+      _writeCredentials(temp, credentials);
+    } finally {
+      if (temp.existsSync()) temp.deleteSync();
+    }
+  }
+
+  void _writeCredentials(File temp, oauth2.AccessCredentials credentials) {
     // The file holds a refresh token. Restrict it to the owner before the
     // token is written, so it is never readable by others, even briefly. This
     // checks the real host, not the scoped platform, because it is a real
@@ -550,9 +574,19 @@ class Auth {
         );
       }
     }
-    temp
-      ..writeAsStringSync(json.encode(credentials.toJson()), flush: true)
-      ..renameSync(credentialsFilePath);
+    final contents = json.encode(credentials.toJson());
+    temp.writeAsStringSync(contents, flush: true);
+    try {
+      temp.renameSync(credentialsFilePath);
+    } on FileSystemException {
+      // Windows refuses to replace a file another process has open, such as
+      // another shorebird command reading it or an antivirus scanner. Write
+      // in place instead, which Windows allows, rather than lose credentials
+      // the auth service has already rotated. A process reading at that
+      // moment may see a partial file, which it treats as unreadable.
+      if (!Platform.isWindows) rethrow;
+      File(credentialsFilePath).writeAsStringSync(contents, flush: true);
+    }
   }
 
   /// Deletes the locally stored credentials without revoking the server-side

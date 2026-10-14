@@ -1137,6 +1137,68 @@ void main() {
         },
       );
 
+      test('refreshes with the credentials in memory when the file is '
+          'gone', () async {
+        final auth = buildAuth();
+        File(p.join(credentialsDir, 'credentials.json')).deleteSync();
+
+        await sendRequest(auth);
+
+        expect(presentedRefreshTokens, equals([refreshToken]));
+        expect(sentAccessTokens, equals([accessTokenNamed('rotated')]));
+        expect(readStoredCredentials().refreshToken, equals('sb_rt_rotated'));
+      });
+
+      test('carries on with the refreshed credentials and warns when they '
+          'cannot be saved', () async {
+        final auth = buildAuth();
+        final credentialsPath = p.join(credentialsDir, 'credentials.json');
+        File(credentialsPath).deleteSync();
+        // A directory in its place makes both the rename and an in-place
+        // write fail.
+        Directory(credentialsPath).createSync();
+
+        await sendRequest(auth);
+
+        expect(sentAccessTokens, equals([accessTokenNamed('rotated')]));
+        verify(
+          () => logger.warn(
+            any(
+              that: contains(
+                'Could not save your refreshed Shorebird credentials',
+              ),
+            ),
+          ),
+        ).called(1);
+        // The temporary file holds a refresh token, so it is removed.
+        expect(
+          Directory(credentialsDir).listSync().map((e) => p.basename(e.path)),
+          equals(['credentials.json']),
+        );
+      });
+
+      test(
+        'saves the refreshed credentials while another process has the '
+        'file open',
+        () async {
+          final auth = buildAuth();
+          final open = File(
+            p.join(credentialsDir, 'credentials.json'),
+          ).openSync();
+          try {
+            await sendRequest(auth);
+          } finally {
+            open.closeSync();
+          }
+
+          expect(readStoredCredentials().refreshToken, equals('sb_rt_rotated'));
+          expect(
+            Directory(credentialsDir).listSync().map((e) => p.basename(e.path)),
+            equals(['credentials.json']),
+          );
+        },
+      );
+
       test('hasValidCredentials refreshes with the newest refresh token on '
           'disk, even when its access token is current', () async {
         final auth = buildAuth();
