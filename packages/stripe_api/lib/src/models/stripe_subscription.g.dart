@@ -98,6 +98,10 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
             'collection_method',
             (v) => $enumDecodeNullable(_$StripeCollectionMethodEnumMap, v),
           ),
+          cancellationReason: $checkedConvert(
+            'cancellation_details',
+            (v) => _cancellationReasonFromJson(v as Map<String, dynamic>?),
+          ),
         );
         return val;
       },
@@ -114,6 +118,7 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
         'defaultPaymentMethod': 'default_payment_method',
         'automaticTaxEnabled': 'automatic_tax',
         'collectionMethod': 'collection_method',
+        'cancellationReason': 'cancellation_details',
       },
     );
 

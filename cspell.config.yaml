@@ -155,6 +155,7 @@ words:
   - udid # Unique Device Identifier
   - unanalyzed
   - unawaited
+  - uncollectible # Stripe invoice status
   - unmockable
   - unobfuscated
   - unpadded
