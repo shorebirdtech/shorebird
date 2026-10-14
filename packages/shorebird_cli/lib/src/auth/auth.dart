@@ -56,23 +56,35 @@ typedef RunProcessSync =
 typedef OnRefreshCredentials =
     void Function(oauth2.AccessCredentials credentials);
 
+/// Exchanges [expired] credentials for current ones.
+typedef RefreshCredentials =
+    Future<oauth2.AccessCredentials> Function(
+      oauth2.AccessCredentials expired,
+    );
+
 /// A client that sends Shorebird-issued credentials, refreshing them through
 /// the Shorebird auth service when they expire.
 class AuthenticatedClient extends http.BaseClient {
   /// Creates a new [AuthenticatedClient] with the given [httpClient] and
   /// [credentials].
+  ///
+  /// Expired credentials are exchanged through [refreshCredentials] when
+  /// given, and otherwise refreshed directly with the auth service.
   AuthenticatedClient({
     required http.Client httpClient,
     required oauth2.AccessCredentials credentials,
     required Uri authServiceUri,
     OnRefreshCredentials? onRefreshCredentials,
+    RefreshCredentials? refreshCredentials,
   }) : _baseClient = httpClient,
        _credentials = credentials,
        _onRefreshCredentials = onRefreshCredentials,
+       _refreshCredentials = refreshCredentials,
        _authServiceUri = authServiceUri;
 
   final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
+  final RefreshCredentials? _refreshCredentials;
   final Uri _authServiceUri;
   oauth2.AccessCredentials _credentials;
 
@@ -92,6 +104,10 @@ class AuthenticatedClient extends http.BaseClient {
     oauth2.AccessCredentials credentials,
   ) async {
     try {
+      final refreshCredentials = _refreshCredentials;
+      if (refreshCredentials != null) {
+        return await refreshCredentials(credentials);
+      }
       return await shorebird_oauth.refreshShorebirdCredentials(
         credentials,
         _baseClient,
@@ -233,7 +249,7 @@ class Auth {
         credentials: _credentials!,
         httpClient: _httpClient,
         authServiceUri: _authServiceUri,
-        onRefreshCredentials: _flushCredentials,
+        refreshCredentials: _refreshCredentials,
       );
     }
 
@@ -246,7 +262,8 @@ class Auth {
   /// reported as valid. Stored OAuth credentials are verified by refreshing
   /// them against the auth service, which fails once the session has expired
   /// or been revoked. Refreshed credentials are persisted so the check doubles
-  /// as a refresh.
+  /// as a refresh, with the newest refresh token on disk (see
+  /// [_refreshCredentials]).
   ///
   /// Returns false when the auth service answered the refresh with any OAuth
   /// error response (see
@@ -263,20 +280,71 @@ class Auth {
     if (credentials == null) return false;
 
     try {
-      final refreshed = await shorebird_oauth.refreshShorebirdCredentials(
-        credentials,
-        _httpClient,
-        authBaseUrl: _authServiceUri,
-      );
-      _credentials = refreshed;
-      _email = refreshed.email ?? _email;
-      _flushCredentials(refreshed);
+      await _refreshCredentials(credentials, force: true);
       return true;
     } on shorebird_oauth.ShorebirdAuthException catch (error) {
       if (!error.isCredentialRejection) rethrow;
       logger.detail('Stored credentials are no longer valid: $error');
       return false;
     }
+  }
+
+  /// Exchanges [expired] for current credentials without presenting a
+  /// refresh token another shorebird process has already rotated.
+  ///
+  /// The auth service rotates the refresh token on every refresh and treats
+  /// a rotated one presented again, more than a short grace window later, as
+  /// a sign it was stolen, revoking the session. Shorebird processes started
+  /// from one login share that refresh token through the credentials file,
+  /// and a long-running command may refresh long after another has rotated
+  /// it. So re-read the file first: if another process has stored an access
+  /// token that has not expired, use it (unless [force]); otherwise refresh
+  /// with the refresh token on disk, which is the newest one.
+  ///
+  /// Two processes that refresh at the same moment both present the same
+  /// token, which the grace window allows.
+  Future<oauth2.AccessCredentials> _refreshCredentials(
+    oauth2.AccessCredentials expired, {
+    bool force = false,
+  }) async {
+    final stored = _readCredentialsFile() ?? expired;
+    if (!force && !stored.accessToken.hasExpired) {
+      return _useCredentials(stored);
+    }
+    final refreshed = await _refreshWithAuthService(stored);
+    try {
+      _flushCredentials(refreshed);
+    } on FileSystemException catch (error) {
+      // The refresh succeeded, so this command can carry on with the new
+      // credentials. The file still holds the rotated refresh token, which
+      // the auth service will reject once its grace window has passed.
+      logger
+        ..warn(
+          'Could not save your refreshed Shorebird credentials to '
+          '$credentialsFilePath. You may need to run '
+          '${lightCyan.wrap('shorebird login')} again.',
+        )
+        ..detail(error.toString());
+    }
+    return _useCredentials(refreshed);
+  }
+
+  Future<oauth2.AccessCredentials> _refreshWithAuthService(
+    oauth2.AccessCredentials credentials,
+  ) {
+    return shorebird_oauth.refreshShorebirdCredentials(
+      credentials,
+      _httpClient,
+      authBaseUrl: _authServiceUri,
+    );
+  }
+
+  oauth2.AccessCredentials _useCredentials(
+    oauth2.AccessCredentials credentials,
+  ) {
+    _credentials = credentials;
+    _email = credentials.email ?? _email;
+    return credentials;
   }
 
   /// Logs in the user via the Shorebird loopback OAuth flow.
@@ -405,8 +473,18 @@ class Auth {
       return;
     }
 
+    final credentials = _readCredentialsFile(warn: true);
+    if (credentials == null) return;
+    _credentials = credentials;
+    _email = credentials.email;
+  }
+
+  /// Reads the credentials file, returning null when it is missing, cannot
+  /// be parsed, or holds credentials Shorebird did not issue. With [warn],
+  /// tells the user why unusable credentials were ignored.
+  oauth2.AccessCredentials? _readCredentialsFile({bool warn = false}) {
     final credentialsFile = File(credentialsFilePath);
-    if (!credentialsFile.existsSync()) return;
+    if (!credentialsFile.existsSync()) return null;
 
     final oauth2.AccessCredentials credentials;
     try {
@@ -418,31 +496,32 @@ class Auth {
       // A field of the wrong type surfaces as a TypeError from fromJson.
       // ignore: avoid_catching_errors
     } on TypeError {
-      _warnUnreadableCredentials();
-      return;
+      if (warn) _warnUnreadableCredentials();
+      return null;
       // An invalid value, such as a non-UTC expiry, surfaces as an
       // ArgumentError from AccessToken's constructor.
       // ignore: avoid_catching_errors
     } on ArgumentError {
-      _warnUnreadableCredentials();
-      return;
+      if (warn) _warnUnreadableCredentials();
+      return null;
     } on Exception {
-      _warnUnreadableCredentials();
-      return;
+      if (warn) _warnUnreadableCredentials();
+      return null;
     }
 
     // Credentials from before Shorebird ran its own auth service were issued
     // by Google or Microsoft, which the server no longer accepts. Ignore them
     // rather than send them; `shorebird login` overwrites the file.
     if (!_isShorebirdIssued(credentials)) {
-      logger.warn(
-        '''Your stored credentials are no longer valid. Run ${lightCyan.wrap('shorebird login')} to sign in again.''',
-      );
-      return;
+      if (warn) {
+        logger.warn(
+          '''Your stored credentials are no longer valid. Run ${lightCyan.wrap('shorebird login')} to sign in again.''',
+        );
+      }
+      return null;
     }
 
-    _credentials = credentials;
-    _email = credentials.email;
+    return credentials;
   }
 
   // Treat an unreadable credentials file as logged out rather than crashing,
@@ -462,8 +541,24 @@ class Auth {
     }
   }
 
+  /// Writes [credentials] to the credentials file atomically: to a temporary
+  /// file in the same directory, then renamed over it. Other shorebird
+  /// processes read the file at any time, so they must see either the old
+  /// credentials or the new ones, never a partial write.
+  ///
+  /// Deletes the temporary file if the write fails, since it holds a refresh
+  /// token.
   void _flushCredentials(oauth2.AccessCredentials credentials) {
-    final file = File(credentialsFilePath)..createSync(recursive: true);
+    final temp = File('$credentialsFilePath.$pid.tmp')
+      ..createSync(recursive: true);
+    try {
+      _writeCredentials(temp, credentials);
+    } finally {
+      if (temp.existsSync()) temp.deleteSync();
+    }
+  }
+
+  void _writeCredentials(File temp, oauth2.AccessCredentials credentials) {
     // The file holds a refresh token. Restrict it to the owner before the
     // token is written, so it is never readable by others, even briefly. This
     // checks the real host, not the scoped platform, because it is a real
@@ -471,15 +566,30 @@ class Auth {
     // private to the user. A missing chmod throws, so the token is never
     // written without the restriction having been attempted.
     if (!Platform.isWindows) {
-      final result = _runProcessSync('chmod', ['600', file.path]);
+      final result = _runProcessSync('chmod', ['600', temp.path]);
       if (result.exitCode != 0) {
         logger.detail(
-          'Failed to restrict permissions on ${file.path} '
+          'Failed to restrict permissions on $credentialsFilePath '
           '(chmod exited ${result.exitCode}): ${result.stderr}',
         );
       }
     }
-    file.writeAsStringSync(json.encode(credentials.toJson()));
+    final contents = json.encode(credentials.toJson());
+    temp.writeAsStringSync(contents, flush: true);
+    try {
+      temp.renameSync(credentialsFilePath);
+    } on FileSystemException catch (error) {
+      // Windows refuses to replace a file another process has open, such as
+      // another shorebird command reading it or an antivirus scanner. Write
+      // in place instead, which Windows allows, rather than lose credentials
+      // the auth service has already rotated. A process reading at that
+      // moment may see a partial file, which it treats as unreadable.
+      logger.detail(
+        'Could not replace $credentialsFilePath ($error); writing it in '
+        'place.',
+      );
+      File(credentialsFilePath).writeAsStringSync(contents, flush: true);
+    }
   }
 
   /// Deletes the locally stored credentials without revoking the server-side

@@ -938,6 +938,294 @@ void main() {
       });
     });
 
+    // Separate Auth instances on one credentials file stand in for separate
+    // shorebird processes started from one login, as when `shorebird release
+    // android` and `shorebird release ios` run in two terminals.
+    group('when several processes share the credentials file', () {
+      // A Shorebird-issued access token told apart from the others by its
+      // `jti`.
+      String accessTokenNamed(String name) {
+        String encode(Map<String, Object> json) =>
+            base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
+        return [
+          encode({'alg': 'HS256', 'kid': '1234', 'typ': 'JWT'}),
+          encode({
+            'iss': shorebirdJwtIssuer,
+            'aud': 'shorebird',
+            'sub': '12345',
+            'email': email,
+            'email_verified': true,
+            'iat': 1234,
+            'exp': 6789,
+            'jti': name,
+          }),
+          'dGVzdA',
+        ].join('.');
+      }
+
+      oauth2.AccessCredentials credentialsNamed(
+        String name, {
+        required String refreshToken,
+        required bool expired,
+      }) {
+        return oauth2.AccessCredentials(
+          oauth2.AccessToken(
+            'Bearer',
+            accessTokenNamed(name),
+            DateTime.now().add(Duration(minutes: expired ? -1 : 10)).toUtc(),
+          ),
+          refreshToken,
+          scopes,
+        );
+      }
+
+      void storeCredentials(oauth2.AccessCredentials credentials) {
+        File(
+          p.join(credentialsDir, 'credentials.json'),
+        ).writeAsStringSync(jsonEncode(credentials.toJson()));
+      }
+
+      oauth2.AccessCredentials readStoredCredentials() {
+        return oauth2.AccessCredentials.fromJson(
+          jsonDecode(
+                File(
+                  p.join(credentialsDir, 'credentials.json'),
+                ).readAsStringSync(),
+              )
+              as Map<String, dynamic>,
+        );
+      }
+
+      http.Response tokenResponse(String name, String refreshToken) {
+        return http.Response(
+          jsonEncode({
+            'access_token': accessTokenNamed(name),
+            'refresh_token': refreshToken,
+            'token_type': 'Bearer',
+            'expires_in': 900,
+          }),
+          HttpStatus.ok,
+        );
+      }
+
+      // The refresh tokens presented to the auth service, in order.
+      late List<String?> presentedRefreshTokens;
+      // The access tokens sent to the API, in order.
+      late List<String?> sentAccessTokens;
+      // Answers each refresh; by default rotates to `rotated`.
+      late Future<http.Response> Function(String? refreshToken) onRefresh;
+
+      setUp(() {
+        presentedRefreshTokens = [];
+        sentAccessTokens = [];
+        onRefresh = (_) async => tokenResponse('rotated', 'sb_rt_rotated');
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((invocation) {
+          final body = invocation.namedArguments[#body] as Map<String, String>;
+          presentedRefreshTokens.add(body['refresh_token']);
+          return onRefresh(body['refresh_token']);
+        });
+        when(() => httpClient.send(any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.first as http.BaseRequest;
+          sentAccessTokens.add(
+            request.headers['Authorization']?.replaceFirst('Bearer ', ''),
+          );
+          return http.StreamedResponse(const Stream.empty(), HttpStatus.ok);
+        });
+        storeCredentials(
+          credentialsNamed(
+            'expired',
+            refreshToken: refreshToken,
+            expired: true,
+          ),
+        );
+      });
+
+      Future<void> sendRequest(Auth auth) => runWithOverrides(
+        () => auth.client.get(Uri.parse('https://example.com')),
+      );
+
+      test('a second process uses the credentials the first refreshed, '
+          'without refreshing', () async {
+        final first = buildAuth();
+        final second = buildAuth();
+
+        await sendRequest(first);
+        await sendRequest(second);
+
+        expect(presentedRefreshTokens, equals([refreshToken]));
+        expect(
+          sentAccessTokens,
+          equals([accessTokenNamed('rotated'), accessTokenNamed('rotated')]),
+        );
+        expect(readStoredCredentials().refreshToken, equals('sb_rt_rotated'));
+      });
+
+      test(
+        'a later client from the same Auth does not refresh again',
+        () async {
+          final auth = buildAuth();
+
+          await sendRequest(auth);
+          await sendRequest(auth);
+
+          expect(presentedRefreshTokens, equals([refreshToken]));
+        },
+      );
+
+      test('refreshes and stores the result when the stored access token has '
+          'expired', () async {
+        final auth = buildAuth();
+
+        await sendRequest(auth);
+
+        expect(presentedRefreshTokens, equals([refreshToken]));
+        expect(sentAccessTokens, equals([accessTokenNamed('rotated')]));
+        final stored = readStoredCredentials();
+        expect(stored.refreshToken, equals('sb_rt_rotated'));
+        expect(stored.accessToken.data, equals(accessTokenNamed('rotated')));
+      });
+
+      test('refreshes with the newest refresh token on disk when its access '
+          'token has expired too', () async {
+        final auth = buildAuth();
+        storeCredentials(
+          credentialsNamed('newer', refreshToken: 'sb_rt_newer', expired: true),
+        );
+
+        await sendRequest(auth);
+
+        expect(presentedRefreshTokens, equals(['sb_rt_newer']));
+        expect(sentAccessTokens, equals([accessTokenNamed('rotated')]));
+      });
+
+      test(
+        'writes the credentials file by renaming a complete file over it',
+        () async {
+          final restricted = <String>[];
+          final auth = buildAuth(
+            runProcessSync: (executable, arguments) {
+              restricted.add(arguments.last);
+              return Process.runSync(executable, arguments);
+            },
+          );
+
+          await sendRequest(auth);
+
+          final credentialsPath = p.join(credentialsDir, 'credentials.json');
+          if (!io.Platform.isWindows) {
+            // Restricted and written under another name, then renamed.
+            expect(restricted, hasLength(1));
+            expect(restricted.single, isNot(equals(credentialsPath)));
+            expect(p.dirname(restricted.single), equals(credentialsDir));
+            expect(
+              File(credentialsPath).statSync().mode & 0x1ff,
+              equals(0x180),
+            );
+          }
+          expect(
+            Directory(credentialsDir).listSync().map((e) => p.basename(e.path)),
+            equals(['credentials.json']),
+          );
+          expect(readStoredCredentials().refreshToken, equals('sb_rt_rotated'));
+        },
+      );
+
+      test('refreshes with the credentials in memory when the file is '
+          'gone', () async {
+        final auth = buildAuth();
+        File(p.join(credentialsDir, 'credentials.json')).deleteSync();
+
+        await sendRequest(auth);
+
+        expect(presentedRefreshTokens, equals([refreshToken]));
+        expect(sentAccessTokens, equals([accessTokenNamed('rotated')]));
+        expect(readStoredCredentials().refreshToken, equals('sb_rt_rotated'));
+      });
+
+      test('carries on with the refreshed credentials and warns when they '
+          'cannot be saved', () async {
+        final auth = buildAuth();
+        final credentialsPath = p.join(credentialsDir, 'credentials.json');
+        File(credentialsPath).deleteSync();
+        // A directory in its place makes both the rename and an in-place
+        // write fail.
+        Directory(credentialsPath).createSync();
+
+        await sendRequest(auth);
+
+        expect(sentAccessTokens, equals([accessTokenNamed('rotated')]));
+        verify(
+          () => logger.warn(
+            any(
+              that: contains(
+                'Could not save your refreshed Shorebird credentials',
+              ),
+            ),
+          ),
+        ).called(1);
+        // The temporary file holds a refresh token, so it is removed.
+        expect(
+          Directory(credentialsDir).listSync().map((e) => p.basename(e.path)),
+          equals(['credentials.json']),
+        );
+      });
+
+      test(
+        'saves the refreshed credentials while another process has the '
+        'file open',
+        () async {
+          final auth = buildAuth();
+          final open = File(
+            p.join(credentialsDir, 'credentials.json'),
+          ).openSync();
+          try {
+            await sendRequest(auth);
+          } finally {
+            open.closeSync();
+          }
+
+          expect(readStoredCredentials().refreshToken, equals('sb_rt_rotated'));
+          expect(
+            Directory(credentialsDir).listSync().map((e) => p.basename(e.path)),
+            equals(['credentials.json']),
+          );
+          // Windows refuses the rename while the file is open, so the
+          // credentials are written in place. Elsewhere the rename succeeds.
+          void wroteInPlace() =>
+              logger.detail(any(that: contains('writing it in place')));
+          if (io.Platform.isWindows) {
+            verify(wroteInPlace).called(1);
+          } else {
+            verifyNever(wroteInPlace);
+          }
+        },
+      );
+
+      test('hasValidCredentials refreshes with the newest refresh token on '
+          'disk, even when its access token is current', () async {
+        final auth = buildAuth();
+        storeCredentials(
+          credentialsNamed(
+            'newer',
+            refreshToken: 'sb_rt_newer',
+            expired: false,
+          ),
+        );
+
+        expect(await runWithOverrides(auth.hasValidCredentials), isTrue);
+
+        expect(presentedRefreshTokens, equals(['sb_rt_newer']));
+        expect(readStoredCredentials().refreshToken, equals('sb_rt_rotated'));
+      });
+    });
+
     group('login', () {
       test(
         'writes the credentials file readable by the owner only',
