@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cli_util/cli_util.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:path/path.dart' as p;
@@ -63,7 +64,7 @@ typedef RunProcessSync =
 /// error ends the command with instructions to log in again; any other
 /// failure to refresh ends it as a temporary failure, leaving the stored
 /// credentials in place.
-class StoredLoginSource implements CredentialSource {
+class StoredLoginSource extends CredentialSource {
   /// Creates a [StoredLoginSource] for the login [currentClient] returns,
   /// refreshed if it needs to be, available while [isLoggedIn].
   StoredLoginSource({
@@ -121,6 +122,35 @@ class StoredLoginSource implements CredentialSource {
     }
     return 'Bearer ${client.credentials.accessToken}';
   }
+
+  /// Throws [oauth2.AuthorizationException] for a 401 whose bearer
+  /// challenge names an OAuth error, such as `invalid_token`, as
+  /// `oauth2.Client.send` does: the stored access token was refused.
+  @override
+  void checkResponse(http.BaseResponse response) {
+    if (response.statusCode != HttpStatus.unauthorized) return;
+    final header = response.headers['www-authenticate'];
+    if (header == null) return;
+
+    final List<AuthenticationChallenge> challenges;
+    try {
+      challenges = AuthenticationChallenge.parseHeader(header);
+    } on FormatException {
+      return;
+    }
+    final challenge = challenges
+        .where((challenge) => challenge.scheme == 'bearer')
+        .firstOrNull;
+    final error = challenge?.parameters['error'];
+    if (error == null) return;
+
+    final uri = challenge!.parameters['error_uri'];
+    throw oauth2.AuthorizationException(
+      error,
+      challenge.parameters['error_description'],
+      uri == null ? null : Uri.parse(uri),
+    );
+  }
 }
 
 /// The OAuth `error` code of [error], with its `error_description` where the
@@ -142,7 +172,7 @@ String _describeTransientFailure(Exception error) => error is FormatException
 
 /// A Shorebird API key from [shorebirdTokenEnvVar], sent as is. The server
 /// validates it on every request; there is nothing to refresh.
-class ApiKeySource implements CredentialSource {
+class ApiKeySource extends CredentialSource {
   /// Creates an [ApiKeySource] that sends [apiKey].
   const ApiKeySource(this.apiKey);
 

@@ -14,7 +14,7 @@ import '../matchers.dart';
 import '../mocks.dart';
 
 /// A [CredentialSource] that answers [header], or throws [failure].
-class _FakeSource implements CredentialSource {
+class _FakeSource extends CredentialSource {
   _FakeSource(
     this.header, {
     this.isAvailable = true,
@@ -29,6 +29,16 @@ class _FakeSource implements CredentialSource {
   CredentialSourceException? failure;
 
   int calls = 0;
+
+  final checkedResponses = <http.BaseResponse>[];
+
+  Exception? responseFailure;
+
+  @override
+  void checkResponse(http.BaseResponse response) {
+    checkedResponses.add(response);
+    if (responseFailure case final failure?) throw failure;
+  }
 
   @override
   Future<String> authorization() async {
@@ -55,6 +65,11 @@ void main() {
     return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
   }
 
+  /// The `Authorization` header value [chain] resolves.
+  Future<String> authorize(CredentialChain chain) => runWithOverrides(
+    () async => (await chain.resolve()).authorization,
+  );
+
   group(CredentialChain, () {
     test('is available when any source is', () {
       expect(CredentialChain([]).isAvailable, isFalse);
@@ -76,7 +91,7 @@ void main() {
       final second = _FakeSource('Bearer second');
       final chain = CredentialChain([first, second]);
 
-      expect(await runWithOverrides(chain.authorization), 'Bearer first');
+      expect(await authorize(chain), 'Bearer first');
       expect(second.calls, isZero);
     });
 
@@ -85,7 +100,7 @@ void main() {
       final second = _FakeSource('Bearer second');
       final chain = CredentialChain([first, second]);
 
-      expect(await runWithOverrides(chain.authorization), 'Bearer second');
+      expect(await authorize(chain), 'Bearer second');
       expect(first.calls, isZero);
     });
 
@@ -94,9 +109,9 @@ void main() {
       final second = _FakeSource('Bearer second');
       final chain = CredentialChain([first, second]);
 
-      expect(await runWithOverrides(chain.authorization), 'Bearer second');
+      expect(await authorize(chain), 'Bearer second');
       first.isAvailable = true;
-      expect(await runWithOverrides(chain.authorization), 'Bearer first');
+      expect(await authorize(chain), 'Bearer first');
     });
 
     group('when a source fails', () {
@@ -117,7 +132,7 @@ void main() {
       test('falls back to the next available source', () async {
         final chain = CredentialChain([first, second]);
 
-        expect(await runWithOverrides(chain.authorization), 'Bearer second');
+        expect(await authorize(chain), 'Bearer second');
         verify(
           () => logger.detail(
             'First failed. Trying the next way to authenticate.',
@@ -129,8 +144,8 @@ void main() {
       test('does not try it again', () async {
         final chain = CredentialChain([first, second]);
 
-        await runWithOverrides(chain.authorization);
-        await runWithOverrides(chain.authorization);
+        await authorize(chain);
+        await authorize(chain);
 
         expect(first.calls, equals(1));
         expect(second.calls, equals(2));
@@ -141,7 +156,7 @@ void main() {
         final chain = CredentialChain([first, second]);
 
         await expectLater(
-          runWithOverrides(chain.authorization),
+          authorize(chain),
           exitsWithCode(ExitCode.software),
         );
         verify(() => logger.err('First failed.')).called(1);
@@ -157,7 +172,7 @@ void main() {
         ]);
 
         await expectLater(
-          runWithOverrides(chain.authorization),
+          authorize(chain),
           exitsWithCode(ExitCode.software),
         );
         verify(() => logger.err('Only failed.')).called(1);
@@ -167,9 +182,7 @@ void main() {
 
     test('throws when no source is available', () {
       expect(
-        runWithOverrides(
-          CredentialChain([_FakeSource('a', isAvailable: false)]).authorization,
-        ),
+        authorize(CredentialChain([_FakeSource('a', isAvailable: false)])),
         throwsStateError,
       );
     });
@@ -200,11 +213,14 @@ void main() {
       );
     });
 
+    AuthenticatedClient clientFor(List<CredentialSource> sources) =>
+        AuthenticatedClient(
+          credentials: CredentialChain(sources),
+          httpClient: httpClient,
+        );
+
     test('sends the source answer as the Authorization header', () async {
-      final client = AuthenticatedClient(
-        credentials: _FakeSource('Bearer token'),
-        httpClient: httpClient,
-      );
+      final client = clientFor([_FakeSource('Bearer token')]);
 
       await runWithOverrides(
         () => client.get(Uri.parse('https://example.com')),
@@ -218,10 +234,7 @@ void main() {
 
     test('asks the source again for each request', () async {
       final source = _FakeSource('Bearer token');
-      final client = AuthenticatedClient(
-        credentials: source,
-        httpClient: httpClient,
-      );
+      final client = clientFor([source]);
 
       await runWithOverrides(() async {
         await client.get(Uri.parse('https://example.com'));
@@ -230,5 +243,46 @@ void main() {
 
       expect(source.calls, equals(2));
     });
+
+    test('lets the source that answered check the response', () async {
+      final unavailable = _FakeSource('Bearer first', isAvailable: false);
+      final source = _FakeSource('Bearer second');
+      final client = clientFor([unavailable, source]);
+
+      final response = await runWithOverrides(
+        () => client.get(Uri.parse('https://example.com')),
+      );
+
+      expect(source.checkedResponses.single.statusCode, response.statusCode);
+      expect(unavailable.checkedResponses, isEmpty);
+    });
+
+    test('throws what the source throws for a response', () async {
+      final source = _FakeSource('Bearer token')
+        ..responseFailure = Exception('refused');
+      final client = clientFor([source]);
+
+      await expectLater(
+        runWithOverrides(() => client.get(Uri.parse('https://example.com'))),
+        throwsA(isA<Exception>()),
+      );
+    });
   });
+
+  test('a source accepts every response by default', () {
+    const _AcceptingSource().checkResponse(
+      http.Response('', 401, headers: {'www-authenticate': 'Bearer'}),
+    );
+  });
+}
+
+/// A [CredentialSource] that keeps the default [checkResponse].
+class _AcceptingSource extends CredentialSource {
+  const _AcceptingSource();
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<String> authorization() async => 'Bearer token';
 }

@@ -11,7 +11,10 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 /// it refreshes or exchanges a token, and whether it retries. This is the
 /// shape of the AWS SDK's credential providers and google-auth-library's
 /// credentials.
-abstract interface class CredentialSource {
+abstract class CredentialSource {
+  /// Creates a [CredentialSource].
+  const CredentialSource();
+
   /// Whether this source has credentials to offer, judged without a network
   /// request: an API key is set, a login is stored, and so on. A source that
   /// is available may still fail in [authorization].
@@ -25,6 +28,11 @@ abstract interface class CredentialSource {
   /// credentials after all, so that the next source in a [CredentialChain]
   /// is tried instead.
   Future<String> authorization();
+
+  /// Checks the response to a request sent with this source's
+  /// [authorization], before the caller sees it, and throws if this source
+  /// treats it as a failure. Most sources accept every response.
+  void checkResponse(http.BaseResponse response) {}
 }
 
 /// Thrown by a [CredentialSource] that cannot provide credentials. A
@@ -46,13 +54,17 @@ class CredentialSourceException implements Exception {
   String toString() => 'CredentialSourceException: $message';
 }
 
+/// The source that authenticates a request, and the `Authorization` header
+/// value it answered.
+typedef ResolvedCredential = ({CredentialSource source, String authorization});
+
 /// [CredentialSource]s in the order they are tried.
 ///
 /// Each request is authenticated by the first available source. A source
 /// that throws a [CredentialSourceException] is skipped for the rest of the
 /// run, and the next available one is used instead; when there is none, the
 /// failure ends the command.
-class CredentialChain implements CredentialSource {
+class CredentialChain {
   /// Creates a [CredentialChain] that tries [sources] in order.
   CredentialChain(List<CredentialSource> sources)
     : _sources = List.unmodifiable(sources);
@@ -66,15 +78,16 @@ class CredentialChain implements CredentialSource {
   /// The sources this chain tries, in order.
   List<CredentialSource> get sources => _sources;
 
-  @override
+  /// Whether any source has credentials to offer.
   bool get isAvailable => _sources.any((source) => source.isAvailable);
 
-  @override
-  Future<String> authorization() async {
+  /// The first available source that can authenticate the next request, and
+  /// the `Authorization` header value it answered.
+  Future<ResolvedCredential> resolve() async {
     for (final (index, source) in _sources.indexed) {
       if (!source.isAvailable || _failed.contains(source)) continue;
       try {
-        return await source.authorization();
+        return (source: source, authorization: await source.authorization());
       } on CredentialSourceException catch (e) {
         final hasNext = _sources
             .skip(index + 1)
@@ -94,24 +107,27 @@ class CredentialChain implements CredentialSource {
 
 /// The HTTP client for authenticated requests to the Shorebird API.
 ///
-/// Sets each request's `Authorization` header to what [CredentialSource]
-/// answers, then sends it through an ordinary HTTP client, which retries
-/// as it does any request.
+/// Sets each request's `Authorization` header to what the [CredentialChain]
+/// resolves, sends it through an ordinary HTTP client, which retries as it
+/// does any request, and lets the source that answered check the response.
 class AuthenticatedClient extends http.BaseClient {
   /// Creates an [AuthenticatedClient] that authenticates requests with
   /// [credentials] and sends them through [httpClient].
   AuthenticatedClient({
-    required CredentialSource credentials,
+    required CredentialChain credentials,
     required http.Client httpClient,
   }) : _credentials = credentials,
        _httpClient = httpClient;
 
-  final CredentialSource _credentials;
+  final CredentialChain _credentials;
   final http.Client _httpClient;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    request.headers['Authorization'] = await _credentials.authorization();
-    return _httpClient.send(request);
+    final (:source, :authorization) = await _credentials.resolve();
+    request.headers['Authorization'] = authorization;
+    final response = await _httpClient.send(request);
+    source.checkResponse(response);
+    return response;
   }
 }

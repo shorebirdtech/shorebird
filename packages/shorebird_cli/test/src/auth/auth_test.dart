@@ -449,6 +449,133 @@ void main() {
         );
       });
 
+      group('when the API refuses the stored access token', () {
+        const invalidTokenChallenge =
+            'Bearer error="invalid_token", '
+            'error_description="The access token is invalid or expired.", '
+            'error_uri="https://example.com/errors"';
+
+        void answerApiRequestsWith({
+          required int status,
+          Map<String, String> headers = const {},
+        }) {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              status,
+              headers: headers,
+            ),
+          );
+        }
+
+        Future<http.Response> sendRequest() => runWithOverrides(
+          () => auth.client.get(Uri.parse('https://example.com')),
+        );
+
+        setUp(() {
+          writeCredentials();
+          auth = buildAuth();
+        });
+
+        test('throws the bearer challenge as oauth2 does', () async {
+          answerApiRequestsWith(
+            status: HttpStatus.unauthorized,
+            headers: {'www-authenticate': invalidTokenChallenge},
+          );
+
+          await expectLater(
+            sendRequest(),
+            throwsA(
+              isA<oauth2.AuthorizationException>()
+                  .having((e) => e.error, 'error', 'invalid_token')
+                  .having(
+                    (e) => e.description,
+                    'description',
+                    'The access token is invalid or expired.',
+                  )
+                  .having(
+                    (e) => e.uri,
+                    'uri',
+                    Uri.parse('https://example.com/errors'),
+                  ),
+            ),
+          );
+        });
+
+        test('throws a challenge without a description or uri', () async {
+          answerApiRequestsWith(
+            status: HttpStatus.unauthorized,
+            headers: {'www-authenticate': 'Bearer error="invalid_token"'},
+          );
+
+          await expectLater(
+            sendRequest(),
+            throwsA(
+              isA<oauth2.AuthorizationException>()
+                  .having((e) => e.description, 'description', isNull)
+                  .having((e) => e.uri, 'uri', isNull),
+            ),
+          );
+        });
+
+        for (final (description, status, headers) in [
+          (
+            'a 401 without a challenge',
+            HttpStatus.unauthorized,
+            <String, String>{},
+          ),
+          (
+            'a bare bearer challenge',
+            HttpStatus.unauthorized,
+            {'www-authenticate': 'Bearer'},
+          ),
+          (
+            'a challenge for another scheme',
+            HttpStatus.unauthorized,
+            {'www-authenticate': 'Basic realm="shorebird"'},
+          ),
+          (
+            'a challenge that cannot be parsed',
+            HttpStatus.unauthorized,
+            {'www-authenticate': '"not a challenge'},
+          ),
+          (
+            'a 403 with a challenge',
+            HttpStatus.forbidden,
+            {'www-authenticate': 'Bearer error="insufficient_scope"'},
+          ),
+        ]) {
+          test('returns $description as a response', () async {
+            answerApiRequestsWith(
+              status: status,
+              headers: headers,
+            );
+
+            final response = await sendRequest();
+            expect(response.statusCode, equals(status));
+          });
+        }
+      });
+
+      test('returns a 401 challenge to an API key as a response', () async {
+        platform = platform.copyWith(
+          environment: {shorebirdTokenEnvVar: 'sb_api_abc123'},
+        );
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.unauthorized,
+            headers: {'www-authenticate': 'Bearer error="invalid_token"'},
+          ),
+        );
+        auth = buildAuth();
+
+        final response = await runWithOverrides(
+          () => auth.client.get(Uri.parse('https://example.com')),
+        );
+        expect(response.statusCode, equals(HttpStatus.unauthorized));
+      });
+
       test('returns a plain http client when credentials are not present', () {
         expect(auth.client, same(httpClient));
       });
