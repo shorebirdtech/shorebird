@@ -14,6 +14,22 @@ final loggerRef = create(ShorebirdLogger.new);
 /// The [Logger] instance available in the current zone.
 ShorebirdLogger get logger => read(loggerRef);
 
+/// Runs [body] with everything it prints to stdout, directly or through
+/// [logger], sent to stderr instead.
+///
+/// A logger keeps the stdout it was created with, so [body] gets a logger of
+/// its own, created inside the redirect at the current logger's level.
+Future<T> runWithStdoutOnStderr<T>(Future<T> Function() body) {
+  final level = logger.level;
+  return io.IOOverrides.runZoned(
+    () => runScoped(
+      body,
+      values: {loggerRef.overrideWith(() => ShorebirdLogger(level: level))},
+    ),
+    stdout: () => io.stderr,
+  );
+}
+
 const _logFileName = 'shorebird.log';
 
 /// Where logs are written for the current Shorebird CLI run. A new file will

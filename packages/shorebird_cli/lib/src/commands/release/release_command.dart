@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -740,8 +741,8 @@ ${summary.join('\n')}
 
     if (confirm && shorebirdEnv.canAcceptUserInput) {
       if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
-        logger.info('Aborting.');
-        throw ProcessExit(ExitCode.success.code);
+        logger.err('Aborting.');
+        throw ProcessExit(declinedExitCode);
       }
     }
   }

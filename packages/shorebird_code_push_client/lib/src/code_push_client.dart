@@ -13,10 +13,15 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 class CodePushException implements Exception {
   /// {@macro code_push_exception}
-  const CodePushException({required this.message, this.details});
+  const CodePushException({required this.message, this.details, this.code});
 
   /// The message associated with the exception.
   final String message;
+
+  /// The machine-readable error code from the server's [ErrorResponse]
+  /// (e.g. `shorebird_plan_insufficient_tier`), or null when the response
+  /// body was not an [ErrorResponse].
+  final String? code;
 
   /// The details associated with the exception.
   final String? details;
@@ -30,7 +35,11 @@ class CodePushException implements Exception {
 /// {@endtemplate}
 class CodePushForbiddenException extends CodePushException {
   /// {@macro code_push_forbidden_exception}
-  CodePushForbiddenException({required super.message, super.details});
+  CodePushForbiddenException({
+    required super.message,
+    super.details,
+    super.code,
+  });
 }
 
 /// {@template code_push_conflict_exception}
@@ -38,7 +47,11 @@ class CodePushForbiddenException extends CodePushException {
 /// {@endtemplate}
 class CodePushConflictException extends CodePushException {
   /// {@macro code_push_conflict_exception}
-  const CodePushConflictException({required super.message, super.details});
+  const CodePushConflictException({
+    required super.message,
+    super.details,
+    super.code,
+  });
 }
 
 /// {@template code_push_not_found_exception}
@@ -46,7 +59,11 @@ class CodePushConflictException extends CodePushException {
 /// {@endtemplate}
 class CodePushNotFoundException extends CodePushException {
   /// {@macro code_push_not_found_exception}
-  CodePushNotFoundException({required super.message, super.details});
+  CodePushNotFoundException({
+    required super.message,
+    super.details,
+    super.code,
+  });
 }
 
 /// {@template code_push_upgrade_required_exception}
@@ -57,6 +74,7 @@ class CodePushUpgradeRequiredException extends CodePushException {
   const CodePushUpgradeRequiredException({
     required super.message,
     super.details,
+    super.code,
   });
 }
 
@@ -138,7 +156,17 @@ class CodePushClient {
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
 
-  Uri get _v1 => Uri.parse('$hostedUri/api/v1');
+  Uri get _v1 => apiBaseUri;
+
+  /// The base URI of every API route: [hostedUri] followed by `/api/v1`.
+  Uri get apiBaseUri => Uri.parse('$hostedUri/api/v1');
+
+  /// Sends [request] as-is, with the headers and authentication every other
+  /// method on this client uses, and returns the response unchecked.
+  ///
+  /// For callers that build their own requests, such as `shorebird api`.
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _httpClient.send(request);
 
   /// Fetches the currently logged-in user.
   Future<PrivateUser?> getCurrentUser() async {
@@ -522,6 +550,41 @@ class CodePushClient {
     }
   }
 
+  /// Deletes the release with the provided [releaseId], along with every
+  /// platform's artifacts and every patch belonging to it.
+  Future<void> deleteRelease({
+    required String appId,
+    required int releaseId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Deletes the [platform] artifacts of the release with the provided
+  /// [releaseId], removing [platform] from the release.
+  ///
+  /// The release and its other platforms are left in place.
+  Future<void> deleteReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/artifacts',
+      ).replace(queryParameters: {'platform': platform.value}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Delete the app with the provided [appId].
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(Uri.parse('$_v1/apps/$appId'));
@@ -808,6 +871,203 @@ class CodePushClient {
     return Uri.parse(jsonBody['download_url'] as String);
   }
 
+  /// Fetches patch installs for [appId] over a time window.
+  ///
+  /// [start] and [end] bound the window (server defaults: the 28 days ending
+  /// now). [granularity] (`hour`, `day` or `week`) adds a `time_series`;
+  /// [groupBy] (`release`) adds a per-release `breakdown`.
+  Future<GetPatchMetricResponse> getAppPatchInstalls({
+    required String appId,
+    DateTime? start,
+    DateTime? end,
+    String? granularity,
+    String? groupBy,
+  }) => _getPatchMetric(
+    path: 'apps/$appId/metrics/patch-installs',
+    start: start,
+    end: end,
+    granularity: granularity,
+    groupBy: groupBy,
+  );
+
+  /// Fetches patch installs for release [releaseId] of [appId] over a time
+  /// window.
+  ///
+  /// Parameters are as for [getAppPatchInstalls], except that [groupBy]
+  /// accepts `patch`.
+  Future<GetPatchMetricResponse> getReleasePatchInstalls({
+    required String appId,
+    required int releaseId,
+    DateTime? start,
+    DateTime? end,
+    String? granularity,
+    String? groupBy,
+  }) => _getPatchMetric(
+    path: 'apps/$appId/releases/$releaseId/metrics/patch-installs',
+    start: start,
+    end: end,
+    granularity: granularity,
+    groupBy: groupBy,
+  );
+
+  /// Fetches patch downloads for [appId] over a time window.
+  ///
+  /// Parameters are as for [getAppPatchInstalls].
+  Future<GetPatchMetricResponse> getAppPatchDownloads({
+    required String appId,
+    DateTime? start,
+    DateTime? end,
+    String? granularity,
+    String? groupBy,
+  }) => _getPatchMetric(
+    path: 'apps/$appId/metrics/patch-downloads',
+    start: start,
+    end: end,
+    granularity: granularity,
+    groupBy: groupBy,
+  );
+
+  /// Fetches patch downloads for release [releaseId] of [appId] over a time
+  /// window.
+  ///
+  /// Parameters are as for [getReleasePatchInstalls].
+  Future<GetPatchMetricResponse> getReleasePatchDownloads({
+    required String appId,
+    required int releaseId,
+    DateTime? start,
+    DateTime? end,
+    String? granularity,
+    String? groupBy,
+  }) => _getPatchMetric(
+    path: 'apps/$appId/releases/$releaseId/metrics/patch-downloads',
+    start: start,
+    end: end,
+    granularity: granularity,
+    groupBy: groupBy,
+  );
+
+  Future<GetPatchMetricResponse> _getPatchMetric({
+    required String path,
+    required DateTime? start,
+    required DateTime? end,
+    required String? granularity,
+    required String? groupBy,
+  }) => _getMetric(
+    path,
+    queryParameters: {
+      ..._windowParameters(start: start, end: end),
+      'granularity': ?granularity,
+      'group_by': ?groupBy,
+    },
+    fromJson: GetPatchMetricResponse.fromJson,
+  );
+
+  /// Fetches the number of unique users (devices) of [appId] over a time
+  /// window.
+  ///
+  /// [start] and [end] bound the window (server defaults: the 28 days ending
+  /// now). [granularity] (`hour`, `day` or `week`) adds a `time_series`;
+  /// [groupBy] (`platform` or `release_version`) adds a `breakdown`.
+  Future<GetUniqueUsersResponse> getUniqueUsers({
+    required String appId,
+    DateTime? start,
+    DateTime? end,
+    String? granularity,
+    String? groupBy,
+  }) => _getMetric(
+    'apps/$appId/metrics/unique-users',
+    queryParameters: {
+      ..._windowParameters(start: start, end: end),
+      'granularity': ?granularity,
+      'group_by': ?groupBy,
+    },
+    fromJson: GetUniqueUsersResponse.fromJson,
+  );
+
+  /// Fetches how [appId]'s currently-active devices are distributed across
+  /// release versions.
+  Future<GetVersionDistributionResponse> getVersionDistribution({
+    required String appId,
+  }) => _getMetric(
+    'apps/$appId/metrics/version-distribution',
+    fromJson: GetVersionDistributionResponse.fromJson,
+  );
+
+  /// Fetches the number of devices first seen running [appId] recently,
+  /// compared with the preceding window.
+  Future<GetNewDevicesResponse> getNewDevices({required String appId}) =>
+      _getMetric(
+        'apps/$appId/metrics/new-devices',
+        fromJson: GetNewDevicesResponse.fromJson,
+      );
+
+  /// Fetches per-patch adoption for release [releaseVersion] of [appId] (the
+  /// app's latest release when null).
+  ///
+  /// [start] and [end] bound the window (server defaults: the 28 days ending
+  /// now). [granularity] (`hour`, `day` or `week`) returns one point per
+  /// bucket instead of a single full-window value.
+  Future<GetPatchAdoptionResponse> getPatchAdoption({
+    required String appId,
+    String? releaseVersion,
+    DateTime? start,
+    DateTime? end,
+    String? granularity,
+  }) => _getMetric(
+    'apps/$appId/metrics/patch-adoption',
+    queryParameters: {
+      'release_version': ?releaseVersion,
+      ..._windowParameters(start: start, end: end),
+      'granularity': ?granularity,
+    },
+    fromJson: GetPatchAdoptionResponse.fromJson,
+  );
+
+  /// Fetches the average number of active devices of [appId] for each UTC
+  /// hour of the day, with a recommended low-activity release window.
+  Future<GetActiveHoursResponse> getActiveHours({required String appId}) =>
+      _getMetric(
+        'apps/$appId/metrics/active-hours',
+        fromJson: GetActiveHoursResponse.fromJson,
+      );
+
+  /// Fetches the average number of active devices of [appId] for each
+  /// (UTC day of week, UTC hour of day) pair.
+  Future<GetActivityHeatmapResponse> getActivityHeatmap({
+    required String appId,
+  }) => _getMetric(
+    'apps/$appId/metrics/activity-heatmap',
+    fromJson: GetActivityHeatmapResponse.fromJson,
+  );
+
+  /// The `start`/`end` query parameters for a metrics window, as UTC ISO 8601
+  /// timestamps. Omitted when null so the server applies its defaults.
+  static Map<String, String> _windowParameters({
+    required DateTime? start,
+    required DateTime? end,
+  }) => {
+    if (start != null) 'start': start.toUtc().toIso8601String(),
+    if (end != null) 'end': end.toUtc().toIso8601String(),
+  };
+
+  Future<T> _getMetric<T>(
+    String path, {
+    required T Function(Map<String, dynamic>) fromJson,
+    Map<String, String> queryParameters = const {},
+  }) async {
+    var uri = Uri.parse('$_v1/$path');
+    if (queryParameters.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParameters);
+    }
+    final response = await _httpClient.get(uri);
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return fromJson(json.decode(response.body) as Map<String, dynamic>);
+  }
+
   /// Closes the client.
   void close() => _httpClient.close();
 
@@ -833,7 +1093,11 @@ class CodePushClient {
         details: _truncateBody(response),
       );
     }
-    return exceptionBuilder(message: error.message, details: error.details);
+    return exceptionBuilder(
+      message: error.message,
+      details: error.details,
+      code: error.code,
+    );
   }
 
   /// Returns a single-line, length-capped form of [body], or `null` if there is

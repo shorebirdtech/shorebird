@@ -51,6 +51,15 @@ abstract class ShorebirdCommand extends Command<int> {
   @override
   void printUsage() => logger.info(usage);
 
+  /// Whether stdout carries only this command's output, such as the response
+  /// body `shorebird api` prints.
+  ///
+  /// When true, the command runner keeps its own messages (the hint printed
+  /// after a failure, the notice that an upgrade is available) off stdout:
+  /// the failure hint is skipped, since the command reports its own errors,
+  /// and the upgrade notice goes to stderr.
+  bool get reservesStdout => false;
+
   /// Whether the `--json` global flag was passed.
   ///
   /// Reads from the [isJsonModeRef] scoped dependency, which is set by the
@@ -171,11 +180,15 @@ abstract class ShorebirdCommand extends Command<int> {
     required JsonErrorCode code,
     required String message,
     String? hint,
+    String? apiCode,
+    String? details,
   }) {
     JsonResult.error(
       code: code,
       message: message,
       hint: hint,
+      apiCode: apiCode,
+      details: details,
       command: fullCommandName,
     ).write();
   }
@@ -199,6 +212,36 @@ abstract class ShorebirdCommand extends Command<int> {
       if (hint != null) logger.info(hint);
     }
     return exitCode ?? ExitCode.usage.code;
+  }
+
+  /// Reports [error], a failed Shorebird API call, in whichever output mode is
+  /// active and returns [ExitCode.software].
+  ///
+  /// [message] says what failed (e.g. "Failed to fetch patch installs.") and
+  /// is followed by the server's own message. The server's error code and
+  /// details, when present, are reported too: as `api_code` and `details` in
+  /// the `--json` error envelope (whose `code` is [code]), and as extra lines
+  /// otherwise. This lets a caller tell, for example, a plan that lacks a
+  /// feature (`shorebird_plan_insufficient_tier`) from a missing resource.
+  int reportApiError(
+    CodePushException error, {
+    required String message,
+    JsonErrorCode code = JsonErrorCode.fetchFailed,
+  }) {
+    final fullMessage = '$message ${error.message}';
+    if (isJsonMode) {
+      emitJsonError(
+        code: code,
+        message: fullMessage,
+        apiCode: error.code,
+        details: error.details,
+      );
+    } else {
+      logger.err(fullMessage);
+      if (error.details case final details?) logger.info(details);
+      if (error.code case final apiCode?) logger.info('Error code: $apiCode');
+    }
+    return ExitCode.software.code;
   }
 
   /// Reports a failed precondition and returns its exit code.

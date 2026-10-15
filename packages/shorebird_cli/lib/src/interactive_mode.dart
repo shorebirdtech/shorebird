@@ -21,6 +21,13 @@ bool get isInteractive {
   return io.stdioType(io.stdout) == io.StdioType.terminal;
 }
 
+/// The exit code when the user declines a confirmation prompt.
+///
+/// A declined prompt means the command did not do what was asked, so it must
+/// not report success to scripts and agents. 1 is the common convention for an
+/// aborted command (terraform, apt-get and gcloud all exit 1).
+const int declinedExitCode = 1;
+
 /// The default hint emitted when an interactive prompt is reached in a
 /// non-interactive context and no per-site hint was provided.
 const String defaultInteractivePromptHint =

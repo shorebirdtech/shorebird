@@ -121,7 +121,13 @@ class JsonMeta {
 /// {@endtemplate}
 class JsonError {
   /// {@macro json_error}
-  const JsonError({required this.code, required this.message, this.hint});
+  const JsonError({
+    required this.code,
+    required this.message,
+    this.hint,
+    this.apiCode,
+    this.details,
+  });
 
   /// A machine-readable error code.
   final JsonErrorCode code;
@@ -133,11 +139,21 @@ class JsonError {
   /// (e.g. "Run: shorebird login").
   final String? hint;
 
+  /// The error code the Shorebird API returned, when the error came from an
+  /// API response (e.g. "shorebird_plan_insufficient_tier").
+  final String? apiCode;
+
+  /// Additional details about the error, such as those the Shorebird API
+  /// returned alongside its error code.
+  final String? details;
+
   /// Serializes this error to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
     'code': code.code,
     'message': message,
     if (hint != null) 'hint': hint,
+    if (apiCode != null) 'api_code': apiCode,
+    if (details != null) 'details': details,
   };
 }
 
@@ -180,14 +196,23 @@ class JsonResult {
   /// [code] is a machine-readable [JsonErrorCode].
   /// `message` is a human-readable description.
   /// `hint` is an optional actionable recovery step.
+  /// `apiCode` and `details` describe an error the Shorebird API returned.
   /// `command` is injected into the `meta` block automatically.
   factory JsonResult.error({
     required JsonErrorCode code,
     required String message,
     required String command,
     String? hint,
+    String? apiCode,
+    String? details,
   }) {
-    final error = JsonError(code: code, message: message, hint: hint);
+    final error = JsonError(
+      code: code,
+      message: message,
+      hint: hint,
+      apiCode: apiCode,
+      details: details,
+    );
     final meta = JsonMeta(version: packageVersion, command: command);
     return JsonResult._(
       toJson: () => {

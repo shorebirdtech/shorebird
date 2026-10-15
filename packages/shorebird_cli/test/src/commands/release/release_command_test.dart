@@ -617,12 +617,12 @@ void main() {
           ).thenReturn(false);
         });
 
-        test('exits with success and prints Aborting.', () async {
+        test('exits 1 and prints Aborting. to stderr', () async {
           await expectLater(
             runWithOverrides(command.run),
-            exitsWithCode(ExitCode.success),
+            exitsDeclined,
           );
-          verify(() => logger.info('Aborting.')).called(1);
+          verify(() => logger.err('Aborting.')).called(1);
         });
       });
     });
