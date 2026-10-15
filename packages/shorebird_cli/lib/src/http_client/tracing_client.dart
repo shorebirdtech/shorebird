@@ -24,17 +24,27 @@ class TracingClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    // The trace format needs an absolute wall-clock start (`ts`), but
+    // durations come from a monotonic [Stopwatch]: wall-clock differences
+    // are coarse on some platforms (notably Windows) and can be skewed or
+    // even go negative if the system clock is adjusted mid-request.
     final start = DateTime.now();
+    final stopwatch = Stopwatch()..start();
 
     final http.StreamedResponse response;
     try {
       response = await _baseClient.send(request);
     } catch (_) {
-      _record(request, start: start, ttfb: DateTime.now().difference(start));
+      _record(
+        request,
+        start: start,
+        stopwatch: stopwatch,
+        ttfb: stopwatch.elapsed,
+      );
       rethrow;
     }
 
-    final ttfb = DateTime.now().difference(start);
+    final ttfb = stopwatch.elapsed;
 
     // Only success responses carry a body worth timing, and only they are
     // reliably drained. Callers routinely abandon an error response
@@ -45,6 +55,7 @@ class TracingClient extends http.BaseClient {
       _record(
         request,
         start: start,
+        stopwatch: stopwatch,
         ttfb: ttfb,
         statusCode: response.statusCode,
       );
@@ -59,6 +70,7 @@ class TracingClient extends http.BaseClient {
       _record(
         request,
         start: start,
+        stopwatch: stopwatch,
         ttfb: ttfb,
         statusCode: response.statusCode,
         responseBytes: byteCount,
@@ -118,6 +130,7 @@ class TracingClient extends http.BaseClient {
   void _record(
     http.BaseRequest request, {
     required DateTime start,
+    required Stopwatch stopwatch,
     required Duration ttfb,
     int? statusCode,
     int? responseBytes,
@@ -125,7 +138,7 @@ class TracingClient extends http.BaseClient {
     shorebirdTracer.addNetworkEvent(
       name: '${request.method} ${request.url.host}',
       start: start,
-      duration: DateTime.now().difference(start),
+      duration: stopwatch.elapsed,
       args: {
         'method': request.method,
         'host': request.url.host,
