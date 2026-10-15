@@ -41,37 +41,13 @@ class LoginCommand extends ShorebirdCommand {
       try {
         hasValidCredentials = await auth.hasValidCredentials();
       } on Exception catch (error) {
-        // An answer that is not an OAuth error response says nothing about
-        // the stored credentials either, so keep them; but don't blame the
-        // network for an answer that arrived.
-        if (error is ShorebirdAuthException && error.isRateLimited) {
-          progress.fail('Too many requests, try again shortly.');
-          logger.detail('$error');
-          return ExitCode.tempFail.code;
-        }
-        if (error is ShorebirdAuthException && _isClientError(error)) {
-          progress.fail(
-            'The Shorebird auth service refused to check your credentials '
-            '(${error.statusCode}).',
-          );
-          logger
-            ..detail('$error')
-            ..info(
-              'If this keeps happening, run '
-              '${lightCyan.wrap('shorebird logout')} and then '
-              '${lightCyan.wrap('shorebird login')}.',
-            );
-          // Something answered a 4xx that is not an OAuth error response, as
-          // a proxy or a wrongly routed request does. Retrying unchanged won't
-          // help: not a temporary failure. Rate limiting and no answer stay
-          // tempFail. An OAuth error response never reaches this branch:
-          // `hasValidCredentials` returns false for it.
-          return ExitCode.software.code;
-        }
-        // The auth service could not answer, which says nothing about the
-        // stored credentials. Discarding them here would log a user out for
-        // running this off wifi.
-        progress.fail('Could not reach the Shorebird auth service.');
+        // No answer, or one that is not an OAuth error response, says
+        // nothing about the stored credentials. Discarding them here would
+        // log a user out for running this off wifi.
+        progress.fail(
+          'Could not check your credentials with the Shorebird '
+          'auth service.',
+        );
         logger
           ..err('$error')
           ..info('Check your network connection and try again.');
@@ -180,10 +156,4 @@ and enter this code:
 Waiting for your authorization (the code expires in $minutes ${minutes == 1 ? 'minute' : 'minutes'})...''',
     );
   }
-}
-
-/// Whether the auth service answered [error]'s request with a 4xx.
-bool _isClientError(ShorebirdAuthException error) {
-  final status = error.statusCode;
-  return status != null && status >= 400 && status < 500;
 }

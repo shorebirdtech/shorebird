@@ -2,19 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clock/clock.dart';
-import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:scoped_deps/scoped_deps.dart';
+import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 import '../helpers.dart';
-import '../mocks.dart';
 
-/// A JWT the token response parser accepts, issued by [issuer].
+/// A JWT access token as the auth service issues them.
 String _buildTestJwt({String issuer = 'https://auth.shorebird.dev'}) {
   String b64(Map<String, dynamic> json) =>
       base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
@@ -58,17 +54,12 @@ void main() {
       'scope': 'api',
     };
 
-    late ShorebirdEnv shorebirdEnv;
     late DateTime now;
     late List<Duration> sleeps;
     late List<http.Request> requests;
     late List<DeviceAuthorization> prompts;
 
     setUp(() {
-      shorebirdEnv = MockShorebirdEnv();
-      when(
-        () => shorebirdEnv.jwtIssuer,
-      ).thenReturn('https://auth.shorebird.dev');
       now = DateTime.utc(2026, 10, 8, 12);
       sleeps = [];
       requests = [];
@@ -78,7 +69,7 @@ void main() {
     /// Runs the device login against an auth service that answers
     /// `/device_authorization` with [start] and each poll of `/token` with
     /// the next of [polls].
-    Future<oauth2.AccessCredentials> login({
+    Future<oauth2.Credentials> login({
       http.Response? start,
       List<http.Response Function()> polls = const [],
     }) {
@@ -91,20 +82,17 @@ void main() {
         expect(request.url.path, equals('/token'));
         return polls[poll++]();
       });
-      return runScoped(
-        () => withClock(
-          Clock(() => now),
-          () => obtainCredentialsViaDeviceLogin(
-            httpClient: client,
-            authBaseUrl: authBaseUrl,
-            userPrompt: prompts.add,
-            sleep: (duration) async {
-              sleeps.add(duration);
-              now = now.add(duration);
-            },
-          ),
+      return withClock(
+        Clock(() => now),
+        () => obtainCredentialsViaDeviceLogin(
+          httpClient: client,
+          authBaseUrl: authBaseUrl,
+          userPrompt: prompts.add,
+          sleep: (duration) async {
+            sleeps.add(duration);
+            now = now.add(duration);
+          },
         ),
-        values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
       );
     }
 
@@ -118,8 +106,14 @@ void main() {
       );
 
       expect(credentials.refreshToken, equals('sb_rt_refresh'));
-      expect(credentials.accessToken.data, equals(tokenJson['access_token']));
-      expect(credentials.accessToken.type, equals('Bearer'));
+      expect(credentials.accessToken, equals(tokenJson['access_token']));
+      // Refreshed at the token endpoint as shorebird-cli, like credentials
+      // from the authorization code grant.
+      expect(
+        credentials.tokenEndpoint,
+        equals(Uri.parse('https://auth.shorebird.dev/token')),
+      );
+      expect(credentials.scopes, equals(['api']));
       expect(sleeps, equals(List.filled(3, const Duration(seconds: 5))));
 
       expect(prompts, hasLength(1));
@@ -171,19 +165,20 @@ void main() {
             ? _json(deviceAuthorizationJson)
             : _json(tokenJson);
       });
-      await runScoped(
-        () => obtainCredentialsViaDeviceLogin(
-          httpClient: client,
-          authBaseUrl: Uri.parse('https://example.com/auth/'),
-          userPrompt: (_) {},
-          sleep: (_) async {},
-        ),
-        values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
+      final credentials = await obtainCredentialsViaDeviceLogin(
+        httpClient: client,
+        authBaseUrl: Uri.parse('https://example.com/auth/'),
+        userPrompt: (_) {},
+        sleep: (_) async {},
       );
       expect(requests.map((r) => r.url.path), [
         '/auth/device_authorization',
         '/auth/token',
       ]);
+      expect(
+        credentials.tokenEndpoint,
+        equals(Uri.parse('https://example.com/auth/token')),
+      );
     });
 
     test('waits between polls by default', () async {
@@ -192,13 +187,10 @@ void main() {
             ? _json({...deviceAuthorizationJson, 'interval': 0})
             : _json(tokenJson),
       );
-      final credentials = await runScoped(
-        () => obtainCredentialsViaDeviceLogin(
-          httpClient: client,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (_) {},
-        ),
-        values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
+      final credentials = await obtainCredentialsViaDeviceLogin(
+        httpClient: client,
+        authBaseUrl: authBaseUrl,
+        userPrompt: (_) {},
       );
       expect(credentials.refreshToken, equals('sb_rt_refresh'));
     });
@@ -305,21 +297,23 @@ void main() {
       await expectLater(
         login(polls: [() => http.Response('oops', 500)]),
         throwsA(
-          isA<ShorebirdAuthException>()
-              .having((e) => e.message, 'message', contains('500'))
-              .having((e) => e.statusCode, 'statusCode', 500),
+          isA<ShorebirdAuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('500'),
+          ),
         ),
       );
     });
 
-    test('carries the OAuth error of an unexpected refusal', () async {
+    test('reports the OAuth error of an unexpected refusal', () async {
       await expectLater(
         login(polls: [() => _oauthError('invalid_client')]),
         throwsA(
           isA<ShorebirdAuthException>().having(
-            (e) => e.oauthError,
-            'oauthError',
-            'invalid_client',
+            (e) => e.message,
+            'message',
+            contains('invalid_client'),
           ),
         ),
       );
@@ -373,9 +367,11 @@ void main() {
           }, status: HttpStatus.badRequest),
         ),
         throwsA(
-          isA<ShorebirdAuthException>()
-              .having((e) => e.message, 'message', contains('unauthorized'))
-              .having((e) => e.statusCode, 'statusCode', 400),
+          isA<ShorebirdAuthException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('400'), contains('unauthorized')),
+          ),
         ),
       );
       expect(prompts, isEmpty);
@@ -394,6 +390,72 @@ void main() {
               (e) => e.message,
               'message',
               contains('unexpected device authorization response'),
+            ),
+          ),
+        );
+      });
+    }
+
+    test('counts the expiry from when the token was requested', () async {
+      final before = DateTime.now();
+      final credentials = await login(polls: [() => _json(tokenJson)]);
+      final after = DateTime.now();
+      final expiration = credentials.expiration!;
+      expect(
+        expiration.isBefore(before.add(const Duration(seconds: 900))),
+        isFalse,
+      );
+      expect(
+        expiration.isAfter(after.add(const Duration(seconds: 900))),
+        isFalse,
+      );
+    });
+
+    test('defaults the scopes to api when the response names none', () async {
+      final credentials = await login(
+        polls: [
+          () => _json({...tokenJson}..remove('scope')),
+        ],
+      );
+      expect(credentials.scopes, equals(['api']));
+    });
+
+    test('keeps no refresh token when the response has none', () async {
+      final credentials = await login(
+        polls: [
+          () => _json({...tokenJson}..remove('refresh_token')),
+        ],
+      );
+      expect(credentials.refreshToken, isNull);
+    });
+
+    for (final (description, body) in [
+      ('is not JSON', 'not json'),
+      (
+        'is missing access_token',
+        jsonEncode({...tokenJson}..remove('access_token')),
+      ),
+      (
+        'is missing expires_in',
+        jsonEncode({...tokenJson}..remove('expires_in')),
+      ),
+      (
+        'is not a bearer token',
+        jsonEncode({...tokenJson, 'token_type': 'mac'}),
+      ),
+      (
+        'has a refresh_token that is not a string',
+        jsonEncode({...tokenJson, 'refresh_token': 1}),
+      ),
+    ]) {
+      test('throws when the token response $description', () {
+        expect(
+          login(polls: [() => http.Response(body, HttpStatus.ok)]),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              contains('unexpected token response'),
             ),
           ),
         );

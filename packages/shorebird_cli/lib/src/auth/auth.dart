@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cli_util/cli_util.dart';
-import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
@@ -32,7 +32,7 @@ const apiKeyPrefix = 'sb_api_';
 
 /// Callback for obtaining Shorebird access credentials via loopback login.
 typedef ObtainCredentialsViaLoopbackLogin =
-    Future<oauth2.AccessCredentials> Function({
+    Future<oauth2.Credentials> Function({
       required http.Client httpClient,
       required Uri authBaseUrl,
       required void Function(String) userPrompt,
@@ -42,7 +42,7 @@ typedef ObtainCredentialsViaLoopbackLogin =
 /// Callback for obtaining Shorebird access credentials via the device
 /// authorization grant.
 typedef ObtainCredentialsViaDeviceLogin =
-    Future<oauth2.AccessCredentials> Function({
+    Future<oauth2.Credentials> Function({
       required http.Client httpClient,
       required Uri authBaseUrl,
       required void Function(shorebird_oauth.DeviceAuthorization) userPrompt,
@@ -52,128 +52,81 @@ typedef ObtainCredentialsViaDeviceLogin =
 typedef RunProcessSync =
     ProcessResult Function(String executable, List<String> arguments);
 
-/// Callback when credentials are refreshed.
-typedef OnRefreshCredentials =
-    void Function(oauth2.AccessCredentials credentials);
-
-/// Exchanges [expired] credentials for current ones.
-typedef RefreshCredentials =
-    Future<oauth2.AccessCredentials> Function(
-      oauth2.AccessCredentials expired,
-    );
-
-/// A client that sends Shorebird-issued credentials, refreshing them through
-/// the Shorebird auth service when they expire.
+/// A client that sends the stored Shorebird credentials, refreshed first if
+/// they have expired (see `Auth._currentClient`).
+///
+/// A refresh the auth service answers with an OAuth error ends the command
+/// with instructions to log in again; any other failure to refresh ends it as
+/// a temporary failure, leaving the stored credentials in place.
 class AuthenticatedClient extends http.BaseClient {
-  /// Creates a new [AuthenticatedClient] with the given [httpClient] and
-  /// [credentials].
-  ///
-  /// Expired credentials are exchanged through [refreshCredentials] when
-  /// given, and otherwise refreshed directly with the auth service.
-  AuthenticatedClient({
-    required http.Client httpClient,
-    required oauth2.AccessCredentials credentials,
-    required Uri authServiceUri,
-    OnRefreshCredentials? onRefreshCredentials,
-    RefreshCredentials? refreshCredentials,
-  }) : _baseClient = httpClient,
-       _credentials = credentials,
-       _onRefreshCredentials = onRefreshCredentials,
-       _refreshCredentials = refreshCredentials,
-       _authServiceUri = authServiceUri;
+  /// Creates an [AuthenticatedClient] that sends requests through the
+  /// [oauth2.Client] [currentClient] returns.
+  AuthenticatedClient({required Future<oauth2.Client> Function() currentClient})
+    : _currentClient = currentClient;
 
-  final http.Client _baseClient;
-  final OnRefreshCredentials? _onRefreshCredentials;
-  final RefreshCredentials? _refreshCredentials;
-  final Uri _authServiceUri;
-  oauth2.AccessCredentials _credentials;
+  final Future<oauth2.Client> Function() _currentClient;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    if (_credentials.accessToken.hasExpired) {
-      _credentials = await _refresh(_credentials);
-      _onRefreshCredentials?.call(_credentials);
-    }
-
-    request.headers['Authorization'] =
-        'Bearer ${_credentials.accessToken.data}';
-    return _baseClient.send(request);
-  }
-
-  Future<oauth2.AccessCredentials> _refresh(
-    oauth2.AccessCredentials credentials,
-  ) async {
+    final oauth2.Client client;
     try {
-      final refreshCredentials = _refreshCredentials;
-      if (refreshCredentials != null) {
-        return await refreshCredentials(credentials);
-      }
-      return await shorebird_oauth.refreshShorebirdCredentials(
-        credentials,
-        _baseClient,
-        authBaseUrl: _authServiceUri,
-      );
+      client = await _currentClient();
+    } on oauth2.AuthorizationException catch (e, s) {
+      // The auth service answered with an OAuth error: these credentials
+      // will not refresh again, whichever error code it was.
+      logger
+        ..err(
+          'The Shorebird auth service rejected your stored credentials '
+          '(${_describeOAuthError(e)}).',
+        )
+        ..info('Run ${lightCyan.wrap('shorebird login')} to log in again.')
+        ..detail(e.toString())
+        ..detail(s.toString());
+      throw ProcessExit(ExitCode.software.code);
+    } on oauth2.ExpirationException catch (e, s) {
+      logger
+        ..err('Your Shorebird login has expired.')
+        ..info('Run ${lightCyan.wrap('shorebird login')} to log in again.')
+        ..detail(e.toString())
+        ..detail(s.toString());
+      throw ProcessExit(ExitCode.software.code);
     } on Exception catch (e, s) {
-      if (e is shorebird_oauth.ShorebirdAuthException &&
-          e.isCredentialRejection) {
-        // The auth service answered with an OAuth error: these credentials
-        // will not refresh again, whichever error code it was.
-        logger
-          ..err(
-            'The Shorebird auth service rejected your stored credentials '
-            '(${_describeOAuthError(e)}).',
-          )
-          ..info('Run ${lightCyan.wrap('shorebird login')} to log in again.')
-          ..detail(e.toString())
-          ..detail(s.toString());
-
-        throw ProcessExit(ExitCode.software.code);
-      }
-
-      // No usable answer, which says nothing about the stored credentials.
-      // Keep them and let the next command try again.
-      final isRateLimited =
-          e is shorebird_oauth.ShorebirdAuthException && e.isRateLimited;
+      // No OAuth answer: no answer at all, a 5xx, a 429, or a body that is
+      // not a token response. That says nothing about the stored
+      // credentials, so keep them and let the next command try again.
       logger
         ..err(
           'Could not refresh your Shorebird credentials: '
           '${_describeTransientFailure(e)}',
         )
         ..info(
-          isRateLimited
-              ? 'Your login is unchanged. Try again shortly.'
-              : 'Your login is unchanged. Check your network connection and '
-                    'try again.',
+          'Your login is unchanged. Check your network connection and try '
+          'again.',
         )
         ..detail(e.toString())
         ..detail(s.toString());
-
       throw ProcessExit(ExitCode.tempFail.code);
     }
+    return client.send(request);
   }
 }
 
 /// The OAuth `error` code of [error], with its `error_description` where the
 /// auth service sent one.
-String _describeOAuthError(shorebird_oauth.ShorebirdAuthException error) {
-  final description = error.oauthErrorDescription;
-  return [
-    '${error.oauthError}',
-    if (description != null) ': $description',
-  ].join();
+String _describeOAuthError(oauth2.AuthorizationException error) {
+  final description = error.description;
+  return [error.error, if (description != null) ': $description'].join();
 }
 
-/// Why a refresh got no usable answer, as a sentence, without echoing a
+/// Why a refresh got no OAuth answer, as a sentence, without echoing a
 /// response body.
-String _describeTransientFailure(Exception error) {
-  if (error is! shorebird_oauth.ShorebirdAuthException) {
-    return 'Could not reach the Shorebird auth service.';
-  }
-  if (error.isRateLimited) return 'Too many requests.';
-  final status = error.statusCode;
-  if (status != null) return 'The Shorebird auth service answered $status.';
-  return error.message;
-}
+///
+/// `package:oauth2` reports any answer that is neither a token response nor
+/// an RFC 6749 section 5.2 error response (a 5xx, a 429, a page from a proxy)
+/// as a [FormatException].
+String _describeTransientFailure(Exception error) => error is FormatException
+    ? 'The Shorebird auth service sent an unexpected answer.'
+    : 'Could not reach the Shorebird auth service.';
 
 /// An HTTP client that authenticates requests using an API key.
 ///
@@ -233,8 +186,15 @@ class Auth {
   final RunProcessSync _runProcessSync;
   String? _apiKey;
 
-  /// The path to the credentials file.
+  /// The path to the credentials file: [oauth2.Credentials] as JSON.
   String get credentialsFilePath {
+    return p.join(_credentialsDir, 'credentials-v2.json');
+  }
+
+  /// The path of the credentials file CLIs before `package:oauth2` wrote, in
+  /// `package:googleapis_auth`'s format. Read once, to carry a login over to
+  /// [credentialsFilePath] (see [_migrateLegacyCredentials]).
+  String get legacyCredentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
   }
 
@@ -244,13 +204,8 @@ class Auth {
       return ApiKeyClient(apiKey: _apiKey!, httpClient: _httpClient);
     }
 
-    if (_credentials != null) {
-      return AuthenticatedClient(
-        credentials: _credentials!,
-        httpClient: _httpClient,
-        authServiceUri: _authServiceUri,
-        refreshCredentials: _refreshCredentials,
-      );
+    if (_oauthClient != null) {
+      return AuthenticatedClient(currentClient: _currentClient);
     }
 
     return _httpClient;
@@ -263,57 +218,91 @@ class Auth {
   /// them against the auth service, which fails once the session has expired
   /// or been revoked. Refreshed credentials are persisted so the check doubles
   /// as a refresh, with the newest refresh token on disk (see
-  /// [_refreshCredentials]).
+  /// `_currentClient`).
   ///
-  /// Returns false when the auth service answered the refresh with any OAuth
-  /// error response (see
-  /// [shorebird_oauth.ShorebirdAuthException.isCredentialRejection]).
+  /// Returns false when the auth service answered the refresh with an OAuth
+  /// error response ([oauth2.AuthorizationException]), or there is no refresh
+  /// token to send.
   ///
   /// Throws when the auth service could not be reached, or answered with
-  /// something other than an OAuth error response. That says nothing
-  /// about whether they are still good, and answering `false` would log a
-  /// user out for running `shorebird login` off wifi.
+  /// something other than a token or an OAuth error response. That says
+  /// nothing about whether they are still good, and answering `false` would
+  /// log a user out for running `shorebird login` off wifi.
   Future<bool> hasValidCredentials() async {
     if (_apiKey != null) return true;
-
-    final credentials = _credentials;
-    if (credentials == null) return false;
+    if (_oauthClient == null) return false;
 
     try {
-      await _refreshCredentials(credentials, force: true);
+      await _currentClient(force: true);
       return true;
-    } on shorebird_oauth.ShorebirdAuthException catch (error) {
-      if (!error.isCredentialRejection) rethrow;
+    } on oauth2.AuthorizationException catch (error) {
+      logger.detail('Stored credentials are no longer valid: $error');
+      return false;
+    } on oauth2.ExpirationException catch (error) {
       logger.detail('Stored credentials are no longer valid: $error');
       return false;
     }
   }
 
-  /// Exchanges [expired] for current credentials without presenting a
-  /// refresh token another shorebird process has already rotated.
+  /// The [oauth2.Client] for the stored credentials, refreshed first if its
+  /// access token has expired (or, with [force], regardless).
   ///
-  /// The auth service rotates the refresh token on every refresh and treats
-  /// a rotated one presented again, more than a short grace window later, as
-  /// a sign it was stolen, revoking the session. Shorebird processes started
-  /// from one login share that refresh token through the credentials file,
-  /// and a long-running command may refresh long after another has rotated
-  /// it. So re-read the file first: if another process has stored an access
-  /// token that has not expired, use it (unless [force]); otherwise refresh
-  /// with the refresh token on disk, which is the newest one.
+  /// Never presents a refresh token another shorebird process has already
+  /// rotated. The auth service rotates the refresh token on every refresh and
+  /// treats a rotated one presented again, more than a short grace window
+  /// later, as a sign it was stolen, revoking the session. Shorebird processes
+  /// started from one login share that refresh token through the credentials
+  /// file, and a long-running command may refresh long after another has
+  /// rotated it. So before refreshing, adopt whatever the file holds now: an
+  /// access token another process stored that has not expired is used as is
+  /// (unless [force]); otherwise the refresh uses the refresh token on disk,
+  /// which is the newest one. The client's `onCredentialsRefreshed` writes
+  /// the rotated tokens back.
   ///
   /// Two processes that refresh at the same moment both present the same
   /// token, which the grace window allows.
-  Future<oauth2.AccessCredentials> _refreshCredentials(
-    oauth2.AccessCredentials expired, {
-    bool force = false,
-  }) async {
-    final stored = _readCredentialsFile() ?? expired;
-    if (!force && !stored.accessToken.hasExpired) {
-      return _useCredentials(stored);
+  ///
+  /// Throws [oauth2.AuthorizationException] when the auth service answers the
+  /// refresh with an OAuth error, and [oauth2.ExpirationException] when the
+  /// credentials have expired and hold no refresh token.
+  Future<oauth2.Client> _currentClient({bool force = false}) async {
+    var client = _oauthClient!;
+    if (!force && !client.credentials.isExpired) return client;
+
+    final stored = _readCredentialsFile();
+    if (stored != null &&
+        stored.accessToken != client.credentials.accessToken) {
+      client = _useCredentials(stored);
     }
-    final refreshed = await _refreshWithAuthService(stored);
+    if (!force && !client.credentials.isExpired) return client;
+    if (!client.credentials.canRefresh) {
+      throw oauth2.ExpirationException(client.credentials);
+    }
+    await client.refreshCredentials();
+    return client;
+  }
+
+  /// Makes [credentials] the ones this process sends.
+  oauth2.Client _useCredentials(oauth2.Credentials credentials) {
+    _email = credentials.email ?? _email;
+    return _oauthClient = _clientFor(credentials);
+  }
+
+  /// An [oauth2.Client] that sends [credentials] and refreshes them as
+  /// `shorebird-cli`, saving each refresh to the credentials file.
+  oauth2.Client _clientFor(oauth2.Credentials credentials) {
+    return oauth2.Client(
+      credentials,
+      identifier: shorebird_oauth.shorebirdCliClientId,
+      httpClient: _httpClient,
+      onCredentialsRefreshed: _saveRefreshedCredentials,
+    );
+  }
+
+  void _saveRefreshedCredentials(oauth2.Credentials credentials) {
+    _email = credentials.email ?? _email;
     try {
-      _flushCredentials(refreshed);
+      _flushCredentials(credentials);
     } on FileSystemException catch (error) {
       // The refresh succeeded, so this command can carry on with the new
       // credentials. The file still holds the rotated refresh token, which
@@ -326,25 +315,6 @@ class Auth {
         )
         ..detail(error.toString());
     }
-    return _useCredentials(refreshed);
-  }
-
-  Future<oauth2.AccessCredentials> _refreshWithAuthService(
-    oauth2.AccessCredentials credentials,
-  ) {
-    return shorebird_oauth.refreshShorebirdCredentials(
-      credentials,
-      _httpClient,
-      authBaseUrl: _authServiceUri,
-    );
-  }
-
-  oauth2.AccessCredentials _useCredentials(
-    oauth2.AccessCredentials credentials,
-  ) {
-    _credentials = credentials;
-    _email = credentials.email ?? _email;
-    return credentials;
   }
 
   /// Logs in the user via the Shorebird loopback OAuth flow.
@@ -377,8 +347,7 @@ class Auth {
   }
 
   Future<void> _login(
-    Future<oauth2.AccessCredentials> Function(http.Client client)
-    obtainCredentials,
+    Future<oauth2.Credentials> Function(http.Client client) obtainCredentials,
   ) async {
     if (isAuthenticated) {
       throw UserAlreadyLoggedInException(email: _email);
@@ -386,20 +355,22 @@ class Auth {
 
     final client = http.Client();
     try {
-      _credentials = await obtainCredentials(client);
+      final credentials = await obtainCredentials(client);
+      final oauthClient = _clientFor(credentials);
 
       final codePushClient = _buildCodePushClient(
-        httpClient: this.client,
+        httpClient: oauthClient,
         hostedUri: shorebirdEnv.hostedUri,
       );
 
       final user = await codePushClient.getCurrentUser();
       if (user == null) {
-        throw UserNotFoundException(email: _credentials!.email!);
+        throw UserNotFoundException(email: credentials.email!);
       }
 
+      _oauthClient = oauthClient;
       _email = user.email;
-      _flushCredentials(_credentials!);
+      _flushCredentials(oauthClient.credentials);
     } finally {
       client.close();
     }
@@ -422,7 +393,7 @@ class Auth {
   /// when there is no refresh token to revoke. A failure is logged at detail
   /// level and otherwise swallowed, so that local logout always succeeds.
   Future<bool> _revokeSession() async {
-    final refreshToken = _credentials?.refreshToken;
+    final refreshToken = _oauthClient?.credentials.refreshToken;
     if (refreshToken == null) return true;
 
     try {
@@ -438,7 +409,7 @@ class Auth {
     }
   }
 
-  oauth2.AccessCredentials? _credentials;
+  oauth2.Client? _oauthClient;
 
   String? _email;
 
@@ -475,52 +446,85 @@ class Auth {
 
     final credentials = _readCredentialsFile(warn: true);
     if (credentials == null) return;
-    _credentials = credentials;
-    _email = credentials.email;
+    _useCredentials(credentials);
   }
 
-  /// Reads the credentials file, returning null when it is missing, cannot
-  /// be parsed, or holds credentials Shorebird did not issue. With [warn],
-  /// tells the user why unusable credentials were ignored.
-  oauth2.AccessCredentials? _readCredentialsFile({bool warn = false}) {
+  /// Reads the credentials file, returning null when it is missing or cannot
+  /// be parsed. With [warn], tells the user why unreadable credentials were
+  /// ignored.
+  ///
+  /// When there is no credentials file but a legacy one, carries its login
+  /// over first (see [_migrateLegacyCredentials]).
+  oauth2.Credentials? _readCredentialsFile({bool warn = false}) {
     final credentialsFile = File(credentialsFilePath);
-    if (!credentialsFile.existsSync()) return null;
+    if (!credentialsFile.existsSync()) {
+      return _migrateLegacyCredentials(warn: warn);
+    }
 
-    final oauth2.AccessCredentials credentials;
     try {
-      final decoded = json.decode(credentialsFile.readAsStringSync());
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('Credentials are not a JSON object.');
-      }
-      credentials = oauth2.AccessCredentials.fromJson(decoded);
-      // A field of the wrong type surfaces as a TypeError from fromJson.
+      return oauth2.Credentials.fromJson(credentialsFile.readAsStringSync());
+    } on Exception {
+      if (warn) _warnUnreadableCredentials();
+      return null;
+      // A field fromJson does not validate, such as a missing `scopes`,
+      // surfaces as a TypeError.
       // ignore: avoid_catching_errors
     } on TypeError {
       if (warn) _warnUnreadableCredentials();
       return null;
-      // An invalid value, such as a non-UTC expiry, surfaces as an
-      // ArgumentError from AccessToken's constructor.
-      // ignore: avoid_catching_errors
-    } on ArgumentError {
-      if (warn) _warnUnreadableCredentials();
-      return null;
-    } on Exception {
-      if (warn) _warnUnreadableCredentials();
-      return null;
     }
+  }
 
-    // Credentials from before Shorebird ran its own auth service were issued
-    // by Google or Microsoft, which the server no longer accepts. Ignore them
-    // rather than send them; `shorebird login` overwrites the file.
-    if (!_isShorebirdIssued(credentials)) {
-      if (warn) {
-        logger.warn(
-          '''Your stored credentials are no longer valid. Run ${lightCyan.wrap('shorebird login')} to sign in again.''',
+  /// Carries a login stored in [legacyCredentialsFilePath], in
+  /// `package:googleapis_auth`'s `AccessCredentials` format, over to
+  /// [credentialsFilePath], then deletes the legacy file.
+  ///
+  /// The legacy file is deleted rather than left for older CLIs on this
+  /// machine: the two files would hold one session, and once this CLI rotated
+  /// its refresh token, an older CLI presenting the old one would look like a
+  /// stolen token to the auth service, which revokes the session for both.
+  /// An older CLI finds itself logged out instead, and `shorebird login`
+  /// there starts a session of its own.
+  ///
+  /// The credentials are used even if they cannot be written to the new
+  /// file, in which case the legacy file is kept and read again next time.
+  oauth2.Credentials? _migrateLegacyCredentials({required bool warn}) {
+    final legacyFile = File(legacyCredentialsFilePath);
+    if (!legacyFile.existsSync()) return null;
+
+    final oauth2.Credentials credentials;
+    try {
+      final json = jsonDecode(legacyFile.readAsStringSync());
+      if (json case {
+        'accessToken': {
+          'data': final String accessToken,
+          'expiry': final String expiry,
+        },
+      } when json['refreshToken'] is String?) {
+        credentials = oauth2.Credentials(
+          accessToken,
+          refreshToken: json['refreshToken'] as String?,
+          tokenEndpoint: shorebird_oauth.tokenEndpointFor(_authServiceUri),
+          scopes: [shorebird_oauth.shorebirdCliScope],
+          expiration: DateTime.parse(expiry),
         );
+      } else {
+        throw const FormatException('Not googleapis_auth credentials.');
       }
+    } on FormatException {
+      if (warn) _warnUnreadableCredentials();
       return null;
     }
 
+    try {
+      _flushCredentials(credentials);
+      legacyFile.deleteSync();
+    } on FileSystemException catch (error) {
+      logger.detail(
+        'Could not move $legacyCredentialsFilePath to '
+        '$credentialsFilePath: $error',
+      );
+    }
     return credentials;
   }
 
@@ -532,15 +536,6 @@ class Auth {
     );
   }
 
-  bool _isShorebirdIssued(oauth2.AccessCredentials credentials) {
-    try {
-      return Jwt.parse(credentials.accessToken.data).payload.iss ==
-          shorebirdEnv.jwtIssuer;
-    } on Exception {
-      return false;
-    }
-  }
-
   /// Writes [credentials] to the credentials file atomically: to a temporary
   /// file in the same directory, then renamed over it. Other shorebird
   /// processes read the file at any time, so they must see either the old
@@ -548,7 +543,7 @@ class Auth {
   ///
   /// Deletes the temporary file if the write fails, since it holds a refresh
   /// token.
-  void _flushCredentials(oauth2.AccessCredentials credentials) {
+  void _flushCredentials(oauth2.Credentials credentials) {
     final temp = File('$credentialsFilePath.$pid.tmp')
       ..createSync(recursive: true);
     try {
@@ -558,7 +553,7 @@ class Auth {
     }
   }
 
-  void _writeCredentials(File temp, oauth2.AccessCredentials credentials) {
+  void _writeCredentials(File temp, oauth2.Credentials credentials) {
     // The file holds a refresh token. Restrict it to the owner before the
     // token is written, so it is never readable by others, even briefly. This
     // checks the real host, not the scoped platform, because it is a real
@@ -574,7 +569,7 @@ class Auth {
         );
       }
     }
-    final contents = json.encode(credentials.toJson());
+    final contents = credentials.toJson();
     temp.writeAsStringSync(contents, flush: true);
     try {
       temp.renameSync(credentialsFilePath);
@@ -594,13 +589,16 @@ class Auth {
 
   /// Deletes the locally stored credentials without revoking the server-side
   /// session.
+  ///
+  /// Deletes a legacy credentials file too, which an older CLI may have
+  /// written since, so that this CLI does not carry that login over again.
   void clearCredentials() {
-    _credentials = null;
+    _oauthClient = null;
     _email = null;
 
-    final credentialsFile = File(credentialsFilePath);
-    if (credentialsFile.existsSync()) {
-      credentialsFile.deleteSync(recursive: true);
+    for (final path in [credentialsFilePath, legacyCredentialsFilePath]) {
+      final file = File(path);
+      if (file.existsSync()) file.deleteSync();
     }
   }
 
@@ -610,14 +608,14 @@ class Auth {
   }
 }
 
-/// Extensions on [oauth2.AccessCredentials] for working with JWT claims.
-extension JwtClaims on oauth2.AccessCredentials {
+/// Extensions on [oauth2.Credentials] for working with JWT claims.
+extension JwtClaims on oauth2.Credentials {
   /// Get the email from the claims of the access token, which the Shorebird
   /// auth service issues as a JWT.
   String? get email {
     final Jwt jwt;
     try {
-      jwt = Jwt.parse(accessToken.data);
+      jwt = Jwt.parse(accessToken);
     } on Exception {
       return null;
     }

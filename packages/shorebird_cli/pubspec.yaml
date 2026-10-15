@@ -21,7 +21,6 @@ dependencies:
   dex:
     path: ../dex
   equatable: ^2.1.0
-  googleapis_auth: ^2.3.4
   http: ^1.5.0
   intl: ^0.20.3
   io: ^1.1.0
@@ -31,6 +30,7 @@ dependencies:
     path: ../jwt
   mason_logger: ^0.3.6
   meta: ^1.19.0
+  oauth2: ^2.0.5
   path: ^1.9.1
   pem: ^2.0.5
   platform: ^3.2.0
