@@ -1,7 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
-import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -12,15 +12,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Permanently delete an app and every artifact belonging to it.
 /// {@endtemplate}
 class AppsDeleteCommand extends ShorebirdCommand
-    with AppScopedCommand, ConfirmNameArgument {
+    with AppScopedCommand, ConfirmDelete {
   /// {@macro apps_delete_command}
   AppsDeleteCommand() {
-    argParser.addOption(
-      confirmNameArgName,
-      help:
-          "The app's current display name. Must match exactly, which is how "
-          'the delete is confirmed.',
-    );
+    addConfirmDeleteOptions();
     addAppScopeOptions();
   }
 
@@ -32,12 +27,11 @@ class AppsDeleteCommand extends ShorebirdCommand
       'Permanently deletes an app.\n\n'
       'Every release and patch belonging to the app is permanently removed. '
       'This cannot be undone.\n\n'
-      'Requires --$confirmNameArgName=<current display name>; there is no '
-      'prompt, so this behaves the same in a terminal and in CI. Run '
-      '"shorebird apps list" to get the exact name.\n\n'
+      "In a terminal, asks you to type the app's display name to confirm. "
+      'Pass --$yesArgName to skip the prompt; it is required when not running '
+      'interactively (no terminal, CI, or --json).\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird apps delete --app-id <id> --confirm-name "Acme Mobile" '
-        '--json',
+        'shorebird apps delete --app-id <id> --yes --json',
       )}';
 
   @override
@@ -62,9 +56,12 @@ class AppsDeleteCommand extends ShorebirdCommand
         ...release.platformStatuses.keys.map((platform) => platform.name),
     }.toList()..sort();
 
-    final gateErrorCode = checkConfirmName(
-      expected: app.displayName,
-      resourceDescription: 'app "${app.displayName}" ($appId)',
+    final gateErrorCode = confirmDelete(
+      name: app.displayName,
+      description:
+          'app "${app.displayName}" ($appId) and all of its releases and '
+          'patches',
+      style: DeleteConfirmationStyle.typeName,
     );
     if (gateErrorCode != null) return gateErrorCode;
 
