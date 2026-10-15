@@ -105,7 +105,7 @@ class ApiCommand extends ShorebirdCommand {
       '''
 Makes an authenticated HTTP request to the Shorebird API and prints the response.
 
-The endpoint argument is a path relative to https://api.shorebird.dev/api/v1, such as "/apps" or "apps/{appId}/releases".
+The endpoint argument is a path relative to https://api.shorebird.dev/api/v1, such as "/apps" or "apps/{appId}/releases". A full URL under https://api.shorebird.dev/api/v1 is accepted too; URLs on any other host are rejected, so your credentials are only ever sent to the Shorebird API.
 
 The placeholder "$appIdPlaceholder" in the endpoint, and in -F/--field values, is replaced with the app ID from the current project's shorebird.yaml. Pass --flavor to use a flavor's app ID.
 
@@ -140,7 +140,18 @@ Examples:
   \$ shorebird api -X PATCH /apps/{appId}/releases/123 --input release.json''';
 
   @override
-  Future<int> run() async {
+  Future<int> run() {
+    // Only the response goes to stdout. Everything else printed while the
+    // command runs, such as the "shorebird login" hints when you are not
+    // logged in or a token refresh fails, goes to stderr.
+    _output = stdout;
+    return IOOverrides.runZoned(_run, stdout: () => stderr);
+  }
+
+  /// Where the response is printed: the real stdout.
+  late Stdout _output;
+
+  Future<int> _run() async {
     if (isJsonMode) {
       usageException(
         'shorebird api prints the response body as-is and does not support '
@@ -187,9 +198,21 @@ Examples:
     }
 
     final codePushClient = codePushClientWrapper.codePushClient;
-    final endpoint = _fillPlaceholders(results.rest.single);
+    final apiBase = '${codePushClient.apiBaseUri}';
+    var endpoint = results.rest.single;
+    if (endpoint.contains('://')) {
+      // A full URL is accepted when it is on the API, and used as its path.
+      if (endpoint != apiBase && !endpoint.startsWith('$apiBase/')) {
+        usageException(
+          'Only URLs under $apiBase are accepted, so your credentials are '
+          'never sent elsewhere. Pass the path instead, such as "/apps".',
+        );
+      }
+      endpoint = endpoint.substring(apiBase.length);
+    }
+    endpoint = _fillPlaceholders(endpoint);
     final path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-    var url = '${codePushClient.apiBaseUri}/$path';
+    var url = '$apiBase/$path';
 
     List<int>? body;
     var bodyIsJson = false;
@@ -244,15 +267,15 @@ Examples:
 
     if (results['include'] as bool) {
       final reason = response.reasonPhrase;
-      stdout.writeln(
+      _output.writeln(
         'HTTP/1.1 ${response.statusCode}'
         '${reason == null || reason.isEmpty ? '' : ' $reason'}',
       );
       final names = response.headers.keys.toList()..sort();
       for (final name in names) {
-        stdout.write('$name: ${response.headers[name]}\r\n');
+        _output.write('$name: ${response.headers[name]}\r\n');
       }
-      stdout.write('\r\n');
+      _output.write('\r\n');
     }
     if (response.statusCode == HttpStatus.noContent) {
       return ExitCode.success.code;
@@ -260,7 +283,7 @@ Examples:
 
     final contentType = response.headers['content-type'] ?? '';
     final isJson = RegExp(r'[/+]json(;|$)').hasMatch(contentType);
-    final indent = stdout.hasTerminal ? '  ' : '';
+    final indent = _output.hasTerminal ? '  ' : '';
     final succeeded = response.statusCode >= 200 && response.statusCode <= 299;
 
     if (succeeded && jq != null) {
@@ -272,7 +295,7 @@ Examples:
       }
       try {
         for (final value in jq.evaluate(decoded)) {
-          stdout.writeln(JqQuery.format(value, indent: indent));
+          _output.writeln(JqQuery.format(value, indent: indent));
         }
       } on JqException catch (error) {
         return _fail('--jq: ${error.message}');
@@ -284,9 +307,9 @@ Examples:
         ? _prettyJson(responseBody)
         : null;
     if (pretty != null) {
-      stdout.writeln(pretty);
+      _output.writeln(pretty);
     } else {
-      stdout.add(responseBody);
+      _output.add(responseBody);
     }
     if (succeeded) return ExitCode.success.code;
     return _fail(

@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -189,6 +190,40 @@ void main() {
         expect(await runApi(['/apps']), equals(ExitCode.noUser.code));
         verifyNever(() => codePushClient.send(any()));
       });
+
+      test('prints the login hints to stderr, not stdout', () async {
+        when(
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          ),
+        ).thenAnswer((_) async {
+          stdout.writeln('Run shorebird login to sign in.');
+          throw UserNotAuthorizedException();
+        });
+
+        expect(await runApi(['/apps']), equals(ExitCode.noUser.code));
+        expect(fakeStdout.text, isEmpty);
+        expect(fakeStderr.text, equals('Run shorebird login to sign in.\n'));
+      });
+    });
+
+    group('when a token refresh fails', () {
+      setUp(() {
+        when(() => codePushClient.send(any())).thenAnswer((_) async {
+          // As AuthenticatedClient does when the refresh is rejected.
+          stdout.writeln('Run shorebird login to log in again.');
+          throw ProcessExit(ExitCode.software.code);
+        });
+      });
+
+      test('prints the login hint to stderr, not stdout', () async {
+        await expectLater(runApi(['/apps']), throwsA(isA<ProcessExit>()));
+        expect(fakeStdout.text, isEmpty);
+        expect(
+          fakeStderr.text,
+          equals('Run shorebird login to log in again.\n'),
+        );
+      });
     });
 
     group('endpoint', () {
@@ -210,6 +245,60 @@ void main() {
           sentRequest().url,
           equals(Uri.parse('https://api.shorebird.dev/api/v1/apps')),
         );
+      });
+
+      group('as a full URL', () {
+        test('is used as its path when under the API base URI', () async {
+          await runApi([
+            'https://api.shorebird.dev/api/v1/apps/{appId}/releases?x=1',
+          ]);
+          expect(
+            sentRequest().url,
+            equals(
+              Uri.parse(
+                'https://api.shorebird.dev/api/v1/apps/$appId/releases?x=1',
+              ),
+            ),
+          );
+        });
+
+        test('may be the API base URI itself', () async {
+          await runApi(['https://api.shorebird.dev/api/v1']);
+          expect(
+            sentRequest().url,
+            equals(Uri.parse('https://api.shorebird.dev/api/v1/')),
+          );
+        });
+
+        test('follows the configured hosted URL', () async {
+          when(
+            () => codePushClient.apiBaseUri,
+          ).thenReturn(Uri.parse('http://localhost:8080/api/v1'));
+          await runApi(['http://localhost:8080/api/v1/apps']);
+          expect(
+            sentRequest().url,
+            equals(Uri.parse('http://localhost:8080/api/v1/apps')),
+          );
+        });
+
+        for (final url in [
+          'https://example.com/api/v1/apps',
+          'https://api.shorebird.dev.example.com/api/v1/apps',
+          'http://api.shorebird.dev/api/v1/apps',
+          'https://api.shorebird.dev/openapi.json',
+          'https://api.shorebird.dev/api/v10/apps',
+        ]) {
+          test('rejects $url without sending it', () async {
+            await expectLater(
+              runApi([url]),
+              usageError(
+                'Only URLs under https://api.shorebird.dev/api/v1 are '
+                'accepted',
+              ),
+            );
+            verifyNever(() => codePushClient.send(any()));
+          });
+        }
       });
 
       group('{appId} placeholder', () {
