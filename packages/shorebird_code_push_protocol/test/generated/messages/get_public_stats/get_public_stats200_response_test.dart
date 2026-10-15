@@ -8,7 +8,7 @@ void main() {
       const instance = GetPublicStats200Response();
       final parsed = GetPublicStats200Response.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

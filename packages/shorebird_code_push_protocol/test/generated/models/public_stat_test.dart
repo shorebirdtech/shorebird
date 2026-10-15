@@ -10,7 +10,7 @@ void main() {
         perSecond: 0,
         asOf: DateTime.utc(2024),
       );
-      final parsed = PublicStat.maybeFromJson(instance.toJson());
+      final parsed = PublicStat.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

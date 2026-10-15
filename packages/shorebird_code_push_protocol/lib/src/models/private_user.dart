@@ -14,7 +14,7 @@ class PrivateUser {
     required this.email,
     required this.jwtIssuer,
     this.displayName,
-    this.hasActiveSubscription = false,
+    @deprecated this.hasActiveSubscription = false,
     this.stripeCustomerId,
     this.patchOverageLimit,
   });
@@ -55,7 +55,10 @@ class PrivateUser {
   /// The user's name, as provided by the user during signup.
   final String? displayName;
 
-  /// Whether the user is currently a paying customer.
+  /// Whether the user is currently a paying customer. Still sent so
+  /// older CLIs that read it keep working; new clients should not use
+  /// it.
+  @deprecated
   final bool hasActiveSubscription;
 
   /// The user's Stripe customer ID, if they have one.
