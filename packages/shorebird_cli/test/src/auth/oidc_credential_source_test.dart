@@ -298,6 +298,21 @@ void main() {
       expect(delays, [exchangeRetryDelays.first]);
     });
 
+    test('waits before a retry by default', () async {
+      source = OidcCredentialSource(
+        subjectTokenSupplier: supplier,
+        authBaseUrl: authBaseUrl,
+        exchangeClient: exchangeClient,
+      );
+      answerExchangesWith([
+        http.Response('Bad gateway', HttpStatus.badGateway),
+      ]);
+
+      final stopwatch = Stopwatch()..start();
+      expect(await authorization(), 'Bearer $accessToken');
+      expect(stopwatch.elapsed, greaterThanOrEqualTo(exchangeRetryDelays[0]));
+    });
+
     test('a retry after a network failure uses a new ID token', () async {
       answerExchangesWith([
         const SocketException('connection reset'),

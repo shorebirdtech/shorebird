@@ -64,7 +64,7 @@ typedef _AccessToken = ({String value, DateTime expiresAt});
 ///
 /// Fails with a [CredentialSourceException] that names the auth service's
 /// `error` and `error_description` when it refuses the exchange.
-class OidcCredentialSource implements CredentialSource {
+class OidcCredentialSource extends CredentialSource {
   /// Creates an [OidcCredentialSource] that exchanges ID tokens from
   /// [subjectTokenSupplier] at the auth service at [authBaseUrl].
   ///

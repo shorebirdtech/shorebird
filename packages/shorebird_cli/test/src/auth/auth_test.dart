@@ -941,6 +941,24 @@ void main() {
         expect(request.headers['Authorization'], 'Bearer sb_at_oidc');
       });
 
+      test('returns a 401 challenge to its token as a response', () async {
+        answerIdTokenRequests();
+        answerRefreshWith(tokenResponse(accessToken: 'sb_at_oidc'));
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.unauthorized,
+            headers: {'www-authenticate': 'Bearer error="invalid_token"'},
+          ),
+        );
+        auth = buildAuth();
+
+        final response = await runWithOverrides(
+          () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+        );
+        expect(response.statusCode, equals(HttpStatus.unauthorized));
+      });
+
       test('exchanges with the auth service the CLI uses', () async {
         when(
           () => shorebirdEnv.authServiceUri,
