@@ -608,13 +608,22 @@ class Auth {
           );
     _oidcSource = oidcSource;
     if (oidcSource != null) {
-      logger.detail(
-        oidcSource.isAvailable
-            ? '[env] $actionsIdTokenRequestUrlEnvVar detected, signing in '
-                  'with GitHub Actions OIDC'
-            : '[env] $actionsIdTokenRequestUrlEnvVar detected, but '
-                  '${oidcSource.unavailableReason!.message}',
-      );
+      if (oidcSource.isAvailable) {
+        logger.detail(
+          '[env] $actionsIdTokenRequestUrlEnvVar detected, signing in with '
+          'GitHub Actions OIDC',
+        );
+      } else {
+        // The chain moves on to the next source, such as a stored login.
+        final projectId = platform.environment[shorebirdProjectIdEnvVar];
+        final problem = projectId == null || projectId.trim().isEmpty
+            ? 'is not set'
+            : 'is not a project id';
+        logger.detail(
+          '[oidc] GitHub Actions OIDC is available but '
+          '$shorebirdProjectIdEnvVar $problem; skipping',
+        );
+      }
     }
 
     final login = _readCredentialsFile(warn: true);

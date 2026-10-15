@@ -1158,17 +1158,25 @@ void main() {
         );
       });
 
-      for (final (description, projectId, message) in [
+      for (final (description, projectId, message, skipped) in [
         (
           'missing',
           null,
           'Signing in with GitHub Actions OIDC requires SHOREBIRD_PROJECT_ID.',
+          'is not set',
+        ),
+        (
+          'blank',
+          '  ',
+          'Signing in with GitHub Actions OIDC requires SHOREBIRD_PROJECT_ID.',
+          'is not set',
         ),
         (
           'not a project id',
           'my-project',
           'SHOREBIRD_PROJECT_ID is not a Shorebird project id, so this job '
               'cannot sign in with GitHub Actions OIDC.',
+          'is not a project id',
         ),
       ]) {
         group('when SHOREBIRD_PROJECT_ID is $description', () {
@@ -1201,7 +1209,8 @@ void main() {
             );
             verify(
               () => logger.detail(
-                '[env] ACTIONS_ID_TOKEN_REQUEST_URL detected, but $message',
+                '[oidc] GitHub Actions OIDC is available but '
+                'SHOREBIRD_PROJECT_ID $skipped; skipping',
               ),
             ).called(1);
           });
@@ -1231,6 +1240,12 @@ void main() {
               verifyNever(
                 () => httpClient.get(any(), headers: any(named: 'headers')),
               );
+              verify(
+                () => logger.detail(
+                  '[oidc] GitHub Actions OIDC is available but '
+                  'SHOREBIRD_PROJECT_ID $skipped; skipping',
+                ),
+              ).called(1);
             });
 
             test('says why when the stored login fails too', () async {
