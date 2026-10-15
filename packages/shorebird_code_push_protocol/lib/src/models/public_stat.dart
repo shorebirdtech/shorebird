@@ -50,7 +50,7 @@ class PublicStat {
     return {
       'value': value,
       'per_second': perSecond,
-      'as_of': asOf.toIso8601String(),
+      'as_of': asOf.toUtc().toIso8601String(),
     };
   }
 

@@ -1681,8 +1681,8 @@ void main() {
                       flutterVersion: flutterVersion,
                       displayName: displayName,
                       platformStatuses: const {},
-                      createdAt: DateTime(2023),
-                      updatedAt: DateTime(2023),
+                      createdAt: DateTime.utc(2023),
+                      updatedAt: DateTime.utc(2023),
                     ),
                   ),
                 ),
@@ -2220,8 +2220,8 @@ void main() {
       final app = AppMetadata(
         appId: 'app-id',
         displayName: 'Shorebird Example',
-        createdAt: DateTime(2022),
-        updatedAt: DateTime(2023),
+        createdAt: DateTime.utc(2022),
+        updatedAt: DateTime.utc(2023),
       );
 
       test('makes the correct request', () async {
@@ -2350,14 +2350,14 @@ void main() {
           AppMetadata(
             appId: '1',
             displayName: 'Shorebird Example',
-            createdAt: DateTime(2022),
-            updatedAt: DateTime(2023),
+            createdAt: DateTime.utc(2022),
+            updatedAt: DateTime.utc(2023),
           ),
           AppMetadata(
             appId: '2',
             displayName: 'Shorebird Clock',
-            createdAt: DateTime(2022),
-            updatedAt: DateTime(2023),
+            createdAt: DateTime.utc(2022),
+            updatedAt: DateTime.utc(2023),
           ),
         ];
 
@@ -2558,8 +2558,8 @@ void main() {
             platformStatuses: const {
               ReleasePlatform.android: ReleaseStatus.draft,
             },
-            createdAt: DateTime(2022),
-            updatedAt: DateTime(2023),
+            createdAt: DateTime.utc(2022),
+            updatedAt: DateTime.utc(2023),
           ),
           Release(
             id: 1,
@@ -2569,8 +2569,8 @@ void main() {
             flutterVersion: flutterVersion,
             displayName: 'v1.0.1',
             platformStatuses: const {},
-            createdAt: DateTime(2022),
-            updatedAt: DateTime(2023),
+            createdAt: DateTime.utc(2022),
+            updatedAt: DateTime.utc(2023),
           ),
         ];
 
