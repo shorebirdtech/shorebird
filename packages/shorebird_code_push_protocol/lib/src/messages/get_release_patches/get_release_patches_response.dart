@@ -10,6 +10,7 @@ class GetReleasePatchesResponse {
   /// {@macro get_release_patches_response}
   const GetReleasePatchesResponse({
     required this.patches,
+    this.nextCursor,
   });
 
   /// Converts a `Map<String, dynamic>` to a [GetReleasePatchesResponse].
@@ -23,6 +24,7 @@ class GetReleasePatchesResponse {
               (e) => ReleasePatch.fromJson(e as Map<String, dynamic>),
             )
             .toList(),
+        nextCursor: json['next_cursor'] as String?,
       ),
     );
   }
@@ -39,20 +41,32 @@ class GetReleasePatchesResponse {
   /// List of patches.
   final List<ReleasePatch> patches;
 
+  /// The opaque cursor of the next page; send it back as `cursor`
+  /// to get that page.
+  /// Present only when the request was paginated (sent `per_page` or
+  /// `cursor`) and another page follows. Absent on the last page and
+  /// on unpaginated responses.
+  final String? nextCursor;
+
   /// Converts a [GetReleasePatchesResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'patches': patches.map((e) => e.toJson()).toList(),
+      'next_cursor': ?nextCursor,
     };
   }
 
   @override
-  int get hashCode => listHash(patches).hashCode;
+  int get hashCode => Object.hashAll([
+    listHash(patches),
+    nextCursor,
+  ]);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is GetReleasePatchesResponse &&
-        listsEqual(patches, other.patches);
+        listsEqual(patches, other.patches) &&
+        nextCursor == other.nextCursor;
   }
 }
