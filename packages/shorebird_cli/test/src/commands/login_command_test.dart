@@ -261,135 +261,47 @@ Waiting for your authorization (the code expires in $expiry)...''';
       });
     });
 
-    // Treating an unreachable auth service as a rejection would log a user
-    // out for running `shorebird login` off wifi.
-    group('when the credential check cannot reach the auth service', () {
-      setUp(() {
-        when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
-        when(
-          () => auth.hasValidCredentials(),
-        ).thenThrow(const SocketException('no route to host'));
-      });
-
-      test('keeps the credentials and asks the user to retry', () async {
-        final result = await runWithOverrides(command.run);
-
-        expect(result, equals(ExitCode.tempFail.code));
-        verify(
-          () => progress.fail('Could not reach the Shorebird auth service.'),
-        ).called(1);
-        verify(
-          () => logger.info('Check your network connection and try again.'),
-        ).called(1);
-        verifyNever(() => auth.clearCredentials());
-        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
-      });
-    });
-
-    group('when the credential check is rate limited', () {
+    // Anything but an OAuth error response says nothing about the stored
+    // credentials, and treating it as a rejection would log a user out for
+    // running `shorebird login` off wifi. An OAuth error response never gets
+    // here: `hasValidCredentials` returns false for it.
+    group('when the credential check gets no OAuth answer', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
         when(() => auth.email).thenReturn(email);
       });
 
-      // A 429 with an OAuth error body never gets here:
-      // `hasValidCredentials` returns false for it.
-      test('tells the user to retry shortly on a bare 429', () async {
-        when(() => auth.hasValidCredentials()).thenThrow(
-          const ShorebirdAuthException(
-            'Token refresh failed (429)',
-            statusCode: HttpStatus.tooManyRequests,
+      for (final (description, error) in [
+        ('cannot reach the auth service', const SocketException('no route')),
+        (
+          'gets an answer that is not an OAuth response',
+          const FormatException(
+            'OAuth request for "https://auth.shorebird.dev/token" failed with '
+            'status 429 Too Many Requests.',
           ),
-        );
+        ),
+      ]) {
+        test('keeps the credentials and asks the user to retry when it '
+            '$description', () async {
+          when(() => auth.hasValidCredentials()).thenThrow(error);
 
-        final result = await runWithOverrides(command.run);
+          final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.tempFail.code));
-        verify(
-          () => progress.fail('Too many requests, try again shortly.'),
-        ).called(1);
-        verifyNever(
-          () => logger.info('Check your network connection and try again.'),
-        );
-        verifyNever(() => auth.clearCredentials());
-        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
-      });
-    });
-
-    // An answer that arrived is not a network problem, and one that keeps
-    // coming would leave the user stuck without a way out. An OAuth error
-    // response never gets here: `hasValidCredentials` returns false for it.
-    group('when the credential check gets a non-OAuth 4xx', () {
-      setUp(() {
-        when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
-      });
-
-      Future<void> expectRefusal(
-        ShorebirdAuthException error, {
-        required String answered,
-      }) async {
-        when(() => auth.hasValidCredentials()).thenThrow(error);
-
-        final result = await runWithOverrides(command.run);
-
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => progress.fail(
-            'The Shorebird auth service refused to check your credentials '
-            '($answered).',
-          ),
-        ).called(1);
-        verify(
-          () => logger.info(
-            'If this keeps happening, run '
-            '${lightCyan.wrap('shorebird logout')} and then '
-            '${lightCyan.wrap('shorebird login')}.',
-          ),
-        ).called(1);
-        verifyNever(
-          () => logger.info('Check your network connection and try again.'),
-        );
-        verifyNever(() => auth.clearCredentials());
-        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+          expect(result, equals(ExitCode.tempFail.code));
+          verify(
+            () => progress.fail(
+              'Could not check your credentials with the Shorebird auth '
+              'service.',
+            ),
+          ).called(1);
+          verify(() => logger.err('$error')).called(1);
+          verify(
+            () => logger.info('Check your network connection and try again.'),
+          ).called(1);
+          verifyNever(() => auth.clearCredentials());
+          verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+        });
       }
-
-      test('reports the status', () async {
-        await expectRefusal(
-          const ShorebirdAuthException(
-            'Token refresh failed (405): <html>...</html>',
-            statusCode: HttpStatus.methodNotAllowed,
-          ),
-          answered: '405',
-        );
-      });
-    });
-
-    group('when the auth service answers with a 5xx', () {
-      setUp(() {
-        when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
-        when(() => auth.hasValidCredentials()).thenThrow(
-          const ShorebirdAuthException(
-            'Token refresh failed (502): bad gateway',
-            statusCode: HttpStatus.badGateway,
-          ),
-        );
-      });
-
-      test('keeps the network wording', () async {
-        final result = await runWithOverrides(command.run);
-
-        expect(result, equals(ExitCode.tempFail.code));
-        verify(
-          () => progress.fail('Could not reach the Shorebird auth service.'),
-        ).called(1);
-        verify(
-          () => logger.info('Check your network connection and try again.'),
-        ).called(1);
-        verifyNever(() => auth.clearCredentials());
-      });
     });
 
     test('exits with code 70 if no user is found', () async {
