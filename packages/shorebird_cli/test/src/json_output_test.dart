@@ -103,5 +103,33 @@ void main() {
       );
       expect(error.toJson()['hint'], equals('try this'));
     });
+
+    test('serializes the API error code and details when given', () {
+      const error = JsonError(
+        code: JsonErrorCode.fetchFailed,
+        message: 'test message',
+        apiCode: 'shorebird_plan_insufficient_tier',
+        details: 'more',
+      );
+      expect(
+        error.toJson(),
+        equals({
+          'code': 'fetch_failed',
+          'message': 'test message',
+          'api_code': 'shorebird_plan_insufficient_tier',
+          'details': 'more',
+        }),
+      );
+    });
+
+    test('omits the API error code and details when absent', () {
+      const error = JsonError(
+        code: JsonErrorCode.fetchFailed,
+        message: 'test message',
+      );
+      final json = error.toJson();
+      expect(json.containsKey('api_code'), isFalse);
+      expect(json.containsKey('details'), isFalse);
+    });
   });
 }
