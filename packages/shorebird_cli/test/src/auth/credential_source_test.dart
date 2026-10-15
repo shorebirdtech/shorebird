@@ -19,12 +19,16 @@ class _FakeSource extends CredentialSource {
     this.header, {
     this.isAvailable = true,
     this.failure,
+    this.unavailableReason,
   });
 
   final String header;
 
   @override
   bool isAvailable;
+
+  @override
+  final CredentialSourceException? unavailableReason;
 
   CredentialSourceException? failure;
 
@@ -151,6 +155,27 @@ void main() {
         expect(second.calls, equals(2));
       });
 
+      test('ends the command once it has authenticated a request', () async {
+        first.failure = null;
+        final chain = CredentialChain([first, second]);
+
+        expect(await authorize(chain), 'Bearer first');
+        first.failure = const CredentialSourceException(
+          'First failed later.',
+          hint: 'Fix first.',
+          exitCode: ExitCode.tempFail,
+        );
+        await expectLater(
+          authorize(chain),
+          exitsWithCode(ExitCode.tempFail),
+        );
+
+        expect(second.calls, isZero);
+        verify(() => logger.err('First failed later.')).called(1);
+        verify(() => logger.info('Fix first.')).called(1);
+        verifyNever(() => logger.detail(any()));
+      });
+
       test('reports the failure when no source is left', () async {
         second.isAvailable = false;
         final chain = CredentialChain([first, second]);
@@ -161,6 +186,48 @@ void main() {
         );
         verify(() => logger.err('First failed.')).called(1);
         verify(() => logger.info('Fix first.')).called(1);
+      });
+
+      test('reports why a source meant to be used is not available', () async {
+        final chain = CredentialChain([
+          _FakeSource(
+            'Bearer unusable',
+            isAvailable: false,
+            unavailableReason: const CredentialSourceException(
+              'Unusable needs a setting.',
+              hint: 'Set it.',
+            ),
+          ),
+          first,
+        ]);
+
+        await expectLater(
+          authorize(chain),
+          exitsWithCode(ExitCode.software),
+        );
+        verifyInOrder([
+          () => logger.err('First failed.'),
+          () => logger.info('Fix first.'),
+          () => logger.info('Unusable needs a setting.'),
+          () => logger.info('Set it.'),
+        ]);
+      });
+
+      test('ends the command with the exit code of the failure', () async {
+        final chain = CredentialChain([
+          _FakeSource(
+            'Bearer only',
+            failure: const CredentialSourceException(
+              'Only failed for now.',
+              exitCode: ExitCode.tempFail,
+            ),
+          ),
+        ]);
+
+        await expectLater(
+          authorize(chain),
+          exitsWithCode(ExitCode.tempFail),
+        );
       });
 
       test('reports a failure without a hint', () async {
@@ -184,6 +251,23 @@ void main() {
       expect(
         authorize(CredentialChain([_FakeSource('a', isAvailable: false)])),
         throwsStateError,
+      );
+    });
+
+    test('reports the first reason a source is not available', () {
+      const reason = CredentialSourceException('Needs a setting.');
+      expect(CredentialChain([_FakeSource('a')]).unavailableReason, isNull);
+      expect(
+        CredentialChain([
+          _FakeSource('a'),
+          _FakeSource('b', isAvailable: false, unavailableReason: reason),
+          _FakeSource(
+            'c',
+            isAvailable: false,
+            unavailableReason: const CredentialSourceException('Other.'),
+          ),
+        ]).unavailableReason,
+        same(reason),
       );
     });
 
@@ -273,6 +357,10 @@ void main() {
     const _AcceptingSource().checkResponse(
       http.Response('', 401, headers: {'www-authenticate': 'Bearer'}),
     );
+  });
+
+  test('a source has no unavailable reason by default', () {
+    expect(const _AcceptingSource().unavailableReason, isNull);
   });
 }
 

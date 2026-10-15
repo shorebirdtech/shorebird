@@ -83,6 +83,7 @@ Command: shorebird ${args.join(' ')}
           gradlewRef,
           httpClientRef,
           idevicesyslogRef,
+          nonRetryingHttpClientRef,
           iosDeployRef,
           javaRef,
           linuxRef,

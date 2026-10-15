@@ -12,6 +12,8 @@ import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/credential_source.dart';
+import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
+import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -108,6 +110,8 @@ void main() {
         body,
         values: {
           httpClientRef.overrideWith(() => httpClient),
+          // The same mock, so tests stub one client for every request.
+          nonRetryingHttpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -778,6 +782,11 @@ void main() {
           ).called(1);
         });
 
+        test('does not suggest GitHub Actions OIDC', () {
+          auth = buildAuth();
+          verifyNever(() => logger.info(any()));
+        });
+
         test('trims whitespace from API key', () {
           platform = platform.copyWith(
             environment: {shorebirdTokenEnvVar: '  sb_api_abc123  \n'},
@@ -864,6 +873,530 @@ void main() {
             ),
           ).called(1);
         });
+      });
+    });
+
+    group('when GitHub Actions grants an OIDC token request', () {
+      const oidcEnvironment = {
+        githubActionsEnvVar: 'true',
+        actionsIdTokenRequestUrlEnvVar:
+            'https://pipelines.actions.githubusercontent.com/idtoken?api-version=2.0',
+        actionsIdTokenRequestTokenEnvVar: 'gha-request-token',
+        shorebirdProjectIdEnvVar: '42',
+      };
+
+      /// Answers the request for a GitHub Actions ID token with a 403, so
+      /// that signing in with OIDC fails before an exchange is sent.
+      void refuseIdTokenRequests() {
+        when(
+          () => httpClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer((_) async => http.Response('Forbidden', 403));
+      }
+
+      void answerIdTokenRequests() {
+        when(
+          () => httpClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(jsonEncode({'value': 'gha.id'}), 200),
+        );
+      }
+
+      setUp(() {
+        platform = platform.copyWith(environment: oidcEnvironment);
+      });
+
+      test('signs in with GitHub Actions OIDC', () {
+        auth = buildAuth();
+        expect(auth.isAuthenticated, isTrue);
+        expect(auth.isUsingGitHubActionsOidc, isTrue);
+        expect(auth.unavailableCredentialsReason, isNull);
+        verify(
+          () => logger.detail(
+            '[env] ACTIONS_ID_TOKEN_REQUEST_URL detected, signing in with '
+            'GitHub Actions OIDC',
+          ),
+        ).called(1);
+        expect(auth.isUsingApiKey, isFalse);
+        expect(auth.email, isNull);
+        expect(auth.client, isA<AuthenticatedClient>());
+      });
+
+      test('sends the exchanged access token', () async {
+        answerIdTokenRequests();
+        answerRefreshWith(tokenResponse(accessToken: 'sb_at_oidc'));
+        answerApiRequests();
+        auth = buildAuth();
+
+        await runWithOverrides(
+          () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+        );
+
+        final exchange = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: captureAny(named: 'body'),
+          ),
+        ).captured;
+        expect(exchange[0], equals(tokenEndpoint));
+        expect(exchange[1], {
+          'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',
+          'subject_token_type': 'urn:ietf:params:oauth:token-type:id_token',
+          'subject_token': 'gha.id',
+          'audience': 'urn:shorebird:project:42',
+        });
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.headers['Authorization'], 'Bearer sb_at_oidc');
+      });
+
+      test('returns a 401 challenge to its token as a response', () async {
+        answerIdTokenRequests();
+        answerRefreshWith(tokenResponse(accessToken: 'sb_at_oidc'));
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.unauthorized,
+            headers: {'www-authenticate': 'Bearer error="invalid_token"'},
+          ),
+        );
+        auth = buildAuth();
+
+        final response = await runWithOverrides(
+          () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+        );
+        expect(response.statusCode, equals(HttpStatus.unauthorized));
+      });
+
+      test('exchanges with the auth service the CLI uses', () async {
+        when(
+          () => shorebirdEnv.authServiceUri,
+        ).thenReturn(Uri.parse('https://auth.example.com'));
+        answerIdTokenRequests();
+        answerRefreshWith(tokenResponse());
+        answerApiRequests();
+        auth = buildAuth();
+
+        await runWithOverrides(
+          () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+        );
+
+        final idTokenUrl =
+            verify(
+                  () => httpClient.get(
+                    captureAny(),
+                    headers: any(named: 'headers'),
+                  ),
+                ).captured.single
+                as Uri;
+        expect(
+          idTokenUrl.queryParameters['audience'],
+          'https://auth.example.com',
+        );
+        verify(
+          () => httpClient.post(
+            Uri.parse('https://auth.example.com/token'),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).called(1);
+      });
+
+      test(
+        'reports a refused exchange when there is no stored login',
+        () async {
+          answerIdTokenRequests();
+          answerRefreshWith(
+            oauthErrorResponse(
+              'invalid_grant',
+              description: 'no trust rule matches',
+            ),
+          );
+          auth = buildAuth();
+
+          await expectLater(
+            runWithOverrides(
+              () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(
+            () => logger.err(
+              'The Shorebird auth service refused to sign in with GitHub '
+              'Actions OIDC (invalid_grant: no trust rule matches).',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(any(that: contains('trust rule'))),
+          ).called(1);
+          verifyNever(() => httpClient.send(any()));
+        },
+      );
+
+      test(
+        'reports a refused ID token request when there is no stored login',
+        () async {
+          when(
+            () => shorebirdEnv.authServiceUri,
+          ).thenReturn(Uri.parse('https://auth.example.com'));
+          refuseIdTokenRequests();
+          auth = buildAuth();
+
+          await expectLater(
+            runWithOverrides(
+              () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          final idTokenUrl =
+              verify(
+                    () => httpClient.get(
+                      captureAny(),
+                      headers: any(named: 'headers'),
+                    ),
+                  ).captured.single
+                  as Uri;
+          expect(
+            idTokenUrl.queryParameters['audience'],
+            'https://auth.example.com',
+          );
+          verify(
+            () => logger.err(
+              'GitHub Actions refused to issue an OIDC token (403).',
+            ),
+          ).called(1);
+          verifyNever(() => httpClient.send(any()));
+        },
+      );
+
+      group('with a stored login', () {
+        setUp(() {
+          writeCredentials();
+          auth = buildAuth();
+        });
+
+        test('takes priority over it', () {
+          expect(auth.isUsingGitHubActionsOidc, isTrue);
+          expect(auth.email, equals(email));
+        });
+
+        test('falls back to it when the exchange is refused', () async {
+          answerIdTokenRequests();
+          answerRefreshWith(
+            oauthErrorResponse(
+              'invalid_grant',
+              description: 'no trust rule matches',
+            ),
+          );
+          answerApiRequests();
+
+          await runWithOverrides(
+            () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+          );
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(
+            request.headers['Authorization'],
+            'Bearer $shorebirdAccessToken',
+          );
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('does not fall back to it once OIDC has signed in', () async {
+          answerIdTokenRequests();
+          // Shorter than the refresh margin, so every request exchanges.
+          answerRefreshWith(
+            http.Response(
+              jsonEncode({
+                'access_token': 'sb_at_oidc',
+                'token_type': 'Bearer',
+                'expires_in': 30,
+              }),
+              HttpStatus.ok,
+              headers: {'content-type': 'application/json'},
+            ),
+          );
+          answerApiRequests();
+
+          await runWithOverrides(
+            () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+          );
+
+          answerRefreshWith(
+            oauthErrorResponse(
+              'invalid_grant',
+              description: 'no trust rule matches',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>();
+          expect(
+            requests.map((request) => request.headers['Authorization']),
+            ['Bearer sb_at_oidc'],
+          );
+          verify(
+            () => logger.err(
+              'The Shorebird auth service refused to sign in with GitHub '
+              'Actions OIDC (invalid_grant: no trust rule matches).',
+            ),
+          ).called(1);
+          verifyNever(
+            () => logger.detail(
+              any(that: contains('Trying the next way to authenticate')),
+            ),
+          );
+        });
+
+        test('falls back to it when signing in with OIDC fails', () async {
+          refuseIdTokenRequests();
+          answerApiRequests();
+
+          await runWithOverrides(() async {
+            await auth.client.get(Uri.parse('https://api.shorebird.dev'));
+            await auth.client.get(Uri.parse('https://api.shorebird.dev'));
+          });
+
+          // OIDC is tried first, and not again once it has failed.
+          verify(
+            () => httpClient.get(any(), headers: any(named: 'headers')),
+          ).called(1);
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>();
+          expect(
+            requests.map((request) => request.headers['Authorization']),
+            everyElement('Bearer $shorebirdAccessToken'),
+          );
+          verifyNever(() => logger.err(any()));
+          verify(
+            () => logger.detail(
+              'GitHub Actions refused to issue an OIDC token (403). Trying '
+              'the next way to authenticate.',
+            ),
+          ).called(1);
+        });
+      });
+
+      test('an empty SHOREBIRD_TOKEN is ignored', () {
+        platform = platform.copyWith(
+          environment: {...oidcEnvironment, shorebirdTokenEnvVar: ' '},
+        );
+        auth = buildAuth();
+        expect(auth.isUsingApiKey, isFalse);
+        expect(auth.isUsingGitHubActionsOidc, isTrue);
+        verify(
+          () => logger.detail(
+            '[env] $shorebirdTokenEnvVar is empty, ignoring it',
+          ),
+        ).called(1);
+      });
+
+      test('reports valid credentials without an exchange', () async {
+        auth = buildAuth();
+        expect(await runWithOverrides(auth.hasValidCredentials), isTrue);
+        verifyNever(
+          () => httpClient.get(any(), headers: any(named: 'headers')),
+        );
+      });
+
+      for (final (description, projectId, message, skipped) in [
+        (
+          'missing',
+          null,
+          'Signing in with GitHub Actions OIDC requires SHOREBIRD_PROJECT_ID.',
+          'is not set',
+        ),
+        (
+          'blank',
+          '  ',
+          'Signing in with GitHub Actions OIDC requires SHOREBIRD_PROJECT_ID.',
+          'is not set',
+        ),
+        (
+          'not a project id',
+          'my-project',
+          'SHOREBIRD_PROJECT_ID is not a Shorebird project id, so this job '
+              'cannot sign in with GitHub Actions OIDC.',
+          'is not a project id',
+        ),
+      ]) {
+        group('when SHOREBIRD_PROJECT_ID is $description', () {
+          const hint =
+              'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
+              'https://console.shorebird.dev, or set SHOREBIRD_TOKEN to a '
+              'Shorebird API key.';
+
+          setUp(() {
+            platform = platform.copyWith(
+              environment: {
+                for (final MapEntry(:key, :value) in oidcEnvironment.entries)
+                  if (key != shorebirdProjectIdEnvVar) key: value,
+                shorebirdProjectIdEnvVar: ?projectId,
+              },
+            );
+          });
+
+          test('does not sign in with OIDC and says why', () async {
+            auth = buildAuth();
+            expect(auth.isAuthenticated, isFalse);
+            expect(auth.isUsingGitHubActionsOidc, isFalse);
+            expect(auth.client, isNot(isA<AuthenticatedClient>()));
+            expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+            expect(
+              auth.unavailableCredentialsReason,
+              isA<CredentialSourceException>()
+                  .having((e) => e.message, 'message', message)
+                  .having((e) => e.hint, 'hint', hint),
+            );
+            verify(
+              () => logger.detail(
+                '[oidc] GitHub Actions OIDC is available but '
+                'SHOREBIRD_PROJECT_ID $skipped; skipping',
+              ),
+            ).called(1);
+          });
+
+          group('with a stored login', () {
+            setUp(() {
+              writeCredentials();
+              auth = buildAuth();
+            });
+
+            test('uses it without an exchange', () async {
+              answerApiRequests();
+              expect(auth.isAuthenticated, isTrue);
+              expect(auth.isUsingGitHubActionsOidc, isFalse);
+
+              await runWithOverrides(
+                () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+              );
+
+              final request =
+                  verify(() => httpClient.send(captureAny())).captured.single
+                      as http.BaseRequest;
+              expect(
+                request.headers['Authorization'],
+                'Bearer $shorebirdAccessToken',
+              );
+              verifyNever(
+                () => httpClient.get(any(), headers: any(named: 'headers')),
+              );
+              verify(
+                () => logger.detail(
+                  '[oidc] GitHub Actions OIDC is available but '
+                  'SHOREBIRD_PROJECT_ID $skipped; skipping',
+                ),
+              ).called(1);
+            });
+
+            test('says why when the stored login fails too', () async {
+              storeCredentials(
+                credentialsWith(refreshToken: null, expired: true),
+              );
+              auth = buildAuth();
+
+              await expectLater(
+                runWithOverrides(
+                  () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+                ),
+                exitsWithCode(ExitCode.software),
+              );
+              verifyInOrder([
+                () => logger.err('Your Shorebird login has expired.'),
+                () => logger.info(
+                  'Run ${lightCyan.wrap('shorebird login')} to log in again.',
+                ),
+                () => logger.info(message),
+                () => logger.info(hint),
+              ]);
+              verifyNever(
+                () => httpClient.get(any(), headers: any(named: 'headers')),
+              );
+            });
+          });
+        });
+      }
+
+      group('when SHOREBIRD_TOKEN is set', () {
+        setUp(() {
+          platform = platform.copyWith(
+            environment: {
+              ...oidcEnvironment,
+              shorebirdTokenEnvVar: 'sb_api_x',
+            },
+          );
+          auth = buildAuth();
+        });
+
+        test('it takes priority, without an exchange', () async {
+          answerApiRequests();
+          expect(auth.isUsingApiKey, isTrue);
+          expect(auth.isUsingGitHubActionsOidc, isFalse);
+
+          await runWithOverrides(
+            () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+          );
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.headers['Authorization'], 'Bearer sb_api_x');
+          verifyNever(
+            () => httpClient.get(any(), headers: any(named: 'headers')),
+          );
+          verifyNever(
+            () => httpClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          );
+        });
+
+        test('suggests GitHub Actions OIDC once', () {
+          verify(
+            () => logger.info(
+              'This job can sign in with GitHub Actions OIDC instead: add a '
+              'GitHub Actions trust rule at https://console.shorebird.dev, '
+              'set SHOREBIRD_PROJECT_ID to the id of its project, and remove '
+              'SHOREBIRD_TOKEN to stop storing a long-lived secret.',
+            ),
+          ).called(1);
+        });
+      });
+    });
+
+    group('when GitHub Actions grants no OIDC token request', () {
+      setUp(() {
+        platform = platform.copyWith(
+          environment: {githubActionsEnvVar: 'true'},
+        );
+      });
+
+      test('is not authenticated', () {
+        auth = buildAuth();
+        expect(auth.isAuthenticated, isFalse);
+        expect(auth.isUsingGitHubActionsOidc, isFalse);
+      });
+
+      test('treats an empty SHOREBIRD_TOKEN as unset', () {
+        platform = platform.copyWith(
+          environment: {githubActionsEnvVar: 'true', shorebirdTokenEnvVar: ''},
+        );
+        auth = buildAuth();
+        expect(auth.isAuthenticated, isFalse);
+        expect(auth.isUsingApiKey, isFalse);
       });
     });
 

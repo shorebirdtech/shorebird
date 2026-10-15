@@ -17,3 +17,13 @@ final httpClientRef = create<http.Client>(
 
 /// The [http.Client] instance available in the current zone.
 http.Client get httpClient => read(httpClientRef);
+
+/// A reference to an [http.Client] that does not retry, for requests that
+/// must not be sent twice, such as an OIDC token exchange, whose ID token the
+/// auth service accepts only once.
+final nonRetryingHttpClientRef = create<http.Client>(
+  () => TracingClient(httpClient: LoggingClient(httpClient: http.Client())),
+);
+
+/// The non-retrying [http.Client] instance available in the current zone.
+http.Client get nonRetryingHttpClient => read(nonRetryingHttpClientRef);

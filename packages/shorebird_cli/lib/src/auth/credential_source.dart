@@ -20,6 +20,11 @@ abstract class CredentialSource {
   /// is available may still fail in [authorization].
   bool get isAvailable;
 
+  /// Why this source is not available although the environment shows it was
+  /// meant to be, such as a CI job missing a variable the source needs, or
+  /// null. Reported when no source can authenticate.
+  CredentialSourceException? get unavailableReason => null;
+
   /// The `Authorization` header value for the next request, such as
   /// `Bearer <token>`. Refreshes or exchanges credentials first if they
   /// need it.
@@ -37,18 +42,26 @@ abstract class CredentialSource {
 
 /// Thrown by a [CredentialSource] that cannot provide credentials. A
 /// [CredentialChain] tries the next available source, or, when there is
-/// none, reports [message] and [hint] and ends the command.
+/// none, reports [message] and [hint] and ends the command with [exitCode].
 ///
 /// Neither [message] nor [hint] may contain a credential.
 class CredentialSourceException implements Exception {
   /// Creates a [CredentialSourceException].
-  const CredentialSourceException(this.message, {this.hint});
+  const CredentialSourceException(
+    this.message, {
+    this.hint,
+    this.exitCode = ExitCode.software,
+  });
 
   /// What went wrong.
   final String message;
 
   /// What the user can do about it, if anything.
   final String? hint;
+
+  /// How the command ends when no other source can authenticate:
+  /// [ExitCode.tempFail] for a failure that may not recur.
+  final ExitCode exitCode;
 
   @override
   String toString() => 'CredentialSourceException: $message';
@@ -61,9 +74,15 @@ typedef ResolvedCredential = ({CredentialSource source, String authorization});
 /// [CredentialSource]s in the order they are tried.
 ///
 /// Each request is authenticated by the first available source. A source
-/// that throws a [CredentialSourceException] is skipped for the rest of the
-/// run, and the next available one is used instead; when there is none, the
-/// failure ends the command.
+/// that throws a [CredentialSourceException] before it has authenticated any
+/// request is skipped for the rest of the run, and the next available one is
+/// used instead; when there is none, the failure ends the command, reported
+/// with the chain's [unavailableReason].
+///
+/// Once a source has authenticated a request, a later failure of that source
+/// ends the command instead of falling back, so that one run never switches
+/// identity partway through, such as from a CI service account to the person
+/// whose login is stored on the runner.
 class CredentialChain {
   /// Creates a [CredentialChain] that tries [sources] in order.
   CredentialChain(List<CredentialSource> sources)
@@ -75,11 +94,24 @@ class CredentialChain {
   /// again.
   final Set<CredentialSource> _failed = Set.identity();
 
+  /// Sources that have authenticated a request, which are never fallen back
+  /// from.
+  final Set<CredentialSource> _succeeded = Set.identity();
+
   /// The sources this chain tries, in order.
   List<CredentialSource> get sources => _sources;
 
   /// Whether any source has credentials to offer.
   bool get isAvailable => _sources.any((source) => source.isAvailable);
+
+  /// The [CredentialSource.unavailableReason] of the first source that has
+  /// one, or null.
+  CredentialSourceException? get unavailableReason {
+    for (final source in _sources) {
+      if (source.unavailableReason case final reason?) return reason;
+    }
+    return null;
+  }
 
   /// The first available source that can authenticate the next request, and
   /// the `Authorization` header value it answered.
@@ -87,15 +119,23 @@ class CredentialChain {
     for (final (index, source) in _sources.indexed) {
       if (!source.isAvailable || _failed.contains(source)) continue;
       try {
-        return (source: source, authorization: await source.authorization());
+        final authorization = await source.authorization();
+        _succeeded.add(source);
+        return (source: source, authorization: authorization);
       } on CredentialSourceException catch (e) {
-        final hasNext = _sources
-            .skip(index + 1)
-            .any((next) => next.isAvailable && !_failed.contains(next));
+        final hasNext =
+            !_succeeded.contains(source) &&
+            _sources
+                .skip(index + 1)
+                .any((next) => next.isAvailable && !_failed.contains(next));
         if (!hasNext) {
           logger.err(e.message);
           if (e.hint case final hint?) logger.info(hint);
-          throw ProcessExit(ExitCode.software.code);
+          if (unavailableReason case final reason?) {
+            logger.info(reason.message);
+            if (reason.hint case final hint?) logger.info(hint);
+          }
+          throw ProcessExit(e.exitCode.code);
         }
         logger.detail('${e.message} Trying the next way to authenticate.');
         _failed.add(source);
