@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
@@ -267,7 +268,9 @@ abstract class ShorebirdCommand extends Command<int> {
   ///
   /// With `--json`, a [ProcessExit] is reported as an error envelope carrying
   /// [code] and [message], and its exit code is returned for the caller to
-  /// return from `run`. The failure is reported here rather than in the
+  /// return from `run`. A failed API call ([ApiErrorExit]) adds the server's
+  /// message to [message] and reports its error code and details, as
+  /// [reportApiError] does. The failure is reported here rather than in the
   /// command runner, so the runner never sees it and doesn't emit a second
   /// envelope. Otherwise the [ProcessExit] is rethrown, and the error the
   /// call already logged stands.
@@ -286,6 +289,15 @@ abstract class ShorebirdCommand extends Command<int> {
       // A failed precondition reports itself (as precondition_failed); don't
       // relabel it as this call's error.
       rethrow;
+    } on ApiErrorExit catch (e) {
+      if (!isJsonMode) rethrow;
+      emitJsonError(
+        code: code,
+        message: '$message ${e.error.message}',
+        apiCode: e.error.code,
+        details: e.error.details,
+      );
+      return e.exitCode;
     } on ProcessExit catch (e) {
       if (!isJsonMode) rethrow;
       emitJsonError(code: code, message: message);

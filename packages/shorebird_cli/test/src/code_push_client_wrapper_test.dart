@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
@@ -403,6 +404,32 @@ void main() {
             exitsWithCode(ExitCode.software),
           );
           verify(() => progress.fail(error)).called(1);
+        });
+
+        test('reports the server error code and exits with an '
+            'ApiErrorExit when the API call fails', () async {
+          const error = CodePushException(
+            message: 'Plan lacks this feature.',
+            code: 'shorebird_plan_insufficient_tier',
+          );
+          when(() => codePushClient.getApps()).thenThrow(error);
+
+          await expectLater(
+            () => runWithOverrides(codePushClientWrapper.getApps),
+            throwsA(
+              isA<ApiErrorExit>()
+                  .having((e) => e.error, 'error', same(error))
+                  .having(
+                    (e) => e.exitCode,
+                    'exitCode',
+                    ExitCode.software.code,
+                  ),
+            ),
+          );
+          verify(() => progress.fail('$error')).called(1);
+          verify(
+            () => logger.info('Error code: shorebird_plan_insufficient_tier'),
+          ).called(1);
         });
 
         test(
