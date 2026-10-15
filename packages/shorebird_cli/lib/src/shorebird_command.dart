@@ -51,6 +51,15 @@ abstract class ShorebirdCommand extends Command<int> {
   @override
   void printUsage() => logger.info(usage);
 
+  /// Whether stdout carries only this command's output, such as the response
+  /// body `shorebird api` prints.
+  ///
+  /// When true, the command runner keeps its own messages (the hint printed
+  /// after a failure, the notice that an upgrade is available) off stdout:
+  /// the failure hint is skipped, since the command reports its own errors,
+  /// and the upgrade notice goes to stderr.
+  bool get reservesStdout => false;
+
   /// Whether the `--json` global flag was passed.
   ///
   /// Reads from the [isJsonModeRef] scoped dependency, which is set by the
