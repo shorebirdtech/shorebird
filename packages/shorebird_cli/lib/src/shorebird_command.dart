@@ -291,13 +291,7 @@ abstract class ShorebirdCommand extends Command<int> {
       rethrow;
     } on ApiErrorExit catch (e) {
       if (!isJsonMode) rethrow;
-      emitJsonError(
-        code: code,
-        message: '$message ${e.error.message}',
-        apiCode: e.error.code,
-        details: e.error.details,
-      );
-      return e.exitCode;
+      return reportApiError(e.error, message: message, code: code);
     } on ProcessExit catch (e) {
       if (!isJsonMode) rethrow;
       emitJsonError(code: code, message: message);
