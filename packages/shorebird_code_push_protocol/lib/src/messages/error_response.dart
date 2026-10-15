@@ -49,7 +49,7 @@ class ErrorResponse {
     return {
       'code': code,
       'message': message,
-      'details': details,
+      'details': ?details,
     };
   }
 

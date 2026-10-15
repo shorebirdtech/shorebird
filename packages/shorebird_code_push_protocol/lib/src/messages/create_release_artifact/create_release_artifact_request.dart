@@ -78,9 +78,9 @@ class CreateReleaseArtifactRequest {
       'platform': platform.toJson(),
       'hash': hash,
       'filename': filename,
-      'can_sideload': canSideload,
+      'can_sideload': ?canSideload,
       'size': size,
-      'podfile_lock_hash': podfileLockHash,
+      'podfile_lock_hash': ?podfileLockHash,
     };
   }
 

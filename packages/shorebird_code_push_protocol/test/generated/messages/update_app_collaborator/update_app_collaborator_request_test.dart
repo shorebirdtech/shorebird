@@ -5,8 +5,8 @@ import 'package:test/test.dart';
 void main() {
   group('UpdateAppCollaboratorRequest', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = UpdateAppCollaboratorRequest(
-        role: AppCollaboratorRole.values.first,
+      const instance = UpdateAppCollaboratorRequest(
+        role: AppCollaboratorRole.admin,
       );
       final parsed = UpdateAppCollaboratorRequest.maybeFromJson(
         instance.toJson(),

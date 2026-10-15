@@ -11,7 +11,7 @@ void main() {
         windowDays: 0,
         asOf: DateTime.utc(2024),
       );
-      final parsed = GetNewDevicesResponse.maybeFromJson(instance.toJson());
+      final parsed = GetNewDevicesResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

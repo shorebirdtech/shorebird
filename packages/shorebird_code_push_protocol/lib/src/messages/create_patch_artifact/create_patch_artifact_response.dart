@@ -69,14 +69,10 @@ class CreatePatchArtifactResponse {
   /// The size of the artifact in bytes.
   final int size;
 
-  /// The upload URL for the artifact (a signed URL for [ArtifactUploadMethod
-  /// .multipart], or a resumable session URI for [ArtifactUploadMethod
-  /// .resumable]).
+  /// The upload URL for the artifact.
   final String url;
 
-  /// How the client should upload the artifact bytes to [url]. Null on
-  /// responses from older servers, which always implied
-  /// [ArtifactUploadMethod.multipart].
+  /// How a client should upload an artifact's bytes to storage.
   final ArtifactUploadMethod? uploadMethod;
 
   /// Converts a [CreatePatchArtifactResponse] to a `Map<String, dynamic>`.
@@ -89,7 +85,7 @@ class CreatePatchArtifactResponse {
       'hash': hash,
       'size': size,
       'url': url,
-      'upload_method': uploadMethod?.toJson(),
+      'upload_method': ?uploadMethod?.toJson(),
     };
   }
 

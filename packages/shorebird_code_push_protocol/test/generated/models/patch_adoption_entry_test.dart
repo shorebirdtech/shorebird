@@ -7,7 +7,7 @@ void main() {
     test('round-trips via maybeFromJson/toJson', () {
       final instance = PatchAdoptionEntry(
         patchNumber: 0,
-        targetPlatforms: <ReleasePlatform>[ReleasePlatform.values.first],
+        targetPlatforms: const <ReleasePlatform>[ReleasePlatform.android],
         isRolledBack: false,
         series: <PatchAdoptionPoint>[
           PatchAdoptionPoint(

@@ -86,7 +86,7 @@ class ReleaseArtifact {
       'hash': hash,
       'size': size,
       'url': url,
-      'podfile_lock_hash': podfileLockHash,
+      'podfile_lock_hash': ?podfileLockHash,
       'can_sideload': canSideload,
     };
   }

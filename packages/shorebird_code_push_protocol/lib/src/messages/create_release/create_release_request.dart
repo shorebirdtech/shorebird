@@ -56,8 +56,8 @@ class CreateReleaseRequest {
     return {
       'version': version,
       'flutter_revision': flutterRevision,
-      'flutter_version': flutterVersion,
-      'display_name': displayName,
+      'flutter_version': ?flutterVersion,
+      'display_name': ?displayName,
     };
   }
 
