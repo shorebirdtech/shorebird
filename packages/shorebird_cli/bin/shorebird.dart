@@ -96,6 +96,7 @@ Command: shorebird ${args.join(' ')}
           powershellRef,
           processRef,
           pubspecEditorRef,
+          retryFailedRequestsRef,
           shorebirdAndroidArtifactsRef,
           shorebirdArtifactsRef,
           shorebirdEnvRef,

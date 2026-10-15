@@ -1,14 +1,15 @@
-// cspell:words subkey
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/jq.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -19,9 +20,8 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// response.
 /// {@endtemplate}
 ///
-/// Modeled on `gh api` (https://cli.github.com/manual/gh_api): the flags,
-/// defaults, field syntax and output match it wherever they apply, so that
-/// anyone (or any agent) who knows `gh api` already knows this command.
+/// Modeled on `gh api` (https://cli.github.com/manual/gh_api), so that the
+/// flags agents and scripts already use there work here too.
 class ApiCommand extends ShorebirdCommand {
   /// {@macro api_command}
   ApiCommand() {
@@ -30,7 +30,6 @@ class ApiCommand extends ShorebirdCommand {
         'method',
         abbr: 'X',
         defaultsTo: 'GET',
-        valueHelp: 'string',
         help: 'The HTTP method for the request.',
       )
       ..addMultiOption(
@@ -56,12 +55,6 @@ class ApiCommand extends ShorebirdCommand {
         splitCommas: false,
         help: 'Add a HTTP request header in key:value format.',
       )
-      ..addFlag(
-        'include',
-        abbr: 'i',
-        negatable: false,
-        help: 'Include HTTP response status line and headers in the output.',
-      )
       ..addOption(
         'input',
         valueHelp: 'file',
@@ -70,14 +63,18 @@ class ApiCommand extends ShorebirdCommand {
             'from standard input).',
       )
       ..addFlag(
-        'silent',
+        'include',
+        abbr: 'i',
         negatable: false,
-        help: 'Do not print the response body.',
+        help: 'Include HTTP response status line and headers in the output.',
       )
-      ..addFlag(
-        'verbose',
-        negatable: false,
-        help: 'Include full HTTP request and response in the output.',
+      ..addOption(
+        'jq',
+        abbr: 'q',
+        valueHelp: 'expression',
+        help:
+            'Query to select values from the response using jq syntax (a '
+            'common subset; see above).',
       )
       ..addOption(
         CommonArguments.flavorArg.name,
@@ -87,8 +84,8 @@ class ApiCommand extends ShorebirdCommand {
       );
   }
 
-  /// The exit code for a request that failed: a non-2xx response or no
-  /// response at all. `gh api` exits 1 in both cases.
+  /// The exit code for a request that failed: a non-2xx response, no
+  /// response at all, or a `--jq` query that failed. `gh api` exits 1.
   static const requestFailedExitCode = 1;
 
   /// The placeholder replaced with the current project's app ID.
@@ -108,25 +105,21 @@ class ApiCommand extends ShorebirdCommand {
       '''
 Makes an authenticated HTTP request to the Shorebird API and prints the response.
 
-The endpoint argument is a path relative to https://api.shorebird.dev/api/v1, such as "/apps" or "apps/{appId}/releases". A full URL on the same host is also accepted.
+The endpoint argument is a path relative to https://api.shorebird.dev/api/v1, such as "/apps" or "apps/{appId}/releases".
 
-The placeholder value "$appIdPlaceholder" in the endpoint argument, and in -F/--field values, is replaced with the app ID from the current project's shorebird.yaml. Pass --flavor to use a flavor's app ID. Note that in some shells, for example PowerShell, you may need to enclose any value that contains "{...}" in quotes to prevent the shell from applying special meaning to curly braces.
+The placeholder "$appIdPlaceholder" in the endpoint, and in -F/--field values, is replaced with the app ID from the current project's shorebird.yaml. Pass --flavor to use a flavor's app ID.
 
-The default HTTP request method is "GET" normally and "POST" if any parameters were added. Override the method with --method.
+The default HTTP request method is "GET" normally and "POST" if any fields or --input were added. Override the method with --method.
 
-Pass one or more -f/--raw-field values in "key=value" format to add static string parameters to the request payload. To add non-string or placeholder-determined values, see -F/--field below. Note that adding request parameters will automatically switch the request method to "POST". To send the parameters as a "GET" query string instead, use --method GET.
+Pass one or more -f/--raw-field values in "key=value" format to add string parameters. -F/--field converts its value: "true", "false", "null" and integers become JSON values, "@<path>" reads the value from a file ("@-" from standard input), and "$appIdPlaceholder" is filled in. For "GET" requests, fields are sent as the query string; otherwise they are sent as a JSON object body. For a nested JSON body, use --input.
 
-The -F/--field flag has magic type conversion based on the format of the value:
+--input sends a file (or "-" for standard input) as the request body. Fields are then added to the query string.
 
-- literal values "true", "false", "null", and integer numbers get converted to appropriate JSON types;
-- the placeholder value "$appIdPlaceholder" gets populated with the app ID of the current project;
-- if the value starts with "@", the rest of the value is interpreted as a filename to read the value from. Pass "-" to read from standard input.
+The response body is printed as-is (JSON is indented when printing to a terminal). On a non-2xx response the body is still printed, an error is printed to stderr, and the command exits with status 1.
 
-To pass nested parameters in the request payload, use "key[subkey]=value" syntax when declaring fields. To pass nested values as arrays, declare multiple fields with the syntax "key[]=value1", "key[]=value2". To pass an empty array, use "key[]" without a value.
+--jq takes a jq expression and prints each result: strings without quotes, other values as JSON. It supports a common subset of jq: paths (".", ".a.b", ".[]", ".[0]", "?"), "|", ",", comparisons, "and", "or", "not", object and array construction, string interpolation, and length, keys, map(f), select(f) and empty.
 
-To pass pre-constructed JSON or payloads in other formats, a request body may be read from file specified by --input. Use "-" to read from standard input. When passing the request body this way, any parameters specified via field flags are added to the query string of the endpoint URL.
-
-Requests are authenticated as your "shorebird login" session, or with the API key in the SHOREBIRD_TOKEN environment variable.
+Requests are authenticated as your "shorebird login" session, or with the API key in the SHOREBIRD_TOKEN environment variable. Requests other than GET are never retried, so a write is sent at most once.
 
 The API reference is at https://api.shorebird.dev/openapi.json, and guides are at https://docs.shorebird.dev/account/api/. The API is published, but it has no compatibility guarantee yet: routes and response shapes may change.
 
@@ -134,8 +127,8 @@ Examples:
   # List the apps you have access to
   \$ shorebird api /apps
 
-  # List the releases of the app in the current project
-  \$ shorebird api /apps/{appId}/releases
+  # List the release versions of the app in the current project
+  \$ shorebird api /apps/{appId}/releases --jq '.releases[].version'
 
   # Create a channel
   \$ shorebird api /apps/{appId}/channels -f channel=beta
@@ -160,10 +153,14 @@ Examples:
         '${results.rest.length}.',
       );
     }
-    final silent = results['silent'] as bool;
-    final verbose = results['verbose'] as bool;
-    if (silent && verbose) {
-      usageException('Only one of --silent or --verbose may be used.');
+    final jqSource = results['jq'] as String?;
+    JqQuery? jq;
+    if (jqSource != null) {
+      try {
+        jq = JqQuery.parse(jqSource);
+      } on JqException catch (error) {
+        usageException('--jq: ${error.message}');
+      }
     }
 
     try {
@@ -174,7 +171,14 @@ Examples:
       return reportPreconditionFailure(error);
     }
 
-    final params = await _parseFields();
+    final params = <String, Object?>{
+      for (final field in results['raw-field'] as List<String>)
+        _fieldKey(field): _fieldValue(field),
+    };
+    for (final field in results['field'] as List<String>) {
+      params[_fieldKey(field)] = await _typedValue(_fieldValue(field));
+    }
+
     final inputPath = results['input'] as String?;
     var method = (results['method'] as String).toUpperCase();
     if (!results.wasParsed('method') &&
@@ -183,19 +187,18 @@ Examples:
     }
 
     final codePushClient = codePushClientWrapper.codePushClient;
-    var url = _resolveUrl(
-      _fillPlaceholders(results.rest.single),
-      apiBaseUri: codePushClient.apiBaseUri,
-    );
+    final endpoint = _fillPlaceholders(results.rest.single);
+    final path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    var url = '${codePushClient.apiBaseUri}/$path';
 
     List<int>? body;
     var bodyIsJson = false;
     if (inputPath != null) {
       body = await _readUserFile(inputPath, flag: '--input');
-      url = addQuery(url, params);
+      url = _addQuery(url, params);
     } else if (params.isNotEmpty) {
       if (method == 'GET') {
-        url = addQuery(url, params);
+        url = _addQuery(url, params);
       } else {
         body = utf8.encode(jsonEncode(params));
         bodyIsJson = true;
@@ -221,59 +224,89 @@ Examples:
     }
     if (body != null) request.bodyBytes = body;
 
-    final startedAt = DateTime.now();
     final http.StreamedResponse response;
     final Uint8List responseBody;
     try {
-      response = await codePushClient.send(request);
-      responseBody = await response.stream.toBytes();
+      // A write that failed may still have reached the server, so only GETs
+      // are retried.
+      (response, responseBody) = await runScoped(
+        () async {
+          final response = await codePushClient.send(request);
+          return (response, await response.stream.toBytes());
+        },
+        values: {retryFailedRequestsRef.overrideWith(() => method == 'GET')},
+      );
     } on http.ClientException catch (error) {
-      stderr.writeln('shorebird: ${error.message}');
-      return requestFailedExitCode;
+      return _fail(error.message);
     } on SocketException catch (error) {
-      stderr.writeln('shorebird: ${error.message}');
-      return requestFailedExitCode;
+      return _fail(error.message);
     }
-    final elapsed = DateTime.now().difference(startedAt);
+
+    if (results['include'] as bool) {
+      final reason = response.reasonPhrase;
+      stdout.writeln(
+        'HTTP/1.1 ${response.statusCode}'
+        '${reason == null || reason.isEmpty ? '' : ' $reason'}',
+      );
+      final names = response.headers.keys.toList()..sort();
+      for (final name in names) {
+        stdout.write('$name: ${response.headers[name]}\r\n');
+      }
+      stdout.write('\r\n');
+    }
+    if (response.statusCode == HttpStatus.noContent) {
+      return ExitCode.success.code;
+    }
 
     final contentType = response.headers['content-type'] ?? '';
     final isJson = RegExp(r'[/+]json(;|$)').hasMatch(contentType);
-    final prettyPrint = isJson && stdout.hasTerminal;
+    final indent = stdout.hasTerminal ? '  ' : '';
+    final succeeded = response.statusCode >= 200 && response.statusCode <= 299;
 
-    if (verbose) {
-      _writeVerbose(
-        request: request,
-        response: response,
-        responseBody: responseBody,
-        prettyPrint: prettyPrint,
-        startedAt: startedAt,
-        elapsed: elapsed,
-      );
-    } else {
-      if (results['include'] as bool) _writeStatusAndHeaders(response);
-      if (!silent && response.statusCode != HttpStatus.noContent) {
-        _writeBody(responseBody, prettyPrint: prettyPrint);
+    if (succeeded && jq != null) {
+      final Object? decoded;
+      try {
+        decoded = jsonDecode(utf8.decode(responseBody));
+      } on FormatException {
+        return _fail('--jq: the response is not JSON');
       }
-    }
-
-    if (response.statusCode >= 200 && response.statusCode <= 299) {
+      try {
+        for (final value in jq.evaluate(decoded)) {
+          stdout.writeln(JqQuery.format(value, indent: indent));
+        }
+      } on JqException catch (error) {
+        return _fail('--jq: ${error.message}');
+      }
       return ExitCode.success.code;
     }
-    String? serverError;
-    if (isJson && response.statusCode >= 400 && method != 'HEAD') {
-      serverError = _errorMessage(responseBody, response.statusCode);
+
+    final pretty = isJson && indent.isNotEmpty
+        ? _prettyJson(responseBody)
+        : null;
+    if (pretty != null) {
+      stdout.writeln(pretty);
+    } else {
+      stdout.add(responseBody);
     }
-    stderr.writeln(
-      'shorebird: ${serverError ?? 'HTTP ${response.statusCode}'}',
+    if (succeeded) return ExitCode.success.code;
+    return _fail(
+      (isJson ? _errorMessage(responseBody, response.statusCode) : null) ??
+          'HTTP ${response.statusCode}',
     );
+  }
+
+  int _fail(String message) {
+    stderr.writeln('shorebird: $message');
     return requestFailedExitCode;
   }
 
   String? _appId;
 
-  /// The app ID of the current project, read the first time a placeholder
-  /// needs it.
-  String get _currentAppId => _appId ??= _resolveAppId();
+  /// Replaces each [appIdPlaceholder] in [value] with the current project's
+  /// app ID, as `gh api` replaces `{owner}` and `{repo}`.
+  String _fillPlaceholders(String value) => value.contains(appIdPlaceholder)
+      ? value.replaceAll(appIdPlaceholder, _appId ??= _resolveAppId())
+      : value;
 
   String _resolveAppId() {
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
@@ -290,184 +323,23 @@ Examples:
     return shorebirdYaml.getAppId(flavor: flavor);
   }
 
-  /// Replaces each [appIdPlaceholder] in [value] with the current project's
-  /// app ID, as `gh api` replaces `{owner}` and `{repo}`. Other `{...}`
-  /// sequences are left alone.
-  String _fillPlaceholders(String value) => value.contains(appIdPlaceholder)
-      ? value.replaceAll(appIdPlaceholder, _currentAppId)
-      : value;
-
-  /// The request URL for [endpoint]: a path relative to [apiBaseUri], or a
-  /// full URL on the same host.
-  String _resolveUrl(String endpoint, {required Uri apiBaseUri}) {
-    if (endpoint.contains('://')) {
-      final uri = Uri.tryParse(endpoint);
-      if (uri == null || uri.origin != apiBaseUri.origin) {
-        usageException(
-          '"$endpoint" is not on the Shorebird API host. shorebird api only '
-          'sends requests (and your credentials) to ${apiBaseUri.origin}.',
-        );
-      }
-      return endpoint;
+  int _fieldSeparator(String field) {
+    final separator = field.indexOf('=');
+    if (separator < 1) {
+      usageException('field "$field" must be in key=value format');
     }
-    final path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-    return '$apiBaseUri/$path';
+    return separator;
   }
 
-  /// Parses the -f/--raw-field and -F/--field values into request
-  /// parameters, following `gh api`'s `parseFields`.
-  Future<Map<String, Object?>> _parseFields() async {
-    final params = <String, Object?>{};
-    for (final field in results['raw-field'] as List<String>) {
-      await _parseField(params, field, isMagic: false);
-    }
-    for (final field in results['field'] as List<String>) {
-      await _parseField(params, field, isMagic: true);
-    }
-    return params;
-  }
+  String _fieldKey(String field) => field.substring(0, _fieldSeparator(field));
 
-  Future<void> _parseField(
-    Map<String, Object?> params,
-    String field, {
-    required bool isMagic,
-  }) async {
-    var valueIndex = 0;
-    final keyStack = <String>[];
-    var keyStartAt = 0;
-    for (var i = 0; i < field.length; i++) {
-      final char = field[i];
-      if (char == '[') {
-        if (keyStartAt == 0) keyStack.add(field.substring(0, i));
-        keyStartAt = i + 1;
-      } else if (char == ']') {
-        keyStack.add(field.substring(keyStartAt, i));
-      } else if (char == '=') {
-        if (keyStartAt == 0) keyStack.add(field.substring(0, i));
-        valueIndex = i + 1;
-        break;
-      }
-    }
+  String _fieldValue(String field) =>
+      field.substring(_fieldSeparator(field) + 1);
 
-    if (keyStack.isEmpty) usageException('invalid key: "$field"');
-
-    var key = field;
-    Object? value;
-    if (valueIndex == 0) {
-      if (keyStack.last.isNotEmpty) {
-        usageException(
-          'field "$key" requires a value separated by an "=" sign',
-        );
-      }
-    } else {
-      key = field.substring(0, valueIndex - 1);
-      value = field.substring(valueIndex);
-    }
-
-    if (isMagic && value != null) {
-      value = await _magicFieldValue(value as String, key: key);
-    }
-
-    var destination = params;
-    var isArray = false;
-    var subKey = '';
-    for (final k in keyStack) {
-      if (k.isEmpty) {
-        isArray = true;
-        continue;
-      }
-      if (subKey.isNotEmpty) {
-        if (isArray) {
-          destination = _addParamsList(destination, subKey, k);
-          isArray = false;
-        } else {
-          destination = _addParamsMap(destination, subKey);
-        }
-      }
-      subKey = k;
-    }
-
-    if (isArray) {
-      if (value == null) {
-        destination[subKey] = <Object?>[];
-      } else {
-        final existing = destination[subKey];
-        if (existing == null && !destination.containsKey(subKey)) {
-          destination[subKey] = <Object?>[value];
-        } else if (existing is List<Object?>) {
-          existing.add(value);
-        } else {
-          usageException(
-            'expected array type under "$subKey", got ${_typeName(existing)}',
-          );
-        }
-      }
-    } else {
-      if (destination.containsKey(subKey)) {
-        usageException('unexpected override existing field under "$subKey"');
-      }
-      destination[subKey] = value;
-    }
-  }
-
-  Map<String, Object?> _addParamsMap(Map<String, Object?> map, String key) {
-    if (map.containsKey(key)) {
-      final existing = map[key];
-      if (existing is Map<String, Object?>) return existing;
-      usageException(
-        'expected map type under "$key", got ${_typeName(existing)}',
-      );
-    }
-    final newMap = <String, Object?>{};
-    map[key] = newMap;
-    return newMap;
-  }
-
-  Map<String, Object?> _addParamsList(
-    Map<String, Object?> map,
-    String previousKey,
-    String newKey,
-  ) {
-    if (map.containsKey(previousKey)) {
-      final existing = map[previousKey];
-      if (existing is! List<Object?>) {
-        usageException(
-          'expected array type under "$previousKey", got '
-          '${_typeName(existing)}',
-        );
-      }
-      if (existing.isNotEmpty) {
-        final lastItem = existing.last;
-        if (lastItem is Map<String, Object?> &&
-            (!lastItem.containsKey(newKey) || lastItem[newKey] is List)) {
-          return lastItem;
-        }
-      }
-      final newMap = <String, Object?>{};
-      existing.add(newMap);
-      return newMap;
-    }
-    final newMap = <String, Object?>{};
-    map[previousKey] = <Object?>[newMap];
-    return newMap;
-  }
-
-  static String _typeName(Object? value) => switch (value) {
-    null => 'null',
-    String() => 'string',
-    int() => 'integer',
-    bool() => 'boolean',
-    List() => 'array',
-    _ => 'map',
-  };
-
-  /// Converts a -F/--field value: `@file` and `@-` read a file or stdin,
-  /// integers, `true`, `false` and `null` become JSON values, and anything
-  /// else is a string with placeholders filled. Follows `gh api`'s
-  /// `magicFieldValue`.
-  Future<Object?> _magicFieldValue(String value, {required String key}) async {
+  /// Converts a -F/--field value the way `gh api` does.
+  Future<Object?> _typedValue(String value) async {
     if (value.startsWith('@')) {
-      final bytes = await _readUserFile(value.substring(1), flag: '"$key"');
+      final bytes = await _readUserFile(value.substring(1), flag: '--field');
       return utf8.decode(bytes, allowMalformed: true);
     }
     if (RegExp(r'^[+-]?\d+$').hasMatch(value)) {
@@ -494,88 +366,16 @@ Examples:
     return file.readAsBytes();
   }
 
-  void _writeStatusAndHeaders(http.StreamedResponse response) {
-    stdout
-      ..writeln('HTTP/1.1 ${_status(response)}')
-      ..write(_formatHeaders(response.headers, lineEnd: '\r\n'))
-      ..write('\r\n');
-  }
-
-  void _writeBody(List<int> body, {required bool prettyPrint}) {
-    if (prettyPrint) {
-      final pretty = _prettyJson(body);
-      if (pretty != null) {
-        stdout.writeln(pretty);
-        return;
-      }
-    }
-    stdout.add(body);
-  }
-
-  /// Writes the request and response the way `gh api --verbose` does: to
-  /// stdout, request lines prefixed with `>`, response lines with `<`, and
-  /// the credential in the Authorization header masked.
-  void _writeVerbose({
-    required http.Request request,
-    required http.StreamedResponse response,
-    required List<int> responseBody,
-    required bool prettyPrint,
-    required DateTime startedAt,
-    required Duration elapsed,
-  }) {
-    final url = request.url;
-    final target = url.hasQuery ? '${url.path}?${url.query}' : url.path;
-    final requestHeaders = {
-      for (final MapEntry(:key, :value) in request.headers.entries)
-        key: key.toLowerCase() == 'authorization'
-            ? redactAuthorization(value)
-            : value,
-    };
-    stdout
-      ..writeln('* Request at $startedAt')
-      ..writeln('* Request to $url')
-      ..writeln('> ${request.method} $target HTTP/1.1')
-      ..writeln('> Host: ${url.authority}')
-      ..write(_formatHeaders(requestHeaders, prefix: '> '))
-      ..writeln();
-    if (request.bodyBytes.isNotEmpty) {
-      stdout
-        ..writeln(utf8.decode(request.bodyBytes, allowMalformed: true))
-        ..writeln();
-    }
-    stdout
-      ..writeln('< HTTP/1.1 ${_status(response)}')
-      ..write(_formatHeaders(response.headers, prefix: '< '))
-      ..writeln();
-    if (responseBody.isNotEmpty) {
-      _writeBody(responseBody, prettyPrint: prettyPrint);
-      stdout.writeln();
-    }
-    stdout.writeln('* Request took ${elapsed.inMilliseconds}ms');
-  }
-
-  static String _status(http.BaseResponse response) {
-    final reason = response.reasonPhrase;
-    return reason == null || reason.isEmpty
-        ? '${response.statusCode}'
-        : '${response.statusCode} $reason';
-  }
-
-  /// [headers] sorted by name, one per line, with names in canonical case
-  /// (`Content-Type`), as Go's `net/http` prints them.
-  static String _formatHeaders(
-    Map<String, String> headers, {
-    String prefix = '',
-    String lineEnd = '\n',
-  }) {
-    final names = headers.keys.toList()..sort((a, b) => a.compareTo(b));
-    final buffer = StringBuffer();
-    for (final name in names) {
-      buffer.write(
-        '$prefix${canonicalHeaderName(name)}: ${headers[name]}$lineEnd',
-      );
-    }
-    return buffer.toString();
+  static String _addQuery(String url, Map<String, Object?> params) {
+    if (params.isEmpty) return url;
+    final query = params.entries
+        .map(
+          (e) =>
+              '${Uri.encodeQueryComponent(e.key)}='
+              '${Uri.encodeQueryComponent('${e.value ?? ''}')}',
+        )
+        .join('&');
+    return '$url${url.contains('?') ? '&' : '?'}$query';
   }
 
   static String? _prettyJson(List<int> body) {
@@ -603,59 +403,4 @@ Examples:
     }
     return null;
   }
-}
-
-/// [value] of an Authorization header with the credential masked, keeping
-/// the scheme (`Bearer ████████████████████`).
-String redactAuthorization(String value) {
-  const mask = '████████████████████';
-  final space = value.indexOf(' ');
-  return space == -1 ? mask : '${value.substring(0, space)} $mask';
-}
-
-/// [name] in canonical header case: the first letter and each letter after a
-/// hyphen upper case, the rest lower case (`content-type` becomes
-/// `Content-Type`).
-String canonicalHeaderName(String name) => name
-    .split('-')
-    .map(
-      (part) => part.isEmpty
-          ? part
-          : '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
-    )
-    .join('-');
-
-/// Appends [params] to [url] as a query string, following `gh api`'s
-/// `addQuery`: arrays repeat the key with a `[]` suffix, nested maps
-/// contribute their own keys, and `null` becomes an empty value. Keys are
-/// sorted, as Go's `url.Values.Encode` sorts them.
-String addQuery(String url, Map<String, Object?> params) {
-  if (params.isEmpty) return url;
-  final query = <String, List<String>>{};
-  void add(String key, Object? value) {
-    switch (value) {
-      case null:
-        (query[key] ??= []).add('');
-      case String() || int() || bool():
-        (query[key] ??= []).add('$value');
-      case Map<String, Object?>():
-        for (final MapEntry(key: subKey, :value) in value.entries) {
-          add(subKey, value);
-        }
-      case List<Object?>():
-        for (final entry in value) {
-          add('$key[]', entry);
-        }
-    }
-  }
-
-  add('', params);
-  final keys = query.keys.toList()..sort();
-  final encoded = [
-    for (final key in keys)
-      for (final value in query[key]!)
-        '${Uri.encodeQueryComponent(key)}=${Uri.encodeQueryComponent(value)}',
-  ].join('&');
-  final separator = url.contains('?') ? '&' : '?';
-  return '$url$separator$encoded';
 }
