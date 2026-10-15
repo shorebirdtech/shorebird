@@ -31,12 +31,6 @@ abstract class MetricsSubcommand<T> extends ShorebirdCommand
   /// (e.g. "patch installs").
   String get metricName;
 
-  /// Whether `--release-version` names a release whose id [request] needs.
-  ///
-  /// When true and `--release-version` is passed, the release is looked up
-  /// before [request] runs and its id passed as `releaseId`.
-  bool get resolvesReleaseId => false;
-
   /// Validates options before any network call, throwing a usage error (via
   /// [usageException]) on invalid input.
   ///
@@ -48,8 +42,11 @@ abstract class MetricsSubcommand<T> extends ShorebirdCommand
     }
   }
 
-  /// Fetches the metric for [appId] (and [releaseId], see
-  /// [resolvesReleaseId]) from [client].
+  /// Fetches the metric for [appId] from [client].
+  ///
+  /// When the command has a `--release-version` option and it was passed,
+  /// [run] has already checked that the release exists, and [releaseId] is
+  /// its id. Otherwise [releaseId] is null.
   Future<T> request(
     CodePushClient client, {
     required String appId,
@@ -95,9 +92,13 @@ abstract class MetricsSubcommand<T> extends ShorebirdCommand
   /// The `--end` value, or null when not passed.
   DateTime? get end => _parseTime('end');
 
-  /// The `--release-version` value, or null when not passed.
-  String? get releaseVersion =>
-      results[CommonArguments.releaseVersionArg.name] as String?;
+  /// The `--release-version` value, or null when not passed or when this
+  /// command has no such option.
+  String? get releaseVersion {
+    final name = CommonArguments.releaseVersionArg.name;
+    if (!argParser.options.containsKey(name)) return null;
+    return results[name] as String?;
+  }
 
   DateTime? _parseTime(String name) {
     final value = results[name] as String?;
@@ -131,8 +132,11 @@ abstract class MetricsSubcommand<T> extends ShorebirdCommand
 
     validateArgs();
 
+    // Every metric that takes --release-version checks it here, so an
+    // unknown version is the same usage error on every subcommand rather
+    // than whatever the endpoint happens to return.
     int? releaseId;
-    final version = resolvesReleaseId ? releaseVersion : null;
+    final version = releaseVersion;
     if (version != null) {
       late final Release? release;
       final fetchError = await guardApiCall(

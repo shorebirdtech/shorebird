@@ -46,9 +46,6 @@ abstract class MetricsPatchCountCommand
   /// The noun for the count, capitalized (e.g. "Patch installs").
   String get title;
 
-  @override
-  bool get resolvesReleaseId => true;
-
   /// The `--group-by` value, or null when not passed.
   String? get groupBy => results['group-by'] as String?;
 
