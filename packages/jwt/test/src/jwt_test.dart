@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -114,6 +115,7 @@ void main() {
 
   setUp(() {
     publicKeyStores.clear();
+    recentlyFetchedUrls.clear();
     getOverride = (Uri uri) async {
       return Response(
         keyStoreResponseBody,
@@ -823,6 +825,70 @@ void main() {
             ),
           );
           expect(fetches, 1);
+        });
+
+        test('shares one fetch among concurrent unknown key ids', () async {
+          await verifyAt(start, rsaJwkToken);
+          expect(fetches, 1);
+          publishRotatedKey();
+
+          final response = Completer<Response>();
+          getOverride = (Uri uri) {
+            fetches++;
+            return response.future;
+          };
+          final later = start.add(const Duration(minutes: 1));
+          final verifications = [
+            for (var i = 0; i < 5; i++) verifyAt(later, rotatedToken()),
+          ];
+          response.complete(Response(keyStoreResponseBody, HttpStatus.ok));
+
+          final verified = await Future.wait(verifications);
+          expect(
+            verified.map((jwt) => jwt.header.kid),
+            everyElement(rotatedKid),
+          );
+          expect(fetches, 2);
+        });
+
+        test('shares one fetch among concurrent cold-cache requests', () async {
+          final response = Completer<Response>();
+          getOverride = (Uri uri) {
+            fetches++;
+            return response.future;
+          };
+          final verifications = [
+            for (var i = 0; i < 5; i++) verifyAt(start, rsaJwkToken),
+          ];
+          response.complete(Response(keyStoreResponseBody, HttpStatus.ok));
+
+          await Future.wait(verifications);
+          expect(fetches, 1);
+        });
+
+        test('fetches again after a shared fetch fails', () async {
+          final response = Completer<Response>();
+          getOverride = (Uri uri) {
+            fetches++;
+            return response.future;
+          };
+          final verifications = [
+            for (var i = 0; i < 5; i++) verifyAt(start, rsaJwkToken),
+          ];
+          response.completeError(const SocketException('unreachable'));
+          await Future.wait([
+            for (final verification in verifications)
+              expectLater(verification, throwsA(isA<SocketException>())),
+          ]);
+          expect(fetches, 1);
+
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response(keyStoreResponseBody, HttpStatus.ok);
+          };
+          final jwt = await verifyAt(start, rsaJwkToken);
+          expect(jwt.header.kid, rsaJwkKid);
+          expect(fetches, 2);
         });
 
         test('rejects a key id still unknown after fetching again', () async {
