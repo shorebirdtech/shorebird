@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -74,6 +75,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       );
 
     addCommand(AccountCommand());
+    addCommand(ApiCommand());
     addCommand(AppsCommand());
     addCommand(CacheCommand());
     addCommand(ChannelsCommand());
@@ -373,8 +375,11 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
     }
 
+    final reservesStdout = _reservesStdout(topLevelResults);
+
     // `runCommand` returns null in when the --help flag is passed.
     if (!isJsonMode &&
+        !reservesStdout &&
         exitCode != null &&
         exitCode != ExitCode.success.code &&
         logger.level != Level.verbose) {
@@ -397,10 +402,34 @@ ${currentRunLogFile.absolute.path}
 
     if (!isJsonMode &&
         topLevelResults.command?.name != UpgradeCommand.commandName) {
-      await _checkForUpdates();
+      if (reservesStdout) {
+        await io.IOOverrides.runZoned(
+          _checkForUpdates,
+          stdout: () => io.stderr,
+        );
+      } else {
+        await _checkForUpdates();
+      }
     }
 
     return exitCode;
+  }
+
+  /// Whether the command [topLevelResults] ran is a [ShorebirdCommand] whose
+  /// output owns stdout (see [ShorebirdCommand.reservesStdout]).
+  bool _reservesStdout(ArgResults topLevelResults) {
+    Command<int>? command;
+    var available = commands;
+    for (
+      var results = topLevelResults.command;
+      results != null;
+      results = results.command
+    ) {
+      command = available[results.name];
+      if (command == null) return false;
+      available = command.subcommands;
+    }
+    return command is ShorebirdCommand && command.reservesStdout;
   }
 
   /// Removes Flutter installs, engine artifacts and previews that have gone

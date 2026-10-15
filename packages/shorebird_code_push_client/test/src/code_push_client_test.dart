@@ -59,6 +59,37 @@ void main() {
       expect(CodePushClient(), isNotNull);
     });
 
+    test('apiBaseUri is the hosted uri followed by /api/v1', () {
+      expect(
+        codePushClient.apiBaseUri,
+        equals(Uri.parse('https://api.shorebird.dev/api/v1')),
+      );
+    });
+
+    group('send', () {
+      test('sends the request with the standard and custom headers', () async {
+        final request = http.Request('POST', v1('apps'))..body = '{}';
+        final response = await codePushClient.send(request);
+        expect(response.statusCode, equals(HttpStatus.ok));
+        final sent =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(sent, same(request));
+        expect(sent.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('returns error responses without throwing', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.notFound),
+        );
+        final response = await codePushClient.send(
+          http.Request('GET', v1('apps/missing')),
+        );
+        expect(response.statusCode, equals(HttpStatus.notFound));
+      });
+    });
+
     group('CodePushException', () {
       test('toString is correct', () {
         const exceptionWithDetails = CodePushException(

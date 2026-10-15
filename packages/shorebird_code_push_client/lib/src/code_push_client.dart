@@ -138,7 +138,17 @@ class CodePushClient {
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
 
-  Uri get _v1 => Uri.parse('$hostedUri/api/v1');
+  Uri get _v1 => apiBaseUri;
+
+  /// The base URI of every API route: [hostedUri] followed by `/api/v1`.
+  Uri get apiBaseUri => Uri.parse('$hostedUri/api/v1');
+
+  /// Sends [request] as-is, with the headers and authentication every other
+  /// method on this client uses, and returns the response unchecked.
+  ///
+  /// For callers that build their own requests, such as `shorebird api`.
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _httpClient.send(request);
 
   /// Fetches the currently logged-in user.
   Future<PrivateUser?> getCurrentUser() async {
