@@ -114,12 +114,15 @@ void main() {
       expect(args['responseBytes'], 7);
       // Time-to-first-byte stays separable from transfer time: headers
       // arrived before the 50ms body delay began, so the span must cover
-      // ttfb plus that whole delay. Holds regardless of machine load.
+      // ttfb plus that delay. The bound allows 10ms of slack because a
+      // timer may fire slightly early relative to the clock that measures
+      // it (timer granularity is coarse on Windows). A headers-only
+      // measurement would still fall short by roughly the full 50ms.
       final ttfbMs = args['ttfbMs']! as int;
       expect(
         event['dur'],
         greaterThanOrEqualTo(
-          Duration(milliseconds: ttfbMs + 50).inMicroseconds,
+          Duration(milliseconds: ttfbMs + 40).inMicroseconds,
         ),
       );
     });
