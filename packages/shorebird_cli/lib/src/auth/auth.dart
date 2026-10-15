@@ -270,7 +270,8 @@ class Auth {
   /// How requests are authenticated: the sources in the order they are
   /// tried. A stored login comes last, so that a CI job granted an OIDC
   /// token for another tool on a runner that is logged in keeps working when
-  /// signing in with OIDC fails.
+  /// signing in with OIDC fails. Once OIDC has signed in, the chain does not
+  /// fall back from it (see [CredentialChain]).
   late final CredentialChain _credentials = CredentialChain([
     ?_apiKeySource,
     ?_oidcSource,
@@ -521,7 +522,8 @@ class Auth {
   /// GitHub Actions job granted `permissions: id-token: write`,
   /// [shorebirdProjectIdEnvVar] is a project id, and [shorebirdTokenEnvVar]
   /// is not set. Takes priority over stored credentials, which are used
-  /// instead if signing in with OIDC fails.
+  /// instead if signing in with OIDC fails before it has ever succeeded in
+  /// this run.
   bool get isUsingGitHubActionsOidc => _oidcSource?.isAvailable ?? false;
 
   /// Why a way of authenticating this environment was meant to use cannot

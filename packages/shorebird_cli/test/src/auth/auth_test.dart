@@ -1106,6 +1106,59 @@ void main() {
           verifyNever(() => logger.err(any()));
         });
 
+        test('does not fall back to it once OIDC has signed in', () async {
+          answerIdTokenRequests();
+          // Shorter than the refresh margin, so every request exchanges.
+          answerRefreshWith(
+            http.Response(
+              jsonEncode({
+                'access_token': 'sb_at_oidc',
+                'token_type': 'Bearer',
+                'expires_in': 30,
+              }),
+              HttpStatus.ok,
+              headers: {'content-type': 'application/json'},
+            ),
+          );
+          answerApiRequests();
+
+          await runWithOverrides(
+            () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+          );
+
+          answerRefreshWith(
+            oauthErrorResponse(
+              'invalid_grant',
+              description: 'no trust rule matches',
+            ),
+          );
+          await expectLater(
+            runWithOverrides(
+              () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>();
+          expect(
+            requests.map((request) => request.headers['Authorization']),
+            ['Bearer sb_at_oidc'],
+          );
+          verify(
+            () => logger.err(
+              'The Shorebird auth service refused to sign in with GitHub '
+              'Actions OIDC (invalid_grant: no trust rule matches).',
+            ),
+          ).called(1);
+          verifyNever(
+            () => logger.detail(
+              any(that: contains('Trying the next way to authenticate')),
+            ),
+          );
+        });
+
         test('falls back to it when signing in with OIDC fails', () async {
           refuseIdTokenRequests();
           answerApiRequests();

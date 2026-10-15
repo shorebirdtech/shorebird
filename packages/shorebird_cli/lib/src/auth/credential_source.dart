@@ -74,9 +74,15 @@ typedef ResolvedCredential = ({CredentialSource source, String authorization});
 /// [CredentialSource]s in the order they are tried.
 ///
 /// Each request is authenticated by the first available source. A source
-/// that throws a [CredentialSourceException] is skipped for the rest of the
-/// run, and the next available one is used instead; when there is none, the
-/// failure ends the command, reported with the chain's [unavailableReason].
+/// that throws a [CredentialSourceException] before it has authenticated any
+/// request is skipped for the rest of the run, and the next available one is
+/// used instead; when there is none, the failure ends the command, reported
+/// with the chain's [unavailableReason].
+///
+/// Once a source has authenticated a request, a later failure of that source
+/// ends the command instead of falling back, so that one run never switches
+/// identity partway through, such as from a CI service account to the person
+/// whose login is stored on the runner.
 class CredentialChain {
   /// Creates a [CredentialChain] that tries [sources] in order.
   CredentialChain(List<CredentialSource> sources)
@@ -87,6 +93,10 @@ class CredentialChain {
   /// Sources that threw a [CredentialSourceException] and are not tried
   /// again.
   final Set<CredentialSource> _failed = Set.identity();
+
+  /// Sources that have authenticated a request, which are never fallen back
+  /// from.
+  final Set<CredentialSource> _succeeded = Set.identity();
 
   /// The sources this chain tries, in order.
   List<CredentialSource> get sources => _sources;
@@ -109,11 +119,15 @@ class CredentialChain {
     for (final (index, source) in _sources.indexed) {
       if (!source.isAvailable || _failed.contains(source)) continue;
       try {
-        return (source: source, authorization: await source.authorization());
+        final authorization = await source.authorization();
+        _succeeded.add(source);
+        return (source: source, authorization: authorization);
       } on CredentialSourceException catch (e) {
-        final hasNext = _sources
-            .skip(index + 1)
-            .any((next) => next.isAvailable && !_failed.contains(next));
+        final hasNext =
+            !_succeeded.contains(source) &&
+            _sources
+                .skip(index + 1)
+                .any((next) => next.isAvailable && !_failed.contains(next));
         if (!hasNext) {
           logger.err(e.message);
           if (e.hint case final hint?) logger.info(hint);

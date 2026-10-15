@@ -155,6 +155,27 @@ void main() {
         expect(second.calls, equals(2));
       });
 
+      test('ends the command once it has authenticated a request', () async {
+        first.failure = null;
+        final chain = CredentialChain([first, second]);
+
+        expect(await authorize(chain), 'Bearer first');
+        first.failure = const CredentialSourceException(
+          'First failed later.',
+          hint: 'Fix first.',
+          exitCode: ExitCode.tempFail,
+        );
+        await expectLater(
+          authorize(chain),
+          exitsWithCode(ExitCode.tempFail),
+        );
+
+        expect(second.calls, isZero);
+        verify(() => logger.err('First failed later.')).called(1);
+        verify(() => logger.info('Fix first.')).called(1);
+        verifyNever(() => logger.detail(any()));
+      });
+
       test('reports the failure when no source is left', () async {
         second.isAvailable = false;
         final chain = CredentialChain([first, second]);
