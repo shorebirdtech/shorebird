@@ -56,7 +56,7 @@ class WhoamiCommand extends ShorebirdCommand {
     );
     if (fetchError != null) return fetchError;
 
-    final isPaying = user.hasActiveSubscription ?? false;
+    final isPaying = user.hasActiveSubscription;
     final subscription = isPaying ? 'active' : 'none';
 
     if (isJsonMode) {

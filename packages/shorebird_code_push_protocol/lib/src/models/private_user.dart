@@ -14,6 +14,7 @@ class PrivateUser {
     required this.email,
     required this.jwtIssuer,
     this.displayName,
+    this.hasActiveSubscription = false,
     this.stripeCustomerId,
     this.patchOverageLimit,
   });
@@ -27,6 +28,8 @@ class PrivateUser {
         id: json['id'] as int,
         email: json['email'] as String,
         displayName: json['display_name'] as String?,
+        hasActiveSubscription:
+            (json['has_active_subscription'] as bool?) ?? false,
         stripeCustomerId: json['stripe_customer_id'] as String?,
         jwtIssuer: json['jwt_issuer'] as String,
         patchOverageLimit: json['patch_overage_limit'] as int?,
@@ -52,6 +55,9 @@ class PrivateUser {
   /// The user's name, as provided by the user during signup.
   final String? displayName;
 
+  /// Whether the user is currently a paying customer.
+  final bool hasActiveSubscription;
+
   /// The user's Stripe customer ID, if they have one.
   final String? stripeCustomerId;
 
@@ -69,6 +75,7 @@ class PrivateUser {
       'id': id,
       'email': email,
       'display_name': ?displayName,
+      'has_active_subscription': hasActiveSubscription,
       'stripe_customer_id': ?stripeCustomerId,
       'jwt_issuer': jwtIssuer,
       'patch_overage_limit': ?patchOverageLimit,
@@ -80,6 +87,7 @@ class PrivateUser {
     id,
     email,
     displayName,
+    hasActiveSubscription,
     stripeCustomerId,
     jwtIssuer,
     patchOverageLimit,
@@ -92,6 +100,7 @@ class PrivateUser {
         id == other.id &&
         email == other.email &&
         displayName == other.displayName &&
+        hasActiveSubscription == other.hasActiveSubscription &&
         stripeCustomerId == other.stripeCustomerId &&
         jwtIssuer == other.jwtIssuer &&
         patchOverageLimit == other.patchOverageLimit;

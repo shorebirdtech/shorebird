@@ -8,6 +8,7 @@
 library;
 
 export 'package:shorebird_code_push_protocol/extensions/auth_provider.dart';
+export 'package:shorebird_code_push_protocol/extensions/release_patch_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/release_platform_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/test_helpers.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_app/create_app_request.dart';
@@ -34,6 +35,7 @@ export 'package:shorebird_code_push_protocol/src/messages/get_organization_users
 export 'package:shorebird_code_push_protocol/src/messages/get_organizations_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_patch_adoption/get_patch_adoption_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_patch_metric_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/get_public_stats/get_public_stats200_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release/get_release_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release_artifacts/get_release_artifacts_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release_patches/get_release_patches_response.dart';
@@ -81,6 +83,7 @@ export 'package:shorebird_code_push_protocol/src/models/patch_metric_time_series
 export 'package:shorebird_code_push_protocol/src/models/patch_metric_window.dart';
 export 'package:shorebird_code_push_protocol/src/models/pending_release.dart';
 export 'package:shorebird_code_push_protocol/src/models/private_user.dart';
+export 'package:shorebird_code_push_protocol/src/models/public_stat.dart';
 export 'package:shorebird_code_push_protocol/src/models/public_user.dart';
 export 'package:shorebird_code_push_protocol/src/models/release.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_analysis.dart';
