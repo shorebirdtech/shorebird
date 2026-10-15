@@ -55,14 +55,7 @@ class LoginCommand extends ShorebirdCommand {
       }
       if (hasValidCredentials) {
         progress.complete();
-        final emailDisplay = auth.email;
-        if (emailDisplay != null) {
-          logger
-            ..info('You are already logged in as <$emailDisplay>.')
-            ..info(
-              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
-            );
-        } else {
+        if (auth.isUsingApiKey) {
           // Env-var auth wins over stored credentials, so `shorebird logout`
           // would not change who this machine is authenticated as.
           logger
@@ -71,6 +64,17 @@ class LoginCommand extends ShorebirdCommand {
             )
             ..info(
               '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
+            );
+        } else {
+          final email = await auth.fetchEmail();
+          logger
+            ..info(
+              email != null
+                  ? 'You are already logged in as <$email>.'
+                  : 'You are already logged in.',
+            )
+            ..info(
+              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
             );
         }
         return ExitCode.success.code;
@@ -90,11 +94,10 @@ class LoginCommand extends ShorebirdCommand {
       } else {
         await auth.login(prompt: prompt);
       }
-    } on UserNotFoundException catch (error) {
+    } on UserNotFoundException {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger
-        ..err('''
-We could not find a Shorebird account for ${error.email}.''')
+        ..err('We could not find a Shorebird account for this login.')
         ..info(
           """If you have not yet created an account, you can do so at "${link(uri: consoleUri)}". If you believe this is an error, please reach out to us via Discord, we're happy to help!""",
         );

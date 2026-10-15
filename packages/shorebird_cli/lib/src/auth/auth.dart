@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:cli_util/cli_util.dart';
 import 'package:http/http.dart' as http;
-import 'package:jwt/jwt.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:path/path.dart' as p;
@@ -47,6 +46,10 @@ typedef ObtainCredentialsViaDeviceLogin =
       required Uri authBaseUrl,
       required void Function(shorebird_oauth.DeviceAuthorization) userPrompt,
     });
+
+/// A login as the credentials file stores it: the `credentials`, and the
+/// `email` of the user they belong to when it is known.
+typedef _StoredLogin = ({oauth2.Credentials credentials, String? email});
 
 /// Runs a process synchronously, as [Process.runSync] does.
 typedef RunProcessSync =
@@ -186,7 +189,8 @@ class Auth {
   final RunProcessSync _runProcessSync;
   String? _apiKey;
 
-  /// The path to the credentials file: [oauth2.Credentials] as JSON.
+  /// The path to the credentials file: [oauth2.Credentials] as JSON, with
+  /// an `email` field naming the user they belong to.
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials-v2.json');
   }
@@ -271,8 +275,8 @@ class Auth {
 
     final stored = _readCredentialsFile();
     if (stored != null &&
-        stored.accessToken != client.credentials.accessToken) {
-      client = _useCredentials(stored);
+        stored.credentials.accessToken != client.credentials.accessToken) {
+      client = _useLogin(stored);
     }
     if (!force && !client.credentials.isExpired) return client;
     if (!client.credentials.canRefresh) {
@@ -282,10 +286,10 @@ class Auth {
     return client;
   }
 
-  /// Makes [credentials] the ones this process sends.
-  oauth2.Client _useCredentials(oauth2.Credentials credentials) {
-    _email = credentials.email ?? _email;
-    return _oauthClient = _clientFor(credentials);
+  /// Makes [login]'s credentials the ones this process sends.
+  oauth2.Client _useLogin(_StoredLogin login) {
+    _email = login.email ?? _email;
+    return _oauthClient = _clientFor(login.credentials);
   }
 
   /// An [oauth2.Client] that sends [credentials] and refreshes them as
@@ -300,7 +304,6 @@ class Auth {
   }
 
   void _saveRefreshedCredentials(oauth2.Credentials credentials) {
-    _email = credentials.email ?? _email;
     try {
       _flushCredentials(credentials);
     } on FileSystemException catch (error) {
@@ -364,9 +367,7 @@ class Auth {
       );
 
       final user = await codePushClient.getCurrentUser();
-      if (user == null) {
-        throw UserNotFoundException(email: credentials.email!);
-      }
+      if (user == null) throw UserNotFoundException();
 
       _oauthClient = oauthClient;
       _email = user.email;
@@ -413,11 +414,61 @@ class Auth {
 
   String? _email;
 
-  /// The current user's email.
+  /// The current user's email, when it is known without asking the API:
+  /// stored with the credentials at login. Null when authenticated with an
+  /// API key. See [fetchEmail].
   String? get email => _email;
 
-  /// Whether the user is authenticated.
-  bool get isAuthenticated => _email != null || _apiKey != null;
+  /// Whether the user is authenticated: with an API key, or with stored
+  /// credentials, which the auth service may still reject.
+  bool get isAuthenticated => _oauthClient != null || _apiKey != null;
+
+  /// Whether requests are authenticated with an API key from
+  /// [shorebirdTokenEnvVar], which takes priority over stored credentials.
+  bool get isUsingApiKey => _apiKey != null;
+
+  /// The current user's email, fetched from the Shorebird API and saved with
+  /// the credentials when they were stored without one, as credentials
+  /// carried over from an older CLI are.
+  ///
+  /// Null when authenticated with an API key, when not logged in, or when
+  /// the user could not be fetched. The access token is opaque to the CLI,
+  /// so the API is the only place to learn who it belongs to.
+  Future<String?> fetchEmail() async {
+    if (_email != null || _apiKey != null || _oauthClient == null) {
+      return _email;
+    }
+
+    final String email;
+    try {
+      final user = await _buildCodePushClient(
+        httpClient: await _currentClient(),
+        hostedUri: shorebirdEnv.hostedUri,
+      ).getCurrentUser();
+      if (user == null) return null;
+      email = user.email;
+    } on Exception catch (error) {
+      logger.detail('Could not fetch the current user: $error');
+      return null;
+    }
+    _email = email;
+
+    // Add the email to the login on disk only while it is still this
+    // process's login; another process may have stored a newer one.
+    final stored = _readCredentialsFile();
+    if (stored != null &&
+        stored.credentials.accessToken ==
+            _oauthClient?.credentials.accessToken) {
+      try {
+        _flushCredentials(stored.credentials);
+      } on FileSystemException catch (error) {
+        logger.detail(
+          'Could not save your email to $credentialsFilePath: $error',
+        );
+      }
+    }
+    return email;
+  }
 
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
@@ -444,9 +495,9 @@ class Auth {
       return;
     }
 
-    final credentials = _readCredentialsFile(warn: true);
-    if (credentials == null) return;
-    _useCredentials(credentials);
+    final login = _readCredentialsFile(warn: true);
+    if (login == null) return;
+    _useLogin(login);
   }
 
   /// Reads the credentials file, returning null when it is missing or cannot
@@ -455,14 +506,20 @@ class Auth {
   ///
   /// When there is no credentials file but a legacy one, carries its login
   /// over first (see [_migrateLegacyCredentials]).
-  oauth2.Credentials? _readCredentialsFile({bool warn = false}) {
+  _StoredLogin? _readCredentialsFile({bool warn = false}) {
     final credentialsFile = File(credentialsFilePath);
     if (!credentialsFile.existsSync()) {
-      return _migrateLegacyCredentials(warn: warn);
+      final credentials = _migrateLegacyCredentials(warn: warn);
+      if (credentials == null) return null;
+      return (credentials: credentials, email: null);
     }
 
     try {
-      return oauth2.Credentials.fromJson(credentialsFile.readAsStringSync());
+      final contents = credentialsFile.readAsStringSync();
+      // fromJson ignores fields it does not know, such as `email`.
+      final credentials = oauth2.Credentials.fromJson(contents);
+      final email = (jsonDecode(contents) as Map)['email'];
+      return (credentials: credentials, email: email is String ? email : null);
     } on Exception {
       if (warn) _warnUnreadableCredentials();
       return null;
@@ -536,10 +593,11 @@ class Auth {
     );
   }
 
-  /// Writes [credentials] to the credentials file atomically: to a temporary
-  /// file in the same directory, then renamed over it. Other shorebird
-  /// processes read the file at any time, so they must see either the old
-  /// credentials or the new ones, never a partial write.
+  /// Writes [credentials], with the current user's email when it is known,
+  /// to the credentials file atomically: to a temporary file in the same
+  /// directory, then renamed over it. Other shorebird processes read the
+  /// file at any time, so they must see either the old credentials or the
+  /// new ones, never a partial write.
   ///
   /// Deletes the temporary file if the write fails, since it holds a refresh
   /// token.
@@ -569,7 +627,10 @@ class Auth {
         );
       }
     }
-    final contents = credentials.toJson();
+    final contents = jsonEncode({
+      ...jsonDecode(credentials.toJson()) as Map<String, Object?>,
+      'email': ?_email,
+    });
     temp.writeAsStringSync(contents, flush: true);
     try {
       temp.renameSync(credentialsFilePath);
@@ -608,40 +669,16 @@ class Auth {
   }
 }
 
-/// Extensions on [oauth2.Credentials] for working with JWT claims.
-extension JwtClaims on oauth2.Credentials {
-  /// Get the email from the claims of the access token, which the Shorebird
-  /// auth service issues as a JWT.
-  String? get email {
-    final Jwt jwt;
-    try {
-      jwt = Jwt.parse(accessToken);
-    } on Exception {
-      return null;
-    }
-
-    return jwt.claims['email'] as String?;
-  }
-}
-
 /// Thrown when an already authenticated user attempts to log in or sign up.
 class UserAlreadyLoggedInException implements Exception {
   /// {@macro user_already_logged_in_exception}
   UserAlreadyLoggedInException({this.email});
 
   /// The email of the already authenticated user, or `null` when
-  /// authenticated via an environment variable (API key / CI token).
+  /// authenticated with an API key or the email is not known.
   final String? email;
 }
 
-/// {@template user_not_found_exception}
-/// Thrown when an attempt to fetch a User object results in a 404.
-/// {@endtemplate}
-class UserNotFoundException implements Exception {
-  /// {@macro user_not_found_exception}
-  UserNotFoundException({required this.email});
-
-  /// The email used to locate the user, as derived from the stored auth
-  /// credentials.
-  final String email;
-}
+/// Thrown when the credentials a login obtained belong to no Shorebird
+/// user: fetching the current user results in a 404.
+class UserNotFoundException implements Exception {}

@@ -12,22 +12,8 @@ import 'package:test/test.dart';
 import '../helpers.dart';
 import '../mocks.dart';
 
-/// A JWT access token as the auth service issues them.
-String _buildTestJwt() {
-  String b64(Map<String, dynamic> json) =>
-      base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
-
-  final header = b64({'alg': 'RS256', 'kid': '1234', 'typ': 'JWT'});
-  final payload = b64({
-    'iss': 'https://auth.shorebird.dev',
-    'aud': 'shorebird',
-    'sub': '12345',
-    'email': 'test@email.com',
-    'iat': 1234,
-    'exp': 6789,
-  });
-  return '$header.$payload.dGVzdA';
-}
+/// An access token, which is opaque to the CLI.
+const _testAccessToken = 'sb_at_test';
 
 /// A JSON response, as the auth service sends every answer from `/token`.
 http.Response _json(Object body, {int status = HttpStatus.ok}) => http.Response(
@@ -63,9 +49,8 @@ void main() {
   group('obtainCredentialsViaLoopbackLogin', () {
     late MockHttpClient httpClient;
     final authBaseUrl = Uri.parse('https://auth.shorebird.dev');
-    final testJwt = _buildTestJwt();
     final tokenJson = {
-      'access_token': testJwt,
+      'access_token': _testAccessToken,
       'refresh_token': 'sb_rt_test',
       'token_type': 'Bearer',
       'expires_in': 900,
@@ -134,7 +119,7 @@ void main() {
         browserPage: browserPage,
       );
 
-      expect(credentials.accessToken, equals(testJwt));
+      expect(credentials.accessToken, equals(_testAccessToken));
       expect(credentials.refreshToken, equals('sb_rt_test'));
       expect(credentials.idToken, isNull);
       expect(credentials.scopes, equals(['api']));
