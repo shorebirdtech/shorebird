@@ -26,9 +26,9 @@ enum DeleteConfirmationStyle {
 /// Shared confirmation for commands that delete something irreversibly.
 ///
 /// Follows the GitHub CLI's convention: `-y, --yes` skips confirmation; in a
-/// terminal the user is prompted; without a terminal (or under `--json`) the
-/// command fails with "--yes required when not running interactively" rather
-/// than waiting for input.
+/// terminal the user is prompted; without one (stdin or stdout not a
+/// terminal, CI, or `--json`) the command fails with "--yes required when not
+/// running interactively" rather than waiting for input.
 mixin ConfirmDelete on ShorebirdCommand {
   /// Adds `-y, --yes` and the hidden, deprecated `--confirm-name`.
   void addConfirmDeleteOptions() {
@@ -71,12 +71,12 @@ mixin ConfirmDelete on ShorebirdCommand {
 
     if (results[yesArgName] == true) return null;
 
-    if (!shorebirdEnv.canAcceptUserInput) {
+    // Both stdin and stdout must be terminals to prompt; otherwise every
+    // non-interactive case gets the same message, before anything is printed.
+    if (!isInteractive || !shorebirdEnv.canAcceptUserInput) {
       return reportError(message: yesRequiredMessage, hint: hint);
     }
 
-    // The logger still fails fast if stdout is not a terminal; [hint] tells
-    // the caller how to proceed without a prompt.
     switch (style) {
       case DeleteConfirmationStyle.yesNo:
         if (logger.confirm('Delete $description?', hint: hint)) return null;
