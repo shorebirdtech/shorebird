@@ -45,8 +45,8 @@ class MetricsRange {
   /// Converts a [MetricsRange] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'start': start.toIso8601String(),
-      'end': end.toIso8601String(),
+      'start': start.toUtc().toIso8601String(),
+      'end': end.toUtc().toIso8601String(),
     };
   }
 

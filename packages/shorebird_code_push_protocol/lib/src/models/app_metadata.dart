@@ -122,8 +122,8 @@ class AppMetadata {
       'display_name': displayName,
       'latest_release_version': ?latestReleaseVersion,
       'latest_patch_number': ?latestPatchNumber,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
       'platforms': ?platforms?.map((e) => e.toJson()).toList(),
       'latest_releases': ?latestReleases?.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),

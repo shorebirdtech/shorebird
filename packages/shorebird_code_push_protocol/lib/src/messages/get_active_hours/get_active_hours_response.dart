@@ -82,7 +82,7 @@ class GetActiveHoursResponse {
       'recommended_window_length_hours': recommendedWindowLengthHours,
       'busiest_hour_utc': busiestHourUtc,
       'lookback_days': lookbackDays,
-      'as_of': asOf.toIso8601String(),
+      'as_of': asOf.toUtc().toIso8601String(),
     };
   }
 

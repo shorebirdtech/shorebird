@@ -75,7 +75,7 @@ class PatchArtifact {
       'platform': platform.toJson(),
       'hash': hash,
       'size': size,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
     };
   }
 

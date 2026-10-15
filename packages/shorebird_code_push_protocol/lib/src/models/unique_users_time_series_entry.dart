@@ -43,7 +43,7 @@ class UniqueUsersTimeSeriesEntry {
   /// Converts a [UniqueUsersTimeSeriesEntry] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'period': period.toIso8601String(),
+      'period': period.toUtc().toIso8601String(),
       'unique_users': uniqueUsers,
     };
   }
