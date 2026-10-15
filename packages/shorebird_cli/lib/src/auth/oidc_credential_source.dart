@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -15,6 +16,13 @@ const tokenExchangeGrantType =
 
 /// The `subject_token_type` naming an OIDC ID token (RFC 8693 section 3).
 const idTokenType = 'urn:ietf:params:oauth:token-type:id_token';
+
+/// The id of the Shorebird project whose trust rules an OIDC sign-in is
+/// matched against, as the console shows it.
+const shorebirdProjectIdEnvVar = 'SHOREBIRD_PROJECT_ID';
+
+/// The RFC 8693 `audience` naming the Shorebird project with [projectId].
+String projectAudience(String projectId) => 'urn:shorebird:project:$projectId';
 
 /// How long before its expiry an access token is exchanged for a new one,
 /// so that a request is never sent with a token about to expire.
@@ -51,6 +59,10 @@ typedef _AccessToken = ({String value, DateTime expiresAt});
 /// Authenticates as the service account a Shorebird trust rule maps a CI
 /// job to, by exchanging the OIDC ID token the CI provider issues for it.
 ///
+/// The exchange names the project whose trust rules are matched as its
+/// `audience` (RFC 8693 section 2.1), so the source has no credentials to
+/// offer without a project id; see [unavailableReason].
+///
 /// Before the first request, and again once the current access token is
 /// within [accessTokenRefreshMargin] of expiring, gets an ID token from
 /// [SubjectTokenSupplier] and exchanges it at the auth service's token
@@ -66,21 +78,67 @@ typedef _AccessToken = ({String value, DateTime expiresAt});
 /// `error` and `error_description` when it refuses the exchange.
 class OidcCredentialSource extends CredentialSource {
   /// Creates an [OidcCredentialSource] that exchanges ID tokens from
-  /// [subjectTokenSupplier] at the auth service at [authBaseUrl].
+  /// [subjectTokenSupplier] at the auth service at [authBaseUrl], for the
+  /// project whose id is [projectId], the value of
+  /// [shorebirdProjectIdEnvVar].
+  ///
+  /// The source is not available when [projectId] is null or, once trimmed,
+  /// is not a project id.
   ///
   /// Exchanges are sent through [exchangeClient], which must not retry
   /// requests itself: a retry would present an ID token again.
   OidcCredentialSource({
     required SubjectTokenSupplier subjectTokenSupplier,
+    required String? projectId,
     required Uri authBaseUrl,
     required http.Client exchangeClient,
     Future<void> Function(Duration) sleep = _delay,
   }) : _supplier = subjectTokenSupplier,
+       _projectId = _parseProjectId(projectId),
        _authBaseUrl = authBaseUrl,
        _exchangeClient = exchangeClient,
-       _sleep = sleep;
+       _sleep = sleep,
+       unavailableReason = _projectIdProblem(
+         projectId,
+         provider: subjectTokenSupplier.name,
+       );
+
+  /// Why [projectId] cannot be used to sign in with [provider] OIDC, or null
+  /// when it can.
+  static CredentialSourceException? _projectIdProblem(
+    String? projectId, {
+    required String provider,
+  }) {
+    const hint =
+        'Set $shorebirdProjectIdEnvVar to the id of your project shown at '
+        'https://console.shorebird.dev, or set $shorebirdTokenEnvVar to a '
+        'Shorebird API key.';
+    if (projectId == null || projectId.trim().isEmpty) {
+      return CredentialSourceException(
+        'Signing in with $provider OIDC requires $shorebirdProjectIdEnvVar.',
+        hint: hint,
+      );
+    }
+    if (_parseProjectId(projectId) == null) {
+      return CredentialSourceException(
+        '$shorebirdProjectIdEnvVar is not a Shorebird project id, so this '
+        'job cannot sign in with $provider OIDC.',
+        hint: hint,
+      );
+    }
+    return null;
+  }
+
+  static final _projectIdPattern = RegExp(r'^[0-9]+$');
+
+  static String? _parseProjectId(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || !_projectIdPattern.hasMatch(trimmed)) return null;
+    return trimmed;
+  }
 
   final SubjectTokenSupplier _supplier;
+  final String? _projectId;
   final Uri _authBaseUrl;
   final http.Client _exchangeClient;
   final Future<void> Function(Duration) _sleep;
@@ -91,9 +149,14 @@ class OidcCredentialSource extends CredentialSource {
   /// The CI provider this source signs in with, as messages name it.
   String get providerName => _supplier.name;
 
-  /// A source is created only for a job its provider issues ID tokens to.
+  /// A source is created only for a job its provider issues ID tokens to,
+  /// so it is available whenever it has a project id.
   @override
-  bool get isAvailable => true;
+  bool get isAvailable => _projectId != null;
+
+  /// Why there is no project id, when there is none.
+  @override
+  final CredentialSourceException? unavailableReason;
 
   @override
   Future<String> authorization() async {
@@ -142,6 +205,7 @@ class OidcCredentialSource extends CredentialSource {
   /// access token.
   Future<_AccessToken> _exchangeIdToken(String idToken) async {
     final provider = _supplier.name;
+    final projectId = _projectId!;
     final requestedAt = clock.now();
     final http.Response response;
     try {
@@ -151,6 +215,7 @@ class OidcCredentialSource extends CredentialSource {
           'grant_type': tokenExchangeGrantType,
           'subject_token_type': idTokenType,
           'subject_token': idToken,
+          'audience': projectAudience(projectId),
         },
       );
     } on Exception catch (e, s) {
@@ -186,7 +251,7 @@ class OidcCredentialSource extends CredentialSource {
           'The Shorebird auth service refused to sign in with $provider '
           'OIDC ($reason).',
           hint:
-              'Check that a $provider trust rule at '
+              'Check that a $provider trust rule in project $projectId at '
               'https://console.shorebird.dev matches this job.',
         );
       }

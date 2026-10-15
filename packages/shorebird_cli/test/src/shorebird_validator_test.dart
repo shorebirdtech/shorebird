@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -130,6 +131,71 @@ void main() {
         ]);
       });
 
+      test('reports why a way of authenticating this environment was meant '
+          'to use cannot be used', () async {
+        when(() => auth.isAuthenticated).thenReturn(false);
+        when(() => auth.unavailableCredentialsReason).thenReturn(
+          const CredentialSourceException(
+            'Signing in with GitHub Actions OIDC requires '
+            'SHOREBIRD_PROJECT_ID.',
+            hint: 'Set SHOREBIRD_PROJECT_ID.',
+          ),
+        );
+        platform = platform.copyWith(
+          environment: {githubActionsEnvVar: 'true'},
+        );
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: true,
+            ),
+          ),
+          throwsA(
+            isA<UserNotAuthorizedException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'Signing in with GitHub Actions OIDC requires '
+                      'SHOREBIRD_PROJECT_ID.',
+                )
+                .having((e) => e.hint, 'hint', 'Set SHOREBIRD_PROJECT_ID.'),
+          ),
+        );
+        verifyInOrder([
+          () => logger.err(
+            'Signing in with GitHub Actions OIDC requires '
+            'SHOREBIRD_PROJECT_ID.',
+          ),
+          () => logger.info('Set SHOREBIRD_PROJECT_ID.'),
+        ]);
+        verifyNever(
+          () => logger.err('You must be logged in to run this command.'),
+        );
+      });
+
+      test('reports an unavailable reason without a hint', () async {
+        when(() => auth.isAuthenticated).thenReturn(false);
+        when(() => auth.unavailableCredentialsReason).thenReturn(
+          const CredentialSourceException('Cannot sign in.'),
+        );
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: true,
+            ),
+          ),
+          throwsA(
+            isA<UserNotAuthorizedException>().having(
+              (e) => e.hint,
+              'hint',
+              isNull,
+            ),
+          ),
+        );
+        verify(() => logger.err('Cannot sign in.')).called(1);
+        verifyNever(() => logger.info(any()));
+      });
+
       test('points at GitHub Actions OIDC when running in GitHub Actions '
           'and the user is not authenticated', () async {
         when(() => auth.isAuthenticated).thenReturn(false);
@@ -138,8 +204,9 @@ void main() {
         );
         const oidcHint =
             'To sign in from GitHub Actions without a stored secret, grant '
-            'the job `permissions: id-token: write` and add a GitHub Actions '
-            'trust rule for this workflow at https://console.shorebird.dev.';
+            'the job `permissions: id-token: write`, set SHOREBIRD_PROJECT_ID '
+            'to the id of your project, and add a GitHub Actions trust rule '
+            'for this workflow at https://console.shorebird.dev.';
         const apiKeyHint =
             'Or set SHOREBIRD_TOKEN to a Shorebird API key from '
             'https://console.shorebird.dev.';

@@ -13,6 +13,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
+import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -881,6 +882,7 @@ void main() {
         actionsIdTokenRequestUrlEnvVar:
             'https://pipelines.actions.githubusercontent.com/idtoken?api-version=2.0',
         actionsIdTokenRequestTokenEnvVar: 'gha-request-token',
+        shorebirdProjectIdEnvVar: '42',
       };
 
       /// Answers the request for a GitHub Actions ID token with a 403, so
@@ -907,6 +909,13 @@ void main() {
         auth = buildAuth();
         expect(auth.isAuthenticated, isTrue);
         expect(auth.isUsingGitHubActionsOidc, isTrue);
+        expect(auth.unavailableCredentialsReason, isNull);
+        verify(
+          () => logger.detail(
+            '[env] ACTIONS_ID_TOKEN_REQUEST_URL detected, signing in with '
+            'GitHub Actions OIDC',
+          ),
+        ).called(1);
         expect(auth.isUsingApiKey, isFalse);
         expect(auth.email, isNull);
         expect(auth.client, isA<AuthenticatedClient>());
@@ -934,6 +943,7 @@ void main() {
           'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',
           'subject_token_type': 'urn:ietf:params:oauth:token-type:id_token',
           'subject_token': 'gha.id',
+          'audience': 'urn:shorebird:project:42',
         });
         final request =
             verify(() => httpClient.send(captureAny())).captured.single
@@ -1148,6 +1158,109 @@ void main() {
         );
       });
 
+      for (final (description, projectId, message) in [
+        (
+          'missing',
+          null,
+          'Signing in with GitHub Actions OIDC requires SHOREBIRD_PROJECT_ID.',
+        ),
+        (
+          'not a project id',
+          'my-project',
+          'SHOREBIRD_PROJECT_ID is not a Shorebird project id, so this job '
+              'cannot sign in with GitHub Actions OIDC.',
+        ),
+      ]) {
+        group('when SHOREBIRD_PROJECT_ID is $description', () {
+          const hint =
+              'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
+              'https://console.shorebird.dev, or set SHOREBIRD_TOKEN to a '
+              'Shorebird API key.';
+
+          setUp(() {
+            platform = platform.copyWith(
+              environment: {
+                for (final MapEntry(:key, :value) in oidcEnvironment.entries)
+                  if (key != shorebirdProjectIdEnvVar) key: value,
+                shorebirdProjectIdEnvVar: ?projectId,
+              },
+            );
+          });
+
+          test('does not sign in with OIDC and says why', () async {
+            auth = buildAuth();
+            expect(auth.isAuthenticated, isFalse);
+            expect(auth.isUsingGitHubActionsOidc, isFalse);
+            expect(auth.client, isNot(isA<AuthenticatedClient>()));
+            expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+            expect(
+              auth.unavailableCredentialsReason,
+              isA<CredentialSourceException>()
+                  .having((e) => e.message, 'message', message)
+                  .having((e) => e.hint, 'hint', hint),
+            );
+            verify(
+              () => logger.detail(
+                '[env] ACTIONS_ID_TOKEN_REQUEST_URL detected, but $message',
+              ),
+            ).called(1);
+          });
+
+          group('with a stored login', () {
+            setUp(() {
+              writeCredentials();
+              auth = buildAuth();
+            });
+
+            test('uses it without an exchange', () async {
+              answerApiRequests();
+              expect(auth.isAuthenticated, isTrue);
+              expect(auth.isUsingGitHubActionsOidc, isFalse);
+
+              await runWithOverrides(
+                () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+              );
+
+              final request =
+                  verify(() => httpClient.send(captureAny())).captured.single
+                      as http.BaseRequest;
+              expect(
+                request.headers['Authorization'],
+                'Bearer $shorebirdAccessToken',
+              );
+              verifyNever(
+                () => httpClient.get(any(), headers: any(named: 'headers')),
+              );
+            });
+
+            test('says why when the stored login fails too', () async {
+              storeCredentials(
+                credentialsWith(refreshToken: null, expired: true),
+              );
+              auth = buildAuth();
+
+              await expectLater(
+                runWithOverrides(
+                  () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+                ),
+                exitsWithCode(ExitCode.software),
+              );
+              verifyInOrder([
+                () => logger.err('Your Shorebird login has expired.'),
+                () => logger.info(
+                  'Run ${lightCyan.wrap('shorebird login')} to log in again.',
+                ),
+                () => logger.info(message),
+                () => logger.info(hint),
+              ]);
+              verifyNever(
+                () => httpClient.get(any(), headers: any(named: 'headers')),
+              );
+            });
+          });
+        });
+      }
+
       group('when SHOREBIRD_TOKEN is set', () {
         setUp(() {
           platform = platform.copyWith(
@@ -1187,9 +1300,9 @@ void main() {
           verify(
             () => logger.info(
               'This job can sign in with GitHub Actions OIDC instead: add a '
-              'GitHub Actions trust rule at https://console.shorebird.dev '
-              'and remove $shorebirdTokenEnvVar to stop storing a long-lived '
-              'secret.',
+              'GitHub Actions trust rule at https://console.shorebird.dev, '
+              'set SHOREBIRD_PROJECT_ID to the id of its project, and remove '
+              'SHOREBIRD_TOKEN to stop storing a long-lived secret.',
             ),
           ).called(1);
         });

@@ -117,6 +117,7 @@ void main() {
     now = DateTime(2026, 10, 15, 12);
     source = OidcCredentialSource(
       subjectTokenSupplier: supplier,
+      projectId: '42',
       authBaseUrl: authBaseUrl,
       exchangeClient: exchangeClient,
       sleep: (duration) async => delays.add(duration),
@@ -126,7 +127,78 @@ void main() {
 
   test('is available and names its provider', () {
     expect(source.isAvailable, isTrue);
+    expect(source.unavailableReason, isNull);
     expect(source.providerName, equals('Test CI'));
+  });
+
+  group('project id', () {
+    const hint =
+        'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
+        'https://console.shorebird.dev, or set SHOREBIRD_TOKEN to a '
+        'Shorebird API key.';
+
+    OidcCredentialSource sourceFor(String? projectId) => OidcCredentialSource(
+      subjectTokenSupplier: supplier,
+      projectId: projectId,
+      authBaseUrl: authBaseUrl,
+      exchangeClient: exchangeClient,
+    );
+
+    test('is trimmed and sent as the audience', () async {
+      source = sourceFor(' 1234\n');
+      expect(source.isAvailable, isTrue);
+      await authorization();
+
+      final body =
+          verify(
+                () => exchangeClient.post(
+                  any(),
+                  headers: any(named: 'headers'),
+                  body: captureAny(named: 'body'),
+                ),
+              ).captured.single
+              as Map;
+      expect(body['audience'], equals('urn:shorebird:project:1234'));
+    });
+
+    for (final (description, projectId) in [
+      ('missing', null),
+      ('empty', ''),
+      ('blank', '  '),
+    ]) {
+      test('when $description, the source is not available', () {
+        source = sourceFor(projectId);
+        expect(source.isAvailable, isFalse);
+        expect(
+          source.unavailableReason,
+          isA<CredentialSourceException>()
+              .having(
+                (e) => e.message,
+                'message',
+                'Signing in with Test CI OIDC requires SHOREBIRD_PROJECT_ID.',
+              )
+              .having((e) => e.hint, 'hint', hint),
+        );
+      });
+    }
+
+    for (final projectId in ['abc', '12a', '-1', '1 2', '1.5', 'sb_api_x']) {
+      test('when "$projectId", the source is not available', () {
+        source = sourceFor(projectId);
+        expect(source.isAvailable, isFalse);
+        expect(
+          source.unavailableReason,
+          isA<CredentialSourceException>()
+              .having(
+                (e) => e.message,
+                'message',
+                'SHOREBIRD_PROJECT_ID is not a Shorebird project id, so this '
+                    'job cannot sign in with Test CI OIDC.',
+              )
+              .having((e) => e.hint, 'hint', hint),
+        );
+      });
+    }
   });
 
   test('exchanges an ID token at the token endpoint', () async {
@@ -144,6 +216,7 @@ void main() {
       'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',
       'subject_token_type': 'urn:ietf:params:oauth:token-type:id_token',
       'subject_token': 'id.token1',
+      'audience': 'urn:shorebird:project:42',
     });
   });
 
@@ -240,7 +313,7 @@ void main() {
               .having(
                 (e) => e.hint,
                 'hint',
-                'Check that a Test CI trust rule at '
+                'Check that a Test CI trust rule in project 42 at '
                     'https://console.shorebird.dev matches this job.',
               ),
         ),
@@ -301,6 +374,7 @@ void main() {
     test('waits before a retry by default', () async {
       source = OidcCredentialSource(
         subjectTokenSupplier: supplier,
+        projectId: '42',
         authBaseUrl: authBaseUrl,
         exchangeClient: exchangeClient,
       );

@@ -20,6 +20,11 @@ abstract class CredentialSource {
   /// is available may still fail in [authorization].
   bool get isAvailable;
 
+  /// Why this source is not available although the environment shows it was
+  /// meant to be, such as a CI job missing a variable the source needs, or
+  /// null. Reported when no source can authenticate.
+  CredentialSourceException? get unavailableReason => null;
+
   /// The `Authorization` header value for the next request, such as
   /// `Bearer <token>`. Refreshes or exchanges credentials first if they
   /// need it.
@@ -37,18 +42,26 @@ abstract class CredentialSource {
 
 /// Thrown by a [CredentialSource] that cannot provide credentials. A
 /// [CredentialChain] tries the next available source, or, when there is
-/// none, reports [message] and [hint] and ends the command.
+/// none, reports [message] and [hint] and ends the command with [exitCode].
 ///
 /// Neither [message] nor [hint] may contain a credential.
 class CredentialSourceException implements Exception {
   /// Creates a [CredentialSourceException].
-  const CredentialSourceException(this.message, {this.hint});
+  const CredentialSourceException(
+    this.message, {
+    this.hint,
+    this.exitCode = ExitCode.software,
+  });
 
   /// What went wrong.
   final String message;
 
   /// What the user can do about it, if anything.
   final String? hint;
+
+  /// How the command ends when no other source can authenticate:
+  /// [ExitCode.tempFail] for a failure that may not recur.
+  final ExitCode exitCode;
 
   @override
   String toString() => 'CredentialSourceException: $message';
@@ -63,7 +76,7 @@ typedef ResolvedCredential = ({CredentialSource source, String authorization});
 /// Each request is authenticated by the first available source. A source
 /// that throws a [CredentialSourceException] is skipped for the rest of the
 /// run, and the next available one is used instead; when there is none, the
-/// failure ends the command.
+/// failure ends the command, reported with the chain's [unavailableReason].
 class CredentialChain {
   /// Creates a [CredentialChain] that tries [sources] in order.
   CredentialChain(List<CredentialSource> sources)
@@ -81,6 +94,15 @@ class CredentialChain {
   /// Whether any source has credentials to offer.
   bool get isAvailable => _sources.any((source) => source.isAvailable);
 
+  /// The [CredentialSource.unavailableReason] of the first source that has
+  /// one, or null.
+  CredentialSourceException? get unavailableReason {
+    for (final source in _sources) {
+      if (source.unavailableReason case final reason?) return reason;
+    }
+    return null;
+  }
+
   /// The first available source that can authenticate the next request, and
   /// the `Authorization` header value it answered.
   Future<ResolvedCredential> resolve() async {
@@ -95,7 +117,11 @@ class CredentialChain {
         if (!hasNext) {
           logger.err(e.message);
           if (e.hint case final hint?) logger.info(hint);
-          throw ProcessExit(ExitCode.software.code);
+          if (unavailableReason case final reason?) {
+            logger.info(reason.message);
+            if (reason.hint case final hint?) logger.info(hint);
+          }
+          throw ProcessExit(e.exitCode.code);
         }
         logger.detail('${e.message} Trying the next way to authenticate.');
         _failed.add(source);

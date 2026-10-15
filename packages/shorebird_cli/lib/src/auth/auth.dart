@@ -63,9 +63,9 @@ typedef RunProcessSync =
 ///
 /// Refreshes the access token first when it has expired (see
 /// `Auth._currentClient`). A refresh the auth service answers with an OAuth
-/// error ends the command with instructions to log in again; any other
-/// failure to refresh ends it as a temporary failure, leaving the stored
-/// credentials in place.
+/// error fails with instructions to log in again; any other failure to
+/// refresh fails as a temporary failure ([ExitCode.tempFail]), leaving the
+/// stored credentials in place.
 class StoredLoginSource extends CredentialSource {
   /// Creates a [StoredLoginSource] for the login [currentClient] returns,
   /// refreshed if it needs to be, available while [isLoggedIn].
@@ -81,6 +81,9 @@ class StoredLoginSource extends CredentialSource {
   @override
   bool get isAvailable => _isLoggedIn();
 
+  static final _logInAgain =
+      'Run ${lightCyan.wrap('shorebird login')} to log in again.';
+
   @override
   Future<String> authorization() async {
     final oauth2.Client client;
@@ -90,37 +93,36 @@ class StoredLoginSource extends CredentialSource {
       // The auth service answered with an OAuth error: these credentials
       // will not refresh again, whichever error code it was.
       logger
-        ..err(
-          'The Shorebird auth service rejected your stored credentials '
-          '(${_describeOAuthError(e)}).',
-        )
-        ..info('Run ${lightCyan.wrap('shorebird login')} to log in again.')
         ..detail(e.toString())
         ..detail(s.toString());
-      throw ProcessExit(ExitCode.software.code);
+      throw CredentialSourceException(
+        'The Shorebird auth service rejected your stored credentials '
+        '(${_describeOAuthError(e)}).',
+        hint: _logInAgain,
+      );
     } on oauth2.ExpirationException catch (e, s) {
       logger
-        ..err('Your Shorebird login has expired.')
-        ..info('Run ${lightCyan.wrap('shorebird login')} to log in again.')
         ..detail(e.toString())
         ..detail(s.toString());
-      throw ProcessExit(ExitCode.software.code);
+      throw CredentialSourceException(
+        'Your Shorebird login has expired.',
+        hint: _logInAgain,
+      );
     } on Exception catch (e, s) {
       // No OAuth answer: no answer at all, a 5xx, a 429, or a body that is
       // not a token response. That says nothing about the stored
       // credentials, so keep them and let the next command try again.
       logger
-        ..err(
-          'Could not refresh your Shorebird credentials: '
-          '${_describeTransientFailure(e)}',
-        )
-        ..info(
-          'Your login is unchanged. Check your network connection and try '
-          'again.',
-        )
         ..detail(e.toString())
         ..detail(s.toString());
-      throw ProcessExit(ExitCode.tempFail.code);
+      throw CredentialSourceException(
+        'Could not refresh your Shorebird credentials: '
+        '${_describeTransientFailure(e)}',
+        hint:
+            'Your login is unchanged. Check your network connection and try '
+            'again.',
+        exitCode: ExitCode.tempFail,
+      );
     }
     return 'Bearer ${client.credentials.accessToken}';
   }
@@ -320,7 +322,7 @@ class Auth {
   /// nothing about whether they are still good, and answering `false` would
   /// log a user out for running `shorebird login` off wifi.
   Future<bool> hasValidCredentials() async {
-    if (_apiKeySource != null || _oidcSource != null) return true;
+    if (_apiKeySource != null || isUsingGitHubActionsOidc) return true;
     if (_oauthClient == null) return false;
 
     try {
@@ -516,10 +518,17 @@ class Auth {
   bool get isUsingApiKey => _apiKeySource != null;
 
   /// Whether requests are authenticated with GitHub Actions OIDC: this is a
-  /// GitHub Actions job granted `permissions: id-token: write` and
-  /// [shorebirdTokenEnvVar] is not set. Takes priority over stored
-  /// credentials, which are used instead if signing in with OIDC fails.
-  bool get isUsingGitHubActionsOidc => _oidcSource != null;
+  /// GitHub Actions job granted `permissions: id-token: write`,
+  /// [shorebirdProjectIdEnvVar] is a project id, and [shorebirdTokenEnvVar]
+  /// is not set. Takes priority over stored credentials, which are used
+  /// instead if signing in with OIDC fails.
+  bool get isUsingGitHubActionsOidc => _oidcSource?.isAvailable ?? false;
+
+  /// Why a way of authenticating this environment was meant to use cannot
+  /// be used, such as GitHub Actions OIDC without
+  /// [shorebirdProjectIdEnvVar], or null.
+  CredentialSourceException? get unavailableCredentialsReason =>
+      _credentials.unavailableReason;
 
   /// The current user's email, fetched from the Shorebird API and saved with
   /// the credentials when they were stored without one, as credentials
@@ -579,28 +588,34 @@ class Auth {
         // In --json mode, info goes to stderr, never into the envelope.
         logger.info(
           'This job can sign in with GitHub Actions OIDC instead: add a '
-          'GitHub Actions trust rule at https://console.shorebird.dev and '
-          'remove $shorebirdTokenEnvVar to stop storing a long-lived secret.',
+          'GitHub Actions trust rule at https://console.shorebird.dev, set '
+          '$shorebirdProjectIdEnvVar to the id of its project, and remove '
+          '$shorebirdTokenEnvVar to stop storing a long-lived secret.',
         );
       }
       return;
     }
 
-    if (gitHubActions != null) {
-      logger.detail(
-        '[env] $actionsIdTokenRequestUrlEnvVar detected, signing in with '
-        'GitHub Actions OIDC',
-      );
-    }
-    _oidcSource = gitHubActions == null
+    final oidcSource = gitHubActions == null
         ? null
         : OidcCredentialSource(
             subjectTokenSupplier: gitHubActions,
+            projectId: platform.environment[shorebirdProjectIdEnvVar],
             authBaseUrl: _authServiceUri,
             // The source retries with a new ID token itself; a retrying
             // client would send a used one again.
             exchangeClient: nonRetryingHttpClient,
           );
+    _oidcSource = oidcSource;
+    if (oidcSource != null) {
+      logger.detail(
+        oidcSource.isAvailable
+            ? '[env] $actionsIdTokenRequestUrlEnvVar detected, signing in '
+                  'with GitHub Actions OIDC'
+            : '[env] $actionsIdTokenRequestUrlEnvVar detected, but '
+                  '${oidcSource.unavailableReason!.message}',
+      );
+    }
 
     final login = _readCredentialsFile(warn: true);
     if (login == null) return;
