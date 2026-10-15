@@ -17,8 +17,10 @@ import 'package:ttl_cache/ttl_cache.dart';
 @visibleForTesting
 final publicKeyStores = TtlCache<String, PublicKeyStore>();
 
-/// The URLs whose keys were fetched within the last [_minRefetchInterval], so
-/// an unknown key id fetches them again at most once per interval.
+/// The URLs whose keys were fetched successfully within the last
+/// [_minRefetchInterval], so an unknown key id fetches them again at most once
+/// per interval. Like jose's `createRemoteJWKSet`, the interval starts when a
+/// fetch succeeds; a failed fetch does not start it.
 @visibleForTesting
 final recentlyFetchedUrls = TtlCache<String, bool>(
   defaultTtl: _minRefetchInterval,
@@ -56,9 +58,8 @@ Future<PublicKeyStore?> _getPublicKeys(
 
 /// Whether an unknown key id may fetch [url]'s keys again now: the signer may
 /// have rotated to a key published after the cached set was fetched (RFC 7517
-/// section 4.5, `kid`). A fetch already in progress may always be joined.
-bool _mayFetchAgain(String url) =>
-    _pendingFetches.containsKey(url) || !recentlyFetchedUrls.containsKey(url);
+/// section 4.5, `kid`).
+bool _mayFetchAgain(String url) => !recentlyFetchedUrls.containsKey(url);
 
 /// Fetches [url]'s keys, or joins the fetch of them already in progress.
 Future<PublicKeyStore?> _fetchPublicKeys(
@@ -66,7 +67,6 @@ Future<PublicKeyStore?> _fetchPublicKeys(
   required JwksFormat jwksFormat,
 }) {
   return _pendingFetches[url] ??= () async {
-    recentlyFetchedUrls.set(url, true);
     try {
       return await _requestPublicKeys(url, jwksFormat: jwksFormat);
     } finally {
@@ -99,6 +99,7 @@ Future<PublicKeyStore?> _requestPublicKeys(
     return null;
   }
 
+  recentlyFetchedUrls.set(url, true);
   publicKeyStores.set(
     url,
     publicKeyStore,

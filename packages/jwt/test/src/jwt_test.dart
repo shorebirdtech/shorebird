@@ -891,6 +891,36 @@ void main() {
           expect(fetches, 2);
         });
 
+        test('a failed fetch does not start the 30 seconds', () async {
+          await verifyAt(start, rsaJwkToken);
+          publishRotatedKey();
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response('', HttpStatus.internalServerError);
+          };
+          final later = start.add(const Duration(minutes: 1));
+          await expectLater(
+            () => verifyAt(later, rotatedToken()),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Could not fetch public keys.',
+              ),
+            ),
+          );
+          expect(fetches, 2);
+
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response(keyStoreResponseBody, HttpStatus.ok);
+          };
+          final soon = later.add(const Duration(seconds: 10));
+          final jwt = await verifyAt(soon, rotatedToken());
+          expect(jwt.header.kid, rotatedKid);
+          expect(fetches, 3);
+        });
+
         test('rejects a key id still unknown after fetching again', () async {
           await verifyAt(start, rsaJwkToken);
           final later = start.add(const Duration(minutes: 1));
