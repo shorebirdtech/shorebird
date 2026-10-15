@@ -3480,9 +3480,12 @@ void main() {
                 Stream.value(
                   utf8.encode(
                     json.encode(
-                      const ErrorResponse(
+                      ErrorResponse(
                         code: 'shorebird_plan_insufficient_tier',
                         message: 'upgrade required',
+                        documentationUrl: Uri.parse(
+                          'https://docs.shorebird.dev/account/api/',
+                        ),
                       ).toJson(),
                     ),
                   ),
@@ -3499,6 +3502,11 @@ void main() {
                       (e) => e.code,
                       'code',
                       'shorebird_plan_insufficient_tier',
+                    )
+                    .having(
+                      (e) => e.documentationUrl,
+                      'documentationUrl',
+                      Uri.parse('https://docs.shorebird.dev/account/api/'),
                     ),
               ),
             );

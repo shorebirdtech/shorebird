@@ -127,6 +127,7 @@ class JsonError {
     this.hint,
     this.apiCode,
     this.details,
+    this.documentationUrl,
   });
 
   /// A machine-readable error code.
@@ -147,6 +148,10 @@ class JsonError {
   /// returned alongside its error code.
   final String? details;
 
+  /// A page the Shorebird API linked from the error, documenting the API
+  /// and its errors.
+  final Uri? documentationUrl;
+
   /// Serializes this error to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
     'code': code.code,
@@ -154,6 +159,8 @@ class JsonError {
     if (hint != null) 'hint': hint,
     if (apiCode != null) 'api_code': apiCode,
     if (details != null) 'details': details,
+    if (documentationUrl != null)
+      'documentation_url': documentationUrl.toString(),
   };
 }
 
@@ -196,7 +203,8 @@ class JsonResult {
   /// [code] is a machine-readable [JsonErrorCode].
   /// `message` is a human-readable description.
   /// `hint` is an optional actionable recovery step.
-  /// `apiCode` and `details` describe an error the Shorebird API returned.
+  /// `apiCode`, `details` and `documentationUrl` describe an error the
+  /// Shorebird API returned.
   /// `command` is injected into the `meta` block automatically.
   factory JsonResult.error({
     required JsonErrorCode code,
@@ -205,6 +213,7 @@ class JsonResult {
     String? hint,
     String? apiCode,
     String? details,
+    Uri? documentationUrl,
   }) {
     final error = JsonError(
       code: code,
@@ -212,6 +221,7 @@ class JsonResult {
       hint: hint,
       apiCode: apiCode,
       details: details,
+      documentationUrl: documentationUrl,
     );
     final meta = JsonMeta(version: packageVersion, command: command);
     return JsonResult._(

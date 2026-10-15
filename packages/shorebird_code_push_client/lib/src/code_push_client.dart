@@ -13,7 +13,12 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 class CodePushException implements Exception {
   /// {@macro code_push_exception}
-  const CodePushException({required this.message, this.details, this.code});
+  const CodePushException({
+    required this.message,
+    this.details,
+    this.code,
+    this.documentationUrl,
+  });
 
   /// The message associated with the exception.
   final String message;
@@ -25,6 +30,10 @@ class CodePushException implements Exception {
 
   /// The details associated with the exception.
   final String? details;
+
+  /// A page documenting the API and its errors, from the server's
+  /// [ErrorResponse], or null when the server did not send one.
+  final Uri? documentationUrl;
 
   @override
   String toString() => '$message${details != null ? '\n$details' : ''}';
@@ -39,6 +48,7 @@ class CodePushForbiddenException extends CodePushException {
     required super.message,
     super.details,
     super.code,
+    super.documentationUrl,
   });
 }
 
@@ -51,6 +61,7 @@ class CodePushConflictException extends CodePushException {
     required super.message,
     super.details,
     super.code,
+    super.documentationUrl,
   });
 }
 
@@ -63,6 +74,7 @@ class CodePushNotFoundException extends CodePushException {
     required super.message,
     super.details,
     super.code,
+    super.documentationUrl,
   });
 }
 
@@ -75,6 +87,7 @@ class CodePushUpgradeRequiredException extends CodePushException {
     required super.message,
     super.details,
     super.code,
+    super.documentationUrl,
   });
 }
 
@@ -1097,6 +1110,7 @@ class CodePushClient {
       message: error.message,
       details: error.details,
       code: error.code,
+      documentationUrl: error.documentationUrl,
     );
   }
 

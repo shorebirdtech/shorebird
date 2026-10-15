@@ -182,6 +182,7 @@ abstract class ShorebirdCommand extends Command<int> {
     String? hint,
     String? apiCode,
     String? details,
+    Uri? documentationUrl,
   }) {
     JsonResult.error(
       code: code,
@@ -189,6 +190,7 @@ abstract class ShorebirdCommand extends Command<int> {
       hint: hint,
       apiCode: apiCode,
       details: details,
+      documentationUrl: documentationUrl,
       command: fullCommandName,
     ).write();
   }
@@ -218,11 +220,12 @@ abstract class ShorebirdCommand extends Command<int> {
   /// active and returns [ExitCode.software].
   ///
   /// [message] says what failed (e.g. "Failed to fetch patch installs.") and
-  /// is followed by the server's own message. The server's error code and
-  /// details, when present, are reported too: as `api_code` and `details` in
-  /// the `--json` error envelope (whose `code` is [code]), and as extra lines
-  /// otherwise. This lets a caller tell, for example, a plan that lacks a
-  /// feature (`shorebird_plan_insufficient_tier`) from a missing resource.
+  /// is followed by the server's own message. The server's error code,
+  /// details and documentation link, when present, are reported too: as
+  /// `api_code`, `details` and `documentation_url` in the `--json` error
+  /// envelope (whose `code` is [code]), and as extra lines otherwise. This
+  /// lets a caller tell, for example, a plan that lacks a feature
+  /// (`shorebird_plan_insufficient_tier`) from a missing resource.
   int reportApiError(
     CodePushException error, {
     required String message,
@@ -235,11 +238,15 @@ abstract class ShorebirdCommand extends Command<int> {
         message: fullMessage,
         apiCode: error.code,
         details: error.details,
+        documentationUrl: error.documentationUrl,
       );
     } else {
       logger.err(fullMessage);
       if (error.details case final details?) logger.info(details);
       if (error.code case final apiCode?) logger.info('Error code: $apiCode');
+      if (error.documentationUrl case final url?) {
+        logger.info('Documentation: $url');
+      }
     }
     return ExitCode.software.code;
   }

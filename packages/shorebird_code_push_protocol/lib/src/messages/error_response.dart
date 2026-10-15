@@ -11,6 +11,7 @@ class ErrorResponse {
     required this.code,
     required this.message,
     this.details,
+    this.documentationUrl,
   });
 
   /// Converts a `Map<String, dynamic>` to an [ErrorResponse].
@@ -22,6 +23,7 @@ class ErrorResponse {
         code: json['code'] as String,
         message: json['message'] as String,
         details: json['details'] as String?,
+        documentationUrl: maybeParseUri(json['documentation_url'] as String?),
       ),
     );
   }
@@ -44,12 +46,16 @@ class ErrorResponse {
   /// Optional details associated with the error.
   final String? details;
 
+  /// A page that documents this API and its errors.
+  final Uri? documentationUrl;
+
   /// Converts an [ErrorResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'code': code,
       'message': message,
       'details': ?details,
+      'documentation_url': ?documentationUrl?.toString(),
     };
   }
 
@@ -58,6 +64,7 @@ class ErrorResponse {
     code,
     message,
     details,
+    documentationUrl,
   ]);
 
   @override
@@ -66,6 +73,7 @@ class ErrorResponse {
     return other is ErrorResponse &&
         code == other.code &&
         message == other.message &&
-        details == other.details;
+        details == other.details &&
+        documentationUrl == other.documentationUrl;
   }
 }
