@@ -9,6 +9,8 @@ import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/credential_source.dart';
+import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
+import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -177,7 +179,7 @@ class ApiKeySource extends CredentialSource {
   const ApiKeySource(this.apiKey);
 
   /// The API key from [shorebirdTokenEnvVar] in [environment], or null when
-  /// it is not set.
+  /// it is not set or is empty.
   ///
   /// Ends the command when it is set to something that is not an API key.
   static ApiKeySource? fromEnvironment(Map<String, String> environment) {
@@ -185,6 +187,12 @@ class ApiKeySource extends CredentialSource {
     if (envToken == null) return null;
 
     final trimmed = envToken.trim();
+    // GitHub Actions sets a variable to an empty string when the secret it
+    // names does not exist, so removing the secret is enough to unset it.
+    if (trimmed.isEmpty) {
+      logger.detail('[env] $shorebirdTokenEnvVar is empty, ignoring it');
+      return null;
+    }
     logger.detail('[env] $shorebirdTokenEnvVar detected');
 
     if (!trimmed.startsWith(apiKeyPrefix)) {
@@ -253,10 +261,17 @@ class Auth {
   final RunProcessSync _runProcessSync;
   final ApiKeySource? _apiKeySource;
 
+  /// Signs in with the CI provider's OIDC token, when this is a CI job that
+  /// can and there is no API key.
+  late final OidcCredentialSource? _oidcSource;
+
   /// How requests are authenticated: the sources in the order they are
-  /// tried.
+  /// tried. A stored login comes last, so that a CI job granted an OIDC
+  /// token for another tool on a runner that is logged in keeps working when
+  /// signing in with OIDC fails.
   late final CredentialChain _credentials = CredentialChain([
     ?_apiKeySource,
+    ?_oidcSource,
     StoredLoginSource(
       isLoggedIn: () => _oauthClient != null,
       currentClient: _currentClient,
@@ -289,12 +304,12 @@ class Auth {
 
   /// Whether the locally stored credentials are still usable.
   ///
-  /// API keys are validated server-side on every request and are always
-  /// reported as valid. Stored OAuth credentials are verified by refreshing
-  /// them against the auth service, which fails once the session has expired
-  /// or been revoked. Refreshed credentials are persisted so the check doubles
-  /// as a refresh, with the newest refresh token on disk (see
-  /// `_currentClient`).
+  /// API keys and OIDC sign-in are validated server-side on every request
+  /// and are always reported as valid. Stored OAuth credentials are verified
+  /// by refreshing them against the auth service, which fails once the
+  /// session has expired or been revoked. Refreshed credentials are
+  /// persisted so the check doubles as a refresh, with the newest refresh
+  /// token on disk (see `_currentClient`).
   ///
   /// Returns false when the auth service answered the refresh with an OAuth
   /// error response ([oauth2.AuthorizationException]), or there is no refresh
@@ -305,7 +320,7 @@ class Auth {
   /// nothing about whether they are still good, and answering `false` would
   /// log a user out for running `shorebird login` off wifi.
   Future<bool> hasValidCredentials() async {
-    if (_apiKeySource != null) return true;
+    if (_apiKeySource != null || _oidcSource != null) return true;
     if (_oauthClient == null) return false;
 
     try {
@@ -491,13 +506,20 @@ class Auth {
   /// API key. See [fetchEmail].
   String? get email => _email;
 
-  /// Whether the user is authenticated: with an API key, or with stored
-  /// credentials, which the auth service may still reject.
+  /// Whether the user is authenticated: with an API key, with GitHub Actions
+  /// OIDC, or with stored credentials, which the auth service may still
+  /// reject.
   bool get isAuthenticated => _credentials.isAvailable;
 
   /// Whether requests are authenticated with an API key from
   /// [shorebirdTokenEnvVar], which takes priority over stored credentials.
   bool get isUsingApiKey => _apiKeySource != null;
+
+  /// Whether requests are authenticated with GitHub Actions OIDC: this is a
+  /// GitHub Actions job granted `permissions: id-token: write` and
+  /// [shorebirdTokenEnvVar] is not set. Takes priority over stored
+  /// credentials, which are used instead if signing in with OIDC fails.
+  bool get isUsingGitHubActionsOidc => _oidcSource != null;
 
   /// The current user's email, fetched from the Shorebird API and saved with
   /// the credentials when they were stored without one, as credentials
@@ -543,8 +565,39 @@ class Auth {
   }
 
   void _loadCredentials() {
-    // An API key takes priority, so the stored login is not read at all.
-    if (_apiKeySource != null) return;
+    final gitHubActions = GitHubActionsSubjectTokenSupplier.fromEnvironment(
+      platform.environment,
+      audience: _authServiceUri,
+      httpClient: _httpClient,
+    );
+
+    // An API key takes priority, so neither OIDC nor the stored login is
+    // used.
+    if (_apiKeySource != null) {
+      _oidcSource = null;
+      if (gitHubActions != null) {
+        // In --json mode, info goes to stderr, never into the envelope.
+        logger.info(
+          'This job can sign in with GitHub Actions OIDC instead: add a '
+          'GitHub Actions trust rule at https://console.shorebird.dev and '
+          'remove $shorebirdTokenEnvVar to stop storing a long-lived secret.',
+        );
+      }
+      return;
+    }
+
+    if (gitHubActions != null) {
+      logger.detail(
+        '[env] $actionsIdTokenRequestUrlEnvVar detected, signing in with '
+        'GitHub Actions OIDC',
+      );
+    }
+    _oidcSource = gitHubActions == null
+        ? null
+        : OidcCredentialSource(
+            subjectTokenSupplier: gitHubActions,
+            authBaseUrl: _authServiceUri,
+          );
 
     final login = _readCredentialsFile(warn: true);
     if (login == null) return;

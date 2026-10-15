@@ -65,6 +65,8 @@ class LoginCommand extends ShorebirdCommand {
             ..info(
               '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
             );
+        } else if (auth.isUsingGitHubActionsOidc) {
+          logger.info('You are already authenticated via GitHub Actions OIDC.');
         } else {
           final email = await auth.fetchEmail();
           logger

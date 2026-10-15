@@ -56,6 +56,7 @@ void main() {
 
       when(() => auth.isAuthenticated).thenReturn(false);
       when(() => auth.isUsingApiKey).thenReturn(false);
+      when(() => auth.isUsingGitHubActionsOidc).thenReturn(false);
       when(() => argResults[LoginCommand.deviceFlag]).thenReturn(false);
       when(() => browser.canOpen).thenReturn(true);
       when(() => browser.open(any())).thenAnswer((_) async => true);
@@ -248,6 +249,26 @@ Waiting for your authorization (the code expires in $expiry)...''';
             '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
           ),
         ).called(1);
+        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      });
+    });
+
+    group('when user is authenticated via GitHub Actions OIDC', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.isUsingGitHubActionsOidc).thenReturn(true);
+      });
+
+      test('says so and succeeds', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            'You are already authenticated via GitHub Actions OIDC.',
+          ),
+        ).called(1);
+        verifyNever(() => auth.fetchEmail());
         verifyNever(() => auth.login(prompt: any(named: 'prompt')));
       });
     });

@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -40,7 +41,10 @@ void main() {
     setUp(() {
       auth = MockAuth();
       logger = MockShorebirdLogger();
-      platform = TestNativePlatform(operatingSystem: NativePlatform.macOS);
+      platform = TestNativePlatform(
+        operatingSystem: NativePlatform.macOS,
+        environment: {},
+      );
       shorebirdEnv = MockShorebirdEnv();
       validator = MockValidator();
       shorebirdValidator = runWithOverrides(ShorebirdValidator.new);
@@ -123,6 +127,40 @@ void main() {
           () => logger.info(
             '''If you don't have a Shorebird account, go to ${link(uri: Uri.parse('https://console.shorebird.dev'))} to create one.''',
           ),
+        ]);
+      });
+
+      test('points at GitHub Actions OIDC when running in GitHub Actions '
+          'and the user is not authenticated', () async {
+        when(() => auth.isAuthenticated).thenReturn(false);
+        platform = platform.copyWith(
+          environment: {githubActionsEnvVar: 'true'},
+        );
+        const oidcHint =
+            'To sign in from GitHub Actions without a stored secret, grant '
+            'the job `permissions: id-token: write` and add a GitHub Actions '
+            'trust rule for this workflow at https://console.shorebird.dev.';
+        const apiKeyHint =
+            'Or set SHOREBIRD_TOKEN to a Shorebird API key from '
+            'https://console.shorebird.dev.';
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: true,
+            ),
+          ),
+          throwsA(
+            isA<UserNotAuthorizedException>().having(
+              (e) => e.hint,
+              'hint',
+              '$oidcHint $apiKeyHint',
+            ),
+          ),
+        );
+        verifyInOrder([
+          () => logger.err('You must be logged in to run this command.'),
+          () => logger.info(oidcHint),
+          () => logger.info(apiKeyHint),
         ]);
       });
 
