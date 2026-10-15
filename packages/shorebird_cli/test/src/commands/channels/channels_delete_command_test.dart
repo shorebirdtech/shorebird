@@ -69,7 +69,9 @@ void main() {
       when(() => argResults['app-id']).thenReturn(null);
       when(() => argResults['flavor']).thenReturn(null);
       when(() => argResults['name']).thenReturn(channelName);
-      when(() => argResults['confirm-name']).thenReturn(channelName);
+      when(() => argResults['yes']).thenReturn(true);
+      when(() => argResults['confirm-name']).thenReturn(null);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -134,19 +136,92 @@ void main() {
       });
     });
 
-    group('the --confirm-name gate', () {
-      test('refuses when absent', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
+    group('confirmation', () {
+      setUp(() => when(() => argResults['yes']).thenReturn(false));
+
+      test('requires --yes when not interactive', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verifyNeverDeleted();
+        verify(
+          () => logger.err('--yes required when not running interactively'),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'Re-run with --yes to delete channel "$channelName" from app '
+            '"$appId".',
+          ),
+        ).called(1);
       });
 
-      test('refuses when it does not match', () async {
-        when(() => argResults['confirm-name']).thenReturn('stable');
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
+      test('emits a usage_error envelope under --json', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, jsonMode: true),
+        );
+        expect(exitCode, equals(ExitCode.usage.code));
         verifyNeverDeleted();
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], 'usage_error');
+        expect(
+          error['message'],
+          '--yes required when not running interactively',
+        );
+      });
+
+      group('in a terminal', () {
+        setUp(
+          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
+        );
+
+        test('deletes when confirmed', () async {
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.confirm(
+              'Delete channel "$channelName" from app "$appId"?',
+              hint:
+                  'Re-run with --yes to delete channel "$channelName" from '
+                  'app "$appId".',
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.deleteChannel(
+              appId: appId,
+              channelId: qaChannel.id,
+            ),
+          ).called(1);
+        });
+
+        test('does nothing when declined', () async {
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(false);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verifyNeverDeleted();
+          verify(() => logger.info('Nothing was deleted.')).called(1);
+        });
+      });
+
+      group('with the deprecated --confirm-name', () {
+        test('deletes when it matches', () async {
+          when(() => argResults['confirm-name']).thenReturn(channelName);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.warn(any(that: contains('deprecated'))),
+          ).called(1);
+        });
+
+        test('refuses when it does not match', () async {
+          when(() => argResults['confirm-name']).thenReturn('stable');
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.usage.code));
+          verifyNeverDeleted();
+        });
       });
     });
 
@@ -218,7 +293,6 @@ void main() {
         group(track, () {
           setUp(() {
             when(() => argResults['name']).thenReturn(track);
-            when(() => argResults['confirm-name']).thenReturn(track);
           });
 
           test('refuses before any server call', () async {
