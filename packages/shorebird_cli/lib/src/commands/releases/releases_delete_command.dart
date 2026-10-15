@@ -1,7 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
-import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -13,7 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Permanently delete a release, or one platform of a release.
 /// {@endtemplate}
 class ReleasesDeleteCommand extends ShorebirdCommand
-    with AppScopedCommand, ConfirmNameArgument {
+    with AppScopedCommand, ConfirmDelete {
   /// {@macro releases_delete_command}
   ReleasesDeleteCommand() {
     argParser
@@ -28,13 +28,8 @@ class ReleasesDeleteCommand extends ShorebirdCommand
         help:
             'Delete only this platform from the release. When omitted, the '
             'whole release is deleted.',
-      )
-      ..addOption(
-        confirmNameArgName,
-        help:
-            'The release version again. Must match exactly, which is how the '
-            'delete is confirmed.',
       );
+    addConfirmDeleteOptions();
     addAppScopeOptions();
   }
 
@@ -50,12 +45,13 @@ class ReleasesDeleteCommand extends ShorebirdCommand
       'artifacts and the patch artifacts built for it. The release and its '
       'other platforms remain.\n\n'
       'This cannot be undone.\n\n'
-      'Requires --$confirmNameArgName=<release version>; there is no prompt, '
-      'so this behaves the same in a terminal and in CI. Run '
-      '"shorebird releases list" to see the versions an app has.\n\n'
+      'In a terminal, asks for confirmation. Pass --$yesArgName to skip the '
+      'prompt; it is required when not running interactively (no terminal, '
+      'CI, or --json). Run "shorebird releases list" to see the versions an '
+      'app has.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird releases delete --app-id <id> --release-version 1.0.0+1 '
-        '--confirm-name 1.0.0+1 --json',
+        '--yes --json',
       )}';
 
   @override
@@ -105,11 +101,14 @@ class ReleasesDeleteCommand extends ShorebirdCommand
       );
     }
 
-    final gateErrorCode = checkConfirmName(
-      expected: releaseVersion,
-      resourceDescription: platform == null
-          ? 'release "$releaseVersion" (every platform and every patch)'
-          : 'the ${platform.value} platform of release "$releaseVersion"',
+    final gateErrorCode = confirmDelete(
+      name: releaseVersion,
+      description: platform == null
+          ? 'release $releaseVersion of app "$appId", including every '
+                'platform and every patch'
+          : 'the ${platform.value} platform of release $releaseVersion of app '
+                '"$appId"',
+      style: DeleteConfirmationStyle.yesNo,
     );
     if (gateErrorCode != null) return gateErrorCode;
 

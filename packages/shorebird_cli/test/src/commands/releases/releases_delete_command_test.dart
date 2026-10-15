@@ -93,7 +93,9 @@ void main() {
       when(() => argResults['flavor']).thenReturn(null);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults['platform']).thenReturn(null);
-      when(() => argResults['confirm-name']).thenReturn(releaseVersion);
+      when(() => argResults['yes']).thenReturn(true);
+      when(() => argResults['confirm-name']).thenReturn(null);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -297,46 +299,38 @@ void main() {
       });
     });
 
-    group('the --confirm-name gate', () {
-      test('refuses when absent, naming the exact flag to add', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
+    group('confirmation', () {
+      setUp(() => when(() => argResults['yes']).thenReturn(false));
+
+      test('requires --yes when not interactive', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verifyNeverDeleted();
         verify(
-          () => logger.err(
-            'Deleting release "$releaseVersion" (every platform and every '
-            'patch) requires --confirm-name.',
-          ),
+          () => logger.err('--yes required when not running interactively'),
         ).called(1);
         verify(
-          () => logger.info('Re-run with --confirm-name="$releaseVersion".'),
+          () => logger.info(
+            'Re-run with --yes to delete release $releaseVersion of app '
+            '"$appId", including every platform and every patch.',
+          ),
         ).called(1);
       });
 
-      test('describes only the platform when --platform is set', () async {
+      test('names only the platform when --platform is set', () async {
         when(() => argResults['platform']).thenReturn('android');
-        when(() => argResults['confirm-name']).thenReturn(null);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verifyNeverDeleted();
         verify(
-          () => logger.err(
-            'Deleting the android platform of release "$releaseVersion" '
-            'requires --confirm-name.',
+          () => logger.info(
+            'Re-run with --yes to delete the android platform of release '
+            '$releaseVersion of app "$appId".',
           ),
         ).called(1);
-      });
-
-      test('refuses when it does not match', () async {
-        when(() => argResults['confirm-name']).thenReturn('1.0.0+2');
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
-        verifyNeverDeleted();
       });
 
       test('emits a usage_error envelope under --json', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
         );
@@ -344,7 +338,65 @@ void main() {
         verifyNeverDeleted();
         final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], 'usage_error');
-        expect(error['hint'], 'Re-run with --confirm-name="$releaseVersion".');
+        expect(
+          error['message'],
+          '--yes required when not running interactively',
+        );
+      });
+
+      group('in a terminal', () {
+        setUp(
+          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
+        );
+
+        test('deletes when confirmed', () async {
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.confirm(
+              'Delete release $releaseVersion of app "$appId", including '
+              'every platform and every patch?',
+              hint: any(named: 'hint'),
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.deleteRelease(
+              appId: appId,
+              releaseId: release.id,
+            ),
+          ).called(1);
+        });
+
+        test('does nothing when declined', () async {
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(false);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verifyNeverDeleted();
+          verify(() => logger.info('Nothing was deleted.')).called(1);
+        });
+      });
+
+      group('with the deprecated --confirm-name', () {
+        test('deletes when it matches', () async {
+          when(() => argResults['confirm-name']).thenReturn(releaseVersion);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.warn(any(that: contains('deprecated'))),
+          ).called(1);
+        });
+
+        test('refuses when it does not match', () async {
+          when(() => argResults['confirm-name']).thenReturn('1.0.0+2');
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.usage.code));
+          verifyNeverDeleted();
+        });
       });
     });
 
