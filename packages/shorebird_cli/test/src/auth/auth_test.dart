@@ -109,6 +109,8 @@ void main() {
         body,
         values: {
           httpClientRef.overrideWith(() => httpClient),
+          // The same mock, so tests stub one client for every request.
+          nonRetryingHttpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -889,6 +891,14 @@ void main() {
         ).thenAnswer((_) async => http.Response('Forbidden', 403));
       }
 
+      void answerIdTokenRequests() {
+        when(
+          () => httpClient.get(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(jsonEncode({'value': 'gha.id'}), 200),
+        );
+      }
+
       setUp(() {
         platform = platform.copyWith(environment: oidcEnvironment);
       });
@@ -902,18 +912,46 @@ void main() {
         expect(auth.client, isA<AuthenticatedClient>());
       });
 
-      test('requests an ID token for the auth service the CLI uses', () async {
+      test('sends the exchanged access token', () async {
+        answerIdTokenRequests();
+        answerRefreshWith(tokenResponse(accessToken: 'sb_at_oidc'));
+        answerApiRequests();
+        auth = buildAuth();
+
+        await runWithOverrides(
+          () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+        );
+
+        final exchange = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: captureAny(named: 'body'),
+          ),
+        ).captured;
+        expect(exchange[0], equals(tokenEndpoint));
+        expect(exchange[1], {
+          'grant_type': 'urn:ietf:params:oauth:grant-type:token-exchange',
+          'subject_token_type': 'urn:ietf:params:oauth:token-type:id_token',
+          'subject_token': 'gha.id',
+        });
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.headers['Authorization'], 'Bearer sb_at_oidc');
+      });
+
+      test('exchanges with the auth service the CLI uses', () async {
         when(
           () => shorebirdEnv.authServiceUri,
         ).thenReturn(Uri.parse('https://auth.example.com'));
-        refuseIdTokenRequests();
+        answerIdTokenRequests();
+        answerRefreshWith(tokenResponse());
+        answerApiRequests();
         auth = buildAuth();
 
-        await expectLater(
-          runWithOverrides(
-            () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
-          ),
-          exitsWithCode(ExitCode.software),
+        await runWithOverrides(
+          () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
         );
 
         final idTokenUrl =
@@ -929,12 +967,81 @@ void main() {
           'https://auth.example.com',
         );
         verify(
-          () => logger.err(
-            'GitHub Actions refused to issue an OIDC token (403).',
+          () => httpClient.post(
+            Uri.parse('https://auth.example.com/token'),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
           ),
         ).called(1);
-        verifyNever(() => httpClient.send(any()));
       });
+
+      test(
+        'reports a refused exchange when there is no stored login',
+        () async {
+          answerIdTokenRequests();
+          answerRefreshWith(
+            oauthErrorResponse(
+              'invalid_grant',
+              description: 'no trust rule matches',
+            ),
+          );
+          auth = buildAuth();
+
+          await expectLater(
+            runWithOverrides(
+              () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(
+            () => logger.err(
+              'The Shorebird auth service refused to sign in with GitHub '
+              'Actions OIDC (invalid_grant: no trust rule matches).',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(any(that: contains('trust rule'))),
+          ).called(1);
+          verifyNever(() => httpClient.send(any()));
+        },
+      );
+
+      test(
+        'reports a refused ID token request when there is no stored login',
+        () async {
+          when(
+            () => shorebirdEnv.authServiceUri,
+          ).thenReturn(Uri.parse('https://auth.example.com'));
+          refuseIdTokenRequests();
+          auth = buildAuth();
+
+          await expectLater(
+            runWithOverrides(
+              () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          final idTokenUrl =
+              verify(
+                    () => httpClient.get(
+                      captureAny(),
+                      headers: any(named: 'headers'),
+                    ),
+                  ).captured.single
+                  as Uri;
+          expect(
+            idTokenUrl.queryParameters['audience'],
+            'https://auth.example.com',
+          );
+          verify(
+            () => logger.err(
+              'GitHub Actions refused to issue an OIDC token (403).',
+            ),
+          ).called(1);
+          verifyNever(() => httpClient.send(any()));
+        },
+      );
 
       group('with a stored login', () {
         setUp(() {
@@ -945,6 +1052,30 @@ void main() {
         test('takes priority over it', () {
           expect(auth.isUsingGitHubActionsOidc, isTrue);
           expect(auth.email, equals(email));
+        });
+
+        test('falls back to it when the exchange is refused', () async {
+          answerIdTokenRequests();
+          answerRefreshWith(
+            oauthErrorResponse(
+              'invalid_grant',
+              description: 'no trust rule matches',
+            ),
+          );
+          answerApiRequests();
+
+          await runWithOverrides(
+            () => auth.client.get(Uri.parse('https://api.shorebird.dev')),
+          );
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(
+            request.headers['Authorization'],
+            'Bearer $shorebirdAccessToken',
+          );
+          verifyNever(() => logger.err(any()));
         });
 
         test('falls back to it when signing in with OIDC fails', () async {

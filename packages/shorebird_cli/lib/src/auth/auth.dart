@@ -597,6 +597,9 @@ class Auth {
         : OidcCredentialSource(
             subjectTokenSupplier: gitHubActions,
             authBaseUrl: _authServiceUri,
+            // The source retries with a new ID token itself; a retrying
+            // client would send a used one again.
+            exchangeClient: nonRetryingHttpClient,
           );
 
     final login = _readCredentialsFile(warn: true);

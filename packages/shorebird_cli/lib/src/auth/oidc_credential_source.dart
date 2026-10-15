@@ -68,12 +68,12 @@ class OidcCredentialSource implements CredentialSource {
   /// Creates an [OidcCredentialSource] that exchanges ID tokens from
   /// [subjectTokenSupplier] at the auth service at [authBaseUrl].
   ///
-  /// Each exchange attempt is sent through a new client from
-  /// [exchangeClient], closed afterwards. It must not retry requests itself.
+  /// Exchanges are sent through [exchangeClient], which must not retry
+  /// requests itself: a retry would present an ID token again.
   OidcCredentialSource({
     required SubjectTokenSupplier subjectTokenSupplier,
     required Uri authBaseUrl,
-    http.Client Function() exchangeClient = _nonRetryingClient,
+    required http.Client exchangeClient,
     Future<void> Function(Duration) sleep = _delay,
   }) : _supplier = subjectTokenSupplier,
        _authBaseUrl = authBaseUrl,
@@ -82,7 +82,7 @@ class OidcCredentialSource implements CredentialSource {
 
   final SubjectTokenSupplier _supplier;
   final Uri _authBaseUrl;
-  final http.Client Function() _exchangeClient;
+  final http.Client _exchangeClient;
   final Future<void> Function(Duration) _sleep;
 
   _AccessToken? _accessToken;
@@ -143,10 +143,9 @@ class OidcCredentialSource implements CredentialSource {
   Future<_AccessToken> _exchangeIdToken(String idToken) async {
     final provider = _supplier.name;
     final requestedAt = clock.now();
-    final client = _exchangeClient();
     final http.Response response;
     try {
-      response = await client.post(
+      response = await _exchangeClient.post(
         shorebird_oauth.tokenEndpointFor(_authBaseUrl),
         body: {
           'grant_type': tokenExchangeGrantType,
@@ -163,8 +162,6 @@ class OidcCredentialSource implements CredentialSource {
         throw _TransientExchangeFailure(exception);
       }
       throw exception;
-    } finally {
-      client.close();
     }
 
     if (isRetryableResponse(response)) {
@@ -214,11 +211,6 @@ class OidcCredentialSource implements CredentialSource {
     );
   }
 }
-
-/// A client like the shared one, minus its retries: an exchange must never
-/// be sent twice.
-http.Client _nonRetryingClient() =>
-    TracingClient(httpClient: LoggingClient(httpClient: http.Client()));
 
 Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 

@@ -40,7 +40,6 @@ void main() {
 
   late _FakeSupplier supplier;
   late http.Client exchangeClient;
-  late int exchangeClientsCreated;
   late List<Duration> delays;
   late ShorebirdLogger logger;
   late OidcCredentialSource source;
@@ -113,17 +112,13 @@ void main() {
   setUp(() {
     supplier = _FakeSupplier();
     exchangeClient = MockHttpClient();
-    exchangeClientsCreated = 0;
     delays = [];
     logger = MockShorebirdLogger();
     now = DateTime(2026, 10, 15, 12);
     source = OidcCredentialSource(
       subjectTokenSupplier: supplier,
       authBaseUrl: authBaseUrl,
-      exchangeClient: () {
-        exchangeClientsCreated++;
-        return exchangeClient;
-      },
+      exchangeClient: exchangeClient,
       sleep: (duration) async => delays.add(duration),
     );
     answerExchangesWith([]);
@@ -150,13 +145,6 @@ void main() {
       'subject_token_type': 'urn:ietf:params:oauth:token-type:id_token',
       'subject_token': 'id.token1',
     });
-  });
-
-  test('sends each exchange through a new client and closes it', () async {
-    await authorization();
-
-    expect(exchangeClientsCreated, equals(1));
-    verify(() => exchangeClient.close()).called(1);
   });
 
   test('answers with the access token as the bearer', () async {
