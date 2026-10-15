@@ -398,15 +398,16 @@ ${currentRunLogFile.absolute.path}
 ''');
     }
 
-    _pruneUnusedCaches();
+    if (reservesStdout) {
+      await runWithStdoutOnStderr(() async => _pruneUnusedCaches());
+    } else {
+      _pruneUnusedCaches();
+    }
 
     if (!isJsonMode &&
         topLevelResults.command?.name != UpgradeCommand.commandName) {
       if (reservesStdout) {
-        await io.IOOverrides.runZoned(
-          _checkForUpdates,
-          stdout: () => io.stderr,
-        );
+        await runWithStdoutOnStderr(_checkForUpdates);
       } else {
         await _checkForUpdates();
       }

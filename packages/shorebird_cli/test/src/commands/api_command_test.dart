@@ -84,6 +84,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
       logger = MockShorebirdLogger();
+      when(() => logger.level).thenReturn(Level.info);
       fakeStdout = _FakeStdout();
       fakeStderr = _FakeStdout();
       stdinBytes = [];
@@ -197,7 +198,7 @@ void main() {
             checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
           ),
         ).thenAnswer((_) async {
-          stdout.writeln('Run shorebird login to sign in.');
+          read(loggerRef).info('Run shorebird login to sign in.');
           throw UserNotAuthorizedException();
         });
 
@@ -207,11 +208,28 @@ void main() {
       });
     });
 
+    group('with --verbose', () {
+      setUp(() {
+        when(() => logger.level).thenReturn(Level.verbose);
+        when(() => codePushClient.send(any())).thenAnswer((_) async {
+          // As LoggingClient does for each request.
+          read(loggerRef).detail('[HTTP] GET /apps');
+          return http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
+        });
+      });
+
+      test('logs requests to stderr, not stdout', () async {
+        expect(await runApi(['/apps']), equals(ExitCode.success.code));
+        expect(fakeStdout.text, equals('{}'));
+        expect(fakeStderr.text, contains('[HTTP] GET /apps'));
+      });
+    });
+
     group('when a token refresh fails', () {
       setUp(() {
         when(() => codePushClient.send(any())).thenAnswer((_) async {
           // As AuthenticatedClient does when the refresh is rejected.
-          stdout.writeln('Run shorebird login to log in again.');
+          read(loggerRef).info('Run shorebird login to log in again.');
           throw ProcessExit(ExitCode.software.code);
         });
       });
@@ -653,6 +671,9 @@ class _FakeStdout extends Fake implements Stdout {
 
   @override
   bool hasTerminal = false;
+
+  @override
+  bool get supportsAnsiEscapes => false;
 
   String get text => utf8.decode(_bytes.toBytes());
 

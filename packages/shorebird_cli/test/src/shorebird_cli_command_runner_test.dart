@@ -484,19 +484,29 @@ Engine • revision $shorebirdEngineRevision'''),
 
       test('prints the update notice to stderr', () async {
         when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
-        final infoWentToStderr = <bool>[];
-        when(() => logger.info(any())).thenAnswer((_) {
-          infoWentToStderr.add(identical(stdout, stderr));
-        });
         commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 0));
+        final stdoutLines = <String>[];
+        final stderrLines = <String>[];
+        final realStderr = stderr;
 
-        await runWithOverrides(() => commandRunner.run(['reserves-stdout']));
+        await helpers.captureStdout(
+          () => IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => commandRunner.run(['reserves-stdout']),
+            ),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrLines,
+            ),
+          ),
+          captured: stdoutLines,
+        );
 
-        verify(
-          () => logger.info('A new version of shorebird is available!'),
-        ).called(1);
-        expect(infoWentToStderr, isNotEmpty);
-        expect(infoWentToStderr, everyElement(isTrue));
+        expect(stdoutLines, isEmpty);
+        expect(
+          stderrLines,
+          contains('A new version of shorebird is available!'),
+        );
       });
     });
 

@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/jq.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -132,7 +133,7 @@ Examples:
     // command runs, such as the "shorebird login" hints when you are not
     // logged in or a token refresh fails, goes to stderr.
     _output = stdout;
-    return IOOverrides.runZoned(_run, stdout: () => stderr);
+    return runWithStdoutOnStderr(_run);
   }
 
   /// Where the response is printed: the real stdout.
