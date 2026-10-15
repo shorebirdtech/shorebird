@@ -633,6 +633,99 @@ void main() {
         });
       });
 
+      group('deleteRelease', () {
+        const releaseId = 42;
+
+        test('exits with code 70 when deleting the release fails', () async {
+          final error = CodePushForbiddenException(message: 'Forbidden');
+          when(
+            () => codePushClient.deleteRelease(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteRelease(
+                appId: appId,
+                releaseId: releaseId,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('$error')).called(1);
+        });
+
+        test('completes when the release is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteRelease(
+              appId: appId,
+              releaseId: releaseId,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteRelease(
+              appId: appId,
+              releaseId: releaseId,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteReleaseArtifacts', () {
+        const releaseId = 42;
+
+        test('exits with code 70 when deleting artifacts fails', () async {
+          final error = CodePushForbiddenException(message: 'Forbidden');
+          when(
+            () => codePushClient.deleteReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteReleaseArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                platform: ReleasePlatform.ios,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('$error')).called(1);
+        });
+
+        test('completes when the artifacts are successfully deleted', () async {
+          when(
+            () => codePushClient.deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            ),
+          );
+
+          verify(
+            () => logger.progress('Deleting ios release artifacts'),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('transferApp', () {
         test('exits with code 70 when transferring app fails', () async {
           const error = 'something went wrong';
