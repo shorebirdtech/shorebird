@@ -250,6 +250,32 @@ This app may not exist or you may not have permission to view it.''');
     );
   }
 
+  /// Deletes the release with the provided [releaseId], along with every
+  /// platform's artifacts and every patch belonging to it.
+  Future<void> deleteRelease({required String appId, required int releaseId}) {
+    return _withProgress(
+      'Deleting release',
+      () => codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+    );
+  }
+
+  /// Deletes the [platform] artifacts of the release with the provided
+  /// [releaseId], leaving the release and its other platforms in place.
+  Future<void> deleteReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+  }) {
+    return _withProgress(
+      'Deleting ${platform.value} release artifacts',
+      () => codePushClient.deleteReleaseArtifacts(
+        appId: appId,
+        releaseId: releaseId,
+        platform: platform,
+      ),
+    );
+  }
+
   /// Moves the app with the provided [appId] into [organizationId].
   Future<void> transferApp({
     required int organizationId,

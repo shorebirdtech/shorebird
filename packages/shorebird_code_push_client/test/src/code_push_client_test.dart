@@ -1998,6 +1998,193 @@ void main() {
       });
     });
 
+    group('deleteRelease', () {
+      const releaseId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteRelease(appId: appId, releaseId: releaseId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws CodePushForbiddenException on 403', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          throwsA(
+            isA<CodePushForbiddenException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('throws CodePushNotFoundException on 404', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.notFound,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          throwsA(isA<CodePushNotFoundException>()),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          completes,
+        );
+      });
+    });
+
+    group('deleteReleaseArtifacts', () {
+      const releaseId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(
+          request.url,
+          equals(v1('apps/$appId/releases/$releaseId/artifacts?platform=ios')),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws CodePushForbiddenException on 403', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
+          throwsA(
+            isA<CodePushForbiddenException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('throws CodePushNotFoundException on 404', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.notFound,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
+          throwsA(isA<CodePushNotFoundException>()),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
+          completes,
+        );
+      });
+    });
+
     group('getApp', () {
       final app = AppMetadata(
         appId: 'app-id',

@@ -540,6 +540,41 @@ class CodePushClient {
     }
   }
 
+  /// Deletes the release with the provided [releaseId], along with every
+  /// platform's artifacts and every patch belonging to it.
+  Future<void> deleteRelease({
+    required String appId,
+    required int releaseId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Deletes the [platform] artifacts of the release with the provided
+  /// [releaseId], removing [platform] from the release.
+  ///
+  /// The release and its other platforms are left in place.
+  Future<void> deleteReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/artifacts',
+      ).replace(queryParameters: {'platform': platform.value}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Delete the app with the provided [appId].
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(Uri.parse('$_v1/apps/$appId'));
