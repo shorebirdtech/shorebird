@@ -83,7 +83,9 @@ void main() {
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['app-id']).thenReturn(null);
       when(() => argResults['flavor']).thenReturn(null);
-      when(() => argResults['confirm-name']).thenReturn(displayName);
+      when(() => argResults['yes']).thenReturn(true);
+      when(() => argResults['confirm-name']).thenReturn(null);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -115,7 +117,7 @@ void main() {
       expect(command.description, startsWith('Permanently deletes an app.'));
     });
 
-    test('deletes the app when the name matches', () async {
+    test('deletes the app with --yes', () async {
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
       verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
@@ -124,26 +126,19 @@ void main() {
       ).called(1);
     });
 
-    group('the --confirm-name gate', () {
-      test('refuses when --confirm-name is absent', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
+    group('confirmation', () {
+      setUp(() => when(() => argResults['yes']).thenReturn(false));
+
+      test('requires --yes when not interactive', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verifyNeverDeleted();
         verify(
-          () => logger.info('Re-run with --confirm-name="$displayName".'),
+          () => logger.err('--yes required when not running interactively'),
         ).called(1);
       });
 
-      test('refuses when --confirm-name does not match', () async {
-        when(() => argResults['confirm-name']).thenReturn('Wrong Name');
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
-        verifyNeverDeleted();
-      });
-
       test('emits a usage_error envelope under --json', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
         );
@@ -151,7 +146,77 @@ void main() {
         verifyNeverDeleted();
         final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], 'usage_error');
+        expect(
+          error['message'],
+          '--yes required when not running interactively',
+        );
         expect(error['hint'], contains(displayName));
+      });
+
+      group('when stdin is a terminal but stdout is not', () {
+        setUp(
+          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
+        );
+
+        test('requires --yes without prompting', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(command.run),
+            captured: [],
+            hasTerminal: false,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          verifyNeverDeleted();
+          verify(
+            () => logger.err('--yes required when not running interactively'),
+          ).called(1);
+          verifyNever(() => logger.info(any(that: contains('permanently'))));
+          verifyNever(() => logger.prompt(any(), hint: any(named: 'hint')));
+          verifyNever(() => logger.confirm(any(), hint: any(named: 'hint')));
+        });
+      });
+
+      group('in a terminal', () {
+        Future<int> runInTerminal() => captureStdout(
+          () => runWithOverrides(command.run),
+          captured: [],
+          hasTerminal: true,
+        );
+
+        setUp(
+          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
+        );
+
+        test('deletes when the typed name matches', () async {
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn(displayName);
+          final result = await runInTerminal();
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.prompt(
+              'Type $displayName to confirm deletion:',
+              hint: any(named: 'hint'),
+            ),
+          ).called(1);
+          verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
+        });
+
+        test('refuses when the typed name does not match', () async {
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn('Wrong Name');
+          final result = await runInTerminal();
+          expect(result, equals(ExitCode.usage.code));
+          verifyNeverDeleted();
+        });
+      });
+
+      test('still accepts the deprecated --confirm-name', () async {
+        when(() => argResults['confirm-name']).thenReturn(displayName);
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        verify(() => logger.warn(any(that: contains('deprecated')))).called(1);
+        verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
       });
     });
 
