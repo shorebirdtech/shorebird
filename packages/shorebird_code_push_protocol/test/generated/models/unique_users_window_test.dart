@@ -7,10 +7,7 @@ void main() {
     test('round-trips via maybeFromJson/toJson', () {
       final instance = UniqueUsersWindow(
         uniqueUsers: 0,
-        range: MetricsRange(
-          start: DateTime.utc(2024),
-          end: DateTime.utc(2024),
-        ),
+        range: MetricsRange(start: DateTime.utc(2024), end: DateTime.utc(2024)),
       );
       final parsed = UniqueUsersWindow.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));

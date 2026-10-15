@@ -5,9 +5,9 @@ import 'package:test/test.dart';
 void main() {
   group('OrganizationUser', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = OrganizationUser(
-        user: const PublicUser(id: 0, email: 'user@example.com'),
-        role: Role.values.first,
+      const instance = OrganizationUser(
+        user: PublicUser(id: 0, email: 'user@example.com'),
+        role: Role.owner,
       );
       final parsed = OrganizationUser.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));

@@ -38,7 +38,7 @@ class UpdatePatchRequest {
   /// Converts a [UpdatePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'notes': notes,
+      'notes': ?notes,
     };
   }
 

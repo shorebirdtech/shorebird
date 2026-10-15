@@ -91,11 +91,11 @@ class LatestRelease {
       'id': id,
       'version': version,
       'flutter_revision': flutterRevision,
-      'flutter_version': flutterVersion,
+      'flutter_version': ?flutterVersion,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'status': status.toJson(),
-      'notes': notes,
+      'notes': ?notes,
       'analysis': analysis.toJson(),
     };
   }

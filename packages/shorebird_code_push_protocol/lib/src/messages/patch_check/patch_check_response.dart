@@ -54,8 +54,8 @@ class PatchCheckResponse {
   Map<String, dynamic> toJson() {
     return {
       'patch_available': patchAvailable,
-      'patch': patch?.toJson(),
-      'rolled_back_patch_numbers': rolledBackPatchNumbers,
+      'patch': ?patch?.toJson(),
+      'rolled_back_patch_numbers': ?rolledBackPatchNumbers,
     };
   }
 

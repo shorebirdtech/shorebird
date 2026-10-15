@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/src/models/artifact_upload_method.dart';
+import 'package:shorebird_code_push_protocol/src/models/create_patch_artifact_response_upload_method.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template create_patch_artifact_response}
@@ -33,7 +33,7 @@ class CreatePatchArtifactResponse {
         hash: json['hash'] as String,
         size: json['size'] as int,
         url: json['url'] as String,
-        uploadMethod: ArtifactUploadMethod.maybeFromJson(
+        uploadMethod: CreatePatchArtifactResponseUploadMethod.maybeFromJson(
           json['upload_method'] as String?,
         ),
       ),
@@ -69,15 +69,13 @@ class CreatePatchArtifactResponse {
   /// The size of the artifact in bytes.
   final int size;
 
-  /// The upload URL for the artifact (a signed URL for [ArtifactUploadMethod
-  /// .multipart], or a resumable session URI for [ArtifactUploadMethod
-  /// .resumable]).
+  /// The upload URL for the artifact.
   final String url;
 
-  /// How the client should upload the artifact bytes to [url]. Null on
-  /// responses from older servers, which always implied
-  /// [ArtifactUploadMethod.multipart].
-  final ArtifactUploadMethod? uploadMethod;
+  /// How to upload the artifact bytes to `url`: a single multipart POST
+  /// (legacy), or a PUT (chunked, resumable) to a resumable session URI.
+  /// Absent on responses from older servers, which implied multipart.
+  final CreatePatchArtifactResponseUploadMethod? uploadMethod;
 
   /// Converts a [CreatePatchArtifactResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -89,7 +87,7 @@ class CreatePatchArtifactResponse {
       'hash': hash,
       'size': size,
       'url': url,
-      'upload_method': uploadMethod?.toJson(),
+      'upload_method': ?uploadMethod?.toJson(),
     };
   }
 

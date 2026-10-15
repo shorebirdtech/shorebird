@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('Role', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = Role.values.first;
+      const instance = Role.owner;
       final parsed = Role.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));

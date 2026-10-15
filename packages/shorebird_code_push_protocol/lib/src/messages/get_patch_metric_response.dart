@@ -80,7 +80,7 @@ class GetPatchMetricResponse {
       'as_of': asOf.toIso8601String(),
       'granularity': granularity,
       'current': current.toJson(),
-      'previous': previous?.toJson(),
+      'previous': ?previous?.toJson(),
     };
   }
 

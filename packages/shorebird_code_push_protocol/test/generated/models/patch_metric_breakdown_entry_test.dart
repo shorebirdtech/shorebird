@@ -5,14 +5,14 @@ import 'package:test/test.dart';
 void main() {
   group('PatchMetricBreakdownEntry', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = PatchMetricBreakdownEntry(
+      const instance = PatchMetricBreakdownEntry(
         groupBy: 'example',
         groupValue: 'example',
         count: 0,
       );
       final parsed = PatchMetricBreakdownEntry.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

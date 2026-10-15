@@ -5,11 +5,11 @@ import 'package:test/test.dart';
 void main() {
   group('CreatePatchArtifactResponse', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = CreatePatchArtifactResponse(
+      const instance = CreatePatchArtifactResponse(
         id: 0,
         patchId: 0,
         arch: 'example',
-        platform: ReleasePlatform.values.first,
+        platform: ReleasePlatform.android,
         hash: 'example',
         size: 0,
         url: 'example',
