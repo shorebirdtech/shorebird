@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ValidationIssue, () {
     test('has an error factory constructor', () {
       final issue = ValidationIssue.error(message: 'error message');

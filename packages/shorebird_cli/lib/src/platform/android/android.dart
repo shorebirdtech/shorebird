@@ -59,6 +59,29 @@ extension AndroidArch on Arch {
     }
     return Arch.values;
   }
+
+  /// Parses `--target-platform` values (e.g. `android-arm64`) into the
+  /// matching [availableAndroidArchs].
+  ///
+  /// Throws an [Exception] naming the available platforms if any value is
+  /// unknown.
+  static Set<Arch> fromTargetPlatformArgs(Iterable<String> platforms) {
+    return platforms.map((platform) {
+      final arch = availableAndroidArchs.firstWhereOrNull(
+        (arch) => arch.targetPlatformCliArg == platform,
+      );
+      if (arch == null) {
+        final availablePlatforms = availableAndroidArchs
+            .map((a) => a.targetPlatformCliArg)
+            .join(', ');
+        throw Exception(
+          'Unknown target platform: $platform. '
+          'Available platforms: $availablePlatforms',
+        );
+      }
+      return arch;
+    }).toSet();
+  }
 }
 
 /// Extensions for working with Android target platforms.

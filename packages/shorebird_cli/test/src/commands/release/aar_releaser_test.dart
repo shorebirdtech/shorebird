@@ -26,10 +26,12 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AarReleaser, () {
     const packageName = 'com.example.my_flutter_module';
     const buildNumber = '1.0';
@@ -121,6 +123,24 @@ void main() {
       });
     });
 
+    group('architectures', () {
+      test('throws exception when unknown platform is provided', () {
+        when(
+          () => argResults['target-platform'],
+        ).thenReturn(['android-arm', 'unknown-platform']);
+        expect(
+          () => runWithOverrides(() => aarReleaser.architectures),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('Unknown target platform: unknown-platform'),
+            ),
+          ),
+        );
+      });
+    });
+
     group('minimumFlutterVersion', () {
       test('is null', () {
         // Shorebird has always had aar support, so we don't need to
@@ -132,6 +152,13 @@ void main() {
     group('artifactDisplayName', () {
       test('has expected value', () {
         expect(aarReleaser.artifactDisplayName, 'Android archive');
+      });
+    });
+
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(aarReleaser.supplementPlatformSubdir, equals('android'));
+        expect(aarReleaser.supplementArtifactArch, equals('aar_supplement'));
       });
     });
 
@@ -150,13 +177,6 @@ void main() {
               ),
             ),
           ).thenAnswer((_) async {});
-        });
-
-        test('returns normally', () async {
-          await expectLater(
-            () => runWithOverrides(aarReleaser.assertPreconditions),
-            returnsNormally,
-          );
         });
 
         group('when androidPackageName is null', () {
@@ -240,45 +260,6 @@ void main() {
             () => runWithOverrides(aarReleaser.assertArgsAreValid),
             returnsNormally,
           );
-        });
-      });
-
-      group('when --obfuscate is passed', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
-          when(() => argResults['obfuscate']).thenReturn(true);
-          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        });
-
-        group('when Flutter version supports obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 2));
-          });
-
-          test('returns normally', () async {
-            await expectLater(
-              runWithOverrides(aarReleaser.assertArgsAreValid),
-              completes,
-            );
-          });
-        });
-
-        group('when Flutter version does not support obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 27, 4));
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(aarReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.unavailable),
-            );
-          });
         });
       });
 
@@ -423,58 +404,6 @@ void main() {
           );
         });
 
-        group('when a public-key-cmd is provided', () {
-          const base64PublicKey = 'base64PublicKeyFromCmd';
-
-          setUp(() {
-            when(
-              () => argResults[CommonArguments.publicKeyCmd.name],
-            ).thenReturn('get-key-cmd');
-            when(
-              () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
-            ).thenReturn(true);
-
-            when(
-              () => artifactBuilder.buildAar(
-                buildNumber: any(named: 'buildNumber'),
-                targetPlatforms: any(named: 'targetPlatforms'),
-                args: any(named: 'args'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
-              ),
-            ).thenAnswer((_) async => File(''));
-
-            when(
-              () => codeSigner.runPublicKeyCmd(any()),
-            ).thenAnswer((_) async => 'pem-public-key');
-            when(
-              () => codeSigner.base64PublicKeyFromPem(any()),
-            ).thenReturn(base64PublicKey);
-          });
-
-          test(
-            'runs public key cmd and forwards encoded key to buildAar',
-            () async {
-              await runWithOverrides(() => aarReleaser.buildReleaseArtifacts());
-
-              verify(
-                () => codeSigner.runPublicKeyCmd('get-key-cmd'),
-              ).called(1);
-              verify(
-                () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
-              ).called(1);
-              verify(
-                () => artifactBuilder.buildAar(
-                  buildNumber: buildNumber,
-                  targetPlatforms: any(named: 'targetPlatforms'),
-                  args: any(named: 'args'),
-                  base64PublicKey: base64PublicKey,
-                ),
-              ).called(1);
-            },
-          );
-        });
-
         group('when --obfuscate is passed', () {
           setUp(() {
             when(() => argResults['obfuscate']).thenReturn(true);
@@ -540,152 +469,6 @@ void main() {
             verify(
               () => logger.detail(
                 any(that: startsWith('Obfuscation map saved to')),
-              ),
-            ).called(1);
-          });
-
-          group('when obfuscation map is not generated', () {
-            setUp(() {
-              // Override to NOT create the map file.
-              when(
-                () => artifactBuilder.buildAar(
-                  buildNumber: any(named: 'buildNumber'),
-                  targetPlatforms: any(named: 'targetPlatforms'),
-                  args: any(named: 'args'),
-                ),
-              ).thenAnswer((_) async {});
-            });
-
-            test('logs error and exits', () async {
-              await expectLater(
-                () => runWithOverrides(aarReleaser.buildReleaseArtifacts),
-                exitsWithCode(ExitCode.software),
-              );
-
-              verify(
-                () => logger.err(
-                  any(
-                    that: contains(
-                      'Obfuscation was enabled but the obfuscation map was not',
-                    ),
-                  ),
-                ),
-              ).called(1);
-            });
-          });
-        });
-      });
-    });
-
-    group('assembleSupplementDirectory', () {
-      late Directory supplementDir;
-
-      setUp(() {
-        // Create the supplement directory as it would exist on disk.
-        supplementDir = Directory(
-          p.join(projectRoot.path, 'build', 'android', 'shorebird'),
-        )..createSync(recursive: true);
-
-        // Stub getReleaseSupplementDirectory to use the real directory.
-        when(
-          () => artifactManager.getReleaseSupplementDirectory(
-            platformSubdir: any(named: 'platformSubdir'),
-            create: any(named: 'create'),
-          ),
-        ).thenAnswer((invocation) {
-          final create =
-              invocation.namedArguments[const Symbol('create')] as bool;
-          if (!supplementDir.existsSync() && create) {
-            supplementDir.createSync(recursive: true);
-          }
-          return supplementDir.existsSync() ? supplementDir : null;
-        });
-      });
-
-      group('when obfuscation is enabled and map exists', () {
-        setUp(() {
-          when(() => argResults['obfuscate']).thenReturn(true);
-          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-
-          // Create the obfuscation map at the expected build output location.
-          File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'shorebird',
-                'obfuscation_map.json',
-              ),
-            )
-            ..createSync(recursive: true)
-            ..writeAsStringSync('{"key": "value"}');
-        });
-
-        test('copies map into supplement directory and returns it', () {
-          final result = runWithOverrides(
-            () => aarReleaser.assembleSupplementDirectory(),
-          );
-
-          expect(result, isNotNull);
-          final mapInSupplement = File(
-            p.join(supplementDir.path, 'obfuscation_map.json'),
-          );
-          expect(mapInSupplement.existsSync(), isTrue);
-          expect(mapInSupplement.readAsStringSync(), '{"key": "value"}');
-        });
-      });
-
-      group('when obfuscation is disabled', () {
-        setUp(() {
-          when(() => argResults['obfuscate']).thenReturn(false);
-        });
-
-        group('and no stale map exists', () {
-          test('returns null', () {
-            // Remove the supplement dir so it's empty/missing.
-            if (supplementDir.existsSync()) {
-              supplementDir.deleteSync(recursive: true);
-            }
-            when(
-              () => artifactManager.getReleaseSupplementDirectory(
-                platformSubdir: any(named: 'platformSubdir'),
-                create: any(named: 'create'),
-              ),
-            ).thenReturn(null);
-
-            final result = runWithOverrides(
-              () => aarReleaser.assembleSupplementDirectory(),
-            );
-
-            expect(result, isNull);
-          });
-        });
-
-        group('and a stale obfuscation map exists', () {
-          setUp(() {
-            // Simulate a leftover obfuscation_map.json from a previous
-            // obfuscated build.
-            File(
-                p.join(supplementDir.path, 'obfuscation_map.json'),
-              )
-              ..createSync(recursive: true)
-              ..writeAsStringSync('{"stale": true}');
-          });
-
-          test('removes stale map, logs detail, and returns null', () {
-            final result = runWithOverrides(
-              () => aarReleaser.assembleSupplementDirectory(),
-            );
-
-            expect(result, isNull);
-            expect(
-              File(
-                p.join(supplementDir.path, 'obfuscation_map.json'),
-              ).existsSync(),
-              isFalse,
-            );
-            verify(
-              () => logger.detail(
-                any(that: contains('Removing stale obfuscation map')),
               ),
             ).called(1);
           });
@@ -776,7 +559,7 @@ void main() {
                 ),
               ),
             ),
-            extractedAarDir: 'path',
+            extractedAarDir: Directory('path').path,
             architectures: Arch.values,
           ),
         ).called(1);

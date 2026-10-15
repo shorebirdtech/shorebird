@@ -15,9 +15,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('ShorebirdProcess', () {
     const flutterStorageBaseUrlEnv = {
       'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev',
@@ -492,7 +494,6 @@ void main() {
               any(),
               any(),
               environment: any(named: 'environment'),
-              mode: ProcessStartMode.normal,
             ),
           ).thenAnswer((_) async => streamProcess);
           when(
@@ -516,7 +517,6 @@ void main() {
               'git',
               ['pull'],
               environment: {},
-              mode: ProcessStartMode.normal,
             ),
           ).called(1);
           verifyNever(

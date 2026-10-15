@@ -15,6 +15,7 @@ import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('currentRunLogFile', () {
     late ShorebirdEnv shorebirdEnv;
     late Directory logsDirectory;

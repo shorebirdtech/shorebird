@@ -1,35 +1,27 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template apps_rename_command}
 /// `shorebird apps rename`
 /// Change an app's display name.
 /// {@endtemplate}
-class AppsRenameCommand extends ShorebirdCommand {
+class AppsRenameCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro apps_rename_command}
   AppsRenameCommand() {
-    argParser
-      ..addOption(
-        'name',
-        help:
-            'The new display name for the app (e.g. "Acme Mobile"), up to '
-            '${CommonArguments.appDisplayNameMaxLength} characters.',
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      'name',
+      help:
+          'The new display name for the app (e.g. "Acme Mobile"), up to '
+          '${CommonArguments.appDisplayNameMaxLength} characters.',
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override
@@ -50,58 +42,35 @@ class AppsRenameCommand extends ShorebirdCommand {
     if (errorCode != null) return errorCode;
 
     final displayName = results['name'] as String;
-    if (displayName.trim().isEmpty ||
-        displayName.length > CommonArguments.appDisplayNameMaxLength) {
-      const message =
-          'App display name must be between 1 and '
-          '${CommonArguments.appDisplayNameMaxLength} characters.';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
-    }
+    final nameError = CommonArguments.nameError(
+      label: 'App display name',
+      value: displayName,
+      maxLength: CommonArguments.appDisplayNameMaxLength,
+    );
+    if (nameError != null) return reportError(message: nameError);
 
-    final AppMetadata app;
-    try {
-      app = await codePushClientWrapper.getApp(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final AppMetadata app;
+    final fetchError = await guardApiCall(
+      () async => app = await codePushClientWrapper.getApp(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     if (app.displayName == displayName) {
       final message = 'App "$appId" is already named "$displayName".';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
+      return reportError(message: message);
     }
 
-    try {
-      await codePushClientWrapper.updateApp(
+    final renameError = await guardApiCall(
+      () => codePushClientWrapper.updateApp(
         appId: appId,
         displayName: displayName,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to rename app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to rename app "$appId".',
+    );
+    if (renameError != null) return renameError;
 
     if (isJsonMode) {
       emitJsonSuccess({

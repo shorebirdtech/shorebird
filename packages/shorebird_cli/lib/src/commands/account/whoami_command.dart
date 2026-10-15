@@ -4,7 +4,6 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template whoami_command}
@@ -42,24 +41,20 @@ class WhoamiCommand extends ShorebirdCommand {
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+      return reportPreconditionFailure(error);
     }
 
-    final PrivateUser user;
-    final String? planLevel;
-    try {
-      user = await codePushClientWrapper.getCurrentUser();
-      planLevel = await codePushClientWrapper.getPlanLevel();
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch account.',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final PrivateUser user;
+    late final String? planLevel;
+    final fetchError = await guardApiCall(
+      () async {
+        user = await codePushClientWrapper.getCurrentUser();
+        planLevel = await codePushClientWrapper.getPlanLevel();
+      },
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch account.',
+    );
+    if (fetchError != null) return fetchError;
 
     final isPaying = user.hasActiveSubscription ?? false;
     final subscription = isPaying ? 'active' : 'none';

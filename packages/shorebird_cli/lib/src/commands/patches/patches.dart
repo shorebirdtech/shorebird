@@ -1,3 +1,4 @@
+export 'patch_rollback_state_command.dart';
 export 'patches_command.dart';
 export 'patches_info_command.dart';
 export 'patches_list_command.dart';

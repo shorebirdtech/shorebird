@@ -10,9 +10,11 @@ import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Gradlew, () {
     const javaHome = 'test_java_home';
 
@@ -218,7 +220,7 @@ BUILD FAILED in 3s
         const javaHome = 'test_java_home';
         when(() => result.stdout).thenReturn(
           File(
-            p.join('test', 'fixtures', 'gradle', 'gradle_app_tasks.txt'),
+            p.join(fixturesDirectory, 'gradle', 'gradle_app_tasks.txt'),
           ).readAsStringSync(),
         );
         await expectLater(
@@ -254,8 +256,7 @@ BUILD FAILED in 3s
           when(() => result.stdout).thenReturn(
             File(
               p.join(
-                'test',
-                'fixtures',
+                fixturesDirectory,
                 'gradle',
                 'gradle_app_tasks_upper_case_flavors.txt',
               ),
@@ -279,8 +280,7 @@ BUILD FAILED in 3s
             when(() => result.stdout).thenReturn(
               File(
                 p.join(
-                  'test',
-                  'fixtures',
+                  fixturesDirectory,
                   'gradle',
                   'gradle_app_tasks_mixed_case_flavors.txt',
                 ),
@@ -303,8 +303,7 @@ BUILD FAILED in 3s
           when(() => result.stdout).thenReturn(
             File(
               p.join(
-                'test',
-                'fixtures',
+                fixturesDirectory,
                 'gradle',
                 'gradle_app_tasks_numbers_upper_case_flavors.txt',
               ),

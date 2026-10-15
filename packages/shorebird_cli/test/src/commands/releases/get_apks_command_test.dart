@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/releases/releases.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -18,9 +19,11 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(GetApksCommand, () {
     const appId = 'test-app-id';
     const releaseId = 123;
@@ -43,13 +46,14 @@ void main() {
 
     late GetApksCommand command;
 
-    R runWithOverrides<R>(R Function() body) {
+    R runWithOverrides<R>(R Function() body, {bool jsonMode = false}) {
       return runScoped(
         body,
         values: {
           artifactManagerRef.overrideWith(() => artifactManager),
           bundletoolRef.overrideWith(() => bundletool),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          isJsonModeRef.overrideWith(() => jsonMode),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -98,6 +102,7 @@ void main() {
         () => artifactManager.downloadWithProgressUpdates(
           any(),
           message: any(named: 'message'),
+          outputPath: any(named: 'outputPath'),
         ),
       ).thenAnswer((_) async => File(''));
 
@@ -196,6 +201,154 @@ void main() {
       });
     });
 
+    group('when --flavor is not defined in shorebird.yaml', () {
+      setUp(() {
+        when(() => argResults.wasParsed('flavor')).thenReturn(true);
+        when(() => argResults['flavor']).thenReturn('missing');
+        when(() => shorebirdYaml.flavors).thenReturn({'prod': 'prod-app-id'});
+      });
+
+      test('exits with a usage error before fetching releases', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(ExitCode.usage.code)),
+        );
+        verify(
+          () => logger.err(
+            'This project does not have a flavor named "missing". Pass one of: '
+            'prod (from "flavors" in shorebird.yaml).',
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        );
+      });
+    });
+
+    group('when --app-id is passed outside a Shorebird project', () {
+      const explicitAppId = 'explicit-app-id';
+
+      setUp(() {
+        when(() => shorebirdEnv.getShorebirdProjectRoot()).thenReturn(null);
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
+        when(() => argResults['app-id']).thenReturn(explicitAppId);
+      });
+
+      test('requires --out, before fetching releases', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(ExitCode.usage.code)),
+        );
+        verify(
+          () => logger.err(
+            '--out is required when not running in a Shorebird project, so '
+            'there is no build directory to write the apks to.',
+          ),
+        ).called(1);
+        verify(
+          // checkShorebirdInitialized defaults to false.
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: true,
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        );
+      });
+
+      test('reports a single usage_error envelope under --json', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, jsonMode: true),
+        );
+        expect(exitCode, equals(ExitCode.usage.code));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('usage_error'));
+        expect(
+          error['message'],
+          equals(
+            '--out is required when not running in a Shorebird project, so '
+            'there is no build directory to write the apks to.',
+          ),
+        );
+      });
+
+      group('with --out', () {
+        late Directory outDirectory;
+
+        setUp(() {
+          outDirectory = Directory.systemTemp.createTempSync();
+          addTearDown(() => outDirectory.deleteSync(recursive: true));
+          when(() => argResults.wasParsed('out')).thenReturn(true);
+          when(() => argResults['out']).thenReturn(outDirectory.path);
+        });
+
+        test('uses the --app-id app', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.success.code)),
+          );
+          verify(
+            () => codePushClientWrapper.getReleases(
+              appId: explicitAppId,
+              sideloadableOnly: true,
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: explicitAppId,
+              releaseId: releaseId,
+              arch: 'aab',
+              platform: ReleasePlatform.android,
+            ),
+          ).called(1);
+        });
+      });
+    });
+
+    group('when --app-id is passed inside a Shorebird project', () {
+      const explicitAppId = 'explicit-app-id';
+
+      setUp(() {
+        when(() => argResults['app-id']).thenReturn(explicitAppId);
+      });
+
+      test('skips the initialized check and uses the default output '
+          'directory', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(ExitCode.success.code)),
+        );
+        verify(
+          // checkShorebirdInitialized defaults to false.
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: true,
+          ),
+        ).called(1);
+        verify(
+          () => codePushClientWrapper.getReleases(
+            appId: explicitAppId,
+            sideloadableOnly: true,
+          ),
+        ).called(1);
+        final apkPath = p.join(
+          projectRoot.path,
+          'build',
+          'app',
+          'outputs',
+          'shorebird-apk',
+        );
+        verify(
+          () => logger.info('apk(s) generated at ${lightCyan.wrap(apkPath)}'),
+        ).called(1);
+      });
+    });
+
     group('when querying for releases fails', () {
       setUp(() {
         when(
@@ -234,6 +387,7 @@ void main() {
           () => artifactManager.downloadWithProgressUpdates(
             any(),
             message: any(named: 'message'),
+            outputPath: any(named: 'outputPath'),
           ),
         ).thenThrow(exception);
       });
@@ -412,6 +566,56 @@ void main() {
             'apk(s) generated at ${lightCyan.wrap(apkPath)}';
         verify(() => logger.info(expectedMessage)).called(1);
       });
+
+      test('does not list apks left by an earlier run', () async {
+        final staleApk = File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'app',
+            'outputs',
+            'shorebird-apk',
+            'stale.apk',
+          ),
+        )..createSync(recursive: true);
+
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(ExitCode.success.code),
+        );
+
+        verifyNever(
+          () => logger.info(any(that: contains(p.basename(staleApk.path)))),
+        );
+      });
+    });
+
+    test('deletes the staged aab and apks', () async {
+      await expectLater(
+        runWithOverrides(command.run),
+        completion(ExitCode.success.code),
+      );
+
+      final downloadPath =
+          verify(
+                () => artifactManager.downloadWithProgressUpdates(
+                  any(),
+                  message: any(named: 'message'),
+                  outputPath: captureAny(named: 'outputPath'),
+                ),
+              ).captured.single
+              as String;
+      expect(Directory(p.dirname(downloadPath)).existsSync(), isFalse);
+      final apksPath =
+          verify(
+                () => bundletool.buildApks(
+                  bundle: any(named: 'bundle'),
+                  output: captureAny(named: 'output'),
+                  universal: any(named: 'universal'),
+                ),
+              ).captured.single
+              as String;
+      expect(Directory(p.dirname(apksPath)).existsSync(), isFalse);
     });
 
     group('when user passes --no-universal', () {
@@ -434,7 +638,6 @@ void main() {
 
     group('when apks extraction fails', () {
       late Directory outDirectory;
-      late String apksFilePath;
 
       setUp(() {
         outDirectory = Directory.systemTemp.createTempSync();
@@ -462,7 +665,6 @@ void main() {
         ).thenAnswer((invocation) async {
           final apksFile = await createEmptyTempApksFile();
           final outputPath = invocation.namedArguments[#output] as String;
-          apksFilePath = outputPath;
           apksFile.renameSync(outputPath);
         });
       });
@@ -474,10 +676,12 @@ void main() {
           runWithOverrides(command.run),
           completion(ExitCode.software.code),
         );
-        final expectedMessage =
-            'Failed to extract apks from $apksFilePath.zip '
-            'to ${outDirectory.path}';
-        verify(() => logger.err(expectedMessage)).called(1);
+        verify(
+          () => logger.err(
+            'No apks found in the generated .apks archive for release '
+            '$releaseVersion.',
+          ),
+        ).called(1);
       });
     });
   });

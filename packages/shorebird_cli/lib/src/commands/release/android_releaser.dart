@@ -1,19 +1,17 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -41,22 +39,9 @@ class AndroidReleaser extends Releaser {
   String get artifactDisplayName => 'Android app bundle';
 
   /// The architectures to build for.
-  Set<Arch> get architectures =>
-      (argResults['target-platform'] as List<String>).map((platform) {
-        final arch = AndroidArch.availableAndroidArchs.firstWhereOrNull(
-          (arch) => arch.targetPlatformCliArg == platform,
-        );
-        if (arch == null) {
-          final availablePlatforms = AndroidArch.availableAndroidArchs
-              .map((a) => a.targetPlatformCliArg)
-              .join(', ');
-          throw Exception(
-            'Unknown target platform: $platform. '
-            'Available platforms: $availablePlatforms',
-          );
-        }
-        return arch;
-      }).toSet();
+  Set<Arch> get architectures => AndroidArch.fromTargetPlatformArgs(
+    argResults['target-platform'] as List<String>,
+  );
 
   /// Whether to generate an APK in addition to the AAB.
   late bool generateApk = argResults['artifact'] as String == 'apk';
@@ -66,29 +51,13 @@ class AndroidReleaser extends Releaser {
   late bool splitApk = argResults['split-per-abi'] == true;
 
   @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-        validators: doctor.androidCommandValidators,
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
-  }
+  Future<void> assertPreconditions() => assertBuildPreconditions(
+    validators: doctor.androidCommandValidators,
+  );
 
   @override
   Future<void> assertArgsAreValid() async {
-    if (argResults.wasParsed('release-version')) {
-      logger.err(
-        '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-        
-To change the version of this release, change your app's version in your pubspec.yaml.''',
-      );
-      throw ProcessExit(ExitCode.usage.code);
-    }
+    assertReleaseVersionFlagNotProvided();
 
     if (generateApk && splitApk) {
       logger
@@ -104,25 +73,25 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         );
       throw ProcessExit(ExitCode.unavailable.code);
     }
-
-    await assertObfuscationIsSupported();
   }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final base64PublicKey = await getEncodedPublicKey();
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-    final aab = await artifactBuilder.buildAppBundle(
-      flavor: flavor,
-      target: target,
-      targetPlatforms: architectures,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
+    // The APK is built after the obfuscation map check, with the same
+    // arguments as the AAB.
+    final (aab, buildArgs, base64PublicKey) = await runReleaseBuild(
+      (buildArgs, base64PublicKey) async => (
+        await artifactBuilder.buildAppBundle(
+          flavor: flavor,
+          target: target,
+          targetPlatforms: architectures,
+          args: buildArgs,
+          base64PublicKey: base64PublicKey,
+        ),
+        buildArgs,
+        base64PublicKey,
+      ),
     );
-
-    verifyObfuscationMap();
 
     if (generateApk) {
       logger.info('Building APK');
@@ -177,8 +146,6 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       architectures: architectures,
       flavor: flavor,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override
@@ -193,19 +160,18 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       flavor: flavor,
     );
 
-    final String? apkText;
+    final String apkText;
     if (generateApk) {
       final apkFile = shorebirdAndroidArtifacts.findApk(
         project: projectRoot,
         flavor: flavor,
       );
-      apkText = generateApk
-          ? '''
+      apkText =
+          '''
 
 Or distribute the apk:
 ${lightCyan.wrap(apkFile.path)}
-'''
-          : '';
+''';
     } else {
       apkText = '';
     }

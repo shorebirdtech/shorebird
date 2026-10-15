@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/extensions/iterable.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('containsAnyOf', () {
     test('returns true when any element is in the iterable', () {
       final iterable = [1, 2, 3];

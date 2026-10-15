@@ -5,8 +5,10 @@ import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/platform/apple/app_extension_versions.dart';
 import 'package:shorebird_cli/src/platform/apple/plist.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('findAppExtensionVersionMismatches', () {
     late Directory tempDir;
     late Directory appDirectory;

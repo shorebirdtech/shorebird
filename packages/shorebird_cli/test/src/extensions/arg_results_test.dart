@@ -2,20 +2,24 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:test/test.dart';
 
-class MockCodeSigner extends Mock implements CodeSigner {}
-
-class FakeFile extends Fake implements File {}
+import '../fakes.dart';
+import '../helpers.dart';
+import '../matchers.dart';
+import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   setUpAll(() {
     registerFallbackValue(FakeFile());
   });
@@ -415,7 +419,7 @@ void main() {
   });
 
   group('CodeSign', () {
-    final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+    final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
     final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
 
     late ArgParser parser;
@@ -433,6 +437,49 @@ void main() {
 
       setUp(() {
         codeSigner = MockCodeSigner();
+      });
+
+      test('runs --public-key-cmd once per parse', () async {
+        final result = parser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=print-key',
+        ]);
+        when(
+          () => codeSigner.runPublicKeyCmd(any()),
+        ).thenAnswer((_) async => 'pem');
+        when(
+          () => codeSigner.base64PublicKeyFromPem(any()),
+        ).thenReturn('encoded-key');
+
+        await runScoped(
+          () async {
+            expect(await result.getEncodedPublicKey(), equals('encoded-key'));
+            expect(await result.getEncodedPublicKey(), equals('encoded-key'));
+            expect(await result.resolvePublicKeyPem(), equals('pem'));
+            verify(() => codeSigner.runPublicKeyCmd('print-key')).called(1);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
+      test('resolves each parse separately', () async {
+        final first = parser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=print-key',
+        ]);
+        final second = parser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=print-key',
+        ]);
+        when(
+          () => codeSigner.runPublicKeyCmd(any()),
+        ).thenAnswer((_) async => 'pem');
+
+        await runScoped(
+          () async {
+            await first.resolvePublicKeyPem();
+            await second.resolvePublicKeyPem();
+            verify(() => codeSigner.runPublicKeyCmd('print-key')).called(2);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
       });
 
       test('returns null when no public key configured', () async {
@@ -494,6 +541,166 @@ void main() {
             },
             values: {codeSignerRef.overrideWith(() => codeSigner)},
           );
+        },
+      );
+
+      group('when the public key is malformed', () {
+        late ShorebirdLogger logger;
+
+        setUp(() {
+          logger = MockShorebirdLogger();
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenThrow(RangeError('bad key'));
+        });
+
+        Future<void> expectInvalidKey(ArgResults result) => runScoped(
+          () => expectLater(
+            result.getEncodedPublicKey,
+            exitsWithCode(ExitCode.software),
+          ),
+          values: {
+            codeSignerRef.overrideWith(() => codeSigner),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+
+        test('names --public-key-path for a bad key file', () async {
+          final result = parser.parse([
+            '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          ]);
+
+          await expectInvalidKey(result);
+
+          verify(
+            () => logger.err(
+              any(
+                that: startsWith(
+                  'The --${CommonArguments.publicKeyArg.name} file is not a '
+                  'valid public key',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('names --public-key-cmd for bad command output', () async {
+          final result = parser.parse([
+            '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          ]);
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'not-a-key');
+
+          await expectInvalidKey(result);
+
+          verify(
+            () => logger.err(
+              any(
+                that: startsWith(
+                  'The --${CommonArguments.publicKeyCmd.name} output is not a '
+                  'valid public key',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+    });
+  });
+
+  group('AppleArgs', () {
+    late ArgResults argResults;
+    late ShorebirdLogger logger;
+    late Directory tempDir;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {loggerRef.overrideWith(() => logger)},
+      );
+    }
+
+    setUp(() {
+      argResults = MockArgResults();
+      logger = MockShorebirdLogger();
+      tempDir = Directory.systemTemp.createTempSync('apple_args_');
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    group('appleCodesign', () {
+      test('is true only when the flag is true', () {
+        when(() => argResults['codesign']).thenReturn(true);
+        expect(argResults.appleCodesign, isTrue);
+
+        when(() => argResults['codesign']).thenReturn(false);
+        expect(argResults.appleCodesign, isFalse);
+
+        when(() => argResults['codesign']).thenReturn(null);
+        expect(argResults.appleCodesign, isFalse);
+      });
+    });
+
+    group('assertValidExportOptionsPlistArg', () {
+      void stubExportOptionsPlist(String? body) {
+        String? path;
+        if (body != null) {
+          path =
+              (File(p.join(tempDir.path, 'ExportOptions.plist'))
+                    ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+$body
+</dict>
+</plist>
+'''))
+                  .path;
+        }
+        when(
+          () => argResults[CommonArguments.exportOptionsPlistArg.name],
+        ).thenReturn(path);
+      }
+
+      test('returns normally when no plist is passed', () {
+        stubExportOptionsPlist(null);
+        expect(
+          () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
+          returnsNormally,
+        );
+      });
+
+      test(
+        'returns normally when manageAppVersionAndBuildNumber is absent',
+        () {
+          stubExportOptionsPlist('<key>method</key><string>app-store</string>');
+          expect(
+            () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
+            returnsNormally,
+          );
+        },
+      );
+
+      test(
+        'logs error and exits with usage when '
+        'manageAppVersionAndBuildNumber is true',
+        () {
+          stubExportOptionsPlist(
+            '<key>manageAppVersionAndBuildNumber</key><true/>',
+          );
+          expect(
+            () => runWithOverrides(argResults.assertValidExportOptionsPlistArg),
+            exitsWithCode(ExitCode.usage),
+          );
+          verify(
+            () => logger.err(
+              any(that: contains('manageAppVersionAndBuildNumber')),
+            ),
+          ).called(1);
         },
       );
     });

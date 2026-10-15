@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(LinuxBundleDiffer, () {
     late LinuxBundleDiffer differ;
 

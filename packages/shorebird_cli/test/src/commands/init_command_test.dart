@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
@@ -24,9 +25,11 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(InitCommand, () {
     const version = '1.2.3';
     const appId = 'test_app_id';
@@ -65,6 +68,7 @@ environment:
           doctorRef.overrideWith(() => doctor),
           gradlewRef.overrideWith(() => gradlew),
           appleRef.overrideWith(() => apple),
+          isJsonModeRef.overrideWith(() => false),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
@@ -425,10 +429,16 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
     });
 
-    group('when organization id argument is provided', () {
+    test('still accepts the original --organization-id', () {
+      final parsed = InitCommand().argParser.parse(['--organization-id=42']);
+      expect(parsed['org-id'], equals('42'));
+      expect(InitCommand().argParser.usage, isNot(contains('organization-id')));
+    });
+
+    group('when --org-id is provided', () {
       group('when arg is not a parseable int', () {
         setUp(() {
-          when(() => argResults['organization-id']).thenReturn('not-an-int');
+          when(() => argResults['org-id']).thenReturn('not-an-int');
         });
 
         test('throws a usage exception listing organizations', () async {
@@ -439,9 +449,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 (e) => e.message,
                 'message',
                 '''
-Invalid --organization-id "not-an-int": expected a number.
-Available organizations:
-  Test Organization (id: $organizationId)''',
+"not-an-int" is not a valid organization id.
+Organization ids are integers, e.g. --org-id 42. Your organizations: Test Organization (id: $organizationId).''',
               ),
             ),
           );
@@ -449,7 +458,7 @@ Available organizations:
 
         group('when no organization with matching id exists', () {
           setUp(() {
-            when(() => argResults['organization-id']).thenReturn('999999');
+            when(() => argResults['org-id']).thenReturn('999999');
           });
 
           test('throws a usage exception listing organizations', () async {
@@ -460,9 +469,8 @@ Available organizations:
                   (e) => e.message,
                   'message',
                   '''
-You are not a member of an organization with id 999999.
-Available organizations:
-  Test Organization (id: $organizationId)''',
+You are not a member of organization 999999.
+Your organizations: Test Organization (id: $organizationId).''',
                 ),
               ),
             );
@@ -472,7 +480,7 @@ Available organizations:
         group('when organization with matching id exists', () {
           setUp(() {
             when(
-              () => argResults['organization-id'],
+              () => argResults['org-id'],
             ).thenReturn('$organizationId');
           });
 
@@ -600,10 +608,8 @@ Available organizations:
                   (e) => e.message,
                   'message',
                   '''
-You belong to multiple organizations. Pass --organization-id=<id> to choose one.
-Available organizations:
-  ${org1.name} (id: ${org1.id})
-  ${org2.name} (id: ${org2.id})''',
+You belong to multiple organizations. Pass --org-id=<id> to choose one.
+Your organizations: ${org1.name} (id: ${org1.id}), ${org2.name} (id: ${org2.id}).''',
                 ),
               ),
             );
@@ -706,8 +712,26 @@ Available organizations:
                 isA<UsageException>().having(
                   (e) => e.message,
                   'message',
-                  '--display-name must be between 1 and 128 characters '
-                      '(got 0).',
+                  'App display name must not be blank.',
+                ),
+              ),
+            );
+          });
+        });
+
+        group('when display name is only whitespace', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('   ');
+          });
+
+          test('throws a usage exception', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  'App display name must not be blank.',
                 ),
               ),
             );
@@ -726,7 +750,7 @@ Available organizations:
                 isA<UsageException>().having(
                   (e) => e.message,
                   'message',
-                  '--display-name must be between 1 and 128 characters '
+                  'App display name must be at most 128 characters '
                       '(got 129).',
                 ),
               ),

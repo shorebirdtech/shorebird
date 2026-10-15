@@ -1,8 +1,10 @@
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('tryParseVersion', () {
     group('with strict mode enabled', () {
       test('returns a version if the string is a valid semver version', () {

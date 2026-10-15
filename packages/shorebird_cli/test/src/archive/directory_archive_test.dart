@@ -4,8 +4,10 @@ import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('DirectoryArchive', () {
     group('zipToTempFile', () {
       test('zips directory to location in system temp', () async {

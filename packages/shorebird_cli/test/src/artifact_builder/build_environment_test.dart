@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(BuildEnvironment, () {
     late Directory tmp;
     setUp(() => tmp = Directory.systemTemp.createTempSync());

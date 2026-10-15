@@ -6,8 +6,10 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AndroidStudio, () {
     late TestNativePlatform platform;
     late AndroidStudio androidStudio;

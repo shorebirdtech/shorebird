@@ -1,8 +1,10 @@
 // cspell:ignore asdf, qwer, zxcv
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(FileSetDiff, () {
     group('fromPathHashes', () {
       test('detects added, changed, and removed files', () {

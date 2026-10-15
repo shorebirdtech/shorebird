@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/commands/flutter/flutter_command.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(FlutterCommand, () {
     test('has correct name and description', () {
       final command = FlutterCommand();

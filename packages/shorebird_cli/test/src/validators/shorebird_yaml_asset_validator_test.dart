@@ -5,9 +5,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdYamlAssetValidator, () {
     late ShorebirdEnv shorebirdEnv;
     late PubspecEditor pubspecEditor;

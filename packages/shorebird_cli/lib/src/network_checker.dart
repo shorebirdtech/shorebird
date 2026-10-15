@@ -29,6 +29,28 @@ class NetworkCheckerException implements Exception {
   final String message;
 }
 
+/// {@template reachability_result}
+/// Whether a URL responded to an HTTP GET request.
+/// {@endtemplate}
+class ReachabilityResult {
+  /// {@macro reachability_result}
+  const ReachabilityResult({required this.url, this.error});
+
+  /// The URL that was checked.
+  final Uri url;
+
+  /// Why [url] could not be reached, or null if it responded.
+  final Exception? error;
+
+  /// Whether [url] responded. Any HTTP response counts, whatever its status:
+  /// several of these hosts answer a bare GET with 404, and the check is only
+  /// whether the network lets us talk to them.
+  bool get reachable => error == null;
+
+  /// The JSON representation of this result.
+  Map<String, Object> toJson() => {'url': '$url', 'reachable': reachable};
+}
+
 /// {@template network_checker}
 /// Checks reachability of various Shorebird-related endpoints and logs the
 /// results.
@@ -43,17 +65,31 @@ class NetworkChecker {
     'https://cdn.shorebird.cloud',
   ].map(Uri.parse).toList();
 
-  /// Verify that each of [urlsToCheck] responds to an HTTP GET request.
+  /// Checks whether [url] responds to an HTTP GET request.
+  Future<ReachabilityResult> checkUrl(Uri url) async {
+    try {
+      await httpClient.get(url);
+      return ReachabilityResult(url: url);
+    } on Exception catch (e) {
+      return ReachabilityResult(url: url, error: e);
+    }
+  }
+
+  /// Checks each of [urlsToCheck] and returns the results, without logging.
+  Future<List<ReachabilityResult>> reachability() =>
+      Future.wait(urlsToCheck.map(checkUrl));
+
+  /// Verify that each of [urlsToCheck] responds to an HTTP GET request,
+  /// logging each result as it completes.
   Future<void> checkReachability() async {
     for (final url in urlsToCheck) {
       final progress = logger.progress('Checking reachability of $url');
-
-      try {
-        await httpClient.get(url);
+      final result = await checkUrl(url);
+      if (result.reachable) {
         progress.complete('$url ${lightGreen.wrap('OK')}');
-      } on Exception catch (e) {
+      } else {
         progress.fail('$url unreachable');
-        logger.detail('Failed to reach $url: $e');
+        logger.detail('Failed to reach $url: ${result.error}');
       }
     }
   }

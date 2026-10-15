@@ -1,22 +1,33 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
+  setUpAll(() {
+    registerFallbackValue(Uri());
+  });
+
   group(LoginCommand, () {
     const email = 'test@email.com';
 
+    late ArgResults argResults;
     late Auth auth;
+    late Browser browser;
     late http.Client httpClient;
     late Directory applicationConfigHome;
     late ShorebirdLogger logger;
@@ -28,6 +39,7 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
+          browserRef.overrideWith(() => browser),
           loggerRef.overrideWith(() => logger),
         },
       );
@@ -35,12 +47,18 @@ void main() {
 
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
+      argResults = MockArgResults();
       auth = MockAuth();
+      browser = MockBrowser();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
       progress = MockProgress();
 
       when(() => auth.isAuthenticated).thenReturn(false);
+      when(() => auth.isUsingApiKey).thenReturn(false);
+      when(() => argResults[LoginCommand.deviceFlag]).thenReturn(false);
+      when(() => browser.canOpen).thenReturn(true);
+      when(() => browser.open(any())).thenAnswer((_) async => true);
       when(() => auth.hasValidCredentials()).thenAnswer((_) async => true);
       when(() => auth.clearCredentials()).thenReturn(null);
       when(() => auth.client).thenReturn(httpClient);
@@ -51,8 +69,11 @@ void main() {
       when(
         () => auth.login(prompt: any(named: 'prompt')),
       ).thenAnswer((_) async {});
+      when(
+        () => auth.loginWithDeviceCode(prompt: any(named: 'prompt')),
+      ).thenAnswer((_) async {});
 
-      command = runWithOverrides(LoginCommand.new);
+      command = runWithOverrides(LoginCommand.new)..testArgResults = argResults;
     });
 
     test('has correct name', () {
@@ -63,10 +84,115 @@ void main() {
       expect(command.description, 'Login as a new Shorebird user.');
     });
 
+    test('has a --device flag', () {
+      expect(command.argParser.options, contains(LoginCommand.deviceFlag));
+    });
+
+    group('device code login', () {
+      setUp(() {
+        when(() => auth.email).thenReturn(email);
+      });
+
+      test('is used when no browser can be opened', () async {
+        when(() => browser.canOpen).thenReturn(false);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => auth.loginWithDeviceCode(prompt: any(named: 'prompt')),
+        ).called(1);
+        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      });
+
+      test('is used when --device is passed', () async {
+        when(() => argResults[LoginCommand.deviceFlag]).thenReturn(true);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => auth.loginWithDeviceCode(prompt: any(named: 'prompt')),
+        ).called(1);
+        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      });
+
+      test('reports a failure and exits with code 70', () async {
+        when(() => browser.canOpen).thenReturn(false);
+        const error = ShorebirdAuthException('The login request was denied.');
+        when(
+          () => auth.loginWithDeviceCode(prompt: any(named: 'prompt')),
+        ).thenThrow(error);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.software.code));
+        verify(() => logger.err(error.toString())).called(1);
+      });
+
+      test('is not used when a browser can be opened', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
+        verifyNever(
+          () => auth.loginWithDeviceCode(prompt: any(named: 'prompt')),
+        );
+      });
+    });
+
+    group('devicePrompt', () {
+      String message({required String expiry}) =>
+          '''
+The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser on any device, visit:
+
+  ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap('https://auth.shorebird.dev/device')))}
+
+and enter this code:
+
+  ${styleBold.wrap('BEST-CAKE')}
+
+Waiting for your authorization (the code expires in $expiry)...''';
+
+      DeviceAuthorization authorization({
+        Duration expiresIn = const Duration(minutes: 15),
+      }) => DeviceAuthorization(
+        deviceCode: 'device-code',
+        userCode: 'BEST-CAKE',
+        verificationUri: Uri.parse('https://auth.shorebird.dev/device'),
+        verificationUriComplete: Uri.parse(
+          'https://auth.shorebird.dev/device?user_code=BEST-CAKE',
+        ),
+        expiresIn: expiresIn,
+        interval: const Duration(seconds: 5),
+      );
+
+      test('shows the URL and the code, not the prefilled link', () {
+        runWithOverrides(() => command.devicePrompt(authorization()));
+
+        verify(
+          () => logger.info(message(expiry: '15 minutes')),
+        ).called(1);
+        verifyNever(() => logger.info(any(that: contains('user_code='))));
+      });
+
+      test('says minute for a one-minute code', () {
+        runWithOverrides(
+          () => command.devicePrompt(
+            authorization(expiresIn: const Duration(minutes: 1)),
+          ),
+        );
+
+        verify(() => logger.info(message(expiry: '1 minute'))).called(1);
+      });
+    });
+
     group('when user is already logged in', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
+        when(() => auth.fetchEmail()).thenAnswer((_) async => email);
       });
 
       test(
@@ -86,15 +212,29 @@ void main() {
           verifyNever(() => auth.login(prompt: any(named: 'prompt')));
         },
       );
+
+      test('omits the email when it cannot be fetched', () async {
+        when(() => auth.fetchEmail()).thenAnswer((_) async => null);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(() => logger.info('You are already logged in.')).called(1);
+        verify(
+          () => logger.info(
+            '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
+          ),
+        ).called(1);
+      });
     });
 
     group('when user is authenticated via API key', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(null);
+        when(() => auth.isUsingApiKey).thenReturn(true);
       });
 
-      test('points at the environment variable and exits with code 0', () async {
+      test('points at the environment variable and succeeds', () async {
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
@@ -112,10 +252,9 @@ void main() {
       });
     });
 
-    group('when stored credentials have expired', () {
+    group('when stored credentials are no longer valid', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
         when(() => auth.hasValidCredentials()).thenAnswer((_) async => false);
       });
 
@@ -123,53 +262,70 @@ void main() {
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
-        verify(() => progress.fail('Your credentials have expired.')).called(1);
+        verify(
+          () => progress.fail('Your stored credentials are no longer valid.'),
+        ).called(1);
         verify(() => logger.info('Logging you in again...')).called(1);
         verify(() => auth.clearCredentials()).called(1);
         verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
-        verifyNever(
-          () => logger.info('You are already logged in as <$email>.'),
-        );
+        verifyNever(() => auth.fetchEmail());
         verifyNever(() => progress.complete(any()));
       });
     });
 
-    // Treating an unreachable auth service as a rejection would log a user
-    // out for running `shorebird login` off wifi.
-    group('when the credential check cannot reach the auth service', () {
+    // Anything but an OAuth error response says nothing about the stored
+    // credentials, and treating it as a rejection would log a user out for
+    // running `shorebird login` off wifi. An OAuth error response never gets
+    // here: `hasValidCredentials` returns false for it.
+    group('when the credential check gets no OAuth answer', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
-        when(
-          () => auth.hasValidCredentials(),
-        ).thenThrow(const SocketException('no route to host'));
       });
 
-      test('keeps the credentials and asks the user to retry', () async {
-        final result = await runWithOverrides(command.run);
+      for (final (description, error) in [
+        ('cannot reach the auth service', const SocketException('no route')),
+        (
+          'gets an answer that is not an OAuth response',
+          const FormatException(
+            'OAuth request for "https://auth.shorebird.dev/token" failed with '
+            'status 429 Too Many Requests.',
+          ),
+        ),
+      ]) {
+        test('keeps the credentials and asks the user to retry when it '
+            '$description', () async {
+          when(() => auth.hasValidCredentials()).thenThrow(error);
 
-        expect(result, equals(ExitCode.tempFail.code));
-        verify(
-          () => progress.fail('Could not reach the Shorebird auth service.'),
-        ).called(1);
-        verify(
-          () => logger.info('Check your network connection and try again.'),
-        ).called(1);
-        verifyNever(() => auth.clearCredentials());
-        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
-      });
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.tempFail.code));
+          verify(
+            () => progress.fail(
+              'Could not check your credentials with the Shorebird auth '
+              'service.',
+            ),
+          ).called(1);
+          verify(() => logger.err('$error')).called(1);
+          verify(
+            () => logger.info('Check your network connection and try again.'),
+          ).called(1);
+          verifyNever(() => auth.clearCredentials());
+          verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+        });
+      }
     });
 
     test('exits with code 70 if no user is found', () async {
       when(
         () => auth.login(prompt: any(named: 'prompt')),
-      ).thenThrow(UserNotFoundException(email: email));
+      ).thenThrow(UserNotFoundException());
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
       verify(
-        () => logger.err('We could not find a Shorebird account for $email.'),
+        () =>
+            logger.err('We could not find a Shorebird account for this login.'),
       ).called(1);
       verify(
         () => logger.info(any(that: contains('console.shorebird.dev'))),
@@ -206,20 +362,43 @@ void main() {
       ).called(1);
     });
 
-    test('prompt is correct', () {
+    group('prompt', () {
       const url = 'http://example.com';
-      runWithOverrides(() => command.prompt(url));
 
-      verify(
-        () => logger.info('''
+      String message(String instruction) =>
+          '''
 The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
 
-In a browser, visit this URL to log in:
+$instruction
 
 ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
 
-Waiting for your authorization...'''),
-      ).called(1);
+Waiting for your authorization...''';
+
+      test('prints the URL when no browser can be opened', () {
+        when(() => browser.canOpen).thenReturn(false);
+        runWithOverrides(() => command.prompt(url));
+
+        verify(
+          () => logger.info(message('In a browser, visit this URL to log in:')),
+        ).called(1);
+        verifyNever(() => browser.open(any()));
+      });
+
+      test('opens the browser and still prints the URL', () {
+        when(() => browser.canOpen).thenReturn(true);
+        runWithOverrides(() => command.prompt(url));
+
+        verify(
+          () => logger.info(
+            message(
+              'Opening your browser to log in. If it does not open, visit '
+              'this URL:',
+            ),
+          ),
+        ).called(1);
+        verify(() => browser.open(Uri.parse(url))).called(1);
+      });
     });
   });
 }

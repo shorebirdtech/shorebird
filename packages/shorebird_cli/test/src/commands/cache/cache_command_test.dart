@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/commands/cache/cache_command.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('cache', () {
     late CacheCommand command;
 

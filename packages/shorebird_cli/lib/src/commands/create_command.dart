@@ -26,7 +26,7 @@ class CreateCommand extends ShorebirdProxyCommand {
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (e) {
-      return e.exitCode.code;
+      return reportPreconditionFailure(e);
     }
 
     final createExitCode = await process.stream('flutter', [

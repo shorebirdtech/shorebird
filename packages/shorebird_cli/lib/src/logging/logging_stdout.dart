@@ -61,7 +61,7 @@ class LoggingStdout implements Stdout {
   @override
   void add(List<int> data) {
     baseStdOut.add(data);
-    _writeLog(String.fromCharCodes(data));
+    _writeLog(utf8.decode(data, allowMalformed: true));
   }
 
   @override
@@ -94,7 +94,7 @@ class LoggingStdout implements Stdout {
   @override
   void writeAll(Iterable<dynamic> objects, [String sep = '']) {
     baseStdOut.writeAll(objects, sep);
-    _writeLog(objects);
+    _writeLog(objects.join(sep));
   }
 
   @override

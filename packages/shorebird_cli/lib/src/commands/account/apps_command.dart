@@ -4,7 +4,6 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template account_apps_command}
@@ -35,22 +34,16 @@ class AccountAppsCommand extends ShorebirdCommand {
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+      return reportPreconditionFailure(error);
     }
 
-    final List<AppMetadata> apps;
-    try {
-      apps = await codePushClientWrapper.getApps();
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch apps.',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<AppMetadata> apps;
+    final fetchError = await guardApiCall(
+      () async => apps = await codePushClientWrapper.getApps(),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch apps.',
+    );
+    if (fetchError != null) return fetchError;
 
     if (isJsonMode) {
       emitJsonSuccess({

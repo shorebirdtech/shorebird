@@ -13,7 +13,9 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -43,9 +45,10 @@ class PreviewCommand extends ShorebirdCommand {
         help: 'The ID of the device or simulator to preview the release on.',
       )
       ..addOption(
-        'app-id',
-        help: 'The ID of the app to preview the release for.',
+        CommonArguments.appIdArg.name,
+        help: CommonArguments.appIdArg.description,
       )
+      ..addOption(CommonArguments.flavorArg.name, help: appScopedFlavorHelp)
       ..addOption(
         CommonArguments.releaseVersionArg.name,
         help: CommonArguments.releaseVersionArg.description,
@@ -139,40 +142,152 @@ This is only applicable when previewing Android releases.''',
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+      return reportPreconditionFailure(error);
     }
 
-    if (results.wasParsed('staging')) {
-      usageException(
-        'The --staging flag has been removed. Use --track=staging instead.',
-      );
-    }
+    _assertArgsAreValid();
 
-    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
-    final String? appId;
-
-    final flavors = shorebirdYaml?.flavors;
-
-    if (results.wasParsed('app-id')) {
-      appId = results['app-id'] as String;
-    } else if (shorebirdYaml != null && flavors == null) {
-      appId = shorebirdYaml.appId;
-    } else if (shorebirdYaml != null && flavors != null) {
-      final flavorOptions = flavors.keys.toList();
-      final chosenFlavor = logger.chooseOne<String>(
-        'Which app flavor?',
-        choices: flavorOptions,
-      );
-      appId = flavors[chosenFlavor];
-    } else {
-      appId = await promptForApp();
-    }
-
+    final (:appId, :errorCode) = await _resolveAppId();
+    if (errorCode != null) return errorCode;
     if (appId == null) {
       logger.info('No apps found');
       return ExitCode.success.code;
     }
 
+    final requestedPlatform = _requestedPlatform;
+    final resolved = await _resolveRelease(
+      appId: appId,
+      requestedPlatform: requestedPlatform,
+    );
+    if (resolved == null) return ExitCode.usage.code;
+
+    final releasePlatform = _resolvePlatform(
+      release: resolved.release,
+      allReleases: resolved.allReleases,
+      requestedPlatform: requestedPlatform,
+    );
+    if (releasePlatform == null) return ExitCode.usage.code;
+
+    return _installAndLaunch(
+      appId: appId,
+      release: resolved.release,
+      releasePlatform: releasePlatform,
+    );
+  }
+
+  /// The platform passed with `--platform`, if any.
+  ReleasePlatform? get _requestedPlatform {
+    final platformName = results['platform'] as String?;
+    return platformName != null
+        ? ReleasePlatform.values.byName(platformName)
+        : null;
+  }
+
+  /// Rejects invalid argument combinations before anything is fetched.
+  void _assertArgsAreValid() {
+    if (results.wasParsed('staging')) {
+      usageException(
+        'The --staging flag has been removed. Use --track=staging instead.',
+      );
+    }
+    _assertKeystoreArgsAreValid();
+  }
+
+  /// Validates the Android signing options (`--ks` and friends).
+  void _assertKeystoreArgsAreValid() {
+    final keystore = results['ks'] as String?;
+    if (keystore == null) return;
+
+    final keystorePassword = results['ks-pass'] as String?;
+    final keyPassword = results['ks-key-pass'] as String?;
+    final keyAlias = results['ks-key-alias'] as String?;
+
+    if (keystorePassword == null) {
+      usageException(
+        '--ks requires --ks-pass (e.g. --ks-pass=pass:<password> or '
+        '--ks-pass=file:<path>).',
+      );
+    }
+    if (keyAlias == null) {
+      usageException('--ks requires --ks-key-alias=<alias>.');
+    }
+
+    if (!keystorePassword.startsWith('pass:') &&
+        !keystorePassword.startsWith('file:')) {
+      usageException(
+        '--ks-pass must start with "pass:" or "file:" '
+        '(e.g. --ks-pass=pass:<password> or --ks-pass=file:<path>).',
+      );
+    }
+
+    if (keyPassword != null &&
+        !keyPassword.startsWith('pass:') &&
+        !keyPassword.startsWith('file:')) {
+      usageException(
+        '--ks-key-pass must start with "pass:" or "file:" '
+        '(e.g. --ks-key-pass=pass:<password> or --ks-key-pass=file:<path>).',
+      );
+    }
+  }
+
+  /// Determines which app to preview from `--app-id`, `--flavor` and
+  /// shorebird.yaml, or a prompt.
+  ///
+  /// Returns a null `appId` if the user has no apps, and a non-null
+  /// `errorCode` if `--flavor` can't be used.
+  Future<({String? appId, int? errorCode})> _resolveAppId() async {
+    final explicitAppId = results[CommonArguments.appIdArg.name] as String?;
+    if (explicitAppId != null) return (appId: explicitAppId, errorCode: null);
+
+    final flavor = results[CommonArguments.flavorArg.name] as String?;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
+    if (shorebirdYaml == null) {
+      if (flavor != null) {
+        return (
+          appId: null,
+          errorCode: reportError(
+            message:
+                '--flavor needs a shorebird.yaml to read the app ID from. '
+                'Run this from your Shorebird project, or pass --app-id '
+                'instead.',
+          ),
+        );
+      }
+      return (appId: await promptForApp(), errorCode: null);
+    }
+
+    final flavorError = shorebirdYaml.unknownFlavorError(flavor);
+    if (flavorError != null) {
+      return (appId: null, errorCode: reportError(message: flavorError));
+    }
+    if (flavor != null) {
+      return (appId: shorebirdYaml.getAppId(flavor: flavor), errorCode: null);
+    }
+
+    final flavors = shorebirdYaml.flavors;
+    if (flavors == null) return (appId: shorebirdYaml.appId, errorCode: null);
+
+    final chosenFlavor = logger.chooseOne<String>(
+      'Which app flavor?',
+      choices: flavors.keys.toList(),
+      hint:
+          'Pass --flavor=<flavor> to preview a specific flavor without '
+          'prompting.',
+    );
+    return (appId: flavors[chosenFlavor], errorCode: null);
+  }
+
+  /// Chooses the release of [appId] to preview, from `--release-version` or a
+  /// prompt, limited to releases previewable on [requestedPlatform] if one
+  /// was passed.
+  ///
+  /// Also returns every release of [appId], including platforms that cannot
+  /// be previewed, for [_resolvePlatform]. Logs why and returns null when no
+  /// previewable release matches the arguments.
+  Future<({Release release, List<Release> allReleases})?> _resolveRelease({
+    required String appId,
+    required ReleasePlatform? requestedPlatform,
+  }) async {
     // The information if a platform is previewable or not is on
     // the artifacts, we would need to query for the artifacts for all platforms
     // in a release to be able to know if a platform is previewable or not.
@@ -196,21 +311,18 @@ This is only applicable when previewing Android releases.''',
       codePushClientWrapper.getReleases(appId: appId, sideloadableOnly: true),
     ).wait;
 
-    final maybePlatform = results['platform'] != null
-        ? ReleasePlatform.values.byName(results['platform'] as String)
-        : null;
     final platformReleases = sideloadableReleases
         .where(
           (r) =>
-              maybePlatform == null ||
-              r.activePlatforms.contains(maybePlatform),
+              requestedPlatform == null ||
+              r.activePlatforms.contains(requestedPlatform),
         )
         .toList();
 
     if (platformReleases.isEmpty) {
-      if (maybePlatform != null) {
+      if (requestedPlatform != null) {
         logger.err(
-          '''No previewable ${maybePlatform.displayName} releases found for app $appId.''',
+          '''No previewable ${requestedPlatform.displayName} releases found for app $appId.''',
         );
         if (sideloadableReleases.isNotEmpty) {
           final otherPlatforms = sideloadableReleases
@@ -223,7 +335,7 @@ This is only applicable when previewing Android releases.''',
           );
         } else {
           logger.info(
-            '''Create one with ${lightCyan.wrap('shorebird release ${maybePlatform.name}')}.''',
+            '''Create one with ${lightCyan.wrap('shorebird release ${requestedPlatform.name}')}.''',
           );
         }
       } else {
@@ -233,12 +345,12 @@ This is only applicable when previewing Android releases.''',
             '''Create one with ${lightCyan.wrap('shorebird release <platform>')}, or pass --app-id=<app-id> to preview a different app.''',
           );
       }
-      return ExitCode.usage.code;
+      return null;
     }
 
     final releaseVersion =
         results['release-version'] as String? ??
-        await promptForReleaseVersion(platformReleases);
+        promptForReleaseVersion(platformReleases);
 
     final release = platformReleases.firstWhereOrNull(
       (r) => r.version == releaseVersion,
@@ -251,9 +363,22 @@ This is only applicable when previewing Android releases.''',
         ..info(
           '''Previewable versions: $versions. Pass one with --release-version=<version> or omit it to choose interactively.''',
         );
-      return ExitCode.usage.code;
+      return null;
     }
 
+    return (release: release, allReleases: allReleases);
+  }
+
+  /// Chooses the platform of [release] to preview: [requestedPlatform] if one
+  /// was passed, the only previewable platform, or a prompt.
+  ///
+  /// Logs why and returns null when none of the release's platforms can be
+  /// previewed from this machine.
+  ReleasePlatform? _resolvePlatform({
+    required Release release,
+    required List<Release> allReleases,
+    required ReleasePlatform? requestedPlatform,
+  }) {
     final availablePlatforms = release.activePlatforms
         .where((p) => supportedReleasePlatforms.contains(p))
         .toList();
@@ -267,12 +392,12 @@ This is only applicable when previewing Android releases.''',
           .join(', ');
       logger
         ..err(
-          '''Release $releaseVersion only has $activePlatformsString artifacts, which cannot be previewed from ${platform.operatingSystem}.''',
+          '''Release ${release.version} only has $activePlatformsString artifacts, which cannot be previewed from ${platform.operatingSystem}.''',
         )
         ..info(
           '''Platforms previewable from this machine: $supportedString. iOS releases can only be previewed from macOS.''',
         );
-      return ExitCode.usage.code;
+      return null;
     }
 
     final releaseWithAllPlatforms = allReleases.firstWhere(
@@ -281,22 +406,22 @@ This is only applicable when previewing Android releases.''',
     assertPreviewableReleases(
       releaseWithAllPlatforms: releaseWithAllPlatforms,
       release: release,
-      targetPlatform: maybePlatform,
+      targetPlatform: requestedPlatform,
     );
 
-    final ReleasePlatform releasePlatform;
-    if (maybePlatform != null) {
-      final matchedPlatform = release.activePlatforms.firstWhere(
-        (p) => p == maybePlatform,
-      );
+    // A --platform was already checked against the release's active
+    // platforms when choosing the release in _resolveRelease.
+    if (requestedPlatform != null) return requestedPlatform;
+    if (availablePlatforms.length == 1) return availablePlatforms.first;
+    return promptForPlatform(availablePlatforms);
+  }
 
-      releasePlatform = matchedPlatform;
-    } else if (availablePlatforms.length == 1) {
-      releasePlatform = availablePlatforms.first;
-    } else {
-      releasePlatform = await promptForPlatform(availablePlatforms);
-    }
-
+  /// Installs and launches [release] of [appId] on [releasePlatform].
+  Future<int> _installAndLaunch({
+    required String appId,
+    required Release release,
+    required ReleasePlatform releasePlatform,
+  }) {
     final deviceId = results['device-id'] as String?;
 
     return switch (releasePlatform) {
@@ -346,7 +471,7 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Prompts the user to choose a release version to preview.
-  Future<String> promptForReleaseVersion(List<Release> releases) async {
+  String promptForReleaseVersion(List<Release> releases) {
     final release = chooseRelease(
       releases: releases,
       action: 'preview',
@@ -355,9 +480,7 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Prompts the user to choose a platform to preview.
-  Future<ReleasePlatform> promptForPlatform(
-    List<ReleasePlatform> platforms,
-  ) async {
+  ReleasePlatform promptForPlatform(List<ReleasePlatform> platforms) {
     final platformNames = platforms.map((p) => p.displayName).toList();
     final platform = logger.chooseOne(
       'Which platform would you like to preview?',
@@ -379,37 +502,18 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.linux;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+    final appDirectory = await _downloadReleaseApp(
       appId: appId,
-      releaseId: release.id,
-      arch: 'bundle',
+      release: release,
       platform: platform,
+      arch: primaryLinuxReleaseArtifactArch,
     );
 
-    final appDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseArtifact,
-        platform: platform,
-      ),
-    );
-
-    await downloadAndExtractIfNeeded(
-      artifact: releaseArtifact,
-      outputDirectory: appDirectory,
-    );
-
-    final progress = logger.progress('Using $track track');
-    try {
-      await setChannelOnLinuxApp(
-        channel: track.channel,
-        bundleDirectory: appDirectory,
-      );
-      progress.complete();
-    } on Exception catch (error) {
-      progress.fail('$error');
+    if (!await _useTrackOnApp(
+      platform: platform,
+      appDirectory: appDirectory,
+      track: track,
+    )) {
       return ExitCode.software.code;
     }
 
@@ -430,33 +534,21 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.windows;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseExeArtifact = await codePushClientWrapper.getReleaseArtifact(
+    final appDirectory = await _downloadReleaseApp(
       appId: appId,
-      releaseId: release.id,
-      arch: primaryWindowsReleaseArtifactArch,
+      release: release,
       platform: platform,
+      arch: primaryWindowsReleaseArtifactArch,
+      fileExtension: 'exe',
     );
 
-    final appDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseExeArtifact,
-        platform: platform,
-        fileExtension: 'exe',
-      ),
-    );
-
-    await downloadAndExtractIfNeeded(
-      artifact: releaseExeArtifact,
-      outputDirectory: appDirectory,
-    );
-
-    await setChannelOnWindowsApp(
+    if (!await _useTrackOnApp(
+      platform: platform,
       appDirectory: appDirectory,
-      channel: track.channel,
-    );
+      track: track,
+    )) {
+      return ExitCode.software.code;
+    }
 
     final exeFile = windows.findExecutable(
       releaseDirectory: appDirectory,
@@ -475,38 +567,25 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.macos;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseRunnerArtifact = await codePushClientWrapper
-        .getReleaseArtifact(
-          appId: appId,
-          releaseId: release.id,
-          arch: 'app',
-          platform: platform,
-        );
-
-    final appDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseRunnerArtifact,
-        platform: platform,
-        fileExtension: 'app',
-      ),
-    );
-
-    await downloadAndExtractIfNeeded(
-      artifact: releaseRunnerArtifact,
-      outputDirectory: appDirectory,
+    final appDirectory = await _downloadReleaseApp(
+      appId: appId,
+      release: release,
+      platform: platform,
+      arch: 'app',
+      fileExtension: 'app',
       extract: (archive, outputDirectory) => ditto.extract(
         source: archive.path,
         destination: outputDirectory.path,
       ),
     );
 
-    await setChannelOnMacosApp(
+    if (!await _useTrackOnApp(
+      platform: platform,
       appDirectory: appDirectory,
-      channel: track.channel,
-    );
+      track: track,
+    )) {
+      return ExitCode.software.code;
+    }
 
     final logs = await open.newApplication(path: appDirectory.path);
     final completer = Completer<void>();
@@ -563,36 +642,6 @@ This is only applicable when previewing Android releases.''',
     final keyPassword = results['ks-key-pass'] as String?;
     final keyAlias = results['ks-key-alias'] as String?;
 
-    // Ensure keystore options are valid.
-    if (keystore != null) {
-      if (keystorePassword == null) {
-        usageException(
-          '--ks requires --ks-pass (e.g. --ks-pass=pass:<password> or '
-          '--ks-pass=file:<path>).',
-        );
-      }
-      if (keyAlias == null) {
-        usageException('--ks requires --ks-key-alias=<alias>.');
-      }
-
-      if (!keystorePassword.startsWith('pass:') &&
-          !keystorePassword.startsWith('file:')) {
-        usageException(
-          '--ks-pass must start with "pass:" or "file:" '
-          '(e.g. --ks-pass=pass:<password> or --ks-pass=file:<path>).',
-        );
-      }
-
-      if (keyPassword != null &&
-          !keyPassword.startsWith('pass:') &&
-          !keyPassword.startsWith('file:')) {
-        usageException(
-          '--ks-key-pass must start with "pass:" or "file:" '
-          '(e.g. --ks-key-pass=pass:<password> or --ks-key-pass=file:<path>).',
-        );
-      }
-    }
-
     // getReleaseArtifact reports its own failure and throws ProcessExit.
     final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
@@ -635,61 +684,50 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (File(apksPath).existsSync()) File(apksPath).deleteSync();
-    final progress = logger.progress('Using $track track');
-    try {
-      await setChannelOnAab(aabFile: aabFile, channel: track.channel);
-      progress.complete();
-    } on Exception catch (error) {
-      progress.fail('$error');
+    if (!await _useTrack(
+      track,
+      () => setChannelOnAab(aabFile: aabFile, channel: track.channel),
+    )) {
       return ExitCode.software.code;
     }
 
-    final extractMetadataProgress = logger.progress('Extracting metadata');
     late String package;
-    try {
+    if (!await _runStep('Extracting metadata', () async {
       package = await bundletool.getPackageName(aabFile.path);
-      extractMetadataProgress.complete();
-    } on Exception catch (error) {
-      extractMetadataProgress.fail('$error');
+    })) {
       return ExitCode.software.code;
     }
 
-    final buildApksProgress = logger.progress('Building apks');
-    try {
-      await bundletool.buildApks(
+    final apksLink = link(uri: Uri.parse(apksPath));
+    if (!await _runStep(
+      'Building apks',
+      () => bundletool.buildApks(
         bundle: aabFile.path,
         output: apksPath,
         keystore: keystore,
         keystorePassword: keystorePassword,
         keyPassword: keyPassword,
         keyAlias: keyAlias,
-      );
-      final apksLink = link(uri: Uri.parse(apksPath));
-      buildApksProgress.complete('Built apks: ${cyan.wrap(apksLink)}');
-    } on Exception catch (error) {
-      buildApksProgress.fail('$error');
+      ),
+      completeMessage: 'Built apks: ${cyan.wrap(apksLink)}',
+    )) {
       return ExitCode.software.code;
     }
 
     logger.info(
       'This will reinstall the app and clear its data on the device.',
     );
-    final installApksProgress = logger.progress('Installing apks');
-    try {
-      await bundletool.installApks(apks: apksPath, deviceId: deviceId);
-      installApksProgress.complete();
-    } on Exception catch (error) {
-      installApksProgress.fail('$error');
+    if (!await _runStep(
+      'Installing apks',
+      () => bundletool.installApks(apks: apksPath, deviceId: deviceId),
+    )) {
       return ExitCode.software.code;
     }
 
-    final startAppProgress = logger.progress('Starting app');
-    try {
+    if (!await _runStep('Starting app', () async {
       await adb.clearAppData(package: package, deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
-      startAppProgress.complete();
-    } on Exception catch (error) {
-      startAppProgress.fail('$error');
+    })) {
       return ExitCode.software.code;
     }
 
@@ -717,39 +755,19 @@ This is only applicable when previewing Android releases.''',
     await iosDeploy.installIfNeeded();
 
     const platform = ReleasePlatform.ios;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseRunnerArtifact = await codePushClientWrapper
-        .getReleaseArtifact(
-          appId: appId,
-          releaseId: release.id,
-          arch: 'runner',
-          platform: platform,
-        );
-
-    final runnerDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseRunnerArtifact,
-        platform: platform,
-        fileExtension: 'app',
-      ),
+    final runnerDirectory = await _downloadReleaseApp(
+      appId: appId,
+      release: release,
+      platform: platform,
+      arch: 'runner',
+      fileExtension: 'app',
     );
 
-    await downloadAndExtractIfNeeded(
-      artifact: releaseRunnerArtifact,
-      outputDirectory: runnerDirectory,
-    );
-
-    final progress = logger.progress('Using $track track');
-    try {
-      await setChannelOnRunner(
-        runnerDirectory: runnerDirectory,
-        channel: track.channel,
-      );
-      progress.complete();
-    } on Exception catch (error) {
-      progress.fail('$error');
+    if (!await _useTrackOnApp(
+      platform: platform,
+      appDirectory: runnerDirectory,
+      track: track,
+    )) {
       return ExitCode.software.code;
     }
 
@@ -862,7 +880,9 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
     return unreachableModern.firstOrNull;
   }
 
-  /// Resolves the artifact path for the given parameters.
+  /// Resolves the artifact path for the given parameters, and records the
+  /// artifact as used so [Cache.pruneUnusedPreviews] keeps it. Every preview
+  /// reaches its cached artifact through this path.
   String getArtifactPath({
     required String appId,
     required Release release,
@@ -872,75 +892,127 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
   }) {
     final previewDirectory = cache.getPreviewDirectory(appId);
     final ext = fileExtension != null ? '.$fileExtension' : '';
-    return p.join(
+    final path = p.join(
       previewDirectory.path,
       '${platform.name}_${release.version}_${artifact.id}$ext',
     );
+    cache.markPreviewUsed(path);
+    return path;
   }
 
-  /// Sets the channel property in the shorebird.yaml file inside the Windows
-  /// app whose root directory is [appDirectory].
-  Future<void> setChannelOnWindowsApp({
-    required Directory appDirectory,
-    required String channel,
+  /// Downloads the app artifact [arch] of [release] for [platform] into the
+  /// preview cache, unless it is already there, and returns its directory.
+  ///
+  /// Throws [ProcessExit] if the artifact can't be fetched or downloaded.
+  Future<Directory> _downloadReleaseApp({
+    required String appId,
+    required Release release,
+    required ReleasePlatform platform,
+    required String arch,
+    String? fileExtension,
+    Future<void> Function(File archive, Directory outputDirectory)? extract,
   }) async {
-    final shorebirdYamlFile = File(
-      p.join(appDirectory.path, 'data', 'flutter_assets', 'shorebird.yaml'),
+    // getReleaseArtifact reports its own failure and throws ProcessExit.
+    final artifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: arch,
+      platform: platform,
     );
 
-    await _maybeSetChannelInShorebirdYaml(
-      channel: channel,
-      shorebirdYamlFile: shorebirdYamlFile,
-    );
-  }
-
-  /// Sets the channel property in the shorebird.yaml file inside the Runner.app
-  Future<void> setChannelOnRunner({
-    required Directory runnerDirectory,
-    required String channel,
-  }) async {
-    await Isolate.run(() async {
-      final shorebirdYaml = File(
-        p.join(
-          runnerDirectory.path,
-          'Frameworks',
-          'App.framework',
-          'flutter_assets',
-          'shorebird.yaml',
-        ),
-      );
-
-      if (!shorebirdYaml.existsSync()) {
-        throw Exception('Unable to find shorebird.yaml');
-      }
-
-      await _maybeSetChannelInShorebirdYaml(
-        channel: channel,
-        shorebirdYamlFile: shorebirdYaml,
-      );
-    });
-  }
-
-  /// Sets the channel property in the shorebird.yaml file inside a macOS app.
-  Future<void> setChannelOnMacosApp({
-    required Directory appDirectory,
-    required String channel,
-  }) async {
-    final shorebirdYamlFile = File(
-      p.join(
-        appDirectory.path,
-        'Contents',
-        'Frameworks',
-        'App.framework',
-        'Resources',
-        'flutter_assets',
-        'shorebird.yaml',
+    final appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: artifact,
+        platform: platform,
+        fileExtension: fileExtension,
       ),
     );
 
+    await downloadAndExtractIfNeeded(
+      artifact: artifact,
+      outputDirectory: appDirectory,
+      extract: extract,
+    );
+    return appDirectory;
+  }
+
+  /// Runs [body] under a progress labeled [message], completing it with
+  /// [completeMessage] on success. On an exception, fails the progress with
+  /// the error and returns false.
+  Future<bool> _runStep(
+    String message,
+    Future<void> Function() body, {
+    String? completeMessage,
+  }) async {
+    final progress = logger.progress(message);
+    try {
+      await body();
+      progress.complete(completeMessage);
+      return true;
+    } on Exception catch (error) {
+      progress.fail('$error');
+      return false;
+    }
+  }
+
+  /// Points the app at [track]'s channel via [setChannel], under a
+  /// "Using <track> track" progress. Every platform goes through here so they
+  /// report the track, and fail, the same way.
+  Future<bool> _useTrack(
+    DeploymentTrack track,
+    Future<void> Function() setChannel,
+  ) => _runStep('Using $track track', setChannel);
+
+  /// [_useTrack] for an extracted [platform] app, see [setChannelOnApp].
+  Future<bool> _useTrackOnApp({
+    required ReleasePlatform platform,
+    required Directory appDirectory,
+    required DeploymentTrack track,
+  }) => _useTrack(
+    track,
+    () => setChannelOnApp(
+      platform: platform,
+      appDirectory: appDirectory,
+      channel: track.channel,
+    ),
+  );
+
+  /// The path of shorebird.yaml inside an extracted app, relative to the
+  /// app's root directory. Android is not listed: its shorebird.yaml lives
+  /// inside the .aab, see [setChannelOnAab].
+  static const _shorebirdYamlPaths = <ReleasePlatform, List<String>>{
+    ReleasePlatform.linux: ['data', 'flutter_assets', 'shorebird.yaml'],
+    ReleasePlatform.windows: ['data', 'flutter_assets', 'shorebird.yaml'],
+    ReleasePlatform.ios: [
+      'Frameworks',
+      'App.framework',
+      'flutter_assets',
+      'shorebird.yaml',
+    ],
+    ReleasePlatform.macos: [
+      'Contents',
+      'Frameworks',
+      'App.framework',
+      'Resources',
+      'flutter_assets',
+      'shorebird.yaml',
+    ],
+  };
+
+  /// Sets the channel property in the shorebird.yaml file inside the
+  /// extracted [platform] app whose root directory is [appDirectory].
+  Future<void> setChannelOnApp({
+    required ReleasePlatform platform,
+    required Directory appDirectory,
+    required String channel,
+  }) async {
     await _maybeSetChannelInShorebirdYaml(
       channel: channel,
-      shorebirdYamlFile: shorebirdYamlFile,
+      shorebirdYamlFile: File(
+        p.joinAll([appDirectory.path, ..._shorebirdYamlPaths[platform]!]),
+      ),
     );
   }
 
@@ -1001,21 +1073,6 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
       tmpAabFile.copySync(aabFile.path);
       tempDir.deleteSync(recursive: true);
     });
-  }
-
-  /// Sets the channel property in the shorebird.yaml file if none is set.
-  Future<void> setChannelOnLinuxApp({
-    required String channel,
-    required Directory bundleDirectory,
-  }) async {
-    final shorebirdYamlFile = File(
-      p.join(bundleDirectory.path, 'data', 'flutter_assets', 'shorebird.yaml'),
-    );
-
-    await _maybeSetChannelInShorebirdYaml(
-      channel: channel,
-      shorebirdYamlFile: shorebirdYamlFile,
-    );
   }
 
   /// Sets the channel property in the shorebird.yaml file if none is set or

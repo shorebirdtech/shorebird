@@ -85,6 +85,42 @@ void main() {
       expect(subscription.items, isEmpty);
     });
 
+    group('cancellationReason', () {
+      test('is null when Stripe reports no reason', () {
+        final subscription = StripeSubscription.fromJson(subscriptionJson);
+
+        expect(subscription.cancellationReason, isNull);
+      });
+
+      test('is null when cancellation_details is absent', () {
+        final json = subscriptionJson..remove('cancellation_details');
+
+        final subscription = StripeSubscription.fromJson(json);
+
+        expect(subscription.cancellationReason, isNull);
+      });
+
+      test('deserializes each known reason', () {
+        for (final reason in StripeCancellationReason.values) {
+          final json = subscriptionJson
+            ..['cancellation_details'] = {'reason': reason.value};
+
+          final subscription = StripeSubscription.fromJson(json);
+
+          expect(subscription.cancellationReason, reason);
+        }
+      });
+
+      test('is null for an unknown reason', () {
+        final json = subscriptionJson
+          ..['cancellation_details'] = {'reason': 'something_new'};
+
+        final subscription = StripeSubscription.fromJson(json);
+
+        expect(subscription.cancellationReason, isNull);
+      });
+    });
+
     group('when a cancellation is scheduled', () {
       test('deserializes cancelAt with cancelAtPeriodEnd false', () {
         final json = subscriptionJson

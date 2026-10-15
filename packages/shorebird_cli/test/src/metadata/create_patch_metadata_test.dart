@@ -2,8 +2,10 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(CreatePatchMetadata, () {
     test('can be (de)serialized', () {
       const metadata = CreatePatchMetadata(

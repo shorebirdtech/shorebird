@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 const _appPubspec = '''
@@ -29,6 +30,7 @@ flutter:
 ''';
 
 void main() {
+  useTempWorkingDirectory();
   group(XcodeprojFlutterOverrideValidator, () {
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;

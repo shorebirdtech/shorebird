@@ -51,6 +51,13 @@ class FileSetDiff extends Equatable {
       removedPaths.isNotEmpty ||
       changedPaths.isNotEmpty;
 
+  /// The subset of this diff whose paths satisfy [test].
+  FileSetDiff where(bool Function(String path) test) => FileSetDiff(
+    addedPaths: addedPaths.where(test).toSet(),
+    removedPaths: removedPaths.where(test).toSet(),
+    changedPaths: changedPaths.where(test).toSet(),
+  );
+
   /// A printable string representation of this [FileSetDiff].
   String get prettyString => [
     if (addedPaths.isNotEmpty)

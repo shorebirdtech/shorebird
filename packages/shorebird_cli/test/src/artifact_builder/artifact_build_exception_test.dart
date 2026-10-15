@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ArtifactBuildException, () {
     group('can be instantiated', () {
       test('translates stdout and stderr to lists of strings', () {

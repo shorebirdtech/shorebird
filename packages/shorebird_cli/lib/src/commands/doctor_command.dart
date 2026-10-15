@@ -1,18 +1,17 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_cli/src/version.dart';
+import 'package:shorebird_cli/src/version_info.dart';
 
 /// {@template doctor_command}
 /// `shorebird doctor`
@@ -43,23 +42,38 @@ class DoctorCommand extends ShorebirdCommand {
   @override
   String get description => 'Show information about the installed tooling.';
 
+  /// Overrides [globalResults] in tests, where there is no command runner.
+  @visibleForTesting
+  ArgResults? testGlobalResults;
+
+  /// Whether to include the toolchain and network speed sections. Either
+  /// `shorebird doctor --verbose` or the global `shorebird --verbose doctor`
+  /// turns them on.
+  bool get _verbose =>
+      results['verbose'] == true ||
+      (testGlobalResults ?? globalResults)?['verbose'] == true;
+
+  /// The Gradle version of the project in the current directory, or null if
+  /// there is no Gradle wrapper or its version can't be determined.
+  Future<String?> _gradleVersion() async {
+    if (!gradlew.exists(Directory.current.path)) return null;
+    try {
+      return await gradlew.version(Directory.current.path);
+    } on Exception catch (error) {
+      logger.detail('Unable to determine Gradle version.\n$error');
+      return null;
+    }
+  }
+
   @override
   Future<int> run() async {
     if (isJsonMode) return _runJson();
 
-    final verbose = results['verbose'] == true;
+    final verbose = _verbose;
     final shouldFix = results['fix'] == true;
-    final flutterVersion = await _tryGetFlutterVersion();
-    final output = StringBuffer();
-    final shorebirdFlutterPrefix = StringBuffer('Flutter');
-
-    if (flutterVersion != null) {
-      shorebirdFlutterPrefix.write(' $flutterVersion');
-    }
-    output.writeln('''
-Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
-$shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
-Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
+    final flutterVersion = await tryGetFlutterVersion();
+    final output = StringBuffer()
+      ..writeln(versionBanner(flutterVersion: flutterVersion));
 
     if (verbose) {
       final notDetected = red.wrap('not detected');
@@ -77,10 +91,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         }
       }
 
-      String? gradlewVersion;
-      if (gradlew.exists(Directory.current.path)) {
-        gradlewVersion = await gradlew.version(Directory.current.path);
-      }
+      final gradlewVersion = await _gradleVersion();
 
       output.writeln('''
 
@@ -143,59 +154,30 @@ Android Toolchain
   }
 
   Future<int> _runJson() async {
-    final flutterVersion = await _tryGetFlutterVersion();
+    // Fixes log to the terminal as they run, so they can't be reported as
+    // structured data. Refuse rather than silently skip them.
+    if (results['fix'] == true) {
+      return reportError(
+        message: '--fix is not supported with --json.',
+        hint: 'Run `shorebird doctor --fix` without --json to apply fixes.',
+      );
+    }
+
+    final flutterVersion = await tryGetFlutterVersion();
 
     String? javaVersion;
     if (java.executable != null) {
       javaVersion = java.version;
     }
 
-    String? gradleVersion;
-    if (gradlew.exists(Directory.current.path)) {
-      try {
-        gradleVersion = await gradlew.version(Directory.current.path);
-      } on Exception {
-        // Gradle version detection can fail — report as null.
-      }
-    }
-
-    // Direct HTTP checks — avoids networkChecker.checkReachability which
-    // logs to the terminal instead of returning structured data.
-    final networkResults = await Future.wait(
-      NetworkChecker.urlsToCheck.map((url) async {
-        try {
-          await httpClient.get(url);
-          return {'url': '$url', 'reachable': true};
-        } on Exception {
-          return {'url': '$url', 'reachable': false};
-        }
-      }),
+    final gradleVersion = await _gradleVersion();
+    final reachability = await networkChecker.reachability();
+    final validatorResults = await doctor.validate(
+      doctor.initAndDoctorValidators,
     );
 
-    // Direct validator calls — avoids doctor.runValidators which logs
-    // to the terminal instead of returning structured data.
-    final validatorResults = <Map<String, dynamic>>[];
-    for (final validator in doctor.initAndDoctorValidators) {
-      if (!validator.canRunInCurrentContext()) continue;
-      final issues = await validator.validate();
-      validatorResults.add({
-        'name': validator.description,
-        'ok': !issues.any(
-          (i) => i.severity == ValidationIssueSeverity.error,
-        ),
-        'issues': issues
-            .map(
-              (i) => {
-                'severity': i.severity.name,
-                'message': i.message,
-              },
-            )
-            .toList(),
-      });
-    }
-
     Map<String, dynamic>? speedTest;
-    if (results['verbose'] == true) {
+    if (_verbose) {
       double? uploadMbPerSec;
       double? downloadMbPerSec;
       try {
@@ -215,10 +197,7 @@ Android Toolchain
     }
 
     emitJsonSuccess({
-      'shorebird_version': packageVersion,
-      'flutter_version': flutterVersion,
-      'flutter_revision': shorebirdEnv.flutterRevision,
-      'engine_revision': shorebirdEnv.shorebirdEngineRevision,
+      ...versionJson(flutterVersion: flutterVersion),
       'android_toolchain': {
         'android_studio': androidStudio.path,
         'android_sdk': androidSdk.path,
@@ -227,19 +206,10 @@ Android Toolchain
         'java_version': javaVersion,
         'gradle_version': gradleVersion,
       },
-      'network': networkResults,
+      'network': [for (final result in reachability) result.toJson()],
       'speed_test': ?speedTest,
-      'validators': validatorResults,
+      'validators': [for (final result in validatorResults) result.toJson()],
     });
     return ExitCode.success.code;
-  }
-
-  Future<String?> _tryGetFlutterVersion() async {
-    try {
-      return await shorebirdFlutter.getVersionString();
-    } on Exception catch (error) {
-      logger.detail('Unable to determine Flutter version.\n$error');
-      return null;
-    }
   }
 }

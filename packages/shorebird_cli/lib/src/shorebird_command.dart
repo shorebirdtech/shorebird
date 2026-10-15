@@ -3,20 +3,17 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
+import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-
-/// Signature for a function which takes a list of bytes and returns a hash.
-typedef HashFunction = String Function(List<int> bytes);
 
 /// Signature for a function which takes a path to a zip file.
 typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
@@ -24,14 +21,6 @@ typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
 /// Signature for a function which builds a [CodePushClient].
 typedef CodePushClientBuilder =
     CodePushClient Function({required http.Client httpClient, Uri? hostedUri});
-
-/// Signature for a function which starts a process (e.g. [Process.start]).
-typedef StartProcess =
-    Future<Process> Function(
-      String executable,
-      List<String> arguments, {
-      bool runInShell,
-    });
 
 /// {@template shorebird_command}
 /// A command in the Shorebird CLI.
@@ -55,6 +44,21 @@ abstract class ShorebirdCommand extends Command<int> {
 
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;
+
+  /// Prints usage through the logger rather than `print`, which writes to
+  /// the real stdout. Under `--json`, the logger's output goes to stderr and
+  /// stdout carries only the envelope.
+  @override
+  void printUsage() => logger.info(usage);
+
+  /// Whether stdout carries only this command's output, such as the response
+  /// body `shorebird api` prints.
+  ///
+  /// When true, the command runner keeps its own messages (the hint printed
+  /// after a failure, the notice that an upgrade is available) off stdout:
+  /// the failure hint is skipped, since the command reports its own errors,
+  /// and the upgrade notice goes to stderr.
+  bool get reservesStdout => false;
 
   /// Whether the `--json` global flag was passed.
   ///
@@ -99,31 +103,6 @@ abstract class ShorebirdCommand extends Command<int> {
   static String jsonHint(String example) =>
       'Pass --json (global flag) for machine-readable output with all fields:\n'
       '  $example';
-
-  /// Resolves the app ID from `--app-id` or `shorebird.yaml`, validating
-  /// preconditions in the process.
-  ///
-  /// Returns `(appId: <id>, errorCode: null)` on success, or
-  /// `(appId: '', errorCode: <code>)` if precondition validation failed.
-  Future<({String appId, int? errorCode})> resolveAppId() async {
-    final explicitAppId = results[CommonArguments.appIdArg.name] as String?;
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: explicitAppId == null,
-      );
-    } on PreconditionFailedException catch (error) {
-      return (appId: '', errorCode: error.exitCode.code);
-    }
-    final flavor = results.findOption(
-      CommonArguments.flavorArg.name,
-      argParser: argParser,
-    );
-    final appId =
-        explicitAppId ??
-        shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
-    return (appId: appId, errorCode: null);
-  }
 
   /// Validates the patch-signing arguments.
   ///
@@ -201,13 +180,117 @@ abstract class ShorebirdCommand extends Command<int> {
     required JsonErrorCode code,
     required String message,
     String? hint,
+    String? apiCode,
+    String? details,
   }) {
     JsonResult.error(
       code: code,
       message: message,
       hint: hint,
+      apiCode: apiCode,
+      details: details,
       command: fullCommandName,
     ).write();
+  }
+
+  /// Reports an error in whichever output mode is active and returns
+  /// [exitCode] (a usage error by default).
+  ///
+  /// With `--json`, emits an error envelope carrying [code], [message] and
+  /// [hint]. Otherwise logs [message] as an error and [hint], if any, as
+  /// info. Both modes report the same [message].
+  int reportError({
+    required String message,
+    String? hint,
+    JsonErrorCode code = JsonErrorCode.usageError,
+    int? exitCode,
+  }) {
+    if (isJsonMode) {
+      emitJsonError(code: code, message: message, hint: hint);
+    } else {
+      logger.err(message);
+      if (hint != null) logger.info(hint);
+    }
+    return exitCode ?? ExitCode.usage.code;
+  }
+
+  /// Reports [error], a failed Shorebird API call, in whichever output mode is
+  /// active and returns [ExitCode.software].
+  ///
+  /// [message] says what failed (e.g. "Failed to fetch patch installs.") and
+  /// is followed by the server's own message. The server's error code and
+  /// details, when present, are reported too: as `api_code` and `details` in
+  /// the `--json` error envelope (whose `code` is [code]), and as extra lines
+  /// otherwise. This lets a caller tell, for example, a plan that lacks a
+  /// feature (`shorebird_plan_insufficient_tier`) from a missing resource.
+  int reportApiError(
+    CodePushException error, {
+    required String message,
+    JsonErrorCode code = JsonErrorCode.fetchFailed,
+  }) {
+    final fullMessage = '$message ${error.message}';
+    if (isJsonMode) {
+      emitJsonError(
+        code: code,
+        message: fullMessage,
+        apiCode: error.code,
+        details: error.details,
+      );
+    } else {
+      logger.err(fullMessage);
+      if (error.details case final details?) logger.info(details);
+      if (error.code case final apiCode?) logger.info('Error code: $apiCode');
+    }
+    return ExitCode.software.code;
+  }
+
+  /// Reports a failed precondition and returns its exit code.
+  ///
+  /// The explanation was already logged when [error] was thrown, so in human
+  /// mode there is nothing more to print. With `--json`, emits a
+  /// `precondition_failed` envelope carrying [error]'s message and hint, so a
+  /// caller reading only stdout learns why (logged out, not in a project,
+  /// ...), not just the exit code.
+  int reportPreconditionFailure(PreconditionFailedException error) {
+    if (isJsonMode) {
+      emitJsonError(
+        code: JsonErrorCode.preconditionFailed,
+        message: error.message,
+        hint: error.hint,
+      );
+    }
+    return error.exitCode.code;
+  }
+
+  /// Runs [body], an API call (or a few) that reports its own failures by
+  /// throwing [ProcessExit], and returns null if it succeeds.
+  ///
+  /// With `--json`, a [ProcessExit] is reported as an error envelope carrying
+  /// [code] and [message], and its exit code is returned for the caller to
+  /// return from `run`. The failure is reported here rather than in the
+  /// command runner, so the runner never sees it and doesn't emit a second
+  /// envelope. Otherwise the [ProcessExit] is rethrown, and the error the
+  /// call already logged stands.
+  ///
+  /// [body] typically assigns `late final` locals that the caller reads once
+  /// this returns null.
+  Future<int?> guardApiCall(
+    Future<void> Function() body, {
+    required JsonErrorCode code,
+    required String message,
+  }) async {
+    try {
+      await body();
+      return null;
+    } on PreconditionFailedExit {
+      // A failed precondition reports itself (as precondition_failed); don't
+      // relabel it as this call's error.
+      rethrow;
+    } on ProcessExit catch (e) {
+      if (!isJsonMode) rethrow;
+      emitJsonError(code: code, message: message);
+      return e.exitCode;
+    }
   }
 }
 

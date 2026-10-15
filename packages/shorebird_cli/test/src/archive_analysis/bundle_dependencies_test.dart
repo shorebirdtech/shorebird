@@ -5,9 +5,11 @@ import 'dart:typed_data';
 import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import 'bundle_dependencies_helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(parseBundleDependencies, () {
     test('reads maven library versions', () {
       final bytes = appDependencies([

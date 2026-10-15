@@ -11,10 +11,12 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
-  final xcarchiveFixturesBasePath = p.join('test', 'fixtures', 'xcarchives');
+  useTempWorkingDirectory();
+  final xcarchiveFixturesBasePath = p.join(fixturesDirectory, 'xcarchives');
   final baseIpaPath = p.join(xcarchiveFixturesBasePath, 'base.xcarchive.zip');
   final baseChangedUuidPath = p.join(
     xcarchiveFixturesBasePath,
@@ -38,8 +40,7 @@ void main() {
   );
 
   final xcframeworkFixturesBasePath = p.join(
-    'test',
-    'fixtures',
+    fixturesDirectory,
     'xcframeworks',
   );
   final baseXcframeworkPath = p.join(
@@ -201,7 +202,7 @@ void main() {
       });
 
       group('layered icon renditions', () {
-        final fixturesPath = p.join('test', 'fixtures', 'assetutil');
+        final fixturesPath = p.join(fixturesDirectory, 'assetutil');
         String readFixture(String name) =>
             File(p.join(fixturesPath, name)).readAsStringSync();
 
@@ -330,6 +331,23 @@ void main() {
             });
           }
         });
+
+        test('leaves no temporary files behind', () async {
+          final expected = await differ.changedFiles(
+            baseIpaPath,
+            changedCarXcarchivePath,
+          );
+          final systemTemp = createSystemTemp();
+          late FileSetDiff fileSetDiff;
+          await runWithSystemTemp(systemTemp, () async {
+            fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+          });
+          expect(fileSetDiff.changedPaths, equals(expected.changedPaths));
+          expect(systemTemp.listSync(), isEmpty);
+        });
       });
 
       group('changedFiles', () {
@@ -454,6 +472,25 @@ void main() {
                 equals(diffOutput),
               );
             });
+          });
+
+          test('leaves no temporary files behind', () async {
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+            final systemTemp = createSystemTemp();
+            await runWithSystemTemp(
+              systemTemp,
+              () => runWithOverrides(
+                () => differ.availableAssetDiffs(
+                  fileSetDiff: fileSetDiff,
+                  oldArchivePath: baseIpaPath,
+                  newArchivePath: changedCarXcarchivePath,
+                ),
+              ),
+            );
+            expect(systemTemp.listSync(), isEmpty);
           });
 
           test('releases the archives it reads', () async {

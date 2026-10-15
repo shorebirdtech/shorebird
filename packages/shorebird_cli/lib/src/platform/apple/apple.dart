@@ -225,64 +225,82 @@ class Apple {
       );
 
       final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
-      debugInfoZip.copySync(p.join('build', Patcher.debugInfoFile.path));
-      logger.detail('Link debug info saved to ${Patcher.debugInfoFile.path}');
-
-      // If we're running on codemagic, export the patch-debug.zip artifact.
-      // https://docs.codemagic.io/knowledge-others/upload-custom-artifacts
-      final codemagicExportDir = platform.environment['CM_EXPORT_DIR'];
-      if (codemagicExportDir != null) {
+      try {
+        debugInfoZip.copySync(p.join('build', Patcher.debugInfoFile.path));
         logger.detail(
-          '''Codemagic environment detected. Exporting ${Patcher.debugInfoFile.path} to $codemagicExportDir''',
+          'Link debug info saved to ${Patcher.debugInfoFile.path}',
         );
-        try {
-          debugInfoZip.copySync(
-            p.join(codemagicExportDir, p.basename(Patcher.debugInfoFile.path)),
+
+        // If we're running on codemagic, export the patch-debug.zip artifact.
+        // https://docs.codemagic.io/knowledge-others/upload-custom-artifacts
+        final codemagicExportDir = platform.environment['CM_EXPORT_DIR'];
+        if (codemagicExportDir != null) {
+          logger.detail(
+            '''Codemagic environment detected. Exporting ${Patcher.debugInfoFile.path} to $codemagicExportDir''',
           );
-        } on Exception catch (error) {
-          logger.detail('''
+          try {
+            debugInfoZip.copySync(
+              p.join(
+                codemagicExportDir,
+                p.basename(Patcher.debugInfoFile.path),
+              ),
+            );
+          } on Exception catch (error) {
+            logger.detail('''
 Failed to export ${Patcher.debugInfoFile.path} to $codemagicExportDir.
 $error''');
+          }
         }
+      } finally {
+        // The zip has been copied to its destinations above.
+        debugInfoZip.parent.deleteSync(recursive: true);
       }
     }
 
+    // The debug info is read back below for link metadata and copied out as
+    // patch-debug.zip, after which the directory itself is no longer needed.
     try {
-      linkPercentage = await aotTools.link(
-        base: releaseArtifact.path,
-        patch: patch.path,
-        analyzeSnapshot: analyzeSnapshot.path,
-        genSnapshot: genSnapshot,
-        outputPath: vmCodeFile.path,
-        workingDirectory: buildDirectory.path,
-        kernel: kernelFile.path,
-        dumpDebugInfoPath: dumpDebugInfoDir?.path,
-        ddMaxBytes: ddMaxBytes,
-        additionalArgs: splitDebugInfoArgs,
-      );
-    } on Exception catch (error) {
-      linkProgress.fail('Failed to link AOT files: $error');
-      return const LinkResult.failure();
-    } finally {
-      await dumpDebugInfo();
-    }
-    Map<String, dynamic>? linkMetadata;
-    try {
-      if (dumpDebugInfoDir != null) {
-        linkMetadata = await aotTools.getLinkMetadata(
-          debugDir: dumpDebugInfoDir.path,
+      try {
+        linkPercentage = await aotTools.link(
+          base: releaseArtifact.path,
+          patch: patch.path,
+          analyzeSnapshot: analyzeSnapshot.path,
+          genSnapshot: genSnapshot,
+          outputPath: vmCodeFile.path,
           workingDirectory: buildDirectory.path,
+          kernel: kernelFile.path,
+          dumpDebugInfoPath: dumpDebugInfoDir?.path,
+          ddMaxBytes: ddMaxBytes,
+          additionalArgs: splitDebugInfoArgs,
         );
+      } on Exception catch (error) {
+        linkProgress.fail('Failed to link AOT files: $error');
+        return const LinkResult.failure();
+      } finally {
+        await dumpDebugInfo();
       }
-    } on Exception catch (error) {
-      logger.detail('[aot_tools] Failed to get link metadata: $error');
-    }
+      Map<String, dynamic>? linkMetadata;
+      try {
+        if (dumpDebugInfoDir != null) {
+          linkMetadata = await aotTools.getLinkMetadata(
+            debugDir: dumpDebugInfoDir.path,
+            workingDirectory: buildDirectory.path,
+          );
+        }
+      } on Exception catch (error) {
+        logger.detail('[aot_tools] Failed to get link metadata: $error');
+      }
 
-    linkProgress.complete();
-    return LinkResult.success(
-      linkPercentage: linkPercentage,
-      linkMetadata: linkMetadata,
-    );
+      linkProgress.complete();
+      return LinkResult.success(
+        linkPercentage: linkPercentage,
+        linkMetadata: linkMetadata,
+      );
+    } finally {
+      if (dumpDebugInfoDir != null && dumpDebugInfoDir.existsSync()) {
+        dumpDebugInfoDir.deleteSync(recursive: true);
+      }
+    }
   }
 
   /// Parses the .xcscheme file to determine if it was created for an app

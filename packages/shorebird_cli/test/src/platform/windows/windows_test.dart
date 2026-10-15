@@ -4,8 +4,10 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/platform/windows/windows.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   R runWithOverrides<R>(R Function() body) {
     return runScoped(
       body,

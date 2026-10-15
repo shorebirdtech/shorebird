@@ -12,9 +12,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(IDeviceSysLog, () {
     const deviceUdid = '12345678-1234567890ABCDEF';
 

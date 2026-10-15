@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -26,6 +27,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -48,6 +50,7 @@ class _FakeRelease extends Fake with Equatable implements Release {
 }
 
 void main() {
+  useTempWorkingDirectory();
   group(PatchCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
@@ -166,6 +169,32 @@ void main() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
     });
+
+    void stubReleaseFlutterVersion(String version) {
+      final versionedRelease = Release(
+        id: release.id,
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: flutterRevision,
+        flutterVersion: version,
+        displayName: release.displayName,
+        platformStatuses: const {
+          ReleasePlatform.android: ReleaseStatus.active,
+          ReleasePlatform.ios: ReleaseStatus.active,
+        },
+        createdAt: release.createdAt,
+        updatedAt: release.updatedAt,
+      );
+      when(
+        () => codePushClientWrapper.getRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => versionedRelease);
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [versionedRelease]);
+    }
 
     setUp(() {
       aotTools = MockAotTools();
@@ -294,6 +323,7 @@ void main() {
 
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
+      when(() => patcher.requiresReleaseVersionArg).thenReturn(false);
       when(
         () => patcher.extractReleaseVersionFromArtifact(any()),
       ).thenAnswer((_) async => releaseVersion);
@@ -362,7 +392,60 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('accepts a hidden --dd-max-bytes option with no default', () {
+      final option =
+          PatchCommand().argParser.options[CommonArguments.ddMaxBytesArg.name]!;
+      expect(option.hide, isTrue);
+      expect(option.defaultsTo, isNull);
+      expect(option.help, equals(CommonArguments.ddMaxBytesArg.description));
+    });
+
     group('run', () {
+      group('--dd-max-bytes', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn(releaseVersion);
+        });
+
+        void setDdMaxBytes(String value) {
+          when(
+            () => argResults[CommonArguments.ddMaxBytesArg.name],
+          ).thenReturn(value);
+        }
+
+        for (final value in ['-1', 'lots', '1.5', '']) {
+          test('rejects "$value" before building', () async {
+            setDdMaxBytes(value);
+
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '--dd-max-bytes must be a non-negative integer '
+                      '(got $value).',
+                ),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          });
+        }
+
+        for (final value in ['0', '10000']) {
+          test('accepts "$value"', () async {
+            setDdMaxBytes(value);
+
+            final exitCode = await runWithOverrides(command.run);
+
+            expect(exitCode, equals(ExitCode.success.code));
+          });
+        }
+      });
+
       group('when --staging is passed', () {
         setUp(() {
           when(() => argResults.wasParsed('staging')).thenReturn(true);
@@ -398,6 +481,135 @@ void main() {
             artifacts: patchArtifactBundles,
           ),
         ).called(1);
+      });
+
+      group('when the patcher has a minimum Flutter version', () {
+        final minimumFlutterVersion = Version(3, 27, 4);
+
+        setUp(() {
+          when(
+            () => patcher.minimumFlutterVersion,
+          ).thenReturn(minimumFlutterVersion);
+        });
+
+        group('when the release Flutter version is older', () {
+          setUp(() {
+            when(() => patcher.releaseType).thenReturn(ReleaseType.ios);
+            when(
+              () => codePushClientWrapper.getRelease(
+                appId: any(named: 'appId'),
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer(
+              (_) async => Release(
+                id: release.id,
+                appId: release.appId,
+                version: release.version,
+                flutterRevision: release.flutterRevision,
+                flutterVersion: release.flutterVersion,
+                displayName: release.displayName,
+                platformStatuses: const {
+                  ReleasePlatform.ios: ReleaseStatus.active,
+                },
+                createdAt: release.createdAt,
+                updatedAt: release.updatedAt,
+              ),
+            );
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => Version(3, 0, 0));
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(() => command.createPatch(patcher)),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err('''
+Release ${release.version} was built with Flutter $flutterRevision, but at least Flutter $minimumFlutterVersion is required to patch with `ios`.
+A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ios --flutter-version=$minimumFlutterVersion')} and patch that one.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.getReleaseArtifact(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          });
+        });
+
+        group('when the release Flutter version is supported', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => minimumFlutterVersion);
+          });
+
+          test(
+            "reads the release's Flutter version after installing it",
+            () async {
+              String? revisionWhenRead;
+              when(() => shorebirdFlutter.getVersion()).thenAnswer((_) async {
+                revisionWhenRead = shorebirdEnv.flutterRevision;
+                return minimumFlutterVersion;
+              });
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verifyInOrder([
+                () => shorebirdFlutter.installRevision(
+                  revision: release.flutterRevision,
+                ),
+                () => shorebirdFlutter.getVersion(),
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: appId,
+                  releaseId: release.id,
+                  arch: any(named: 'arch'),
+                  platform: releasePlatform,
+                ),
+              ]);
+              expect(revisionWhenRead, equals(release.flutterRevision));
+            },
+          );
+
+          test('builds the patch', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when the release Flutter version is unknown', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => null);
+          });
+
+          test('builds the patch', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).called(1);
+          });
+        });
       });
 
       group('flavor validation', () {
@@ -439,13 +651,31 @@ void main() {
                 flavorArg: any(named: 'flavorArg'),
                 releasePlatform: any(named: 'releasePlatform'),
               ),
-            ).thenThrow(ValidationFailedException());
+            ).thenThrow(
+              ValidationFailedException(
+                message: 'Flavors are not supported on this platform.',
+              ),
+            );
           });
 
           test('exits with code 78 (config)', () async {
             await expectLater(
               runWithOverrides(() => command.createPatch(patcher)),
               exitsWithCode(ExitCode.config),
+            );
+          });
+
+          test('carries the flavor failure for the runner to report as '
+              'precondition_failed', () async {
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              throwsA(
+                isA<PreconditionFailedExit>().having(
+                  (e) => e.failure.message,
+                  'failure.message',
+                  'Flavors are not supported on this platform.',
+                ),
+              ),
             );
           });
         });
@@ -569,6 +799,24 @@ void main() {
             ).called(1);
           });
 
+          test('deletes the extracted supplement once patched', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            final supplementDirectory =
+                verify(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: release.id,
+                        releaseArtifact: any(named: 'releaseArtifact'),
+                        supplementDirectory: captureAny(
+                          named: 'supplementDirectory',
+                        ),
+                      ),
+                    ).captured.single
+                    as Directory;
+            expect(supplementDirectory.existsSync(), isFalse);
+          });
+
           group('when the artifact is not found', () {
             setUp(() {
               when(
@@ -662,6 +910,110 @@ void main() {
                 );
               },
             );
+
+            group('when the release Flutter can load obfuscation maps', () {
+              setUp(() {
+                when(
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => false);
+                stubReleaseFlutterVersion('3.41.2');
+              });
+
+              test('loads the release obfuscation map', () async {
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(captured, contains('--obfuscate'));
+                expect(
+                  captured,
+                  contains(
+                    startsWith(
+                      '--extra-gen-snapshot-options=--load-obfuscation-map=',
+                    ),
+                  ),
+                );
+                verify(
+                  () => patcher.obfuscationMapPath = any(that: isNotNull),
+                ).called(1);
+              });
+            });
+
+            group('when the release Flutter cannot load obfuscation maps', () {
+              setUp(() {
+                when(
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => true);
+                stubReleaseFlutterVersion('3.38.9');
+              });
+
+              test('obfuscates an Android patch without the map', () async {
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(captured, contains('--obfuscate'));
+                expect(
+                  captured,
+                  isNot(
+                    contains(
+                      startsWith(
+                        '--extra-gen-snapshot-options=--load-obfuscation-map',
+                      ),
+                    ),
+                  ),
+                );
+                verify(() => patcher.obfuscationMapPath = null).called(1);
+              });
+
+              test(
+                'exits for iOS, whose patches link against the release',
+                () async {
+                  when(() => patcher.releaseType).thenReturn(ReleaseType.ios);
+                  when(
+                    () => codePushClientWrapper.getReleaseArtifact(
+                      appId: any(named: 'appId'),
+                      releaseId: any(named: 'releaseId'),
+                      arch: any(named: 'arch'),
+                      platform: ReleasePlatform.ios,
+                    ),
+                  ).thenAnswer((_) async => aabArtifact);
+                  when(
+                    () => codePushClientWrapper.maybeGetReleaseArtifact(
+                      appId: any(named: 'appId'),
+                      releaseId: any(named: 'releaseId'),
+                      arch: 'supplement',
+                      platform: ReleasePlatform.ios,
+                    ),
+                  ).thenAnswer((_) async => supplementArtifact);
+
+                  await expectLater(
+                    () => runWithOverrides(() => command.createPatch(patcher)),
+                    exitsWithCode(ExitCode.unavailable),
+                  );
+                  verify(
+                    () => logger.err(
+                      'Release $releaseVersion was built with obfuscation on '
+                      'Flutter 3.38.9, but patching an obfuscated iOS release '
+                      'requires Flutter $minimumObfuscationFlutterVersion or '
+                      'later.',
+                    ),
+                  ).called(1);
+                },
+              );
+            });
           });
         });
 
@@ -775,10 +1127,6 @@ void main() {
           when(
             () => argResults['track'],
           ).thenReturn(DeploymentTrack.staging.channel);
-        });
-
-        test('isStaging returns true', () {
-          expect(command.isStaging, isTrue);
         });
 
         test('logs correct summary', () async {
@@ -1118,6 +1466,49 @@ void main() {
       });
     });
 
+    group('when --track is blank', () {
+      setUp(() {
+        when(() => argResults['track']).thenReturn('   ');
+      });
+
+      test('is a usage error before building', () async {
+        await expectLater(
+          runWithOverrides(() => command.createPatch(patcher)),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              equals('Track name must not be blank.'),
+            ),
+          ),
+        );
+        verifyNever(
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+    });
+
+    group('when --track is too long', () {
+      setUp(() {
+        when(() => argResults['track']).thenReturn('a' * 129);
+      });
+
+      test('is a usage error before building', () async {
+        await expectLater(
+          runWithOverrides(() => command.createPatch(patcher)),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              equals('Track name must be at most 128 characters (got 129).'),
+            ),
+          ),
+        );
+      });
+    });
+
     group('when flutter install fails', () {
       final error = Exception('Failed to install Flutter revision.');
 
@@ -1134,6 +1525,72 @@ void main() {
           () => runWithOverrides(command.run),
           exitsWithCode(ExitCode.software),
         );
+      });
+    });
+
+    group('when the patcher requires --release-version', () {
+      setUp(() {
+        when(() => patcher.requiresReleaseVersionArg).thenReturn(true);
+      });
+
+      group('when it is missing', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed('release-version'),
+          ).thenReturn(false);
+        });
+
+        test('prompts for the release when running interactively', () async {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.success.code));
+          // The release comes from the release picker, not from guessing the
+          // version out of a speculative build.
+          verify(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          ).called(1);
+          verifyNever(() => patcher.extractReleaseVersionFromArtifact(any()));
+        });
+
+        test(
+          'is a usage error before building when not interactive',
+          () async {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  startsWith('Missing required argument: --release-version.'),
+                ),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          },
+        );
+      });
+
+      test('uses it when it is provided', () async {
+        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        when(() => argResults['release-version']).thenReturn(releaseVersion);
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.getRelease(
+            appId: appId,
+            releaseVersion: releaseVersion,
+          ),
+        ).called(1);
       });
     });
 
@@ -1564,6 +2021,43 @@ void main() {
             },
           );
 
+          group("when the release's Flutter version is too old", () {
+            setUp(() {
+              when(
+                () => patcher.minimumFlutterVersion,
+              ).thenReturn(Version(3, 27, 4));
+              // The CLI's own Flutter is new enough; the release's is not.
+              when(() => shorebirdFlutter.getVersion()).thenAnswer(
+                (_) async =>
+                    shorebirdEnv.flutterRevision == releaseFlutterRevision
+                    ? Version(3, 0, 0)
+                    : Version(3, 27, 4),
+              );
+            });
+
+            test('exits with code 70 after the speculative build', () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(() => patcher.buildPatchArtifact()).called(1);
+              verifyNever(
+                () =>
+                    patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+              );
+              verify(
+                () => logger.err(
+                  any(
+                    that: contains(
+                      'is required to patch with `android`',
+                    ),
+                  ),
+                ),
+              ).called(1);
+            });
+          });
+
           test(
             'updates cache with both default and release Flutter revisions',
             () async {
@@ -1593,18 +2087,14 @@ void main() {
       });
 
       test('emits what was published', () async {
-        final captured = <String>[];
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJson(() => runWithOverrides(command.run)),
-          captured: captured,
         );
 
         expect(exitCode, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
-        expect(envelope['status'], equals('success'));
+        expect(json['status'], equals('success'));
         expect(
-          envelope['data'],
+          json['data'],
           equals({
             'app_id': appId,
             'track': 'stable',

@@ -16,3 +16,5 @@ bin/cache/
 # Misc
 .DS_Store
 .claude/
+config.bat
+node_modules

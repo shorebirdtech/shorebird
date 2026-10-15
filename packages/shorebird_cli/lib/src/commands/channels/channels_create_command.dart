@@ -1,36 +1,28 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template channels_create_command}
 /// `shorebird channels create`
 /// Create a channel an app can publish to.
 /// {@endtemplate}
-class ChannelsCreateCommand extends ShorebirdCommand {
+class ChannelsCreateCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro channels_create_command}
   ChannelsCreateCommand() {
-    argParser
-      ..addOption(
-        'name',
-        help:
-            'The name of the channel to create (e.g. "qa"), up to '
-            '${CommonArguments.trackNameMaxLength} characters.',
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      'name',
+      help:
+          'The name of the channel to create (e.g. "qa"), up to '
+          '${CommonArguments.trackNameMaxLength} characters.',
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override
@@ -51,60 +43,38 @@ class ChannelsCreateCommand extends ShorebirdCommand {
     if (errorCode != null) return errorCode;
 
     final channelName = results['name'] as String;
-    if (channelName.isEmpty ||
-        channelName.length > CommonArguments.trackNameMaxLength) {
-      const message =
-          'Channel name must be between 1 and '
-          '${CommonArguments.trackNameMaxLength} characters.';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
-    }
+    final nameError = CommonArguments.nameError(
+      label: 'Channel name',
+      value: channelName,
+      maxLength: CommonArguments.trackNameMaxLength,
+    );
+    if (nameError != null) return reportError(message: nameError);
 
-    final List<Channel> channels;
-    try {
-      channels = await codePushClientWrapper.getChannels(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch channels for app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<Channel> channels;
+    final fetchError = await guardApiCall(
+      () async =>
+          channels = await codePushClientWrapper.getChannels(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch channels for app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     final existing = channels.firstWhereOrNull((c) => c.name == channelName);
     if (existing != null) {
       final message = 'Channel "$channelName" already exists.';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
+      return reportError(message: message);
     }
 
-    final Channel channel;
-    try {
-      channel = await codePushClientWrapper.createChannel(
+    late final Channel channel;
+    final createError = await guardApiCall(
+      () async => channel = await codePushClientWrapper.createChannel(
         appId: appId,
         name: channelName,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to create channel "$channelName".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to create channel "$channelName".',
+    );
+    if (createError != null) return createError;
 
     if (isJsonMode) {
       emitJsonSuccess({

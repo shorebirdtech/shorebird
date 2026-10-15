@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -19,6 +17,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ReleasesListCommand, () {
     const appId = 'test-app-id';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
@@ -119,15 +118,6 @@ void main() {
         when(() => argResults['app-id']).thenReturn('explicit-app-id');
       });
 
-      test('does not require shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches releases for the explicit app id', () async {
         await runWithOverrides(command.run);
         verify(
@@ -137,46 +127,11 @@ void main() {
     });
 
     group('when --app-id is not provided', () {
-      test('requires shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-            checkShorebirdInitialized: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches releases using app id from shorebird.yaml', () async {
         await runWithOverrides(command.run);
         verify(
           () => codePushClientWrapper.getReleases(appId: appId),
         ).called(1);
-      });
-
-      group('when --flavor is provided', () {
-        const flavor = 'staging';
-        const flavoredAppId = 'flavored-app-id';
-        const flavoredYaml = ShorebirdYaml(
-          appId: appId,
-          flavors: {flavor: flavoredAppId},
-        );
-
-        setUp(() {
-          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(flavoredYaml);
-          when(() => argResults['flavor']).thenReturn(flavor);
-          when(() => argResults.wasParsed('flavor')).thenReturn(true);
-          when(
-            () => codePushClientWrapper.getReleases(appId: flavoredAppId),
-          ).thenAnswer((_) async => [release]);
-        });
-
-        test('fetches releases for the flavored app id', () async {
-          await runWithOverrides(command.run);
-          verify(
-            () => codePushClientWrapper.getReleases(appId: flavoredAppId),
-          ).called(1);
-        });
       });
     });
 
@@ -243,16 +198,8 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('in human-readable mode, rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('in --json mode, emits JSON error envelope', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -265,12 +212,9 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
       });
     });
 
@@ -289,25 +233,19 @@ void main() {
       }
 
       test('emits JSON success with releases list', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'success');
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['status'], 'success');
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['releases'], isA<List<dynamic>>());
         expect((data['releases'] as List<dynamic>).length, 1);
       });
 
       test('does not use a progress spinner', () async {
-        final captured = <String>[];
-        await captureStdout(
+        await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
         verifyNever(() => logger.progress(any()));
       });

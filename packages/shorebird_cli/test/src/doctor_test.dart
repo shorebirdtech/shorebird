@@ -6,9 +6,11 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(Doctor, () {
     const validationWarning = ValidationIssue(
       severity: ValidationIssueSeverity.warning,
@@ -59,6 +61,45 @@ with multiple lines''',
       when(errorValidator.validate).thenAnswer((_) async => [validationError]);
       when(errorValidator.canRunInCurrentContext).thenReturn(true);
       when(() => errorValidator.description).thenReturn('error validator');
+    });
+
+    group('validate', () {
+      test('returns what each runnable validator found, silently', () async {
+        final skippedValidator = MockValidator();
+        when(skippedValidator.canRunInCurrentContext).thenReturn(false);
+
+        final results = await runWithOverrides(
+          () => doctor.validate([
+            noIssuesValidator,
+            warningValidator,
+            errorValidator,
+            skippedValidator,
+          ]),
+        );
+
+        expect(
+          results.map((r) => r.name),
+          equals([
+            'no issues validator',
+            'warning validator',
+            'error validator',
+          ]),
+        );
+        // Warnings don't fail a validator; errors do.
+        expect(results.map((r) => r.ok), equals([true, true, false]));
+        expect(
+          results.last.toJson(),
+          equals({
+            'name': 'error validator',
+            'ok': false,
+            'issues': [
+              {'severity': 'error', 'message': 'error'},
+            ],
+          }),
+        );
+        verifyNever(skippedValidator.validate);
+        verifyZeroInteractions(logger);
+      });
     });
 
     group('runValidators', () {
@@ -209,6 +250,88 @@ with multiple lines''',
             ),
           ).called(1);
           expect(wasFixCalled, isTrue);
+        });
+
+        test('counts only fixable issues as fixable', () async {
+          when(fixableWarningValidator.validate).thenAnswer(
+            (_) async => [fixableValidationWarning, validationError],
+          );
+          await runWithOverrides(
+            () => doctor.runValidators([fixableWarningValidator]),
+          );
+
+          verify(() => logger.info('2 issues detected.')).called(1);
+          verify(
+            () => logger.info(
+              any(
+                that: stringContainsInOrder([
+                  '1 issue can be fixed automatically with',
+                  'shorebird doctor --fix',
+                ]),
+              ),
+            ),
+          ).called(1);
+        });
+
+        group('when a fix leaves other issues unresolved', () {
+          setUp(() {
+            when(fixableWarningValidator.validate).thenAnswer(
+              (_) async => wasFixCalled
+                  ? [validationError]
+                  : [fixableValidationWarning, validationError],
+            );
+          });
+
+          test('reports the remaining issues and the summary', () async {
+            await runWithOverrides(
+              () => doctor.runValidators([
+                fixableWarningValidator,
+                warningValidator,
+              ], applyFixes: true),
+            );
+
+            expect(wasFixCalled, isTrue);
+            verify(
+              () => progress.fail(
+                'fixable warning validator ${green.wrap('(1 fix applied)')}',
+              ),
+            ).called(1);
+            // The fixed validator is reported once, as a failure, never also
+            // as a completion. The only completion is the second,
+            // warning-only validator's.
+            verifyNever(
+              () => progress.complete(
+                'fixable warning validator ${green.wrap('(1 fix applied)')}',
+              ),
+            );
+            verify(() => progress.complete(any())).called(1);
+            verify(
+              () => logger.info(
+                '  ${validationError.displayMessage!}',
+              ),
+            ).called(1);
+            verify(() => logger.info('2 issues detected.')).called(1);
+          });
+        });
+
+        test('logs failed fixes even when another fix applied', () async {
+          when(fixableWarningValidator.validate).thenAnswer(
+            (_) async => wasFixCalled
+                ? [erroringValidationWarning]
+                : [fixableValidationWarning, erroringValidationWarning],
+          );
+          await runWithOverrides(
+            () async => doctor.runValidators([
+              fixableWarningValidator,
+            ], applyFixes: true),
+          );
+
+          verify(
+            () => logger.err(
+              '''  An error occurred while attempting to fix warning: Exception: oh no!''',
+            ),
+          ).called(1);
+          verify(() => logger.info('1 issue detected.')).called(1);
         });
 
         test('prints error if fixes fail to apply', () async {

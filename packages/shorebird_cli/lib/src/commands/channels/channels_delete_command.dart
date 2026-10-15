@@ -1,18 +1,19 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The channels backing Shorebird's built-in deployment tracks.
 ///
-/// These are permanent, so the CLI names them ahead of the confirmation gate.
+/// These are permanent: the server refuses to delete them (deleting one would
+/// unpublish every patch on that track), so the CLI refuses up front instead
+/// of sending a request that can only fail.
 final _defaultTrackNames = <String>{
   DeploymentTrack.stable.value,
   DeploymentTrack.beta.value,
@@ -23,29 +24,17 @@ final _defaultTrackNames = <String>{
 /// `shorebird channels delete`
 /// Delete a channel from an app.
 /// {@endtemplate}
-class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
+class ChannelsDeleteCommand extends ShorebirdCommand
+    with AppScopedCommand, ConfirmDelete {
   /// {@macro channels_delete_command}
   ChannelsDeleteCommand() {
-    argParser
-      ..addOption(
-        'name',
-        help: 'The name of the channel to delete (e.g. "qa").',
-        mandatory: true,
-      )
-      ..addOption(
-        confirmNameArgName,
-        help:
-            'The name of the channel again. Must match exactly, which is how '
-            'the delete is confirmed.',
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      'name',
+      help: 'The name of the channel to delete (e.g. "qa").',
+      mandatory: true,
+    );
+    addConfirmDeleteOptions();
+    addAppScopeOptions();
   }
 
   @override
@@ -57,12 +46,12 @@ class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
       'Devices on the channel stop receiving patches.\n\n'
       'The built-in tracks stable, beta, and staging are permanent and cannot '
       'be deleted.\n\n'
-      'Requires --$confirmNameArgName=<channel name>; there is no prompt, so '
-      'this behaves the same in a terminal and in CI. Run '
-      '"shorebird channels list" to see the names an app has.\n\n'
+      'In a terminal, asks for confirmation. Pass --$yesArgName to skip the '
+      'prompt; it is required when not running interactively (no terminal, '
+      'CI, or --json). Run "shorebird channels list" to see the names an app '
+      'has.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird channels delete --app-id <id> --name qa '
-        '--confirm-name qa --json',
+        'shorebird channels delete --app-id <id> --name qa --yes --json',
       )}';
 
   @override
@@ -72,76 +61,58 @@ class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
 
     final channelName = results['name'] as String;
 
-    final List<Channel> channels;
-    try {
-      channels = await codePushClientWrapper.getChannels(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch channels for app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
+    if (_defaultTrackNames.contains(channelName)) {
+      return reportError(
+        message:
+            '"$channelName" is one of Shorebird\'s built-in tracks and cannot '
+            'be deleted.',
+        hint:
+            'Deleting it would unpublish every patch on that track. Only '
+            'channels you created can be deleted.',
+      );
     }
+
+    late final List<Channel> channels;
+    final fetchError = await guardApiCall(
+      () async =>
+          channels = await codePushClientWrapper.getChannels(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch channels for app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     final channel = channels.firstWhereOrNull((c) => c.name == channelName);
     if (channel == null) {
       final message = 'No channel named "$channelName" for app "$appId".';
       final available = channels.map((c) => c.name).join(', ');
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: message,
-          hint: 'Available channels: $available',
-        );
-        return ExitCode.usage.code;
-      }
-      logger
-        ..err(message)
-        ..info('Available channels: $available');
-      return ExitCode.usage.code;
-    }
-
-    final isDefaultTrack = _defaultTrackNames.contains(channelName);
-    // Say so before the gate, so a caller does not go hunting for a
-    // confirmation value that will not help them.
-    if (isDefaultTrack && !isJsonMode) {
-      logger.warn(
-        '"$channelName" is one of Shorebird\'s built-in tracks and cannot be '
-        'deleted.',
+      return reportError(
+        message: message,
+        hint: 'Available channels: $available',
       );
     }
 
-    final gateErrorCode = checkConfirmName(
-      expected: channelName,
-      resourceDescription: 'channel "$channelName"',
+    final gateErrorCode = confirmDelete(
+      name: channelName,
+      description: 'channel "$channelName" from app "$appId"',
+      style: DeleteConfirmationStyle.yesNo,
     );
     if (gateErrorCode != null) return gateErrorCode;
 
-    try {
-      await codePushClientWrapper.deleteChannel(
+    final deleteError = await guardApiCall(
+      () => codePushClientWrapper.deleteChannel(
         appId: appId,
         channelId: channel.id,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message: 'Failed to delete channel "$channelName".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.softwareError,
+      message: 'Failed to delete channel "$channelName".',
+    );
+    if (deleteError != null) return deleteError;
 
     if (isJsonMode) {
       emitJsonSuccess({
         'app_id': appId,
         'name': channelName,
         'channel_id': channel.id,
-        'is_default_track': isDefaultTrack,
         'deleted': true,
       });
       return ExitCode.success.code;

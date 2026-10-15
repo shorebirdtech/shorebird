@@ -11,7 +11,8 @@
 # don't need to run this script to see coverage on GitHub.
 # https://app.codecov.io/gh/shorebirdtech/shorebird
 
-dart pub global activate coverage
+# Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
+dart pub global activate coverage 1.15.1
 dart pub global activate combine_coverage
 
 PACKAGES=$(ls -d packages/*)

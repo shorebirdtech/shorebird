@@ -6,9 +6,11 @@ import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('ShorebirdVersionValidator', () {
     late ShorebirdVersion shorebirdVersion;
     late ShorebirdVersionValidator validator;

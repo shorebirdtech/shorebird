@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -28,9 +29,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
     required super.target,
   });
 
-  /// Whether to codesign the release.
-  bool get codesign => argResults['codesign'] == true;
-
   @override
   ReleaseType get releaseType => ReleaseType.macos;
 
@@ -49,7 +47,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   @override
   Future<void> assertArgsAreValid() async {
     assertReleaseVersionFlagNotProvided();
-    await assertObfuscationIsSupported();
   }
 
   @override
@@ -57,7 +54,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    if (!codesign) {
+    if (!argResults.appleCodesign) {
       logger
         ..info(
           '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
@@ -67,22 +64,16 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
         );
     }
 
-    final base64PublicKey = await getEncodedPublicKey();
-
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-
-    await artifactBuilder.buildMacos(
-      codesign: codesign,
-      flavor: flavor,
-      target: target,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
+    await runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildMacos(
+        codesign: argResults.appleCodesign,
+        flavor: flavor,
+        target: target,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+        ddMaxBytes: ddMaxBytes,
+      ),
     );
-
-    verifyObfuscationMap();
 
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
@@ -96,24 +87,9 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
-  }) async {
-    final plistFile = File(
-      p.join(releaseArtifactRoot.path, 'Contents', 'Info.plist'),
-    );
-    if (!plistFile.existsSync()) {
-      logger.err('No Info.plist file found at ${plistFile.path}');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    try {
-      return Plist(file: plistFile).versionNumber;
-    } on Exception catch (error) {
-      logger.err(
-        '''Failed to determine release version from ${plistFile.path}: $error''',
-      );
-      throw ProcessExit(ExitCode.software.code);
-    }
-  }
+  }) async => readReleaseVersionFromInfoPlist(
+    File(p.join(releaseArtifactRoot.path, 'Contents', 'Info.plist')),
+  );
 
   @override
   Future<void> uploadReleaseArtifacts({
@@ -130,11 +106,8 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
       appId: appId,
       releaseId: release.id,
       appPath: appDirectory.path,
-      isCodesigned: codesign,
       podfileLockHash: shorebirdEnv.macosPodfileLockHash,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

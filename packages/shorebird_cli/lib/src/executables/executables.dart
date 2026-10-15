@@ -14,5 +14,4 @@ export 'java.dart';
 export 'open.dart';
 export 'patch_executable.dart';
 export 'powershell.dart';
-export 'shorebird_tools.dart';
 export 'xcodebuild.dart';

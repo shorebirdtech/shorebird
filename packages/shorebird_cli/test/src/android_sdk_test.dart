@@ -13,6 +13,7 @@ import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AndroidSdk, () {
     late Directory homeDirectory;
     late OperatingSystemInterface osInterface;

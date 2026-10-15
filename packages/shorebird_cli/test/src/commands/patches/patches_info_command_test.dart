@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -19,6 +17,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PatchesInfoCommand, () {
     const appId = 'test-app-id';
     const releaseVersion = '1.0.0+1';
@@ -136,15 +135,6 @@ void main() {
         when(() => argResults['app-id']).thenReturn('explicit-app-id');
       });
 
-      test('does not require shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches patches for the explicit app id', () async {
         await runWithOverrides(command.run);
         verify(
@@ -157,16 +147,6 @@ void main() {
     });
 
     group('when --app-id is not provided', () {
-      test('requires shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-            checkShorebirdInitialized: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches patches using app id from shorebird.yaml', () async {
         await runWithOverrides(command.run);
         verify(
@@ -175,37 +155,6 @@ void main() {
             releaseVersion: releaseVersion,
           ),
         ).called(1);
-      });
-
-      group('when --flavor is provided', () {
-        const flavor = 'staging';
-        const flavoredAppId = 'flavored-app-id';
-        const flavoredYaml = ShorebirdYaml(
-          appId: appId,
-          flavors: {flavor: flavoredAppId},
-        );
-
-        setUp(() {
-          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(flavoredYaml);
-          when(() => argResults['flavor']).thenReturn(flavor);
-          when(() => argResults.wasParsed('flavor')).thenReturn(true);
-          when(
-            () => codePushClientWrapper.getRelease(
-              appId: flavoredAppId,
-              releaseVersion: releaseVersion,
-            ),
-          ).thenAnswer((_) async => release);
-        });
-
-        test('fetches patches for the flavored app id', () async {
-          await runWithOverrides(command.run);
-          verify(
-            () => codePushClientWrapper.getRelease(
-              appId: flavoredAppId,
-              releaseVersion: releaseVersion,
-            ),
-          ).called(1);
-        });
       });
     });
 
@@ -234,11 +183,12 @@ void main() {
         expect(result, equals(ExitCode.usage.code));
         verify(
           () => logger.err(
-            any(that: contains('No patch found with number $patchNumber')),
+            'No patch found with number $patchNumber '
+            'for release "$releaseVersion".',
           ),
         ).called(1);
         verify(
-          () => logger.info(any(that: contains('Available patches'))),
+          () => logger.info(any(that: startsWith('Available patches: '))),
         ).called(1);
       });
     });
@@ -361,16 +311,8 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('in human-readable mode, rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('in --json mode, emits JSON error envelope', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -383,15 +325,14 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], 'fetch_failed');
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
-          'fetch_failed',
+          error['message'],
+          'Failed to fetch patch $patchNumber for release "$releaseVersion".',
         );
       });
     });
@@ -411,46 +352,15 @@ void main() {
       }
 
       test('emits JSON success with patch details', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'success');
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['status'], 'success');
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['patch'], isA<Map<String, dynamic>>());
         final patchData = data['patch'] as Map<String, dynamic>;
         expect(patchData['number'], patchNumber);
-      });
-
-      group('when the patch number is not found', () {
-        setUp(() {
-          when(
-            () => codePushClientWrapper.getReleasePatches(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-            ),
-          ).thenAnswer((_) async => []);
-        });
-
-        test('emits JSON error envelope and returns usage exit code', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
-            () => runJsonMode(command.run),
-            captured: captured,
-          );
-          expect(result, equals(ExitCode.usage.code));
-          expect(captured, hasLength(1));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
-          expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
-            'usage_error',
-          );
-        });
       });
 
       group('when --patch-number is not an integer', () {
@@ -459,15 +369,12 @@ void main() {
         });
 
         test('emits usage_error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
-          final error = decoded['error'] as Map<String, dynamic>;
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
+          final error = json['error'] as Map<String, dynamic>;
           expect(error['code'], 'usage_error');
           expect(error['message'], '"one" is not a valid patch number.');
         });
@@ -483,7 +390,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err('"one" is not a valid patch number'),
+          () => logger.err('"one" is not a valid patch number.'),
         ).called(1);
         verify(
           () => logger.info(

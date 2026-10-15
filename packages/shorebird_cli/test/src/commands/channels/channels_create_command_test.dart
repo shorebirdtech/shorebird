@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -20,6 +18,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ChannelsCreateCommand, () {
     const appId = 'app-id';
     const channelName = 'qa';
@@ -122,6 +121,14 @@ void main() {
         verifyNeverCreated();
       });
 
+      test('rejects a whitespace-only name', () async {
+        when(() => argResults['name']).thenReturn('   ');
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verifyNeverCreated();
+        verify(() => logger.err('Channel name must not be blank.')).called(1);
+      });
+
       test('rejects a name that is too long', () async {
         when(() => argResults['name']).thenReturn(
           'a' * (CommonArguments.trackNameMaxLength + 1),
@@ -133,16 +140,13 @@ void main() {
 
       test('emits a usage_error envelope under --json', () async {
         when(() => argResults['name']).thenReturn('');
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.usage.code));
+        expect(exitCode, equals(ExitCode.usage.code));
         verifyNeverCreated();
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'usage_error',
         );
       });
@@ -162,15 +166,12 @@ void main() {
       });
 
       test('emits a usage_error envelope under --json', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.usage.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.usage.code));
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'usage_error',
         );
       });
@@ -184,16 +185,13 @@ void main() {
       });
 
       test('emits a JSON error envelope in --json mode', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
+        expect(exitCode, equals(ExitCode.software.code));
         verifyNeverCreated();
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'fetch_failed',
         );
       });
@@ -209,23 +207,13 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('rethrows in human-readable mode', () async {
-        await expectLater(
-          runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('emits a JSON error envelope in --json mode', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.software.code));
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'software_error',
         );
       });
@@ -233,14 +221,11 @@ void main() {
 
     group('--json', () {
       test('emits the created channel', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['name'], channelName);
         expect(data['channel'], equals(qaChannel.toJson()));
       });

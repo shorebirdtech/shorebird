@@ -27,7 +27,7 @@ Unsupported class file major version.
 
 This error is typically caused by a mismatch between the Java and Gradle's versions.
 
-Check our $docLink for help. 
+Check our $docLink for help.
 ''';
   }
 }

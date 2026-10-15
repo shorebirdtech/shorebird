@@ -29,10 +29,12 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(IosFrameworkReleaser, () {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
@@ -131,6 +133,16 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(iosFrameworkReleaser.supplementPlatformSubdir, equals('ios'));
+        expect(
+          iosFrameworkReleaser.supplementArtifactArch,
+          equals('ios_framework_supplement'),
+        );
+      });
+    });
+
     group('assertArgsAreValid', () {
       group('when split-per-abi is true', () {
         setUp(() {
@@ -158,45 +170,6 @@ void main() {
         });
       });
 
-      group('when --obfuscate is passed', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
-          when(() => argResults['obfuscate']).thenReturn(true);
-          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        });
-
-        group('when Flutter version supports obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 2));
-          });
-
-          test('returns normally', () async {
-            await expectLater(
-              runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
-              completes,
-            );
-          });
-        });
-
-        group('when Flutter version does not support obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 27, 4));
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.unavailable),
-            );
-          });
-        });
-      });
-
       group('when --obfuscate is not passed', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
@@ -220,30 +193,6 @@ void main() {
           () => shorebirdFlutter.resolveFlutterVersion(any()),
         ).thenAnswer((_) async => flutterVersion);
         when(flavorValidator.validate).thenAnswer((_) async => []);
-      });
-
-      group('when validation succeeds', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-        });
-
-        test('returns normally', () async {
-          await expectLater(
-            () => runWithOverrides(iosFrameworkReleaser.assertPreconditions),
-            returnsNormally,
-          );
-        });
       });
 
       group('when validation fails', () {
@@ -277,24 +226,6 @@ void main() {
               supportedOperatingSystems: {NativePlatform.macOS},
             ),
           ).called(1);
-        });
-      });
-
-      group('when specified flutter version is less than minimum', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-          when(() => argResults['flutter-version']).thenReturn('3.0.0');
         });
       });
     });
@@ -382,79 +313,6 @@ void main() {
         );
       });
 
-      group('when a public-key-cmd is provided', () {
-        const base64PublicKey = 'base64PublicKeyFromCmd';
-
-        setUp(() {
-          when(
-            () => argResults[CommonArguments.publicKeyCmd.name],
-          ).thenReturn('get-key-cmd');
-          when(
-            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
-          ).thenReturn(true);
-
-          when(
-            () => artifactBuilder.buildIosFramework(
-              args: any(named: 'args'),
-              base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
-            ),
-          ).thenAnswer(
-            (_) async =>
-                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-          );
-
-          when(
-            () => codeSigner.runPublicKeyCmd(any()),
-          ).thenAnswer((_) async => 'pem-public-key');
-          when(
-            () => codeSigner.base64PublicKeyFromPem(any()),
-          ).thenReturn(base64PublicKey);
-        });
-
-        test(
-          'runs public key cmd and forwards encoded key to '
-          'buildIosFramework',
-          () async {
-            await runWithOverrides(
-              () => iosFrameworkReleaser.buildReleaseArtifacts(),
-            );
-
-            verify(
-              () => codeSigner.runPublicKeyCmd('get-key-cmd'),
-            ).called(1);
-            verify(
-              () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
-            ).called(1);
-            verify(
-              () => artifactBuilder.buildIosFramework(
-                args: any(named: 'args'),
-                base64PublicKey: base64PublicKey,
-              ),
-            ).called(1);
-          },
-        );
-      });
-
-      group('when stale build/ios/shorebird directory exists', () {
-        late Directory shorebirdSupplementDir;
-
-        setUp(() {
-          shorebirdSupplementDir = Directory(
-            p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-          )..createSync(recursive: true);
-          when(
-            () => artifactManager.getIosReleaseSupplementDirectory(),
-          ).thenReturn(shorebirdSupplementDir);
-        });
-
-        test('deletes the directory', () async {
-          expect(shorebirdSupplementDir.existsSync(), isTrue);
-          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
-          expect(shorebirdSupplementDir.existsSync(), isFalse);
-        });
-      });
-
       group('when platform was specified via arg results rest', () {
         setUp(() {
           when(() => argResults.rest).thenReturn(['ios', '--verbose']);
@@ -540,39 +398,6 @@ void main() {
               any(that: startsWith('Obfuscation map saved to')),
             ),
           ).called(1);
-        });
-
-        group('when obfuscation map is not generated', () {
-          setUp(() {
-            // Override to NOT create the map file.
-            when(
-              () => artifactBuilder.buildIosFramework(
-                args: any(named: 'args'),
-              ),
-            ).thenAnswer(
-              (_) async =>
-                  AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-            );
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(
-                iosFrameworkReleaser.buildReleaseArtifacts,
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => logger.err(
-                any(
-                  that: contains(
-                    'Obfuscation was enabled but the obfuscation map was not',
-                  ),
-                ),
-              ),
-            ).called(1);
-          });
         });
       });
     });

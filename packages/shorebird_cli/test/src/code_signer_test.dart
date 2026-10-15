@@ -10,20 +10,15 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
-class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class MockShorebirdProcessResult extends Mock
-    implements ShorebirdProcessResult {}
-
-class MockProcess extends Mock implements Process {}
-
-class MockIOSink extends Mock implements IOSink {}
+import 'helpers.dart';
+import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(
     CodeSigner,
     () {
-      final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+      final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
       // PKCS#8 format (BEGIN PRIVATE KEY)
       final privateKeyFile = File(
         p.join(cryptoFixturesBasePath, 'private.pem'),

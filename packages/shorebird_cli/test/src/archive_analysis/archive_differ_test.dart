@@ -1,10 +1,12 @@
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 const assetFilePath = 'some/assets/file';
 
 void main() {
+  useTempWorkingDirectory();
   group(ArchiveDiffer, () {
     late TestArchiveDiffer archiveDiffer;
 

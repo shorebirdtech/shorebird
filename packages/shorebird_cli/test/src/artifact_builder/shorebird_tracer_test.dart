@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdTracer, () {
     late ShorebirdTracer tracer;
 

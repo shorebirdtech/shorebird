@@ -442,8 +442,9 @@ jobs:
       - name: Run Tests
         if: inputs.has_unit_tests
         working-directory: \${{ inputs.package_path }}
+        # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
         run: |
-          dart pub global activate coverage && \\
+          dart pub global activate coverage 1.15.1 && \\
           dart test --coverage=coverage && \\
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
@@ -871,8 +872,9 @@ jobs:
     if (isFlutter) return '      - run: flutter test --coverage\n';
     return r'''
       - name: Run Tests
+        # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
         run: |
-          dart pub global activate coverage && \
+          dart pub global activate coverage 1.15.1 && \
           dart test --coverage=coverage && \
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
 ''';

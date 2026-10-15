@@ -2,8 +2,10 @@ import 'dart:math';
 
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('formatBytes', () {
     test('returns 0B for anything less than 0', () {
       expect(formatBytes(-1), equals('0 B'));

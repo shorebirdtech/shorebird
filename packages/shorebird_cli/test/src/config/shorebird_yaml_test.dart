@@ -1,8 +1,10 @@
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('ShorebirdYaml', () {
     test('can be deserialized without flavors', () {
       const yaml = '''
@@ -149,6 +151,48 @@ patch_verification: invalid_value
         );
         expect(shorebirdYaml.getAppId(flavor: 'development'), 'test_app_id1');
         expect(shorebirdYaml.getAppId(flavor: 'production'), 'test_app_id2');
+      });
+
+      group('unknownFlavorError', () {
+        const flavoredYaml = ShorebirdYaml(
+          appId: 'test_app_id',
+          flavors: {
+            'development': 'test_app_id1',
+            'production': 'test_app_id2',
+          },
+        );
+
+        test('is null when no flavor is given', () {
+          expect(flavoredYaml.unknownFlavorError(null), isNull);
+          expect(
+            const ShorebirdYaml(appId: 'test_app_id').unknownFlavorError(null),
+            isNull,
+          );
+        });
+
+        test('is null for a defined flavor', () {
+          expect(flavoredYaml.unknownFlavorError('production'), isNull);
+        });
+
+        test('lists the defined flavors for an unknown flavor', () {
+          expect(
+            flavoredYaml.unknownFlavorError('staging'),
+            equals(
+              'This project does not have a flavor named "staging". Pass one '
+              'of: development, production (from "flavors" in '
+              'shorebird.yaml).',
+            ),
+          );
+        });
+
+        test('explains when the project has no flavors', () {
+          expect(
+            const ShorebirdYaml(
+              appId: 'test_app_id',
+            ).unknownFlavorError('staging'),
+            contains('does not have any flavors defined'),
+          );
+        });
       });
     });
   });

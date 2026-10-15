@@ -4,8 +4,10 @@ import 'package:args/args.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
+import 'helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(JsonResult, () {
     group('success', () {
       test('serializes correctly', () {
@@ -56,12 +58,12 @@ void main() {
         final result = JsonResult.error(
           code: JsonErrorCode.usageError,
           message: 'Not authenticated.',
-          hint: 'Run: shorebird login:ci',
+          hint: 'Run: shorebird login',
           command: 'doctor',
         );
         final json = result.toJson();
         final error = json['error'] as Map<String, dynamic>;
-        expect(error['hint'], equals('Run: shorebird login:ci'));
+        expect(error['hint'], equals('Run: shorebird login'));
       });
     });
   });
@@ -100,6 +102,34 @@ void main() {
         hint: 'try this',
       );
       expect(error.toJson()['hint'], equals('try this'));
+    });
+
+    test('serializes the API error code and details when given', () {
+      const error = JsonError(
+        code: JsonErrorCode.fetchFailed,
+        message: 'test message',
+        apiCode: 'shorebird_plan_insufficient_tier',
+        details: 'more',
+      );
+      expect(
+        error.toJson(),
+        equals({
+          'code': 'fetch_failed',
+          'message': 'test message',
+          'api_code': 'shorebird_plan_insufficient_tier',
+          'details': 'more',
+        }),
+      );
+    });
+
+    test('omits the API error code and details when absent', () {
+      const error = JsonError(
+        code: JsonErrorCode.fetchFailed,
+        message: 'test message',
+      );
+      final json = error.toJson();
+      expect(json.containsKey('api_code'), isFalse);
+      expect(json.containsKey('details'), isFalse);
     });
   });
 }

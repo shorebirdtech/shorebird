@@ -4,12 +4,11 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template orgs_command}
 /// `shorebird account orgs`
-/// List the organizations the current user belongs to.
+/// List the organizations the current user can access.
 /// {@endtemplate}
 class OrgsCommand extends ShorebirdCommand {
   /// {@macro orgs_command}
@@ -20,12 +19,15 @@ class OrgsCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'List the organizations you belong to.\n\n'
+      'List the organizations you can access.\n\n'
       'Example output (space-separated: id  name  type  role):\n'
       '  1  Acme Corp  team  admin\n'
       '  2  user@example.com  personal  owner\n\n'
-      'Type is "personal" or "team". Role is "owner", "admin", or '
-      '"developer".\n\n'
+      'Type is "personal" or "team".\n'
+      'Role is "owner", "admin", "appManager", "developer", "viewer", or '
+      '"none".\n'
+      'A "none" role means you only collaborate on apps in that organization.'
+      '\n\n'
       '${ShorebirdCommand.jsonHint('shorebird account orgs --json')}';
 
   @override
@@ -35,22 +37,17 @@ class OrgsCommand extends ShorebirdCommand {
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+      return reportPreconditionFailure(error);
     }
 
-    final List<OrganizationMembership> memberships;
-    try {
-      memberships = await codePushClientWrapper.getOrganizationMemberships();
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch organizations.',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<OrganizationMembership> memberships;
+    final fetchError = await guardApiCall(
+      () async => memberships = await codePushClientWrapper
+          .getOrganizationMemberships(),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch organizations.',
+    );
+    if (fetchError != null) return fetchError;
 
     if (isJsonMode) {
       emitJsonSuccess({

@@ -8,11 +8,13 @@ import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import 'bundle_dependencies_helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AndroidArchiveDiffer, () {
-    final aabFixturesBasePath = p.join('test', 'fixtures', 'aabs');
+    final aabFixturesBasePath = p.join(fixturesDirectory, 'aabs');
     final baseAabPath = p.join(aabFixturesBasePath, 'base.aab');
     final changedAssetAabPath = p.join(
       aabFixturesBasePath,
@@ -28,7 +30,7 @@ void main() {
       'changed_dart_and_asset.aab',
     );
 
-    final aarFixturesBasePath = p.join('test', 'fixtures', 'aars');
+    final aarFixturesBasePath = p.join(fixturesDirectory, 'aars');
     final baseAarPath = p.join(aarFixturesBasePath, 'base.aar');
     final changedAssetAarPath = p.join(
       aarFixturesBasePath,

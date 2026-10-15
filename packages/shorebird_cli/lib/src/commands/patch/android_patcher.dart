@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/build_preconditions.dart';
+import 'package:shorebird_cli/src/commands/patch/android_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -18,14 +18,13 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template android_patcher}
 /// Functions to create an Android patch.
 /// {@endtemplate}
-class AndroidPatcher extends Patcher {
+class AndroidPatcher extends Patcher with AndroidPatcherMixin {
   /// {@macro android_patcher}
   AndroidPatcher({
     required super.argResults,
@@ -76,17 +75,9 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   );
 
   @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-        validators: doctor.androidCommandValidators,
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
-  }
+  Future<void> assertPreconditions() => assertBuildPreconditions(
+    validators: doctor.androidCommandValidators,
+  );
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
@@ -107,7 +98,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       flavor: flavor,
       target: target,
       args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: await getEncodedPublicKey(),
     );
 
     // When the built .aab never packaged libapp.so, fail fast with an accurate
@@ -153,45 +144,11 @@ Looked in:
     Directory? supplementDirectory,
     Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
-    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
+    final releaseArtifactPaths = await downloadAndroidReleaseArtifacts(
       appId: appId,
       releaseId: releaseId,
-      architectures: AndroidArch.availableAndroidArchs,
-      platform: releaseType.releasePlatform,
+      downloadMessageTimeout: downloadMessageTimeout,
     );
-    final releaseArtifactPaths = <Arch, String>{};
-    final numArtifacts = releaseArtifacts.length;
-
-    // Direct users to https://github.com/shorebirdtech/shorebird/issues/2532
-    // until we can provide a better solution.
-    var artifactsDownloadCompleted = false;
-    unawaited(
-      Future<void>.delayed(downloadMessageTimeout).then((_) {
-        if (artifactsDownloadCompleted) {
-          return;
-        }
-        logger.info(
-          '''
-It seems like your download is taking longer than expected. If you are on Windows, this is a known issue.
-Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/2532'))} for potential workarounds.''',
-        );
-      }),
-    );
-
-    for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
-      try {
-        final releaseArtifactFile = await artifactManager
-            .downloadWithProgressUpdates(
-              Uri.parse(releaseArtifact.value.url),
-              message: 'Downloading release artifact ${i + 1}/$numArtifacts',
-            );
-        releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
-      } on Exception {
-        throw ProcessExit(ExitCode.software.code);
-      }
-    }
-
-    artifactsDownloadCompleted = true;
 
     // [buildPatchArtifact] runs before this and caches the resolved
     // directory; the fallback only covers a direct call without it, in which
@@ -207,89 +164,10 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
-    final skippedArchs = <Arch>[];
-    final createDiffProgress = logger.progress('Creating patch artifacts');
-    for (final releaseArtifactPath in releaseArtifactPaths.entries) {
-      final arch = releaseArtifactPath.key;
-      final patchArtifactPath = p.join(
-        patchArchsBuildDir.path,
-        arch.androidBuildPath,
-        'libapp.so',
-      );
-      logger.detail('Creating artifact for $patchArtifactPath');
-      final patchArtifact = File(patchArtifactPath);
-      // Skip archs the build didn't produce (ndk.abiFilters / splits.abi /
-      // jniLibs.excludes). Without this, a release built for a subset of
-      // archs can't be patched without hitting PathNotFoundException
-      // (https://github.com/shorebirdtech/shorebird/issues/3388).
-      if (!patchArtifact.existsSync()) {
-        logger.detail(
-          'Skipping ${arch.arch}: no libapp.so at $patchArtifactPath. '
-          'This is expected if the project excludes this ABI from packaging.',
-        );
-        skippedArchs.add(arch);
-        continue;
-      }
-      final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-      final hashSignature = await signHash(hash);
-
-      try {
-        final diffPath = await artifactManager.createDiff(
-          releaseArtifactPath: releaseArtifactPath.value,
-          patchArtifactPath: patchArtifactPath,
-        );
-        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-          arch: arch.arch,
-          path: diffPath,
-          hash: hash,
-          size: await File(diffPath).length(),
-          hashSignature: hashSignature,
-        );
-      } on Exception catch (error) {
-        createDiffProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
-    }
-    if (patchArtifactBundles.isEmpty) {
-      createDiffProgress.fail(
-        'No patch artifacts produced: no libapp.so found for any architecture '
-        'under ${patchArchsBuildDir.path}.',
-      );
-      throw ProcessExit(ExitCode.software.code);
-    }
-    createDiffProgress.complete();
-
-    // A partial patch still succeeds, so name the architectures it leaves
-    // behind. Without this the omission is only visible at --verbose, and a
-    // patch that reaches a fraction of the install base looks identical to one
-    // that is merely slow to roll out.
-    if (skippedArchs.isNotEmpty) {
-      // androidBuildPath, not arch: the message points at Gradle packaging
-      // config, and only the ABI names appear there.
-      final skipped = skippedArchs
-          .map((arch) => arch.androidBuildPath)
-          .join(', ');
-      final patched = patchArtifactBundles.keys
-          .map((arch) => arch.androidBuildPath)
-          .join(', ');
-      logger.warn('''
-This patch does not cover every architecture in the release.
-
-  Patched: $patched
-  Skipped: $skipped
-
-Devices on the skipped architectures stay on the release and will not receive
-this patch.
-
-The patch build produced no libapp.so for them, so it and the release build
-disagree on which architectures to compile. If that is deliberate, such as an
-excludes rule under packaging.jniLibs, no device runs the skipped
-architectures and there is nothing to do. Otherwise rebuild the patch using
-the same Android configuration and Flutter version as the release.''');
-    }
-
-    return patchArtifactBundles;
+    return createAndroidPatchArtifactBundles(
+      releaseArtifactPaths: releaseArtifactPaths,
+      patchArchsDir: patchArchsBuildDir,
+    );
   }
 
   @override

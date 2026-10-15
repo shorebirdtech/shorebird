@@ -2,7 +2,7 @@
 // the trace producers (flutter_tools, aot_tools, the Gradle init
 // script, the CocoaPods wrapper). Event category names, gradle task
 // `kind` values, and span-name prefixes live in
-// `shorebird_build_trace`'s `TraceSchema`; if you add a new bucket
+// `shorebird_build_trace`'s `trace_schema.dart`; if you add a new bucket
 // here, add the matching producer-side constant there.
 
 import 'dart:convert';
@@ -18,8 +18,7 @@ import 'package:shorebird_cli/src/artifact_builder/duration_distribution.dart';
 /// for uploading to Shorebird's servers as part of release telemetry.
 class BuildTraceSummary {
   /// Creates a [BuildTraceSummary] directly from pre-computed fields.
-  /// Most callers should use [BuildTraceSummary.fromEvents] or
-  /// [BuildTraceSummary.tryFromFile].
+  /// Most callers should use [BuildTraceSummary.fromEvents].
   BuildTraceSummary({
     required this.platform,
     required this.total,
@@ -290,24 +289,6 @@ class BuildTraceSummary {
           acc.xcodeSubsectionDurations,
         ),
       ),
-    );
-  }
-
-  /// Parse [traceFile] and return a summary, or null if the file is missing
-  /// or can't be parsed as a Chrome Trace Event Format JSON array.
-  static BuildTraceSummary? tryFromFile(
-    File traceFile, {
-    required String platform,
-    Duration? shorebirdOverhead,
-    BuildEnvironment? environment,
-  }) {
-    final events = tryReadEvents(traceFile);
-    if (events == null) return null;
-    return BuildTraceSummary.fromEvents(
-      events,
-      platform: platform,
-      shorebirdOverhead: shorebirdOverhead,
-      environment: environment,
     );
   }
 

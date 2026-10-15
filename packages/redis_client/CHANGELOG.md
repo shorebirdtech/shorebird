@@ -1,3 +1,9 @@
+# 0.0.14
+
+- feat: connect over TLS with `RedisSocketOptions.tls` and an optional `securityContext`
+- feat: `RedisSocketOptions.credentialsProvider` supplies fresh credentials on every connect and reconnect, for short-lived tokens; it is bounded by `timeout`
+- fix: a refused `AUTH` now fails the connection attempt instead of leaving the client connected but unauthenticated
+
 # 0.0.13
 
 - refactor: extract `RedisConnection` from `RedisClient` to prepare for opt-in connection pooling
