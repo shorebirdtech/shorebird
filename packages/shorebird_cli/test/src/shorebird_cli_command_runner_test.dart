@@ -466,6 +466,50 @@ Engine • revision $shorebirdEngineRevision'''),
       });
     });
 
+    group('when the command reserves stdout', () {
+      test('does not print the failure hint', () async {
+        commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 1));
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['reserves-stdout']),
+        );
+
+        expect(result, equals(1));
+        verifyNever(
+          () => logger.info(
+            any(that: contains("If you aren't sure why this command failed")),
+          ),
+        );
+      });
+
+      test('prints the update notice to stderr', () async {
+        when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
+        commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 0));
+        final stdoutLines = <String>[];
+        final stderrLines = <String>[];
+        final realStderr = stderr;
+
+        await helpers.captureStdout(
+          () => IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => commandRunner.run(['reserves-stdout']),
+            ),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrLines,
+            ),
+          ),
+          captured: stdoutLines,
+        );
+
+        expect(stdoutLines, isEmpty);
+        expect(
+          stderrLines,
+          contains('A new version of shorebird is available!'),
+        );
+      });
+    });
+
     group('completion', () {
       test('fast tracks completion', () async {
         final result = await runWithOverrides(
@@ -1241,6 +1285,25 @@ class _TestCommand extends ShorebirdCommand {
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
   }
+}
+
+/// Returns [exitCode], and owns stdout the way `shorebird api` does.
+class _ReservesStdoutCommand extends ShorebirdCommand {
+  _ReservesStdoutCommand({required this.exitCode});
+
+  final int exitCode;
+
+  @override
+  String get name => 'reserves-stdout';
+
+  @override
+  String get description => 'Reserves stdout command';
+
+  @override
+  bool get reservesStdout => true;
+
+  @override
+  Future<int> run() async => exitCode;
 }
 
 /// Writes a human line to stdout, then an envelope when in JSON mode.

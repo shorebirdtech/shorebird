@@ -3,10 +3,12 @@ import 'dart:io';
 
 import 'package:cli_util/cli_util.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -55,22 +57,30 @@ typedef _StoredLogin = ({oauth2.Credentials credentials, String? email});
 typedef RunProcessSync =
     ProcessResult Function(String executable, List<String> arguments);
 
-/// A client that sends the stored Shorebird credentials, refreshed first if
-/// they have expired (see `Auth._currentClient`).
+/// The login `shorebird login` stored, sent as its access token.
 ///
-/// A refresh the auth service answers with an OAuth error ends the command
-/// with instructions to log in again; any other failure to refresh ends it as
-/// a temporary failure, leaving the stored credentials in place.
-class AuthenticatedClient extends http.BaseClient {
-  /// Creates an [AuthenticatedClient] that sends requests through the
-  /// [oauth2.Client] [currentClient] returns.
-  AuthenticatedClient({required Future<oauth2.Client> Function() currentClient})
-    : _currentClient = currentClient;
+/// Refreshes the access token first when it has expired (see
+/// `Auth._currentClient`). A refresh the auth service answers with an OAuth
+/// error ends the command with instructions to log in again; any other
+/// failure to refresh ends it as a temporary failure, leaving the stored
+/// credentials in place.
+class StoredLoginSource extends CredentialSource {
+  /// Creates a [StoredLoginSource] for the login [currentClient] returns,
+  /// refreshed if it needs to be, available while [isLoggedIn].
+  StoredLoginSource({
+    required bool Function() isLoggedIn,
+    required Future<oauth2.Client> Function() currentClient,
+  }) : _isLoggedIn = isLoggedIn,
+       _currentClient = currentClient;
 
+  final bool Function() _isLoggedIn;
   final Future<oauth2.Client> Function() _currentClient;
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+  bool get isAvailable => _isLoggedIn();
+
+  @override
+  Future<String> authorization() async {
     final oauth2.Client client;
     try {
       client = await _currentClient();
@@ -110,7 +120,36 @@ class AuthenticatedClient extends http.BaseClient {
         ..detail(s.toString());
       throw ProcessExit(ExitCode.tempFail.code);
     }
-    return client.send(request);
+    return 'Bearer ${client.credentials.accessToken}';
+  }
+
+  /// Throws [oauth2.AuthorizationException] for a 401 whose bearer
+  /// challenge names an OAuth error, such as `invalid_token`, as
+  /// `oauth2.Client.send` does: the stored access token was refused.
+  @override
+  void checkResponse(http.BaseResponse response) {
+    if (response.statusCode != HttpStatus.unauthorized) return;
+    final header = response.headers['www-authenticate'];
+    if (header == null) return;
+
+    final List<AuthenticationChallenge> challenges;
+    try {
+      challenges = AuthenticationChallenge.parseHeader(header);
+    } on FormatException {
+      return;
+    }
+    final challenge = challenges
+        .where((challenge) => challenge.scheme == 'bearer')
+        .firstOrNull;
+    final error = challenge?.parameters['error'];
+    if (error == null) return;
+
+    final uri = challenge!.parameters['error_uri'];
+    throw oauth2.AuthorizationException(
+      error,
+      challenge.parameters['error_description'],
+      uri == null ? null : Uri.parse(uri),
+    );
   }
 }
 
@@ -131,25 +170,49 @@ String _describeTransientFailure(Exception error) => error is FormatException
     ? 'The Shorebird auth service sent an unexpected answer.'
     : 'Could not reach the Shorebird auth service.';
 
-/// An HTTP client that authenticates requests using an API key.
-///
-/// Unlike [AuthenticatedClient], this client does not perform any token
-/// refresh or exchange — the API key is sent directly in the Authorization
-/// header and the server handles validation.
-class ApiKeyClient extends http.BaseClient {
-  /// Creates a new [ApiKeyClient].
-  ApiKeyClient({required String apiKey, required http.Client httpClient})
-    : _apiKey = apiKey,
-      _baseClient = httpClient;
+/// A Shorebird API key from [shorebirdTokenEnvVar], sent as is. The server
+/// validates it on every request; there is nothing to refresh.
+class ApiKeySource extends CredentialSource {
+  /// Creates an [ApiKeySource] that sends [apiKey].
+  const ApiKeySource(this.apiKey);
 
-  final String _apiKey;
-  final http.Client _baseClient;
+  /// The API key from [shorebirdTokenEnvVar] in [environment], or null when
+  /// it is not set.
+  ///
+  /// Ends the command when it is set to something that is not an API key.
+  static ApiKeySource? fromEnvironment(Map<String, String> environment) {
+    final envToken = environment[shorebirdTokenEnvVar];
+    if (envToken == null) return null;
+
+    final trimmed = envToken.trim();
+    logger.detail('[env] $shorebirdTokenEnvVar detected');
+
+    if (!trimmed.startsWith(apiKeyPrefix)) {
+      // Most likely a CI token from the removed `shorebird login:ci`, which
+      // the server no longer accepts.
+      logger
+        ..err(
+          '$shorebirdTokenEnvVar is not a Shorebird API key '
+          '(API keys start with $apiKeyPrefix).',
+        )
+        ..info(
+          '''CI tokens from `shorebird login:ci` are no longer supported. Create an API key at ${link(uri: Uri.parse('https://console.shorebird.dev'))} and set it as your ${lightCyan.wrap(shorebirdTokenEnvVar)} environment variable.''',
+        );
+      throw ProcessExit(ExitCode.config.code);
+    }
+
+    logger.detail('[env] $shorebirdTokenEnvVar parsed as API key');
+    return ApiKeySource(trimmed);
+  }
+
+  /// The API key.
+  final String apiKey;
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers['Authorization'] = 'Bearer $_apiKey';
-    return _baseClient.send(request);
-  }
+  bool get isAvailable => true;
+
+  @override
+  Future<String> authorization() async => 'Bearer $apiKey';
 }
 
 /// An OAuth 2.0 authentication provider.
@@ -164,6 +227,7 @@ class Auth {
     CodePushClientBuilder? buildCodePushClient,
     RunProcessSync? runProcessSync,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
+       _apiKeySource = ApiKeySource.fromEnvironment(platform.environment),
        _runProcessSync = runProcessSync ?? Process.runSync,
        _credentialsDir =
            credentialsDir ?? BaseDirectories(executableName).configHome,
@@ -187,7 +251,17 @@ class Auth {
   final ObtainCredentialsViaDeviceLogin _obtainCredentialsViaDeviceLogin;
   final CodePushClientBuilder _buildCodePushClient;
   final RunProcessSync _runProcessSync;
-  String? _apiKey;
+  final ApiKeySource? _apiKeySource;
+
+  /// How requests are authenticated: the sources in the order they are
+  /// tried.
+  late final CredentialChain _credentials = CredentialChain([
+    ?_apiKeySource,
+    StoredLoginSource(
+      isLoggedIn: () => _oauthClient != null,
+      currentClient: _currentClient,
+    ),
+  ]);
 
   /// The path to the credentials file: [oauth2.Credentials] as JSON, with
   /// an `email` field naming the user they belong to.
@@ -202,17 +276,15 @@ class Auth {
     return p.join(_credentialsDir, 'credentials.json');
   }
 
-  /// The underlying HTTP client.
+  /// The HTTP client for requests to the Shorebird API: an
+  /// [AuthenticatedClient] when there are credentials to send, and the plain
+  /// HTTP client otherwise.
   http.Client get client {
-    if (_apiKey != null) {
-      return ApiKeyClient(apiKey: _apiKey!, httpClient: _httpClient);
-    }
-
-    if (_oauthClient != null) {
-      return AuthenticatedClient(currentClient: _currentClient);
-    }
-
-    return _httpClient;
+    if (!_credentials.isAvailable) return _httpClient;
+    return AuthenticatedClient(
+      credentials: _credentials,
+      httpClient: _httpClient,
+    );
   }
 
   /// Whether the locally stored credentials are still usable.
@@ -233,7 +305,7 @@ class Auth {
   /// nothing about whether they are still good, and answering `false` would
   /// log a user out for running `shorebird login` off wifi.
   Future<bool> hasValidCredentials() async {
-    if (_apiKey != null) return true;
+    if (_apiKeySource != null) return true;
     if (_oauthClient == null) return false;
 
     try {
@@ -421,11 +493,11 @@ class Auth {
 
   /// Whether the user is authenticated: with an API key, or with stored
   /// credentials, which the auth service may still reject.
-  bool get isAuthenticated => _oauthClient != null || _apiKey != null;
+  bool get isAuthenticated => _credentials.isAvailable;
 
   /// Whether requests are authenticated with an API key from
   /// [shorebirdTokenEnvVar], which takes priority over stored credentials.
-  bool get isUsingApiKey => _apiKey != null;
+  bool get isUsingApiKey => _apiKeySource != null;
 
   /// The current user's email, fetched from the Shorebird API and saved with
   /// the credentials when they were stored without one, as credentials
@@ -435,7 +507,7 @@ class Auth {
   /// the user could not be fetched. The access token is opaque to the CLI,
   /// so the API is the only place to learn who it belongs to.
   Future<String?> fetchEmail() async {
-    if (_email != null || _apiKey != null || _oauthClient == null) {
+    if (_email != null || _apiKeySource != null || _oauthClient == null) {
       return _email;
     }
 
@@ -471,29 +543,8 @@ class Auth {
   }
 
   void _loadCredentials() {
-    final envToken = platform.environment[shorebirdTokenEnvVar];
-    if (envToken != null) {
-      final trimmed = envToken.trim();
-      logger.detail('[env] $shorebirdTokenEnvVar detected');
-
-      if (!trimmed.startsWith(apiKeyPrefix)) {
-        // Most likely a CI token from the removed `shorebird login:ci`, which
-        // the server no longer accepts.
-        logger
-          ..err(
-            '$shorebirdTokenEnvVar is not a Shorebird API key '
-            '(API keys start with $apiKeyPrefix).',
-          )
-          ..info(
-            '''CI tokens from `shorebird login:ci` are no longer supported. Create an API key at ${link(uri: Uri.parse('https://console.shorebird.dev'))} and set it as your ${lightCyan.wrap(shorebirdTokenEnvVar)} environment variable.''',
-          );
-        throw ProcessExit(ExitCode.config.code);
-      }
-
-      _apiKey = trimmed;
-      logger.detail('[env] $shorebirdTokenEnvVar parsed as API key');
-      return;
-    }
+    // An API key takes priority, so the stored login is not read at all.
+    if (_apiKeySource != null) return;
 
     final login = _readCredentialsFile(warn: true);
     if (login == null) return;

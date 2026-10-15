@@ -22,6 +22,7 @@ dependencies:
     path: ../dex
   equatable: ^2.1.0
   http: ^1.5.0
+  http_parser: ^4.1.2
   intl: ^0.20.3
   io: ^1.1.0
   json_annotation: ^4.12.0
