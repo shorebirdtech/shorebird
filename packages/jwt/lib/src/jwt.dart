@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -16,9 +17,19 @@ import 'package:ttl_cache/ttl_cache.dart';
 @visibleForTesting
 final publicKeyStores = TtlCache<String, PublicKeyStore>();
 
-/// When each URL's keys were last fetched, so an unknown key id fetches them
-/// again at most once per [_minRefetchInterval].
-final _fetchedAt = <String, DateTime>{};
+/// The URLs whose keys were fetched successfully within the last
+/// [_minRefetchInterval], so an unknown key id fetches them again at most once
+/// per interval. Like jose's `createRemoteJWKSet`, the interval starts when a
+/// fetch succeeds; a failed fetch does not start it.
+@visibleForTesting
+final recentlyFetchedUrls = TtlCache<String, bool>(
+  defaultTtl: _minRefetchInterval,
+);
+
+/// The fetch in progress for each URL, which concurrent callers share instead
+/// of each fetching the same keys. jose's `createRemoteJWKSet` shares its
+/// pending request the same way.
+final _pendingFetches = <String, Future<PublicKeyStore?>>{};
 
 /// How long keys are cached when the response sets no `max-age`. jose's
 /// `createRemoteJWKSet` uses the same default (`cacheMaxAge`, 10 minutes).
@@ -48,19 +59,29 @@ Future<PublicKeyStore?> _getPublicKeys(
 /// Whether an unknown key id may fetch [url]'s keys again now: the signer may
 /// have rotated to a key published after the cached set was fetched (RFC 7517
 /// section 4.5, `kid`).
-bool _mayFetchAgain(String url) {
-  final fetchedAt = _fetchedAt[url];
-  return fetchedAt == null ||
-      clock.now().difference(fetchedAt) >= _minRefetchInterval;
+bool _mayFetchAgain(String url) => !recentlyFetchedUrls.containsKey(url);
+
+/// Fetches [url]'s keys, or joins the fetch of them already in progress.
+Future<PublicKeyStore?> _fetchPublicKeys(
+  String url, {
+  required JwksFormat jwksFormat,
+}) {
+  return _pendingFetches[url] ??= () async {
+    try {
+      return await _requestPublicKeys(url, jwksFormat: jwksFormat);
+    } finally {
+      // Callers await this same future through [_pendingFetches].
+      unawaited(_pendingFetches.remove(url));
+    }
+  }();
 }
 
-Future<PublicKeyStore?> _fetchPublicKeys(
+Future<PublicKeyStore?> _requestPublicKeys(
   String url, {
   required JwksFormat jwksFormat,
 }) async {
   final get = getOverride ?? http.get;
   final response = await get(Uri.parse(url));
-  _fetchedAt[url] = clock.now();
 
   if (response.statusCode != HttpStatus.ok) {
     throw const JwtVerificationFailure('Could not fetch public keys.');
@@ -78,6 +99,7 @@ Future<PublicKeyStore?> _fetchPublicKeys(
     return null;
   }
 
+  recentlyFetchedUrls.set(url, true);
   publicKeyStores.set(
     url,
     publicKeyStore,
