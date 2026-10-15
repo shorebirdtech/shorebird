@@ -301,11 +301,10 @@ void main() {
         );
       }
 
-      final fullError = CodePushException(
+      const fullError = CodePushException(
         message: 'The account requires an upgraded plan.',
         details: 'Some details.',
         code: 'shorebird_plan_insufficient_tier',
-        documentationUrl: Uri.parse('https://docs.shorebird.dev/account/api/'),
       );
 
       setUp(() {
@@ -331,11 +330,6 @@ void main() {
           verify(() => logger.info('Some details.')).called(1);
           verify(
             () => logger.info('Error code: shorebird_plan_insufficient_tier'),
-          ).called(1);
-          verify(
-            () => logger.info(
-              'Documentation: https://docs.shorebird.dev/account/api/',
-            ),
           ).called(1);
         });
 
@@ -375,7 +369,6 @@ void main() {
                   'The account requires an upgraded plan.',
               'api_code': 'shorebird_plan_insufficient_tier',
               'details': 'Some details.',
-              'documentation_url': 'https://docs.shorebird.dev/account/api/',
             }),
           );
           verifyNever(() => logger.err(any()));
