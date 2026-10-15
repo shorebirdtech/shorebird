@@ -273,10 +273,7 @@ void main() {
         );
 
         final responseUser = await codePushClient.getCurrentUser();
-        expect(responseUser, isNotNull);
-        expect(responseUser!.id, user.id);
-        expect(responseUser.email, user.email);
-        expect(responseUser.hasActiveSubscription, user.hasActiveSubscription);
+        expect(responseUser, equals(user));
       });
     });
 
