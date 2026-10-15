@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -658,11 +659,11 @@ void main() {
           expect(auth.isAuthenticated, isTrue);
         });
 
-        test('ApiKeyClient sends correct Authorization header', () async {
+        test('sends the API key as the bearer token', () async {
           answerApiRequests();
           auth = buildAuth();
           final client = auth.client;
-          expect(client, isA<ApiKeyClient>());
+          expect(client, isA<AuthenticatedClient>());
 
           await runWithOverrides(
             () => client.get(Uri.parse('https://example.com')),
@@ -677,12 +678,23 @@ void main() {
           );
         });
 
-        test('takes priority over credentials file', () {
+        test('takes priority over credentials file', () async {
+          answerApiRequests();
           writeCredentials();
           auth = buildAuth();
           expect(auth.isAuthenticated, isTrue);
           expect(auth.email, isNull);
-          expect(auth.client, isA<ApiKeyClient>());
+
+          await runWithOverrides(
+            () => auth.client.get(Uri.parse('https://example.com')),
+          );
+
+          final captured = verify(() => httpClient.send(captureAny())).captured;
+          final request = captured.single as http.BaseRequest;
+          expect(
+            request.headers['Authorization'],
+            equals('Bearer sb_api_abc123'),
+          );
         });
       });
 
