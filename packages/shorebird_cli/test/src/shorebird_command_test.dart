@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart';
@@ -283,6 +284,94 @@ void main() {
           );
           verifyNever(() => logger.err(any()));
           verifyNever(() => logger.info(any()));
+        });
+      });
+    });
+
+    group('reportApiError', () {
+      late ShorebirdLogger logger;
+
+      R runWithOverrides<R>(R Function() body, {required bool jsonMode}) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => jsonMode),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      }
+
+      const fullError = CodePushException(
+        message: 'The account requires an upgraded plan.',
+        details: 'Some details.',
+        code: 'shorebird_plan_insufficient_tier',
+      );
+
+      setUp(() {
+        logger = MockShorebirdLogger();
+      });
+
+      group('when not in JSON mode', () {
+        test('logs the message, details and code', () {
+          final exitCode = runWithOverrides(
+            () => command.reportApiError(
+              fullError,
+              message: 'Failed to fetch things.',
+            ),
+            jsonMode: false,
+          );
+
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => logger.err(
+              'Failed to fetch things. The account requires an upgraded plan.',
+            ),
+          ).called(1);
+          verify(() => logger.info('Some details.')).called(1);
+          verify(
+            () => logger.info('Error code: shorebird_plan_insufficient_tier'),
+          ).called(1);
+        });
+
+        test('logs only the message when there is no code or details', () {
+          runWithOverrides(
+            () => command.reportApiError(
+              const CodePushException(message: 'Oops.'),
+              message: 'Failed to fetch things.',
+            ),
+            jsonMode: false,
+          );
+
+          verify(() => logger.err('Failed to fetch things. Oops.')).called(1);
+          verifyNever(() => logger.info(any()));
+        });
+      });
+
+      group('when in JSON mode', () {
+        test('emits the API code and details in the envelope', () async {
+          final result = await captureJson(
+            () async => runWithOverrides(
+              () => command.reportApiError(
+                fullError,
+                message: 'Failed to fetch things.',
+              ),
+              jsonMode: true,
+            ),
+          );
+
+          expect(result.exitCode, equals(ExitCode.software.code));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'fetch_failed',
+              'message':
+                  'Failed to fetch things. '
+                  'The account requires an upgraded plan.',
+              'api_code': 'shorebird_plan_insufficient_tier',
+              'details': 'Some details.',
+            }),
+          );
+          verifyNever(() => logger.err(any()));
         });
       });
     });
