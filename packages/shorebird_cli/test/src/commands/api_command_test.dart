@@ -609,6 +609,202 @@ void main() {
       });
     });
 
+    group('--paginate', () {
+      // Pages the fake API serves, keyed by the cursor that asks for each;
+      // null asks for the first page.
+      late Map<String?, ({int status, String body})> pages;
+      late List<Uri> requested;
+
+      setUp(() {
+        pages = {
+          null: (
+            status: HttpStatus.ok,
+            body: '{"apps":[1],"next_cursor":"c1"}',
+          ),
+          'c1': (
+            status: HttpStatus.ok,
+            body: '{"apps":[2],"next_cursor":"c2"}',
+          ),
+          'c2': (status: HttpStatus.ok, body: '{"apps":[3]}'),
+        };
+        requested = [];
+        when(() => codePushClient.send(any())).thenAnswer((invocation) async {
+          final request = invocation.positionalArguments.single as http.Request;
+          requested.add(request.url);
+          final page = pages[request.url.queryParameters['cursor']]!;
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(page.body)),
+            page.status,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+      });
+
+      test('follows next_cursor and prints every page', () async {
+        expect(await runApi(['/apps', '--paginate']), equals(0));
+        expect(
+          fakeStdout.text,
+          equals(
+            '{"apps":[1],"next_cursor":"c1"}\n'
+            '{"apps":[2],"next_cursor":"c2"}\n'
+            '{"apps":[3]}\n',
+          ),
+        );
+        expect(
+          requested.map((uri) => uri.query),
+          equals([
+            'per_page=100',
+            'per_page=100&cursor=c1',
+            'per_page=100&cursor=c2',
+          ]),
+        );
+      });
+
+      test('keeps the query parameters of the request', () async {
+        expect(
+          await runApi([
+            '/apps/{appId}/releases?sideloadable=true',
+            '--paginate',
+            '-f',
+            'per_page=2',
+          ]),
+          equals(0),
+        );
+        expect(requested, hasLength(3));
+        for (final uri in requested) {
+          expect(uri.path, equals('/api/v1/apps/$appId/releases'));
+          expect(uri.queryParameters['sideloadable'], equals('true'));
+          expect(uri.queryParameters['per_page'], equals('2'));
+        }
+        expect(requested.last.queryParameters['cursor'], equals('c2'));
+      });
+
+      test('sends fields as the query string of a GET', () async {
+        expect(await runApi(['/apps', '--paginate', '-f', 'a=b']), equals(0));
+        expect(
+          requested.first.queryParameters,
+          equals({'a': 'b', 'per_page': '100'}),
+        );
+        verify(
+          () => codePushClient.send(
+            any(
+              that: isA<http.Request>().having(
+                (r) => r.method,
+                'method',
+                'GET',
+              ),
+            ),
+          ),
+        ).called(3);
+      });
+
+      test('stops after one page when there is no next_cursor', () async {
+        pages[null] = (status: HttpStatus.ok, body: '{"apps":[1]}');
+        expect(await runApi(['/apps', '--paginate']), equals(0));
+        expect(fakeStdout.text, equals('{"apps":[1]}\n'));
+        expect(requested, hasLength(1));
+      });
+
+      test('stops after one page when the response is not JSON', () async {
+        when(() => codePushClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode('plain')),
+            HttpStatus.ok,
+            headers: {'content-type': 'text/plain'},
+          ),
+        );
+        expect(await runApi(['/x', '--paginate']), equals(0));
+        expect(fakeStdout.text, equals('plain\n'));
+      });
+
+      test('applies --jq to each page', () async {
+        expect(
+          await runApi(['/apps', '--paginate', '--jq', '.apps[]']),
+          equals(0),
+        );
+        expect(fakeStdout.text, equals('1\n2\n3\n'));
+      });
+
+      test('--slurp prints one array of every page', () async {
+        expect(await runApi(['/apps', '--paginate', '--slurp']), equals(0));
+        expect(
+          fakeStdout.text,
+          equals(
+            '[{"apps":[1],"next_cursor":"c1"},'
+            '{"apps":[2],"next_cursor":"c2"},'
+            '{"apps":[3]}]\n',
+          ),
+        );
+      });
+
+      test('--slurp indents when stdout is a terminal', () async {
+        fakeStdout.hasTerminal = true;
+        pages[null] = (status: HttpStatus.ok, body: '{"a":1}');
+        expect(await runApi(['/apps', '--paginate', '--slurp']), equals(0));
+        expect(fakeStdout.text, equals('[\n  {\n    "a": 1\n  }\n]\n'));
+      });
+
+      test('pretty-prints each page when stdout is a terminal', () async {
+        fakeStdout.hasTerminal = true;
+        expect(
+          await runApi(['/apps', '--paginate', '--jq', '.apps']),
+          equals(0),
+        );
+        expect(fakeStdout.text, equals('[\n  1\n]\n[\n  2\n]\n[\n  3\n]\n'));
+      });
+
+      test('keeps earlier pages and exits 1 when a page fails', () async {
+        pages['c1'] = (
+          status: HttpStatus.badRequest,
+          body: '{"code":"invalid_cursor","message":"The cursor is invalid."}',
+        );
+        expect(await runApi(['/apps', '--paginate']), equals(1));
+        expect(
+          fakeStdout.text,
+          equals(
+            '{"apps":[1],"next_cursor":"c1"}\n'
+            '{"code":"invalid_cursor","message":"The cursor is invalid."}',
+          ),
+        );
+        expect(
+          fakeStderr.text,
+          equals('shorebird: The cursor is invalid. (HTTP 400)\n'),
+        );
+      });
+
+      test('stops when the server repeats a cursor', () async {
+        pages['c2'] = (
+          status: HttpStatus.ok,
+          body: '{"apps":[3],"next_cursor":"c1"}',
+        );
+        expect(await runApi(['/apps', '--paginate']), equals(1));
+        expect(requested, hasLength(3));
+        expect(fakeStderr.text, contains('returned the cursor "c1" twice'));
+      });
+
+      test('rejects a method other than GET', () async {
+        await expectLater(
+          runApi(['/apps', '--paginate', '-X', 'POST']),
+          usageError('not supported for non-GET requests'),
+        );
+        verifyNever(() => codePushClient.send(any()));
+      });
+
+      test('--slurp requires --paginate', () async {
+        await expectLater(
+          runApi(['/apps', '--slurp']),
+          usageError('--slurp requires --paginate'),
+        );
+      });
+
+      test('--slurp cannot be used with --jq', () async {
+        await expectLater(
+          runApi(['/apps', '--paginate', '--slurp', '--jq', '.']),
+          usageError('--slurp cannot be used with --jq'),
+        );
+      });
+    });
+
     group('when the request fails', () {
       test('prints the body and the server message (HTTP 404)', () async {
         responseStatus = HttpStatus.notFound;

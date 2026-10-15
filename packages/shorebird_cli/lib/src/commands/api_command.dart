@@ -56,6 +56,20 @@ class ApiCommand extends ShorebirdCommand {
             'The file to use as body for the HTTP request (use "-" to read '
             'from standard input).',
       )
+      ..addFlag(
+        'paginate',
+        negatable: false,
+        help:
+            'Make additional requests to fetch every page of a list '
+            '(GET only).',
+      )
+      ..addFlag(
+        'slurp',
+        negatable: false,
+        help:
+            'With --paginate, print one JSON array of every page instead of '
+            'each page in turn.',
+      )
       ..addOption(
         'jq',
         abbr: 'q',
@@ -78,6 +92,20 @@ class ApiCommand extends ShorebirdCommand {
 
   /// The placeholder replaced with the current project's app ID.
   static const appIdPlaceholder = '{appId}';
+
+  /// The query parameter that asks a list for a page of a given size.
+  static const perPageParameter = 'per_page';
+
+  /// The page size --paginate asks for when the request does not set one:
+  /// the largest the API allows, as `gh api --paginate` does.
+  static const paginatePerPage = 100;
+
+  /// The query parameter that asks a list for the page after a cursor.
+  static const cursorParameter = 'cursor';
+
+  /// The response body field that holds the next page's cursor. A list
+  /// leaves it out on its last page.
+  static const nextCursorField = 'next_cursor';
 
   @override
   String get name => 'api';
@@ -105,6 +133,8 @@ Pass one or more -f/--raw-field values in "key=value" format to add string param
 
 The response body is printed as-is (JSON is indented when printing to a terminal). On a non-2xx response the body is still printed, an error is printed to stderr, and the command exits with status 1.
 
+--paginate fetches every page of a list. It asks for $paginatePerPage items per page unless the request sets "$perPageParameter", then follows each page's "$nextCursorField" until the last page, printing each page in turn (and applying --jq to each). It is for GET requests only, and makes the method default to GET even when fields are added. Add --slurp to print a single JSON array holding every page instead. If a page fails, the pages before it have already been printed and the command exits with status 1.
+
 --jq takes a jq expression and prints each result: strings without quotes, other values as JSON. It supports a common subset of jq: paths (".", ".a.b", ".[]", ".[0]", "?"), "|", ",", comparisons, "and", "or", "not", object and array construction, string interpolation, and length, keys, map(f), select(f), empty, first, first(f), last, sort_by(f), unique, unique_by(f), join(sep), to_entries, from_entries and with_entries(f).
 
 Requests are authenticated as your "shorebird login" session, or with the API key in the SHOREBIRD_TOKEN environment variable. Requests other than GET are never retried, so a write is sent at most once.
@@ -123,6 +153,9 @@ Examples:
 
   # Add parameters to a GET request
   \$ shorebird api -X GET /apps/{appId}/metrics/patch-installs -f granularity=day
+
+  # List the IDs of every release of the app, fetching all pages
+  \$ shorebird api /apps/{appId}/releases --paginate --jq '.releases[].id'
 
   # Use a JSON file as request body
   \$ shorebird api -X PATCH /apps/{appId}/releases/123 --input release.json''';
@@ -179,10 +212,24 @@ Examples:
     }
 
     final inputPath = results['input'] as String?;
+    final paginate = results['paginate'] as bool;
+    final slurp = results['slurp'] as bool;
+    if (slurp && !paginate) {
+      usageException('--slurp requires --paginate.');
+    }
+    if (slurp && jq != null) {
+      usageException('--slurp cannot be used with --jq.');
+    }
     var method = (results['method'] as String).toUpperCase();
     if (!results.wasParsed('method') &&
+        !paginate &&
         (params.isNotEmpty || inputPath != null)) {
       method = 'POST';
+    }
+    if (paginate && method != 'GET') {
+      usageException(
+        'the --paginate option is not supported for non-GET requests.',
+      );
     }
 
     final codePushClient = codePushClientWrapper.codePushClient;
@@ -214,73 +261,139 @@ Examples:
       }
     }
 
-    final request = http.Request(method, Uri.parse(url))
-      ..headers['accept'] = '*/*';
-    if (body != null) {
-      // Every route that takes a body takes JSON.
-      request
-        ..headers['content-type'] = 'application/json; charset=utf-8'
-        ..bodyBytes = body;
+    var uri = Uri.parse(url);
+    if (paginate && !uri.queryParameters.containsKey(perPageParameter)) {
+      uri = _withQueryParameter(uri, perPageParameter, '$paginatePerPage');
     }
 
-    final http.StreamedResponse response;
-    final Uint8List responseBody;
-    try {
-      // A write that failed may still have reached the server, so only GETs
-      // are retried.
-      (response, responseBody) = await runScoped(
-        () async {
-          final response = await codePushClient.send(request);
-          return (response, await response.stream.toBytes());
-        },
-        values: {retryFailedRequestsRef.overrideWith(() => method == 'GET')},
-      );
-    } on http.ClientException catch (error) {
-      return _fail(error.message);
-    } on SocketException catch (error) {
-      return _fail(error.message);
-    }
-
-    if (response.statusCode == HttpStatus.noContent) {
-      return ExitCode.success.code;
-    }
-
-    final contentType = response.headers['content-type'] ?? '';
-    final isJson = RegExp(r'[/+]json(;|$)').hasMatch(contentType);
     final indent = _output.hasTerminal ? '  ' : '';
-    final succeeded = response.statusCode >= 200 && response.statusCode <= 299;
-
-    if (succeeded && jq != null) {
-      final Object? decoded;
-      try {
-        decoded = jsonDecode(utf8.decode(responseBody));
-      } on FormatException {
-        return _fail('--jq: the response is not JSON');
+    // The cursors already followed, so a server that hands one back again
+    // cannot send this into an endless loop.
+    final followed = <String>{};
+    final slurped = <Object?>[];
+    while (true) {
+      final request = http.Request(method, uri)..headers['accept'] = '*/*';
+      if (body != null) {
+        // Every route that takes a body takes JSON.
+        request
+          ..headers['content-type'] = 'application/json; charset=utf-8'
+          ..bodyBytes = body;
       }
+
+      final http.StreamedResponse response;
+      final Uint8List responseBody;
       try {
-        for (final value in jq.evaluate(decoded)) {
-          _output.writeln(JqQuery.format(value, indent: indent));
+        // A write that failed may still have reached the server, so only
+        // GETs are retried.
+        (response, responseBody) = await runScoped(
+          () async {
+            final response = await codePushClient.send(request);
+            return (response, await response.stream.toBytes());
+          },
+          values: {retryFailedRequestsRef.overrideWith(() => method == 'GET')},
+        );
+      } on http.ClientException catch (error) {
+        return _fail(error.message);
+      } on SocketException catch (error) {
+        return _fail(error.message);
+      }
+
+      if (response.statusCode == HttpStatus.noContent) break;
+
+      final contentType = response.headers['content-type'] ?? '';
+      final isJson = RegExp(r'[/+]json(;|$)').hasMatch(contentType);
+      final succeeded =
+          response.statusCode >= 200 && response.statusCode <= 299;
+
+      if (!succeeded) {
+        final pretty = isJson && indent.isNotEmpty
+            ? _prettyJson(responseBody)
+            : null;
+        if (pretty != null) {
+          _output.writeln(pretty);
+        } else {
+          _output.add(responseBody);
         }
-      } on JqException catch (error) {
-        return _fail('--jq: ${error.message}');
+        return _fail(
+          (isJson ? _errorMessage(responseBody, response.statusCode) : null) ??
+              'HTTP ${response.statusCode}',
+        );
       }
-      return ExitCode.success.code;
+
+      // The decoded body, when something needs it: --jq, --slurp, or
+      // --paginate looking for the next page.
+      Object? decoded;
+      var decodedOk = false;
+      if (jq != null || slurp || (paginate && isJson)) {
+        try {
+          decoded = jsonDecode(utf8.decode(responseBody));
+          decodedOk = true;
+        } on FormatException {
+          if (jq != null) return _fail('--jq: the response is not JSON');
+          if (slurp) return _fail('--slurp: the response is not JSON');
+        }
+      }
+
+      if (slurp) {
+        slurped.add(decoded);
+      } else if (jq != null) {
+        try {
+          for (final value in jq.evaluate(decoded)) {
+            _output.writeln(JqQuery.format(value, indent: indent));
+          }
+        } on JqException catch (error) {
+          return _fail('--jq: ${error.message}');
+        }
+      } else {
+        final pretty = isJson && indent.isNotEmpty
+            ? _prettyJson(responseBody)
+            : null;
+        if (pretty != null) {
+          _output.writeln(pretty);
+        } else {
+          _output.add(responseBody);
+          // Keeps pages apart, one JSON document per line.
+          if (paginate &&
+              responseBody.isNotEmpty &&
+              responseBody.last != 0x0a) {
+            _output.writeln();
+          }
+        }
+      }
+
+      if (!paginate || !decodedOk) break;
+      final next = decoded is Map<String, dynamic>
+          ? decoded[nextCursorField]
+          : null;
+      if (next is! String || next.isEmpty) break;
+      if (!followed.add(next)) {
+        return _fail(
+          '--paginate: the server returned the cursor "$next" twice; '
+          'stopping.',
+        );
+      }
+      uri = _withQueryParameter(uri, cursorParameter, next);
     }
 
-    final pretty = isJson && indent.isNotEmpty
-        ? _prettyJson(responseBody)
-        : null;
-    if (pretty != null) {
-      _output.writeln(pretty);
-    } else {
-      _output.add(responseBody);
+    if (slurp) {
+      _output.writeln(
+        indent.isEmpty
+            ? jsonEncode(slurped)
+            : JsonEncoder.withIndent(indent).convert(slurped),
+      );
     }
-    if (succeeded) return ExitCode.success.code;
-    return _fail(
-      (isJson ? _errorMessage(responseBody, response.statusCode) : null) ??
-          'HTTP ${response.statusCode}',
-    );
+    return ExitCode.success.code;
   }
+
+  /// [uri] with the query parameter [key] set to [value], replacing any
+  /// value it had and keeping every other parameter.
+  static Uri _withQueryParameter(Uri uri, String key, String value) =>
+      uri.replace(
+        queryParameters: {
+          ...uri.queryParametersAll,
+          key: [value],
+        },
+      );
 
   int _fail(String message) {
     stderr.writeln('shorebird: $message');
