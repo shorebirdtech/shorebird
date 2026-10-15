@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -919,7 +920,8 @@ Please re-run the release command for this version or create a new release.''');
         patchArchive: patchArchive,
       );
     } on UserCancelledException {
-      throw ProcessExit(ExitCode.success.code);
+      logger.err('Aborting.');
+      throw ProcessExit(declinedExitCode);
     } on UnpatchableChangeException {
       // The diff checker has already named the change and the flag that
       // overrides it.
@@ -999,8 +1001,8 @@ ${summary.join('\n')}
 
     if (confirm && shorebirdEnv.canAcceptUserInput) {
       if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
-        logger.info('Aborting.');
-        throw ProcessExit(ExitCode.success.code);
+        logger.err('Aborting.');
+        throw ProcessExit(declinedExitCode);
       }
     }
   }

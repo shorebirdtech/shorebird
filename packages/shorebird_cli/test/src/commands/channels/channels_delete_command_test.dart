@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/channels/channels.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -195,14 +196,14 @@ void main() {
           ).called(1);
         });
 
-        test('does nothing when declined', () async {
+        test('exits 1 without deleting when declined', () async {
           when(
             () => logger.confirm(any(), hint: any(named: 'hint')),
           ).thenReturn(false);
           final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.success.code));
+          expect(result, equals(declinedExitCode));
           verifyNeverDeleted();
-          verify(() => logger.info('Nothing was deleted.')).called(1);
+          verify(() => logger.err('Nothing was deleted.')).called(1);
         });
       });
 
