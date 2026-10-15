@@ -33,7 +33,7 @@ Dart monorepo. Main package is `shorebird_cli`.
 A PR can land when all of these hold at its current head commit:
 
 - The author has posted a self-review comment: the full diff read as a reviewer, with any blockers fixed or called out.
-- A maintainer has LGTM'd: a `lgtm` comment or an approving review. The PR author opening the PR does not count. An LGTM approves the direction, so small follow-up fixes, rebases and merges from `main` keep it. Ask again when the scope or approach changes.
+- A maintainer has LGTM'd: a `lgtm` comment, an approving review, or the maintainer opening the PR themselves. A PR an agent opened needs a maintainer's LGTM. An LGTM approves the direction, so small follow-up fixes, rebases and merges from `main` keep it. Ask again when the scope or approach changes.
 - CI is green. Check it again right before merging.
 
 Then squash-merge, pinned to the head you checked:
