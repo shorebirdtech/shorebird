@@ -48,25 +48,12 @@ class ApiCommand extends ShorebirdCommand {
         splitCommas: false,
         help: 'Add a string parameter in key=value format.',
       )
-      ..addMultiOption(
-        'header',
-        abbr: 'H',
-        valueHelp: 'key:value',
-        splitCommas: false,
-        help: 'Add a HTTP request header in key:value format.',
-      )
       ..addOption(
         'input',
         valueHelp: 'file',
         help:
             'The file to use as body for the HTTP request (use "-" to read '
             'from standard input).',
-      )
-      ..addFlag(
-        'include',
-        abbr: 'i',
-        negatable: false,
-        help: 'Include HTTP response status line and headers in the output.',
       )
       ..addOption(
         'jq',
@@ -113,11 +100,11 @@ The default HTTP request method is "GET" normally and "POST" if any fields or --
 
 Pass one or more -f/--raw-field values in "key=value" format to add string parameters. -F/--field converts its value: "true", "false", "null" and integers become JSON values, "@<path>" reads the value from a file ("@-" from standard input), and "$appIdPlaceholder" is filled in. For "GET" requests, fields are sent as the query string; otherwise they are sent as a JSON object body. For a nested JSON body, use --input.
 
---input sends a file (or "-" for standard input) as the request body. Fields are then added to the query string.
+--input sends a JSON file (or "-" for standard input) as the request body. Fields are then added to the query string.
 
 The response body is printed as-is (JSON is indented when printing to a terminal). On a non-2xx response the body is still printed, an error is printed to stderr, and the command exits with status 1.
 
---jq takes a jq expression and prints each result: strings without quotes, other values as JSON. It supports a common subset of jq: paths (".", ".a.b", ".[]", ".[0]", "?"), "|", ",", comparisons, "and", "or", "not", object and array construction, string interpolation, and length, keys, map(f), select(f) and empty.
+--jq takes a jq expression and prints each result: strings without quotes, other values as JSON. It supports a common subset of jq: paths (".", ".a.b", ".[]", ".[0]", "?"), "|", ",", comparisons, "and", "or", "not", object and array construction, string interpolation, and length, keys, map(f), select(f), empty, first, first(f), last, sort_by(f), unique, unique_by(f), join(sep), to_entries, from_entries and with_entries(f).
 
 Requests are authenticated as your "shorebird login" session, or with the API key in the SHOREBIRD_TOKEN environment variable. Requests other than GET are never retried, so a write is sent at most once.
 
@@ -215,7 +202,6 @@ Examples:
     var url = '$apiBase/$path';
 
     List<int>? body;
-    var bodyIsJson = false;
     if (inputPath != null) {
       body = await _readUserFile(inputPath, flag: '--input');
       url = _addQuery(url, params);
@@ -224,28 +210,17 @@ Examples:
         url = _addQuery(url, params);
       } else {
         body = utf8.encode(jsonEncode(params));
-        bodyIsJson = true;
       }
     }
 
-    final request = http.Request(method, Uri.parse(url));
-    for (final header in results['header'] as List<String>) {
-      final separator = header.indexOf(':');
-      if (separator == -1) {
-        usageException('header "$header" requires a value separated by ":"');
-      }
-      final name = header.substring(0, separator);
-      final value = header.substring(separator + 1).trim();
-      final existing = request.headers[name];
-      request.headers[name] = existing == null ? value : '$existing, $value';
+    final request = http.Request(method, Uri.parse(url))
+      ..headers['accept'] = '*/*';
+    if (body != null) {
+      // Every route that takes a body takes JSON.
+      request
+        ..headers['content-type'] = 'application/json; charset=utf-8'
+        ..bodyBytes = body;
     }
-    if (bodyIsJson && !request.headers.containsKey('content-type')) {
-      request.headers['content-type'] = 'application/json; charset=utf-8';
-    }
-    if (!request.headers.containsKey('accept')) {
-      request.headers['accept'] = '*/*';
-    }
-    if (body != null) request.bodyBytes = body;
 
     final http.StreamedResponse response;
     final Uint8List responseBody;
@@ -265,18 +240,6 @@ Examples:
       return _fail(error.message);
     }
 
-    if (results['include'] as bool) {
-      final reason = response.reasonPhrase;
-      _output.writeln(
-        'HTTP/1.1 ${response.statusCode}'
-        '${reason == null || reason.isEmpty ? '' : ' $reason'}',
-      );
-      final names = response.headers.keys.toList()..sort();
-      for (final name in names) {
-        _output.write('$name: ${response.headers[name]}\r\n');
-      }
-      _output.write('\r\n');
-    }
     if (response.statusCode == HttpStatus.noContent) {
       return ExitCode.success.code;
     }

@@ -25,7 +25,9 @@ typedef _Filter = List<Object?> Function(Object? input);
 /// Supported: `.`, `.a.b`, `."a"`, `.[]`, `.[n]`, `.["a"]`, the `?` suffix,
 /// `|`, `,`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`, `{...}`
 /// and `[...]` construction, string interpolation (`"\(.a)"`), literals,
-/// and the functions `length`, `keys`, `map(f)`, `select(f)` and `empty`.
+/// and the functions `length`, `keys`, `map(f)`, `select(f)`, `empty`,
+/// `first`, `first(f)`, `last`, `sort_by(f)`, `unique`, `unique_by(f)`,
+/// `join(sep)`, `to_entries`, `from_entries` and `with_entries(f)`.
 /// Anything else is rejected with a [JqException] that names it.
 /// {@endtemplate}
 class JqQuery {
@@ -281,6 +283,39 @@ class _Parser {
           for (final v in f(input))
             if (_isTruthy(v)) input,
         ];
+      case 'first' when _peek('('):
+        final f = _argument();
+        return (input) => f(input).take(1).toList();
+      case 'first':
+        return (input) => [_index(input, 0)];
+      case 'last':
+        return (input) => [_index(input, -1)];
+      case 'sort_by':
+        final f = _argument();
+        return (input) => [_sortBy(input, f)];
+      case 'unique':
+        return (input) => [
+          _uniqueBy(input, (v) => [v]),
+        ];
+      case 'unique_by':
+        final f = _argument();
+        return (input) => [_uniqueBy(input, f)];
+      case 'join':
+        final separator = _argument();
+        return (input) => [
+          for (final s in separator(input)) _join(input, s),
+        ];
+      case 'to_entries':
+        return (input) => [_toEntries(input)];
+      case 'from_entries':
+        return (input) => [_fromEntries(input)];
+      case 'with_entries':
+        final f = _argument();
+        return (input) => [
+          _fromEntries([
+            for (final entry in _toEntries(input)) ...f(entry),
+          ]),
+        ];
     }
     throw JqException('unsupported jq function or keyword "$name"');
   }
@@ -444,7 +479,7 @@ bool _compareWith(String op, Object? left, Object? right) => switch (op) {
 };
 
 /// jq's ordering: null < false < true < numbers < strings < arrays <
-/// objects. Objects are not ordered among themselves here.
+/// objects.
 int _compare(Object? a, Object? b) {
   int rank(Object? v) => switch (v) {
     null => 0,
@@ -466,6 +501,96 @@ int _compare(Object? a, Object? b) {
     }
     return a.length.compareTo(b.length);
   }
-  if (a is Map) throw const JqException('ordering objects is not supported');
+  // Objects: by their sorted keys first, then by the values of those keys.
+  final aMap = a! as Map;
+  final bMap = b! as Map;
+  final aKeys = aMap.keys.cast<String>().toList()..sort();
+  final bKeys = bMap.keys.cast<String>().toList()..sort();
+  final byKeys = _compare(aKeys, bKeys);
+  if (byKeys != 0) return byKeys;
+  for (final key in aKeys) {
+    final byValue = _compare(aMap[key], bMap[key]);
+    if (byValue != 0) return byValue;
+  }
   return 0;
+}
+
+List<Object?> _sortable(Object? value) {
+  if (value is List) return value;
+  throw JqException(
+    '${_typeName(value)} (${jsonEncode(value)}) cannot be sorted, as it is '
+    'not an array',
+  );
+}
+
+/// [value] sorted by the outputs of [f] on each element, keeping the order
+/// of elements that compare equal, as jq's `sort_by` does.
+List<Object?> _sortBy(Object? value, _Filter f) => [
+  for (final (_, v) in _sortedByKey(value, f)) v,
+];
+
+/// The first element of [value] for each distinct output of [f], sorted by
+/// those outputs, as jq's `unique_by` does.
+List<Object?> _uniqueBy(Object? value, _Filter f) {
+  final keyed = _sortedByKey(value, f);
+  return [
+    for (var i = 0; i < keyed.length; i++)
+      if (i == 0 || _compare(keyed[i - 1].$1, keyed[i].$1) != 0) keyed[i].$2,
+  ];
+}
+
+/// Each element of [value] paired with the outputs of [f] on it, stably
+/// sorted by those outputs.
+List<(List<Object?>, Object?)> _sortedByKey(Object? value, _Filter f) {
+  final keyed = [for (final v in _sortable(value)) (f(v), v)];
+  mergeSort(keyed, compare: (a, b) => _compare(a.$1, b.$1));
+  return keyed;
+}
+
+String _join(Object? value, Object? separator) {
+  if (separator is! String) {
+    throw JqException(
+      'cannot join with ${_typeName(separator)} (${jsonEncode(separator)})',
+    );
+  }
+  return [
+    for (final v in _iterate(value))
+      switch (v) {
+        null => '',
+        String() || num() || bool() => '$v',
+        _ => throw JqException('Cannot join with ${_typeName(v)}'),
+      },
+  ].join(separator);
+}
+
+List<Object?> _toEntries(Object? value) {
+  if (value is! Map) throw JqException('${_typeName(value)} has no keys');
+  return [
+    for (final MapEntry(:key, :value) in value.entries)
+      {'key': key, 'value': value},
+  ];
+}
+
+/// jq's `from_entries`: each entry's key is the first of `key`, `name`,
+/// `Name`, `K` and `Key` that is not null or false, and its value is `value`
+/// if present, otherwise `Value`.
+Map<String, Object?> _fromEntries(Object? value) {
+  final result = <String, Object?>{};
+  for (final entry in _iterate(value)) {
+    final key = [
+      'key',
+      'name',
+      'Name',
+      'K',
+      'Key',
+    ].map((name) => _index(entry, name)).firstWhereOrNull(_isTruthy);
+    if (key is! String) {
+      throw JqException(
+        'Cannot use ${_typeName(key)} (${jsonEncode(key)}) as object key',
+      );
+    }
+    final hasValue = entry is Map && entry.containsKey('value');
+    result[key] = _index(entry, hasValue ? 'value' : 'Value');
+  }
+  return result;
 }

@@ -170,8 +170,8 @@ void main() {
 
       test('rejects an unsupported --jq expression before sending', () async {
         await expectLater(
-          runApi(['/apps', '--jq', 'sort_by(.a)']),
-          usageError('--jq: unsupported jq function or keyword "sort_by"'),
+          runApi(['/apps', '--jq', 'group_by(.a)']),
+          usageError('--jq: unsupported jq function or keyword "group_by"'),
         );
         verifyNever(() => codePushClient.send(any()));
       });
@@ -451,35 +451,6 @@ void main() {
       });
     });
 
-    group('headers', () {
-      test('-H adds headers and can replace Accept', () async {
-        await runApi([
-          '/x',
-          '-H',
-          'Accept: application/json',
-          '-H',
-          'X-Thing:  one ',
-          '-H',
-          'X-Thing: two',
-        ]);
-        final request = sentRequest();
-        expect(request.headers['accept'], equals('application/json'));
-        expect(request.headers['x-thing'], equals('one, two'));
-      });
-
-      test('-H can replace the JSON Content-Type', () async {
-        await runApi(['/x', '-f', 'a=b', '-H', 'Content-Type: text/plain']);
-        expect(sentRequest().headers['content-type'], equals('text/plain'));
-      });
-
-      test('-H without a colon is a usage error', () async {
-        await expectLater(
-          runApi(['/x', '-H', 'Accept']),
-          usageError('requires a value separated by ":"'),
-        );
-      });
-    });
-
     group('--input', () {
       test('sends the file as the body and switches to POST', () async {
         File('body.json').writeAsStringSync('{"display_name":"Acme"}');
@@ -488,7 +459,10 @@ void main() {
         expect(request.method, equals('POST'));
         expect(request.body, equals('{"display_name":"Acme"}'));
         expect(request.url.query, equals('dry_run=true'));
-        expect(request.headers.containsKey('content-type'), isFalse);
+        expect(
+          request.headers['content-type'],
+          equals('application/json; charset=utf-8'),
+        );
       });
 
       test('reads stdin for -', () async {
@@ -549,32 +523,6 @@ void main() {
           await runApi(['/apps']);
           expect(fakeStdout.text, equals('ok'));
         });
-      });
-
-      test('--include prints the status line and headers', () async {
-        responseHeaders = {
-          'content-type': 'application/json',
-          'x-request-id': 'abc',
-        };
-        await runApi(['/apps', '-i']);
-        expect(
-          fakeStdout.text,
-          equals(
-            'HTTP/1.1 200 OK\n'
-            'content-type: application/json\r\n'
-            'x-request-id: abc\r\n'
-            '\r\n'
-            '$responseBody',
-          ),
-        );
-      });
-
-      test('--include omits a missing reason phrase', () async {
-        responseStatus = HttpStatus.notFound;
-        responseHeaders = {};
-        responseBody = '';
-        await runApi(['/apps', '-i']);
-        expect(fakeStdout.text, equals('HTTP/1.1 404\n\r\n'));
       });
 
       test('prints nothing for 204 No Content', () async {

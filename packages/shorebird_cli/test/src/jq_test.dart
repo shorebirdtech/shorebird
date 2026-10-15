@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:shorebird_cli/src/jq.dart';
 import 'package:test/test.dart';
 
@@ -122,7 +125,8 @@ void main() {
         expect(run('0 < "a" and "a" < [] and [] < {}'), [true]);
         expect(run('"a" < "b" and [1, 2] < [1, 3] and [1] < [1, 2]'), [true]);
         expect(run('[1] >= [1]'), [true]);
-        expect(() => run('{} < {}'), throwsJq('ordering objects'));
+        expect(run('{} < {"a": 1} and {"a": 2} < {"b": 0}'), [true]);
+        expect(run('{"a": 1} < {"a": 2} and {"a": 1} == {"a": 1}'), [true]);
       });
 
       test('and, or and not', () {
@@ -269,9 +273,221 @@ void main() {
       });
     });
 
+    group('builtins match jq', () {
+      // (query, input, outputs), with outputs as `jq -c` 1.8.1 prints them.
+      final cases = <(String, String, List<String>)>[
+        (
+          'sort_by(.[0])',
+          '[[2,"b"],[1,"a"],[2,"a"]]',
+          ['[[1,"a"],[2,"b"],[2,"a"]]'],
+        ),
+        (
+          'sort_by(.v) | map(.n)',
+          '[{"n":"b","v":2},{"n":"a","v":2},{"n":"c","v":1}]',
+          ['["c","b","a"]'],
+        ),
+        (
+          'sort_by(.a)',
+          '[{"a":[2]},{"a":[1,5]},{"a":null}]',
+          ['[{"a":null},{"a":[1,5]},{"a":[2]}]'],
+        ),
+        (
+          'sort_by(.a, .b)',
+          '[{"a":1,"b":2},{"a":1,"b":1},{"a":0,"b":3}]',
+          ['[{"a":0,"b":3},{"a":1,"b":1},{"a":1,"b":2}]'],
+        ),
+        (
+          'sort_by(.)',
+          '[{"a":2},{"a":1,"b":0},{"b":1},{}]',
+          ['[{},{"a":2},{"a":1,"b":0},{"b":1}]'],
+        ),
+        (
+          'first, last',
+          '[3,1,2]',
+          ['3', '2'],
+        ),
+        (
+          'first, last',
+          '[]',
+          ['null', 'null'],
+        ),
+        (
+          'first(.[] | select(. > 1))',
+          '[3,1,2]',
+          ['3'],
+        ),
+        (
+          '[first(.[] | select(. > 5))]',
+          '[3,1,2]',
+          ['[]'],
+        ),
+        (
+          'unique',
+          '[3,1,3,null,"a",[1],{},false,true,1.5]',
+          ['[null,false,true,1,1.5,3,"a",[1],{}]'],
+        ),
+        (
+          'unique_by(.a)',
+          '[{"a":2,"b":1},{"a":1,"b":2},{"a":2,"b":0}]',
+          ['[{"a":1,"b":2},{"a":2,"b":1}]'],
+        ),
+        (
+          'unique_by(length)',
+          '["ab","c","de","f"]',
+          ['["c","ab"]'],
+        ),
+        (
+          'join("-")',
+          '[null,true,1.5,"a",2]',
+          ['"-true-1.5-a-2"'],
+        ),
+        (
+          'join(",")',
+          '[]',
+          ['""'],
+        ),
+        (
+          'join(", "), join("")',
+          '["a","b"]',
+          ['"a, b"', '"ab"'],
+        ),
+        (
+          'to_entries',
+          '{"b":1,"a":2}',
+          ['[{"key":"b","value":1},{"key":"a","value":2}]'],
+        ),
+        (
+          'to_entries',
+          '{}',
+          ['[]'],
+        ),
+        (
+          'from_entries',
+          '[{"key":"a","value":1},{"name":"b","value":2},'
+              '{"key":null,"Key":"c","Value":3},{"key":"d"},'
+              '{"key":"e","value":null,"Value":9}]',
+          ['{"a":1,"b":2,"c":3,"d":null,"e":null}'],
+        ),
+        (
+          'with_entries(select(.value > 1))',
+          '{"a":1,"b":2}',
+          ['{"b":2}'],
+        ),
+        (
+          '.apps | map(select(.v != null)) | first | .id',
+          '{"apps":[{"id":"x","v":"1.0.0"},{"id":"y","v":null}]}',
+          ['"x"'],
+        ),
+        (
+          r'with_entries({key: "x\(.key)", value})',
+          '{"a":1,"b":2}',
+          ['{"xa":1,"xb":2}'],
+        ),
+        (
+          r'sort_by(.v) | map("\(.id): \(.v)") | join("\n")',
+          '[{"v":"1.0.1","id":2},{"v":"1.0.0","id":1}]',
+          [r'"1: 1.0.0\n2: 1.0.1"'],
+        ),
+      ];
+
+      for (final (query, input, outputs) in cases) {
+        test('$query on $input', () {
+          expect(
+            JqQuery.parse(query).evaluate(jsonDecode(input)).map(jsonEncode),
+            equals(outputs),
+          );
+        });
+      }
+
+      final jqPath = Platform.environment['PATH']
+          ?.split(Platform.isWindows ? ';' : ':')
+          .map((dir) => File('$dir/jq'))
+          .where((file) => file.existsSync())
+          .firstOrNull;
+      test(
+        'the expected outputs are what jq prints',
+        () async {
+          for (final (query, input, outputs) in cases) {
+            final process = await Process.start(jqPath!.path, ['-c', query]);
+            process.stdin.write(input);
+            await process.stdin.close();
+            final printed = await process.stdout
+                .transform(utf8.decoder)
+                .transform(const LineSplitter())
+                .toList();
+            expect(await process.exitCode, isZero, reason: query);
+            expect(printed, equals(outputs), reason: query);
+          }
+        },
+        skip: jqPath == null ? 'jq is not installed' : false,
+      );
+    });
+
+    group('builtin errors', () {
+      test('first and last need an array', () {
+        expect(
+          () => run('{} | first'),
+          throwsJq('Cannot index object with number'),
+        );
+        expect(
+          () => run('"abc" | last'),
+          throwsJq('Cannot index string with number'),
+        );
+      });
+
+      test('sort_by, unique and unique_by need an array', () {
+        expect(
+          () => run('{"a":1} | unique'),
+          throwsJq('object ({"a":1}) cannot be sorted, as it is not an array'),
+        );
+        expect(
+          () => run('1 | sort_by(.)'),
+          throwsJq('number (1) cannot be sorted'),
+        );
+        expect(
+          () => run('null | unique_by(.)'),
+          throwsJq('null (null) cannot be sorted'),
+        );
+      });
+
+      test('join needs an array of scalars and a string separator', () {
+        expect(
+          () => run('"x" | join(",")'),
+          throwsJq('Cannot iterate over string'),
+        );
+        expect(
+          () => run('[[1]] | join(",")'),
+          throwsJq('Cannot join with array'),
+        );
+        expect(
+          () => run('[1, 2] | join(1)'),
+          throwsJq('cannot join with number (1)'),
+        );
+      });
+
+      test('to_entries needs an object', () {
+        expect(() => run('1 | to_entries'), throwsJq('number has no keys'));
+      });
+
+      test('from_entries needs string keys', () {
+        expect(
+          () => run('[{"k": "a", "value": 1}] | from_entries'),
+          throwsJq('Cannot use null (null) as object key'),
+        );
+        expect(
+          () => run('[{"key": 1}] | from_entries'),
+          throwsJq('Cannot use number (1) as object key'),
+        );
+        expect(
+          () => run('[{"key": false, "value": 1}] | from_entries'),
+          throwsJq('Cannot use null (null) as object key'),
+        );
+      });
+    });
+
     group('unsupported syntax', () {
       for (final (query, message) in [
-        ('sort_by(.id)', 'unsupported jq function or keyword "sort_by"'),
+        ('group_by(.id)', 'unsupported jq function or keyword "group_by"'),
         ('if . then 1 else 2 end', 'unsupported jq function or keyword "if"'),
         ('.[0].id + 1', 'unsupported or invalid jq at position 9: "+ 1"'),
         ('.a // "x"', 'unsupported or invalid jq at position 4: "// "x""'),
