@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -35,6 +36,7 @@ import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(PreviewCommand, () {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
@@ -188,6 +190,7 @@ void main() {
             cacheRef.overrideWith(() => cache),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             httpClientRef.overrideWith(() => httpClient),
+            isJsonModeRef.overrideWith(() => false),
             loggerRef.overrideWith(() => logger),
             platformRef.overrideWith(() => platform),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -466,6 +469,7 @@ void main() {
             body,
             values: {
               adbRef.overrideWith(() => adb),
+              isJsonModeRef.overrideWith(() => false),
               artifactManagerRef.overrideWith(() => artifactManager),
               authRef.overrideWith(() => auth),
               bundletoolRef.overrideWith(() => bundletool),
@@ -645,6 +649,21 @@ void main() {
                 ),
               );
 
+              // Keystore arguments are checked before anything is fetched.
+              verifyNever(
+                () => codePushClientWrapper.getReleases(
+                  appId: any(named: 'appId'),
+                  sideloadableOnly: any(named: 'sideloadableOnly'),
+                ),
+              );
+              verifyNever(
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  arch: any(named: 'arch'),
+                  platform: any(named: 'platform'),
+                ),
+              );
               verifyNever(
                 () => bundletool.buildApks(
                   bundle: aabPath(),
@@ -1176,6 +1195,29 @@ channel: ${track.channel}
           );
           verifyNever(() => codePushClientWrapper.getApps());
         });
+
+        group('when --flavor is passed', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('prod');
+          });
+
+          test('exits with a usage error before fetching', () async {
+            final exitCode = await runWithOverrides(command.run);
+
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                '''The project does not have any flavors defined (no "flavors" in shorebird.yaml), but --flavor was provided. Re-run without --flavor, or run "shorebird init" to detect flavors.''',
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+                sideloadableOnly: any(named: 'sideloadableOnly'),
+              ),
+            );
+          });
+        });
       });
 
       group('when in shorebird project with flavors', () {
@@ -1189,8 +1231,11 @@ channel: ${track.channel}
           when(() => argResults.wasParsed('app-id')).thenReturn(false);
           when(() => argResults['app-id']).thenReturn(null);
           when(
-            () =>
-                logger.chooseOne<String>(any(), choices: any(named: 'choices')),
+            () => logger.chooseOne<String>(
+              any(),
+              choices: any(named: 'choices'),
+              hint: any(named: 'hint'),
+            ),
           ).thenReturn('dev');
         });
 
@@ -1198,8 +1243,98 @@ channel: ${track.channel}
           await runWithOverrides(command.run);
 
           verify(
-            () => logger.chooseOne<String>(any(), choices: ['dev', 'prod']),
+            () => logger.chooseOne<String>(
+              'Which app flavor?',
+              choices: ['dev', 'prod'],
+              hint:
+                  'Pass --flavor=<flavor> to preview a specific flavor '
+                  'without prompting.',
+            ),
           ).called(1);
+          verify(
+            () => codePushClientWrapper.getReleases(appId: 'dev-app-id'),
+          ).called(1);
+        });
+
+        group('when --flavor is passed', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('prod');
+          });
+
+          test('uses that flavor without prompting', () async {
+            await runWithOverrides(command.run);
+
+            verifyNever(
+              () => logger.chooseOne<String>(
+                any(),
+                choices: any(named: 'choices'),
+                hint: any(named: 'hint'),
+              ),
+            );
+            verify(
+              () => codePushClientWrapper.getReleases(appId: 'prod-app-id'),
+            ).called(1);
+          });
+        });
+
+        group('when --flavor is not defined in shorebird.yaml', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('missing');
+          });
+
+          test('exits with a usage error before fetching', () async {
+            final exitCode = await runWithOverrides(command.run);
+
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'This project does not have a flavor named "missing". Pass '
+                'one of: dev, prod (from "flavors" in shorebird.yaml).',
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+                sideloadableOnly: any(named: 'sideloadableOnly'),
+              ),
+            );
+          });
+        });
+
+        group('when --app-id is also passed', () {
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn('missing');
+            when(() => argResults['app-id']).thenReturn('explicit-app-id');
+          });
+
+          test('uses --app-id and ignores --flavor', () async {
+            await runWithOverrides(command.run);
+
+            verify(
+              () => codePushClientWrapper.getReleases(appId: 'explicit-app-id'),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when --flavor is passed outside a shorebird project', () {
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
+          when(() => argResults['app-id']).thenReturn(null);
+          when(() => argResults['flavor']).thenReturn('prod');
+        });
+
+        test('exits with a usage error without prompting', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              '--flavor needs a shorebird.yaml to read the app ID from. Run '
+              'this from your Shorebird project, or pass --app-id instead.',
+            ),
+          ).called(1);
+          verifyNever(() => codePushClientWrapper.getApps());
         });
       });
 
@@ -2337,6 +2472,15 @@ channel: ${DeploymentTrack.staging.channel}
           ).called(1);
           verify(() => logger.info('hello world')).called(1);
           verify(() => logger.err('hello error')).called(1);
+          // Recorded so that pruning keeps the preview just launched.
+          verify(
+            () => cache.markPreviewUsed(
+              p.join(
+                previewDirectory.path,
+                'linux_${releaseVersion}_$releaseArtifactId',
+              ),
+            ),
+          ).called(1);
         });
       });
 
@@ -2566,6 +2710,18 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('when setting channel on app fails', () {
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.progress('Using stable track')).called(1);
+          verify(
+            () => progress.fail('Exception: Unable to find shorebird.yaml'),
+          ).called(1);
+          verifyNever(() => open.newApplication(path: any(named: 'path')));
+        });
+      });
+
       group('staging', () {
         late File shorebirdYaml;
         setUp(() {
@@ -2596,6 +2752,7 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(() => logger.info('hello world')).called(1);
+          verify(() => logger.progress('Using stable track')).called(1);
         });
       });
 
@@ -2845,6 +3002,40 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('when setting channel on app fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((_) async => releaseArtifactFile);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outDirectory =
+                invocation.namedArguments[#outputDirectory] as Directory;
+            File(
+              p.join(outDirectory.path, 'runner.exe'),
+            ).createSync(recursive: true);
+          });
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.progress('Using stable track')).called(1);
+          verify(
+            () => progress.fail('Exception: Unable to find shorebird.yaml'),
+          ).called(1);
+          verifyNever(() => shorebirdProcess.start(any(), any()));
+        });
+      });
+
       group('when preview artifact is not cached', () {
         setUp(() {
           when(
@@ -2884,6 +3075,7 @@ channel: ${DeploymentTrack.staging.channel}
           ).called(1);
           verify(() => logger.info('hello world')).called(1);
           verify(() => logger.err('hello error')).called(1);
+          verify(() => logger.progress('Using stable track')).called(1);
         });
       });
 

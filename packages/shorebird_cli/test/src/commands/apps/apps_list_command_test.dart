@@ -10,9 +10,11 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AppsListCommand, () {
     final app = AppMetadata(
       appId: '01H000000000000000000ABCDE',

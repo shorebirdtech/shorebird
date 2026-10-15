@@ -1,7 +1,9 @@
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('NullOrEmpty', () {
     group('when string is null', () {
       test('returns true', () {

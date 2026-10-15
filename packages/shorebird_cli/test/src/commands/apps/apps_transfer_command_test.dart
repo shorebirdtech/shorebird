@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -19,6 +17,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AppsTransferCommand, () {
     const appId = 'app-id';
     const displayName = 'Acme Mobile';
@@ -143,17 +142,21 @@ void main() {
         verifyNeverTransferred();
       });
 
-      test('emits a usage_error envelope under --json', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+      test('emits a usage_error envelope listing orgs under --json', () async {
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.usage.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.usage.code));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], 'usage_error');
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
-          'usage_error',
+          error['message'],
+          '"not-a-number" is not a valid organization id.',
+        );
+        expect(
+          error['hint'],
+          'Organization ids are integers, e.g. --org-id 42. '
+          'Your organizations: $organizationName (id: $organizationId).',
         );
       });
     });
@@ -177,17 +180,34 @@ void main() {
       });
 
       test('emits a usage_error envelope under --json', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.usage.code));
+        expect(exitCode, equals(ExitCode.usage.code));
         verifyNeverTransferred();
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final error = decoded['error'] as Map<String, dynamic>;
+        final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], 'usage_error');
-        expect(error['hint'], 'Run: shorebird account orgs');
+        expect(error['hint'], 'You are not a member of any organization.');
+      });
+    });
+
+    group("when the target org is not one of the user's orgs", () {
+      setUp(() {
+        when(() => argResults['org-id']).thenReturn('7');
+      });
+
+      test("lists the user's orgs on one line under --json", () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, jsonMode: true),
+        );
+        expect(exitCode, equals(ExitCode.usage.code));
+        verifyNeverTransferred();
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['message'], 'You are not a member of organization 7.');
+        expect(
+          error['hint'],
+          'Your organizations: $organizationName (id: $organizationId).',
+        );
       });
     });
 
@@ -198,24 +218,14 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('rethrows in human-readable mode', () async {
-        await expectLater(
-          runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('emits a JSON error envelope in --json mode', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
+        expect(exitCode, equals(ExitCode.software.code));
         verifyNeverTransferred();
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'fetch_failed',
         );
       });
@@ -231,23 +241,13 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('rethrows in human-readable mode', () async {
-        await expectLater(
-          runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('emits a JSON error envelope in --json mode', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.software.code));
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'software_error',
         );
       });
@@ -255,14 +255,11 @@ void main() {
 
     group('--json', () {
       test('emits the destination organization', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['app_id'], appId);
         expect(data['display_name'], displayName);
         expect(data['to_organization_id'], organizationId);

@@ -7,9 +7,11 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdVersion, () {
     const currentShorebirdRevision = 'revision-1';
     const newerShorebirdRevision = 'revision-2';

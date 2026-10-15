@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
@@ -8,6 +12,21 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 /// Login as a new Shorebird user.
 /// {@endtemplate}
 class LoginCommand extends ShorebirdCommand {
+  /// {@macro login_command}
+  LoginCommand() {
+    argParser.addFlag(
+      deviceFlag,
+      negatable: false,
+      help:
+          'Log in by entering a code in a browser on any device, instead of '
+          'opening a browser on this machine. Used automatically over SSH, '
+          'on CI, and on Linux without a display.',
+    );
+  }
+
+  /// The flag that forces the device code login.
+  static const deviceFlag = 'device';
+
   @override
   String get description => 'Login as a new Shorebird user.';
 
@@ -22,10 +41,13 @@ class LoginCommand extends ShorebirdCommand {
       try {
         hasValidCredentials = await auth.hasValidCredentials();
       } on Exception catch (error) {
-        // The auth service could not answer, which says nothing about the
-        // stored credentials. Discarding them here would log a user out for
-        // running this off wifi.
-        progress.fail('Could not reach the Shorebird auth service.');
+        // No answer, or one that is not an OAuth error response, says
+        // nothing about the stored credentials. Discarding them here would
+        // log a user out for running this off wifi.
+        progress.fail(
+          'Could not check your credentials with the Shorebird '
+          'auth service.',
+        );
         logger
           ..err('$error')
           ..info('Check your network connection and try again.');
@@ -33,14 +55,7 @@ class LoginCommand extends ShorebirdCommand {
       }
       if (hasValidCredentials) {
         progress.complete();
-        final emailDisplay = auth.email;
-        if (emailDisplay != null) {
-          logger
-            ..info('You are already logged in as <$emailDisplay>.')
-            ..info(
-              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
-            );
-        } else {
+        if (auth.isUsingApiKey) {
           // Env-var auth wins over stored credentials, so `shorebird logout`
           // would not change who this machine is authenticated as.
           logger
@@ -50,24 +65,39 @@ class LoginCommand extends ShorebirdCommand {
             ..info(
               '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
             );
+        } else {
+          final email = await auth.fetchEmail();
+          logger
+            ..info(
+              email != null
+                  ? 'You are already logged in as <$email>.'
+                  : 'You are already logged in.',
+            )
+            ..info(
+              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
+            );
         }
         return ExitCode.success.code;
       }
 
-      // The stored credentials have expired or been revoked, so discard them
-      // and log in again.
-      progress.fail('Your credentials have expired.');
+      // The auth service answered the refresh with an OAuth error, so the
+      // stored credentials will not work again: discard them and log in.
+      progress.fail('Your stored credentials are no longer valid.');
       logger.info('Logging you in again...');
       auth.clearCredentials();
     }
 
+    final useDeviceCode = results[deviceFlag] == true || !browser.canOpen;
     try {
-      await auth.login(prompt: prompt);
-    } on UserNotFoundException catch (error) {
+      if (useDeviceCode) {
+        await auth.loginWithDeviceCode(prompt: devicePrompt);
+      } else {
+        await auth.login(prompt: prompt);
+      }
+    } on UserNotFoundException {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger
-        ..err('''
-We could not find a Shorebird account for ${error.email}.''')
+        ..err('We could not find a Shorebird account for this login.')
         ..info(
           """If you have not yet created an account, you can do so at "${link(uri: consoleUri)}". If you believe this is an error, please reach out to us via Discord, we're happy to help!""",
         );
@@ -86,15 +116,47 @@ We could not find a Shorebird account for ${error.email}.''')
     return ExitCode.success.code;
   }
 
-  /// Prompt the user to log in.
+  /// Prompt the user to log in, opening [url] in their browser when this
+  /// machine has one. The URL is printed either way, so a user whose browser
+  /// did not open (or an agent relaying the URL) can still follow it.
   void prompt(String url) {
+    final openBrowser = browser.canOpen;
+    final instruction = openBrowser
+        ? 'Opening your browser to log in. If it does not open, visit this URL:'
+        : 'In a browser, visit this URL to log in:';
     logger.info('''
 The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
 
-In a browser, visit this URL to log in:
+$instruction
 
 ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
 
 Waiting for your authorization...''');
+    if (openBrowser) unawaited(browser.open(Uri.parse(url)));
+  }
+
+  /// Prompt the user to approve [authorization] in a browser on any device.
+  ///
+  /// Shows the verification URL and the code to type there, never a link
+  /// with the code filled in: the auth service wants the code typed for a
+  /// session that acts as the user, so a person approves only a code they
+  /// read off this terminal.
+  void devicePrompt(DeviceAuthorization authorization) {
+    final minutes = authorization.expiresIn.inMinutes;
+    final url = '${authorization.verificationUri}';
+    logger.info(
+      '''
+The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser on any device, visit:
+
+  ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
+
+and enter this code:
+
+  ${styleBold.wrap(authorization.userCode)}
+
+Waiting for your authorization (the code expires in $minutes ${minutes == 1 ? 'minute' : 'minutes'})...''',
+    );
   }
 }

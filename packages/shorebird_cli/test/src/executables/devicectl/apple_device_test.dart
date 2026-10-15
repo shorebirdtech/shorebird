@@ -1,8 +1,10 @@
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:test/test.dart';
+import '../../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(AppleDevice, () {
     const udid = '12345678-1234567890ABCDEF';
     const deviceName = "Joe's iPhone";

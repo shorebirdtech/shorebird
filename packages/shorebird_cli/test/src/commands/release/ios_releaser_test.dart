@@ -32,10 +32,12 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(IosReleaser, () {
     late Apple apple;
     late ArgResults argResults;
@@ -133,6 +135,13 @@ void main() {
       });
     });
 
+    group('supplement', () {
+      test('uploads under the platform supplement names', () {
+        expect(iosReleaser.supplementPlatformSubdir, equals('ios'));
+        expect(iosReleaser.supplementArtifactArch, equals('ios_supplement'));
+      });
+    });
+
     group('assertPreconditions', () {
       final flutterVersion = Version(3, 0, 0);
 
@@ -142,30 +151,6 @@ void main() {
           () => shorebirdFlutter.resolveFlutterVersion(any()),
         ).thenAnswer((_) async => flutterVersion);
         when(flavorValidator.validate).thenAnswer((_) async => []);
-      });
-
-      group('when validation succeeds', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-        });
-
-        test('returns normally', () async {
-          await expectLater(
-            () => runWithOverrides(iosReleaser.assertPreconditions),
-            returnsNormally,
-          );
-        });
       });
 
       group('when validation fails', () {
@@ -201,24 +186,6 @@ void main() {
           ).called(1);
         });
       });
-
-      group('when specified flutter version is less than minimum', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-          when(() => argResults['flutter-version']).thenReturn('3.0.0');
-        });
-      });
     });
 
     group('assertArgsAreValid', () {
@@ -241,44 +208,6 @@ The "--release-version" flag is only supported for aar and ios-framework release
 To change the version of this release, change your app's version in your pubspec.yaml.''',
             ),
           ).called(1);
-        });
-      });
-
-      group('when --obfuscate is passed', () {
-        setUp(() {
-          when(() => argResults['obfuscate']).thenReturn(true);
-          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        });
-
-        group('when Flutter version supports obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 2));
-          });
-
-          test('returns normally', () async {
-            await expectLater(
-              runWithOverrides(iosReleaser.assertArgsAreValid),
-              completes,
-            );
-          });
-        });
-
-        group('when Flutter version does not support obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 27, 4));
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.unavailable),
-            );
-          });
         });
       });
 
@@ -318,23 +247,6 @@ $body
         }
 
         test(
-          'returns normally when manageAppVersionAndBuildNumber is absent',
-          () async {
-            final file = writePlist(
-              '<key>method</key><string>app-store</string>',
-            );
-            when(
-              () => argResults[CommonArguments.exportOptionsPlistArg.name],
-            ).thenReturn(file.path);
-
-            await expectLater(
-              runWithOverrides(iosReleaser.assertArgsAreValid),
-              completes,
-            );
-          },
-        );
-
-        test(
           '''logs error and exits with usage when manageAppVersionAndBuildNumber is true''',
           () async {
             final file = writePlist(
@@ -354,41 +266,6 @@ $body
               ),
             ).called(1);
           },
-        );
-      });
-    });
-
-    group('addObfuscationMapArgs', () {
-      // The libapp.so strip gating only applies to Android; on iOS AGP is
-      // not in the pipeline. iOS must continue to pre-strip the snapshot in
-      // gen_snapshot regardless of the Flutter version to prevent the
-      // DWARF debug sections from leaking the identifiers obfuscation is
-      // meant to hide.
-      setUp(() {
-        when(() => argResults['obfuscate']).thenReturn(true);
-        when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-        when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        when(
-          () => shorebirdEnv.getShorebirdProjectRoot(),
-        ).thenReturn(projectRoot);
-      });
-
-      test('passes --strip on Flutter 3.44+ for iOS', () async {
-        when(
-          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
-            platform: any(named: 'platform'),
-            flutterRevision: any(named: 'flutterRevision'),
-          ),
-        ).thenAnswer((_) async => true);
-
-        final buildArgs = <String>[];
-        await runWithOverrides(
-          () => iosReleaser.addObfuscationMapArgs(buildArgs),
-        );
-
-        expect(
-          buildArgs,
-          contains('--extra-gen-snapshot-options=--strip'),
         );
       });
     });
@@ -487,61 +364,6 @@ $body
         );
       });
 
-      group('when a public-key-cmd is provided', () {
-        setUp(() {
-          when(
-            () => argResults[CommonArguments.publicKeyCmd.name],
-          ).thenReturn('get-key-cmd');
-          when(
-            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
-          ).thenReturn(true);
-
-          when(
-            () => artifactBuilder.buildIpa(
-              codesign: any(named: 'codesign'),
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
-            ),
-          ).thenAnswer(
-            (_) async =>
-                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-          );
-
-          when(
-            () => codeSigner.runPublicKeyCmd(any()),
-          ).thenAnswer((_) async => 'pem-public-key');
-          when(
-            () => codeSigner.base64PublicKeyFromPem(any()),
-          ).thenReturn('base64PublicKeyFromCmd');
-        });
-
-        test(
-          'runs public key cmd and forwards encoded key to buildIpa',
-          () async {
-            await runWithOverrides(() => iosReleaser.buildReleaseArtifacts());
-
-            verify(
-              () => codeSigner.runPublicKeyCmd('get-key-cmd'),
-            ).called(1);
-            verify(
-              () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
-            ).called(1);
-            verify(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-                base64PublicKey: 'base64PublicKeyFromCmd',
-              ),
-            ).called(1);
-          },
-        );
-      });
-
       group('when not codesigning', () {
         setUp(() {
           when(() => argResults['codesign']).thenReturn(false);
@@ -570,25 +392,6 @@ $body
               ),
             ),
           ).called(1);
-        });
-      });
-
-      group('when stale build/ios/shorebird directory exists', () {
-        late Directory shorebirdSupplementDir;
-
-        setUp(() {
-          shorebirdSupplementDir = Directory(
-            p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-          )..createSync(recursive: true);
-          when(
-            () => artifactManager.getIosReleaseSupplementDirectory(),
-          ).thenReturn(shorebirdSupplementDir);
-        });
-
-        test('deletes the directory', () async {
-          expect(shorebirdSupplementDir.existsSync(), isTrue);
-          await runWithOverrides(iosReleaser.buildReleaseArtifacts);
-          expect(shorebirdSupplementDir.existsSync(), isFalse);
         });
       });
 
@@ -829,41 +632,6 @@ $body
           );
         });
 
-        group('when --split-debug-info is also provided', () {
-          setUp(() {
-            when(
-              () => argResults.wasParsed('split-debug-info'),
-            ).thenReturn(true);
-            when(
-              () => argResults['split-debug-info'],
-            ).thenReturn('custom/symbols');
-          });
-
-          test('preserves user-provided --split-debug-info', () async {
-            await runWithOverrides(iosReleaser.buildReleaseArtifacts);
-
-            final captured = verify(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: captureAny(named: 'args'),
-              ),
-            ).captured;
-
-            final args = captured.last as List<String>;
-            expect(
-              args,
-              contains('--split-debug-info=custom/symbols'),
-            );
-            // Should not contain a second auto-defaulted one.
-            expect(
-              args.where((a) => a.startsWith('--split-debug-info=')).length,
-              equals(1),
-            );
-          });
-        });
-
         test('logs detail about map location', () async {
           await runWithOverrides(iosReleaser.buildReleaseArtifacts);
 
@@ -872,40 +640,6 @@ $body
               any(that: startsWith('Obfuscation map saved to')),
             ),
           ).called(1);
-        });
-
-        group('when obfuscation map is not generated', () {
-          setUp(() {
-            // Override to NOT create the map file.
-            when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-              ),
-            ).thenAnswer(
-              (_) async =>
-                  AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-            );
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => logger.err(
-                any(
-                  that: contains(
-                    'Obfuscation was enabled but the obfuscation map was not',
-                  ),
-                ),
-              ),
-            ).called(1);
-          });
         });
       });
     });
@@ -931,46 +665,6 @@ $body
           verify(
             () => logger.err(
               '''No Info.plist file found at ${p.join(xcarchiveDirectory.path, 'Info.plist')}''',
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when plist does not contain version number', () {
-        late File plist;
-        setUp(() {
-          plist = File(p.join(xcarchiveDirectory.path, 'Info.plist'))
-            ..createSync()
-            ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>ApplicationProperties</key>
-	<dict>
-	</dict>
-</dict>
-</plist>'
-''');
-        });
-
-        test('logs error and exits', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => iosReleaser.getReleaseVersion(
-                releaseArtifactRoot: xcarchiveDirectory,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err(
-              any(
-                that: startsWith(
-                  'Failed to determine release version from ${plist.path}',
-                ),
-              ),
             ),
           ).called(1);
         });
@@ -1045,7 +739,6 @@ $body
 
       late Directory xcarchiveDirectory;
       late Directory iosAppDirectory;
-      late Directory supplementDirectory;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -1055,7 +748,6 @@ $body
 
         xcarchiveDirectory = Directory.systemTemp.createTempSync();
         iosAppDirectory = Directory.systemTemp.createTempSync();
-        supplementDirectory = Directory.systemTemp.createTempSync();
         when(
           artifactManager.getXcarchiveDirectory,
         ).thenReturn(xcarchiveDirectory);
@@ -1064,9 +756,6 @@ $body
             xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
           ),
         ).thenReturn(iosAppDirectory);
-        when(
-          () => artifactManager.getIosReleaseSupplementDirectory(),
-        ).thenReturn(supplementDirectory);
         when(
           () => codePushClientWrapper.createIosReleaseArtifacts(
             appId: any(named: 'appId'),

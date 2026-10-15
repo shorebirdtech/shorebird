@@ -59,6 +59,37 @@ void main() {
       expect(CodePushClient(), isNotNull);
     });
 
+    test('apiBaseUri is the hosted uri followed by /api/v1', () {
+      expect(
+        codePushClient.apiBaseUri,
+        equals(Uri.parse('https://api.shorebird.dev/api/v1')),
+      );
+    });
+
+    group('send', () {
+      test('sends the request with the standard and custom headers', () async {
+        final request = http.Request('POST', v1('apps'))..body = '{}';
+        final response = await codePushClient.send(request);
+        expect(response.statusCode, equals(HttpStatus.ok));
+        final sent =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(sent, same(request));
+        expect(sent.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('returns error responses without throwing', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.notFound),
+        );
+        final response = await codePushClient.send(
+          http.Request('GET', v1('apps/missing')),
+        );
+        expect(response.statusCode, equals(HttpStatus.notFound));
+      });
+    });
+
     group('CodePushException', () {
       test('toString is correct', () {
         const exceptionWithDetails = CodePushException(
@@ -70,6 +101,24 @@ void main() {
         expect(exceptionWithDetails.toString(), 'message\ndetails');
         expect(exceptionWithoutDetails.toString(), 'message');
       });
+    });
+
+    test('exceptions carry the ErrorResponse code', () async {
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+          HttpStatus.failedDependency,
+        ),
+      );
+
+      await expectLater(
+        codePushClient.getApps(),
+        throwsA(
+          isA<CodePushException>()
+              .having((e) => e.code, 'code', errorResponse.code)
+              .having((e) => e.details, 'details', errorResponse.details),
+        ),
+      );
     });
 
     test('throws CodePushUpgradeRequiredException on 426 response', () async {
@@ -1755,62 +1804,6 @@ void main() {
       });
     });
 
-    group('createUser', () {
-      const userName = 'Jane Doe';
-      const user = PrivateUser(
-        id: 1,
-        email: 'tester@shorebird.dev',
-        displayName: userName,
-        jwtIssuer:
-            'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0',
-      );
-
-      test('makes the correct request', () async {
-        codePushClient.createUser(name: userName).ignore();
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.BaseRequest;
-        expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('users')));
-        expect(request.hasHeaders(expectedHeaders), isTrue);
-      });
-
-      test('throws an exception if the http request fails', () {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.createUser(name: userName),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessageFor(
-                HttpStatus.failedDependency,
-              ),
-            ),
-          ),
-        );
-      });
-
-      test('returns a User when the http request succeeds', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(user.toJson()))),
-            HttpStatus.created,
-          ),
-        );
-
-        final result = await codePushClient.createUser(name: userName);
-
-        expect(result.toJson(), user.toJson());
-      });
-    });
-
     group('deleteApp', () {
       test('makes the correct request', () async {
         codePushClient.deleteApp(appId: appId).ignore();
@@ -2031,6 +2024,193 @@ void main() {
 
         await expectLater(
           codePushClient.deleteChannel(appId: appId, channelId: channelId),
+          completes,
+        );
+      });
+    });
+
+    group('deleteRelease', () {
+      const releaseId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteRelease(appId: appId, releaseId: releaseId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws CodePushForbiddenException on 403', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          throwsA(
+            isA<CodePushForbiddenException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('throws CodePushNotFoundException on 404', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.notFound,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          throwsA(isA<CodePushNotFoundException>()),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+          completes,
+        );
+      });
+    });
+
+    group('deleteReleaseArtifacts', () {
+      const releaseId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(
+          request.url,
+          equals(v1('apps/$appId/releases/$releaseId/artifacts?platform=ios')),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws CodePushForbiddenException on 403', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
+          throwsA(
+            isA<CodePushForbiddenException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('throws CodePushNotFoundException on 404', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.notFound,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
+          throwsA(isA<CodePushNotFoundException>()),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.deleteReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.ios,
+          ),
           completes,
         );
       });
@@ -3111,6 +3291,341 @@ void main() {
         test('returns download_url as parsed Uri', () async {
           final url = await codePushClient.getGCPDownloadSpeedTestUrl();
           expect(url, equals(Uri.parse('https://example.com')));
+        });
+      });
+    });
+
+    group('metrics', () {
+      const releaseId = 42;
+      final asOf = DateTime.utc(2026, 10, 15);
+      final range = MetricsRange(
+        start: DateTime.utc(2026, 9, 17),
+        end: DateTime.utc(2026, 10, 15),
+      );
+      final patchMetricResponse = GetPatchMetricResponse(
+        asOf: asOf,
+        granularity: null,
+        current: PatchMetricCurrentWindow(count: 10, range: range),
+      );
+      final uniqueUsersResponse = GetUniqueUsersResponse(
+        asOf: asOf,
+        granularity: null,
+        current: UniqueUsersCurrentWindow(uniqueUsers: 5, range: range),
+        previous: null,
+      );
+      final versionDistributionResponse = GetVersionDistributionResponse(
+        entries: const [
+          VersionDistributionEntry(
+            releaseVersion: '1.0.0+1',
+            deviceCount: 3,
+            percentage: 1,
+          ),
+        ],
+        totalDevices: 3,
+        activeWindowDays: 28,
+        asOf: asOf,
+      );
+      final newDevicesResponse = GetNewDevicesResponse(
+        current: 7,
+        previous: 4,
+        windowDays: 28,
+        asOf: asOf,
+      );
+      final patchAdoptionResponse = GetPatchAdoptionResponse(
+        releaseVersion: '1.0.0+1',
+        isLatest: true,
+        granularity: null,
+        range: range,
+        asOf: asOf,
+        patches: const [
+          PatchAdoptionEntry(
+            patchNumber: 1,
+            targetPlatforms: [ReleasePlatform.android],
+            isRolledBack: false,
+            series: [
+              PatchAdoptionPoint(
+                period: null,
+                devices: 1,
+                target: 2,
+                adoptionPct: .5,
+              ),
+            ],
+          ),
+        ],
+      );
+      final activeHoursResponse = GetActiveHoursResponse(
+        hourly: const [ActiveHourEntry(hourUtc: 0, averageActiveDevices: 1.5)],
+        recommendedWindowStartUtc: 3,
+        recommendedWindowLengthHours: 2,
+        busiestHourUtc: 14,
+        lookbackDays: 28,
+        asOf: asOf,
+      );
+      final activityHeatmapResponse = GetActivityHeatmapResponse(
+        cells: const [
+          ActivityHeatmapCell(
+            dayOfWeekUtc: 1,
+            hourUtc: 0,
+            averageActiveDevices: 2,
+          ),
+        ],
+        busiestDayOfWeekUtc: 1,
+        busiestHourUtc: 0,
+        lookbackDays: 28,
+        asOf: asOf,
+      );
+
+      // Each case: the request with no optional arguments, the path it
+      // should hit, a response body, and how to read it back as JSON.
+      final cases =
+          <
+            ({
+              String name,
+              Future<Object> Function() call,
+              String path,
+              Map<String, dynamic> body,
+            })
+          >[
+            (
+              name: 'getAppPatchInstalls',
+              call: () => codePushClient.getAppPatchInstalls(appId: appId),
+              path: 'apps/$appId/metrics/patch-installs',
+              body: patchMetricResponse.toJson(),
+            ),
+            (
+              name: 'getReleasePatchInstalls',
+              call: () => codePushClient.getReleasePatchInstalls(
+                appId: appId,
+                releaseId: releaseId,
+              ),
+              path: 'apps/$appId/releases/$releaseId/metrics/patch-installs',
+              body: patchMetricResponse.toJson(),
+            ),
+            (
+              name: 'getAppPatchDownloads',
+              call: () => codePushClient.getAppPatchDownloads(appId: appId),
+              path: 'apps/$appId/metrics/patch-downloads',
+              body: patchMetricResponse.toJson(),
+            ),
+            (
+              name: 'getReleasePatchDownloads',
+              call: () => codePushClient.getReleasePatchDownloads(
+                appId: appId,
+                releaseId: releaseId,
+              ),
+              path: 'apps/$appId/releases/$releaseId/metrics/patch-downloads',
+              body: patchMetricResponse.toJson(),
+            ),
+            (
+              name: 'getUniqueUsers',
+              call: () => codePushClient.getUniqueUsers(appId: appId),
+              path: 'apps/$appId/metrics/unique-users',
+              body: uniqueUsersResponse.toJson(),
+            ),
+            (
+              name: 'getVersionDistribution',
+              call: () => codePushClient.getVersionDistribution(appId: appId),
+              path: 'apps/$appId/metrics/version-distribution',
+              body: versionDistributionResponse.toJson(),
+            ),
+            (
+              name: 'getNewDevices',
+              call: () => codePushClient.getNewDevices(appId: appId),
+              path: 'apps/$appId/metrics/new-devices',
+              body: newDevicesResponse.toJson(),
+            ),
+            (
+              name: 'getPatchAdoption',
+              call: () => codePushClient.getPatchAdoption(appId: appId),
+              path: 'apps/$appId/metrics/patch-adoption',
+              body: patchAdoptionResponse.toJson(),
+            ),
+            (
+              name: 'getActiveHours',
+              call: () => codePushClient.getActiveHours(appId: appId),
+              path: 'apps/$appId/metrics/active-hours',
+              body: activeHoursResponse.toJson(),
+            ),
+            (
+              name: 'getActivityHeatmap',
+              call: () => codePushClient.getActivityHeatmap(appId: appId),
+              path: 'apps/$appId/metrics/activity-heatmap',
+              body: activityHeatmapResponse.toJson(),
+            ),
+          ];
+
+      for (final c in cases) {
+        group(c.name, () {
+          test('makes the correct request', () async {
+            c.call().ignore();
+            final request =
+                verify(() => httpClient.send(captureAny())).captured.single
+                    as http.BaseRequest;
+            expect(request.method, equals('GET'));
+            expect(request.url, equals(v1(c.path)));
+            expect(request.hasHeaders(expectedHeaders), isTrue);
+          });
+
+          test('parses the response', () async {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async => http.StreamedResponse(
+                Stream.value(utf8.encode(json.encode(c.body))),
+                HttpStatus.ok,
+              ),
+            );
+            final result = await c.call();
+            expect((result as dynamic).toJson(), equals(c.body));
+          });
+
+          test('throws with the server error code on failure', () async {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async => http.StreamedResponse(
+                Stream.value(
+                  utf8.encode(
+                    json.encode(
+                      const ErrorResponse(
+                        code: 'shorebird_plan_insufficient_tier',
+                        message: 'upgrade required',
+                      ).toJson(),
+                    ),
+                  ),
+                ),
+                HttpStatus.forbidden,
+              ),
+            );
+            await expectLater(
+              c.call(),
+              throwsA(
+                isA<CodePushForbiddenException>()
+                    .having((e) => e.message, 'message', 'upgrade required')
+                    .having(
+                      (e) => e.code,
+                      'code',
+                      'shorebird_plan_insufficient_tier',
+                    ),
+              ),
+            );
+          });
+        });
+      }
+
+      group('query parameters', () {
+        final start = DateTime.utc(2026, 9);
+        final end = DateTime.utc(2026, 10);
+
+        Future<Uri> capturedUrl(Future<Object> Function() call) async {
+          call().ignore();
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          return request.url;
+        }
+
+        test('patch metrics send start, end, granularity and group_by', () {
+          final calls = <Future<Object> Function(), String>{
+            () => codePushClient.getAppPatchInstalls(
+              appId: appId,
+              start: start,
+              end: end,
+              granularity: 'day',
+              groupBy: 'release',
+            ): 'release',
+            () => codePushClient.getReleasePatchInstalls(
+              appId: appId,
+              releaseId: releaseId,
+              start: start,
+              end: end,
+              granularity: 'day',
+              groupBy: 'patch',
+            ): 'patch',
+            () => codePushClient.getAppPatchDownloads(
+              appId: appId,
+              start: start,
+              end: end,
+              granularity: 'day',
+              groupBy: 'release',
+            ): 'release',
+            () => codePushClient.getReleasePatchDownloads(
+              appId: appId,
+              releaseId: releaseId,
+              start: start,
+              end: end,
+              granularity: 'day',
+              groupBy: 'patch',
+            ): 'patch',
+          };
+          for (final MapEntry(key: call, value: groupBy) in calls.entries) {
+            clearInteractions(httpClient);
+            expect(
+              capturedUrl(call),
+              completion(
+                isA<Uri>().having((u) => u.queryParameters, 'query', {
+                  'start': '2026-09-01T00:00:00.000Z',
+                  'end': '2026-10-01T00:00:00.000Z',
+                  'granularity': 'day',
+                  'group_by': groupBy,
+                }),
+              ),
+            );
+          }
+        });
+
+        test('getUniqueUsers sends start, end, granularity and group_by', () {
+          expect(
+            capturedUrl(
+              () => codePushClient.getUniqueUsers(
+                appId: appId,
+                start: start,
+                end: end,
+                granularity: 'week',
+                groupBy: 'platform',
+              ),
+            ),
+            completion(
+              isA<Uri>().having((u) => u.queryParameters, 'query', {
+                'start': '2026-09-01T00:00:00.000Z',
+                'end': '2026-10-01T00:00:00.000Z',
+                'granularity': 'week',
+                'group_by': 'platform',
+              }),
+            ),
+          );
+        });
+
+        test('getPatchAdoption sends release_version and window', () {
+          expect(
+            capturedUrl(
+              () => codePushClient.getPatchAdoption(
+                appId: appId,
+                releaseVersion: '1.0.0+1',
+                start: start,
+                end: end,
+                granularity: 'hour',
+              ),
+            ),
+            completion(
+              isA<Uri>().having((u) => u.queryParameters, 'query', {
+                'release_version': '1.0.0+1',
+                'start': '2026-09-01T00:00:00.000Z',
+                'end': '2026-10-01T00:00:00.000Z',
+                'granularity': 'hour',
+              }),
+            ),
+          );
+        });
+
+        test('converts non-UTC times to UTC', () {
+          final local = DateTime.utc(2026, 9).toLocal();
+          expect(
+            capturedUrl(
+              () => codePushClient.getUniqueUsers(appId: appId, start: local),
+            ),
+            completion(
+              isA<Uri>().having((u) => u.queryParameters, 'query', {
+                'start': '2026-09-01T00:00:00.000Z',
+              }),
+            ),
+          );
         });
       });
     });

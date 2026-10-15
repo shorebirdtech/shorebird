@@ -1,15 +1,16 @@
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 const _jsonExample =
-    'shorebird patches set-track --release 1.0.0+1 --patch 1 '
+    'shorebird patches set-track --release-version 1.0.0+1 --patch-number 1 '
     '--track stable --app-id <id> --json';
 
 /// {@template set_track_command}
@@ -17,21 +18,27 @@ const _jsonExample =
 ///
 /// Sample usage:
 /// ```sh
-/// shorebird patches set-track --release=1.0.0+1 --patch=1 --track=beta
+/// shorebird patches set-track --release-version=1.0.0+1 --patch-number=1 \
+///   --track=beta
 /// ```
 ///
 /// {@endtemplate}
-class SetTrackCommand extends ShorebirdCommand {
+class SetTrackCommand extends ShorebirdCommand
+    with AppScopedCommand, PatchNumberArgument, PatchLookup {
   /// {@macro set_track_command}
   SetTrackCommand() {
     argParser
+      // `--release` and `--patch` were this command's original names; kept as
+      // hidden aliases so existing scripts keep working.
       ..addOption(
-        'release',
+        CommonArguments.releaseVersionArg.name,
+        aliases: const ['release'],
         help: CommonArguments.patchReleaseVersionDescription,
         mandatory: true,
       )
       ..addOption(
-        'patch',
+        CommonArguments.patchNumberArg.name,
+        aliases: const ['patch'],
         help: 'The patch number to set the track for (e.g. "1").',
         mandatory: true,
       )
@@ -42,15 +49,8 @@ class SetTrackCommand extends ShorebirdCommand {
             '("stable", "beta", "staging", or any custom track name '
             'up to ${CommonArguments.trackNameMaxLength} characters).',
         mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use when building the app.',
       );
+    addAppScopeOptions();
   }
 
   @override
@@ -68,93 +68,53 @@ class SetTrackCommand extends ShorebirdCommand {
     final (:appId, :errorCode) = await resolveAppId();
     if (errorCode != null) return errorCode;
 
-    final releaseVersion = results['release'] as String;
-    final patchNumber = int.parse(results['patch'] as String);
+    final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
+    if (patchNumberError != null) return patchNumberError;
+
+    final releaseVersion =
+        results[CommonArguments.releaseVersionArg.name] as String;
     final targetChannel = results['track'] as String;
 
-    if (targetChannel.isEmpty ||
-        targetChannel.length > CommonArguments.trackNameMaxLength) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message:
-              'Track name must be between 1 and '
-              '${CommonArguments.trackNameMaxLength} characters.',
-        );
-        return ExitCode.usage.code;
-      }
-      logger.err(
-        'Track name must be between 1 and '
-        '${CommonArguments.trackNameMaxLength} characters.',
-      );
-      return ExitCode.usage.code;
-    }
+    final nameError = CommonArguments.nameError(
+      label: 'Track name',
+      value: targetChannel,
+      maxLength: CommonArguments.trackNameMaxLength,
+    );
+    if (nameError != null) return reportError(message: nameError);
 
-    final Release release;
-    final List<ReleasePatch> patches;
-    try {
-      release = await codePushClientWrapper.getRelease(
-        appId: appId,
-        releaseVersion: releaseVersion,
-      );
-      patches = await codePushClientWrapper.getReleasePatches(
-        appId: appId,
-        releaseId: release.id,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch patches for release "$releaseVersion".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    final fetched = await fetchReleasePatches(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+    if (fetched.errorCode case final errorCode?) return errorCode;
 
-    if (patches.isEmpty) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: 'No patches found for release "$releaseVersion".',
-        );
-        return ExitCode.usage.code;
-      }
-      logger.err('No patches found for release $releaseVersion');
-      return ExitCode.usage.code;
-    }
+    final (:patch, errorCode: lookupError) = findPatchOrReport(
+      patches: fetched.patches,
+      patchNumber: patchNumber!,
+      releaseVersion: releaseVersion,
+    );
+    if (patch == null) return lookupError!;
 
-    final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
-    if (patch == null) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message:
-              'No patch found with number $patchNumber '
-              'for release "$releaseVersion".',
-        );
-        return ExitCode.usage.code;
-      }
-      logger
-        ..err('No patch found with number $patchNumber')
-        ..info(
-          'Available patches: ${patches.map((p) => p.number).join(', ')}',
-        );
-      return ExitCode.usage.code;
-    }
-
+    // Already on the requested track: nothing to do, which is success, as it
+    // is for rollback and rollforward.
     if (patch.channel == targetChannel) {
       if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: 'Patch $patchNumber is already in channel "$targetChannel".',
+        emitJsonSuccess(
+          _successJson(
+            appId: appId,
+            releaseVersion: releaseVersion,
+            patch: patch,
+            track: targetChannel,
+            changed: false,
+          ),
         );
-        return ExitCode.usage.code;
+        return ExitCode.success.code;
       }
-      logger.err(
-        'Patch ${patch.number} is already in channel $targetChannel',
+      logger.info(
+        'Patch $patchNumber on release $releaseVersion is already in channel '
+        '$targetChannel.',
       );
-      return ExitCode.usage.code;
+      return ExitCode.success.code;
     }
 
     var channel = await codePushClientWrapper.maybeGetChannel(
@@ -191,31 +151,31 @@ class SetTrackCommand extends ShorebirdCommand {
       );
     }
 
-    try {
-      await codePushClientWrapper.promotePatch(
+    // Non-null here; bind it so the closure below keeps the promotion.
+    final trackChannel = channel;
+    final promoteError = await guardApiCall(
+      () => codePushClientWrapper.promotePatch(
         appId: appId,
         patchId: patch.id,
-        channel: channel,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.softwareError,
-          message:
-              'Failed to set track for patch $patchNumber '
-              'of release "$releaseVersion".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+        channel: trackChannel,
+      ),
+      code: JsonErrorCode.softwareError,
+      message:
+          'Failed to set track for patch $patchNumber '
+          'of release "$releaseVersion".',
+    );
+    if (promoteError != null) return promoteError;
 
     if (isJsonMode) {
-      emitJsonSuccess({
-        'release_version': releaseVersion,
-        'patch_number': patchNumber,
-        'track': targetChannel,
-      });
+      emitJsonSuccess(
+        _successJson(
+          appId: appId,
+          releaseVersion: releaseVersion,
+          patch: patch.copyWith(channel: targetChannel),
+          track: targetChannel,
+          changed: true,
+        ),
+      );
       return ExitCode.success.code;
     }
 
@@ -226,4 +186,19 @@ class SetTrackCommand extends ShorebirdCommand {
 
     return ExitCode.success.code;
   }
+
+  Map<String, Object?> _successJson({
+    required String appId,
+    required String releaseVersion,
+    required ReleasePatch patch,
+    required String track,
+    required bool changed,
+  }) => {
+    'app_id': appId,
+    'release_version': releaseVersion,
+    'patch_number': patch.number,
+    'track': track,
+    'changed': changed,
+    'patch': patch.toJson(),
+  };
 }

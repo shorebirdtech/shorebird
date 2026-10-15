@@ -1,10 +1,10 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 const _jsonExample =
@@ -15,23 +15,15 @@ const _jsonExample =
 /// `shorebird releases info`
 /// Show details for a specific release.
 /// {@endtemplate}
-class ReleasesInfoCommand extends ShorebirdCommand {
+class ReleasesInfoCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro releases_info_command}
   ReleasesInfoCommand() {
-    argParser
-      ..addOption(
-        CommonArguments.releaseVersionArg.name,
-        help: CommonArguments.releaseVersionArg.description,
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to query releases for (e.g. "prod").',
-      );
+    argParser.addOption(
+      CommonArguments.releaseVersionArg.name,
+      help: CommonArguments.releaseVersionArg.description,
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override
@@ -63,22 +55,16 @@ class ReleasesInfoCommand extends ShorebirdCommand {
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
 
-    final Release release;
-    try {
-      release = await codePushClientWrapper.getRelease(
+    late final Release release;
+    final fetchError = await guardApiCall(
+      () async => release = await codePushClientWrapper.getRelease(
         appId: appId,
         releaseVersion: releaseVersion,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch release "$releaseVersion".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+      ),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch release "$releaseVersion".',
+    );
+    if (fetchError != null) return fetchError;
 
     if (isJsonMode) {
       emitJsonSuccess({'release': release.toJson()});

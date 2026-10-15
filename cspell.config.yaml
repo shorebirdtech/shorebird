@@ -103,6 +103,7 @@ words:
   - pbxproj
   - pinact # Third-party action-pinning tool referenced in shorebird_ci
   - Perfetto # Chrome trace viewer at ui.perfetto.dev
+  - PKCE # OAuth Proof Key for Code Exchange (RFC 7636)
   - pkcs
   - podfile
   - podspec
@@ -118,7 +119,6 @@ words:
   - pubspec
   - pwsh
   - quantiles
-  - rdata
   - reactivecircus # From .github dir, doesn't show up in "**" check?
   - readlink
   - reimplementation
@@ -155,6 +155,7 @@ words:
   - udid # Unique Device Identifier
   - unanalyzed
   - unawaited
+  - uncollectible # Stripe invoice status
   - unmockable
   - unobfuscated
   - unpadded

@@ -1,10 +1,9 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 const _jsonExample = 'shorebird releases list --app-id <id> --json';
@@ -13,23 +12,15 @@ const _jsonExample = 'shorebird releases list --app-id <id> --json';
 /// `shorebird releases list`
 /// List releases for an app.
 /// {@endtemplate}
-class ReleasesListCommand extends ShorebirdCommand {
+class ReleasesListCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro releases_list_command}
   ReleasesListCommand() {
-    argParser
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to list releases for (e.g. "prod").',
-      )
-      ..addOption(
-        'platform',
-        allowed: ReleasePlatform.values.map((p) => p.value),
-        help: 'Filter to releases that have the specified platform.',
-      );
+    addAppScopeOptions();
+    argParser.addOption(
+      'platform',
+      allowed: ReleasePlatform.values.map((p) => p.value),
+      help: 'Filter to releases that have the specified platform.',
+    );
   }
 
   @override
@@ -51,19 +42,14 @@ class ReleasesListCommand extends ShorebirdCommand {
       results['platform'] as String?,
     );
 
-    final List<Release> releases;
-    try {
-      releases = await codePushClientWrapper.getReleases(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch releases.',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<Release> releases;
+    final fetchError = await guardApiCall(
+      () async =>
+          releases = await codePushClientWrapper.getReleases(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch releases.',
+    );
+    if (fetchError != null) return fetchError;
 
     final filtered = platformFilter != null
         ? releases

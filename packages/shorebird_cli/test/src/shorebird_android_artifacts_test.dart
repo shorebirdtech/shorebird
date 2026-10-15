@@ -12,9 +12,11 @@ import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ShorebirdAndroidArtifacts, () {
     late Directory projectRoot;
     late Bundletool bundletool;
@@ -504,6 +506,23 @@ void main() {
       }
 
       setUp(setUpProjectRootArtifacts);
+
+      test('deletes the temporary zip copy', () async {
+        String? zipPath;
+        await runWithOverrides(
+          () => shorebirdAndroidArtifacts.extractAar(
+            packageName: packageName,
+            buildNumber: buildNumber,
+            unzipFn: (zip, _) async {
+              zipPath = zip;
+              expect(File(zip).existsSync(), isTrue);
+            },
+          ),
+        );
+
+        expect(zipPath, isNotNull);
+        expect(Directory(p.dirname(zipPath!)).existsSync(), isFalse);
+      });
 
       test('extracts aar', () async {
         final outDir = await runWithOverrides(

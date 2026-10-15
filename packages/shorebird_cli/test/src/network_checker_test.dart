@@ -14,9 +14,11 @@ import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(NetworkChecker, () {
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
@@ -84,6 +86,44 @@ void main() {
           ).called(NetworkChecker.urlsToCheck.length);
         });
       });
+    });
+
+    group('reachability', () {
+      test(
+        'reports each url, counting any HTTP response as reachable',
+        () async {
+          // A bare GET to some of these hosts answers 404; that still means the
+          // network lets us reach them.
+          when(() => httpClient.get(any())).thenAnswer((invocation) async {
+            final url = invocation.positionalArguments.first as Uri;
+            if (url == NetworkChecker.urlsToCheck[1]) throw Exception('oops');
+            return http.Response('', HttpStatus.notFound);
+          });
+
+          final results = await runWithOverrides(networkChecker.reachability);
+
+          expect(
+            results.map((r) => r.url),
+            equals(NetworkChecker.urlsToCheck),
+          );
+          expect(
+            results.map((r) => r.reachable),
+            equals([
+              for (final url in NetworkChecker.urlsToCheck)
+                url != NetworkChecker.urlsToCheck[1],
+            ]),
+          );
+          expect(results[1].error, isA<Exception>());
+          expect(
+            results[1].toJson(),
+            equals({
+              'url': '${NetworkChecker.urlsToCheck[1]}',
+              'reachable': false,
+            }),
+          );
+          verifyNever(() => logger.progress(any()));
+        },
+      );
     });
 
     group('performGCPDownloadSpeedTest', () {

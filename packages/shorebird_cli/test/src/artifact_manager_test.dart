@@ -17,9 +17,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(ArtifactManager, () {
     late ArtifactManager artifactManager;
     late Cache cache;
@@ -424,7 +426,7 @@ void main() {
 
     group('extractZip', () {
       test('unzips provided file to provided output path', () async {
-        final zipFile = File(p.join('test', 'fixtures', 'aabs', 'base.aab'));
+        final zipFile = File(p.join(fixturesDirectory, 'aabs', 'base.aab'));
         final tempDir = Directory.systemTemp.createTempSync();
 
         expect(tempDir.listSync(recursive: true), isEmpty);
@@ -590,7 +592,7 @@ void main() {
       test('extracts a non-empty libapp.so for every arch in the '
           'aab', () async {
         final aab = File(
-          p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+          p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
         );
 
         final dir = await ArtifactManager.extractAndroidLibappsFromAab(aab);
@@ -613,7 +615,7 @@ void main() {
 
     group('androidArchsDirectoryFromAab', () {
       late Directory projectRoot;
-      final aab = File(p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'));
+      final aab = File(p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'));
 
       Directory strippedOutLib() => Directory(
         p.join(
@@ -798,7 +800,7 @@ void main() {
 
       test('returns null when the aab contains libapp.so', () async {
         final aab = File(
-          p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+          p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
         );
 
         final result = await ArtifactManager.describeMissingLibappInAab(aab);
@@ -1193,24 +1195,6 @@ void main() {
       });
     });
 
-    group('getAppXcframeworkPath', () {
-      test('returns path to App.xcframework', () {
-        expect(
-          runWithOverrides(artifactManager.getAppXcframeworkPath),
-          equals(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'framework',
-              'Release',
-              ArtifactManager.appXcframeworkName,
-            ),
-          ),
-        );
-      });
-    });
-
     group('getAppXcframeworkDirectory', () {
       test('returns directory containing App.xcframework', () {
         expect(
@@ -1222,60 +1206,35 @@ void main() {
       });
     });
 
-    group('getIosReleaseSupplementDirectory', () {
+    group('getReleaseSupplementDirectory', () {
+      Directory? getDirectory({bool create = false}) => runWithOverrides(
+        () => artifactManager.getReleaseSupplementDirectory(
+          platformSubdir: 'ios',
+          create: create,
+        ),
+      );
+
+      String expectedPath() =>
+          p.join(projectRoot.path, 'build', 'ios', 'shorebird');
+
       group('when the directory does not exist', () {
         test('returns null', () {
-          expect(
-            runWithOverrides(artifactManager.getIosReleaseSupplementDirectory),
-            isNull,
-          );
+          expect(getDirectory(), isNull);
+        });
+
+        test('creates the directory when create is true', () {
+          expect(getDirectory(create: true)?.path, equals(expectedPath()));
+          expect(Directory(expectedPath()).existsSync(), isTrue);
         });
       });
 
       group('when the directory exists', () {
         setUp(() {
-          Directory(
-            p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-          ).createSync(recursive: true);
+          Directory(expectedPath()).createSync(recursive: true);
         });
 
         test('returns path to the directory', () {
-          expect(
-            runWithOverrides(
-              artifactManager.getIosReleaseSupplementDirectory,
-            )?.path,
-            equals(p.join(projectRoot.path, 'build', 'ios', 'shorebird')),
-          );
-        });
-      });
-    });
-
-    group('getMacosReleaseSupplementDirectory', () {
-      group('when the directory does not exist', () {
-        test('returns null', () {
-          expect(
-            runWithOverrides(
-              artifactManager.getMacosReleaseSupplementDirectory,
-            ),
-            isNull,
-          );
-        });
-      });
-
-      group('when the directory exists', () {
-        setUp(() {
-          Directory(
-            p.join(projectRoot.path, 'build', 'macos', 'shorebird'),
-          ).createSync(recursive: true);
-        });
-
-        test('returns path to the directory', () {
-          expect(
-            runWithOverrides(
-              artifactManager.getMacosReleaseSupplementDirectory,
-            )?.path,
-            equals(p.join(projectRoot.path, 'build', 'macos', 'shorebird')),
-          );
+          expect(getDirectory()?.path, equals(expectedPath()));
         });
       });
     });

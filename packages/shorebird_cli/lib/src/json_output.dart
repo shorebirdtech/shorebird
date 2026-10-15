@@ -19,6 +19,23 @@ final isJsonModeRef = create(() => false);
 /// what tests capture.
 final jsonSinkRef = create<io.IOSink>(() => io.stdout);
 
+/// {@template json_envelope_tracker}
+/// Records whether a [JsonResult] has been written during a command run.
+///
+/// The runner binds one per command so that, when a `--json` command fails
+/// without having written an envelope itself, it can write exactly one on
+/// the command's behalf, and never a second one when it already has.
+/// {@endtemplate}
+class JsonEnvelopeTracker {
+  /// Whether an envelope has been written.
+  bool written = false;
+}
+
+/// A reference to the [JsonEnvelopeTracker] for the current command run.
+///
+/// Unbound (null) outside a command run, where nothing is tracked.
+final jsonEnvelopeTrackerRef = create<JsonEnvelopeTracker?>(() => null);
+
 /// Whether JSON output mode is active in the current zone.
 ///
 /// Off wherever nothing has said otherwise, so code that consults it can
@@ -65,6 +82,10 @@ enum JsonErrorCode {
   /// A network fetch or data retrieval failed.
   fetchFailed('fetch_failed'),
 
+  /// A precondition for running the command wasn't met: not logged in, not
+  /// in a Shorebird project, a doctor check failed, or an unsupported host.
+  preconditionFailed('precondition_failed'),
+
   /// The CLI required interactive input but no terminal/stdin was available
   /// (or the user passed `--json`).
   interactivePromptRequired('interactive_prompt_required');
@@ -100,7 +121,13 @@ class JsonMeta {
 /// {@endtemplate}
 class JsonError {
   /// {@macro json_error}
-  const JsonError({required this.code, required this.message, this.hint});
+  const JsonError({
+    required this.code,
+    required this.message,
+    this.hint,
+    this.apiCode,
+    this.details,
+  });
 
   /// A machine-readable error code.
   final JsonErrorCode code;
@@ -109,14 +136,24 @@ class JsonError {
   final String message;
 
   /// An optional actionable recovery step
-  /// (e.g. "Run: shorebird login:ci").
+  /// (e.g. "Run: shorebird login").
   final String? hint;
+
+  /// The error code the Shorebird API returned, when the error came from an
+  /// API response (e.g. "shorebird_plan_insufficient_tier").
+  final String? apiCode;
+
+  /// Additional details about the error, such as those the Shorebird API
+  /// returned alongside its error code.
+  final String? details;
 
   /// Serializes this error to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
     'code': code.code,
     'message': message,
     if (hint != null) 'hint': hint,
+    if (apiCode != null) 'api_code': apiCode,
+    if (details != null) 'details': details,
   };
 }
 
@@ -159,14 +196,23 @@ class JsonResult {
   /// [code] is a machine-readable [JsonErrorCode].
   /// `message` is a human-readable description.
   /// `hint` is an optional actionable recovery step.
+  /// `apiCode` and `details` describe an error the Shorebird API returned.
   /// `command` is injected into the `meta` block automatically.
   factory JsonResult.error({
     required JsonErrorCode code,
     required String message,
     required String command,
     String? hint,
+    String? apiCode,
+    String? details,
   }) {
-    final error = JsonError(code: code, message: message, hint: hint);
+    final error = JsonError(
+      code: code,
+      message: message,
+      hint: hint,
+      apiCode: apiCode,
+      details: details,
+    );
     final meta = JsonMeta(version: packageVersion, command: command);
     return JsonResult._(
       toJson: () => {
@@ -183,5 +229,6 @@ class JsonResult {
   /// Writes this result to stdout as a single JSON line.
   void write() {
     read(jsonSinkRef, orElse: () => io.stdout).writeln(jsonEncode(toJson()));
+    read(jsonEnvelopeTrackerRef, orElse: () => null)?.written = true;
   }
 }

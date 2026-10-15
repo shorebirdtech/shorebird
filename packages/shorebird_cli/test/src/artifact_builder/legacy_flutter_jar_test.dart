@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/legacy_flutter_jar.dart';
 import 'package:test/test.dart';
+import '../helpers.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(LegacyFlutterJarReference, () {
     late Directory tmp;
     late Directory projectRoot;

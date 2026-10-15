@@ -1,28 +1,19 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template channels_list_command}
 /// `shorebird channels list`
 /// List the channels an app can publish to.
 /// {@endtemplate}
-class ChannelsListCommand extends ShorebirdCommand {
+class ChannelsListCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro channels_list_command}
   ChannelsListCommand() {
-    argParser
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    addAppScopeOptions();
   }
 
   @override
@@ -43,19 +34,14 @@ class ChannelsListCommand extends ShorebirdCommand {
     final (:appId, :errorCode) = await resolveAppId();
     if (errorCode != null) return errorCode;
 
-    final List<Channel> channels;
-    try {
-      channels = await codePushClientWrapper.getChannels(appId: appId);
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch channels for app "$appId".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    late final List<Channel> channels;
+    final fetchError = await guardApiCall(
+      () async =>
+          channels = await codePushClientWrapper.getChannels(appId: appId),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch channels for app "$appId".',
+    );
+    if (fetchError != null) return fetchError;
 
     if (isJsonMode) {
       emitJsonSuccess({

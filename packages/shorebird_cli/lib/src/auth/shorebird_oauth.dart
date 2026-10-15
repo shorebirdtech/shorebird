@@ -1,54 +1,74 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:clock/clock.dart';
-import 'package:googleapis_auth/auth_io.dart' as oauth2;
-import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
-import 'package:jwt/jwt.dart';
+import 'package:oauth2/oauth2.dart' as oauth2;
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// Exception thrown when the Shorebird auth flow fails.
 class ShorebirdAuthException implements Exception {
   /// Creates a [ShorebirdAuthException] with the given [message].
-  const ShorebirdAuthException(this.message, {this.statusCode});
+  const ShorebirdAuthException(this.message);
 
   /// The error message.
   final String message;
-
-  /// The HTTP status the auth service answered with, where there was one.
-  ///
-  /// Null when the request never got an answer -- no network, DNS failure, a
-  /// connection reset -- or when the failure is local, such as having no
-  /// refresh token to send.
-  final int? statusCode;
-
-  /// Whether the auth service refused the credentials themselves, as opposed
-  /// to failing to answer.
-  ///
-  /// Only a 4xx says anything about the credentials. A 5xx, or no answer at
-  /// all, says the service is having a bad day; reading that as a rejection
-  /// would log a user out because their wifi dropped.
-  bool get isCredentialRejection {
-    final status = statusCode;
-    return status != null && status >= 400 && status < 500;
-  }
 
   @override
   String toString() => 'ShorebirdAuthException: $message';
 }
 
-/// Implements the full loopback login flow for Shorebird auth.
+/// The OAuth client id the CLI is registered under with the auth service.
+///
+/// A public client (RFC 6749 section 2.1): it has no secret, and PKCE is what
+/// binds a code to the login that asked for it. It is sent on every request
+/// to the token endpoint, refreshes included: a session issued to a client
+/// must name it, and the auth service ignores `client_id` for sessions issued
+/// without one, which is every login made before the CLI registered as a
+/// client.
+const shorebirdCliClientId = 'shorebird-cli';
+
+/// The scope the CLI requests: a full session acting as the user.
+///
+/// Released CLIs keep sending this until the next minimum-version bump, so it
+/// must stay a scope the auth service accepts for `shorebird-cli`.
+const shorebirdCliScope = 'api';
+
+/// The path of the loopback redirect URI registered for
+/// [shorebirdCliClientId].
+///
+/// The auth service matches a loopback redirect on any port (RFC 8252 section
+/// 7.3) but compares the path and query exactly, so the redirect URI carries
+/// no query of its own.
+const _callbackPath = '/callback';
+
+/// The auth service's token endpoint (RFC 6749 section 3.2).
+Uri tokenEndpointFor(Uri authBaseUrl) => _endpoint(authBaseUrl, 'token');
+
+Uri _endpoint(Uri authBaseUrl, String path) =>
+    authBaseUrl.replace(path: p.url.join(authBaseUrl.path, path));
+
+/// Implements the full loopback login flow for Shorebird auth: an OAuth 2.0
+/// authorization code request (RFC 6749 section 4.1) from a native app
+/// (RFC 8252), with PKCE (RFC 7636), using [oauth2.AuthorizationCodeGrant].
 ///
 /// 1. Binds a local HTTP server on localhost with a random port.
-/// 2. Constructs the login URL pointing to the auth service.
+/// 2. Builds the authorization URL for the `shorebird-cli` client, with the
+///    loopback redirect URI, the `api` scope, a `state` value and the S256
+///    code challenge.
 /// 3. Calls [userPrompt] with the login URL.
-/// 4. Waits for the auth service to redirect back with an auth code.
-/// 5. Exchanges the auth code for tokens via the auth service's /token endpoint.
-/// 6. Returns the tokens as [oauth2.AccessCredentials].
-Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
+/// 4. Waits for the auth service to redirect back, then hands the callback's
+///    parameters to the grant, which checks `state`, rejects an `error`, and
+///    exchanges the code and code verifier at the token endpoint.
+/// 5. Tells the browser how the login went and returns the credentials.
+///
+/// Throws [oauth2.AuthorizationException] when the auth service answered with
+/// an OAuth error, [FormatException] when the callback or the token response
+/// is not a valid one, and [ShorebirdAuthException] when no callback arrives
+/// within [timeout].
+Future<oauth2.Credentials> obtainCredentialsViaLoopbackLogin({
   required http.Client httpClient,
   required Uri authBaseUrl,
   required void Function(String) userPrompt,
@@ -61,30 +81,317 @@ Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
     server = await HttpServer.bind(InternetAddress.loopbackIPv6, 0);
   }
   try {
-    final port = server.port;
-    const callbackPath = '/callback';
-    final loginUrl = authBaseUrl.replace(
-      path: p.url.join(authBaseUrl.path, 'login'),
-      queryParameters: {'continue': 'http://localhost:$port$callbackPath'},
+    final grant = oauth2.AuthorizationCodeGrant(
+      shorebirdCliClientId,
+      _endpoint(authBaseUrl, 'login'),
+      tokenEndpointFor(authBaseUrl),
+      httpClient: httpClient,
+    );
+    final redirectUri = Uri(
+      scheme: 'http',
+      host: 'localhost',
+      port: server.port,
+      path: _callbackPath,
+    );
+    final loginUrl = grant.getAuthorizationUrl(
+      redirectUri,
+      scopes: [shorebirdCliScope],
+      state: _randomUrlSafeString(),
     );
 
     userPrompt(loginUrl.toString());
 
     final request = await _waitForCallback(
       server,
-      callbackPath: callbackPath,
+      callbackPath: _callbackPath,
       timeout: timeout,
     );
-    final code = await _extractAuthCode(request);
-
-    return await _exchangeAuthCode(
-      httpClient: httpClient,
-      authBaseUrl: authBaseUrl,
-      code: code,
-    );
+    final oauth2.Client client;
+    try {
+      client = await grant.handleAuthorizationResponse(
+        request.uri.queryParameters,
+      );
+    } on Exception {
+      await _respondToBrowser(request, succeeded: false);
+      rethrow;
+    }
+    await _respondToBrowser(request, succeeded: true);
+    return client.credentials;
   } finally {
     await server.close();
   }
+}
+
+/// The `grant_type` that polls `/token` for a device authorization
+/// (RFC 8628 section 3.4).
+const deviceCodeGrantType = 'urn:ietf:params:oauth:grant-type:device_code';
+
+/// How much to lengthen the polling interval each time the auth service
+/// answers `slow_down` (RFC 8628 section 3.5).
+const deviceSlowDownIncrement = Duration(seconds: 5);
+
+/// Waits for [duration]. Injected so tests need not wait for real.
+typedef Sleep = Future<void> Function(Duration duration);
+
+/// A device authorization the auth service has started (RFC 8628 section
+/// 3.2): the code a person enters, and where they enter it.
+class DeviceAuthorization {
+  /// Creates a [DeviceAuthorization].
+  const DeviceAuthorization({
+    required this.deviceCode,
+    required this.userCode,
+    required this.verificationUri,
+    required this.expiresIn,
+    required this.interval,
+    this.verificationUriComplete,
+  });
+
+  /// Parses the auth service's JSON answer to `POST /device_authorization`.
+  ///
+  /// Throws [ShorebirdAuthException] when a required field is missing or has
+  /// the wrong type.
+  factory DeviceAuthorization.fromJson(Map<String, dynamic> json) {
+    if (json case {
+      'device_code': final String deviceCode,
+      'user_code': final String userCode,
+      'verification_uri': final String verificationUri,
+      'expires_in': final int expiresIn,
+    }) {
+      final complete = json['verification_uri_complete'];
+      final interval = json['interval'];
+      return DeviceAuthorization(
+        deviceCode: deviceCode,
+        userCode: userCode,
+        verificationUri: Uri.parse(verificationUri),
+        verificationUriComplete: complete is String
+            ? Uri.parse(complete)
+            : null,
+        expiresIn: Duration(seconds: expiresIn),
+        // RFC 8628 section 3.2: five seconds when the server names none.
+        interval: Duration(seconds: interval is int ? interval : 5),
+      );
+    }
+    throw _unexpectedDeviceAuthorizationResponse;
+  }
+
+  /// The secret the CLI polls `/token` with. Never shown to the user.
+  final String deviceCode;
+
+  /// The code the user enters at [verificationUri].
+  final String userCode;
+
+  /// The page where the user enters [userCode].
+  final Uri verificationUri;
+
+  /// [verificationUri] with [userCode] already filled in, if the auth service
+  /// provided one. The CLI does not show it: the auth service omits it, and
+  /// does not accept it, for a session that acts as the user.
+  final Uri? verificationUriComplete;
+
+  /// How long [userCode] can be approved for.
+  final Duration expiresIn;
+
+  /// How long to wait between polls, until told to slow down.
+  final Duration interval;
+}
+
+/// Implements the device authorization grant (RFC 8628) for the
+/// `shorebird-cli` client, for machines that cannot open a local browser.
+/// `package:oauth2` does not implement this grant.
+///
+/// 1. POSTs `client_id` and `scope` to the auth service's
+///    `/device_authorization` endpoint.
+/// 2. Calls [userPrompt] with the codes, so the user can approve the request
+///    in a browser on any device.
+/// 3. Polls `/token` with the device code every `interval`, lengthening the
+///    interval by [deviceSlowDownIncrement] on each `slow_down`.
+/// 4. Returns the tokens as [oauth2.Credentials] once the user approves, in
+///    the same form the authorization code grant produces, so they refresh
+///    the same way.
+///
+/// Throws [ShorebirdAuthException] if the user denies the request, the code
+/// expires, or the auth service cannot be reached or refuses the request.
+Future<oauth2.Credentials> obtainCredentialsViaDeviceLogin({
+  required http.Client httpClient,
+  required Uri authBaseUrl,
+  required void Function(DeviceAuthorization) userPrompt,
+  Sleep sleep = _sleep,
+}) async {
+  final authorization = await _startDeviceAuthorization(
+    httpClient: httpClient,
+    authBaseUrl: authBaseUrl,
+  );
+  userPrompt(authorization);
+
+  final tokenEndpoint = tokenEndpointFor(authBaseUrl);
+  final expiresAt = clock.now().add(authorization.expiresIn);
+  var interval = authorization.interval;
+
+  while (true) {
+    await sleep(interval);
+    if (!clock.now().isBefore(expiresAt)) throw _deviceCodeExpired;
+
+    final requestedAt = DateTime.now();
+    final http.Response response;
+    try {
+      response = await httpClient.post(
+        tokenEndpoint,
+        body: {
+          'grant_type': deviceCodeGrantType,
+          'device_code': authorization.deviceCode,
+          'client_id': shorebirdCliClientId,
+        },
+      );
+    } on Exception catch (e) {
+      throw ShorebirdAuthException(
+        'Could not reach the Shorebird auth service while waiting for '
+        'approval ($e). Check your network connection and run '
+        '`shorebird login` again.',
+      );
+    }
+
+    if (response.statusCode == HttpStatus.ok) {
+      return _parseTokenResponse(
+        response.body,
+        tokenEndpoint: tokenEndpoint,
+        requestedAt: requestedAt,
+      );
+    }
+
+    final error = _oauthError(response.body);
+    switch (error) {
+      case 'authorization_pending':
+        continue;
+      case 'slow_down':
+        interval += deviceSlowDownIncrement;
+        continue;
+      case 'access_denied':
+        throw const ShorebirdAuthException(
+          'The login request was denied. Run `shorebird login` again to start '
+          'a new one.',
+        );
+      case 'expired_token':
+        throw _deviceCodeExpired;
+      case 'invalid_grant':
+        throw const ShorebirdAuthException(
+          'The auth service no longer accepts this login request. Run '
+          '`shorebird login` again to start a new one.',
+        );
+      default:
+        throw ShorebirdAuthException(
+          'Login failed (${response.statusCode}): ${response.body}',
+        );
+    }
+  }
+}
+
+const _unexpectedDeviceAuthorizationResponse = ShorebirdAuthException(
+  'The auth service sent an unexpected device authorization response.',
+);
+
+const _deviceCodeExpired = ShorebirdAuthException(
+  'The login code expired before it was approved. Run `shorebird login` '
+  'again to get a new code.',
+);
+
+Future<void> _sleep(Duration duration) => Future<void>.delayed(duration);
+
+/// POSTs to the auth service's `/device_authorization` endpoint (RFC 8628
+/// section 3.1) and returns what it answered.
+Future<DeviceAuthorization> _startDeviceAuthorization({
+  required http.Client httpClient,
+  required Uri authBaseUrl,
+}) async {
+  final http.Response response;
+  try {
+    response = await httpClient.post(
+      _endpoint(authBaseUrl, 'device_authorization'),
+      body: {'client_id': shorebirdCliClientId, 'scope': shorebirdCliScope},
+    );
+  } on Exception catch (e) {
+    throw ShorebirdAuthException(
+      'Could not reach the Shorebird auth service ($e). Check your network '
+      'connection and try again.',
+    );
+  }
+
+  _throwUnlessOk(response, 'Could not start a login');
+
+  final Object? json;
+  try {
+    json = jsonDecode(response.body);
+  } on FormatException {
+    throw _unexpectedDeviceAuthorizationResponse;
+  }
+  if (json is! Map<String, dynamic>) {
+    throw _unexpectedDeviceAuthorizationResponse;
+  }
+  return DeviceAuthorization.fromJson(json);
+}
+
+/// The `error` of an RFC 6749 section 5.2 error response, or null when
+/// [body] is not one.
+String? _oauthError(String body) {
+  try {
+    final json = jsonDecode(body);
+    if (json is Map<String, dynamic>) {
+      final value = json['error'];
+      if (value is String) return value;
+    }
+  } on FormatException {
+    // Not JSON; the caller reports the body as is.
+  }
+  return null;
+}
+
+/// Parses a successful token response (RFC 6749 section 5.1) to the device
+/// code grant into [oauth2.Credentials] that refresh at [tokenEndpoint].
+///
+/// [requestedAt] is when the request was sent, which `expires_in` counts
+/// from, as `package:oauth2` counts it for the grants it implements.
+///
+/// Throws [ShorebirdAuthException] for a body of any other shape.
+oauth2.Credentials _parseTokenResponse(
+  String responseBody, {
+  required Uri tokenEndpoint,
+  required DateTime requestedAt,
+}) {
+  final Object? json;
+  try {
+    json = jsonDecode(responseBody);
+  } on FormatException {
+    throw _unexpectedTokenResponse;
+  }
+  if (json case {
+    'access_token': final String accessToken,
+    'token_type': final String tokenType,
+    'expires_in': final int expiresIn,
+  } when tokenType.toLowerCase() == 'bearer') {
+    final refreshToken = json['refresh_token'];
+    final scope = json['scope'];
+    if (refreshToken is! String? || scope is! String?) {
+      throw _unexpectedTokenResponse;
+    }
+    return oauth2.Credentials(
+      accessToken,
+      refreshToken: refreshToken,
+      tokenEndpoint: tokenEndpoint,
+      scopes: scope?.split(' ') ?? [shorebirdCliScope],
+      expiration: requestedAt.add(Duration(seconds: expiresIn)),
+    );
+  }
+  throw _unexpectedTokenResponse;
+}
+
+const _unexpectedTokenResponse = ShorebirdAuthException(
+  'The auth service sent an unexpected token response.',
+);
+
+/// 32 random bytes, base64url-encoded without padding: the login's `state`.
+String _randomUrlSafeString() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+  return base64Url.encode(bytes).replaceAll('=', '');
 }
 
 /// Listens on [server] for a request to [callbackPath] and returns it.
@@ -118,152 +425,58 @@ Future<HttpRequest> _waitForCallback(
   }
 }
 
-/// Sends a success page to the browser and extracts the auth code from the
-/// callback [request].
-///
-/// Throws [ShorebirdAuthException] if the callback contains an error or is
-/// missing the auth code.
-Future<String> _extractAuthCode(HttpRequest request) async {
-  final code = request.uri.queryParameters['code'];
-  final error = request.uri.queryParameters['error'];
-
+/// Answers the browser's callback [request] with a page saying whether the
+/// login [succeeded].
+Future<void> _respondToBrowser(
+  HttpRequest request, {
+  required bool succeeded,
+}) async {
   request.response
     ..statusCode = HttpStatus.ok
     ..headers.contentType = ContentType.html
     ..write(
-      '<html><body><h1>Authentication complete.</h1> '
-      '<p>You can close this window.</p></body></html>',
+      succeeded
+          ? '<html><body><h1>Authentication complete.</h1> '
+                '<p>You can close this window.</p></body></html>'
+          : '<html><body><h1>Authentication failed.</h1> '
+                '<p>Return to the terminal for details.</p></body></html>',
     );
   await request.response.close();
-
-  if (error != null) {
-    throw ShorebirdAuthException(
-      'Authentication failed: $error',
-    );
-  }
-
-  if (code == null) {
-    throw const ShorebirdAuthException(
-      'Authentication failed: no auth code received.',
-    );
-  }
-
-  return code;
 }
 
-/// Refreshes Shorebird tokens using the refresh token.
+/// Revokes [refreshToken] at the auth service's /revoke endpoint (RFC 7009),
+/// ending the session it belongs to. `package:oauth2` does not implement
+/// revocation.
 ///
-/// POSTs to the auth service's /token endpoint with
-/// `grant_type=refresh_token` and returns new [oauth2.AccessCredentials]
-/// including a rotated refresh token.
-Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
-  oauth2.AccessCredentials credentials,
+/// Names the `shorebird-cli` client for the same reason refreshes do (see
+/// [shorebirdCliClientId]).
+///
+/// The auth service answers 200 whether or not the token was live (RFC 7009
+/// section 2.2), so a 200 says only that nothing is left to revoke. Throws
+/// [ShorebirdAuthException] for any other answer.
+Future<void> revokeShorebirdRefreshToken(
+  String refreshToken,
   http.Client httpClient, {
   required Uri authBaseUrl,
 }) async {
-  final refreshToken = credentials.refreshToken;
-  if (refreshToken == null) {
-    throw const ShorebirdAuthException('No refresh token available.');
-  }
-
-  final tokenUrl = authBaseUrl.replace(
-    path: p.url.join(authBaseUrl.path, 'token'),
-  );
-
   final response = await httpClient.post(
-    tokenUrl,
+    _endpoint(authBaseUrl, 'revoke'),
     body: {
-      'grant_type': 'refresh_token',
-      'refresh_token': refreshToken,
+      'token': refreshToken,
+      'token_type_hint': 'refresh_token',
+      'client_id': shorebirdCliClientId,
     },
   );
 
-  if (response.statusCode != HttpStatus.ok) {
-    throw ShorebirdAuthException(
-      'Token refresh failed (${response.statusCode}): ${response.body}',
-      statusCode: response.statusCode,
-    );
-  }
-
-  return _parseTokenResponse(response.body);
+  _throwUnlessOk(response, 'Token revocation failed');
 }
 
-/// Exchanges an auth code for tokens by POSTing to the auth service's
-/// /token endpoint.
-Future<oauth2.AccessCredentials> _exchangeAuthCode({
-  required http.Client httpClient,
-  required Uri authBaseUrl,
-  required String code,
-}) async {
-  final tokenUrl = authBaseUrl.replace(
-    path: p.url.join(authBaseUrl.path, 'token'),
-  );
-
-  final response = await httpClient.post(
-    tokenUrl,
-    body: {
-      'grant_type': 'authorization_code',
-      'code': code,
-    },
-  );
-
+/// Throws a [ShorebirdAuthException] carrying the status and body of
+/// [response], prefixed with [failure], unless the auth service answered 200.
+void _throwUnlessOk(http.Response response, String failure) {
   if (response.statusCode != HttpStatus.ok) {
     throw ShorebirdAuthException(
-      'Token exchange failed (${response.statusCode}): ${response.body}',
+      '$failure (${response.statusCode}): ${response.body}',
     );
   }
-
-  return _parseTokenResponse(response.body);
-}
-
-/// Parses the JSON token response from the auth service into
-/// [oauth2.AccessCredentials].
-///
-/// Validates that the `access_token` is a well-formed JWT and that its
-/// issuer matches the expected JWT issuer from [ShorebirdEnv].
-///
-/// Expected JSON shape:
-/// ```json
-/// {
-///   "access_token": "<JWT>",
-///   "refresh_token": "sb_rt_...",
-///   "token_type": "Bearer",
-///   "expires_in": 900
-/// }
-/// ```
-oauth2.AccessCredentials _parseTokenResponse(String responseBody) {
-  final json = jsonDecode(responseBody) as Map<String, dynamic>;
-  final accessTokenValue = json['access_token'] as String;
-  final refreshToken = json['refresh_token'] as String?;
-  final tokenType = json['token_type'] as String? ?? 'Bearer';
-  final expiresIn = json['expires_in'] as int;
-
-  // Validate the access token is a well-formed JWT.
-  final Jwt jwt;
-  try {
-    jwt = Jwt.parse(accessTokenValue);
-  } on FormatException catch (e) {
-    throw ShorebirdAuthException('Invalid access token: ${e.message}');
-  }
-
-  // Validate the issuer matches the expected auth service.
-  final expectedIssuer = shorebirdEnv.jwtIssuer;
-  if (jwt.payload.iss != expectedIssuer) {
-    throw ShorebirdAuthException(
-      'Token issuer mismatch: expected $expectedIssuer, '
-      'got ${jwt.payload.iss}',
-    );
-  }
-
-  final expiry = clock.now().add(Duration(seconds: expiresIn)).toUtc();
-
-  return oauth2.AccessCredentials(
-    AccessToken(tokenType, accessTokenValue, expiry),
-    refreshToken,
-    // Shorebird auth doesn't use scopes.
-    [],
-    // The access token IS the JWT — setting idToken ensures
-    // AuthenticatedClient.send() picks it up as the Bearer token.
-    idToken: accessTokenValue,
-  );
 }

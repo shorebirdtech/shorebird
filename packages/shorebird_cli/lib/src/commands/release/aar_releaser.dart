@@ -6,14 +6,13 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -33,13 +32,9 @@ class AarReleaser extends Releaser {
   String get buildNumber => argResults['build-number'] as String;
 
   /// The architectures to build the aar for.
-  Set<Arch> get architectures => (argResults['target-platform'] as List<String>)
-      .map(
-        (platform) => AndroidArch.availableAndroidArchs.firstWhere(
-          (arch) => arch.targetPlatformCliArg == platform,
-        ),
-      )
-      .toSet();
+  Set<Arch> get architectures => AndroidArch.fromTargetPlatformArgs(
+    argResults['target-platform'] as List<String>,
+  );
 
   @override
   ReleaseType get releaseType => ReleaseType.aar;
@@ -55,19 +50,8 @@ class AarReleaser extends Releaser {
 
   @override
   Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
-
-    if (shorebirdEnv.androidPackageName == null) {
-      logger.err('Could not find androidPackage in pubspec.yaml.');
-      throw ProcessExit(ExitCode.config.code);
-    }
+    await assertBuildPreconditions();
+    assertAndroidPackageNameConfigured();
   }
 
   @override
@@ -76,23 +60,18 @@ class AarReleaser extends Releaser {
       logger.err('Missing required argument: --release-version');
       throw ProcessExit(ExitCode.usage.code);
     }
-
-    await assertObfuscationIsSupported();
   }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final base64PublicKey = await getEncodedPublicKey();
-    final buildArgs = [...argResults.forwardedArgs];
-    addSplitDebugInfoDefault(buildArgs);
-    await addObfuscationMapArgs(buildArgs);
-    await artifactBuilder.buildAar(
-      buildNumber: buildNumber,
-      targetPlatforms: architectures,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
+    await runReleaseBuild(
+      (buildArgs, base64PublicKey) => artifactBuilder.buildAar(
+        buildNumber: buildNumber,
+        targetPlatforms: architectures,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+      ),
     );
-    verifyObfuscationMap();
 
     // Copy release AAR to a new directory to avoid overwriting with
     // subsequent patch builds.
@@ -138,8 +117,6 @@ class AarReleaser extends Releaser {
       extractedAarDir: extractedAarDir.path,
       architectures: architectures,
     );
-
-    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

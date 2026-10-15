@@ -1,8 +1,97 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
+
+## 1.6.128 (October 11, 2026)
+
+- 🐦 Flutter 3.47.7 / Dart 3.13.5, with an updated Shorebird engine
+- 🐛 macOS: patches now install on apps that were re-signed after release
+  (Developer ID or Mac App Store). Create a new release with this version to
+  pick up the fix; releases built with earlier versions keep the old
+  behavior.
+- 🐛 `shorebird patch` now honors `--public-key-cmd` when building the patch,
+  and runs the command once per patch instead of once per architecture.
+- 🐛 An unknown `--flavor` is now an error instead of silently acting on the
+  default app.
+- 🐛 `shorebird release` clears `build/<platform>/shorebird/` before building
+  on every platform, so files from an earlier build are not uploaded with a
+  new release.
+- 🐛 Flavored macOS patches read the release version from the flavor's build.
+- 🐛 iOS framework patches honor `SHOREBIRD_PATCH_DD_MAX_BYTES`.
+- 🐛 Releases on iOS, iOS framework, macOS and Linux continue when an
+  artifact already exists, as Android and Windows did.
+- 🐛 `shorebird release`, `shorebird patch` and `shorebird preview` no longer
+  leave copies of the app in the system temp directory.
+- 🐛 Expired or revoked credentials are the only auth errors treated as
+  "logged out"; a malformed credentials file no longer crashes every
+  command, and it is now written owner-only (0600).
+- 🐛 `shorebird doctor --fix` shows every remaining issue after a fix, and the
+  fixable count is accurate. The INTERNET permission check handles
+  `tools:node` attributes.
+- 🐛 `shorebird patch aar` without `--release-version` in a non-interactive
+  shell fails up front instead of crashing after building.
+- 🐛 Ctrl-C works again after `shorebird preview` launches an iOS app.
+- 🔧 `--json`: every failing command writes an error envelope, and failed
+  preconditions (not logged in, not initialized) report
+  `precondition_failed` with a hint. `patches set-track`, `rollback` and
+  `rollforward` report `changed`.
+- 🔧 `shorebird patches set-track` succeeds when the patch is already on that
+  track.
+- 🔧 `shorebird preview` takes `--flavor`, like other app commands.
+- 🔧 `shorebird channels delete` refuses `stable`, `beta` and `staging` before
+  contacting the server.
+- 🔧 `shorebird patches promote` is hidden from help; use
+  `shorebird patches set-track`.
+
+## 1.6.127 (October 10, 2026)
+
+- 🐛 `shorebird login` no longer crashes with
+  `Bad state: read(ScopedRef<Browser>)` on 1.6.126.
+- 🐛 `shorebird patch linux` now runs the same checks as other platforms
+  (logged in, project initialized, `doctor`, host OS) before building.
+- 🐛 `shorebird patch linux` now builds with `--target` and arguments passed
+  after `--`, so the patch matches the release it targets.
+- 🐛 `shorebird doctor --verbose` no longer crashes when the Gradle version
+  lookup fails; it shows Gradle as not detected.
+- 🐛 `shorebird patches set-track` and `shorebird patches promote` report an
+  invalid patch number as a usage error instead of crashing.
+
+## 1.6.126 (October 9, 2026)
+
+- 🐦 Flutter 3.47.7 / Dart 3.13.5 support
+  - iOS: fix accessibility frames for `OverlayPortal`, which were shrunk by
+    the device pixel ratio and anchored top-left, so VoiceOver focus and
+    XCUITest taps missed the visible controls.
+  - iOS: fix VoiceOver focus jumping to the top left of the screen in a
+    `ReorderableListView`.
+- ✨ `shorebird login` opens your browser, and falls back to a device code
+  when no browser can be opened.
+- ✨ Unused Flutter installs, engine artifacts and previews are now pruned
+  automatically, so they stop piling up across upgrades and
+  `--flutter-version` builds. `shorebird cache clean --unused` prunes without
+  clearing the rest of the cache.
+- 🐛 macOS patches are now diffed against the Dart snapshot regions.
+- 🐛 `shorebird preview` streams iOS app logs with `devicectl --console`.
+
+## 1.6.125 (October 8, 2026)
+
+- ⚠️ Google and Microsoft sign-in and `shorebird login:ci` tokens are no
+  longer supported (the server stopped accepting them on October 1). Run
+  `shorebird login` to sign in again, and use an API key (`sb_api_...`) in
+  `SHOREBIRD_TOKEN` for CI.
+- 🔒 `shorebird login` now uses standard OAuth with PKCE and `state`, and
+  `shorebird logout` revokes the session on the server.
+- ✨ `shorebird release` and `shorebird patch` support `--json`.
+- ✨ Warn when an iOS app extension's version does not match the app's.
+- 🐛 Android: patching an obfuscated release built with Flutter older than
+  3.41.2 no longer fails with "Unrecognized flags: load_obfuscation_map".
+- 🐛 `shorebird login` now signs you in again when your stored credentials
+  have expired, instead of reporting that you are already logged in.
+- 🐛 Errors from `init`, `patch`, `preview` and the validators now name the
+  next step to take. `shorebird patch --force` points to
+  `--allow-native-diffs` and `--allow-asset-diffs`.
 
 ## 1.6.124 (October 2, 2026)
 
