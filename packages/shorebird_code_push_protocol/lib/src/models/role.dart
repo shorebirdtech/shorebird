@@ -15,6 +15,9 @@ enum Role {
   /// Users who have read-only access to the organization.
   viewer._('viewer'),
 
+  /// Accounts that can read the organization's audit log and nothing else.
+  auditor._('auditor'),
+
   /// Users who are not part of the organization but have visibility into it
   /// via app collaborator permissions.
   none._('none');
