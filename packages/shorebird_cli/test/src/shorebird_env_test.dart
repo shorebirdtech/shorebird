@@ -936,28 +936,6 @@ base_url: https://example.com''');
       });
     });
 
-    group('jwtIssuer', () {
-      test('returns default issuer when env var is not set', () {
-        platform = platform.copyWith(environment: {});
-        expect(
-          runWithOverrides(() => shorebirdEnv.jwtIssuer),
-          equals('https://auth.shorebird.dev'),
-        );
-      });
-
-      test('returns issuer from env var when set', () {
-        platform = platform.copyWith(
-          environment: {
-            'SHOREBIRD_JWT_ISSUER': 'https://custom-issuer.example.com',
-          },
-        );
-        expect(
-          runWithOverrides(() => shorebirdEnv.jwtIssuer),
-          equals('https://custom-issuer.example.com'),
-        );
-      });
-    });
-
     group('isRunningOnCI', () {
       test('returns true if BOT variable is "true"', () {
         platform = platform.copyWith(environment: {'BOT': 'true'});

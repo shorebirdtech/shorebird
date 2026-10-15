@@ -55,6 +55,7 @@ void main() {
       progress = MockProgress();
 
       when(() => auth.isAuthenticated).thenReturn(false);
+      when(() => auth.isUsingApiKey).thenReturn(false);
       when(() => argResults[LoginCommand.deviceFlag]).thenReturn(false);
       when(() => browser.canOpen).thenReturn(true);
       when(() => browser.open(any())).thenAnswer((_) async => true);
@@ -191,7 +192,7 @@ Waiting for your authorization (the code expires in $expiry)...''';
     group('when user is already logged in', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
+        when(() => auth.fetchEmail()).thenAnswer((_) async => email);
       });
 
       test(
@@ -211,12 +212,26 @@ Waiting for your authorization (the code expires in $expiry)...''';
           verifyNever(() => auth.login(prompt: any(named: 'prompt')));
         },
       );
+
+      test('omits the email when it cannot be fetched', () async {
+        when(() => auth.fetchEmail()).thenAnswer((_) async => null);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(() => logger.info('You are already logged in.')).called(1);
+        verify(
+          () => logger.info(
+            '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
+          ),
+        ).called(1);
+      });
     });
 
     group('when user is authenticated via API key', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(null);
+        when(() => auth.isUsingApiKey).thenReturn(true);
       });
 
       test('points at the environment variable and succeeds', () async {
@@ -240,7 +255,6 @@ Waiting for your authorization (the code expires in $expiry)...''';
     group('when stored credentials are no longer valid', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
         when(() => auth.hasValidCredentials()).thenAnswer((_) async => false);
       });
 
@@ -254,9 +268,7 @@ Waiting for your authorization (the code expires in $expiry)...''';
         verify(() => logger.info('Logging you in again...')).called(1);
         verify(() => auth.clearCredentials()).called(1);
         verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
-        verifyNever(
-          () => logger.info('You are already logged in as <$email>.'),
-        );
+        verifyNever(() => auth.fetchEmail());
         verifyNever(() => progress.complete(any()));
       });
     });
@@ -268,7 +280,6 @@ Waiting for your authorization (the code expires in $expiry)...''';
     group('when the credential check gets no OAuth answer', () {
       setUp(() {
         when(() => auth.isAuthenticated).thenReturn(true);
-        when(() => auth.email).thenReturn(email);
       });
 
       for (final (description, error) in [
@@ -307,13 +318,14 @@ Waiting for your authorization (the code expires in $expiry)...''';
     test('exits with code 70 if no user is found', () async {
       when(
         () => auth.login(prompt: any(named: 'prompt')),
-      ).thenThrow(UserNotFoundException(email: email));
+      ).thenThrow(UserNotFoundException());
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
       verify(
-        () => logger.err('We could not find a Shorebird account for $email.'),
+        () =>
+            logger.err('We could not find a Shorebird account for this login.'),
       ).called(1);
       verify(
         () => logger.info(any(that: contains('console.shorebird.dev'))),

@@ -52,29 +52,10 @@ void main() {
     });
   });
 
-  group('JwtClaims', () {
-    group('email', () {
-      test('returns null when the access token is not a valid jwt', () {
-        expect(oauth2.Credentials('not a valid jwt').email, isNull);
-      });
-    });
-  });
-
   group(Auth, () {
     const refreshToken = 'sb_rt_test';
-    // Decoded payload:
-    // {
-    //   "iss": "https://auth.shorebird.dev",
-    //   "aud": "shorebird",
-    //   "sub": "12345",
-    //   "email": "test@email.com",
-    //   "email_verified": true,
-    //   "iat": 1234,
-    //   "exp": 6789
-    // }
-    // cspell:disable-next-line
-    const shorebirdAccessToken =
-        '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2F1dGguc2hvcmViaXJkLmRldiIsImF1ZCI6InNob3JlYmlyZCIsInN1YiI6IjEyMzQ1IiwiZW1haWwiOiJ0ZXN0QGVtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpYXQiOjEyMzQsImV4cCI6Njc4OX0.dGVzdA''';
+    // Opaque to the CLI, as access tokens are to any OAuth client.
+    const shorebirdAccessToken = 'sb_at_test';
     const email = 'test@email.com';
     const user = PrivateUser(
       id: 42,
@@ -164,11 +145,25 @@ void main() {
       );
     }
 
-    void storeCredentials(oauth2.Credentials credentials) {
-      File(credentialsPath).writeAsStringSync(credentials.toJson());
+    /// Writes [credentials] to the credentials file, with [email] as a login
+    /// stores it.
+    void storeCredentials(oauth2.Credentials credentials, {String? email}) {
+      File(credentialsPath).writeAsStringSync(
+        jsonEncode({
+          ...jsonDecode(credentials.toJson()) as Map<String, Object?>,
+          'email': ?email,
+        }),
+      );
     }
 
-    void writeCredentials() => storeCredentials(accessCredentials);
+    void writeCredentials() =>
+        storeCredentials(accessCredentials, email: email);
+
+    /// The `email` field of the credentials file.
+    Object? readStoredEmail() {
+      final json = jsonDecode(File(credentialsPath).readAsStringSync());
+      return (json as Map)['email'];
+    }
 
     oauth2.Credentials readStoredCredentials() {
       return oauth2.Credentials.fromJson(
@@ -247,6 +242,7 @@ void main() {
         writeCredentials();
         auth = buildAuth();
         expect(auth.isAuthenticated, isTrue);
+        expect(auth.isUsingApiKey, isFalse);
         expect(auth.email, equals(email));
       });
 
@@ -281,10 +277,22 @@ void main() {
         });
       }
 
-      test('is false when the access token carries no email', () {
-        storeCredentials(credentialsWith(accessToken: 'opaque'));
+      test('is true for stored credentials without an email', () {
+        storeCredentials(accessCredentials);
         auth = buildAuth();
-        expect(auth.isAuthenticated, isFalse);
+        expect(auth.isAuthenticated, isTrue);
+        expect(auth.email, isNull);
+      });
+
+      test('ignores an email field that is not a string', () {
+        File(credentialsPath).writeAsStringSync(
+          jsonEncode({
+            ...jsonDecode(accessCredentials.toJson()) as Map<String, Object?>,
+            'email': 42,
+          }),
+        );
+        auth = buildAuth();
+        expect(auth.isAuthenticated, isTrue);
         expect(auth.email, isNull);
       });
     });
@@ -320,7 +328,8 @@ void main() {
         auth = buildAuth();
 
         expect(auth.isAuthenticated, isTrue);
-        expect(auth.email, equals(email));
+        // The legacy file stores no email; fetchEmail asks the API for it.
+        expect(auth.email, isNull);
         expect(File(legacyCredentialsPath).existsSync(), isFalse);
         final stored = readStoredCredentials();
         expect(stored.accessToken, equals(shorebirdAccessToken));
@@ -339,7 +348,7 @@ void main() {
 
         auth = buildAuth();
 
-        expect(auth.email, equals(email));
+        expect(auth.isAuthenticated, isTrue);
         expect(readStoredCredentials().accessToken, shorebirdAccessToken);
       });
 
@@ -408,27 +417,6 @@ void main() {
         verify(
           () => logger.warn(any(that: contains('could not be read'))),
         ).called(1);
-      });
-
-      group('when it holds credentials from a removed provider', () {
-        setUp(() {
-          // A Google access token, which is not a JWT.
-          writeLegacyCredentials(
-            legacyCredentials(accessToken: 'ya29.google-access-token'),
-          );
-          auth = buildAuth();
-        });
-
-        test('treats the user as logged out', () {
-          expect(auth.isAuthenticated, isFalse);
-          expect(auth.email, isNull);
-        });
-
-        test('allows logging in again', () async {
-          await runWithOverrides(() => auth.login(prompt: (_) {}));
-          expect(auth.isAuthenticated, isTrue);
-          expect(buildAuth().email, equals(email));
-        });
       });
     });
 
@@ -650,6 +638,7 @@ void main() {
         test('parses as API key and sets isAuthenticated', () {
           auth = buildAuth();
           expect(auth.isAuthenticated, isTrue);
+          expect(auth.isUsingApiKey, isTrue);
           expect(auth.email, isNull);
           verify(
             () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
@@ -774,6 +763,8 @@ void main() {
             readStoredCredentials().refreshToken,
             equals('sb_rt_rotated'),
           );
+          // The refresh keeps the email stored with the login.
+          expect(readStoredEmail(), equals(email));
         });
       });
 
@@ -849,26 +840,8 @@ void main() {
     // shorebird processes started from one login, as when `shorebird release
     // android` and `shorebird release ios` run in two terminals.
     group('when several processes share the credentials file', () {
-      // A Shorebird-issued access token told apart from the others by its
-      // `jti`.
-      String accessTokenNamed(String name) {
-        String encode(Map<String, Object> json) =>
-            base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
-        return [
-          encode({'alg': 'HS256', 'kid': '1234', 'typ': 'JWT'}),
-          encode({
-            'iss': shorebirdJwtIssuer,
-            'aud': 'shorebird',
-            'sub': '12345',
-            'email': email,
-            'email_verified': true,
-            'iat': 1234,
-            'exp': 6789,
-            'jti': name,
-          }),
-          'dGVzdA',
-        ].join('.');
-      }
+      // An access token told apart from the others by [name].
+      String accessTokenNamed(String name) => 'sb_at_$name';
 
       oauth2.Credentials credentialsNamed(
         String name, {
@@ -1138,6 +1111,7 @@ void main() {
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
         expect(readStoredCredentials().toJson(), accessCredentials.toJson());
+        expect(readStoredEmail(), equals(email));
         expect(buildAuth().email, email);
         expect(buildAuth().isAuthenticated, isTrue);
       });
@@ -1197,9 +1171,7 @@ void main() {
 
         await expectLater(
           runWithOverrides(() => auth.login(prompt: (_) {})),
-          throwsA(
-            isA<UserNotFoundException>().having((e) => e.email, 'email', email),
-          ),
+          throwsA(isA<UserNotFoundException>()),
         );
 
         expect(auth.email, isNull);
@@ -1246,6 +1218,109 @@ void main() {
           throwsA(isA<UserNotFoundException>()),
         );
         expect(auth.isAuthenticated, isFalse);
+      });
+    });
+
+    group('fetchEmail', () {
+      Future<String?> fetchEmail() => runWithOverrides(auth.fetchEmail);
+
+      test('returns the stored email without asking the API', () async {
+        writeCredentials();
+        auth = buildAuth();
+
+        expect(await fetchEmail(), equals(email));
+        verifyNever(() => codePushClient.getCurrentUser());
+      });
+
+      test('returns null when not logged in', () async {
+        expect(await fetchEmail(), isNull);
+        verifyNever(() => codePushClient.getCurrentUser());
+      });
+
+      test('returns null when authenticated via API key', () async {
+        platform = platform.copyWith(
+          environment: {shorebirdTokenEnvVar: 'sb_api_abc123'},
+        );
+        auth = buildAuth();
+
+        expect(await fetchEmail(), isNull);
+        verifyNever(() => codePushClient.getCurrentUser());
+      });
+
+      group('when the credentials were stored without an email', () {
+        setUp(() {
+          storeCredentials(accessCredentials);
+          auth = buildAuth();
+        });
+
+        test('fetches the user and stores the email', () async {
+          expect(await fetchEmail(), equals(email));
+          expect(auth.email, equals(email));
+          expect(readStoredEmail(), equals(email));
+          expect(readStoredCredentials().toJson(), accessCredentials.toJson());
+          expect(buildAuth().email, equals(email));
+
+          // Once known, it is not fetched again.
+          expect(await fetchEmail(), equals(email));
+          verify(() => codePushClient.getCurrentUser()).called(1);
+        });
+
+        test('returns null when the user cannot be fetched', () async {
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenThrow(Exception('offline'));
+
+          expect(await fetchEmail(), isNull);
+          expect(auth.isAuthenticated, isTrue);
+          expect(readStoredEmail(), isNull);
+          verify(
+            () => logger.detail(any(that: contains('offline'))),
+          ).called(1);
+        });
+
+        test('returns null when there is no such user', () async {
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenAnswer((_) async => null);
+
+          expect(await fetchEmail(), isNull);
+          expect(readStoredEmail(), isNull);
+        });
+
+        test('leaves a newer login another process stored alone', () async {
+          storeCredentials(credentialsWith(accessToken: 'sb_at_newer'));
+
+          expect(await fetchEmail(), equals(email));
+          expect(readStoredCredentials().accessToken, equals('sb_at_newer'));
+          expect(readStoredEmail(), isNull);
+        });
+
+        test('leaves the file alone when the login was removed', () async {
+          File(credentialsPath).deleteSync();
+
+          expect(await fetchEmail(), equals(email));
+          expect(File(credentialsPath).existsSync(), isFalse);
+        });
+
+        test(
+          'returns the email when it cannot be stored',
+          () async {
+            Process.runSync('chmod', ['500', credentialsDir]);
+            addTearDown(
+              () => Process.runSync('chmod', ['700', credentialsDir]),
+            );
+
+            expect(await fetchEmail(), equals(email));
+            verify(
+              () => logger.detail(
+                any(that: contains('Could not save your email')),
+              ),
+            ).called(1);
+          },
+          skip: io.Platform.isWindows
+              ? 'Windows has no POSIX file modes.'
+              : false,
+        );
       });
     });
 

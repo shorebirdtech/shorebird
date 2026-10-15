@@ -10,22 +10,8 @@ import 'package:test/test.dart';
 
 import '../helpers.dart';
 
-/// A JWT access token as the auth service issues them.
-String _buildTestJwt({String issuer = 'https://auth.shorebird.dev'}) {
-  String b64(Map<String, dynamic> json) =>
-      base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
-
-  final header = b64({'alg': 'RS256', 'kid': '1234', 'typ': 'JWT'});
-  final payload = b64({
-    'iss': issuer,
-    'aud': 'shorebird',
-    'sub': '12345',
-    'email': 'test@email.com',
-    'iat': 1234,
-    'exp': 6789,
-  });
-  return '$header.$payload.dGVzdA';
-}
+/// An access token, which is opaque to the CLI.
+const _testAccessToken = 'sb_at_test';
 
 http.Response _json(Object body, {int status = HttpStatus.ok}) =>
     http.Response(jsonEncode(body), status);
@@ -47,7 +33,7 @@ void main() {
       'interval': 5,
     };
     final tokenJson = {
-      'access_token': _buildTestJwt(),
+      'access_token': _testAccessToken,
       'refresh_token': 'sb_rt_refresh',
       'token_type': 'Bearer',
       'expires_in': 900,
