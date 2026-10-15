@@ -154,7 +154,35 @@ void main() {
         expect(error['hint'], contains(displayName));
       });
 
+      group('when stdin is a terminal but stdout is not', () {
+        setUp(
+          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
+        );
+
+        test('requires --yes without prompting', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(command.run),
+            captured: [],
+            hasTerminal: false,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          verifyNeverDeleted();
+          verify(
+            () => logger.err('--yes required when not running interactively'),
+          ).called(1);
+          verifyNever(() => logger.info(any(that: contains('permanently'))));
+          verifyNever(() => logger.prompt(any(), hint: any(named: 'hint')));
+          verifyNever(() => logger.confirm(any(), hint: any(named: 'hint')));
+        });
+      });
+
       group('in a terminal', () {
+        Future<int> runInTerminal() => captureStdout(
+          () => runWithOverrides(command.run),
+          captured: [],
+          hasTerminal: true,
+        );
+
         setUp(
           () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
         );
@@ -163,7 +191,7 @@ void main() {
           when(
             () => logger.prompt(any(), hint: any(named: 'hint')),
           ).thenReturn(displayName);
-          final result = await runWithOverrides(command.run);
+          final result = await runInTerminal();
           expect(result, equals(ExitCode.success.code));
           verify(
             () => logger.prompt(
@@ -178,7 +206,7 @@ void main() {
           when(
             () => logger.prompt(any(), hint: any(named: 'hint')),
           ).thenReturn('Wrong Name');
-          final result = await runWithOverrides(command.run);
+          final result = await runInTerminal();
           expect(result, equals(declinedExitCode));
           verifyNeverDeleted();
           verify(
