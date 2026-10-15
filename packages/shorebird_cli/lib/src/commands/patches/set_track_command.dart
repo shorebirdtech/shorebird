@@ -4,6 +4,7 @@ import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -142,7 +143,8 @@ class SetTrackCommand extends ShorebirdCommand
             'confirmation.',
       );
       if (!shouldCreate) {
-        return ExitCode.success.code;
+        logger.err('Aborting.');
+        return declinedExitCode;
       }
 
       channel = await codePushClientWrapper.createChannel(

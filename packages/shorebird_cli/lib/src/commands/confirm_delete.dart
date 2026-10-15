@@ -1,4 +1,4 @@
-import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -80,17 +80,16 @@ mixin ConfirmDelete on ShorebirdCommand {
     switch (style) {
       case DeleteConfirmationStyle.yesNo:
         if (logger.confirm('Delete $description?', hint: hint)) return null;
-        logger.info('Nothing was deleted.');
-        return ExitCode.success.code;
+        logger.err('Nothing was deleted.');
+        return declinedExitCode;
       case DeleteConfirmationStyle.typeName:
         logger.info('This permanently deletes $description.');
         final typed = logger
             .prompt('Type $name to confirm deletion:', hint: hint)
             .trim();
         if (typed == name) return null;
-        return reportError(
-          message: '"$typed" does not match "$name". Nothing was deleted.',
-        );
+        logger.err('"$typed" does not match "$name". Nothing was deleted.');
+        return declinedExitCode;
     }
   }
 }

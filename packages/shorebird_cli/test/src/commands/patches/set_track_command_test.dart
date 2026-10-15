@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/set_track_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -409,9 +410,10 @@ void main() {
       });
 
       group('when user declines channel creation', () {
-        test('exits with success without promoting', () async {
+        test('exits 1 without promoting', () async {
           final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.success.code));
+          expect(result, equals(declinedExitCode));
+          verify(() => logger.err('Aborting.')).called(1);
           verifyNever(
             () => codePushClientWrapper.createChannel(
               appId: any(named: 'appId'),

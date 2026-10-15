@@ -1421,7 +1421,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ).thenReturn(false);
           });
 
-          test('exits with success and prints Aborting.', () async {
+          test('exits 1 and prints Aborting. to stderr', () async {
             await expectLater(
               runWithOverrides(
                 () => command.logPatchSummary(
@@ -1431,9 +1431,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                   patchArtifactBundles: patchArtifactBundles,
                 ),
               ),
-              exitsWithCode(ExitCode.success),
+              exitsDeclined,
             );
-            verify(() => logger.info('Aborting.')).called(1);
+            verify(() => logger.err('Aborting.')).called(1);
           });
         });
       });
@@ -2315,11 +2315,12 @@ Please re-run the release command for this version or create a new release.'''),
           ).thenThrow(UserCancelledException());
         });
 
-        test('exits with code 0', () async {
+        test('exits 1 and prints Aborting. to stderr', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.success),
+            exitsDeclined,
           );
+          verify(() => logger.err('Aborting.')).called(1);
         });
       });
 

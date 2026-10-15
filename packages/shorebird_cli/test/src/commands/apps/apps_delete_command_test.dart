@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/apps/apps.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -201,13 +202,19 @@ void main() {
           verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
         });
 
-        test('refuses when the typed name does not match', () async {
+        test('exits 1 when the typed name does not match', () async {
           when(
             () => logger.prompt(any(), hint: any(named: 'hint')),
           ).thenReturn('Wrong Name');
           final result = await runInTerminal();
-          expect(result, equals(ExitCode.usage.code));
+          expect(result, equals(declinedExitCode));
           verifyNeverDeleted();
+          verify(
+            () => logger.err(
+              '"Wrong Name" does not match "$displayName". Nothing was '
+              'deleted.',
+            ),
+          ).called(1);
         });
       });
 
