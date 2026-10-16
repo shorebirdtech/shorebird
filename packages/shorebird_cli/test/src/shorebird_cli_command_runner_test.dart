@@ -773,7 +773,10 @@ Engine • revision $shorebirdEngineRevision'''),
               thenThrow: ApiErrorExit(
                 const CodePushException(
                   message: 'Plan lacks this feature.',
-                  code: 'shorebird_plan_insufficient_tier',
+                  response: ErrorResponse(
+                    code: 'shorebird_plan_insufficient_tier',
+                    message: 'Plan lacks this feature.',
+                  ),
                   details: 'Upgrade to Business.',
                 ),
                 ExitCode.software.code,

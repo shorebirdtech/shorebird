@@ -204,7 +204,10 @@ void main() {
       const exception = CodePushException(
         message: 'The account requires an upgraded plan.',
         details: 'More details.',
-        code: 'shorebird_plan_insufficient_tier',
+        response: ErrorResponse(
+          code: 'shorebird_plan_insufficient_tier',
+          message: 'The account requires an upgraded plan.',
+        ),
       );
 
       setUp(() {

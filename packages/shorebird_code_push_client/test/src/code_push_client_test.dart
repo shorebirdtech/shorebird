@@ -116,7 +116,13 @@ void main() {
         throwsA(
           isA<CodePushException>()
               .having((e) => e.code, 'code', errorResponse.code)
-              .having((e) => e.details, 'details', errorResponse.details),
+              .having((e) => e.details, 'details', errorResponse.details)
+              .having(
+                (e) => e.statusCode,
+                'statusCode',
+                HttpStatus.failedDependency,
+              )
+              .having((e) => e.response, 'response', errorResponse),
         ),
       );
     });
@@ -218,7 +224,13 @@ void main() {
                     (e) => e.details,
                     'details',
                     '<html><body> 502 Bad Gateway </body></html>',
-                  ),
+                  )
+                  .having(
+                    (e) => e.statusCode,
+                    'statusCode',
+                    HttpStatus.badGateway,
+                  )
+                  .having((e) => e.response, 'response', isNull),
             ),
           );
         });
@@ -464,7 +476,7 @@ void main() {
         );
       });
 
-      test('throws an exception if the upload fails', () async {
+      test('throws CodePushUploadException if the upload fails', () async {
         const artifactId = 42;
         const uploadUrl = 'https://example.com';
         final responses = [
@@ -486,7 +498,8 @@ void main() {
             ),
             HttpStatus.ok,
           ),
-          http.StreamedResponse(const Stream.empty(), HttpStatus.badRequest),
+          // A storage 409 must not read as an API conflict.
+          http.StreamedResponse(const Stream.empty(), HttpStatus.conflict),
         ];
         when(
           () => httpClient.send(any()),
@@ -506,11 +519,18 @@ void main() {
             hash: hash,
           ),
           throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              contains('Failed to upload artifact'),
-            ),
+            isA<CodePushUploadException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  contains('Failed to upload artifact'),
+                )
+                .having((e) => e.statusCode, 'statusCode', HttpStatus.conflict)
+                .having(
+                  (e) => e,
+                  'exception',
+                  isNot(isA<CodePushConflictException>()),
+                ),
           ),
         );
         final request =

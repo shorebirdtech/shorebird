@@ -305,7 +305,10 @@ void main() {
       const fullError = CodePushException(
         message: 'The account requires an upgraded plan.',
         details: 'Some details.',
-        code: 'shorebird_plan_insufficient_tier',
+        response: ErrorResponse(
+          code: 'shorebird_plan_insufficient_tier',
+          message: 'The account requires an upgraded plan.',
+        ),
       );
 
       setUp(() {
@@ -544,7 +547,10 @@ void main() {
                 () async => throw ApiErrorExit(
                   const CodePushException(
                     message: 'Plan lacks this feature.',
-                    code: 'shorebird_plan_insufficient_tier',
+                    response: ErrorResponse(
+                      code: 'shorebird_plan_insufficient_tier',
+                      message: 'Plan lacks this feature.',
+                    ),
                     details: 'Upgrade to Business.',
                   ),
                   70,

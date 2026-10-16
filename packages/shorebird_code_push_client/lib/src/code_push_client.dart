@@ -16,24 +16,32 @@ class CodePushException implements Exception {
   const CodePushException({
     required this.message,
     this.details,
-    this.code,
-    this.documentationUrl,
+    this.statusCode,
+    this.response,
   });
 
   /// The message associated with the exception.
   final String message;
 
-  /// The machine-readable error code from the server's [ErrorResponse]
-  /// (e.g. `shorebird_plan_insufficient_tier`), or null when the response
-  /// body was not an [ErrorResponse].
-  final String? code;
-
   /// The details associated with the exception.
   final String? details;
 
+  /// The HTTP status code of the failed response, or null when the failure
+  /// did not come from an HTTP response.
+  final int? statusCode;
+
+  /// The server's [ErrorResponse], or null when the response body was not
+  /// one.
+  final ErrorResponse? response;
+
+  /// The machine-readable error code from the server's [ErrorResponse]
+  /// (e.g. `shorebird_plan_insufficient_tier`), or null when the response
+  /// body was not an [ErrorResponse].
+  String? get code => response?.code;
+
   /// A page documenting the API and its errors, from the server's
   /// [ErrorResponse], or null when the server did not send one.
-  final Uri? documentationUrl;
+  Uri? get documentationUrl => response?.documentationUrl;
 
   @override
   String toString() => '$message${details != null ? '\n$details' : ''}';
@@ -47,8 +55,8 @@ class CodePushForbiddenException extends CodePushException {
   CodePushForbiddenException({
     required super.message,
     super.details,
-    super.code,
-    super.documentationUrl,
+    super.statusCode,
+    super.response,
   });
 }
 
@@ -60,8 +68,8 @@ class CodePushConflictException extends CodePushException {
   const CodePushConflictException({
     required super.message,
     super.details,
-    super.code,
-    super.documentationUrl,
+    super.statusCode,
+    super.response,
   });
 }
 
@@ -73,8 +81,8 @@ class CodePushNotFoundException extends CodePushException {
   CodePushNotFoundException({
     required super.message,
     super.details,
-    super.code,
-    super.documentationUrl,
+    super.statusCode,
+    super.response,
   });
 }
 
@@ -86,9 +94,21 @@ class CodePushUpgradeRequiredException extends CodePushException {
   const CodePushUpgradeRequiredException({
     required super.message,
     super.details,
-    super.code,
-    super.documentationUrl,
+    super.statusCode,
+    super.response,
   });
+}
+
+/// {@template code_push_upload_exception}
+/// Exception thrown when uploading an artifact's bytes to storage fails.
+///
+/// [statusCode] is the storage service's, not the Shorebird API's, so this is
+/// never one of the API status exceptions (a storage 409 is not an API
+/// conflict).
+/// {@endtemplate}
+class CodePushUploadException extends CodePushException {
+  /// {@macro code_push_upload_exception}
+  const CodePushUploadException({required super.message, super.statusCode});
 }
 
 /// A wrapper around [http.Client] that ensures all outbound requests
@@ -443,10 +463,11 @@ class CodePushClient {
   }
 
   /// The exception thrown when an artifact upload request fails.
-  CodePushException _uploadFailed(http.BaseResponse response) {
+  CodePushUploadException _uploadFailed(http.BaseResponse response) {
     final reason = response.reasonPhrase;
-    return CodePushException(
+    return CodePushUploadException(
       message: 'Failed to upload artifact ($reason ${response.statusCode})',
+      statusCode: response.statusCode,
     );
   }
 
@@ -1104,13 +1125,14 @@ class CodePushClient {
       throw exceptionBuilder(
         message: unknownErrorMessageFor(statusCode),
         details: _truncateBody(response),
+        statusCode: statusCode,
       );
     }
     return exceptionBuilder(
       message: error.message,
       details: error.details,
-      code: error.code,
-      documentationUrl: error.documentationUrl,
+      statusCode: statusCode,
+      response: error,
     );
   }
 

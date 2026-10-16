@@ -410,7 +410,10 @@ void main() {
             'ApiErrorExit when the API call fails', () async {
           const error = CodePushException(
             message: 'Plan lacks this feature.',
-            code: 'shorebird_plan_insufficient_tier',
+            response: ErrorResponse(
+              code: 'shorebird_plan_insufficient_tier',
+              message: 'Plan lacks this feature.',
+            ),
           );
           when(() => codePushClient.getApps()).thenThrow(error);
 
@@ -1678,6 +1681,47 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               () => logger.info(any(that: contains('already exists'))),
             ).called(numArtifactsUploaded);
             verifyNever(() => progress.fail(error));
+          },
+        );
+
+        test(
+          'exits with code 70 when storage rejects an upload with a 409',
+          () async {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(
+              const CodePushUploadException(
+                message: 'Failed to upload artifact (Conflict 409)',
+                statusCode: HttpStatus.conflict,
+              ),
+            );
+            setUpProjectRoot();
+
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: p.join(projectRoot.path, aabPath),
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verifyNever(
+              () => logger.info(any(that: contains('already exists'))),
+            );
           },
         );
 
