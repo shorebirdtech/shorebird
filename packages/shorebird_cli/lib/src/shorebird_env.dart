@@ -42,6 +42,20 @@ class CacheCorruptedException implements Exception {
 /// another.
 const defaultAuthServiceUrl = 'https://auth.shorebird.dev';
 
+/// The code push server the hidden `--dev` flag selects.
+const devHostedUrl = 'https://api-dev.shorebird.dev';
+
+/// The auth service the hidden `--dev` flag selects.
+const devAuthServiceUrl = 'https://auth-dev.shorebird.dev';
+
+/// A reference to whether the hidden `--dev` global flag was passed.
+final isDevModeRef = create(() => false);
+
+/// Whether the hidden `--dev` global flag was passed: the CLI talks to the
+/// dev environment ([devHostedUrl] and [devAuthServiceUrl]) unless
+/// `SHOREBIRD_HOSTED_URL` or `AUTH_SERVICE_URL` name another server.
+bool get isDevMode => read(isDevModeRef, orElse: () => false);
+
 /// A reference to a [ShorebirdEnv] instance.
 final shorebirdEnvRef = create(ShorebirdEnv.new);
 
@@ -276,21 +290,25 @@ class ShorebirdEnv {
     return module?['androidPackage'] as String?;
   }
 
-  /// The base URL for the Shorebird auth service. Can be overridden with the
-  /// `AUTH_SERVICE_URL` environment variable. Defaults to
+  /// The base URL for the Shorebird auth service: the
+  /// `AUTH_SERVICE_URL` environment variable when it is set, otherwise
+  /// [devAuthServiceUrl] with `--dev` (see [isDevMode]), otherwise
   /// [defaultAuthServiceUrl].
   Uri get authServiceUri => Uri.parse(
-    platform.environment['AUTH_SERVICE_URL'] ?? defaultAuthServiceUrl,
+    platform.environment['AUTH_SERVICE_URL'] ??
+        (isDevMode ? devAuthServiceUrl : defaultAuthServiceUrl),
   );
 
   /// The base URL for the Shorebird code push server that overrides the default
-  /// used by [CodePushClient]. If none is provided, [CodePushClient] will use
-  /// its default.
+  /// used by [CodePushClient]: the `SHOREBIRD_HOSTED_URL` environment
+  /// variable when it is set, otherwise [devHostedUrl] with `--dev` (see
+  /// [isDevMode]), otherwise the `base_url` in shorebird.yaml. If none is
+  /// provided, [CodePushClient] will use its default.
   Uri? get hostedUri {
     try {
       final baseUrl =
           platform.environment['SHOREBIRD_HOSTED_URL'] ??
-          getShorebirdYaml()?.baseUrl;
+          (isDevMode ? devHostedUrl : getShorebirdYaml()?.baseUrl);
       return baseUrl == null ? null : Uri.tryParse(baseUrl);
     } on Exception {
       return null;

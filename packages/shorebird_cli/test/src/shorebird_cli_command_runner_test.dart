@@ -379,6 +379,33 @@ Engine • revision $shorebirdEngineRevision'''),
       });
     });
 
+    group('--dev', () {
+      test('selects the dev environment for the command', () async {
+        final command = _RecordsDevModeCommand();
+        commandRunner.addCommand(command);
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--dev', 'records-dev-mode']),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        expect(command.isDevMode, isTrue);
+      });
+
+      test('is off by default', () async {
+        final command = _RecordsDevModeCommand();
+        commandRunner.addCommand(command);
+
+        await runWithOverrides(() => commandRunner.run(['records-dev-mode']));
+
+        expect(command.isDevMode, isFalse);
+      });
+
+      test('is not shown in usage', () {
+        expect(commandRunner.usage, isNot(contains('--dev')));
+      });
+    });
+
     group('local engine', () {
       group('when all local engine args are provided', () {
         test('creates engine config with arguments', () async {
@@ -1323,6 +1350,23 @@ Engine • revision $shorebirdEngineRevision'''),
       });
     });
   });
+}
+
+/// Records whether the dev environment was selected when it ran.
+class _RecordsDevModeCommand extends ShorebirdCommand {
+  bool? isDevMode;
+
+  @override
+  String get name => 'records-dev-mode';
+
+  @override
+  String get description => 'Records isDevMode';
+
+  @override
+  Future<int> run() async {
+    isDevMode = read(isDevModeRef);
+    return ExitCode.success.code;
+  }
 }
 
 class _TestCommand extends ShorebirdCommand {

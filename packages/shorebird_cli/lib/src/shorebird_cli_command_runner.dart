@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -54,6 +55,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         'verbose',
         abbr: 'v',
         help: 'Noisy logging, including all shell commands executed.',
+      )
+      ..addFlag(
+        'dev',
+        negatable: false,
+        hide: true,
+        help:
+            'Use the Shorebird dev environment ($devHostedUrl and '
+            '$devAuthServiceUrl). SHOREBIRD_HOSTED_URL and AUTH_SERVICE_URL '
+            'still win.',
       )
       ..addOption(
         'local-engine-src-path',
@@ -143,6 +153,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final jsonMode = topLevelResults['json'] == true;
+      final devMode = topLevelResults['dev'] == true;
 
       // In JSON mode, suppress verbose logging — it writes to stdout and
       // would corrupt the JSON output. Verbose output still goes to the
@@ -173,6 +184,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         () => runCommand(topLevelResults),
         values: {
           engineConfigRef.overrideWith(() => engineConfig),
+          isDevModeRef.overrideWith(() => devMode),
           isJsonModeRef.overrideWith(() => jsonMode),
           jsonSinkRef.overrideWith(() => jsonSink),
           processRef.overrideWith(() => process),
