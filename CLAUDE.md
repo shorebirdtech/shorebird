@@ -2,11 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Report anything unexpected, with a proposed fix
+## Notice when you're working around something, and fix it
 
-When the CLI, packages, tests, docs, or CI behave in a way you didn't expect, say so in your final report, even if you worked around it and finished the task. Examples: a `shorebird` command that waits with no output, a command or flag whose default does something surprising, an error message that doesn't say what to do, a test that fails for reasons unrelated to the change, a local Dart or Flutter toolchain that doesn't match CI.
+We want our processes, both the ones customers use and the ones we use, to be as normal and as agent-friendly as possible. So notice when you're working around something instead of quietly getting past it. Examples: a `shorebird` command that waits with no output, a command or flag whose default surprised you, an error that doesn't say what to do, a test that fails for reasons unrelated to your change, a local Dart or Flutter toolchain that doesn't match CI.
 
-For each one, give what you did, what you expected, what happened, and a proposed fix: a PR if it's small and you have the context, otherwise an issue-sized description. Don't report your own mistakes as product problems. Do report a problem even when you're not sure it's a bug; the people who own the code would rather hear about it.
+Your own wrong guesses count too. If you reached for a command, flag, path, or convention that didn't exist or didn't do what you expected, that's a place the tool didn't meet you where you were, and usually the tool should change rather than the docs.
+
+For each one:
+
+- If the fix is small, make the PR without waiting to be asked, and link it in your final report.
+- If it isn't, describe it in your final report (what you did, what you expected, what happened, and the fix you'd propose) and ask before starting it.
 
 ## Build Commands
 
