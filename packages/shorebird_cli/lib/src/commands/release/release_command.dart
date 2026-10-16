@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/confirm_before_publish.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -36,11 +35,10 @@ typedef ResolveReleaser = Releaser Function(ReleaseType releaseType);
 /// {@template release_command}
 /// Creates a new app release for the specified platform(s).
 /// {@endtemplate}
-class ReleaseCommand extends ShorebirdCommand with ConfirmBeforePublish {
+class ReleaseCommand extends ShorebirdCommand {
   /// {@macro release_command}
   ReleaseCommand({ResolveReleaser? resolveReleaser}) {
     _resolveReleaser = resolveReleaser ?? getReleaser;
-    addConfirmBeforePublishFlag();
     argParser
       ..addMultiOption(
         CommonArguments.dartDefineArg.name,
@@ -183,8 +181,6 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       );
       return ExitCode.usage.code;
     }
-
-    assertCanConfirmBeforePublish();
 
     // One Release can carry several platforms, so releases are collected by
     // id: each platform's pass re-fetches the release, and the last fetch is
@@ -732,8 +728,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
-
-    confirmBeforePublish();
   }
 
   /// Fetches the release with version [version] from the server or creates a

@@ -15,7 +15,6 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -563,101 +562,6 @@ void main() {
             version: any(named: 'version'),
             flutterRevision: any(named: 'flutterRevision'),
             platform: any(named: 'platform'),
-          ),
-        );
-      });
-    });
-
-    // This isn't really needed anymore since we don't prompt for confirmation.
-    // but we do accept a --no-confirm argument for backwards compatibility.
-    group('when --no-confirm is specified', () {
-      setUp(() {
-        when(() => argResults['confirm']).thenReturn(false);
-      });
-
-      test('does not prompt for confirmation', () async {
-        await runWithOverrides(command.run);
-        verifyNever(() => logger.confirm(any()));
-      });
-    });
-
-    group('when --confirm is passed', () {
-      setUp(() {
-        when(() => argResults['confirm']).thenReturn(true);
-        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
-      });
-
-      group('when the CLI cannot prompt', () {
-        setUp(() {
-          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
-        });
-
-        test('fails before building', () async {
-          await expectLater(
-            runWithOverrides(command.run),
-            throwsA(isA<InteractivePromptRequiredException>()),
-          );
-          verifyNever(() => releaser.buildReleaseArtifacts());
-          verifyNever(
-            () => logger.confirm(
-              any(),
-              defaultValue: any(named: 'defaultValue'),
-            ),
-          );
-        });
-      });
-
-      group('when user confirms', () {
-        setUp(() {
-          when(
-            () => logger.confirm(
-              any(),
-              defaultValue: any(named: 'defaultValue'),
-            ),
-          ).thenReturn(true);
-        });
-
-        test('continues', () async {
-          await runWithOverrides(command.run);
-          verify(
-            () => logger.confirm(
-              'Would you like to continue?',
-              defaultValue: true,
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when user declines', () {
-        setUp(() {
-          when(
-            () => logger.confirm(
-              any(),
-              defaultValue: any(named: 'defaultValue'),
-            ),
-          ).thenReturn(false);
-        });
-
-        test('exits 1 when declined', () async {
-          await expectLater(
-            runWithOverrides(command.run),
-            exitsDeclined,
-          );
-        });
-      });
-    });
-
-    group('when --confirm is not passed', () {
-      setUp(() {
-        when(() => argResults['confirm']).thenReturn(false);
-      });
-
-      test('does not prompt for confirmation', () async {
-        await runWithOverrides(command.run);
-        verifyNever(
-          () => logger.confirm(
-            any(),
-            defaultValue: any(named: 'defaultValue'),
           ),
         );
       });

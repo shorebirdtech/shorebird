@@ -21,7 +21,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -1371,119 +1370,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           });
         });
       });
-
-      group('when --confirm is passed', () {
-        setUp(() {
-          when(() => argResults['confirm']).thenReturn(true);
-          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
-        });
-
-        group('when the CLI cannot prompt', () {
-          setUp(() {
-            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
-          });
-
-          test('fails before building', () async {
-            await expectLater(
-              runWithOverrides(command.run),
-              throwsA(isA<InteractivePromptRequiredException>()),
-            );
-            verifyNever(() => patcher.assertPreconditions());
-            verifyNever(
-              () => logger.confirm(
-                any(),
-                defaultValue: any(named: 'defaultValue'),
-              ),
-            );
-          });
-        });
-
-        group('when user confirms', () {
-          setUp(() {
-            when(
-              () => logger.confirm(
-                any(),
-                defaultValue: any(named: 'defaultValue'),
-                hint: any(named: 'hint'),
-              ),
-            ).thenReturn(true);
-          });
-
-          test('continues', () async {
-            await expectLater(
-              runWithOverrides(
-                () => command.logPatchSummary(
-                  app: appMetadata,
-                  releaseVersion: releaseVersion,
-                  patcher: patcher,
-                  patchArtifactBundles: patchArtifactBundles,
-                ),
-              ),
-              completes,
-            );
-            verify(
-              () => logger.confirm(
-                'Would you like to continue?',
-                defaultValue: true,
-                hint: any(named: 'hint'),
-              ),
-            ).called(1);
-          });
-        });
-
-        group('when user declines', () {
-          setUp(() {
-            when(
-              () => logger.confirm(
-                any(),
-                defaultValue: any(named: 'defaultValue'),
-                hint: any(named: 'hint'),
-              ),
-            ).thenReturn(false);
-          });
-
-          test('exits 1 when declined', () async {
-            await expectLater(
-              runWithOverrides(
-                () => command.logPatchSummary(
-                  app: appMetadata,
-                  releaseVersion: releaseVersion,
-                  patcher: patcher,
-                  patchArtifactBundles: patchArtifactBundles,
-                ),
-              ),
-              exitsDeclined,
-            );
-          });
-        });
-      });
-
-      group('when --confirm is not passed', () {
-        setUp(() {
-          when(() => argResults['confirm']).thenReturn(false);
-        });
-
-        test('does not prompt for confirmation', () async {
-          await expectLater(
-            runWithOverrides(
-              () => command.logPatchSummary(
-                app: appMetadata,
-                releaseVersion: releaseVersion,
-                patcher: patcher,
-                patchArtifactBundles: patchArtifactBundles,
-              ),
-            ),
-            completes,
-          );
-          verifyNever(
-            () => logger.confirm(
-              any(),
-              defaultValue: any(named: 'defaultValue'),
-              hint: any(named: 'hint'),
-            ),
-          );
-        });
-      });
     });
 
     group('when --track is blank', () {
@@ -2192,23 +2078,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             metadata: any(named: 'metadata'),
             artifacts: any(named: 'artifacts'),
             track: DeploymentTrack.stable,
-          ),
-        );
-      });
-    });
-
-    group('when --no-confirm is specified', () {
-      setUp(() {
-        when(() => argResults['confirm']).thenReturn(false);
-      });
-
-      test('does not prompt for confirmation', () async {
-        await runWithOverrides(command.run);
-        verifyNever(
-          () => logger.confirm(
-            any(),
-            defaultValue: any(named: 'defaultValue'),
-            hint: any(named: 'hint'),
           ),
         );
       });

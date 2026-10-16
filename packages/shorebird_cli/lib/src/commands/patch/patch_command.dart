@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/confirm_before_publish.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -45,11 +44,10 @@ typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
 /// A command that creates a shorebird patch for the provided target platforms.
 /// `shorebird patch --platforms=android,ios`
 /// {@endtemplate}
-class PatchCommand extends ShorebirdCommand with ConfirmBeforePublish {
+class PatchCommand extends ShorebirdCommand {
   /// {@macro patch_command}
   PatchCommand({ResolvePatcher? resolvePatcher}) {
     _resolvePatcher = resolvePatcher ?? getPatcher;
-    addConfirmBeforePublishFlag();
     argParser
       ..addMultiOption(
         CommonArguments.dartDefineArg.name,
@@ -249,8 +247,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       );
       return ExitCode.usage.code;
     }
-
-    assertCanConfirmBeforePublish();
 
     final published = <PublishedPatch>[];
     for (final releaseType in results.releaseTypes) {
@@ -1003,8 +999,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 ${summary.join('\n')}
 ''');
-
-    confirmBeforePublish();
   }
 
   /// Downloads the given [releaseArtifact].
