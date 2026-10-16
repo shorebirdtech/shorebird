@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:scoped_deps/scoped_deps.dart';
@@ -38,17 +37,10 @@ import 'package:shorebird_cli/src/shorebird_version.dart';
 
 Future<void> main(List<String> args) async {
   // A reader that exits early (`shorebird api /apps | head -1`) makes later
-  // stdout writes fail with a broken pipe. Exit quietly, as git and gh do,
-  // instead of crashing with a stack trace.
-  unawaited(
-    stdout.done.then<void>(
-      (_) {},
-      onError: (Object error, StackTrace stackTrace) {
-        if (!isBrokenPipe(error)) Error.throwWithStackTrace(error, stackTrace);
-        exit(brokenPipeExitCode);
-      },
-    ),
-  );
+  // writes fail with a broken pipe. Exit quietly, as git and gh do, instead
+  // of crashing with a stack trace.
+  exitOnBrokenPipe(stdout);
+  exitOnBrokenPipe(stderr);
   final commandStartedAt = DateTime.now();
   final loggingStdout = runScoped(
     () => LoggingStdout(baseStdOut: stdout, logFile: currentRunLogFile),

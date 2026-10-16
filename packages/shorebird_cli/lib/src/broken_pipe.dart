@@ -1,4 +1,5 @@
 // cspell:words EPIPE epipe
+import 'dart:async';
 import 'dart:io';
 
 /// The exit code for a process whose stdout reader went away: 128 + SIGPIPE.
@@ -26,4 +27,21 @@ bool isBrokenPipe(Object error) {
     _epipe || _windowsBrokenPipe || _windowsNoData => true,
     _ => false,
   };
+}
+
+/// Exits with [brokenPipeExitCode], printing nothing, when a write to [sink]
+/// fails because its reader went away. Any other write error is rethrown.
+///
+/// Such a write error surfaces asynchronously on [IOSink.done] rather than at
+/// the write call, so one listener covers every command.
+void exitOnBrokenPipe(IOSink sink) {
+  unawaited(
+    sink.done.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        if (!isBrokenPipe(error)) Error.throwWithStackTrace(error, stackTrace);
+        exit(brokenPipeExitCode);
+      },
+    ),
+  );
 }
