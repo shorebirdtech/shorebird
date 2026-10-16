@@ -5,7 +5,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/apps/apps.dart';
 import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -15,6 +14,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -165,30 +165,6 @@ void main() {
         expect(error['hint'], contains('--confirm-name "$displayName"'));
       });
 
-      group('when stdin is a terminal but stdout is not', () {
-        setUp(
-          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
-        );
-
-        test('requires --confirm-name without prompting', () async {
-          final result = await captureStdout(
-            () => runWithOverrides(command.run),
-            captured: [],
-            hasTerminal: false,
-          );
-          expect(result, equals(ExitCode.usage.code));
-          verifyNeverDeleted();
-          verify(
-            () => logger.err(
-              '--confirm-name required when not running interactively',
-            ),
-          ).called(1);
-          verifyNever(() => logger.info(any(that: contains('permanently'))));
-          verifyNever(() => logger.prompt(any(), hint: any(named: 'hint')));
-          verifyNever(() => logger.confirm(any(), hint: any(named: 'hint')));
-        });
-      });
-
       group('in a terminal', () {
         Future<int> runInTerminal() => captureStdout(
           () => runWithOverrides(command.run),
@@ -238,8 +214,7 @@ void main() {
           when(
             () => logger.prompt(any(), hint: any(named: 'hint')),
           ).thenReturn('Wrong Name');
-          final result = await runInTerminal();
-          expect(result, equals(declinedExitCode));
+          await expectLater(runInTerminal(), exitsDeclined);
           verifyNeverDeleted();
           verify(
             () => logger.err(

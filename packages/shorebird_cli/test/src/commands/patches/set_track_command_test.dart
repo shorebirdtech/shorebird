@@ -5,7 +5,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/set_track_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -16,6 +15,7 @@ import 'package:test/test.dart';
 
 import '../../fakes.dart';
 import '../../helpers.dart';
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -381,6 +381,9 @@ void main() {
       });
 
       test('prompts to create the channel', () async {
+        when(
+          () => logger.confirm(any(), hint: any(named: 'hint')),
+        ).thenReturn(true);
         await runWithOverrides(command.run);
         verify(
           () => logger.confirm(
@@ -411,8 +414,7 @@ void main() {
 
       group('when user declines channel creation', () {
         test('exits 1 without promoting', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(declinedExitCode));
+          await expectLater(runWithOverrides(command.run), exitsDeclined);
           verify(() => logger.err('Aborting.')).called(1);
           verifyNever(
             () => codePushClientWrapper.createChannel(

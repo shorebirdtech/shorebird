@@ -315,12 +315,18 @@ class ShorebirdEnv {
     }
   }
 
-  /// Whether the CLI can accept user input via stdin.
+  /// Whether the CLI can prompt the user (`confirm`, `chooseOne`, `prompt`).
   ///
-  /// Returns `false` when stdin is not a terminal, when running on CI, or
-  /// when the user has opted into non-interactive output via `--json`.
+  /// Returns `false` when stdin is not a terminal, when stdout cannot render
+  /// a prompt, when running on CI, or when the user has opted into
+  /// non-interactive output via `--json`.
+  ///
+  /// Prompts need `stdout.hasTerminal` specifically: mason_logger's prompts
+  /// throw `NoTerminalAttachedError` without it. That is stricter than
+  /// `isInteractive`, which also accepts stdout redirected to `/dev/null` and
+  /// PTYs with no window size, where spinners still work but prompts do not.
   bool get canAcceptUserInput =>
-      stdin.hasTerminal && !isRunningOnCI && !isJsonMode;
+      stdin.hasTerminal && stdout.hasTerminal && !isRunningOnCI && !isJsonMode;
 
   /// Whether platform.environment indicates that we are running on a CI
   /// platform. This implementation is intended to behave similar to the Flutter

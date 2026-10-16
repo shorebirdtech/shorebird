@@ -116,12 +116,6 @@ To target the latest release (e.g. the release that was most recently updated) u
 [DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
         hide: true,
       )
-      // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
-      // Can be removed fall 2026 or later.
-      ..addFlag(
-        'confirm',
-        hide: true,
-      )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
         help: CommonArguments.exportOptionsPlistArg.description,
@@ -216,9 +210,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// The target script, if provided.
   late String? target = results.findOption('target', argParser: argParser);
-
-  /// Whether to prompt for confirmation before creating the patch.
-  bool get confirm => results['confirm'] == true;
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
@@ -931,7 +922,7 @@ Please re-run the release command for this version or create a new release.''');
       );
     } on UserCancelledException {
       logger.err('Aborting.');
-      throw ProcessExit(declinedExitCode);
+      throw PromptDeclinedExit();
     } on UnpatchableChangeException {
       // The diff checker has already named the change and the flag that
       // overrides it.
@@ -1008,13 +999,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 ${summary.join('\n')}
 ''');
-
-    if (confirm && shorebirdEnv.canAcceptUserInput) {
-      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
-        logger.err('Aborting.');
-        throw ProcessExit(declinedExitCode);
-      }
-    }
   }
 
   /// Downloads the given [releaseArtifact].

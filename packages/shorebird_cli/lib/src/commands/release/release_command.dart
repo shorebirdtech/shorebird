@@ -13,7 +13,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -127,12 +126,6 @@ Also accepts the following special values:
             'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
         hide: true,
         negatable: false,
-      )
-      // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
-      // Can be removed fall 2026 or later.
-      ..addFlag(
-        'confirm',
-        hide: true,
       )
       ..addOption(
         'release-version',
@@ -251,9 +244,6 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
     }
   }
-
-  /// Whether to prompt for confirmation before creating the release.
-  bool get confirm => results['confirm'] == true;
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
@@ -738,13 +728,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
-
-    if (confirm && shorebirdEnv.canAcceptUserInput) {
-      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
-        logger.err('Aborting.');
-        throw ProcessExit(declinedExitCode);
-      }
-    }
   }
 
   /// Fetches the release with version [version] from the server or creates a

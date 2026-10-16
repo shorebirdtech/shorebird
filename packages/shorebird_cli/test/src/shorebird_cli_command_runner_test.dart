@@ -164,6 +164,20 @@ void main() {
           ),
         ).called(1);
       });
+
+      test('exits 1 without the failure footer when a prompt is '
+          'declined', () async {
+        commandRunner.addCommand(_DeclinedCommand());
+        final result = await runWithOverrides(
+          () => commandRunner.run(['declined']),
+        );
+        expect(result, equals(declinedExitCode));
+        verifyNever(
+          () => logger.info(
+            any(that: contains("If you aren't sure why this command failed")),
+          ),
+        );
+      });
     });
 
     test('handles FormatException', () async {
@@ -1384,6 +1398,19 @@ class _TestCommand extends ShorebirdCommand {
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
   }
+}
+
+/// Throws [PromptDeclinedExit], as a command does when the user declines a
+/// confirmation prompt.
+class _DeclinedCommand extends ShorebirdCommand {
+  @override
+  String get name => 'declined';
+
+  @override
+  String get description => 'A command whose prompt is declined';
+
+  @override
+  Future<int> run() async => throw PromptDeclinedExit();
 }
 
 /// Returns [exitCode], and owns stdout the way `shorebird api` does.

@@ -87,7 +87,8 @@ mixin ConfirmDelete on ShorebirdCommand {
   /// stays a single envelope.
   ///
   /// Returns `null` when the caller may proceed, or an exit code after
-  /// reporting why it may not.
+  /// reporting why it may not. Throws [PromptDeclinedExit] when the user
+  /// declines the prompt.
   int? confirmDelete({
     required String name,
     required String description,
@@ -131,7 +132,7 @@ mixin ConfirmDelete on ShorebirdCommand {
     _announce(consequence);
     if (logger.confirm('Delete $description?', hint: hint)) return null;
     logger.err('Nothing was deleted.');
-    return declinedExitCode;
+    throw PromptDeclinedExit();
   }
 
   int? _confirmTypeName(
@@ -160,7 +161,7 @@ mixin ConfirmDelete on ShorebirdCommand {
         .trim();
     if (typed == name) return null;
     logger.err('"$typed" does not match "$name". Nothing was deleted.');
-    return declinedExitCode;
+    throw PromptDeclinedExit();
   }
 
   /// Prints [consequence] in text mode and returns null, so a confirmed delete
@@ -170,7 +171,7 @@ mixin ConfirmDelete on ShorebirdCommand {
     return null;
   }
 
-  // Both stdin and stdout must be terminals to prompt; otherwise every
-  // non-interactive case gets the same message, before anything is printed.
-  bool get _canPrompt => isInteractive && shorebirdEnv.canAcceptUserInput;
+  // Every case where the CLI cannot prompt gets the same message, before
+  // anything is printed.
+  bool get _canPrompt => shorebirdEnv.canAcceptUserInput;
 }
