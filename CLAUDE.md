@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Report anything unexpected, with a proposed fix
+
+When the CLI, packages, tests, docs, or CI behave in a way you didn't expect, say so in your final report, even if you worked around it and finished the task. Examples: a `shorebird` command that waits with no output, a command or flag whose default does something surprising, an error message that doesn't say what to do, a test that fails for reasons unrelated to the change, a local Dart or Flutter toolchain that doesn't match CI.
+
+For each one, give what you did, what you expected, what happened, and a proposed fix: a PR if it's small and you have the context, otherwise an issue-sized description. Don't report your own mistakes as product problems. Do report a problem even when you're not sure it's a bug; the people who own the code would rather hear about it.
+
 ## Build Commands
 
 ```bash
