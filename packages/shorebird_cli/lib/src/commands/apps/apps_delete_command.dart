@@ -15,7 +15,10 @@ class AppsDeleteCommand extends ShorebirdCommand
     with AppScopedCommand, ConfirmDelete {
   /// {@macro apps_delete_command}
   AppsDeleteCommand() {
-    addConfirmDeleteOptions();
+    addConfirmDeleteOptions(
+      style: DeleteConfirmationStyle.typeName,
+      nameDescription: "The app's display name",
+    );
     addAppScopeOptions();
   }
 
@@ -28,10 +31,11 @@ class AppsDeleteCommand extends ShorebirdCommand
       'Every release and patch belonging to the app is permanently removed. '
       'This cannot be undone.\n\n'
       "In a terminal, asks you to type the app's display name to confirm. "
-      'Pass --$yesArgName to skip the prompt; it is required when not running '
-      'interactively (no terminal, CI, or --json).\n\n'
+      'When not running interactively (no terminal, CI, or --json), pass the '
+      'display name with --$confirmNameArgName instead; there is no '
+      '--$yesArgName, so an app is never deleted without naming it.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird apps delete --app-id <id> --yes --json',
+        'shorebird apps delete --app-id <id> --confirm-name "<name>" --json',
       )}';
 
   @override
@@ -61,7 +65,10 @@ class AppsDeleteCommand extends ShorebirdCommand
       description:
           'app "${app.displayName}" ($appId) and all of its releases and '
           'patches',
-      style: DeleteConfirmationStyle.typeName,
+      consequence:
+          'This permanently deletes app "${app.displayName}" ($appId): '
+          '${_releaseCount(releases.length)}, its channels and its '
+          'collaborators. Devices running it stop getting patches.',
     );
     if (gateErrorCode != null) return gateErrorCode;
 
@@ -86,4 +93,10 @@ class AppsDeleteCommand extends ShorebirdCommand
     logger.success('Deleted "${app.displayName}" ($appId).');
     return ExitCode.success.code;
   }
+
+  String _releaseCount(int count) => switch (count) {
+    0 => 'it has no releases',
+    1 => 'its 1 release and its patches',
+    _ => 'all $count of its releases and their patches',
+  };
 }
