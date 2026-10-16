@@ -7,15 +7,17 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 ## 1.6.130 (October 16, 2026)
 
 - ✨ When an Android patch is blocked by Java or Kotlin changes, the output
-  now lists the changed methods with the classes, methods and fields their
+  now names the classes, methods and fields that each changed method's
   differing instructions reference, so a dependency bump can be read off the
-  failure. `shorebird patch --show-dex-diff` prints every differing
-  instruction.
+  failure. `shorebird patch --show-dex-diff` prints every changed method and
+  instruction in full, including string constants.
 - ✨ `shorebird api --jq` supports array and string slices (`.[1:3]`,
   `.[2:]`, `.[:-1]`).
 - 🐛 Prompts no longer crash with `No terminal attached to stdout` when stdin
-  is a terminal but stdout is not (for example, output redirected to a file).
-  The command behaves as non-interactive instead.
+  is a terminal but stdout cannot show a prompt (output redirected to
+  `/dev/null`, or a PTY with no window size). The command behaves as
+  non-interactive instead, and asks for `--yes` or `--confirm-name` where a
+  confirmation is needed.
 - 🐛 Declining a prompt no longer prints the generic "re-run with --verbose"
   failure text.
 - 🔧 `shorebird api` explains a 405 response when `-f`/`-F` fields switched
@@ -23,7 +25,7 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🔧 Every request the CLI makes sends a
   `User-Agent: shorebird-cli/<version> (<os>; dart <version>)` header.
 - 🔧 The hidden `--confirm` flag is removed from `shorebird release` and
-  `shorebird patch`.
+  `shorebird patch`. Passing it is now a usage error (exit 64).
 
 ## 1.6.129 (October 16, 2026)
 
