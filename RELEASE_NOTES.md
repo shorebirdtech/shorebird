@@ -4,6 +4,27 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
+## 1.6.130 (October 16, 2026)
+
+- ✨ When an Android patch is blocked by Java or Kotlin changes, the output
+  now lists the changed methods with the classes, methods and fields their
+  differing instructions reference, so a dependency bump can be read off the
+  failure. `shorebird patch --show-dex-diff` prints every differing
+  instruction.
+- ✨ `shorebird api --jq` supports array and string slices (`.[1:3]`,
+  `.[2:]`, `.[:-1]`).
+- 🐛 Prompts no longer crash with `No terminal attached to stdout` when stdin
+  is a terminal but stdout is not (for example, output redirected to a file).
+  The command behaves as non-interactive instead.
+- 🐛 Declining a prompt no longer prints the generic "re-run with --verbose"
+  failure text.
+- 🔧 `shorebird api` explains a 405 response when `-f`/`-F` fields switched
+  the default method to POST, and suggests `--method GET`.
+- 🔧 Every request the CLI makes sends a
+  `User-Agent: shorebird-cli/<version> (<os>; dart <version>)` header.
+- 🔧 The hidden `--confirm` flag is removed from `shorebird release` and
+  `shorebird patch`.
+
 ## 1.6.129 (October 16, 2026)
 
 - ✨ `shorebird api` sends an authenticated request to the Shorebird API and
