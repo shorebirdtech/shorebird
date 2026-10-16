@@ -26,6 +26,10 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
   token: a refresh uses the newest credentials on disk.
 - 🐛 Piping output into a reader that exits early (`| head -1`) now exits
   with 141 instead of crashing with a stack trace.
+- 🐛 Error and progress messages no longer name temporary paths that are
+  deleted before the command finishes.
+- 🐛 The release chooser shows one hint for the action being taken, and
+  `shorebird patches promote --help` describes `--flavor` accurately.
 - 🔧 `shorebird channels delete` and `shorebird releases delete` prompt in a
   terminal and take `-y, --yes` to skip the prompt, which is required when
   not running interactively. `--confirm-name` is deprecated for them.
@@ -42,6 +46,10 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
   `SHOREBIRD_PATCH_DD_MAX_BYTES` environment variable.
 - 🔧 An OAuth error from the auth service when refreshing a login now always
   asks you to run `shorebird login` again.
+- 🔧 `shorebird login` gets your email from the Shorebird API rather than
+  from the access token.
+- 🔧 A login made with a custom `AUTH_SERVICE_URL` is stored in its own file,
+  so it no longer replaces your login to the default auth service.
 - 🔧 `shorebird account orgs --help` lists every role.
 
 ## 1.6.128 (October 11, 2026)
