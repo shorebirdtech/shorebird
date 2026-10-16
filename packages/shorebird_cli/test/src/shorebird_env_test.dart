@@ -840,6 +840,37 @@ base_url: https://example.com''');
         );
       });
 
+      group('with --dev', () {
+        R runInDevMode<R>(R Function() body) => runScoped(
+          () => runWithOverrides(body),
+          values: {isDevModeRef.overrideWith(() => true)},
+        );
+
+        test('returns the dev server over shorebird.yaml', () {
+          final directory = Directory.systemTemp.createTempSync();
+          File(p.join(directory.path, 'shorebird.yaml')).writeAsStringSync('''
+app_id: test-id
+base_url: https://example.com''');
+          expect(
+            IOOverrides.runZoned(
+              () => runInDevMode(() => shorebirdEnv.hostedUri),
+              getCurrentDirectory: () => directory,
+            ),
+            equals(Uri.parse('https://api-dev.shorebird.dev')),
+          );
+        });
+
+        test('returns hosted url from env if available', () {
+          platform = platform.copyWith(
+            environment: {'SHOREBIRD_HOSTED_URL': 'https://example.com'},
+          );
+          expect(
+            runInDevMode(() => shorebirdEnv.hostedUri),
+            equals(Uri.parse('https://example.com')),
+          );
+        });
+      });
+
       test('returns null when there is no env override or shorebird.yaml', () {
         expect(runWithOverrides(() => shorebirdEnv.hostedUri), isNull);
       });
@@ -942,6 +973,33 @@ base_url: https://example.com''');
           runWithOverrides(() => shorebirdEnv.authServiceUri),
           equals(Uri.parse('https://custom-auth.example.com')),
         );
+      });
+
+      group('with --dev', () {
+        R runInDevMode<R>(R Function() body) => runScoped(
+          () => runWithOverrides(body),
+          values: {isDevModeRef.overrideWith(() => true)},
+        );
+
+        test('returns the dev auth service', () {
+          platform = platform.copyWith(environment: {});
+          expect(
+            runInDevMode(() => shorebirdEnv.authServiceUri),
+            equals(Uri.parse('https://auth-dev.shorebird.dev')),
+          );
+        });
+
+        test('returns URI from env var when set', () {
+          platform = platform.copyWith(
+            environment: {
+              'AUTH_SERVICE_URL': 'https://custom-auth.example.com',
+            },
+          );
+          expect(
+            runInDevMode(() => shorebirdEnv.authServiceUri),
+            equals(Uri.parse('https://custom-auth.example.com')),
+          );
+        });
       });
     });
 
