@@ -420,8 +420,7 @@ void main() {
           verify(
             () => logger.info(
               'This permanently deletes release $releaseVersion and its 2 '
-              'patches. Devices on this release stop getting patches, and '
-              "you can't patch it again.",
+              'patches. Devices on this release get no new patches.',
             ),
           ).called(1);
           verify(
@@ -476,9 +475,9 @@ void main() {
           await runInTerminal();
           verify(
             () => logger.info(
-              'This permanently deletes the android artifacts of release '
-              '$releaseVersion and of its patches. The release and its other '
-              'platforms remain.',
+              'This permanently deletes the android release artifacts of '
+              'release $releaseVersion and the android patch files of its '
+              'patches. The release and its other platforms remain.',
             ),
           ).called(1);
           verifyNever(
@@ -487,6 +486,21 @@ void main() {
               releaseId: any(named: 'releaseId'),
             ),
           );
+        });
+
+        test('states the consequence, then asks, then deletes', () async {
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
+          await runInTerminal();
+          verifyInOrder([
+            () => logger.info(any(that: startsWith('This permanently'))),
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+            () => codePushClientWrapper.deleteRelease(
+              appId: appId,
+              releaseId: release.id,
+            ),
+          ]);
         });
 
         test('exits 1 without deleting when declined', () async {

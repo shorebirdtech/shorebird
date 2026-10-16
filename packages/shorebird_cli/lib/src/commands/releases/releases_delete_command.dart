@@ -119,13 +119,13 @@ class ReleasesDeleteCommand extends ShorebirdCommand
         final n => 'release $releaseVersion and its $n patches',
       };
       consequence =
-          'This permanently deletes $what. Devices on this release stop '
-          "getting patches, and you can't patch it again.";
+          'This permanently deletes $what. Devices on this release get no new '
+          'patches.';
     } else {
       consequence =
-          'This permanently deletes the ${platform.value} artifacts of '
-          'release $releaseVersion and of its patches. The release and its '
-          'other platforms remain.';
+          'This permanently deletes the ${platform.value} release artifacts '
+          'of release $releaseVersion and the ${platform.value} patch files '
+          'of its patches. The release and its other platforms remain.';
     }
 
     final gateErrorCode = confirmDelete(

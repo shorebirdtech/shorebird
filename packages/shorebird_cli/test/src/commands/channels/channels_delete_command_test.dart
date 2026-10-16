@@ -230,6 +230,21 @@ void main() {
           ).called(1);
         });
 
+        test('states the consequence, then asks, then deletes', () async {
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
+          await runInTerminal();
+          verifyInOrder([
+            () => logger.info(any(that: startsWith('This permanently'))),
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+            () => codePushClientWrapper.deleteChannel(
+              appId: appId,
+              channelId: qaChannel.id,
+            ),
+          ]);
+        });
+
         test('exits 1 without deleting when declined', () async {
           when(
             () => logger.confirm(any(), hint: any(named: 'hint')),

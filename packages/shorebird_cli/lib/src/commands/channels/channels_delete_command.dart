@@ -43,7 +43,9 @@ class ChannelsDeleteCommand extends ShorebirdCommand
   @override
   String get description =>
       'Deletes a channel from an app.\n\n'
-      'Devices on the channel stop receiving patches.\n\n'
+      'Deletes the channel and its promotion history. Patches are not '
+      'deleted: they stay on their releases and on any other channel they '
+      'were promoted to.\n\n'
       'The built-in tracks stable, beta, and staging are permanent and cannot '
       'be deleted.\n\n'
       'In a terminal, asks for confirmation. Pass --$yesArgName to skip the '

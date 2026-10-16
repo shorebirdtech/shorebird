@@ -222,6 +222,18 @@ void main() {
           verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
         });
 
+        test('states the consequence, then asks, then deletes', () async {
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn(displayName);
+          await runInTerminal();
+          verifyInOrder([
+            () => logger.info(any(that: startsWith('This permanently'))),
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+            () => codePushClientWrapper.deleteApp(appId: appId),
+          ]);
+        });
+
         test('exits 1 when the typed name does not match', () async {
           when(
             () => logger.prompt(any(), hint: any(named: 'hint')),
