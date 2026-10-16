@@ -13,7 +13,7 @@ void main() {
             id: 0,
             patchId: 0,
             arch: 'example',
-            platform: ReleasePlatform.values.first,
+            platform: ReleasePlatform.android,
             hash: 'example',
             size: 0,
             createdAt: DateTime.utc(2024),

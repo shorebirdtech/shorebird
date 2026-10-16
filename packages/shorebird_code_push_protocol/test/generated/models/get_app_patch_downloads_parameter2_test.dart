@@ -5,10 +5,10 @@ import 'package:test/test.dart';
 void main() {
   group('GetAppPatchDownloadsParameter2', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = GetAppPatchDownloadsParameter2.values.first;
+      const instance = GetAppPatchDownloadsParameter2.hour;
       final parsed = GetAppPatchDownloadsParameter2.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

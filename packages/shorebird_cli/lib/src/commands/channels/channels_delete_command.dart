@@ -2,7 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
-import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -25,21 +25,15 @@ final _defaultTrackNames = <String>{
 /// Delete a channel from an app.
 /// {@endtemplate}
 class ChannelsDeleteCommand extends ShorebirdCommand
-    with AppScopedCommand, ConfirmNameArgument {
+    with AppScopedCommand, ConfirmDelete {
   /// {@macro channels_delete_command}
   ChannelsDeleteCommand() {
-    argParser
-      ..addOption(
-        'name',
-        help: 'The name of the channel to delete (e.g. "qa").',
-        mandatory: true,
-      )
-      ..addOption(
-        confirmNameArgName,
-        help:
-            'The name of the channel again. Must match exactly, which is how '
-            'the delete is confirmed.',
-      );
+    argParser.addOption(
+      'name',
+      help: 'The name of the channel to delete (e.g. "qa").',
+      mandatory: true,
+    );
+    addConfirmDeleteOptions();
     addAppScopeOptions();
   }
 
@@ -49,15 +43,17 @@ class ChannelsDeleteCommand extends ShorebirdCommand
   @override
   String get description =>
       'Deletes a channel from an app.\n\n'
-      'Devices on the channel stop receiving patches.\n\n'
+      'Deletes the channel and its promotion history. Patches are not '
+      'deleted: they stay on their releases and on any other channel they '
+      'were promoted to.\n\n'
       'The built-in tracks stable, beta, and staging are permanent and cannot '
       'be deleted.\n\n'
-      'Requires --$confirmNameArgName=<channel name>; there is no prompt, so '
-      'this behaves the same in a terminal and in CI. Run '
-      '"shorebird channels list" to see the names an app has.\n\n'
+      'In a terminal, asks for confirmation. Pass --$yesArgName to skip the '
+      'prompt; it is required when not running interactively (no terminal, '
+      'CI, or --json). Run "shorebird channels list" to see the names an app '
+      'has.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird channels delete --app-id <id> --name qa '
-        '--confirm-name qa --json',
+        'shorebird channels delete --app-id <id> --name qa --yes --json',
       )}';
 
   @override
@@ -97,9 +93,13 @@ class ChannelsDeleteCommand extends ShorebirdCommand
       );
     }
 
-    final gateErrorCode = checkConfirmName(
-      expected: channelName,
-      resourceDescription: 'channel "$channelName"',
+    final gateErrorCode = confirmDelete(
+      name: channelName,
+      description: 'channel "$channelName" from app "$appId"',
+      consequence:
+          'This permanently deletes channel "$channelName" and its promotion '
+          'history. Its patches are not deleted: they stay on their releases '
+          'and on any other channel they were promoted to.',
     );
     if (gateErrorCode != null) return gateErrorCode;
 

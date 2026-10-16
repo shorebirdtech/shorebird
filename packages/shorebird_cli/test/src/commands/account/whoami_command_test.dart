@@ -21,7 +21,6 @@ void main() {
       id: 1,
       email: 'user@example.com',
       displayName: 'Example User',
-      hasActiveSubscription: true,
       jwtIssuer: 'https://accounts.google.com',
       patchOverageLimit: 10000,
     );
@@ -116,9 +115,6 @@ void main() {
           () => logger.info(any(that: contains('Plan:           enterprise'))),
         ).called(1);
         verify(
-          () => logger.info(any(that: contains('Subscription:   active'))),
-        ).called(1);
-        verify(
           () => logger.info(any(that: contains('Overage limit:  10000'))),
         ).called(1);
       });
@@ -177,14 +173,11 @@ void main() {
           ).thenAnswer((_) async => 'free');
         });
 
-        test('prints plan level and no subscription', () async {
+        test('prints the free plan level', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(
             () => logger.info(any(that: contains('Plan:           free'))),
-          ).called(1);
-          verify(
-            () => logger.info(any(that: contains('Subscription:   none'))),
           ).called(1);
         });
 
@@ -285,6 +278,34 @@ void main() {
         expect(userData['plan'], 'paid');
         expect(userData['plan_level'], 'enterprise');
         expect(userData['overage_limit'], 10000);
+      });
+
+      test('reports plan as free on the free plan level', () async {
+        when(
+          () => codePushClientWrapper.getPlanLevel(),
+        ).thenAnswer((_) async => 'free');
+        final json = (await captureJson(
+          () => runJsonMode(command.run),
+        )).json;
+        final userData =
+            (json['data'] as Map<String, dynamic>)['user']
+                as Map<String, dynamic>;
+        expect(userData['plan'], 'free');
+        expect(userData['plan_level'], 'free');
+      });
+
+      test('reports plan as null when the server reports no level', () async {
+        when(
+          () => codePushClientWrapper.getPlanLevel(),
+        ).thenAnswer((_) async => null);
+        final json = (await captureJson(
+          () => runJsonMode(command.run),
+        )).json;
+        final userData =
+            (json['data'] as Map<String, dynamic>)['user']
+                as Map<String, dynamic>;
+        expect(userData['plan'], isNull);
+        expect(userData['plan_level'], isNull);
       });
 
       test('does not leak protocol-internal fields', () async {

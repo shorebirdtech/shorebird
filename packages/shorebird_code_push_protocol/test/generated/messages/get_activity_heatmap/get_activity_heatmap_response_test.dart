@@ -6,7 +6,7 @@ void main() {
   group('GetActivityHeatmapResponse', () {
     test('round-trips via maybeFromJson/toJson', () {
       final instance = GetActivityHeatmapResponse(
-        cells: <ActivityHeatmapCell>[
+        cells: const <ActivityHeatmapCell>[
           ActivityHeatmapCell(
             dayOfWeekUtc: 0,
             hourUtc: 0,
@@ -20,7 +20,7 @@ void main() {
       );
       final parsed = GetActivityHeatmapResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

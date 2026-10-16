@@ -9,15 +9,12 @@ void main() {
         releaseVersion: 'example',
         isLatest: false,
         granularity: 'example',
-        range: MetricsRange(
-          start: DateTime.utc(2024),
-          end: DateTime.utc(2024),
-        ),
+        range: MetricsRange(start: DateTime.utc(2024), end: DateTime.utc(2024)),
         asOf: DateTime.utc(2024),
         patches: <PatchAdoptionEntry>[
           PatchAdoptionEntry(
             patchNumber: 0,
-            targetPlatforms: <ReleasePlatform>[ReleasePlatform.values.first],
+            targetPlatforms: const <ReleasePlatform>[ReleasePlatform.android],
             isRolledBack: false,
             series: <PatchAdoptionPoint>[
               PatchAdoptionPoint(

@@ -7,12 +7,9 @@ void main() {
     test('round-trips via maybeFromJson/toJson', () {
       final instance = PatchMetricWindow(
         count: 0,
-        range: MetricsRange(
-          start: DateTime.utc(2024),
-          end: DateTime.utc(2024),
-        ),
+        range: MetricsRange(start: DateTime.utc(2024), end: DateTime.utc(2024)),
       );
-      final parsed = PatchMetricWindow.maybeFromJson(instance.toJson());
+      final parsed = PatchMetricWindow.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

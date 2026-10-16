@@ -10,5 +10,13 @@ void main() {
       final instance = runScoped(() => httpClient, values: {httpClientRef});
       expect(instance, isA<TracingClient>());
     });
+
+    test('creates a non-retrying instance', () {
+      final instance = runScoped(
+        () => nonRetryingHttpClient,
+        values: {nonRetryingHttpClientRef},
+      );
+      expect(instance, isA<TracingClient>());
+    });
   });
 }

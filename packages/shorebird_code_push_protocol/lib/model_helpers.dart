@@ -8,13 +8,12 @@ DateTime? maybeParseDateTime(String? value) {
   return DateTime.parse(value);
 }
 
-/// Parse a nullable RFC 3339 full-date string (`YYYY-MM-DD`) as a DateTime.
-/// Time and timezone components are zero.
-DateTime? maybeParseDate(String? value) {
+/// Parse a nullable string as a Uri.
+Uri? maybeParseUri(String? value) {
   if (value == null) {
     return null;
   }
-  return DateTime.parse(value);
+  return Uri.parse(value);
 }
 
 /// Runs [build] to construct a `fromJson`-parsed value of type [T],

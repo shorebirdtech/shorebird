@@ -79,13 +79,13 @@ class PatchCheckRequest {
   Map<String, dynamic> toJson() {
     return {
       'release_version': releaseVersion,
-      'patch_number': patchNumber,
+      'patch_number': ?patchNumber,
       'platform': platform.toJson(),
       'arch': arch,
       'app_id': appId,
       'channel': channel,
-      'client_id': clientId,
-      'current_patch_number': currentPatchNumber,
+      'client_id': ?clientId,
+      'current_patch_number': ?currentPatchNumber,
     };
   }
 

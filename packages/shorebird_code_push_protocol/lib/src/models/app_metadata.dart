@@ -108,11 +108,11 @@ class AppMetadata {
   /// Server-emitted URL for the app's launcher icon, sourced from
   /// the most recent analyzed iOS release (or Android, when iOS
   /// has no analyzed release with an icon). Requires the same
-  /// auth as the rest of the apps API. The URL embeds the picked
-  /// release's id as a `v` query parameter so it can be cached
-  /// indefinitely; when a different release becomes the icon
-  /// source the URL changes and clients re-fetch. Omitted when
-  /// no analyzed release has an icon.
+  /// auth as the rest of the apps API. The URL embeds a digest
+  /// of the icon as a `v` query parameter so it can be cached
+  /// indefinitely; a release that leaves the icon unchanged
+  /// leaves the URL unchanged too. Omitted when no analyzed
+  /// release has an icon.
   final String? iconUrl;
 
   /// Converts an [AppMetadata] to a `Map<String, dynamic>`.
@@ -120,18 +120,18 @@ class AppMetadata {
     return {
       'app_id': appId,
       'display_name': displayName,
-      'latest_release_version': latestReleaseVersion,
-      'latest_patch_number': latestPatchNumber,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'platforms': platforms?.map((e) => e.toJson()).toList(),
-      'latest_releases': latestReleases?.map(
+      'latest_release_version': ?latestReleaseVersion,
+      'latest_patch_number': ?latestPatchNumber,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'platforms': ?platforms?.map((e) => e.toJson()).toList(),
+      'latest_releases': ?latestReleases?.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
-      'pending_releases': pendingReleases?.map(
+      'pending_releases': ?pendingReleases?.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
-      'icon_url': iconUrl,
+      'icon_url': ?iconUrl,
     };
   }
 

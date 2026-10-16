@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('GetPatchAdoptionParameter3', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = GetPatchAdoptionParameter3.values.first;
+      const instance = GetPatchAdoptionParameter3.hour;
       final parsed = GetPatchAdoptionParameter3.maybeFromJson(
         instance.toJson(),
       )!;

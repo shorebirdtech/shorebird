@@ -71,8 +71,8 @@ class CreatePatchArtifactRequest {
       'arch': arch,
       'platform': platform.toJson(),
       'hash': hash,
-      'hash_signature': hashSignature,
-      'podfile_lock_hash': podfileLockHash,
+      'hash_signature': ?hashSignature,
+      'podfile_lock_hash': ?podfileLockHash,
       'size': size,
     };
   }

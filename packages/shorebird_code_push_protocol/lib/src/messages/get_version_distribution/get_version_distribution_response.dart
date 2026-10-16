@@ -71,7 +71,7 @@ class GetVersionDistributionResponse {
       'entries': entries.map((e) => e.toJson()).toList(),
       'total_devices': totalDevices,
       'active_window_days': activeWindowDays,
-      'as_of': asOf.toIso8601String(),
+      'as_of': asOf.toUtc().toIso8601String(),
     };
   }
 

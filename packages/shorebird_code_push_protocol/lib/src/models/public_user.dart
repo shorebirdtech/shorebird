@@ -49,7 +49,7 @@ class PublicUser {
     return {
       'id': id,
       'email': email,
-      'display_name': displayName,
+      'display_name': ?displayName,
     };
   }
 

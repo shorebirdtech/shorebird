@@ -67,8 +67,8 @@ dump_device_log() {
 # (see ShorebirdEnv.hostedUri), and the e2e workflow already sets it per job, so
 # take it from the environment when it is there and default to dev for local
 # runs. `shorebird release` and `shorebird patch` pick it up from the
-# environment or from shorebird.yaml below; the cleanup trap calls the API
-# directly and needs it too.
+# environment or from shorebird.yaml below, and so does the cleanup trap's
+# `shorebird api`.
 export SHOREBIRD_HOSTED_URL="${SHOREBIRD_HOSTED_URL:-https://api-dev.shorebird.dev}"
 
 # `shorebird init` mints a brand new app on every leg, and the nightly runs 30
@@ -78,18 +78,13 @@ export SHOREBIRD_HOSTED_URL="${SHOREBIRD_HOSTED_URL:-https://api-dev.shorebird.d
 # made it shed requests with a 429. Delete the app this leg created, whether or
 # not the test passed, so the list stays flat.
 #
-# There is no `shorebird apps delete` command, so this goes straight to the API.
-# The x-version value must satisfy the server's `supportedClientVersions`; it is
-# the same value the CLI sends, from
-# packages/shorebird_code_push_client/lib/src/version.dart.
+# There is no `shorebird apps delete` command, so this calls the API through
+# `shorebird api`, which signs in the same way the commands above do.
 cleanup_app() {
     local status=$?
     if [[ -n "${APP_ID:-}" ]]; then
         echo "Deleting e2e app $APP_ID"
-        curl --silent --show-error --fail-with-body -X DELETE \
-            -H "Authorization: Bearer $SHOREBIRD_TOKEN" \
-            -H "x-version: 0.9.0+1" \
-            "$SHOREBIRD_HOSTED_URL/api/v1/apps/$APP_ID" ||
+        shorebird api -X DELETE "apps/$APP_ID" ||
             echo "⚠️  Failed to delete e2e app $APP_ID; it will need pruning."
     fi
     return $status

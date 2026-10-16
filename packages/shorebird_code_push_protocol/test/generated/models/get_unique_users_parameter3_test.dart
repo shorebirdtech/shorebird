@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('GetUniqueUsersParameter3', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = GetUniqueUsersParameter3.values.first;
+      const instance = GetUniqueUsersParameter3.platform;
       final parsed = GetUniqueUsersParameter3.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));

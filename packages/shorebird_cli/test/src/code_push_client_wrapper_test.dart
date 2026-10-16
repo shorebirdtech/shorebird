@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
@@ -405,6 +406,35 @@ void main() {
           verify(() => progress.fail(error)).called(1);
         });
 
+        test('reports the server error code and exits with an '
+            'ApiErrorExit when the API call fails', () async {
+          const error = CodePushException(
+            message: 'Plan lacks this feature.',
+            response: ErrorResponse(
+              code: 'shorebird_plan_insufficient_tier',
+              message: 'Plan lacks this feature.',
+            ),
+          );
+          when(() => codePushClient.getApps()).thenThrow(error);
+
+          await expectLater(
+            () => runWithOverrides(codePushClientWrapper.getApps),
+            throwsA(
+              isA<ApiErrorExit>()
+                  .having((e) => e.error, 'error', same(error))
+                  .having(
+                    (e) => e.exitCode,
+                    'exitCode',
+                    ExitCode.software.code,
+                  ),
+            ),
+          );
+          verify(() => progress.fail('$error')).called(1);
+          verify(
+            () => logger.info('Error code: shorebird_plan_insufficient_tier'),
+          ).called(1);
+        });
+
         test(
           '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
           () async {
@@ -629,6 +659,99 @@ void main() {
             () => codePushClientWrapper.deleteApp(appId: appId),
           );
 
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteRelease', () {
+        const releaseId = 42;
+
+        test('exits with code 70 when deleting the release fails', () async {
+          final error = CodePushForbiddenException(message: 'Forbidden');
+          when(
+            () => codePushClient.deleteRelease(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteRelease(
+                appId: appId,
+                releaseId: releaseId,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('$error')).called(1);
+        });
+
+        test('completes when the release is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteRelease(
+              appId: appId,
+              releaseId: releaseId,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteRelease(
+              appId: appId,
+              releaseId: releaseId,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteReleaseArtifacts', () {
+        const releaseId = 42;
+
+        test('exits with code 70 when deleting artifacts fails', () async {
+          final error = CodePushForbiddenException(message: 'Forbidden');
+          when(
+            () => codePushClient.deleteReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteReleaseArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                platform: ReleasePlatform.ios,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('$error')).called(1);
+        });
+
+        test('completes when the artifacts are successfully deleted', () async {
+          when(
+            () => codePushClient.deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            ),
+          );
+
+          verify(
+            () => logger.progress('Deleting ios release artifacts'),
+          ).called(1);
           verify(() => progress.complete()).called(1);
         });
       });
@@ -1558,6 +1681,47 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               () => logger.info(any(that: contains('already exists'))),
             ).called(numArtifactsUploaded);
             verifyNever(() => progress.fail(error));
+          },
+        );
+
+        test(
+          'exits with code 70 when storage rejects an upload with a 409',
+          () async {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(
+              const CodePushUploadException(
+                message: 'Failed to upload artifact (Conflict 409)',
+                statusCode: HttpStatus.conflict,
+              ),
+            );
+            setUpProjectRoot();
+
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: p.join(projectRoot.path, aabPath),
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verifyNever(
+              () => logger.info(any(that: contains('already exists'))),
+            );
           },
         );
 

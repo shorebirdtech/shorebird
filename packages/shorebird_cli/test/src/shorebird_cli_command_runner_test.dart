@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -19,6 +20,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart' as helpers;
@@ -268,6 +270,21 @@ ${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}'''),
       verify(() => logger.info('exception usage')).called(1);
     });
 
+    test('points apps delete --yes at --confirm-name', () async {
+      final result = await runWithOverrides(
+        () => commandRunner.run(['apps', 'delete', '--yes']),
+      );
+      expect(result, equals(ExitCode.usage.code));
+      verify(
+        () => logger.err(
+          '''
+shorebird apps delete has no --yes flag, so an app is never deleted without naming it.
+Pass the app's display name instead: ${lightCyan.wrap('--confirm-name "<display name>"')}''',
+        ),
+      ).called(1);
+      verifyNever(() => logger.err(any(that: contains('To proxy an option'))));
+    });
+
     group('unknown option on patch', () {
       const overrideHint = '''
 shorebird patch has no --force flag. The patch safety checks are bypassed per check:
@@ -359,6 +376,33 @@ Engine • revision $shorebirdEngineRevision'''),
           () => commandRunner.run(['--verbose']),
         );
         expect(result, equals(ExitCode.success.code));
+      });
+    });
+
+    group('--dev', () {
+      test('selects the dev environment for the command', () async {
+        final command = _RecordsDevModeCommand();
+        commandRunner.addCommand(command);
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--dev', 'records-dev-mode']),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        expect(command.isDevMode, isTrue);
+      });
+
+      test('is off by default', () async {
+        final command = _RecordsDevModeCommand();
+        commandRunner.addCommand(command);
+
+        await runWithOverrides(() => commandRunner.run(['records-dev-mode']));
+
+        expect(command.isDevMode, isFalse);
+      });
+
+      test('is not shown in usage', () {
+        expect(commandRunner.usage, isNot(contains('--dev')));
       });
     });
 
@@ -463,6 +507,50 @@ Engine • revision $shorebirdEngineRevision'''),
           );
           verify(() => logger.info(any(that: contains('--verbose')))).called(1);
         });
+      });
+    });
+
+    group('when the command reserves stdout', () {
+      test('does not print the failure hint', () async {
+        commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 1));
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['reserves-stdout']),
+        );
+
+        expect(result, equals(1));
+        verifyNever(
+          () => logger.info(
+            any(that: contains("If you aren't sure why this command failed")),
+          ),
+        );
+      });
+
+      test('prints the update notice to stderr', () async {
+        when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
+        commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 0));
+        final stdoutLines = <String>[];
+        final stderrLines = <String>[];
+        final realStderr = stderr;
+
+        await helpers.captureStdout(
+          () => IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => commandRunner.run(['reserves-stdout']),
+            ),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrLines,
+            ),
+          ),
+          captured: stdoutLines,
+        );
+
+        expect(stdoutLines, isEmpty);
+        expect(
+          stderrLines,
+          contains('A new version of shorebird is available!'),
+        );
       });
     });
 
@@ -715,6 +803,44 @@ Engine • revision $shorebirdEngineRevision'''),
           expect(
             stdoutOutput.where((line) => line.contains('"status"')),
             isEmpty,
+          );
+        });
+      });
+
+      group('when an API call fails', () {
+        test('emits one envelope with the server message, code and '
+            'details', () async {
+          commandRunner.addCommand(
+            _FailingCommand(
+              thenThrow: ApiErrorExit(
+                const CodePushException(
+                  message: 'Plan lacks this feature.',
+                  response: ErrorResponse(
+                    code: 'shorebird_plan_insufficient_tier',
+                    message: 'Plan lacks this feature.',
+                  ),
+                  details: 'Upgrade to Business.',
+                ),
+                ExitCode.software.code,
+              ),
+            ),
+          );
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'failing']),
+            ),
+          );
+          expect(result, equals(ExitCode.software.code));
+          expect(stdoutOutput, hasLength(1));
+          final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+          expect(
+            json['error'],
+            equals({
+              'code': 'process_exit',
+              'message': 'Plan lacks this feature.',
+              'api_code': 'shorebird_plan_insufficient_tier',
+              'details': 'Upgrade to Business.',
+            }),
           );
         });
       });
@@ -1226,6 +1352,23 @@ Engine • revision $shorebirdEngineRevision'''),
   });
 }
 
+/// Records whether the dev environment was selected when it ran.
+class _RecordsDevModeCommand extends ShorebirdCommand {
+  bool? isDevMode;
+
+  @override
+  String get name => 'records-dev-mode';
+
+  @override
+  String get description => 'Records isDevMode';
+
+  @override
+  Future<int> run() async {
+    isDevMode = read(isDevModeRef);
+    return ExitCode.success.code;
+  }
+}
+
 class _TestCommand extends ShorebirdCommand {
   _TestCommand(this.exitCode);
 
@@ -1241,6 +1384,25 @@ class _TestCommand extends ShorebirdCommand {
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
   }
+}
+
+/// Returns [exitCode], and owns stdout the way `shorebird api` does.
+class _ReservesStdoutCommand extends ShorebirdCommand {
+  _ReservesStdoutCommand({required this.exitCode});
+
+  final int exitCode;
+
+  @override
+  String get name => 'reserves-stdout';
+
+  @override
+  String get description => 'Reserves stdout command';
+
+  @override
+  bool get reservesStdout => true;
+
+  @override
+  Future<int> run() async => exitCode;
 }
 
 /// Writes a human line to stdout, then an envelope when in JSON mode.

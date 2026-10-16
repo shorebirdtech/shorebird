@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('OrganizationType', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = OrganizationType.values.first;
+      const instance = OrganizationType.personal;
       final parsed = OrganizationType.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));

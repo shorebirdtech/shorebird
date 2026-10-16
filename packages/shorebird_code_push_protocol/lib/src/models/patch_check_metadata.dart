@@ -56,7 +56,7 @@ class PatchCheckMetadata {
       'number': number,
       'download_url': downloadUrl,
       'hash': hash,
-      'hash_signature': hashSignature,
+      'hash_signature': ?hashSignature,
     };
   }
 

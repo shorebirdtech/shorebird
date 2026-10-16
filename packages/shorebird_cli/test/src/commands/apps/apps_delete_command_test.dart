@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/apps/apps.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -84,6 +85,7 @@ void main() {
       when(() => argResults['app-id']).thenReturn(null);
       when(() => argResults['flavor']).thenReturn(null);
       when(() => argResults['confirm-name']).thenReturn(displayName);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -115,35 +117,40 @@ void main() {
       expect(command.description, startsWith('Permanently deletes an app.'));
     });
 
-    test('deletes the app when the name matches', () async {
+    test('has --confirm-name and no --yes', () {
+      final option = command.argParser.options['confirm-name']!;
+      expect(option.hide, isFalse);
+      expect(option.help, contains("The app's display name"));
+      expect(command.argParser.options.containsKey('yes'), isFalse);
+    });
+
+    test('deletes the app with a matching --confirm-name', () async {
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
+      verify(
+        () => logger.info(any(that: startsWith('This permanently deletes'))),
+      ).called(1);
       verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
       verify(
         () => logger.success('Deleted "$displayName" ($appId).'),
       ).called(1);
     });
 
-    group('the --confirm-name gate', () {
-      test('refuses when --confirm-name is absent', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
+    group('confirmation', () {
+      setUp(() => when(() => argResults['confirm-name']).thenReturn(null));
+
+      test('requires --confirm-name when not interactive', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verifyNeverDeleted();
         verify(
-          () => logger.info('Re-run with --confirm-name="$displayName".'),
+          () => logger.err(
+            '--confirm-name required when not running interactively',
+          ),
         ).called(1);
       });
 
-      test('refuses when --confirm-name does not match', () async {
-        when(() => argResults['confirm-name']).thenReturn('Wrong Name');
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
-        verifyNeverDeleted();
-      });
-
       test('emits a usage_error envelope under --json', () async {
-        when(() => argResults['confirm-name']).thenReturn(null);
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
         );
@@ -151,7 +158,142 @@ void main() {
         verifyNeverDeleted();
         final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], 'usage_error');
-        expect(error['hint'], contains(displayName));
+        expect(
+          error['message'],
+          '--confirm-name required when not running interactively',
+        );
+        expect(error['hint'], contains('--confirm-name "$displayName"'));
+      });
+
+      group('when stdin is a terminal but stdout is not', () {
+        setUp(
+          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
+        );
+
+        test('requires --confirm-name without prompting', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(command.run),
+            captured: [],
+            hasTerminal: false,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          verifyNeverDeleted();
+          verify(
+            () => logger.err(
+              '--confirm-name required when not running interactively',
+            ),
+          ).called(1);
+          verifyNever(() => logger.info(any(that: contains('permanently'))));
+          verifyNever(() => logger.prompt(any(), hint: any(named: 'hint')));
+          verifyNever(() => logger.confirm(any(), hint: any(named: 'hint')));
+        });
+      });
+
+      group('in a terminal', () {
+        Future<int> runInTerminal() => captureStdout(
+          () => runWithOverrides(command.run),
+          captured: [],
+          hasTerminal: true,
+        );
+
+        setUp(
+          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
+        );
+
+        test('deletes when the typed name matches', () async {
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn(displayName);
+          final result = await runInTerminal();
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.info(
+              'This permanently deletes app "$displayName" ($appId): its 1 '
+              'release and its patches, its channels and its collaborators. '
+              'Devices running it stop getting patches.',
+            ),
+          ).called(1);
+          verify(
+            () => logger.prompt(
+              'Type $displayName to confirm deletion:',
+              hint: any(named: 'hint'),
+            ),
+          ).called(1);
+          verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
+        });
+
+        test('states the consequence, then asks, then deletes', () async {
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn(displayName);
+          await runInTerminal();
+          verifyInOrder([
+            () => logger.info(any(that: startsWith('This permanently'))),
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+            () => codePushClientWrapper.deleteApp(appId: appId),
+          ]);
+        });
+
+        test('exits 1 when the typed name does not match', () async {
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn('Wrong Name');
+          final result = await runInTerminal();
+          expect(result, equals(declinedExitCode));
+          verifyNeverDeleted();
+          verify(
+            () => logger.err(
+              '"Wrong Name" does not match "$displayName". Nothing was '
+              'deleted.',
+            ),
+          ).called(1);
+        });
+      });
+
+      test('rejects a --confirm-name that does not match', () async {
+        when(() => argResults['confirm-name']).thenReturn('Wrong Name');
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verifyNeverDeleted();
+        verify(
+          () => logger.err(
+            '--confirm-name "Wrong Name" does not match "$displayName".',
+          ),
+        ).called(1);
+        verifyNever(() => logger.warn(any()));
+      });
+    });
+
+    group('describes how many releases are deleted', () {
+      Future<void> expectConsequence(int count, String phrase) async {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenAnswer((_) async => List.filled(count, release));
+        when(() => argResults['confirm-name']).thenReturn(null);
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        when(
+          () => logger.prompt(any(), hint: any(named: 'hint')),
+        ).thenReturn(displayName);
+        await captureStdout(
+          () => runWithOverrides(command.run),
+          captured: [],
+          hasTerminal: true,
+        );
+        verify(() => logger.info(any(that: contains(phrase)))).called(1);
+      }
+
+      test('with no releases', () async {
+        await expectConsequence(0, '($appId): it has no releases, its');
+      });
+
+      test('with several releases', () async {
+        await expectConsequence(
+          3,
+          '($appId): all 3 of its releases and their patches,',
+        );
       });
     });
 
@@ -206,6 +348,7 @@ void main() {
         expect(data['release_count'], 1);
         expect(data['platforms'], equals(['android', 'ios']));
         expect(data['deleted'], isTrue);
+        verifyNever(() => logger.info(any()));
       });
 
       test('handles an app with no releases', () async {

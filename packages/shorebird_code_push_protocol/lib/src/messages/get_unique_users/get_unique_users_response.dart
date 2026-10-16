@@ -76,7 +76,7 @@ class GetUniqueUsersResponse {
   /// Converts a [GetUniqueUsersResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'as_of': asOf.toIso8601String(),
+      'as_of': asOf.toUtc().toIso8601String(),
       'granularity': granularity,
       'current': current.toJson(),
       'previous': previous?.toJson(),

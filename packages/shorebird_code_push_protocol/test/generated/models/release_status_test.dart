@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('ReleaseStatus', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = ReleaseStatus.values.first;
+      const instance = ReleaseStatus.draft;
       final parsed = ReleaseStatus.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));

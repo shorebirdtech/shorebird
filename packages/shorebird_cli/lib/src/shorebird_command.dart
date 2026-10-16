@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
@@ -50,6 +51,15 @@ abstract class ShorebirdCommand extends Command<int> {
   /// stdout carries only the envelope.
   @override
   void printUsage() => logger.info(usage);
+
+  /// Whether stdout carries only this command's output, such as the response
+  /// body `shorebird api` prints.
+  ///
+  /// When true, the command runner keeps its own messages (the hint printed
+  /// after a failure, the notice that an upgrade is available) off stdout:
+  /// the failure hint is skipped, since the command reports its own errors,
+  /// and the upgrade notice goes to stderr.
+  bool get reservesStdout => false;
 
   /// Whether the `--json` global flag was passed.
   ///
@@ -171,11 +181,15 @@ abstract class ShorebirdCommand extends Command<int> {
     required JsonErrorCode code,
     required String message,
     String? hint,
+    String? apiCode,
+    String? details,
   }) {
     JsonResult.error(
       code: code,
       message: message,
       hint: hint,
+      apiCode: apiCode,
+      details: details,
       command: fullCommandName,
     ).write();
   }
@@ -201,6 +215,36 @@ abstract class ShorebirdCommand extends Command<int> {
     return exitCode ?? ExitCode.usage.code;
   }
 
+  /// Reports [error], a failed Shorebird API call, in whichever output mode is
+  /// active and returns [ExitCode.software].
+  ///
+  /// [message] says what failed (e.g. "Failed to fetch patch installs.") and
+  /// is followed by the server's own message. The server's error code and
+  /// details, when present, are reported too: as `api_code` and `details` in
+  /// the `--json` error envelope (whose `code` is [code]), and as extra lines
+  /// otherwise. This lets a caller tell, for example, a plan that lacks a
+  /// feature (`shorebird_plan_insufficient_tier`) from a missing resource.
+  int reportApiError(
+    CodePushException error, {
+    required String message,
+    JsonErrorCode code = JsonErrorCode.fetchFailed,
+  }) {
+    final fullMessage = '$message ${error.message}';
+    if (isJsonMode) {
+      emitJsonError(
+        code: code,
+        message: fullMessage,
+        apiCode: error.code,
+        details: error.details,
+      );
+    } else {
+      logger.err(fullMessage);
+      if (error.details case final details?) logger.info(details);
+      if (error.code case final apiCode?) logger.info('Error code: $apiCode');
+    }
+    return ExitCode.software.code;
+  }
+
   /// Reports a failed precondition and returns its exit code.
   ///
   /// The explanation was already logged when [error] was thrown, so in human
@@ -224,7 +268,9 @@ abstract class ShorebirdCommand extends Command<int> {
   ///
   /// With `--json`, a [ProcessExit] is reported as an error envelope carrying
   /// [code] and [message], and its exit code is returned for the caller to
-  /// return from `run`. The failure is reported here rather than in the
+  /// return from `run`. A failed API call ([ApiErrorExit]) adds the server's
+  /// message to [message] and reports its error code and details, as
+  /// [reportApiError] does. The failure is reported here rather than in the
   /// command runner, so the runner never sees it and doesn't emit a second
   /// envelope. Otherwise the [ProcessExit] is rethrown, and the error the
   /// call already logged stands.
@@ -243,6 +289,9 @@ abstract class ShorebirdCommand extends Command<int> {
       // A failed precondition reports itself (as precondition_failed); don't
       // relabel it as this call's error.
       rethrow;
+    } on ApiErrorExit catch (e) {
+      if (!isJsonMode) rethrow;
+      return reportApiError(e.error, message: message, code: code);
     } on ProcessExit catch (e) {
       if (!isJsonMode) rethrow;
       emitJsonError(code: code, message: message);

@@ -96,14 +96,14 @@ class Release {
       'app_id': appId,
       'version': version,
       'flutter_revision': flutterRevision,
-      'flutter_version': flutterVersion,
-      'display_name': displayName,
+      'flutter_version': ?flutterVersion,
+      'display_name': ?displayName,
       'platform_statuses': platformStatuses.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'notes': notes,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'notes': ?notes,
     };
   }
 

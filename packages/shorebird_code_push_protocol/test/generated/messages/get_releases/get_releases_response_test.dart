@@ -12,8 +12,8 @@ void main() {
             appId: 'example',
             version: 'example',
             flutterRevision: 'example',
-            platformStatuses: {
-              ReleasePlatform.values.first: ReleaseStatus.values.first,
+            platformStatuses: const {
+              ReleasePlatform.android: ReleaseStatus.draft,
             },
             createdAt: DateTime.utc(2024),
             updatedAt: DateTime.utc(2024),

@@ -11,7 +11,7 @@ void main() {
         flutterRevision: 'example',
         createdAt: DateTime.utc(2024),
         updatedAt: DateTime.utc(2024),
-        status: ReleaseStatus.values.first,
+        status: ReleaseStatus.draft,
         analysis: const ReleaseAnalysis(
           displayName: 'example',
           packageName: 'example',

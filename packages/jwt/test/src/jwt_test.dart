@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -114,6 +115,7 @@ void main() {
 
   setUp(() {
     publicKeyStores.clear();
+    recentlyFetchedUrls.clear();
     getOverride = (Uri uri) async {
       return Response(
         keyStoreResponseBody,
@@ -722,6 +724,285 @@ void main() {
           expect(jwt.payload.sub, equals('test-user-123'));
           expect(jwt.payload.iss, equals(rsaJwkIssuer));
           expect(jwt.payload.aud, equals(rsaJwkAudience));
+        });
+      });
+
+      String signed({
+        required DateTime iat,
+        required DateTime exp,
+        String kid = rsaJwkKid,
+        pc.RSAPrivateKey? privateKey,
+      }) => _createSignedJwt(
+        header: {'alg': 'RS256', 'kid': kid, 'typ': 'JWT'},
+        payload: {
+          'iss': rsaJwkIssuer,
+          'aud': rsaJwkAudience,
+          'sub': 'test-user-123',
+          'iat': iat.millisecondsSinceEpoch ~/ 1000,
+          'exp': exp.millisecondsSinceEpoch ~/ 1000,
+        },
+        privateKey: privateKey ?? rsaKeyPair.privateKey,
+      );
+
+      Future<Jwt> verifyAt(DateTime time, String encoded) =>
+          withClock(Clock.fixed(time), () {
+            return verify(
+              encoded,
+              audience: {rsaJwkAudience},
+              issuer: rsaJwkIssuer,
+              publicKeysUrl: rsaJwkPublicKeysUrl,
+              jwksFormat: JwksFormat.rsaJwk,
+            );
+          });
+
+      group('key rotation', () {
+        const rotatedKid = 'test-rsa-key-2';
+        late pc.AsymmetricKeyPair<pc.RSAPublicKey, pc.RSAPrivateKey> rotated;
+        late int fetches;
+        final start = DateTime(2024, 6, 1, 0, 15);
+
+        setUp(() {
+          rotated = _generateRsaKeyPair();
+          fetches = 0;
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response(
+              keyStoreResponseBody,
+              HttpStatus.ok,
+              headers: {'cache-control': 'max-age=3600'},
+            );
+          };
+        });
+
+        void publishRotatedKey() {
+          final decoded = json.decode(rsaJwkKeyStoreJson) as Map;
+          keyStoreResponseBody = json.encode({
+            'keys': [
+              ...decoded['keys'] as List,
+              {
+                'kty': 'RSA',
+                'use': 'sig',
+                'kid': rotatedKid,
+                'n': _encodeBigInt(rotated.publicKey.modulus!),
+                'e': _encodeBigInt(rotated.publicKey.exponent!),
+              },
+            ],
+          });
+        }
+
+        String rotatedToken() => signed(
+          iat: start,
+          exp: start.add(const Duration(minutes: 15)),
+          kid: rotatedKid,
+          privateKey: rotated.privateKey,
+        );
+
+        test(
+          'fetches the keys again for a key id the cache has not seen',
+          () async {
+            await verifyAt(start, rsaJwkToken);
+            expect(fetches, 1);
+            publishRotatedKey();
+
+            final later = start.add(const Duration(minutes: 1));
+            final jwt = await verifyAt(later, rotatedToken());
+            expect(jwt.header.kid, rotatedKid);
+            expect(fetches, 2);
+          },
+        );
+
+        test('fetches again at most once per 30 seconds', () async {
+          await verifyAt(start, rsaJwkToken);
+          final soon = start.add(const Duration(seconds: 10));
+          await expectLater(
+            () => verifyAt(soon, rotatedToken()),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Invalid key id.',
+              ),
+            ),
+          );
+          expect(fetches, 1);
+        });
+
+        test('shares one fetch among concurrent unknown key ids', () async {
+          await verifyAt(start, rsaJwkToken);
+          expect(fetches, 1);
+          publishRotatedKey();
+
+          final response = Completer<Response>();
+          getOverride = (Uri uri) {
+            fetches++;
+            return response.future;
+          };
+          final later = start.add(const Duration(minutes: 1));
+          final verifications = [
+            for (var i = 0; i < 5; i++) verifyAt(later, rotatedToken()),
+          ];
+          response.complete(Response(keyStoreResponseBody, HttpStatus.ok));
+
+          final verified = await Future.wait(verifications);
+          expect(
+            verified.map((jwt) => jwt.header.kid),
+            everyElement(rotatedKid),
+          );
+          expect(fetches, 2);
+        });
+
+        test('shares one fetch among concurrent cold-cache requests', () async {
+          final response = Completer<Response>();
+          getOverride = (Uri uri) {
+            fetches++;
+            return response.future;
+          };
+          final verifications = [
+            for (var i = 0; i < 5; i++) verifyAt(start, rsaJwkToken),
+          ];
+          response.complete(Response(keyStoreResponseBody, HttpStatus.ok));
+
+          await Future.wait(verifications);
+          expect(fetches, 1);
+        });
+
+        test('fetches again after a shared fetch fails', () async {
+          final response = Completer<Response>();
+          getOverride = (Uri uri) {
+            fetches++;
+            return response.future;
+          };
+          final verifications = [
+            for (var i = 0; i < 5; i++) verifyAt(start, rsaJwkToken),
+          ];
+          response.completeError(const SocketException('unreachable'));
+          await Future.wait([
+            for (final verification in verifications)
+              expectLater(verification, throwsA(isA<SocketException>())),
+          ]);
+          expect(fetches, 1);
+
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response(keyStoreResponseBody, HttpStatus.ok);
+          };
+          final jwt = await verifyAt(start, rsaJwkToken);
+          expect(jwt.header.kid, rsaJwkKid);
+          expect(fetches, 2);
+        });
+
+        test('a failed fetch does not start the 30 seconds', () async {
+          await verifyAt(start, rsaJwkToken);
+          publishRotatedKey();
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response('', HttpStatus.internalServerError);
+          };
+          final later = start.add(const Duration(minutes: 1));
+          await expectLater(
+            () => verifyAt(later, rotatedToken()),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Could not fetch public keys.',
+              ),
+            ),
+          );
+          expect(fetches, 2);
+
+          getOverride = (Uri uri) async {
+            fetches++;
+            return Response(keyStoreResponseBody, HttpStatus.ok);
+          };
+          final soon = later.add(const Duration(seconds: 10));
+          final jwt = await verifyAt(soon, rotatedToken());
+          expect(jwt.header.kid, rotatedKid);
+          expect(fetches, 3);
+        });
+
+        test('rejects a key id still unknown after fetching again', () async {
+          await verifyAt(start, rsaJwkToken);
+          final later = start.add(const Duration(minutes: 1));
+          await expectLater(
+            () => verifyAt(later, rotatedToken()),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Invalid key id.',
+              ),
+            ),
+          );
+          expect(fetches, 2);
+        });
+      });
+
+      test('caches keys served without a Cache-Control header', () async {
+        var fetches = 0;
+        getOverride = (Uri uri) async {
+          fetches++;
+          return Response(keyStoreResponseBody, HttpStatus.ok);
+        };
+        final time = DateTime(2024, 6, 1, 0, 15);
+        await verifyAt(time, rsaJwkToken);
+        await verifyAt(time, rsaJwkToken);
+        expect(fetches, 1);
+      });
+
+      group('clock skew', () {
+        final now = DateTime(2024, 6, 1, 12);
+
+        test('accepts a token issued up to 30 seconds ahead', () async {
+          final iat = now.add(const Duration(seconds: 20));
+          final jwt = await verifyAt(
+            now,
+            signed(iat: iat, exp: iat.add(const Duration(minutes: 15))),
+          );
+          expect(jwt, isA<Jwt>());
+        });
+
+        test('rejects a token issued further ahead', () async {
+          final iat = now.add(const Duration(seconds: 40));
+          await expectLater(
+            () => verifyAt(
+              now,
+              signed(iat: iat, exp: iat.add(const Duration(minutes: 15))),
+            ),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Token issued at a future time.',
+              ),
+            ),
+          );
+        });
+
+        test('accepts a token expired up to 30 seconds ago', () async {
+          final exp = now.subtract(const Duration(seconds: 20));
+          final jwt = await verifyAt(
+            now,
+            signed(iat: exp.subtract(const Duration(minutes: 15)), exp: exp),
+          );
+          expect(jwt, isA<Jwt>());
+        });
+
+        test('rejects a token expired longer ago', () async {
+          final exp = now.subtract(const Duration(seconds: 40));
+          await expectLater(
+            () => verifyAt(
+              now,
+              signed(iat: exp.subtract(const Duration(minutes: 15)), exp: exp),
+            ),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Token has expired.',
+              ),
+            ),
+          );
         });
       });
 

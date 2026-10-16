@@ -24,9 +24,7 @@ class UpdateReleaseRequest {
       () => UpdateReleaseRequest(
         status: ReleaseStatus.maybeFromJson(json['status'] as String?),
         platform: ReleasePlatform.maybeFromJson(json['platform'] as String?),
-        metadata: (json['metadata'] as Map<String, dynamic>?)?.map(
-          MapEntry.new,
-        ),
+        metadata: json['metadata'] as Map<String, dynamic>?,
         notes: json['notes'] as String?,
       ),
     );
@@ -59,10 +57,10 @@ class UpdateReleaseRequest {
   /// Converts a [UpdateReleaseRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'status': status?.toJson(),
-      'platform': platform?.toJson(),
-      'metadata': metadata,
-      'notes': notes,
+      'status': ?status?.toJson(),
+      'platform': ?platform?.toJson(),
+      'metadata': ?metadata,
+      'notes': ?notes,
     };
   }
 

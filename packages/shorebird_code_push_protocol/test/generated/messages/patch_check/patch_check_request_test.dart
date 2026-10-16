@@ -5,9 +5,9 @@ import 'package:test/test.dart';
 void main() {
   group('PatchCheckRequest', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = PatchCheckRequest(
+      const instance = PatchCheckRequest(
         releaseVersion: 'example',
-        platform: ReleasePlatform.values.first,
+        platform: ReleasePlatform.android,
         arch: 'example',
         appId: 'example',
         channel: 'example',
