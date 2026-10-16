@@ -68,9 +68,16 @@ class ShorebirdEnv {
   final String? _flutterRevisionOverride;
   final String? _flutterProjectRootOverride;
 
-  /// The application config directory for the Shorebird CLI.
+  /// The application config directory for the Shorebird CLI, found from the
+  /// scoped [platform]'s environment (`HOME`, `XDG_CONFIG_HOME` or `APPDATA`)
+  /// so that tests can point it at a temporary directory.
   Directory get configDirectory {
-    return Directory(BaseDirectories(executableName).configHome);
+    return Directory(
+      BaseDirectories(
+        executableName,
+        environment: platform.environment,
+      ).configHome,
+    );
   }
 
   /// The directory where shorebird logs are stored.

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cli_util/cli_util.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -15,7 +14,6 @@ import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -239,8 +237,7 @@ class Auth {
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _apiKeySource = ApiKeySource.fromEnvironment(platform.environment),
        _runProcessSync = runProcessSync ?? Process.runSync,
-       _credentialsDir =
-           credentialsDir ?? BaseDirectories(executableName).configHome,
+       _credentialsDir = credentialsDir ?? shorebirdEnv.configDirectory.path,
        _authServiceUri = authServiceUri ?? shorebirdEnv.authServiceUri,
        _obtainCredentialsViaLoopbackLogin =
            obtainCredentialsViaLoopbackLogin ??

@@ -38,15 +38,30 @@ void main() {
   useTempWorkingDirectory();
   group('scoped', () {
     test('creates instance with default constructor', () {
+      // Constructing Auth reads, and may move, the stored login, so point
+      // the config directory at a temporary one, never the real one.
+      final home = Directory.systemTemp.createTempSync().path;
+      final environment = {
+        'HOME': home,
+        'APPDATA': home,
+        'XDG_CONFIG_HOME': p.join(home, '.config'),
+      };
       final instance = runScoped(
         () => auth,
         values: {
           authRef,
           httpClientRef.overrideWith(MockHttpClient.new),
+          platformRef.overrideWith(
+            () => TestNativePlatform(environment: environment),
+          ),
           shorebirdEnvRef.overrideWith(ShorebirdEnv.new),
         },
       );
-      final configHome = BaseDirectories(executableName).configHome;
+      final configHome = BaseDirectories(
+        executableName,
+        environment: environment,
+      ).configHome;
+      expect(p.isWithin(home, configHome), isTrue);
       expect(
         instance.credentialsFilePath,
         p.join(configHome, 'credentials-v2.json'),

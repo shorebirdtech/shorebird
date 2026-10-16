@@ -95,20 +95,29 @@ void main() {
     });
 
     group('configDirectory', () {
-      test('returns correct directory', () {
-        expect(
-          runWithOverrides(() => shorebirdEnv.configDirectory.path),
-          endsWith(executableName),
+      late String home;
+
+      setUp(() {
+        home = Directory.systemTemp.createTempSync().path;
+        platform = platform.copyWith(
+          environment: {
+            'HOME': home,
+            'APPDATA': home,
+            'XDG_CONFIG_HOME': p.join(home, '.config'),
+          },
         );
       });
-    });
 
-    group('logsDirectory', () {
-      test('returns correct directory', () {
-        expect(
-          runWithOverrides(() => shorebirdEnv.logsDirectory.path),
-          endsWith(p.join(executableName, 'logs')),
-        );
+      test("is found from the scoped platform's environment", () {
+        final path = runWithOverrides(() => shorebirdEnv.configDirectory.path);
+        expect(path, endsWith(executableName));
+        expect(p.isWithin(home, path), isTrue);
+      });
+
+      test('holds logsDirectory', () {
+        final path = runWithOverrides(() => shorebirdEnv.logsDirectory.path);
+        expect(path, endsWith(p.join(executableName, 'logs')));
+        expect(p.isWithin(home, path), isTrue);
       });
     });
 
