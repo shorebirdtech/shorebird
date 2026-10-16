@@ -217,6 +217,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// The target script, if provided.
   late String? target = results.findOption('target', argParser: argParser);
 
+  /// The prompt shown before publishing when `--confirm` is passed.
+  @visibleForTesting
+  static const confirmPrompt = 'Would you like to continue?';
+
   /// Whether to prompt for confirmation before creating the patch.
   bool get confirm => results['confirm'] == true;
 
@@ -255,6 +259,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
       );
       return ExitCode.usage.code;
+    }
+
+    // --confirm asks to pause before publishing. Without a terminal to pause
+    // in, fail now rather than after the build.
+    if (confirm && !shorebirdEnv.canAcceptUserInput) {
+      throw const InteractivePromptRequiredException(
+        promptText: confirmPrompt,
+        hint:
+            'Re-run in a terminal to confirm before publishing, or without '
+            '--confirm to publish without pausing.',
+      );
     }
 
     final published = <PublishedPatch>[];
@@ -1009,8 +1024,10 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 ${summary.join('\n')}
 ''');
 
-    if (confirm && shorebirdEnv.canAcceptUserInput) {
-      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
+    // run() has already failed if --confirm was passed but the CLI cannot
+    // prompt.
+    if (confirm) {
+      if (!logger.confirm(confirmPrompt, defaultValue: true)) {
         logger.err('Aborting.');
         throw PromptDeclinedExit();
       }

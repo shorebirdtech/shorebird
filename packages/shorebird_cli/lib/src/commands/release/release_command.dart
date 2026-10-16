@@ -189,6 +189,17 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       return ExitCode.usage.code;
     }
 
+    // --confirm asks to pause before publishing. Without a terminal to pause
+    // in, fail now rather than after the build.
+    if (confirm && !shorebirdEnv.canAcceptUserInput) {
+      throw const InteractivePromptRequiredException(
+        promptText: confirmPrompt,
+        hint:
+            'Re-run in a terminal to confirm before publishing, or without '
+            '--confirm to release without pausing.',
+      );
+    }
+
     // One Release can carry several platforms, so releases are collected by
     // id: each platform's pass re-fetches the release, and the last fetch is
     // the one whose platform statuses are complete.
@@ -251,6 +262,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
     }
   }
+
+  /// The prompt shown before publishing when `--confirm` is passed.
+  @visibleForTesting
+  static const confirmPrompt = 'Would you like to continue?';
 
   /// Whether to prompt for confirmation before creating the release.
   bool get confirm => results['confirm'] == true;
@@ -739,8 +754,10 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    if (confirm && shorebirdEnv.canAcceptUserInput) {
-      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
+    // run() has already failed if --confirm was passed but the CLI cannot
+    // prompt.
+    if (confirm) {
+      if (!logger.confirm(confirmPrompt, defaultValue: true)) {
         logger.err('Aborting.');
         throw PromptDeclinedExit();
       }

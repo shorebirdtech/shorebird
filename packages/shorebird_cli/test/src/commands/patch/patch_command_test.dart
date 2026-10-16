@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -1375,6 +1376,38 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         setUp(() {
           when(() => argResults['confirm']).thenReturn(true);
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        });
+
+        group('when the CLI cannot prompt', () {
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+          });
+
+          test('fails before building with a hint', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<InteractivePromptRequiredException>()
+                    .having(
+                      (e) => e.promptText,
+                      'promptText',
+                      'Would you like to continue?',
+                    )
+                    .having(
+                      (e) => e.hint,
+                      'hint',
+                      contains('without --confirm to publish without pausing'),
+                    ),
+              ),
+            );
+            verifyNever(() => patcher.assertPreconditions());
+            verifyNever(
+              () => logger.confirm(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
+            );
+          });
         });
 
         group('when user confirms', () {

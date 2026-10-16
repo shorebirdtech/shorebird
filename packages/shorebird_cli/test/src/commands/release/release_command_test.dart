@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -584,6 +585,38 @@ void main() {
       setUp(() {
         when(() => argResults['confirm']).thenReturn(true);
         when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      });
+
+      group('when the CLI cannot prompt', () {
+        setUp(() {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        });
+
+        test('fails before building with a hint', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<InteractivePromptRequiredException>()
+                  .having(
+                    (e) => e.promptText,
+                    'promptText',
+                    'Would you like to continue?',
+                  )
+                  .having(
+                    (e) => e.hint,
+                    'hint',
+                    contains('without --confirm to release without pausing'),
+                  ),
+            ),
+          );
+          verifyNever(() => releaser.buildReleaseArtifacts());
+          verifyNever(
+            () => logger.confirm(
+              any(),
+              defaultValue: any(named: 'defaultValue'),
+            ),
+          );
+        });
       });
 
       group('when user confirms', () {
