@@ -302,10 +302,13 @@ void main() {
         );
       }
 
-      const fullError = CodePushException(
-        message: 'The account requires an upgraded plan.',
-        details: 'Some details.',
-        code: 'shorebird_plan_insufficient_tier',
+      final fullError = CodePushException.fromResponse(
+        statusCode: HttpStatus.forbidden,
+        response: const ErrorResponse(
+          message: 'The account requires an upgraded plan.',
+          details: 'Some details.',
+          code: 'shorebird_plan_insufficient_tier',
+        ),
       );
 
       setUp(() {
@@ -337,7 +340,10 @@ void main() {
         test('logs only the message when there is no code or details', () {
           runWithOverrides(
             () => command.reportApiError(
-              const CodePushException(message: 'Oops.'),
+              const CodePushException(
+                statusCode: HttpStatus.badRequest,
+                message: 'Oops.',
+              ),
               message: 'Failed to fetch things.',
             ),
             jsonMode: false,
@@ -542,10 +548,13 @@ void main() {
             () async => (await runWithOverrides<Future<int?>>(
               () => guard(
                 () async => throw ApiErrorExit(
-                  const CodePushException(
-                    message: 'Plan lacks this feature.',
-                    code: 'shorebird_plan_insufficient_tier',
-                    details: 'Upgrade to Business.',
+                  CodePushException.fromResponse(
+                    statusCode: HttpStatus.forbidden,
+                    response: const ErrorResponse(
+                      message: 'Plan lacks this feature.',
+                      code: 'shorebird_plan_insufficient_tier',
+                      details: 'Upgrade to Business.',
+                    ),
                   ),
                   70,
                 ),

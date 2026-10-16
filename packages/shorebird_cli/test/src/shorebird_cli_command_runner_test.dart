@@ -771,10 +771,13 @@ Engine • revision $shorebirdEngineRevision'''),
           commandRunner.addCommand(
             _FailingCommand(
               thenThrow: ApiErrorExit(
-                const CodePushException(
-                  message: 'Plan lacks this feature.',
-                  code: 'shorebird_plan_insufficient_tier',
-                  details: 'Upgrade to Business.',
+                CodePushException.fromResponse(
+                  statusCode: HttpStatus.forbidden,
+                  response: const ErrorResponse(
+                    message: 'Plan lacks this feature.',
+                    code: 'shorebird_plan_insufficient_tier',
+                    details: 'Upgrade to Business.',
+                  ),
                 ),
                 ExitCode.software.code,
               ),

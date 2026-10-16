@@ -408,9 +408,12 @@ void main() {
 
         test('reports the server error code and exits with an '
             'ApiErrorExit when the API call fails', () async {
-          const error = CodePushException(
-            message: 'Plan lacks this feature.',
-            code: 'shorebird_plan_insufficient_tier',
+          final error = CodePushException.fromResponse(
+            statusCode: HttpStatus.forbidden,
+            response: const ErrorResponse(
+              message: 'Plan lacks this feature.',
+              code: 'shorebird_plan_insufficient_tier',
+            ),
           );
           when(() => codePushClient.getApps()).thenThrow(error);
 
@@ -433,10 +436,11 @@ void main() {
         });
 
         test(
-          '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
+          '''prints upgrade message when client throws a 426 CodePushException''',
           () async {
             when(codePushClient.getApps).thenThrow(
-              const CodePushUpgradeRequiredException(
+              const CodePushException(
+                statusCode: HttpStatus.upgradeRequired,
                 message: 'upgrade required',
               ),
             );
@@ -565,7 +569,12 @@ void main() {
         test('returns null if the app belongs to someone else', () async {
           when(
             () => codePushClient.getApp(appId: any(named: 'appId')),
-          ).thenThrow(CodePushForbiddenException(message: 'nope'));
+          ).thenThrow(
+            const CodePushException(
+              statusCode: HttpStatus.forbidden,
+              message: 'nope',
+            ),
+          );
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetApp(appId: appId),
@@ -574,6 +583,25 @@ void main() {
           expect(result, isNull);
           verify(() => progress.complete()).called(1);
           verifyNever(() => logger.err(any()));
+        });
+
+        test('exits with code 70 on any other API error', () async {
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(
+            const CodePushException(
+              statusCode: HttpStatus.internalServerError,
+              message: 'boom',
+            ),
+          );
+
+          await expectLater(
+            () => runWithOverrides(
+              () => codePushClientWrapper.maybeGetApp(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('boom')).called(1);
         });
 
         test('returns app when app exists', () async {
@@ -664,7 +692,10 @@ void main() {
         const releaseId = 42;
 
         test('exits with code 70 when deleting the release fails', () async {
-          final error = CodePushForbiddenException(message: 'Forbidden');
+          const error = CodePushException(
+            statusCode: HttpStatus.forbidden,
+            message: 'Forbidden',
+          );
           when(
             () => codePushClient.deleteRelease(
               appId: any(named: 'appId'),
@@ -707,7 +738,10 @@ void main() {
         const releaseId = 42;
 
         test('exits with code 70 when deleting artifacts fails', () async {
-          final error = CodePushForbiddenException(message: 'Forbidden');
+          const error = CodePushException(
+            statusCode: HttpStatus.forbidden,
+            message: 'Forbidden',
+          );
           when(
             () => codePushClient.deleteReleaseArtifacts(
               appId: any(named: 'appId'),
@@ -1560,6 +1594,63 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(() => progress.complete()).called(1);
         });
 
+        test('returns null if the server returns a 404', () async {
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(
+            const CodePushException(
+              statusCode: HttpStatus.notFound,
+              message: 'not found',
+            ),
+          );
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: app.appId,
+              releaseId: releaseId,
+              arch: arch.arch,
+              platform: releasePlatform,
+            ),
+          );
+
+          expect(result, isNull);
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('exits with code 70 on any other API error', () async {
+          when(
+            () => codePushClient.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(
+            const CodePushException(
+              statusCode: HttpStatus.internalServerError,
+              message: 'boom',
+            ),
+          );
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.maybeGetReleaseArtifact(
+                appId: app.appId,
+                releaseId: releaseId,
+                arch: arch.arch,
+                platform: releasePlatform,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('boom')).called(1);
+        });
+
         test('returns release artifact if release artifact exists', () async {
           when(
             () => codePushClient.getReleaseArtifacts(
@@ -1658,7 +1749,12 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 canSideload: any(named: 'canSideload'),
                 podfileLockHash: any(named: 'podfileLockHash'),
               ),
-            ).thenThrow(const CodePushConflictException(message: error));
+            ).thenThrow(
+              const CodePushException(
+                statusCode: HttpStatus.conflict,
+                message: error,
+              ),
+            );
             setUpProjectRoot();
 
             await runWithOverrides(
@@ -1678,6 +1774,47 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               () => logger.info(any(that: contains('already exists'))),
             ).called(numArtifactsUploaded);
             verifyNever(() => progress.fail(error));
+          },
+        );
+
+        test(
+          'exits with code 70 when an upload fails with an API error',
+          () async {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(
+              const CodePushException(
+                statusCode: HttpStatus.internalServerError,
+                message: 'boom',
+              ),
+            );
+            setUpProjectRoot();
+
+            await expectLater(
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: p.join(projectRoot.path, aabPath),
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => progress.fail(any(that: contains('Error uploading'))),
+            ).called(1);
           },
         );
 
@@ -2755,7 +2892,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
       test('logs and continues when the artifact already exists', () async {
         stubCreateReleaseArtifact(
-          const CodePushConflictException(message: 'exists'),
+          const CodePushException(
+            statusCode: HttpStatus.conflict,
+            message: 'exists',
+          ),
         );
 
         await createSupplement();

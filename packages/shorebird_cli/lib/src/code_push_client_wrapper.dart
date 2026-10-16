@@ -178,7 +178,10 @@ This app may not exist or you may not have permission to view it.''');
       final app = await codePushClient.getApp(appId: appId);
       fetchAppProgress.complete();
       return app;
-    } on CodePushForbiddenException {
+    } on CodePushException catch (error) {
+      if (error.statusCode != HttpStatus.forbidden) {
+        _handleErrorAndExit(error, progress: fetchAppProgress);
+      }
       // The app exists but belongs to someone else. Callers surface this the
       // same way as "no such app", which is what the list-and-filter approach
       // did: an app you cannot see simply was not in the list.
@@ -459,7 +462,7 @@ Please create a release using "shorebird release" and try again.
 
   /// Returns a release artifact for the given [appId], [releaseId], [arch], and
   /// [platform].
-  /// Throws a [CodePushNotFoundException] if no artifact is found.
+  /// Exits with code 70 if no artifact is found.
   Future<ReleaseArtifact> getReleaseArtifact({
     required String appId,
     required int releaseId,
@@ -474,7 +477,8 @@ Please create a release using "shorebird release" and try again.
         platform: platform,
       );
       if (artifacts.isEmpty) {
-        throw CodePushNotFoundException(
+        throw CodePushException(
+          statusCode: HttpStatus.notFound,
           message:
               '''No artifact found for architecture $arch in release $releaseId''',
         );
@@ -501,15 +505,12 @@ Please create a release using "shorebird release" and try again.
         arch: arch,
         platform: platform,
       );
-      if (artifacts.isEmpty) {
-        throw CodePushNotFoundException(
-          message:
-              '''No artifact found for architecture $arch in release $releaseId''',
-        );
-      }
       fetchReleaseArtifactProgress.complete();
-      return artifacts.first;
-    } on CodePushNotFoundException {
+      return artifacts.firstOrNull;
+    } on CodePushException catch (error) {
+      if (error.statusCode != HttpStatus.notFound) {
+        _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
+      }
       fetchReleaseArtifactProgress.complete();
       return null;
     } catch (error) {
@@ -749,7 +750,14 @@ to the architectures your project actually builds.''',
         canSideload: canSideload,
         podfileLockHash: podfileLockHash,
       );
-    } on CodePushConflictException catch (_) {
+    } on CodePushException catch (error) {
+      if (error.statusCode != HttpStatus.conflict) {
+        _handleErrorAndExit(
+          error,
+          progress: progress,
+          message: 'Error uploading $name artifact: $error',
+        );
+      }
       // Newlines are due to how logger.info interacts with logger.progress.
       logger.info('''
 
@@ -1155,7 +1163,8 @@ $name artifact already exists, continuing...''');
     Progress? progress,
     String? message,
   }) {
-    if (error is CodePushUpgradeRequiredException) {
+    if (error is CodePushException &&
+        error.statusCode == HttpStatus.upgradeRequired) {
       progress?.fail();
       logger
         ..err('Your version of shorebird is out of date.')

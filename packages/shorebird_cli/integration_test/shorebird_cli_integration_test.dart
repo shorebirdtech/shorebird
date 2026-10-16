@@ -130,10 +130,12 @@ void main() {
           await runWithOverrides(
             () => client.deleteApp(appId: shorebirdYaml.appId),
           );
-        } on CodePushNotFoundException {
-          // The happy path already deleted it.
         } on Exception catch (error) {
-          logger.err('failed to delete ${shorebirdYaml.appId}: $error');
+          // A 404 means the happy path already deleted it.
+          if (error is! CodePushException ||
+              error.statusCode != HttpStatus.notFound) {
+            logger.err('failed to delete ${shorebirdYaml.appId}: $error');
+          }
         }
       });
 

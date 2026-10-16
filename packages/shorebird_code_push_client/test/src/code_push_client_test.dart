@@ -93,10 +93,14 @@ void main() {
     group('CodePushException', () {
       test('toString is correct', () {
         const exceptionWithDetails = CodePushException(
+          statusCode: HttpStatus.badRequest,
           message: 'message',
           details: 'details',
         );
-        const exceptionWithoutDetails = CodePushException(message: 'message');
+        const exceptionWithoutDetails = CodePushException(
+          statusCode: HttpStatus.badRequest,
+          message: 'message',
+        );
 
         expect(exceptionWithDetails.toString(), 'message\ndetails');
         expect(exceptionWithoutDetails.toString(), 'message');
@@ -115,13 +119,19 @@ void main() {
         codePushClient.getApps(),
         throwsA(
           isA<CodePushException>()
+              .having(
+                (e) => e.statusCode,
+                'statusCode',
+                HttpStatus.failedDependency,
+              )
+              .having((e) => e.response, 'response', errorResponse)
               .having((e) => e.code, 'code', errorResponse.code)
               .having((e) => e.details, 'details', errorResponse.details),
         ),
       );
     });
 
-    test('throws CodePushUpgradeRequiredException on 426 response', () async {
+    test('throws a 426 CodePushException on 426 response', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
           const Stream.empty(),
@@ -131,11 +141,17 @@ void main() {
 
       expect(
         codePushClient.getApps(),
-        throwsA(isA<CodePushUpgradeRequiredException>()),
+        throwsA(
+          isA<CodePushException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            HttpStatus.upgradeRequired,
+          ),
+        ),
       );
     });
 
-    test('throws CodePushForbiddenException on 403 response', () async {
+    test('throws a 403 CodePushException on 403 response', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async =>
             http.StreamedResponse(const Stream.empty(), HttpStatus.forbidden),
@@ -143,7 +159,13 @@ void main() {
 
       expect(
         codePushClient.getApps(),
-        throwsA(isA<CodePushForbiddenException>()),
+        throwsA(
+          isA<CodePushException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            HttpStatus.forbidden,
+          ),
+        ),
       );
     });
 
@@ -183,11 +205,18 @@ void main() {
         expect(
           codePushClient.getCurrentUser(),
           throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
-            ),
+            isA<CodePushException>()
+                .having(
+                  (e) => e.statusCode,
+                  'statusCode',
+                  HttpStatus.badRequest,
+                )
+                .having((e) => e.response, 'response', isNull)
+                .having(
+                  (e) => e.message,
+                  'message',
+                  CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
+                ),
           ),
         );
       });
@@ -773,7 +802,7 @@ void main() {
       });
 
       test(
-        'throws a CodePushNotFoundException if the http response code is 404',
+        'throws a 404 CodePushException if the http response code is 404',
         () {
           when(() => httpClient.send(any())).thenAnswer((_) async {
             return http.StreamedResponse(
@@ -797,13 +826,19 @@ void main() {
               canSideload: canSideload,
               podfileLockHash: null,
             ),
-            throwsA(isA<CodePushNotFoundException>()),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                HttpStatus.notFound,
+              ),
+            ),
           );
         },
       );
 
       test(
-        'throws a CodePushConflictException if the http response code is 409',
+        'throws a 409 CodePushException if the http response code is 409',
         () {
           when(() => httpClient.send(any())).thenAnswer((_) async {
             return http.StreamedResponse(
@@ -827,7 +862,13 @@ void main() {
               canSideload: canSideload,
               podfileLockHash: null,
             ),
-            throwsA(isA<CodePushConflictException>()),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                HttpStatus.conflict,
+              ),
+            ),
           );
         },
       );
@@ -2041,7 +2082,7 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
-      test('throws CodePushForbiddenException on 403', () async {
+      test('throws a 403 CodePushException on 403', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
@@ -2052,16 +2093,18 @@ void main() {
         expect(
           codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
           throwsA(
-            isA<CodePushForbiddenException>().having(
-              (e) => e.message,
-              'message',
-              errorResponse.message,
-            ),
+            isA<CodePushException>()
+                .having((e) => e.statusCode, 'statusCode', HttpStatus.forbidden)
+                .having(
+                  (e) => e.message,
+                  'message',
+                  errorResponse.message,
+                ),
           ),
         );
       });
 
-      test('throws CodePushNotFoundException on 404', () async {
+      test('throws a 404 CodePushException on 404', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
@@ -2071,7 +2114,13 @@ void main() {
 
         expect(
           codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
-          throwsA(isA<CodePushNotFoundException>()),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              HttpStatus.notFound,
+            ),
+          ),
         );
       });
 
@@ -2130,7 +2179,7 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
-      test('throws CodePushForbiddenException on 403', () async {
+      test('throws a 403 CodePushException on 403', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
@@ -2145,16 +2194,18 @@ void main() {
             platform: ReleasePlatform.ios,
           ),
           throwsA(
-            isA<CodePushForbiddenException>().having(
-              (e) => e.message,
-              'message',
-              errorResponse.message,
-            ),
+            isA<CodePushException>()
+                .having((e) => e.statusCode, 'statusCode', HttpStatus.forbidden)
+                .having(
+                  (e) => e.message,
+                  'message',
+                  errorResponse.message,
+                ),
           ),
         );
       });
 
-      test('throws CodePushNotFoundException on 404', () async {
+      test('throws a 404 CodePushException on 404', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
@@ -2168,7 +2219,13 @@ void main() {
             releaseId: releaseId,
             platform: ReleasePlatform.ios,
           ),
-          throwsA(isA<CodePushNotFoundException>()),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              HttpStatus.notFound,
+            ),
+          ),
         );
       });
 
@@ -3496,7 +3553,12 @@ void main() {
             await expectLater(
               c.call(),
               throwsA(
-                isA<CodePushForbiddenException>()
+                isA<CodePushException>()
+                    .having(
+                      (e) => e.statusCode,
+                      'statusCode',
+                      HttpStatus.forbidden,
+                    )
                     .having((e) => e.message, 'message', 'upgrade required')
                     .having(
                       (e) => e.code,
