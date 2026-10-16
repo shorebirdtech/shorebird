@@ -224,7 +224,13 @@ void main() {
                     (e) => e.details,
                     'details',
                     '<html><body> 502 Bad Gateway </body></html>',
-                  ),
+                  )
+                  .having(
+                    (e) => e.statusCode,
+                    'statusCode',
+                    HttpStatus.badGateway,
+                  )
+                  .having((e) => e.response, 'response', isNull),
             ),
           );
         });
