@@ -203,7 +203,22 @@ Examples:
       endpoint = endpoint.substring(apiBase.length);
     }
     endpoint = _fillPlaceholders(endpoint);
-    final path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    var path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    // A path that repeats the base path ("/api/v1/apps") means the route
+    // under it, since no route lives at /api/v1/api/v1.
+    final basePath = codePushClient.apiBaseUri.path.replaceAll(
+      RegExp(r'^/|/$'),
+      '',
+    );
+    if (basePath.isNotEmpty &&
+        (path == basePath || path.startsWith('$basePath/'))) {
+      final unprefixed = path.substring(basePath.length);
+      path = unprefixed.startsWith('/') ? unprefixed.substring(1) : unprefixed;
+      stderr.writeln(
+        'shorebird: Endpoints are relative to $apiBase, so requesting '
+        '"/$path" rather than "$endpoint".',
+      );
+    }
     var url = '$apiBase/$path';
 
     List<int>? body;
