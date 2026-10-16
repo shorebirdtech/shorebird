@@ -1383,22 +1383,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
           });
 
-          test('fails before building with a hint', () async {
+          test('fails before building', () async {
             await expectLater(
               runWithOverrides(command.run),
-              throwsA(
-                isA<InteractivePromptRequiredException>()
-                    .having(
-                      (e) => e.promptText,
-                      'promptText',
-                      'Would you like to continue?',
-                    )
-                    .having(
-                      (e) => e.hint,
-                      'hint',
-                      contains('without --confirm to publish without pausing'),
-                    ),
-              ),
+              throwsA(isA<InteractivePromptRequiredException>()),
             );
             verifyNever(() => patcher.assertPreconditions());
             verifyNever(
@@ -1454,7 +1442,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ).thenReturn(false);
           });
 
-          test('exits 1 and prints Aborting. to stderr', () async {
+          test('exits 1 when declined', () async {
             await expectLater(
               runWithOverrides(
                 () => command.logPatchSummary(
@@ -1466,7 +1454,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               ),
               exitsDeclined,
             );
-            verify(() => logger.err('Aborting.')).called(1);
           });
         });
       });

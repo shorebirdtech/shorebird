@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/confirm_before_publish.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -44,10 +45,11 @@ typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
 /// A command that creates a shorebird patch for the provided target platforms.
 /// `shorebird patch --platforms=android,ios`
 /// {@endtemplate}
-class PatchCommand extends ShorebirdCommand {
+class PatchCommand extends ShorebirdCommand with ConfirmBeforePublish {
   /// {@macro patch_command}
   PatchCommand({ResolvePatcher? resolvePatcher}) {
     _resolvePatcher = resolvePatcher ?? getPatcher;
+    addConfirmBeforePublishFlag();
     argParser
       ..addMultiOption(
         CommonArguments.dartDefineArg.name,
@@ -114,12 +116,6 @@ To target the latest release (e.g. the release that was most recently updated) u
         negatable: false,
         help: '''
 [DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
-        hide: true,
-      )
-      // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
-      // Can be removed fall 2026 or later.
-      ..addFlag(
-        'confirm',
         hide: true,
       )
       ..addOption(
@@ -217,13 +213,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// The target script, if provided.
   late String? target = results.findOption('target', argParser: argParser);
 
-  /// The prompt shown before publishing when `--confirm` is passed.
-  @visibleForTesting
-  static const confirmPrompt = 'Would you like to continue?';
-
-  /// Whether to prompt for confirmation before creating the patch.
-  bool get confirm => results['confirm'] == true;
-
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
 
@@ -261,16 +250,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
-    // --confirm asks to pause before publishing. Without a terminal to pause
-    // in, fail now rather than after the build.
-    if (confirm && !shorebirdEnv.canAcceptUserInput) {
-      throw const InteractivePromptRequiredException(
-        promptText: confirmPrompt,
-        hint:
-            'Re-run in a terminal to confirm before publishing, or without '
-            '--confirm to publish without pausing.',
-      );
-    }
+    assertCanConfirmBeforePublish();
 
     final published = <PublishedPatch>[];
     for (final releaseType in results.releaseTypes) {
@@ -1024,14 +1004,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 ${summary.join('\n')}
 ''');
 
-    // run() has already failed if --confirm was passed but the CLI cannot
-    // prompt.
-    if (confirm) {
-      if (!logger.confirm(confirmPrompt, defaultValue: true)) {
-        logger.err('Aborting.');
-        throw PromptDeclinedExit();
-      }
-    }
+    confirmBeforePublish();
   }
 
   /// Downloads the given [releaseArtifact].

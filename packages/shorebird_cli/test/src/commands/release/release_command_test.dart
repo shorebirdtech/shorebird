@@ -592,22 +592,10 @@ void main() {
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
-        test('fails before building with a hint', () async {
+        test('fails before building', () async {
           await expectLater(
             runWithOverrides(command.run),
-            throwsA(
-              isA<InteractivePromptRequiredException>()
-                  .having(
-                    (e) => e.promptText,
-                    'promptText',
-                    'Would you like to continue?',
-                  )
-                  .having(
-                    (e) => e.hint,
-                    'hint',
-                    contains('without --confirm to release without pausing'),
-                  ),
-            ),
+            throwsA(isA<InteractivePromptRequiredException>()),
           );
           verifyNever(() => releaser.buildReleaseArtifacts());
           verifyNever(
@@ -650,12 +638,11 @@ void main() {
           ).thenReturn(false);
         });
 
-        test('exits 1 and prints Aborting. to stderr', () async {
+        test('exits 1 when declined', () async {
           await expectLater(
             runWithOverrides(command.run),
             exitsDeclined,
           );
-          verify(() => logger.err('Aborting.')).called(1);
         });
       });
     });

@@ -8,12 +8,12 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/confirm_before_publish.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -36,10 +36,11 @@ typedef ResolveReleaser = Releaser Function(ReleaseType releaseType);
 /// {@template release_command}
 /// Creates a new app release for the specified platform(s).
 /// {@endtemplate}
-class ReleaseCommand extends ShorebirdCommand {
+class ReleaseCommand extends ShorebirdCommand with ConfirmBeforePublish {
   /// {@macro release_command}
   ReleaseCommand({ResolveReleaser? resolveReleaser}) {
     _resolveReleaser = resolveReleaser ?? getReleaser;
+    addConfirmBeforePublishFlag();
     argParser
       ..addMultiOption(
         CommonArguments.dartDefineArg.name,
@@ -128,12 +129,6 @@ Also accepts the following special values:
         hide: true,
         negatable: false,
       )
-      // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
-      // Can be removed fall 2026 or later.
-      ..addFlag(
-        'confirm',
-        hide: true,
-      )
       ..addOption(
         'release-version',
         help: '''
@@ -189,16 +184,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       return ExitCode.usage.code;
     }
 
-    // --confirm asks to pause before publishing. Without a terminal to pause
-    // in, fail now rather than after the build.
-    if (confirm && !shorebirdEnv.canAcceptUserInput) {
-      throw const InteractivePromptRequiredException(
-        promptText: confirmPrompt,
-        hint:
-            'Re-run in a terminal to confirm before publishing, or without '
-            '--confirm to release without pausing.',
-      );
-    }
+    assertCanConfirmBeforePublish();
 
     // One Release can carry several platforms, so releases are collected by
     // id: each platform's pass re-fetches the release, and the last fetch is
@@ -262,13 +248,6 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
     }
   }
-
-  /// The prompt shown before publishing when `--confirm` is passed.
-  @visibleForTesting
-  static const confirmPrompt = 'Would you like to continue?';
-
-  /// Whether to prompt for confirmation before creating the release.
-  bool get confirm => results['confirm'] == true;
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
@@ -754,14 +733,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    // run() has already failed if --confirm was passed but the CLI cannot
-    // prompt.
-    if (confirm) {
-      if (!logger.confirm(confirmPrompt, defaultValue: true)) {
-        logger.err('Aborting.');
-        throw PromptDeclinedExit();
-      }
-    }
+    confirmBeforePublish();
   }
 
   /// Fetches the release with version [version] from the server or creates a
