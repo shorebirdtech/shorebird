@@ -388,6 +388,46 @@ void main() {
           '[{"v":"1.0.1","id":2},{"v":"1.0.0","id":1}]',
           [r'"1: 1.0.0\n2: 1.0.1"'],
         ),
+        (
+          '.[1:3], .[2:], .[:2], .[-2:], .[:-1]',
+          '[0,1,2,3,4]',
+          ['[1,2]', '[2,3,4]', '[0,1]', '[3,4]', '[0,1,2,3]'],
+        ),
+        (
+          '.[10:], .[3:1], .[-10:2], .[null:2], .[1:null]',
+          '[0,1,2,3]',
+          ['[]', '[]', '[0,1]', '[0,1]', '[1,2,3]'],
+        ),
+        (
+          '.[1.2:3.5], .[1.7:2.2], .[-1.5:]',
+          '[0,1,2,3,4]',
+          ['[1,2,3]', '[1,2]', '[3,4]'],
+        ),
+        (
+          '.[0,1:3,4]',
+          '[0,1,2,3]',
+          ['[0,1,2]', '[0,1,2,3]', '[1,2]', '[1,2,3]'],
+        ),
+        (
+          '.[1:3], .[-2:], .[2:3]',
+          '"ab\u{1F600}cd"',
+          ['"b\u{1F600}"', '"cd"', '"\u{1F600}"'],
+        ),
+        (
+          '.[1:2], .[1:"a"]',
+          'null',
+          ['null', 'null'],
+        ),
+        (
+          '.data[0:2] | map(.id)',
+          '{"data":[{"id":1},{"id":2},{"id":3}]}',
+          ['[1,2]'],
+        ),
+        (
+          '.a[.n:]',
+          '{"a":[0,1,2],"n":1}',
+          ['[1,2]'],
+        ),
       ];
 
       for (final (query, input, outputs) in cases) {
@@ -465,6 +505,26 @@ void main() {
         );
       });
 
+      test('slices need an array or string and number bounds', () {
+        expect(
+          () => run('{} | .[1:2]'),
+          throwsJq('Cannot index object with object'),
+        );
+        expect(
+          () => run('5 | .[1:2]'),
+          throwsJq('Cannot index number with object'),
+        );
+        expect(
+          () => run('"ab" | .["a":]'),
+          throwsJq('Array/string slice indices must be integers'),
+        );
+        expect(
+          () => run('[1] | .[true:]'),
+          throwsJq('Array/string slice indices must be integers'),
+        );
+        expect(run('{} | .[1:2]?'), isEmpty);
+      });
+
       test('to_entries needs an object', () {
         expect(() => run('1 | to_entries'), throwsJq('number has no keys'));
       });
@@ -493,7 +553,7 @@ void main() {
         ('.a // "x"', 'unsupported or invalid jq at position 4: "// "x""'),
         ('..', 'unsupported or invalid jq at position 1: ".."'),
         (r'.[] as $x | $x', r'at position 5: "as $x | $x"'),
-        ('.[1:2]', 'at position 4: ":2]"'),
+        ('.[:]', 'at position 4: "]"'),
         ('.a.', 'at position 4: ""'),
         ('', 'at position 1: ""'),
         ('map .id', 'at position 5: ".id"'),

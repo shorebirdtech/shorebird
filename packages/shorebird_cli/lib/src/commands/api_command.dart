@@ -99,13 +99,13 @@ The placeholder "$appIdPlaceholder" in the endpoint, and in -F/--field values, i
 
 The default HTTP request method is "GET" normally and "POST" if any fields or --input were added. Override the method with --method.
 
-Pass one or more -f/--raw-field values in "key=value" format to add string parameters. -F/--field converts its value: "true", "false", "null" and integers become JSON values, "@<path>" reads the value from a file ("@-" from standard input), and "$appIdPlaceholder" is filled in. For "GET" requests, fields are sent as the query string; otherwise they are sent as a JSON object body. For a nested JSON body, use --input.
+Pass one or more -f/--raw-field values in "key=value" format to add string parameters. -F/--field converts its value: "true", "false", "null" and integers become JSON values, "@<path>" reads the value from a file ("@-" from standard input), and "$appIdPlaceholder" is filled in. For "GET" requests, fields are sent as the query string; otherwise they are sent as a JSON object body. Adding fields switches the default method to "POST", so to send them as a "GET" query string, pass --method GET. For a nested JSON body, use --input.
 
 --input sends a JSON file (or "-" for standard input) as the request body. Fields are then added to the query string.
 
 The response body is printed as-is (JSON is indented when printing to a terminal). On a non-2xx response the body is still printed, an error is printed to stderr, and the command exits with status 1.
 
---jq takes a jq expression and prints each result: strings without quotes, other values as JSON. It supports a common subset of jq: paths (".", ".a.b", ".[]", ".[0]", "?"), "|", ",", comparisons, "and", "or", "not", object and array construction, string interpolation, and length, keys, map(f), select(f), empty, first, first(f), last, sort_by(f), unique, unique_by(f), join(sep), to_entries, from_entries and with_entries(f).
+--jq takes a jq expression and prints each result: strings without quotes, other values as JSON. It supports a common subset of jq: paths (".", ".a.b", ".[]", ".[0]", "?"), slices (".[1:3]", ".[2:]", ".[:-1]"), "|", ",", comparisons, "and", "or", "not", object and array construction, string interpolation, and length, keys, map(f), select(f), empty, first, first(f), last, sort_by(f), unique, unique_by(f), join(sep), to_entries, from_entries and with_entries(f).
 
 Requests are authenticated as your "shorebird login" session, or with the API key in the SHOREBIRD_TOKEN environment variable. Requests other than GET are never retried, so a write is sent at most once.
 
@@ -180,10 +180,14 @@ Examples:
 
     final inputPath = results['input'] as String?;
     var method = (results['method'] as String).toUpperCase();
-    if (!results.wasParsed('method') &&
-        (params.isNotEmpty || inputPath != null)) {
+    final methodDefaulted = !results.wasParsed('method');
+    if (methodDefaulted && (params.isNotEmpty || inputPath != null)) {
       method = 'POST';
     }
+    // Whether fields alone made this a POST, which a caller who meant them
+    // as a GET query string may not expect.
+    final fieldsMadePost =
+        methodDefaulted && params.isNotEmpty && inputPath == null;
 
     final codePushClient = codePushClientWrapper.codePushClient;
     final apiBase = '${codePushClient.apiBaseUri}';
@@ -276,10 +280,17 @@ Examples:
       _output.add(responseBody);
     }
     if (succeeded) return ExitCode.success.code;
-    return _fail(
+    final exitCode = _fail(
       (isJson ? _errorMessage(responseBody, response.statusCode) : null) ??
           'HTTP ${response.statusCode}',
     );
+    if (fieldsMadePost && response.statusCode == HttpStatus.methodNotAllowed) {
+      stderr.writeln(
+        'shorebird: Fields switch the default method to POST. For a GET '
+        'with query parameters, add --method GET or put them in the URL.',
+      );
+    }
+    return exitCode;
   }
 
   int _fail(String message) {

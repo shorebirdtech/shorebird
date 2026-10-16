@@ -22,12 +22,13 @@ typedef _Filter = List<Object?> Function(Object? input);
 /// A parsed expression in a small subset of jq, the language `gh api --jq`
 /// takes.
 ///
-/// Supported: `.`, `.a.b`, `."a"`, `.[]`, `.[n]`, `.["a"]`, the `?` suffix,
-/// `|`, `,`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`, `{...}`
-/// and `[...]` construction, string interpolation (`"\(.a)"`), literals,
-/// and the functions `length`, `keys`, `map(f)`, `select(f)`, `empty`,
-/// `first`, `first(f)`, `last`, `sort_by(f)`, `unique`, `unique_by(f)`,
-/// `join(sep)`, `to_entries`, `from_entries` and `with_entries(f)`.
+/// Supported: `.`, `.a.b`, `."a"`, `.[]`, `.[n]`, `.["a"]`, slices
+/// (`.[a:b]`, `.[a:]`, `.[:b]`), the `?` suffix, `|`, `,`, `==`, `!=`, `<`,
+/// `<=`, `>`, `>=`, `and`, `or`, `not`, `{...}` and `[...]` construction,
+/// string interpolation (`"\(.a)"`), literals, and the functions `length`,
+/// `keys`, `map(f)`, `select(f)`, `empty`, `first`, `first(f)`, `last`,
+/// `sort_by(f)`, `unique`, `unique_by(f)`, `join(sep)`, `to_entries`,
+/// `from_entries` and `with_entries(f)`.
 /// Anything else is rejected with a [JqException] that names it.
 /// {@endtemplate}
 class JqQuery {
@@ -208,13 +209,28 @@ class _Parser {
     return (input) => [for (final v in target(input)) _index(v, name)];
   }
 
-  /// `[]` or `[expr]` applied to [target]'s outputs.
+  /// `[]`, `[expr]` or a slice (`[a:b]`, `[a:]`, `[:b]`) applied to
+  /// [target]'s outputs.
   _Filter _indexSuffix(_Filter target) {
     _expect('[');
     if (_eat(']')) {
       return (input) => [for (final v in target(input)) ..._iterate(v)];
     }
-    final key = _pipe();
+    final start = _peek(':') ? null : _pipe();
+    if (_eat(':')) {
+      // jq requires at least one bound: `.[:]` is a syntax error.
+      final end = start == null || !_peek(']') ? _pipe() : null;
+      _expect(']');
+      _Filter bound(_Filter? f) => f ?? (input) => const [null];
+      final from = bound(start);
+      final to = bound(end);
+      return (input) => [
+        for (final v in target(input))
+          for (final s in from(input))
+            for (final e in to(input)) _slice(v, s, e),
+      ];
+    }
+    final key = start!;
     _expect(']');
     return (input) => [
       for (final v in target(input))
@@ -446,6 +462,36 @@ Object? _index(Object? value, Object? key) {
   }
   final keyText = key is String ? '"$key"' : _typeName(key);
   throw JqException('Cannot index ${_typeName(value)} with $keyText');
+}
+
+/// jq's `.[start:end]` on [value]: negative bounds count from the end,
+/// bounds are clamped to the value, a null bound means that end, and a
+/// fractional start is rounded down and a fractional end up. Strings are
+/// sliced by code point.
+Object? _slice(Object? value, Object? start, Object? end) {
+  if (value == null) return null;
+  final int length;
+  if (value is List) {
+    length = value.length;
+  } else if (value is String) {
+    length = value.runes.length;
+  } else {
+    throw JqException('Cannot index ${_typeName(value)} with object');
+  }
+  final startIndex = start ?? 0;
+  final endIndex = end ?? length;
+  if (startIndex is! num || endIndex is! num) {
+    throw const JqException('Array/string slice indices must be integers');
+  }
+  var from = startIndex < 0 ? startIndex + length : startIndex;
+  var to = endIndex < 0 ? endIndex + length : endIndex;
+  from = from.clamp(0, length);
+  to = to.clamp(from, length);
+  final first = from.floor();
+  final last = to.ceil();
+  return value is List
+      ? value.sublist(first, last)
+      : String.fromCharCodes((value as String).runes.toList(), first, last);
 }
 
 Iterable<Object?> _iterate(Object? value) => switch (value) {
