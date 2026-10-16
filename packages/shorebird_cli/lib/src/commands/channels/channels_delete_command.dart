@@ -94,6 +94,10 @@ class ChannelsDeleteCommand extends ShorebirdCommand
     final gateErrorCode = confirmDelete(
       name: channelName,
       description: 'channel "$channelName" from app "$appId"',
+      consequence:
+          'This permanently deletes channel "$channelName" and its promotion '
+          'history. Its patches are not deleted: they stay on their releases '
+          'and on any other channel they were promoted to.',
     );
     if (gateErrorCode != null) return gateErrorCode;
 

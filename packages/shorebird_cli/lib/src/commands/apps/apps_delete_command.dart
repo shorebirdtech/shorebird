@@ -66,9 +66,9 @@ class AppsDeleteCommand extends ShorebirdCommand
           'app "${app.displayName}" ($appId) and all of its releases and '
           'patches',
       consequence:
-          'This permanently deletes app "${app.displayName}" ($appId), '
-          '${_releaseCount(releases.length)} and every patch. Devices '
-          'running it stop getting patches.',
+          'This permanently deletes app "${app.displayName}" ($appId): '
+          '${_releaseCount(releases.length)}, its channels and its '
+          'collaborators. Devices running it stop getting patches.',
     );
     if (gateErrorCode != null) return gateErrorCode;
 
@@ -95,8 +95,8 @@ class AppsDeleteCommand extends ShorebirdCommand
   }
 
   String _releaseCount(int count) => switch (count) {
-    0 => 'which has no releases,',
-    1 => 'its 1 release',
-    _ => 'all $count of its releases',
+    0 => 'it has no releases',
+    1 => 'its 1 release and its patches',
+    _ => 'all $count of its releases and their patches',
   };
 }

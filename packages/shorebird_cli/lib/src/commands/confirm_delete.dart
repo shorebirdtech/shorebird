@@ -81,16 +81,17 @@ mixin ConfirmDelete on ShorebirdCommand {
 
   /// Confirms deleting [description], whose name is [name].
   ///
-  /// [consequence], when given, is printed before the prompt so the user
-  /// knows what deleting does (e.g. "Devices on this release stop getting
-  /// patches.").
+  /// [consequence] says what deleting removes. In text mode it is printed
+  /// before prompting, and before proceeding when a flag confirmed the delete,
+  /// so the user always sees it. With `--json` it is not printed, so stdout
+  /// stays a single envelope.
   ///
   /// Returns `null` when the caller may proceed, or an exit code after
   /// reporting why it may not.
   int? confirmDelete({
     required String name,
     required String description,
-    String? consequence,
+    required String consequence,
   }) {
     return switch (_deleteConfirmationStyle) {
       DeleteConfirmationStyle.yesNo => _confirmYesNo(
@@ -106,7 +107,7 @@ mixin ConfirmDelete on ShorebirdCommand {
     };
   }
 
-  int? _confirmYesNo(String name, String description, String? consequence) {
+  int? _confirmYesNo(String name, String description, String consequence) {
     final hint = 'Re-run with --$yesArgName to delete $description.';
     final confirmName = results[confirmNameArgName] as String?;
     if (confirmName != null) {
@@ -114,20 +115,20 @@ mixin ConfirmDelete on ShorebirdCommand {
         '--$confirmNameArgName is deprecated and will be removed; use '
         '--$yesArgName instead.',
       );
-      if (confirmName == name) return null;
+      if (confirmName == name) return _announce(consequence);
       return reportError(
         message: '--$confirmNameArgName "$confirmName" does not match "$name".',
         hint: hint,
       );
     }
 
-    if (results[yesArgName] == true) return null;
+    if (results[yesArgName] == true) return _announce(consequence);
 
     if (!_canPrompt) {
       return reportError(message: yesRequiredMessage, hint: hint);
     }
 
-    if (consequence != null) logger.info(consequence);
+    _announce(consequence);
     if (logger.confirm('Delete $description?', hint: hint)) return null;
     logger.err('Nothing was deleted.');
     return declinedExitCode;
@@ -136,13 +137,13 @@ mixin ConfirmDelete on ShorebirdCommand {
   int? _confirmTypeName(
     String name,
     String description,
-    String? consequence,
+    String consequence,
   ) {
     final hint =
         'Re-run with --$confirmNameArgName "$name" to delete $description.';
     final confirmName = results[confirmNameArgName] as String?;
     if (confirmName != null) {
-      if (confirmName == name) return null;
+      if (confirmName == name) return _announce(consequence);
       return reportError(
         message: '--$confirmNameArgName "$confirmName" does not match "$name".',
         hint: hint,
@@ -153,13 +154,20 @@ mixin ConfirmDelete on ShorebirdCommand {
       return reportError(message: confirmNameRequiredMessage, hint: hint);
     }
 
-    logger.info(consequence ?? 'This permanently deletes $description.');
+    _announce(consequence);
     final typed = logger
         .prompt('Type $name to confirm deletion:', hint: hint)
         .trim();
     if (typed == name) return null;
     logger.err('"$typed" does not match "$name". Nothing was deleted.');
     return declinedExitCode;
+  }
+
+  /// Prints [consequence] in text mode and returns null, so a confirmed delete
+  /// can `return _announce(...)`.
+  int? _announce(String consequence) {
+    if (!isJsonMode) logger.info(consequence);
+    return null;
   }
 
   // Both stdin and stdout must be terminals to prompt; otherwise every

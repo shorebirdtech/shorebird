@@ -101,7 +101,7 @@ class ReleasesDeleteCommand extends ShorebirdCommand
       );
     }
 
-    String consequence;
+    final String consequence;
     if (platform == null) {
       late final List<ReleasePatch> patches;
       final patchesError = await guardApiCall(

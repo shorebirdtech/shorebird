@@ -114,6 +114,13 @@ void main() {
         ),
       ).called(1);
       verify(() => logger.success('Deleted channel "$channelName".')).called(1);
+      verify(
+        () => logger.info(
+          'This permanently deletes channel "$channelName" and its promotion '
+          'history. Its patches are not deleted: they stay on their releases '
+          'and on any other channel they were promoted to.',
+        ),
+      ).called(1);
     });
 
     group('when the channel does not exist', () {

@@ -127,6 +127,9 @@ void main() {
     test('deletes the app with a matching --confirm-name', () async {
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
+      verify(
+        () => logger.info(any(that: startsWith('This permanently deletes'))),
+      ).called(1);
       verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
       verify(
         () => logger.success('Deleted "$displayName" ($appId).'),
@@ -205,9 +208,9 @@ void main() {
           expect(result, equals(ExitCode.success.code));
           verify(
             () => logger.info(
-              'This permanently deletes app "$displayName" ($appId), its 1 '
-              'release and every patch. Devices running it stop getting '
-              'patches.',
+              'This permanently deletes app "$displayName" ($appId): its 1 '
+              'release and its patches, its channels and its collaborators. '
+              'Devices running it stop getting patches.',
             ),
           ).called(1);
           verify(
@@ -271,11 +274,14 @@ void main() {
       }
 
       test('with no releases', () async {
-        await expectConsequence(0, '($appId), which has no releases, and');
+        await expectConsequence(0, '($appId): it has no releases, its');
       });
 
       test('with several releases', () async {
-        await expectConsequence(3, '($appId), all 3 of its releases and');
+        await expectConsequence(
+          3,
+          '($appId): all 3 of its releases and their patches,',
+        );
       });
     });
 
@@ -330,6 +336,7 @@ void main() {
         expect(data['release_count'], 1);
         expect(data['platforms'], equals(['android', 'ios']));
         expect(data['deleted'], isTrue);
+        verifyNever(() => logger.info(any()));
       });
 
       test('handles an app with no releases', () async {

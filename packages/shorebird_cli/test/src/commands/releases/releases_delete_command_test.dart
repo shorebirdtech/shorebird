@@ -206,6 +206,16 @@ void main() {
           'platforms': ['android', 'ios'],
           'deleted': true,
         });
+        verifyNever(() => logger.info(any()));
+      });
+
+      test('states what it deletes with --yes in text mode', () async {
+        await runWithOverrides(command.run);
+        verify(
+          () => logger.info(
+            any(that: startsWith('This permanently deletes release')),
+          ),
+        ).called(1);
       });
     });
 
