@@ -61,6 +61,7 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
     archiveDiffer: const AndroidArchiveDiffer(),
     allowAssetChanges: allowAssetDiffs,
     allowNativeChanges: allowNativeDiffs,
+    showDexDiff: showDexDiff,
   );
 
   @override

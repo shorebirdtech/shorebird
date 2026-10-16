@@ -256,8 +256,32 @@ void main() {
             archiveDiffer: any(named: 'archiveDiffer'),
             allowAssetChanges: any(named: 'allowAssetChanges'),
             allowNativeChanges: any(named: 'allowNativeChanges'),
+            showDexDiff: any(named: 'showDexDiff'),
           ),
         ).thenAnswer((_) async => diffStatus);
+      });
+
+      test('passes --show-dex-diff through to the checker', () async {
+        when(() => argResults['show-dex-diff']).thenReturn(true);
+
+        await runWithOverrides(
+          () => patcher.assertUnpatchableDiffs(
+            releaseArtifact: FakeReleaseArtifact(),
+            releaseArchive: File(''),
+            patchArchive: File(''),
+          ),
+        );
+
+        verify(
+          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+            localArchive: any(named: 'localArchive'),
+            releaseArchive: any(named: 'releaseArchive'),
+            archiveDiffer: any(named: 'archiveDiffer'),
+            allowAssetChanges: any(named: 'allowAssetChanges'),
+            allowNativeChanges: any(named: 'allowNativeChanges'),
+            showDexDiff: true,
+          ),
+        ).called(1);
       });
 
       test('forwards result from patchDiffChecker', () async {
@@ -276,6 +300,7 @@ void main() {
             archiveDiffer: any(named: 'archiveDiffer'),
             allowAssetChanges: any(named: 'allowAssetChanges'),
             allowNativeChanges: any(named: 'allowNativeChanges'),
+            showDexDiff: any(named: 'showDexDiff'),
           ),
         ).called(1);
       });

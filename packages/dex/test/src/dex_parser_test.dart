@@ -144,6 +144,52 @@ void main() {
       });
     });
 
+    group('32-bit pool indices', () {
+      // d8 only emits const-string/jumbo past 65536 strings, which no fixture
+      // this size can reach. It is format 31c, the same three code units as
+      // invoke-virtual, so overwriting one in place leaves every following
+      // instruction at its original address.
+      test('resolves a const-string/jumbo operand', () {
+        final bytes = Uint8List.fromList(
+          File(
+            p.join('test', 'fixtures', 'dex', 'pool_refs.dex'),
+          ).readAsBytesSync(),
+        );
+
+        final at = _indexOfInvokeVirtual(bytes);
+        bytes[at] = 0x1b; // const-string/jumbo
+        bytes[at + 1] = 0x01; // destination register
+        bytes[at + 2] = 15; // string index, low half
+        bytes[at + 3] = 0;
+        bytes[at + 4] = 0; // string index, high half
+        bytes[at + 5] = 0;
+
+        final greet = parser
+            .parse(bytes)
+            .classDefs
+            .expand(
+              (c) => c.classData?.virtualMethods ?? const <DexEncodedMethod>[],
+            )
+            .firstWhere((m) => m.method.methodName == 'greet');
+        final code = greet.code!;
+
+        final rendered = [
+          for (var i = 0; i < code.instructionCount; i++)
+            code.instructionAt(i).render(showLiterals: true),
+        ];
+
+        expect(rendered[3], '283,S:hello ');
+        expect(code.instructionAddresses[4], 10);
+
+        // Swapping the halves makes the index 15 << 16, past the fixture's 20
+        // strings. Reading only the low half would resolve it instead of
+        // throwing, which is what pins the shift rather than the width.
+        bytes[at + 2] = 0;
+        bytes[at + 4] = 15;
+        expect(() => parser.parse(bytes), throwsRangeError);
+      });
+    });
+
     group('error handling', () {
       test('throws FormatException for truncated file', () {
         expect(
@@ -161,4 +207,18 @@ void main() {
     // readUleb128, readUint16, and readUint32 are now internal to
     // _BinaryReader and exercised transitively through parse().
   });
+}
+
+/// File offset of the first `invoke-virtual` with a one-register argument
+/// list: opcode `6e`, argument word count `20`, then its register list `0010`.
+int _indexOfInvokeVirtual(Uint8List bytes) {
+  for (var i = 0; i + 5 < bytes.length; i++) {
+    if (bytes[i] == 0x6e &&
+        bytes[i + 1] == 0x20 &&
+        bytes[i + 4] == 0x10 &&
+        bytes[i + 5] == 0x00) {
+      return i;
+    }
+  }
+  throw StateError('no invoke-virtual in fixture');
 }

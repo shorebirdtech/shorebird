@@ -1,4 +1,3 @@
-// cspell:words dexdump
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -75,6 +74,7 @@ class PatchDiffChecker {
     required bool allowAssetChanges,
     required bool allowNativeChanges,
     bool confirmNativeChanges = true,
+    bool showDexDiff = false,
   }) async {
     final progress = logger.progress(
       'Verifying patch can be applied to release',
@@ -107,6 +107,7 @@ class PatchDiffChecker {
         );
 
       // Show detailed DEX diff information if available.
+      var dexDetailWasHidden = false;
       if (contentDiffs is AndroidFileSetDiff &&
           contentDiffs.dexDiffResults.isNotEmpty) {
         for (final dexPath
@@ -116,14 +117,21 @@ class PatchDiffChecker {
                 .where((p) => p.endsWith('.dex'))) {
           final dexResult = contentDiffs.dexDiffResults[dexPath];
           if (dexResult != null) {
-            logger.info(yellow.wrap(dexResult.describe()));
+            if (dexResult.hasHiddenCodeDiff) dexDetailWasHidden = true;
+            logger.info(
+              yellow.wrap(dexResult.describe(showFullCodeDiff: showDexDiff)),
+            );
           }
         }
-        logger.info(
-          yellow.wrap(
-            '\nFor detailed DEX disassembly, run: dexdump -d <file>',
-          ),
-        );
+        if (!showDexDiff && dexDetailWasHidden) {
+          logger.info(
+            yellow.wrap(
+              '\nPass --show-dex-diff to see every differing instruction. '
+              'That output includes every instruction in full and any '
+              'string constants or payload data they carry.',
+            ),
+          );
+        }
       }
 
       // Name the dependencies whose versions moved, which usually explains a
