@@ -281,15 +281,61 @@ class Auth {
     ),
   ]);
 
-  /// The path to the credentials file: [oauth2.Credentials] as JSON, with
-  /// an `email` field naming the user they belong to.
-  String get credentialsFilePath {
-    return p.join(_credentialsDir, 'credentials-v2.json');
+  /// The path to the credentials file for the current auth service:
+  /// [oauth2.Credentials] as JSON, with an `email` field naming the user they
+  /// belong to.
+  ///
+  /// Each auth service has a login of its own, as `gh` keeps one per host,
+  /// so that switching between them with `AUTH_SERVICE_URL` neither sends
+  /// one service's tokens to another nor overwrites its login. The default
+  /// auth service's login is in `credentials-v2.json`, where CLIs that kept a
+  /// single login stored it; any other's is in a file named for its host
+  /// (see [_credentialsFilePathFor]).
+  String get credentialsFilePath => _credentialsFilePathFor(_authServiceUri);
+
+  /// The path of the credentials file for the auth service at [authUri]: the
+  /// default one's is `credentials-v2.json`, and any other's is
+  /// `credentials-v2-<host>.json`, with its port when it has one, such as
+  /// `credentials-v2-auth-dev.shorebird.dev.json` or
+  /// `credentials-v2-localhost_8080.json`.
+  String _credentialsFilePathFor(Uri authUri) {
+    final key = _authServiceKey(authUri);
+    final name = key == _defaultAuthServiceKey
+        ? 'credentials-v2.json'
+        : 'credentials-v2-$key.json';
+    return p.join(_credentialsDir, name);
   }
+
+  /// Names the auth service at [uri] (or an endpoint of it) by its host and
+  /// port, in a form that can be part of a file name on any platform: `:`,
+  /// as in an IPv6 address, cannot be on Windows.
+  static String _authServiceKey(Uri uri) => [
+    uri.host,
+    if (uri.hasPort) '${uri.port}',
+  ].join('_').replaceAll(':', '_');
+
+  static final _defaultAuthServiceKey = _authServiceKey(
+    Uri.parse(defaultAuthServiceUrl),
+  );
+
+  /// Whether [credentials] were issued by the current auth service, so may be
+  /// sent to it and to the API that trusts it. Credentials that do not name
+  /// their token endpoint are taken to belong to the file they are in.
+  bool _isForAuthService(oauth2.Credentials credentials) {
+    final tokenEndpoint = credentials.tokenEndpoint;
+    return tokenEndpoint == null ||
+        _authServiceKey(tokenEndpoint) == _authServiceKey(_authServiceUri);
+  }
+
+  /// Whether the current auth service is the default one, whose login is in
+  /// `credentials-v2.json`.
+  bool get _isDefaultAuthService =>
+      _authServiceKey(_authServiceUri) == _defaultAuthServiceKey;
 
   /// The path of the credentials file CLIs before `package:oauth2` wrote, in
   /// `package:googleapis_auth`'s format. Read once, to carry a login over to
-  /// [credentialsFilePath] (see [_migrateLegacyCredentials]).
+  /// [credentialsFilePath] for the default auth service (see
+  /// [_migrateLegacyCredentials]).
   String get legacyCredentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
   }
@@ -628,31 +674,89 @@ class Auth {
       }
     }
 
+    _moveLoginForAnotherAuthService();
     final login = _readCredentialsFile(warn: true);
     if (login == null) return;
     _useLogin(login);
+  }
+
+  /// Moves a login for an auth service other than the default one out of
+  /// `credentials-v2.json` and into that service's own file (see
+  /// [credentialsFilePath]), unless it already has one.
+  ///
+  /// CLIs that kept a single login stored whichever auth service the user
+  /// last logged in to in `credentials-v2.json`. Moving it, rather than
+  /// leaving it for the default auth service to ignore, keeps that login for
+  /// its own service, and leaves the default service logged out, as it was.
+  void _moveLoginForAnotherAuthService() {
+    final defaultFile = File(
+      _credentialsFilePathFor(Uri.parse(defaultAuthServiceUrl)),
+    );
+    final tokenEndpoint = _readLogin(defaultFile)?.credentials.tokenEndpoint;
+    if (tokenEndpoint == null ||
+        _authServiceKey(tokenEndpoint) == _defaultAuthServiceKey) {
+      return;
+    }
+
+    final destination = _credentialsFilePathFor(tokenEndpoint);
+    if (File(destination).existsSync()) return;
+    try {
+      // A rename keeps the file's owner-only permissions.
+      defaultFile.renameSync(destination);
+    } on FileSystemException catch (error) {
+      logger.detail(
+        'Could not move ${defaultFile.path} to $destination: $error',
+      );
+    }
   }
 
   /// Reads the credentials file, returning null when it is missing or cannot
   /// be parsed. With [warn], tells the user why unreadable credentials were
   /// ignored.
   ///
-  /// When there is no credentials file but a legacy one, carries its login
-  /// over first (see [_migrateLegacyCredentials]).
+  /// When there is no credentials file for the default auth service but a
+  /// legacy one, carries its login over first (see
+  /// [_migrateLegacyCredentials]).
+  ///
+  /// Ignores a login another auth service issued, so that its tokens are
+  /// never sent to this one.
   _StoredLogin? _readCredentialsFile({bool warn = false}) {
     final credentialsFile = File(credentialsFilePath);
     if (!credentialsFile.existsSync()) {
+      if (!_isDefaultAuthService) return null;
       final credentials = _migrateLegacyCredentials(warn: warn);
       if (credentials == null) return null;
       return (credentials: credentials, email: null);
     }
 
+    final login = _readLogin(credentialsFile, warn: warn);
+    if (login == null) return null;
+    if (!_isForAuthService(login.credentials)) {
+      if (warn) {
+        logger.warn(
+          'Your stored credentials in $credentialsFilePath are for '
+          '${login.credentials.tokenEndpoint!.host}, not '
+          '${_authServiceUri.host}. Run ${lightCyan.wrap('shorebird login')} '
+          'to sign in to ${_authServiceUri.host}.',
+        );
+      }
+      return null;
+    }
+    return login;
+  }
+
+  /// Reads the login stored in [file], returning null when it is missing or
+  /// cannot be parsed. With [warn], tells the user why unreadable credentials
+  /// were ignored.
+  _StoredLogin? _readLogin(File file, {bool warn = false}) {
     try {
-      final contents = credentialsFile.readAsStringSync();
+      final contents = file.readAsStringSync();
       // fromJson ignores fields it does not know, such as `email`.
       final credentials = oauth2.Credentials.fromJson(contents);
       final email = (jsonDecode(contents) as Map)['email'];
       return (credentials: credentials, email: email is String ? email : null);
+    } on PathNotFoundException {
+      return null;
     } on Exception {
       if (warn) _warnUnreadableCredentials();
       return null;
@@ -784,13 +888,18 @@ class Auth {
   /// Deletes the locally stored credentials without revoking the server-side
   /// session.
   ///
-  /// Deletes a legacy credentials file too, which an older CLI may have
-  /// written since, so that this CLI does not carry that login over again.
+  /// Deletes only the current auth service's login: logins for other auth
+  /// services stay. For the default auth service, deletes a legacy
+  /// credentials file too, which an older CLI may have written since, so that
+  /// this CLI does not carry that login over again.
   void clearCredentials() {
     _oauthClient = null;
     _email = null;
 
-    for (final path in [credentialsFilePath, legacyCredentialsFilePath]) {
+    for (final path in [
+      credentialsFilePath,
+      if (_isDefaultAuthService) legacyCredentialsFilePath,
+    ]) {
       final file = File(path);
       if (file.existsSync()) file.deleteSync();
     }

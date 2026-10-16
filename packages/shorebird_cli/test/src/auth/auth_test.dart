@@ -30,6 +30,9 @@ import '../mocks.dart';
 
 const shorebirdJwtIssuer = 'https://auth.shorebird.dev';
 final tokenEndpoint = Uri.parse('https://auth.shorebird.dev/token');
+final _defaultTokenEndpoint = tokenEndpoint;
+final devAuthServiceUri = Uri.parse('https://auth-dev.shorebird.dev');
+final devTokenEndpoint = Uri.parse('https://auth-dev.shorebird.dev/token');
 
 void main() {
   useTempWorkingDirectory();
@@ -72,11 +75,12 @@ void main() {
       String accessToken = shorebirdAccessToken,
       String? refreshToken = refreshToken,
       bool expired = false,
+      Uri? tokenEndpoint,
     }) {
       return oauth2.Credentials(
         accessToken,
         refreshToken: refreshToken,
-        tokenEndpoint: tokenEndpoint,
+        tokenEndpoint: tokenEndpoint ?? _defaultTokenEndpoint,
         scopes: ['api'],
         expiration: DateTime.now().add(Duration(minutes: expired ? -1 : 10)),
       );
@@ -150,10 +154,14 @@ void main() {
       );
     }
 
-    /// Writes [credentials] to the credentials file, with [email] as a login
-    /// stores it.
-    void storeCredentials(oauth2.Credentials credentials, {String? email}) {
-      File(credentialsPath).writeAsStringSync(
+    /// Writes [credentials] to the credentials file, or the file at [path],
+    /// with [email] as a login stores it.
+    void storeCredentials(
+      oauth2.Credentials credentials, {
+      String? email,
+      String? path,
+    }) {
+      File(path ?? credentialsPath).writeAsStringSync(
         jsonEncode({
           ...jsonDecode(credentials.toJson()) as Map<String, Object?>,
           'email': ?email,
@@ -422,6 +430,210 @@ void main() {
         verify(
           () => logger.warn(any(that: contains('could not be read'))),
         ).called(1);
+      });
+    });
+
+    group(
+      'when credentials-v2.json holds a login for another auth service',
+      () {
+        late String devCredentialsPath;
+
+        setUp(() {
+          devCredentialsPath = p.join(
+            credentialsDir,
+            'credentials-v2-auth-dev.shorebird.dev.json',
+          );
+          storeCredentials(
+            credentialsWith(tokenEndpoint: devTokenEndpoint),
+            email: email,
+          );
+        });
+
+        test("moves it to that service's file and is logged out", () {
+          auth = buildAuth();
+
+          expect(auth.isAuthenticated, isFalse);
+          expect(File(credentialsPath).existsSync(), isFalse);
+          final moved = oauth2.Credentials.fromJson(
+            File(devCredentialsPath).readAsStringSync(),
+          );
+          expect(moved.tokenEndpoint, equals(devTokenEndpoint));
+          verifyNever(() => logger.warn(any()));
+        });
+
+        test('warns and ignores it when that service has a file', () {
+          storeCredentials(
+            credentialsWith(
+              accessToken: 'sb_at_dev',
+              tokenEndpoint: devTokenEndpoint,
+            ),
+            path: devCredentialsPath,
+          );
+
+          auth = buildAuth();
+
+          expect(auth.isAuthenticated, isFalse);
+          expect(File(credentialsPath).existsSync(), isTrue);
+          verify(
+            () => logger.warn(
+              any(
+                that: contains(
+                  'are for auth-dev.shorebird.dev, not auth.shorebird.dev',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('logs when it cannot be moved', () {
+          // A directory in its place makes the rename fail.
+          Directory(devCredentialsPath).createSync();
+
+          auth = buildAuth();
+
+          expect(auth.isAuthenticated, isFalse);
+          expect(File(credentialsPath).existsSync(), isTrue);
+          verify(
+            () => logger.detail(any(that: contains('Could not move'))),
+          ).called(1);
+        });
+      },
+    );
+
+    test('uses stored credentials that name no token endpoint', () {
+      storeCredentials(oauth2.Credentials(shorebirdAccessToken));
+      auth = buildAuth();
+      expect(auth.isAuthenticated, isTrue);
+    });
+
+    group('when the auth service is not the default one', () {
+      late String devCredentialsPath;
+
+      setUp(() {
+        devCredentialsPath = p.join(
+          credentialsDir,
+          'credentials-v2-auth-dev.shorebird.dev.json',
+        );
+        accessCredentials = credentialsWith(tokenEndpoint: devTokenEndpoint);
+        when(() => shorebirdEnv.authServiceUri).thenReturn(devAuthServiceUri);
+        auth = buildAuth();
+      });
+
+      test('stores its login in a file named for its host', () async {
+        expect(auth.credentialsFilePath, equals(devCredentialsPath));
+
+        await runWithOverrides(() => auth.login(prompt: (_) {}));
+
+        expect(File(devCredentialsPath).existsSync(), isTrue);
+        expect(File(credentialsPath).existsSync(), isFalse);
+        expect(buildAuth().isAuthenticated, isTrue);
+      });
+
+      test('names the port in the file name when there is one', () {
+        when(
+          () => shorebirdEnv.authServiceUri,
+        ).thenReturn(Uri.parse('http://localhost:8080'));
+        expect(
+          buildAuth().credentialsFilePath,
+          equals(p.join(credentialsDir, 'credentials-v2-localhost_8080.json')),
+        );
+      });
+
+      test("ignores the default auth service's login", () async {
+        storeCredentials(credentialsWith(), email: email);
+
+        auth = buildAuth();
+
+        expect(auth.isAuthenticated, isFalse);
+        expect(auth.client, same(httpClient));
+        expect(File(credentialsPath).existsSync(), isTrue);
+        verifyNever(() => logger.warn(any()));
+      });
+
+      test('logs in while the default auth service is logged in', () async {
+        storeCredentials(credentialsWith(accessToken: 'sb_at_prod'));
+        auth = buildAuth();
+
+        await runWithOverrides(() => auth.login(prompt: (_) {}));
+
+        expect(auth.isAuthenticated, isTrue);
+        expect(
+          readStoredCredentials().accessToken,
+          equals('sb_at_prod'),
+          reason: "The default auth service's login is unchanged.",
+        );
+      });
+
+      test('moves its login out of credentials-v2.json and uses it', () {
+        storeCredentials(
+          credentialsWith(tokenEndpoint: devTokenEndpoint),
+          email: email,
+        );
+
+        auth = buildAuth();
+
+        expect(auth.isAuthenticated, isTrue);
+        expect(auth.email, equals(email));
+        expect(File(credentialsPath).existsSync(), isFalse);
+        expect(File(devCredentialsPath).existsSync(), isTrue);
+      });
+
+      test('warns and ignores a login another auth service issued', () {
+        storeCredentials(credentialsWith(), path: devCredentialsPath);
+
+        auth = buildAuth();
+
+        expect(auth.isAuthenticated, isFalse);
+        verify(
+          () => logger.warn(
+            any(
+              that: allOf(
+                contains(devCredentialsPath),
+                contains(
+                  'are for auth.shorebird.dev, not auth-dev.shorebird.dev',
+                ),
+                contains('shorebird login'),
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('does not carry a legacy login over', () {
+        File(legacyCredentialsPath).writeAsStringSync('{}');
+
+        auth = buildAuth();
+
+        expect(auth.isAuthenticated, isFalse);
+        expect(File(legacyCredentialsPath).existsSync(), isTrue);
+      });
+
+      test('logout removes only its own login', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
+        storeCredentials(credentialsWith());
+        File(legacyCredentialsPath).writeAsStringSync('{}');
+        storeCredentials(accessCredentials, path: devCredentialsPath);
+        auth = buildAuth();
+
+        await runWithOverrides(auth.logout);
+
+        expect(File(devCredentialsPath).existsSync(), isFalse);
+        expect(File(credentialsPath).existsSync(), isTrue);
+        expect(File(legacyCredentialsPath).existsSync(), isTrue);
+        final revoked = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).captured;
+        expect((revoked.single as Uri).host, equals('auth-dev.shorebird.dev'));
       });
     });
 

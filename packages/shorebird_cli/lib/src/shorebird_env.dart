@@ -38,6 +38,10 @@ class CacheCorruptedException implements Exception {
   String toString() => '$reason $remedy';
 }
 
+/// The Shorebird auth service the CLI uses unless `AUTH_SERVICE_URL` names
+/// another.
+const defaultAuthServiceUrl = 'https://auth.shorebird.dev';
+
 /// A reference to a [ShorebirdEnv] instance.
 final shorebirdEnvRef = create(ShorebirdEnv.new);
 
@@ -267,9 +271,9 @@ class ShorebirdEnv {
 
   /// The base URL for the Shorebird auth service. Can be overridden with the
   /// `AUTH_SERVICE_URL` environment variable. Defaults to
-  /// `https://auth.shorebird.dev`.
+  /// [defaultAuthServiceUrl].
   Uri get authServiceUri => Uri.parse(
-    platform.environment['AUTH_SERVICE_URL'] ?? 'https://auth.shorebird.dev',
+    platform.environment['AUTH_SERVICE_URL'] ?? defaultAuthServiceUrl,
   );
 
   /// The base URL for the Shorebird code push server that overrides the default
