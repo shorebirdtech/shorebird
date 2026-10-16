@@ -94,7 +94,6 @@ class ChannelsDeleteCommand extends ShorebirdCommand
     final gateErrorCode = confirmDelete(
       name: channelName,
       description: 'channel "$channelName" from app "$appId"',
-      style: DeleteConfirmationStyle.yesNo,
     );
     if (gateErrorCode != null) return gateErrorCode;
 

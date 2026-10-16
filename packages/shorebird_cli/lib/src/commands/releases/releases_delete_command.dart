@@ -101,14 +101,41 @@ class ReleasesDeleteCommand extends ShorebirdCommand
       );
     }
 
+    String consequence;
+    if (platform == null) {
+      late final List<ReleasePatch> patches;
+      final patchesError = await guardApiCall(
+        () async => patches = await codePushClientWrapper.getReleasePatches(
+          appId: appId,
+          releaseId: release.id,
+        ),
+        code: JsonErrorCode.fetchFailed,
+        message: 'Failed to fetch patches for release "$releaseVersion".',
+      );
+      if (patchesError != null) return patchesError;
+      final what = switch (patches.length) {
+        0 => 'release $releaseVersion',
+        1 => 'release $releaseVersion and its 1 patch',
+        final n => 'release $releaseVersion and its $n patches',
+      };
+      consequence =
+          'This permanently deletes $what. Devices on this release stop '
+          "getting patches, and you can't patch it again.";
+    } else {
+      consequence =
+          'This permanently deletes the ${platform.value} artifacts of '
+          'release $releaseVersion and of its patches. The release and its '
+          'other platforms remain.';
+    }
+
     final gateErrorCode = confirmDelete(
+      consequence: consequence,
       name: releaseVersion,
       description: platform == null
           ? 'release $releaseVersion of app "$appId", including every '
                 'platform and every patch'
           : 'the ${platform.value} platform of release $releaseVersion of app '
                 '"$appId"',
-      style: DeleteConfirmationStyle.yesNo,
     );
     if (gateErrorCode != null) return gateErrorCode;
 

@@ -38,6 +38,7 @@ void main() {
       updatedAt: DateTime(2026, 1, 16),
     );
 
+    late List<ReleasePatch> patches;
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdEnv shorebirdEnv;
@@ -92,6 +93,16 @@ void main() {
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['app-id']).thenReturn(null);
       when(() => argResults['flavor']).thenReturn(null);
+      patches = [
+        for (final number in [1, 2])
+          ReleasePatch(
+            id: number,
+            number: number,
+            channel: 'stable',
+            isRolledBack: false,
+            artifacts: const [],
+          ),
+      ];
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults['platform']).thenReturn(null);
       when(() => argResults['yes']).thenReturn(true);
@@ -112,6 +123,12 @@ void main() {
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
+      when(
+        () => codePushClientWrapper.getReleasePatches(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenAnswer((_) async => patches);
       when(
         () => codePushClientWrapper.deleteRelease(
           appId: any(named: 'appId'),
@@ -391,11 +408,75 @@ void main() {
             ),
           ).called(1);
           verify(
+            () => logger.info(
+              'This permanently deletes release $releaseVersion and its 2 '
+              'patches. Devices on this release stop getting patches, and '
+              "you can't patch it again.",
+            ),
+          ).called(1);
+          verify(
             () => codePushClientWrapper.deleteRelease(
               appId: appId,
               releaseId: release.id,
             ),
           ).called(1);
+        });
+
+        test('states the consequence for a release with one patch', () async {
+          patches = [patches.first];
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
+          await runInTerminal();
+          verify(
+            () => logger.info(
+              any(
+                that: startsWith(
+                  'This permanently deletes release '
+                  '$releaseVersion and its 1 patch.',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('states the consequence for a release with no patches', () async {
+          patches = [];
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
+          await runInTerminal();
+          verify(
+            () => logger.info(
+              any(
+                that: startsWith(
+                  'This permanently deletes release '
+                  '$releaseVersion. Devices',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('states the platform consequence under --platform', () async {
+          when(() => argResults['platform']).thenReturn('android');
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
+          await runInTerminal();
+          verify(
+            () => logger.info(
+              'This permanently deletes the android artifacts of release '
+              '$releaseVersion and of its patches. The release and its other '
+              'platforms remain.',
+            ),
+          ).called(1);
+          verifyNever(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          );
         });
 
         test('exits 1 without deleting when declined', () async {
@@ -453,6 +534,29 @@ void main() {
 
     // The wrapper reports the server's error (e.g. a 403 for a caller without
     // permission to delete releases) and throws ProcessExit.
+    group('when fetching the patches fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('emits a fetch_failed envelope in --json mode', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, jsonMode: true),
+        );
+        expect(exitCode, equals(ExitCode.software.code));
+        verifyNeverDeleted();
+        expect(
+          (json['error'] as Map<String, dynamic>)['code'],
+          'fetch_failed',
+        );
+      });
+    });
+
     group('when the server rejects the delete', () {
       setUp(() {
         when(
