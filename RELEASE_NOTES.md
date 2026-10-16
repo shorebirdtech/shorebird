@@ -12,6 +12,10 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
   devices and the other metrics the console shows under Insights.
 - ✨ `shorebird releases delete` deletes a release, or one platform of it with
   `--platform`.
+- ✨ On GitHub Actions, the CLI can sign in with the job's OIDC token instead
+  of a stored `SHOREBIRD_TOKEN`: grant the job `id-token: write`, set
+  `SHOREBIRD_PROJECT_ID`, and add a trust rule for the workflow to a service
+  account in that project.
 - 🐛 Apple builds (`ios`, `ios-framework`, `macos`) no longer delete the
   project's whole `.dart_tool` directory, so `build_runner` caches and native
   asset outputs survive a Shorebird build.
