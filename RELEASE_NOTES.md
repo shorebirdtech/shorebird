@@ -4,7 +4,7 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
-## 1.6.129 (October 15, 2026)
+## 1.6.129 (October 16, 2026)
 
 - ✨ `shorebird api` sends an authenticated request to the Shorebird API and
   prints the response, with `--jq` to filter it.
