@@ -147,6 +147,8 @@ void main() {
         r'$ shorebird api /apps',
         r"$ shorebird api /apps/{appId}/releases --jq '.releases[].version'",
         '-f channel=beta',
+        '.[1:3]',
+        'pass --method GET',
       ]) {
         expect(command.description, contains(text));
       }
@@ -645,6 +647,60 @@ void main() {
         responseBody = 'oops';
         expect(await runApi(['/x']), equals(1));
         expect(fakeStderr.text, equals('shorebird: HTTP 500\n'));
+      });
+
+      group('with 405 Method Not Allowed', () {
+        setUp(() {
+          responseStatus = HttpStatus.methodNotAllowed;
+          responseBody =
+              '{"message":"This route does not accept the request method."}';
+        });
+
+        const error =
+            'shorebird: This route does not accept the request method. '
+            '(HTTP 405)\n';
+        const hint =
+            'shorebird: Fields switch the default method to POST. For a GET '
+            'with query parameters, add --method GET or put them in the '
+            'URL.\n';
+
+        test('hints at --method GET when fields made it a POST', () async {
+          expect(await runApi(['/x', '-f', 'order=desc']), equals(1));
+          expect(sentRequest().method, equals('POST'));
+          expect(fakeStderr.text, equals('$error$hint'));
+        });
+
+        test('does not hint when the method was set explicitly', () async {
+          expect(
+            await runApi(['-X', 'POST', '/x', '-F', 'order=desc']),
+            equals(1),
+          );
+          expect(fakeStderr.text, equals(error));
+        });
+
+        test('does not hint without fields', () async {
+          expect(await runApi(['/x']), equals(1));
+          expect(fakeStderr.text, equals(error));
+        });
+
+        test('does not hint when --input made it a POST', () async {
+          File('body.json').writeAsStringSync('{}');
+          expect(
+            await runApi(['/x', '--input', 'body.json', '-f', 'a=b']),
+            equals(1),
+          );
+          expect(fakeStderr.text, equals(error));
+        });
+      });
+
+      test('does not hint on other errors from a field POST', () async {
+        responseStatus = HttpStatus.notFound;
+        responseBody = '{"message":"App not found"}';
+        expect(await runApi(['/x', '-f', 'a=b']), equals(1));
+        expect(
+          fakeStderr.text,
+          equals('shorebird: App not found (HTTP 404)\n'),
+        );
       });
 
       test('reports a connection failure', () async {
