@@ -84,12 +84,6 @@ void main() {
   test(
     'create an app with a release and patch',
     () async {
-      final authToken = Platform.environment[shorebirdTokenEnvVar];
-      if (authToken == null || authToken.isEmpty) {
-        throw Exception(
-          '$shorebirdTokenEnvVar environment variable is not set.',
-        );
-      }
       const releaseVersion = '1.0.0+1';
       const platform = 'android';
       const arch = 'aarch64';

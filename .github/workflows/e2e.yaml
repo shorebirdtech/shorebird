@@ -22,10 +22,14 @@ on:
     - cron: "0 0 * * *"
 
 env:
-  # SHOREBIRD_TOKEN is set per job, next to the SHOREBIRD_HOSTED_URL it has to
-  # match. An API key is a row in one environment's database, so unlike the
-  # Google-refresh-token format it replaced it does not authenticate against
-  # both. A single workflow-level token would silently 401 half the matrix.
+  # Credentials are set per job, next to the SHOREBIRD_HOSTED_URL they have to
+  # match. Dev jobs sign in with GitHub Actions OIDC as the `e2e` service
+  # account of the dev "Shorebird E2E" project (SHOREBIRD_PROJECT_ID), whose
+  # trust rule admits this workflow on main. A project id, like an API key,
+  # is a row in one environment's database, and AUTH_SERVICE_URL has to name
+  # that environment's auth service, so none of these can be set once for the
+  # whole workflow. The stable cli leg runs the released CLI against prod with
+  # an API key.
   #
   # Host toolchain for `flutter create` in the patch job's "default" leg, not
   # the version under test.
@@ -77,9 +81,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    permissions:
+      contents: read
+      # Lets the CLI request the OIDC token it exchanges for Shorebird
+      # credentials.
+      id-token: write
+
     env:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
-      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN_DEV }}
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
 
     steps:
       - name: 📚 Git Checkout
@@ -181,9 +192,20 @@ jobs:
     # Windows takes ~12 minutes.
     timeout-minutes: 30
 
+    permissions:
+      contents: read
+      # Lets the main legs' CLI request the OIDC token it exchanges for
+      # Shorebird credentials.
+      id-token: write
+
+    # The released CLI on the stable leg predates OIDC sign-in, so it keeps an
+    # API key. The main legs sign in with OIDC; the CLI treats the empty
+    # SHOREBIRD_TOKEN they get as unset.
     env:
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
-      SHOREBIRD_TOKEN: ${{ matrix.branch == 'stable' && secrets.SHOREBIRD_TOKEN_PROD || secrets.SHOREBIRD_TOKEN_DEV }}
+      AUTH_SERVICE_URL: ${{ matrix.branch == 'stable' && 'https://auth.shorebird.dev' || 'https://auth-dev.shorebird.dev' }}
+      SHOREBIRD_PROJECT_ID: ${{ matrix.branch != 'stable' && '437' || '' }}
+      SHOREBIRD_TOKEN: ${{ matrix.branch == 'stable' && secrets.SHOREBIRD_TOKEN_PROD || '' }}
 
     steps:
       - name: 📚 Git Checkout
