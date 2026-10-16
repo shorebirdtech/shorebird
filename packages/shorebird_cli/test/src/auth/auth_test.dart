@@ -113,6 +113,7 @@ void main() {
     late String credentialsPath;
     late String legacyCredentialsPath;
     late http.Client httpClient;
+    http.Client? loginHttpClient;
     late CodePushClient codePushClient;
     late ShorebirdLogger logger;
     late Auth auth;
@@ -154,6 +155,7 @@ void main() {
                 required void Function(String) userPrompt,
                 Duration timeout = const Duration(minutes: 5),
               }) async {
+                loginHttpClient = httpClient;
                 return accessCredentials;
               },
           obtainCredentialsViaDeviceLogin:
@@ -162,6 +164,7 @@ void main() {
                 required Uri authBaseUrl,
                 required void Function(DeviceAuthorization) userPrompt,
               }) async {
+                loginHttpClient = httpClient;
                 userPrompt(deviceAuthorization);
                 return accessCredentials;
               },
@@ -246,6 +249,7 @@ void main() {
     }
 
     setUp(() {
+      loginHttpClient = null;
       accessCredentials = credentialsWith();
       credentialsDir = Directory.systemTemp.createTempSync().path;
       credentialsPath = p.join(credentialsDir, 'credentials-v2.json');
@@ -2005,6 +2009,11 @@ void main() {
         skip: io.Platform.isWindows ? 'Windows does not run chmod.' : false,
       );
 
+      test('obtains the credentials with the shorebird User-Agent', () async {
+        await runWithOverrides(() => auth.login(prompt: (_) {}));
+        expect(loginHttpClient, isA<UserAgentClient>());
+      });
+
       test('stores the credentials and sets the email', () async {
         await runWithOverrides(() => auth.login(prompt: (_) {}));
         expect(auth.email, email);
@@ -2080,6 +2089,13 @@ void main() {
     });
 
     group('loginWithDeviceCode', () {
+      test('obtains the credentials with the shorebird User-Agent', () async {
+        await runWithOverrides(
+          () => auth.loginWithDeviceCode(prompt: (_) {}),
+        );
+        expect(loginHttpClient, isA<UserAgentClient>());
+      });
+
       test('prompts with the device code and stores credentials', () async {
         final prompts = <DeviceAuthorization>[];
         await runWithOverrides(

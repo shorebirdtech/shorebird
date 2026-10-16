@@ -489,7 +489,7 @@ class Auth {
       throw UserAlreadyLoggedInException(email: _email);
     }
 
-    final client = http.Client();
+    final client = UserAgentClient(httpClient: http.Client());
     try {
       final credentials = await obtainCredentials(client);
       final oauthClient = _clientFor(credentials);
