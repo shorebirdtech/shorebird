@@ -24,6 +24,8 @@ R runWithOverrides<R>(R Function() body) {
       authRef,
       httpClientRef,
       loggerRef,
+      // Auth signs in with GitHub Actions OIDC through this client.
+      nonRetryingHttpClientRef,
       platformRef,
       shorebirdEnvRef,
       // TracingClient wraps the auth client and reads the ambient tracer on
