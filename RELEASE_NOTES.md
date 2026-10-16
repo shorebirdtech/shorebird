@@ -4,6 +4,58 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
+## 1.6.129 (October 16, 2026)
+
+- ✨ `shorebird api` sends an authenticated request to the Shorebird API and
+  prints the response, with `--jq` to filter it.
+- ✨ `shorebird metrics` shows patch installs, downloads, adoption, active
+  devices and the other metrics the console shows under Insights.
+- ✨ `shorebird releases delete` deletes a release, or one platform of it with
+  `--platform`.
+- ✨ On GitHub Actions, the CLI can sign in with the job's OIDC token instead
+  of a stored `SHOREBIRD_TOKEN`: grant the job `id-token: write`, set
+  `SHOREBIRD_PROJECT_ID`, and add a trust rule for the workflow to a service
+  account in that project.
+- 🐛 Apple builds (`ios`, `ios-framework`, `macos`) no longer delete the
+  project's whole `.dart_tool` directory, so `build_runner` caches and native
+  asset outputs survive a Shorebird build.
+- 🐛 Apple patches no longer leave copies of the app's binaries in the system
+  temp directory.
+- 🐛 AAR releases and patches skip architectures without `libapp.so`, as
+  Android does.
+- 🐛 iOS framework, Linux and Windows patches check the release's minimum
+  Flutter version before downloading anything, and every platform's message
+  names the command that creates a new release.
+- 🐛 Commands run in parallel from one login no longer refresh with a stale
+  token: a refresh uses the newest credentials on disk.
+- 🐛 Piping output into a reader that exits early (`| head -1`) now exits
+  with 141 instead of crashing with a stack trace.
+- 🐛 Error and progress messages no longer name temporary paths that are
+  deleted before the command finishes.
+- 🐛 The release chooser shows one hint for the action being taken, and
+  `shorebird patches promote --help` describes `--flavor` accurately.
+- 🔧 `shorebird channels delete` and `shorebird releases delete` prompt in a
+  terminal and take `-y, --yes` to skip the prompt, which is required when
+  not running interactively. `--confirm-name` is deprecated for them.
+  `shorebird apps delete` still requires the app's display name, typed at
+  the prompt or passed with `--confirm-name`.
+- 🔧 Declining a confirmation prompt (delete commands, `patches set-track`,
+  and `release` or `patch` with `--confirm`) exits 1 instead of 0.
+- 🔧 `--json`: every command writes exactly one envelope to stdout, including
+  `--help` and commands with no data. Failed API calls include the server's
+  `api_code` and `details`, and text output prints the error code.
+- 🔧 `shorebird account whoami` no longer prints `Subscription:`; `Plan:`
+  shows the plan level. In `--json`, `plan` is derived from `plan_level`.
+- 🔧 `shorebird patch --dd-max-bytes` replaces the
+  `SHOREBIRD_PATCH_DD_MAX_BYTES` environment variable.
+- 🔧 An OAuth error from the auth service when refreshing a login now always
+  asks you to run `shorebird login` again.
+- 🔧 `shorebird login` gets your email from the Shorebird API rather than
+  from the access token.
+- 🔧 A login made with a custom `AUTH_SERVICE_URL` is stored in its own file,
+  so it no longer replaces your login to the default auth service.
+- 🔧 `shorebird account orgs --help` lists every role.
+
 ## 1.6.128 (October 11, 2026)
 
 - 🐦 Flutter 3.47.7 / Dart 3.13.5, with an updated Shorebird engine
