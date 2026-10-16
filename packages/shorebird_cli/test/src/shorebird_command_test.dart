@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -534,6 +535,35 @@ void main() {
             }),
           );
           verifyNever(() => logger.err(any()));
+        });
+
+        test('reports a failed API call with its code and details', () async {
+          final result = await captureJson(
+            () async => (await runWithOverrides<Future<int?>>(
+              () => guard(
+                () async => throw ApiErrorExit(
+                  const CodePushException(
+                    message: 'Plan lacks this feature.',
+                    code: 'shorebird_plan_insufficient_tier',
+                    details: 'Upgrade to Business.',
+                  ),
+                  70,
+                ),
+              ),
+              jsonMode: true,
+            ))!,
+          );
+
+          expect(result.exitCode, equals(70));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'fetch_failed',
+              'message': 'Failed to fetch things. Plan lacks this feature.',
+              'api_code': 'shorebird_plan_insufficient_tier',
+              'details': 'Upgrade to Business.',
+            }),
+          );
         });
 
         test('lets other exceptions through', () async {

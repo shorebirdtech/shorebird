@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -19,6 +20,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart' as helpers;
@@ -759,6 +761,41 @@ Engine • revision $shorebirdEngineRevision'''),
           expect(
             stdoutOutput.where((line) => line.contains('"status"')),
             isEmpty,
+          );
+        });
+      });
+
+      group('when an API call fails', () {
+        test('emits one envelope with the server message, code and '
+            'details', () async {
+          commandRunner.addCommand(
+            _FailingCommand(
+              thenThrow: ApiErrorExit(
+                const CodePushException(
+                  message: 'Plan lacks this feature.',
+                  code: 'shorebird_plan_insufficient_tier',
+                  details: 'Upgrade to Business.',
+                ),
+                ExitCode.software.code,
+              ),
+            ),
+          );
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'failing']),
+            ),
+          );
+          expect(result, equals(ExitCode.software.code));
+          expect(stdoutOutput, hasLength(1));
+          final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+          expect(
+            json['error'],
+            equals({
+              'code': 'process_exit',
+              'message': 'Plan lacks this feature.',
+              'api_code': 'shorebird_plan_insufficient_tier',
+              'details': 'Upgrade to Business.',
+            }),
           );
         });
       });

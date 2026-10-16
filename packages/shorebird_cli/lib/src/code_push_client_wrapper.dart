@@ -11,6 +11,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -1145,6 +1146,10 @@ $name artifact already exists, continuing...''');
   /// Prints an appropriate error message for the given error and exits with
   /// code 70. If [progress] is provided, it will be failed with the given
   /// [message] or [error.toString()] if [message] is null.
+  ///
+  /// A failed API call ([CodePushException]) also logs the server's error
+  /// code and exits with an [ApiErrorExit], so `--json` output can report
+  /// that code and the server's details.
   Never _handleErrorAndExit(
     Object error, {
     Progress? progress,
@@ -1161,6 +1166,10 @@ $name artifact already exists, continuing...''');
       progress.fail(message ?? '$error');
     }
 
+    if (error is CodePushException) {
+      if (error.code case final apiCode?) logger.info('Error code: $apiCode');
+      throw ApiErrorExit(error, ExitCode.software.code);
+    }
     throw ProcessExit(ExitCode.software.code);
   }
 }

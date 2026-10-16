@@ -7,6 +7,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -292,18 +293,23 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         if (isJsonMode &&
             !envelope.written &&
             error.exitCode != ExitCode.success.code) {
-          // A failed precondition says why, not just that the process exited.
+          // A failed precondition says why, not just that the process exited,
+          // and so does a failed API call.
           final failure = error is PreconditionFailedExit
               ? error.failure
               : null;
+          final apiError = error is ApiErrorExit ? error.error : null;
           JsonResult.error(
             code: failure == null
                 ? JsonErrorCode.processExit
                 : JsonErrorCode.preconditionFailed,
             message:
                 failure?.message ??
+                apiError?.message ??
                 'Process exited with code ${error.exitCode}.',
             hint: failure?.hint,
+            apiCode: apiError?.code,
+            details: apiError?.details,
             command: commandName,
           ).write();
         }
