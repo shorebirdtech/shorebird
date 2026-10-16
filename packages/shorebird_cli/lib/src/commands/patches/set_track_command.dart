@@ -144,7 +144,7 @@ class SetTrackCommand extends ShorebirdCommand
       );
       if (!shouldCreate) {
         logger.err('Aborting.');
-        return declinedExitCode;
+        throw PromptDeclinedExit();
       }
 
       channel = await codePushClientWrapper.createChannel(

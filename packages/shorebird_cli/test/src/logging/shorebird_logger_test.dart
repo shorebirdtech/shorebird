@@ -220,19 +220,6 @@ void main() {
         });
       });
 
-      group('when stdout has no terminal', () {
-        test('confirm throws even though canAcceptUserInput is true', () {
-          expect(
-            () => runUnderScope(
-              () => logger.confirm('Continue?', hint: 'Pass --force.'),
-              canAcceptUserInput: true,
-              hasTerminal: false,
-            ),
-            throwsPromptRequired(withHint: 'Pass --force.'),
-          );
-        });
-      });
-
       group('when --json is active', () {
         test('confirm throws with the per-site hint', () {
           expect(

@@ -894,10 +894,19 @@ base_url: https://example.com''');
 
     group('canAcceptUserInput', () {
       late Stdin stdin;
+      late Stdout stdout;
 
       setUp(() {
         stdin = MockStdin();
+        stdout = MockStdout();
+        when(() => stdout.hasTerminal).thenReturn(true);
       });
+
+      bool canAcceptUserInput() => IOOverrides.runZoned(
+        () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
+        stdin: () => stdin,
+        stdout: () => stdout,
+      );
 
       group('when stdin has terminal', () {
         setUp(() {
@@ -910,13 +919,7 @@ base_url: https://example.com''');
           });
 
           test('returns true', () {
-            expect(
-              IOOverrides.runZoned(
-                () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
-                stdin: () => stdin,
-              ),
-              isTrue,
-            );
+            expect(canAcceptUserInput(), isTrue);
           });
         });
 
@@ -926,30 +929,31 @@ base_url: https://example.com''');
           });
 
           test('returns false', () {
-            expect(
-              IOOverrides.runZoned(
-                () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
-                stdin: () => stdin,
-              ),
-              isFalse,
-            );
+            expect(canAcceptUserInput(), isFalse);
+          });
+        });
+
+        // e.g. stdout redirected to /dev/null, or a PTY with no window size.
+        // mason_logger's prompts require stdout.hasTerminal.
+        group('when stdout has no terminal', () {
+          setUp(() {
+            platform = platform.copyWith(environment: {});
+            when(() => stdout.hasTerminal).thenReturn(false);
+          });
+
+          test('returns false', () {
+            expect(canAcceptUserInput(), isFalse);
           });
         });
       });
 
-      group('when stdin has terminal', () {
+      group('when stdin has no terminal', () {
         setUp(() {
           when(() => stdin.hasTerminal).thenReturn(false);
         });
 
-        test('returns true', () {
-          expect(
-            IOOverrides.runZoned(
-              () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
-              stdin: () => stdin,
-            ),
-            isFalse,
-          );
+        test('returns false', () {
+          expect(canAcceptUserInput(), isFalse);
         });
       });
     });

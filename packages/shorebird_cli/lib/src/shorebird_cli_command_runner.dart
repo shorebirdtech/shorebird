@@ -264,6 +264,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
 
     // Run the command or show version
     int? exitCode;
+    // A declined prompt already said what was not done, so it gets no
+    // "re-run with --verbose" footer.
+    var declined = false;
     if (topLevelResults['version'] == true) {
       final flutterVersion = await tryGetFlutterVersion();
       if (isJsonMode) {
@@ -302,6 +305,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         }
       } on ProcessExit catch (error) {
         exitCode = error.exitCode;
+        declined = error is PromptDeclinedExit;
         if (isJsonMode &&
             !envelope.written &&
             error.exitCode != ExitCode.success.code) {
@@ -399,6 +403,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     // `runCommand` returns null in when the --help flag is passed.
     if (!isJsonMode &&
         !reservesStdout &&
+        !declined &&
         exitCode != null &&
         exitCode != ExitCode.success.code &&
         logger.level != Level.verbose) {

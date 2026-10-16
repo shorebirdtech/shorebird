@@ -742,7 +742,7 @@ ${summary.join('\n')}
     if (confirm && shorebirdEnv.canAcceptUserInput) {
       if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
         logger.err('Aborting.');
-        throw ProcessExit(declinedExitCode);
+        throw PromptDeclinedExit();
       }
     }
   }

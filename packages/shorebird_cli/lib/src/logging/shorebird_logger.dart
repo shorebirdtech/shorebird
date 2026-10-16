@@ -143,13 +143,13 @@ class ShorebirdLogger extends Logger {
     );
   }
 
-  /// Throws [InteractivePromptRequiredException] when the CLI is running in
-  /// a non-interactive context (no TTY on stdout/stdin, on CI, or `--json`).
+  /// Throws [InteractivePromptRequiredException] when the CLI cannot prompt
+  /// (see [ShorebirdEnv.canAcceptUserInput]).
   ///
   /// Used by all interactive prompt methods to fail fast with an actionable
   /// error rather than blocking on stdin or producing garbled output.
   void _failIfNonInteractive({String? promptText, String? hint}) {
-    if (isInteractive && shorebirdEnv.canAcceptUserInput) return;
+    if (shorebirdEnv.canAcceptUserInput) return;
     throw InteractivePromptRequiredException(
       promptText: promptText ?? '(no prompt text)',
       hint: hint ?? defaultInteractivePromptHint,

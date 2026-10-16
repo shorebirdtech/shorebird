@@ -931,7 +931,7 @@ Please re-run the release command for this version or create a new release.''');
       );
     } on UserCancelledException {
       logger.err('Aborting.');
-      throw ProcessExit(declinedExitCode);
+      throw PromptDeclinedExit();
     } on UnpatchableChangeException {
       // The diff checker has already named the change and the flag that
       // overrides it.
@@ -1012,7 +1012,7 @@ ${summary.join('\n')}
     if (confirm && shorebirdEnv.canAcceptUserInput) {
       if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
         logger.err('Aborting.');
-        throw ProcessExit(declinedExitCode);
+        throw PromptDeclinedExit();
       }
     }
   }
