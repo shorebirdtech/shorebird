@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Notice when you're working around something, and fix it
+
+We want our processes, both the ones customers use and the ones we use, to be as normal and as agent-friendly as possible. So notice when you're working around something instead of quietly getting past it. Examples: a `shorebird` command that waits with no output, a command or flag whose default surprised you, an error that doesn't say what to do, a test that fails for reasons unrelated to your change, a local Dart or Flutter toolchain that doesn't match CI.
+
+Your own wrong guesses count too. If you reached for a command, flag, path, or convention that didn't exist or didn't do what you expected, that's a place the tool didn't meet you where you were, and usually the tool should change rather than the docs.
+
+For each one:
+
+- If the fix is small, make the PR without waiting to be asked, and link it in your final report.
+- If it isn't, describe it in your final report (what you did, what you expected, what happened, and the fix you'd propose) and ask before starting it.
+
 ## Build Commands
 
 ```bash
