@@ -826,12 +826,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                   arch: 'supplement',
                   platform: releasePlatform,
                 ),
-              ).thenThrow(
-                const CodePushException(
-                  statusCode: HttpStatus.notFound,
-                  message: 'Not found',
-                ),
-              );
+              ).thenThrow(CodePushNotFoundException(message: 'Not found'));
             });
 
             test('gracefully continues to create patch', () async {

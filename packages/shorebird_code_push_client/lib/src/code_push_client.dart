@@ -9,45 +9,30 @@ import 'package:shorebird_code_push_client/src/version.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template code_push_exception}
-/// Thrown when a request to the Shorebird API fails.
-///
-/// Carries the response's HTTP [statusCode] and, when the body was one, the
-/// server's [ErrorResponse]. Callers branch on [statusCode] (e.g. 404 for a
-/// missing resource, 426 for an outdated client) and read the server's error
-/// code and details through [response].
+/// Base class for all CodePush exceptions.
 /// {@endtemplate}
 class CodePushException implements Exception {
   /// {@macro code_push_exception}
-  ///
-  /// For a failure without an [ErrorResponse] body, such as an HTML error
-  /// page from the load balancer or a failed artifact upload.
   const CodePushException({
-    required this.statusCode,
     required this.message,
     this.details,
-  }) : response = null;
-
-  /// {@macro code_push_exception}
-  ///
-  /// For a failure whose body was the server's [ErrorResponse].
-  CodePushException.fromResponse({
-    required this.statusCode,
-    required ErrorResponse this.response,
-  }) : message = response.message,
-       details = response.details;
-
-  /// The HTTP status code of the failed response.
-  final int statusCode;
-
-  /// The server's [ErrorResponse], or null when the response body was not
-  /// one.
-  final ErrorResponse? response;
+    this.statusCode,
+    this.response,
+  });
 
   /// The message associated with the exception.
   final String message;
 
   /// The details associated with the exception.
   final String? details;
+
+  /// The HTTP status code of the failed response, or null when the failure
+  /// did not come from an HTTP response.
+  final int? statusCode;
+
+  /// The server's [ErrorResponse], or null when the response body was not
+  /// one.
+  final ErrorResponse? response;
 
   /// The machine-readable error code from the server's [ErrorResponse]
   /// (e.g. `shorebird_plan_insufficient_tier`), or null when the response
@@ -60,6 +45,70 @@ class CodePushException implements Exception {
 
   @override
   String toString() => '$message${details != null ? '\n$details' : ''}';
+}
+
+/// {@template code_push_forbidden_exception}
+/// Exception thrown when a 403 response is received.
+/// {@endtemplate}
+class CodePushForbiddenException extends CodePushException {
+  /// {@macro code_push_forbidden_exception}
+  CodePushForbiddenException({
+    required super.message,
+    super.details,
+    super.statusCode,
+    super.response,
+  });
+}
+
+/// {@template code_push_conflict_exception}
+/// Exception thrown when a 409 response is received.
+/// {@endtemplate}
+class CodePushConflictException extends CodePushException {
+  /// {@macro code_push_conflict_exception}
+  const CodePushConflictException({
+    required super.message,
+    super.details,
+    super.statusCode,
+    super.response,
+  });
+}
+
+/// {@template code_push_not_found_exception}
+/// Exception thrown when a 404 response is received.
+/// {@endtemplate}
+class CodePushNotFoundException extends CodePushException {
+  /// {@macro code_push_not_found_exception}
+  CodePushNotFoundException({
+    required super.message,
+    super.details,
+    super.statusCode,
+    super.response,
+  });
+}
+
+/// {@template code_push_upgrade_required_exception}
+/// Exception thrown when a 426 response is received.
+/// {@endtemplate}
+class CodePushUpgradeRequiredException extends CodePushException {
+  /// {@macro code_push_upgrade_required_exception}
+  const CodePushUpgradeRequiredException({
+    required super.message,
+    super.details,
+    super.statusCode,
+    super.response,
+  });
+}
+
+/// {@template code_push_upload_exception}
+/// Exception thrown when uploading an artifact's bytes to storage fails.
+///
+/// [statusCode] is the storage service's, not the Shorebird API's, so this is
+/// never one of the API status exceptions (a storage 409 is not an API
+/// conflict).
+/// {@endtemplate}
+class CodePushUploadException extends CodePushException {
+  /// {@macro code_push_upload_exception}
+  const CodePushUploadException({required super.message, super.statusCode});
 }
 
 /// A wrapper around [http.Client] that ensures all outbound requests
@@ -414,11 +463,11 @@ class CodePushClient {
   }
 
   /// The exception thrown when an artifact upload request fails.
-  CodePushException _uploadFailed(http.BaseResponse response) {
+  CodePushUploadException _uploadFailed(http.BaseResponse response) {
     final reason = response.reasonPhrase;
-    return CodePushException(
-      statusCode: response.statusCode,
+    return CodePushUploadException(
       message: 'Failed to upload artifact ($reason ${response.statusCode})',
+      statusCode: response.statusCode,
     );
   }
 
@@ -1057,19 +1106,34 @@ class CodePushClient {
   void close() => _httpClient.close();
 
   CodePushException _parseErrorResponse(int statusCode, String response) {
+    // No idea why, but Dart 3.3.0 claims this line is not covered by tests.
+    // coverage:ignore-start
+    final exceptionBuilder = switch (statusCode) {
+      // coverage:ignore-end
+      HttpStatus.conflict => CodePushConflictException.new,
+      HttpStatus.notFound => CodePushNotFoundException.new,
+      HttpStatus.upgradeRequired => CodePushUpgradeRequiredException.new,
+      HttpStatus.forbidden => CodePushForbiddenException.new,
+      _ => CodePushException.new,
+    };
+
+    final ErrorResponse error;
     try {
       final body = json.decode(response) as Map<String, dynamic>;
-      return CodePushException.fromResponse(
-        statusCode: statusCode,
-        response: ErrorResponse.fromJson(body),
-      );
+      error = ErrorResponse.fromJson(body);
     } on Exception {
-      return CodePushException(
-        statusCode: statusCode,
+      throw exceptionBuilder(
         message: unknownErrorMessageFor(statusCode),
         details: _truncateBody(response),
+        statusCode: statusCode,
       );
     }
+    return exceptionBuilder(
+      message: error.message,
+      details: error.details,
+      statusCode: statusCode,
+      response: error,
+    );
   }
 
   /// Returns a single-line, length-capped form of [body], or `null` if there is

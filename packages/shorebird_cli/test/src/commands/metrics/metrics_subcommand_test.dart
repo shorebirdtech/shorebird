@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -202,12 +201,12 @@ void main() {
     });
 
     group('when the API returns an error', () {
-      final exception = CodePushException.fromResponse(
-        statusCode: HttpStatus.forbidden,
-        response: const ErrorResponse(
-          message: 'The account requires an upgraded plan.',
-          details: 'More details.',
+      const exception = CodePushException(
+        message: 'The account requires an upgraded plan.',
+        details: 'More details.',
+        response: ErrorResponse(
           code: 'shorebird_plan_insufficient_tier',
+          message: 'The account requires an upgraded plan.',
         ),
       );
 
