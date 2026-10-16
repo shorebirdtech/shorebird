@@ -636,6 +636,24 @@ void main() {
         );
       });
 
+      test('keeps a query string that follows the base path', () async {
+        expect(await runApi(['/api/v1?limit=1']), equals(0));
+        expect(
+          sentRequest().url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/?limit=1')),
+        );
+      });
+
+      test('quotes the endpoint as typed for a full URL', () async {
+        const typed = 'https://api.shorebird.dev/api/v1/api/v1/apps';
+        expect(await runApi([typed]), equals(0));
+        expect(
+          sentRequest().url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/apps')),
+        );
+        expect(fakeStderr.text, contains('rather than "$typed"'));
+      });
+
       test('leaves a path that only starts with the same text', () async {
         expect(await runApi(['/api/v10']), equals(0));
         expect(
