@@ -241,6 +241,13 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('accepts and hides --confirm and --no-confirm', () {
+      final parser = ReleaseCommand().argParser;
+      expect(parser.options['confirm']!.hide, isTrue);
+      expect(() => parser.parse(['--no-confirm']), returnsNormally);
+      expect(() => parser.parse(['--confirm']), returnsNormally);
+    });
+
     group('getReleaser', () {
       test('maps the correct platform to the releaser', () async {
         expect(command.getReleaser(ReleaseType.aar), isA<AarReleaser>());
