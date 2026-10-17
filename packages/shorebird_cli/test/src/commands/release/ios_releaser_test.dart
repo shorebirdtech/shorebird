@@ -124,8 +124,8 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is 3.22.2', () {
-        expect(iosReleaser.minimumFlutterVersion, Version(3, 22, 2));
+      test('is 3.24.0', () {
+        expect(iosReleaser.minimumFlutterVersion, Version(3, 24, 0));
       });
     });
 

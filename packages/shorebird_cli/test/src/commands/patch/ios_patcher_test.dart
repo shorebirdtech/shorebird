@@ -174,10 +174,10 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is minimumSupportedIosFlutterVersion', () {
+      test('is minimumPatchableIosFlutterVersion', () {
         expect(
           patcher.minimumFlutterVersion,
-          minimumSupportedIosFlutterVersion,
+          minimumPatchableIosFlutterVersion,
         );
       });
     });
