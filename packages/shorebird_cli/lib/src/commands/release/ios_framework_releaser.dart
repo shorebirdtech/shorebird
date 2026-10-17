@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -55,9 +54,6 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
       throw ProcessExit(ExitCode.usage.code);
     }
   }
-
-  @override
-  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {

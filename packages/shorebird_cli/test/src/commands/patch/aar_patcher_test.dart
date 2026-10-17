@@ -151,6 +151,13 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is null', () {
+        // Patches of existing releases on any Flutter version are allowed.
+        expect(patcher.minimumFlutterVersion, isNull);
+      });
+    });
+
     group('primaryReleaseArtifactArch', () {
       test('is aar', () {
         expect(patcher.primaryReleaseArtifactArch, equals('aar'));

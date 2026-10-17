@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -127,10 +128,8 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is null', () {
-        // Shorebird has always had Android support, so we don't need to
-        // specify a minimum Flutter version.
-        expect(androidReleaser.minimumFlutterVersion, isNull);
+      test('is 3.24.0', () {
+        expect(androidReleaser.minimumFlutterVersion, Version(3, 24, 0));
       });
     });
 

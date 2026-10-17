@@ -39,9 +39,6 @@ class LinuxReleaser extends Releaser {
       assertReleaseVersionFlagNotProvided();
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedLinuxFlutterVersion;
-
-  @override
   Future<void> assertPreconditions() => assertBuildPreconditions(
     validators: doctor.linuxCommandValidators,
     supportedOperatingSystems: {NativePlatform.linux},
