@@ -12,7 +12,6 @@ words:
   - allprojects # From gradle files
   - altool
   - ANDROIDD
-  - apigee
   - Apks
   - appbundle
   - appex # Apple app extension bundle
