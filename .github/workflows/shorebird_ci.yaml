@@ -21,7 +21,6 @@ jobs:
     outputs:
       artifact_proxy: ${{ steps.filter.outputs.artifact_proxy }}
       dex: ${{ steps.filter.outputs.dex }}
-      discord_gcp_alerts: ${{ steps.filter.outputs.discord_gcp_alerts }}
       flutter_version_resolver: ${{ steps.filter.outputs.flutter_version_resolver }}
       jwt: ${{ steps.filter.outputs.jwt }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
@@ -48,8 +47,6 @@ jobs:
               - packages/artifact_proxy/**
             dex:
               - packages/dex/**
-            discord_gcp_alerts:
-              - packages/discord_gcp_alerts/**
             flutter_version_resolver:
               - packages/flutter_version_resolver/**
             jwt:
@@ -92,17 +89,6 @@ jobs:
     with:
       package_name: dex
       package_path: packages/dex
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
-
-  discord_gcp_alerts:
-    needs: changes
-    if: needs.changes.outputs.discord_gcp_alerts == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: discord_gcp_alerts
-      package_path: packages/discord_gcp_alerts
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
@@ -226,7 +212,6 @@ jobs:
       - changes
       - artifact_proxy
       - dex
-      - discord_gcp_alerts
       - flutter_version_resolver
       - jwt
       - scoped_deps
