@@ -21,7 +21,6 @@ jobs:
     outputs:
       artifact_proxy: ${{ steps.filter.outputs.artifact_proxy }}
       dex: ${{ steps.filter.outputs.dex }}
-      jwt: ${{ steps.filter.outputs.jwt }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
       shorebird_build_trace: ${{ steps.filter.outputs.shorebird_build_trace }}
       shorebird_ci: ${{ steps.filter.outputs.shorebird_ci }}
@@ -46,8 +45,6 @@ jobs:
               - packages/artifact_proxy/**
             dex:
               - packages/dex/**
-            jwt:
-              - packages/jwt/**
             scoped_deps:
               - packages/scoped_deps/**
             shorebird_build_trace:
@@ -86,17 +83,6 @@ jobs:
     with:
       package_name: dex
       package_path: packages/dex
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
-
-  jwt:
-    needs: changes
-    if: needs.changes.outputs.jwt == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: jwt
-      package_path: packages/jwt
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
@@ -198,7 +184,6 @@ jobs:
       - changes
       - artifact_proxy
       - dex
-      - jwt
       - scoped_deps
       - shorebird_build_trace
       - shorebird_ci

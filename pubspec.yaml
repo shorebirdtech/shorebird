@@ -5,7 +5,6 @@ environment:
 workspace:
   - packages/artifact_proxy
   - packages/dex
-  - packages/jwt
   - packages/redis_client
   - packages/scoped_deps
   - packages/shorebird_build_trace
