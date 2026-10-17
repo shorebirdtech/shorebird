@@ -42,7 +42,7 @@ class IosPatcher extends Patcher
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
+  Version? get minimumFlutterVersion => minimumPatchableIosFlutterVersion;
 
   @override
   String get primaryReleaseArtifactArch => 'xcarchive';

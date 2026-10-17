@@ -116,6 +116,7 @@ void main() {
       logger = MockShorebirdLogger();
       progress = MockProgress();
       releaser = MockReleaser();
+      when(() => releaser.minimumFlutterVersion).thenReturn(Version(0, 0, 0));
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
@@ -967,6 +968,7 @@ $exception'''),
     group('assertArgsAreValid', () {
       test('calls releaser.assertArgsAreValid', () async {
         final releaser = MockReleaser();
+        when(() => releaser.minimumFlutterVersion).thenReturn(Version(0, 0, 0));
         when(() => releaser.useObfuscation).thenReturn(false);
         when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
         await runWithOverrides(() => command.assertArgsAreValid(releaser));
@@ -990,6 +992,9 @@ $exception'''),
 
           test('logs a warning', () async {
             final releaser = MockReleaser();
+            when(
+              () => releaser.minimumFlutterVersion,
+            ).thenReturn(Version(0, 0, 0));
             when(() => releaser.useObfuscation).thenReturn(false);
             when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
             await runWithOverrides(() => command.assertArgsAreValid(releaser));
@@ -1036,7 +1041,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           expect(oldFlutterVersion, lessThan(minimumObfuscationFlutterVersion));
           releaser = MockReleaser();
           when(() => releaser.useObfuscation).thenReturn(true);
-          when(() => releaser.minimumFlutterVersion).thenReturn(null);
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(Version(0, 0, 0));
           when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),

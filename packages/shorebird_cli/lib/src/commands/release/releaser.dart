@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -43,7 +44,8 @@ abstract class Releaser {
   final String? target;
 
   /// The minimum Flutter version required to create a release of this type.
-  Version? get minimumFlutterVersion => null;
+  Version get minimumFlutterVersion =>
+      minimumReleaseFlutterVersion(releaseType);
 
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
