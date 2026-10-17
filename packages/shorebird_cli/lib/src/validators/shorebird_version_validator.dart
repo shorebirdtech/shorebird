@@ -16,9 +16,13 @@ class ShorebirdVersionValidator extends Validator {
     final bool isShorebirdUpToDate;
 
     try {
-      // A checkout pinned to a commit or tag is the version the user chose.
-      if (!await shorebirdVersion.isOnBranch()) {
-        return [];
+      if (!await shorebirdVersion.hasUpstream()) {
+        return [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: shorebirdVersion.noUpstreamMessage,
+          ),
+        ];
       }
 
       isShorebirdUpToDate = await shorebirdVersion.isLatest();

@@ -38,6 +38,11 @@ class UpgradeCommand extends ShorebirdCommand {
 
     late final String latestVersion;
     try {
+      if (!await shorebirdVersion.hasUpstream()) {
+        updateCheckProgress.fail();
+        logger.err(shorebirdVersion.noUpstreamMessage);
+        return ExitCode.software.code;
+      }
       latestVersion = await shorebirdVersion.fetchLatestGitHash();
     } on ProcessException catch (error) {
       updateCheckProgress.fail();

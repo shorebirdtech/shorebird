@@ -26,7 +26,10 @@ void main() {
       shorebirdVersion = MockShorebirdVersion();
       validator = ShorebirdVersionValidator();
 
-      when(shorebirdVersion.isOnBranch).thenAnswer((_) async => true);
+      when(shorebirdVersion.hasUpstream).thenAnswer((_) async => true);
+      when(
+        () => shorebirdVersion.noUpstreamMessage,
+      ).thenReturn('Shorebird is not on a branch that receives updates.');
       when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
     });
 
@@ -46,23 +49,29 @@ void main() {
       expect(results, isEmpty);
     });
 
-    test('returns no issues when shorebird is not on a branch', () async {
-      when(shorebirdVersion.isOnBranch).thenAnswer((_) async => false);
+    test('warns how to get updates when shorebird has no upstream', () async {
+      when(shorebirdVersion.hasUpstream).thenAnswer((_) async => false);
 
       final results = await runWithOverrides(validator.validate);
 
-      expect(results, isEmpty);
+      expect(results, hasLength(1));
+      expect(results.first.severity, ValidationIssueSeverity.warning);
+      expect(
+        results.first.message,
+        'Shorebird is not on a branch that receives updates.',
+      );
       verifyNever(shorebirdVersion.isLatest);
     });
 
-    test('returns an error when the branch cannot be determined', () async {
-      when(shorebirdVersion.isOnBranch).thenThrow(
+    test('returns an error when the upstream cannot be determined', () async {
+      when(shorebirdVersion.hasUpstream).thenThrow(
         const ProcessException(
           'git',
           [
-            'symbolic-ref',
+            'rev-parse',
             '-q',
-            'HEAD',
+            '--verify',
+            '@{upstream}',
           ],
           'fatal: detected dubious ownership in repository',
           128,

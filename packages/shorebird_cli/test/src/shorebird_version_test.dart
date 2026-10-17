@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
@@ -202,64 +203,83 @@ void main() {
       );
     });
 
-    group('isOnBranch', () {
-      void stubSymbolicRef(Future<ShorebirdProcessResult> Function() answer) {
+    group('hasUpstream', () {
+      void stubUpstream(Future<ShorebirdProcessResult> Function() answer) {
         when(
           () => git.git(
-            ['symbolic-ref', '-q', 'HEAD'],
+            ['rev-parse', '-q', '--verify', '@{upstream}'],
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) => answer());
       }
 
-      test('returns true when HEAD is a branch', () async {
-        stubSymbolicRef(
+      test('returns true when the branch has an upstream', () async {
+        stubUpstream(
           () async => const ShorebirdProcessResult(
             exitCode: 0,
-            stdout: 'refs/heads/stable',
+            stdout: 'abc123',
             stderr: '',
           ),
         );
 
         expect(
-          await runWithOverrides(shorebirdVersionManager.isOnBranch),
+          await runWithOverrides(shorebirdVersionManager.hasUpstream),
           isTrue,
         );
       });
 
-      test('returns false when HEAD is detached', () async {
-        stubSymbolicRef(
+      test('returns false when there is no upstream', () async {
+        stubUpstream(
           () async => throw const ProcessException(
             'git',
-            [
-              'symbolic-ref',
-              '-q',
-              'HEAD',
-            ],
+            ['rev-parse', '-q', '--verify', '@{upstream}'],
             '',
             1,
           ),
         );
 
         expect(
-          await runWithOverrides(shorebirdVersionManager.isOnBranch),
+          await runWithOverrides(shorebirdVersionManager.hasUpstream),
           isFalse,
         );
       });
 
       test('rethrows other git failures', () async {
-        stubSymbolicRef(
+        stubUpstream(
           () async => throw const ProcessException(
             'git',
-            ['symbolic-ref', '-q', 'HEAD'],
+            ['rev-parse', '-q', '--verify', '@{upstream}'],
             'fatal: detected dubious ownership in repository',
             128,
           ),
         );
 
         await expectLater(
-          runWithOverrides(shorebirdVersionManager.isOnBranch),
+          runWithOverrides(shorebirdVersionManager.hasUpstream),
           throwsA(isA<ProcessException>()),
+        );
+      });
+    });
+
+    group('noUpstreamMessage', () {
+      test('says how to switch the install to stable', () {
+        final shorebirdEnv = MockShorebirdEnv();
+        when(
+          () => shorebirdEnv.shorebirdRoot,
+        ).thenReturn(Directory('/opt/shorebird'));
+
+        final message = runScoped(
+          () => shorebirdVersionManager.noUpstreamMessage,
+          values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
+        );
+
+        expect(
+          message,
+          equals('''
+Shorebird at /opt/shorebird is not on a branch that receives updates.
+To get the latest Shorebird, run:
+  git -C /opt/shorebird checkout stable
+  shorebird upgrade'''),
         );
       });
     });
