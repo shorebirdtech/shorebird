@@ -611,28 +611,6 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
 
-        test('deleteCurrentUser exits with code 70 when it fails', () async {
-          const error = 'something went wrong';
-          when(() => codePushClient.deleteCurrentUser()).thenThrow(error);
-          await expectLater(
-            () async =>
-                runWithOverrides(codePushClientWrapper.deleteCurrentUser),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => progress.fail(error)).called(1);
-        });
-
-        test(
-          'deleteCurrentUser completes when the account is deleted',
-          () async {
-            when(
-              () => codePushClient.deleteCurrentUser(),
-            ).thenAnswer((_) async {});
-            await runWithOverrides(codePushClientWrapper.deleteCurrentUser);
-            verify(() => progress.complete()).called(1);
-          },
-        );
-
         test('getEmailNotificationsEnabled returns the setting', () async {
           when(
             () => codePushClient.getEmailNotificationsEnabled(),

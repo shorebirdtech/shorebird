@@ -245,16 +245,6 @@ class CodePushClient {
     }
   }
 
-  /// Deletes the currently logged-in user's account, along with their
-  /// personal organization and its apps.
-  Future<void> deleteCurrentUser() async {
-    final response = await _httpClient.delete(Uri.parse('$_v1/users/me'));
-
-    if (!response.isSuccess) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-  }
-
   /// Whether the currently logged-in user receives email notifications.
   Future<bool> getEmailNotificationsEnabled() async {
     final response = await _httpClient.get(

@@ -145,12 +145,6 @@ class CodePushClientWrapper {
     );
   }
 
-  /// Deletes the current user's account, along with their personal
-  /// organization and its apps.
-  Future<void> deleteCurrentUser() {
-    return _withProgress('Deleting account', codePushClient.deleteCurrentUser);
-  }
-
   /// Whether the current user receives email notifications.
   Future<bool> getEmailNotificationsEnabled() {
     return _withProgress(
