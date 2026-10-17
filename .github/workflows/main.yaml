@@ -58,11 +58,6 @@ jobs:
         id: needs_dart_build
         with:
           filters: |
-            artifact_proxy:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/artifact_proxy/**
             discord_gcp_alerts:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml

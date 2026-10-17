@@ -19,7 +19,6 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      artifact_proxy: ${{ steps.filter.outputs.artifact_proxy }}
       dex: ${{ steps.filter.outputs.dex }}
       discord_gcp_alerts: ${{ steps.filter.outputs.discord_gcp_alerts }}
       flutter_version_resolver: ${{ steps.filter.outputs.flutter_version_resolver }}
@@ -45,8 +44,6 @@ jobs:
         id: filter
         with:
           filters: |
-            artifact_proxy:
-              - packages/artifact_proxy/**
             dex:
               - packages/dex/**
             discord_gcp_alerts:
@@ -76,17 +73,6 @@ jobs:
               - packages/redis_client/**
             stripe_api:
               - packages/stripe_api/**
-
-  artifact_proxy:
-    needs: changes
-    if: needs.changes.outputs.artifact_proxy == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: artifact_proxy
-      package_path: packages/artifact_proxy
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
 
   dex:
     needs: changes
@@ -238,7 +224,6 @@ jobs:
     if: ${{ always() }}
     needs:
       - changes
-      - artifact_proxy
       - dex
       - discord_gcp_alerts
       - flutter_version_resolver
