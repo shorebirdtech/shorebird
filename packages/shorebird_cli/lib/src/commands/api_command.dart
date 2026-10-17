@@ -202,6 +202,25 @@ Examples:
       }
       endpoint = endpoint.substring(apiBase.length);
     }
+    // A path that repeats the base path ("/api/v1/apps") means the route
+    // under it, since no route lives at /api/v1/api/v1.
+    final basePath = codePushClient.apiBaseUri.path.replaceAll(
+      RegExp(r'^/|/$'),
+      '',
+    );
+    final relative = endpoint.startsWith('/')
+        ? endpoint.substring(1)
+        : endpoint;
+    final repeatedBase = RegExp(
+      '^${RegExp.escape(basePath)}(/|(?=[?#])|\$)',
+    ).firstMatch(relative);
+    if (basePath.isNotEmpty && repeatedBase != null) {
+      endpoint = relative.substring(repeatedBase.end);
+      stderr.writeln(
+        'shorebird: Endpoints are relative to $apiBase, so requesting '
+        '"/$endpoint" rather than "${results.rest.single}".',
+      );
+    }
     endpoint = _fillPlaceholders(endpoint);
     final path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
     var url = '$apiBase/$path';

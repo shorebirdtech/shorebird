@@ -611,6 +611,59 @@ void main() {
       });
     });
 
+    group('when the path repeats the base path', () {
+      test('requests the route under the base and says so', () async {
+        expect(await runApi(['/api/v1/apps']), equals(0));
+        expect(
+          sentRequest().url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/apps')),
+        );
+        expect(
+          fakeStderr.text,
+          equals(
+            'shorebird: Endpoints are relative to '
+            'https://api.shorebird.dev/api/v1, so requesting "/apps" rather '
+            'than "/api/v1/apps".\n',
+          ),
+        );
+      });
+
+      test('accepts it without a leading slash', () async {
+        expect(await runApi(['api/v1/apps']), equals(0));
+        expect(
+          sentRequest().url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/apps')),
+        );
+      });
+
+      test('keeps a query string that follows the base path', () async {
+        expect(await runApi(['/api/v1?limit=1']), equals(0));
+        expect(
+          sentRequest().url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/?limit=1')),
+        );
+      });
+
+      test('quotes the endpoint as typed for a full URL', () async {
+        const typed = 'https://api.shorebird.dev/api/v1/api/v1/apps';
+        expect(await runApi([typed]), equals(0));
+        expect(
+          sentRequest().url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/apps')),
+        );
+        expect(fakeStderr.text, contains('rather than "$typed"'));
+      });
+
+      test('leaves a path that only starts with the same text', () async {
+        expect(await runApi(['/api/v10']), equals(0));
+        expect(
+          sentRequest().url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/api/v10')),
+        );
+        expect(fakeStderr.text, isEmpty);
+      });
+    });
+
     group('when the request fails', () {
       test('prints the body and the server message (HTTP 404)', () async {
         responseStatus = HttpStatus.notFound;
