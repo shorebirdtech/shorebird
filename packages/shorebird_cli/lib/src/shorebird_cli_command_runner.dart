@@ -360,6 +360,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             hint: failure?.hint,
             apiCode: apiError?.code,
             details: apiError?.details,
+            documentationUrl: apiError?.documentationUrl,
             command: commandName,
           ).write();
         }
