@@ -584,9 +584,7 @@ $error''');
           : await resolveFlutterVersionArg(),
     );
     final minimumFlutterVersion = releaser.minimumFlutterVersion;
-    if (minimumFlutterVersion != null &&
-        version != null &&
-        version < minimumFlutterVersion) {
+    if (version != null && version < minimumFlutterVersion) {
       logger.err('''
 At least Flutter $minimumFlutterVersion is required to release with `${releaser.releaseType.cliName}`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
