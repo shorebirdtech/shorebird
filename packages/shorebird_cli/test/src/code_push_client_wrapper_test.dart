@@ -436,7 +436,47 @@ void main() {
         });
 
         test(
-          '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
+          'prints the server message, details and documentation on a 426',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              CodePushUpgradeRequiredException(
+                message: 'shorebird CLI 1.6.0 or newer is required.',
+                details: 'You are on 1.5.0.',
+                response: ErrorResponse(
+                  code: 'upgrade_required',
+                  message: 'shorebird CLI 1.6.0 or newer is required.',
+                  documentationUrl: Uri.parse(
+                    'https://docs.shorebird.dev/deprecations',
+                  ),
+                ),
+              ),
+            );
+            await expectLater(
+              () async =>
+                  runWithOverrides(() => codePushClientWrapper.getApps()),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err('shorebird CLI 1.6.0 or newer is required.'),
+            ).called(1);
+            verify(() => logger.info('You are on 1.5.0.')).called(1);
+            verify(
+              () => logger.info('See: https://docs.shorebird.dev/deprecations'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            ).called(1);
+            verifyNever(
+              () => logger.err('Your version of shorebird is out of date.'),
+            );
+          },
+        );
+
+        test(
+          '''prints the generic upgrade message on a 426 without an error body''',
           () async {
             when(codePushClient.getApps).thenThrow(
               const CodePushUpgradeRequiredException(

@@ -1205,11 +1205,18 @@ $name artifact already exists, continuing...''');
   }) {
     if (error is CodePushUpgradeRequiredException) {
       progress?.fail();
-      logger
-        ..err('Your version of shorebird is out of date.')
-        ..info(
-          '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
-        );
+      // The server says which version it requires and why; a 426 without a
+      // parseable error body gets the generic line.
+      if (error.response == null) {
+        logger.err('Your version of shorebird is out of date.');
+      } else {
+        logger.err(error.message);
+        if (error.details case final details?) logger.info(details);
+        if (error.documentationUrl case final url?) logger.info('See: $url');
+      }
+      logger.info(
+        '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+      );
     } else if (progress != null) {
       progress.fail(message ?? '$error');
     }

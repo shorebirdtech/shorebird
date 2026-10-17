@@ -188,6 +188,7 @@ abstract class ShorebirdCommand extends Command<int> {
     String? hint,
     String? apiCode,
     String? details,
+    Uri? documentationUrl,
   }) {
     JsonResult.error(
       code: code,
@@ -195,6 +196,7 @@ abstract class ShorebirdCommand extends Command<int> {
       hint: hint,
       apiCode: apiCode,
       details: details,
+      documentationUrl: documentationUrl,
       command: fullCommandName,
     ).write();
   }
@@ -241,10 +243,12 @@ abstract class ShorebirdCommand extends Command<int> {
         message: fullMessage,
         apiCode: error.code,
         details: error.details,
+        documentationUrl: error.documentationUrl,
       );
     } else {
       logger.err(fullMessage);
       if (error.details case final details?) logger.info(details);
+      if (error.documentationUrl case final url?) logger.info('See: $url');
       if (error.code case final apiCode?) logger.info('Error code: $apiCode');
     }
     return ExitCode.software.code;
