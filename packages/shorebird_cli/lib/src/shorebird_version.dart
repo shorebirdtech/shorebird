@@ -58,6 +58,17 @@ class ShorebirdVersion {
     );
   }
 
+  /// Whether this checkout of shorebird is on a branch. A checkout of a commit
+  /// or tag (a detached HEAD) has no upstream to compare against.
+  Future<bool> isOnBranch() async {
+    try {
+      await git.symbolicRef(directory: Directory(_workingDirectory));
+      return true;
+    } on ProcessException {
+      return false;
+    }
+  }
+
   /// Whether the current version of shorebird is tracking the stable branch. If
   /// we are not tracking stable, we should not check for newer versions of
   /// shorebird or try to auto-update.

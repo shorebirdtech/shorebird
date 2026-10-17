@@ -26,6 +26,7 @@ void main() {
       shorebirdVersion = MockShorebirdVersion();
       validator = ShorebirdVersionValidator();
 
+      when(shorebirdVersion.isOnBranch).thenAnswer((_) async => true);
       when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
     });
 
@@ -43,6 +44,15 @@ void main() {
       final results = await runWithOverrides(validator.validate);
 
       expect(results, isEmpty);
+    });
+
+    test('returns no issues when shorebird is not on a branch', () async {
+      when(shorebirdVersion.isOnBranch).thenAnswer((_) async => false);
+
+      final results = await runWithOverrides(validator.validate);
+
+      expect(results, isEmpty);
+      verifyNever(shorebirdVersion.isLatest);
     });
 
     test(

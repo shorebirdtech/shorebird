@@ -201,6 +201,35 @@ void main() {
       );
     });
 
+    group('isOnBranch', () {
+      test('returns true when HEAD is a branch', () async {
+        when(
+          () => git.symbolicRef(directory: any(named: 'directory')),
+        ).thenAnswer((_) async => 'refs/heads/stable');
+
+        expect(
+          await runWithOverrides(shorebirdVersionManager.isOnBranch),
+          isTrue,
+        );
+      });
+
+      test('returns false when HEAD is detached', () async {
+        when(
+          () => git.symbolicRef(directory: any(named: 'directory')),
+        ).thenThrow(
+          const ProcessException('git', [
+            'symbolic-ref',
+            'HEAD',
+          ], 'fatal: ref HEAD is not a symbolic ref'),
+        );
+
+        expect(
+          await runWithOverrides(shorebirdVersionManager.isOnBranch),
+          isFalse,
+        );
+      });
+    });
+
     group('isTrackingStable', () {
       group('when on the stable branch', () {
         setUp(() {
