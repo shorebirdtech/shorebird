@@ -28,9 +28,12 @@ that `stable` is moved to.
   Both run on Namespace runners, so no local device is needed:
 
   ```sh
+  git fetch origin
   SHA=$(git rev-parse origin/main)
   gh workflow run macos_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
   gh workflow run android_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
+  # Each run is named for the SHA it tests:
+  gh run list --repo shorebirdtech/shorebird_e2e --event workflow_dispatch --limit 4
   ```
 
   - `macos_e2e` releases, patches and UI-tests the standalone macOS app,
@@ -42,7 +45,7 @@ that `stable` is moved to.
   - Both must pass.
 - Manually check each change from step 1 that these runs do not cover, using a
   local checkout of the commit being released. They do not cover iOS (it needs
-  a physical device) or interactive `shorebird login`. On a Mac with an iOS
+  a physical device), interactive `shorebird login`, or `--json` output. On a Mac with an iOS
   device, Shorebird staff can run the `release-smoke-test` agent skill in
   `shorebirdtech/_shorebird`, which covers iOS, `--json` and login.
 
