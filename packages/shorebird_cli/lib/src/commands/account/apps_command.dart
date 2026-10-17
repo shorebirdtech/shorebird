@@ -26,7 +26,6 @@ class AccountAppsCommand extends ShorebirdCommand {
     return reportError(
       message: '`shorebird account apps` has moved to `$replacement`.',
       hint: 'Run: $replacement',
-      exitCode: 1,
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/account/apps_command.dart';
@@ -34,9 +35,9 @@ void main() {
       expect(command.description, contains('shorebird apps list'));
     });
 
-    test('prints the replacement and exits 1', () async {
+    test('prints the replacement and exits with a usage error', () async {
       final result = await runWithOverrides(command.run);
-      expect(result, equals(1));
+      expect(result, equals(ExitCode.usage.code));
       verify(
         () => logger.err(
           '`shorebird account apps` has moved to `shorebird apps list`.',
@@ -49,7 +50,7 @@ void main() {
       final (:exitCode, :json) = await captureJson(
         () => runWithOverrides(command.run, json: true),
       );
-      expect(exitCode, equals(1));
+      expect(exitCode, equals(ExitCode.usage.code));
       expect(json['error'], {
         'code': 'usage_error',
         'message':

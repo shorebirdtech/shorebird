@@ -2,9 +2,11 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/account/delete_command.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -134,6 +136,69 @@ void main() {
         ),
       ).called(1);
       verifyNeverDeleted();
+    });
+
+    group('in a terminal', () {
+      setUp(() {
+        when(() => argResults['confirm-name']).thenReturn(null);
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      });
+
+      test(
+        'states the consequence, asks for the email, then deletes',
+        () async {
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn(email);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verifyInOrder([
+            () =>
+                logger.info(any(that: startsWith('This permanently deletes'))),
+            () => logger.prompt(
+              'Type $email to confirm deletion:',
+              hint: any(named: 'hint'),
+            ),
+            () => codePushClientWrapper.deleteCurrentUser(),
+            () => auth.clearCredentials(),
+          ]);
+        },
+      );
+
+      test('deletes nothing when the typed email does not match', () async {
+        when(
+          () => logger.prompt(any(), hint: any(named: 'hint')),
+        ).thenReturn('other@example.com');
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(isA<PromptDeclinedExit>()),
+        );
+        verifyNeverDeleted();
+        verifyNever(() => auth.clearCredentials());
+      });
+    });
+
+    test('reports a refusal from the server with its code', () async {
+      const error = CodePushException(
+        message: 'You own team organizations: Acme.',
+        statusCode: 409,
+        response: ErrorResponse(
+          code: 'user_delete_blocked_by_team_orgs',
+          message: 'You own team organizations: Acme.',
+        ),
+      );
+      when(
+        () => codePushClientWrapper.deleteCurrentUser(),
+      ).thenThrow(ApiErrorExit(error, ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => runWithOverrides(command.run, json: true),
+      );
+      expect(exitCode, equals(ExitCode.software.code));
+      final jsonError = json['error'] as Map<String, dynamic>;
+      expect(jsonError['code'], equals('software_error'));
+      expect(jsonError['api_code'], equals('user_delete_blocked_by_team_orgs'));
+      expect(jsonError['message'], contains('You own team organizations'));
+      verifyNever(() => auth.clearCredentials());
     });
 
     test('emits the deleted account as JSON', () async {
