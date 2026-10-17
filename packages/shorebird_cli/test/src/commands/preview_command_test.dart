@@ -294,6 +294,11 @@ void main() {
       ).thenAnswer((_) async {});
     });
 
+    test('accepts --channel as an alias of --track', () {
+      final results = command.argParser.parse(['--channel', 'beta']);
+      expect(results['track'], equals('beta'));
+    });
+
     group('when --staging is passed', () {
       setUp(() {
         when(() => argResults.wasParsed('staging')).thenReturn(true);

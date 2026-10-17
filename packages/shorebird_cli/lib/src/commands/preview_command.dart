@@ -100,6 +100,7 @@ This is only applicable when previewing Android releases.''',
       )
       ..addOption(
         'track',
+        aliases: const ['channel'],
         help: 'The track to preview.',
         defaultsTo: DeploymentTrack.stable.channel,
       );
