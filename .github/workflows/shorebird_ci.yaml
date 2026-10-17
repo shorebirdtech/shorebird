@@ -21,7 +21,6 @@ jobs:
     outputs:
       artifact_proxy: ${{ steps.filter.outputs.artifact_proxy }}
       dex: ${{ steps.filter.outputs.dex }}
-      flutter_version_resolver: ${{ steps.filter.outputs.flutter_version_resolver }}
       jwt: ${{ steps.filter.outputs.jwt }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
       shorebird_build_trace: ${{ steps.filter.outputs.shorebird_build_trace }}
@@ -47,8 +46,6 @@ jobs:
               - packages/artifact_proxy/**
             dex:
               - packages/dex/**
-            flutter_version_resolver:
-              - packages/flutter_version_resolver/**
             jwt:
               - packages/jwt/**
             scoped_deps:
@@ -89,17 +86,6 @@ jobs:
     with:
       package_name: dex
       package_path: packages/dex
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
-
-  flutter_version_resolver:
-    needs: changes
-    if: needs.changes.outputs.flutter_version_resolver == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: flutter_version_resolver
-      package_path: packages/flutter_version_resolver
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
@@ -212,7 +198,6 @@ jobs:
       - changes
       - artifact_proxy
       - dex
-      - flutter_version_resolver
       - jwt
       - scoped_deps
       - shorebird_build_trace
