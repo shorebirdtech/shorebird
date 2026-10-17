@@ -114,6 +114,7 @@ void main() {
           contains('developer'),
           contains('admin@acme.com'),
           contains('2026-10-16'),
+          contains('2026-10-30'),
         ),
       );
       expect(

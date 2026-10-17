@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/invitations/invitation_error_hints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -20,9 +21,10 @@ class InvitationsListCommand extends ShorebirdCommand {
   @override
   String get description =>
       'List the pending invitations sent to you.\n\n'
-      'Example output (space-separated: id  name  kind  role  inviter  sent):\n'
+      'Example output (space-separated: id  name  kind  role  inviter  sent  '
+      'expires):\n'
       '  0b6c...  Acme Corp  organization  developer  admin@acme.com  '
-      '2026-10-16\n\n'
+      '2026-10-16  2026-10-30\n\n'
       'Kind is "organization" or "app". Accept one with '
       '`shorebird invitations accept <id>`.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird invitations list --json')}';
@@ -38,11 +40,13 @@ class InvitationsListCommand extends ShorebirdCommand {
     }
 
     late final List<ReceivedInvitation> invitations;
-    final fetchError = await guardApiCall(
-      () async =>
-          invitations = await codePushClientWrapper.getReceivedInvitations(),
-      code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch invitations.',
+    final fetchError = await withInvitationErrorHints(
+      () => guardApiCall(
+        () async =>
+            invitations = await codePushClientWrapper.getReceivedInvitations(),
+        code: JsonErrorCode.fetchFailed,
+        message: 'Failed to fetch invitations.',
+      ),
     );
     if (fetchError != null) return fetchError;
 
@@ -72,19 +76,19 @@ class InvitationsListCommand extends ShorebirdCommand {
     }
 
     for (final invitation in invitations) {
-      final sent = invitation.createdAt.toUtc().toIso8601String().substring(
-        0,
-        10,
-      );
       logger.info(
         '${invitation.id}  ${lightCyan.wrap(invitation.targetName)}  '
         '${invitation.kind}  ${invitation.role.name}  '
-        '${invitation.inviterEmail}  $sent',
+        '${invitation.inviterEmail}  ${_date(invitation.createdAt)}  '
+        '${_date(invitation.expiresAt)}',
       );
     }
     return ExitCode.success.code;
   }
 }
+
+/// [time]'s UTC calendar date, as YYYY-MM-DD.
+String _date(DateTime time) => time.toUtc().toIso8601String().substring(0, 10);
 
 extension on ReceivedInvitation {
   /// What the invitation is to: "organization" or "app".

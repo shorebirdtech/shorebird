@@ -897,7 +897,9 @@ class CodePushClient {
         json.decode(response.body) as Map<String, dynamic>,
       );
       invitations.addAll(page.invitations);
-      cursor = page.nextCursor;
+      // An empty page ends the list even if it carries a cursor, so a
+      // misbehaving server cannot keep this loop going.
+      cursor = page.invitations.isEmpty ? null : page.nextCursor;
     } while (cursor != null);
     return invitations;
   }

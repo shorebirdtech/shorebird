@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/invitations/invitation_error_hints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -22,13 +23,18 @@ class InvitationsAcceptCommand extends InvitationResponseCommand {
       'with its role.\n\n'
       'Find the id with `shorebird invitations list`.\n\n'
       'Example output:\n'
-      '  Accepted invitation 0b6c....\n\n'
+      '  Accepted invitation 0b6c....\n'
+      '  See it with `shorebird account orgs` or `shorebird apps list`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird invitations accept <id> --json',
       )}';
 
   @override
   String get _pastTense => 'accepted';
+
+  @override
+  String get _nextStep =>
+      'See it with `shorebird account orgs` or `shorebird apps list`.';
 
   @override
   Future<void> _respond(String invitationId) =>
@@ -81,6 +87,9 @@ abstract class InvitationResponseCommand extends ShorebirdCommand {
   /// Sends the answer to the invitation with [invitationId].
   Future<void> _respond(String invitationId);
 
+  /// What to run next after answering, if anything.
+  String? get _nextStep => null;
+
   @override
   Future<int> run() async {
     if (results.rest.length != 1) {
@@ -99,10 +108,12 @@ abstract class InvitationResponseCommand extends ShorebirdCommand {
       return reportPreconditionFailure(error);
     }
 
-    final responseError = await guardApiCall(
-      () => _respond(invitationId),
-      code: JsonErrorCode.softwareError,
-      message: 'Failed to $name invitation $invitationId.',
+    final responseError = await withInvitationErrorHints(
+      () => guardApiCall(
+        () => _respond(invitationId),
+        code: JsonErrorCode.softwareError,
+        message: 'Failed to $name invitation $invitationId.',
+      ),
     );
     if (responseError != null) return responseError;
 
@@ -113,6 +124,7 @@ abstract class InvitationResponseCommand extends ShorebirdCommand {
 
     final verb = '${_pastTense[0].toUpperCase()}${_pastTense.substring(1)}';
     logger.success('$verb invitation $invitationId.');
+    if (_nextStep case final nextStep?) logger.info(nextStep);
     return ExitCode.success.code;
   }
 }

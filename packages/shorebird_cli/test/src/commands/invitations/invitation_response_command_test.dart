@@ -141,6 +141,15 @@ void main() {
         verify(
           () => logger.success('$verb invitation $invitationId.'),
         ).called(1);
+        if (name == 'accept') {
+          verify(
+            () => logger.info(
+              'See it with `shorebird account orgs` or `shorebird apps list`.',
+            ),
+          ).called(1);
+        } else {
+          verifyNever(() => logger.info(any()));
+        }
       });
 
       test('emits JSON success in --json mode', () async {

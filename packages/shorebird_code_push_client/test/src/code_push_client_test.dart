@@ -3204,6 +3204,17 @@ void main() {
         );
       });
 
+      test('stops at an empty page even if it carries a cursor', () async {
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => page([], nextCursor: 'again'));
+
+        final invitations = await codePushClient.getReceivedInvitations();
+
+        expect(invitations, isEmpty);
+        verify(() => httpClient.send(any())).called(1);
+      });
+
       test('follows next_cursor through every page', () async {
         final responses = [
           page([invitation('a')], nextCursor: 'next'),
