@@ -106,6 +106,7 @@ To target the latest release (e.g. the release that was most recently updated) u
       )
       ..addOption(
         'track',
+        aliases: const ['channel'],
         help: 'The track to publish the patch to.',
         defaultsTo: DeploymentTrack.stable.channel,
       )

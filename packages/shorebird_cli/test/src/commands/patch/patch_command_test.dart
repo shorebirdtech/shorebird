@@ -392,6 +392,11 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('accepts --channel as an alias of --track', () {
+      final results = PatchCommand().argParser.parse(['--channel', 'beta']);
+      expect(results['track'], equals('beta'));
+    });
+
     test('accepts a hidden --dd-max-bytes option with no default', () {
       final option =
           PatchCommand().argParser.options[CommonArguments.ddMaxBytesArg.name]!;

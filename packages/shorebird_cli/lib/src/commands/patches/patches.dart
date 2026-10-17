@@ -2,6 +2,7 @@ export 'patch_rollback_state_command.dart';
 export 'patches_command.dart';
 export 'patches_info_command.dart';
 export 'patches_list_command.dart';
+export 'patches_stats_command.dart';
 export 'promote_command.dart';
 export 'rollback_command.dart';
 export 'rollforward_command.dart';
