@@ -38,9 +38,6 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
   confirmation is needed.
 - 🐛 Declining a prompt no longer prints the generic "re-run with --verbose"
   failure text.
-- 🐛 `shorebird doctor` and `shorebird init` no longer fail with
-  `HEAD does not point to a branch` when Shorebird is checked out at a commit
-  or tag. The up-to-date check is skipped for a pinned checkout.
 - 🔧 `shorebird api` treats an endpoint that repeats `/api/v1` as the route
   under it, and says so on stderr.
 - 🔧 `shorebird account apps` now prints `shorebird apps list` and exits 64.
@@ -50,7 +47,9 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🔧 Every request the CLI makes sends a
   `User-Agent: shorebird-cli/<version> (<os>; dart <version>)` header.
 - 🔧 The hidden `--confirm` flag is removed from `shorebird release` and
-  `shorebird patch`. Passing it is now a usage error (exit 64).
+  `shorebird patch`. Passing `--confirm` or `--no-confirm` is now a usage error
+  (exit 64). Neither command prompts for confirmation, so remove the flag from
+  scripts.
 
 ## 1.6.129 (October 16, 2026)
 
