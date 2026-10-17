@@ -949,18 +949,163 @@ $exception'''),
     group('when no platform argument is provided', () {
       setUp(() {
         when(() => argResults['platforms']).thenReturn(const <String>[]);
+        command.testRunner = usageRunner();
       });
 
-      test('fails and log the correct message', () async {
-        final exitCode = await runWithOverrides(command.run);
+      test('throws a usage exception listing the valid platforms', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+No platform was provided.
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+            ),
+          ),
+        );
+      });
+    });
 
-        expect(exitCode, equals(ExitCode.usage.code));
+    group('when the platform argument is invalid', () {
+      setUp(() {
+        when(() => argResults.wasParsed('platforms')).thenReturn(false);
+        when(() => argResults.arguments).thenReturn(['list']);
+        when(() => argResults.rest).thenReturn(['list']);
+        command.testRunner = usageRunner(commands: {});
+      });
 
+      test('throws a usage exception without a subcommand hint', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Invalid platform: "list".
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('when a version is given as a positional', () {
+      void stubArgs(List<String> args) {
+        when(() => argResults.wasParsed('platforms')).thenReturn(false);
+        when(() => argResults.arguments).thenReturn(args);
+        when(() => argResults.rest).thenReturn(args);
+      }
+
+      setUp(() {
+        command.testRunner = usageRunner();
+      });
+
+      test('suggests --build-name and --build-number for android', () async {
+        stubArgs(['android', '1.0.0+1']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Unexpected argument: "1.0.0+1".
+Did you mean --build-name=1.0.0 --build-number=1?''',
+            ),
+          ),
+        );
+      });
+
+      test('suggests --build-name alone without a build number', () async {
+        stubArgs(['android', '1.0.0']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Unexpected argument: "1.0.0".
+Did you mean --build-name=1.0.0?''',
+            ),
+          ),
+        );
+      });
+
+      test('suggests --release-version for aar', () async {
+        stubArgs(['aar', '1.0.0+1']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Unexpected argument: "1.0.0+1".
+Did you mean --release-version=1.0.0+1?''',
+            ),
+          ),
+        );
+      });
+
+      test('suggests --release-version for ios-framework', () async {
+        stubArgs(['ios-framework', '1.0.0+1']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              contains('--release-version=1.0.0+1'),
+            ),
+          ),
+        );
+      });
+    });
+
+    group('when a .dart target is given as a positional', () {
+      setUp(() {
+        when(() => argResults.wasParsed('platforms')).thenReturn(false);
+        when(() => argResults.wasParsed('target')).thenReturn(false);
+        when(
+          () => argResults.arguments,
+        ).thenReturn(['android', 'lib/main_prod.dart']);
+        when(
+          () => argResults.rest,
+        ).thenReturn(['android', 'lib/main_prod.dart']);
+        command.testRunner = usageRunner();
+      });
+
+      test('uses it as the target and says so', () {
+        expect(
+          runWithOverrides(() => command.target),
+          equals('lib/main_prod.dart'),
+        );
         verify(
-          () => logger.err(
-            '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
+          () => logger.info(
+            'Using lib/main_prod.dart as the target '
+            '(--target lib/main_prod.dart).',
           ),
         ).called(1);
+      });
+
+      test('throws a usage exception when --target is also given', () {
+        when(() => argResults.wasParsed('target')).thenReturn(true);
+        when(() => argResults['target']).thenReturn('lib/main.dart');
+        expect(
+          () => runWithOverrides(() => command.target),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              'Both --target lib/main.dart and the positional '
+                  'lib/main_prod.dart name a target. Pass only one.',
+            ),
+          ),
+        );
       });
     });
 

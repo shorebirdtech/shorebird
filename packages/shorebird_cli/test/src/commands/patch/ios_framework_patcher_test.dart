@@ -472,6 +472,33 @@ void main() {
           });
         });
 
+        group('when a target is provided', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildIosFramework(
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+              ),
+            ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
+            patcher = IosFrameworkPatcher(
+              argParser: argParser,
+              argResults: argResults,
+              flavor: null,
+              target: 'lib/main_prod.dart',
+            );
+          });
+
+          test('forwards the target to buildIosFramework', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                target: 'lib/main_prod.dart',
+                args: any(named: 'args'),
+              ),
+            ).called(1);
+          });
+        });
+
         group('when the key pair is provided', () {
           setUp(() {
             when(
