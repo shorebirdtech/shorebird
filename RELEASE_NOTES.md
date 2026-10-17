@@ -41,11 +41,11 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 `shorebird doctor` and `shorebird upgrade` on a Shorebird checkout at a
   commit, a tag or a branch with no upstream now say how to get back on
   `stable` (`git -C <shorebird> checkout stable`, then `shorebird upgrade`)
-  instead of failing with `HEAD does not point to a branch`.
+  instead of failing with a git error.
 - 🔧 `shorebird api` treats an endpoint that repeats `/api/v1` as the route
   under it, and says so on stderr.
-- 🔧 `shorebird account apps` now prints `shorebird apps list` and exits 64.
-  Use `shorebird apps list` instead.
+- 🔧 `shorebird account apps` no longer lists apps. It prints
+  `shorebird apps list` and exits 64. Use `shorebird apps list` instead.
 - 🔧 `shorebird api` explains a 405 response when `-f`/`-F` fields switched
   the default method to POST, and suggests `--method GET`.
 - 🔧 Every request the CLI makes sends a
