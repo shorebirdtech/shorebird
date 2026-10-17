@@ -185,6 +185,25 @@ Did you mean --release-version=1.0.0+1?''',
             ),
           );
         });
+        test('throws on a .dart positional for platforms without a target', () {
+          for (final platform in ['aar', 'ios-framework']) {
+            expect(
+              () => parser
+                  .parse([platform, 'lib/main_prod.dart'])
+                  .releaseTypes
+                  .toList(),
+              throwsA(
+                isA<PlatformArgumentException>().having(
+                  (e) => e.message,
+                  'message',
+                  '''
+Unexpected argument: "lib/main_prod.dart".
+$platform builds always use lib/main.dart.''',
+                ),
+              ),
+            );
+          }
+        });
       });
 
       group('positionalTarget', () {
@@ -215,6 +234,20 @@ Did you mean --release-version=1.0.0+1?''',
             parser.parse([
               '--platforms',
               'android',
+              'lib/main_prod.dart',
+            ]).positionalTarget,
+            isNull,
+          );
+        });
+
+        test('is null for platforms that take no target', () {
+          expect(
+            parser.parse(['aar', 'lib/main_prod.dart']).positionalTarget,
+            isNull,
+          );
+          expect(
+            parser.parse([
+              'ios-framework',
               'lib/main_prod.dart',
             ]).positionalTarget,
             isNull,

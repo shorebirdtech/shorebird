@@ -45,6 +45,11 @@ enum ReleaseType {
     }
   }
 
+  /// Whether builds of this type take a Flutter target (`--target`). `aar`
+  /// and `ios-framework` builds always use `lib/main.dart`.
+  bool get acceptsTarget =>
+      this != ReleaseType.aar && this != ReleaseType.iosFramework;
+
   /// The platform associated with the release type.
   ReleasePlatform get releasePlatform {
     switch (this) {
@@ -107,9 +112,10 @@ extension ReleaseTypeArgs on ArgResults {
     if (rest.length < 2 || !rest[1].endsWith('.dart')) return null;
     final positionalArgs = _ownPositionalArgs;
     if (positionalArgs.length < 2) return null;
-    if (ReleaseType.values.none((t) => t.cliName == positionalArgs.first)) {
-      return null;
-    }
+    final type = ReleaseType.values.firstWhereOrNull(
+      (t) => t.cliName == positionalArgs.first,
+    );
+    if (type == null || !type.acceptsTarget) return null;
     return positionalArgs[1].endsWith('.dart') ? positionalArgs[1] : null;
   }
 
@@ -142,7 +148,9 @@ Valid platforms: $validPlatformNames''',
         if (positionalArgs.length > extraIndex) {
           final unexpected = positionalArgs[extraIndex];
           final String hint;
-          if (RegExp(r'^\d+\.\d+').hasMatch(unexpected)) {
+          if (unexpected.endsWith('.dart')) {
+            hint = '$platformCliName builds always use lib/main.dart.';
+          } else if (RegExp(r'^\d+\.\d+').hasMatch(unexpected)) {
             hint = 'Did you mean --release-version=$unexpected?';
           } else if (ReleaseType.values.any((t) => t.cliName == unexpected)) {
             hint = 'Did you mean --platforms=$platformCliName,$unexpected?';
