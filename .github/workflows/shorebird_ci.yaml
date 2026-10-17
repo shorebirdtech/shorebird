@@ -31,7 +31,6 @@ jobs:
       shorebird_code_push_client: ${{ steps.filter.outputs.shorebird_code_push_client }}
       shorebird_code_push_protocol: ${{ steps.filter.outputs.shorebird_code_push_protocol }}
       shorebird_redis_client: ${{ steps.filter.outputs.shorebird_redis_client }}
-      stripe_api: ${{ steps.filter.outputs.stripe_api }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -74,8 +73,6 @@ jobs:
               - packages/shorebird_code_push_protocol/**
             shorebird_redis_client:
               - packages/redis_client/**
-            stripe_api:
-              - packages/stripe_api/**
 
   artifact_proxy:
     needs: changes
@@ -210,17 +207,6 @@ jobs:
       subpackages: ""
       needs_redis: true
 
-  stripe_api:
-    needs: changes
-    if: needs.changes.outputs.stripe_api == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: stripe_api
-      package_path: packages/stripe_api
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
-
   cspell:
     name: CSpell
     runs-on: ubuntu-latest
@@ -250,7 +236,6 @@ jobs:
       - shorebird_code_push_client
       - shorebird_code_push_protocol
       - shorebird_redis_client
-      - stripe_api
       - cspell
     runs-on: ubuntu-latest
     steps:
