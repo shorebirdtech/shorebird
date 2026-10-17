@@ -290,6 +290,24 @@ This app may not exist or you may not have permission to view it.''');
     );
   }
 
+  /// Archives the app with the provided [appId]. Devices keep the patch they
+  /// have but are offered no new ones, and new releases and patches are
+  /// refused until the app is unarchived.
+  Future<void> archiveApp({required String appId}) {
+    return _withProgress(
+      'Archiving app',
+      () => codePushClient.archiveApp(appId: appId),
+    );
+  }
+
+  /// Unarchives the app with the provided [appId], resuming patch serving.
+  Future<void> unarchiveApp({required String appId}) {
+    return _withProgress(
+      'Unarchiving app',
+      () => codePushClient.unarchiveApp(appId: appId),
+    );
+  }
+
   /// Deletes the app with the provided [appId], along with every release and
   /// patch belonging to it.
   Future<void> deleteApp({required String appId}) {
