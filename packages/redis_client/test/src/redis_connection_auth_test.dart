@@ -340,6 +340,34 @@ void main() {
       );
     });
 
+    test(
+      'closes cleanly when the server answers the hang-up with an alert',
+      () async {
+        // The client's close sends a FIN with no close_notify. OpenSSL, as in
+        // Memorystore for Valkey, reads that as a truncated connection and
+        // answers with a fatal alert before closing. The proxy stands in for
+        // that answer. Arriving after close, it must not be an unhandled error.
+        final proxy = await _AlertOnHangUpProxy.start(server.port);
+        addTearDown(proxy.close);
+        final client = RedisClient(
+          socket: RedisSocketOptions(
+            host: '127.0.0.1',
+            port: proxy.port,
+            tls: true,
+            securityContext: pki.clientTrusting('ca'),
+          ),
+        );
+
+        await client.connect();
+        expect(await client.execute(['PING']), equals('PONG'));
+        await client.close();
+        // An unhandled error fails the test from the test's zone; give the
+        // alert time to arrive.
+        await proxy.alertSent;
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      },
+    );
+
     test('refuses a server whose certificate does not name the host', () async {
       // The certificate names 127.0.0.1 only. Hostname verification stays on:
       // the AUTH password can be a cloud access token.
@@ -375,4 +403,48 @@ void main() {
       expect(server.auths, isEmpty);
     });
   });
+}
+
+/// A TCP proxy to [_FakeRedisServer] that, once the client hangs up, writes
+/// a TLS alert record back to it before closing, as OpenSSL does on a
+/// connection that ends without close_notify.
+class _AlertOnHangUpProxy {
+  _AlertOnHangUpProxy._(this._server, this._upstreamPort) {
+    _server.listen((client) async {
+      final upstream = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        _upstreamPort,
+      );
+      upstream.listen(client.add, onError: (_) {}, onDone: () {});
+      client.listen(
+        upstream.add,
+        onError: (_) {},
+        onDone: () async {
+          // A fatal decode_error alert, unencrypted, which the client's TLS
+          // layer cannot accept mid-session either way.
+          client.add(const [0x15, 0x03, 0x03, 0x00, 0x02, 0x02, 0x32]);
+          await client.flush();
+          if (!_alertSent.isCompleted) _alertSent.complete();
+          client.destroy();
+          upstream.destroy();
+        },
+      );
+    });
+  }
+
+  static Future<_AlertOnHangUpProxy> start(int upstreamPort) async =>
+      _AlertOnHangUpProxy._(
+        await ServerSocket.bind(InternetAddress.loopbackIPv4, 0),
+        upstreamPort,
+      );
+
+  final ServerSocket _server;
+  final int _upstreamPort;
+  final _alertSent = Completer<void>();
+
+  int get port => _server.port;
+
+  Future<void> get alertSent => _alertSent.future;
+
+  Future<void> close() => _server.close();
 }

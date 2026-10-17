@@ -248,10 +248,17 @@ class _SocketConnection implements RespServerConnection {
   @override
   Stream<List<int>> get inputStream => _socket;
 
+  /// Flushes pending writes, then tears the socket down in both directions.
+  ///
+  /// Not [Socket.close]: on a [SecureSocket] that closes only the write side,
+  /// with a FIN and no TLS close_notify, and leaves the read side listening.
+  /// OpenSSL servers, Memorystore for Valkey among them, answer that with a
+  /// fatal alert, which arrives as an error on a stream nothing reads any
+  /// more and is unhandled. [Socket.destroy] stops delivery first.
   @override
   Future<void> close() async {
     await _socket.flush();
-    return _socket.close();
+    _socket.destroy();
   }
 }
 

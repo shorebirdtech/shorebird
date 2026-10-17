@@ -1,3 +1,7 @@
+# 0.0.15
+
+- fix: closing a TLS connection no longer raises an unhandled `TlsException` when the server answers the hang-up with an alert, as Memorystore for Valkey does. `close`, `disconnect` and the retry policy's socket recycle now tear the socket down in both directions after flushing
+
 # 0.0.14
 
 - feat: connect over TLS with `RedisSocketOptions.tls` and an optional `securityContext`
