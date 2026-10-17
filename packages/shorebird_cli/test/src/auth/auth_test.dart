@@ -1107,6 +1107,53 @@ void main() {
       });
     });
 
+    group('credentialKind, accessToken and accessTokenExpiresAt', () {
+      test('are null without credentials', () {
+        expect(auth.credentialKind, isNull);
+        expect(auth.accessTokenExpiresAt, isNull);
+      });
+
+      group('with a stored login', () {
+        setUp(() {
+          writeCredentials();
+          auth = buildAuth();
+        });
+
+        test('name the login before any request', () {
+          expect(auth.credentialKind, equals(CredentialKind.login));
+          expect(auth.accessTokenExpiresAt, isNull);
+        });
+
+        test('return the access token and its expiry', () async {
+          final token = await runWithOverrides(auth.accessToken);
+          expect(token, equals(shorebirdAccessToken));
+          expect(auth.credentialKind, equals(CredentialKind.login));
+          // The credentials file stores the expiry to the millisecond.
+          expect(
+            auth.accessTokenExpiresAt?.millisecondsSinceEpoch,
+            equals(accessCredentials.expiration!.millisecondsSinceEpoch),
+          );
+        });
+      });
+
+      group('with an API key', () {
+        setUp(() {
+          platform = platform.copyWith(
+            environment: {shorebirdTokenEnvVar: 'sb_api_test'},
+          );
+          auth = buildAuth();
+        });
+
+        test('return the key, with no expiry', () async {
+          expect(auth.credentialKind, equals(CredentialKind.apiKey));
+          final token = await runWithOverrides(auth.accessToken);
+          expect(token, equals('sb_api_test'));
+          expect(auth.credentialKind, equals(CredentialKind.apiKey));
+          expect(auth.accessTokenExpiresAt, isNull);
+        });
+      });
+    });
+
     group('when GitHub Actions grants an OIDC token request', () {
       const oidcEnvironment = {
         githubActionsEnvVar: 'true',
@@ -1180,6 +1227,19 @@ void main() {
             verify(() => httpClient.send(captureAny())).captured.single
                 as http.BaseRequest;
         expect(request.headers['Authorization'], 'Bearer sb_at_oidc');
+      });
+
+      test('reports the exchanged token and its expiry', () async {
+        answerIdTokenRequests();
+        answerRefreshWith(tokenResponse(accessToken: 'sb_at_oidc'));
+        auth = buildAuth();
+        expect(auth.credentialKind, equals(CredentialKind.gitHubActionsOidc));
+
+        final token = await runWithOverrides(auth.accessToken);
+
+        expect(token, equals('sb_at_oidc'));
+        expect(auth.credentialKind, equals(CredentialKind.gitHubActionsOidc));
+        expect(auth.accessTokenExpiresAt, isNotNull);
       });
 
       test('returns a 401 challenge to its token as a response', () async {

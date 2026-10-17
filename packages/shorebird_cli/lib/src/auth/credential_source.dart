@@ -101,6 +101,10 @@ class CredentialChain {
   /// The sources this chain tries, in order.
   List<CredentialSource> get sources => _sources;
 
+  /// The source that authenticated the last request, or null before any.
+  CredentialSource? get lastResolvedSource => _lastResolvedSource;
+  CredentialSource? _lastResolvedSource;
+
   /// Whether any source has credentials to offer.
   bool get isAvailable => _sources.any((source) => source.isAvailable);
 
@@ -121,6 +125,7 @@ class CredentialChain {
       try {
         final authorization = await source.authorization();
         _succeeded.add(source);
+        _lastResolvedSource = source;
         return (source: source, authorization: authorization);
       } on CredentialSourceException catch (e) {
         final hasNext =

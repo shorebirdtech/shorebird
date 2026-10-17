@@ -88,6 +88,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(AccountCommand());
     addCommand(ApiCommand());
     addCommand(AppsCommand());
+    addCommand(AuthCommand());
     addCommand(CacheCommand());
     addCommand(ChannelsCommand());
     addCommand(CreateCommand());
@@ -104,10 +105,37 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(ReleaseCommand());
     addCommand(ReleasesCommand());
     addCommand(UpgradeCommand());
+    addCommand(TopLevelWhoamiCommand());
   }
 
   @override
   void printUsage() => logger.info(usage);
+
+  /// [results], or, when they name a command with a
+  /// [ShorebirdCommand.defaultSubcommand] and no subcommand, arguments, or
+  /// `--help`, [args] parsed again with that subcommand added, so that a bare
+  /// `shorebird account` runs `shorebird account whoami`.
+  ArgResults _withDefaultSubcommand(List<String> args, ArgResults results) {
+    var commands = this.commands;
+    var next = results.command;
+    while (next != null) {
+      final command = commands[next.name];
+      if (command == null) return results;
+      if (next.command == null) {
+        if (command is! ShorebirdCommand ||
+            next.rest.isNotEmpty ||
+            (next.options.contains('help') && next.flag('help'))) {
+          return results;
+        }
+        final subcommand = command.defaultSubcommand;
+        if (subcommand == null) return results;
+        return parse([...args, subcommand]);
+      }
+      commands = command.subcommands;
+      next = next.command;
+    }
+    return results;
+  }
 
   @override
   Future<int> run(Iterable<String> args) async {
@@ -118,7 +146,10 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     final jsonModeFromArgs = argsList.contains('--json');
 
     try {
-      final topLevelResults = parse(argsList);
+      final topLevelResults = _withDefaultSubcommand(
+        argsList,
+        parse(argsList),
+      );
 
       final localEngineSrcPath =
           topLevelResults['local-engine-src-path'] as String?;
