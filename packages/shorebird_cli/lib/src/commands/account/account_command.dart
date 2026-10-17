@@ -8,6 +8,8 @@ class AccountCommand extends ShorebirdCommand {
   /// {@macro account_command}
   AccountCommand() {
     addSubcommand(AccountAppsCommand());
+    addSubcommand(AccountNotificationsCommand());
+    addSubcommand(AccountUpdateCommand());
     addSubcommand(OrgsCommand());
     addSubcommand(WhoamiCommand());
   }

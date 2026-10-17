@@ -1942,6 +1942,136 @@ void main() {
       });
     });
 
+    group('updateCurrentUser', () {
+      test('makes the correct request', () async {
+        codePushClient.updateCurrentUser(displayName: 'Jane Doe').ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('users/me')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(
+          json.decode(request.body),
+          equals({'display_name': 'Jane Doe'}),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.updateCurrentUser(displayName: 'Jane Doe'),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.updateCurrentUser(displayName: 'Jane Doe'),
+          completes,
+        );
+      });
+    });
+
+    group('getEmailNotificationsEnabled', () {
+      test('makes the correct request', () async {
+        codePushClient.getEmailNotificationsEnabled().ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('users/me/notification_preferences')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getEmailNotificationsEnabled(),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+
+      test('returns the setting', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode({
+                  'preferences': {'are_email_notifications_enabled': false},
+                }),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.getEmailNotificationsEnabled(),
+          completion(isFalse),
+        );
+      });
+    });
+
+    group('setEmailNotificationsEnabled', () {
+      test('makes the correct request', () async {
+        codePushClient.setEmailNotificationsEnabled(enabled: false).ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('users/me/notification_preferences')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(
+          json.decode(request.body),
+          equals({'are_email_notifications_enabled': false}),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.setEmailNotificationsEnabled(enabled: true),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.setEmailNotificationsEnabled(enabled: true),
+          completes,
+        );
+      });
+    });
+
     group('transferApp', () {
       const organizationId = 42;
 

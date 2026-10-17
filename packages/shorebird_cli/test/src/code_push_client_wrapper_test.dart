@@ -593,6 +593,53 @@ void main() {
         });
       });
 
+      group('account', () {
+        test('updateCurrentUser sends the display name', () async {
+          when(
+            () => codePushClient.updateCurrentUser(
+              displayName: any(named: 'displayName'),
+            ),
+          ).thenAnswer((_) async {});
+          await runWithOverrides(
+            () => codePushClientWrapper.updateCurrentUser(
+              displayName: 'Jane Doe',
+            ),
+          );
+          verify(
+            () => codePushClient.updateCurrentUser(displayName: 'Jane Doe'),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('getEmailNotificationsEnabled returns the setting', () async {
+          when(
+            () => codePushClient.getEmailNotificationsEnabled(),
+          ).thenAnswer((_) async => true);
+          await expectLater(
+            runWithOverrides(
+              codePushClientWrapper.getEmailNotificationsEnabled,
+            ),
+            completion(isTrue),
+          );
+        });
+
+        test('setEmailNotificationsEnabled sends the setting', () async {
+          when(
+            () => codePushClient.setEmailNotificationsEnabled(
+              enabled: any(named: 'enabled'),
+            ),
+          ).thenAnswer((_) async {});
+          await runWithOverrides(
+            () => codePushClientWrapper.setEmailNotificationsEnabled(
+              enabled: false,
+            ),
+          );
+          verify(
+            () => codePushClient.setEmailNotificationsEnabled(enabled: false),
+          ).called(1);
+        });
+      });
+
       group('updateApp', () {
         test('exits with code 70 when renaming app fails', () async {
           const error = 'something went wrong';
