@@ -992,6 +992,80 @@ Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
       });
     });
 
+    group('when a version is given as a positional', () {
+      void stubArgs(List<String> args) {
+        when(() => argResults.wasParsed('platforms')).thenReturn(false);
+        when(() => argResults.arguments).thenReturn(args);
+        when(() => argResults.rest).thenReturn(args);
+      }
+
+      setUp(() {
+        command.testRunner = usageRunner();
+      });
+
+      test('suggests --build-name and --build-number for android', () async {
+        stubArgs(['android', '1.0.0+1']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Unexpected argument: "1.0.0+1".
+Did you mean --build-name=1.0.0 --build-number=1?''',
+            ),
+          ),
+        );
+      });
+
+      test('suggests --build-name alone without a build number', () async {
+        stubArgs(['android', '1.0.0']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Unexpected argument: "1.0.0".
+Did you mean --build-name=1.0.0?''',
+            ),
+          ),
+        );
+      });
+
+      test('suggests --release-version for aar', () async {
+        stubArgs(['aar', '1.0.0+1']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Unexpected argument: "1.0.0+1".
+Did you mean --release-version=1.0.0+1?''',
+            ),
+          ),
+        );
+      });
+
+      test('suggests --release-version for ios-framework', () async {
+        stubArgs(['ios-framework', '1.0.0+1']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              contains('--release-version=1.0.0+1'),
+            ),
+          ),
+        );
+      });
+    });
+
     group('when a .dart target is given as a positional', () {
       setUp(() {
         when(() => argResults.wasParsed('platforms')).thenReturn(false);

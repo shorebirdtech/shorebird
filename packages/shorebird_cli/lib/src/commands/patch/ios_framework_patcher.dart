@@ -69,6 +69,7 @@ class IosFrameworkPatcher extends Patcher
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final buildResult = await artifactBuilder.buildIosFramework(
+      target: target,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );

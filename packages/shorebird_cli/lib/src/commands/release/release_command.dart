@@ -181,7 +181,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   @override
   Future<int> run() async {
-    final releaseTypes = releaseTypesOrUsageError(siblingCommand: 'releases');
+    final releaseTypes = releaseTypesOrUsageError(
+      siblingCommand: 'releases',
+      versionHint: _versionHint,
+    );
 
     // One Release can carry several platforms, so releases are collected by
     // id: each platform's pass re-fetches the release, and the last fetch is
@@ -251,6 +254,21 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   /// The build flavor, if provided.
   String? get flavor => results.findOption('flavor', argParser: argParser);
+
+  /// `--release-version` is only valid for aar and ios-framework releases;
+  /// other platforms take their version from `--build-name` and
+  /// `--build-number` (or the pubspec).
+  String? _versionHint(String version) {
+    final platform = results.rest.first;
+    if (platform == ReleaseType.aar.cliName ||
+        platform == ReleaseType.iosFramework.cliName) {
+      return null;
+    }
+    final plus = version.indexOf('+');
+    if (plus == -1) return 'Did you mean --build-name=$version?';
+    return 'Did you mean --build-name=${version.substring(0, plus)} '
+        '--build-number=${version.substring(plus + 1)}?';
+  }
 
   /// The target script, if provided.
   late final String? target = resolveTarget();
