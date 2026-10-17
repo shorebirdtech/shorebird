@@ -87,11 +87,6 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_protocol/**
-            jwt:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/jwt/**
             scoped_deps:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml

@@ -23,7 +23,6 @@ This repository is a monorepo containing the following packages:
 | [shorebird_code_push_client](packages/shorebird_code_push_client/README.md)     | Dart library which allows Dart applications to interact with the Shorebird CodePush API |
 | [shorebird_code_push_protocol](packages/shorebird_code_push_protocol/README.md) | Dart library which contains common interfaces used by Shorebird CodePush                |
 | [artifact_proxy](packages/artifact_proxy/README.md)                             | Dart server which supports intercepting and proxying Flutter artifact requests          |
-| [jwt](packages/jwt/README.md)                                                   | Dart library for verifying JSON Web Tokens                                              |
 | [redis_client](packages/redis_client/README.md)                                 | Dart library for interacting with Redis                                                 |
 | [scoped_deps](packages/scoped_deps/README.md)                                   | A simple dependency injection library built on Zones                                    |
 
