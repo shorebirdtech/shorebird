@@ -33,14 +33,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.7.0"
-  asn1lib:
-    dependency: transitive
-    description:
-      name: asn1lib
-      sha256: "9a8f69025044eb466b9b60ef3bc3ac99b4dc6c158ae9c56d25eeccf5bc56d024"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.5"
   async:
     dependency: transitive
     description:
@@ -545,14 +537,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.1"
-  rsa_pkcs:
-    dependency: transitive
-    description:
-      name: rsa_pkcs
-      sha256: "6e1e03563d2cbd9758d8a562f738b759763d464fd65d32da132153230a0c0395"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.0"
   shelf:
     dependency: transitive
     description:
@@ -705,14 +689,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.20"
-  ttl_cache:
-    dependency: transitive
-    description:
-      name: ttl_cache
-      sha256: "3c8d00de287cd646032af85411412becac3fd8889b12e5b07c9f8809e66cf132"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0"
   typed_data:
     dependency: transitive
     description:

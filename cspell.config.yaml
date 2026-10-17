@@ -82,6 +82,7 @@ words:
   - lproj
   - madd # From ./packages/redis_client
   - mbps
+  - Memorystore
   - metacharacters
   - mget # From ./packages/redis_client
   - metadatas
@@ -164,6 +165,7 @@ words:
   - upvote
   - usbmuxd
   - USERPROFILE
+  - Valkey
   - VCRUNTIME
   - Verdana
   - vmcode
