@@ -137,6 +137,36 @@ class CodePushClientWrapper {
     return _withProgress('Fetching plan', codePushClient.getPlanLevel);
   }
 
+  /// Sets the current user's display name to [displayName].
+  Future<void> updateCurrentUser({required String displayName}) {
+    return _withProgress(
+      'Updating account',
+      () => codePushClient.updateCurrentUser(displayName: displayName),
+    );
+  }
+
+  /// Deletes the current user's account, along with their personal
+  /// organization and its apps.
+  Future<void> deleteCurrentUser() {
+    return _withProgress('Deleting account', codePushClient.deleteCurrentUser);
+  }
+
+  /// Whether the current user receives email notifications.
+  Future<bool> getEmailNotificationsEnabled() {
+    return _withProgress(
+      'Fetching notification settings',
+      codePushClient.getEmailNotificationsEnabled,
+    );
+  }
+
+  /// Turns the current user's email notifications on or off.
+  Future<void> setEmailNotificationsEnabled({required bool enabled}) {
+    return _withProgress(
+      'Updating notification settings',
+      () => codePushClient.setEmailNotificationsEnabled(enabled: enabled),
+    );
+  }
+
   /// Fetches the organization memberships for the current user.
   Future<List<OrganizationMembership>> getOrganizationMemberships() {
     return _withProgress(
