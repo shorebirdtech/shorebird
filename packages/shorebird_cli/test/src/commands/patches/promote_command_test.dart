@@ -199,6 +199,11 @@ void main() {
       final exitCode = await runWithOverrides(command.run);
 
       expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => logger.info(
+          'Patch 1 on release $releaseVersion is already in channel stable.',
+        ),
+      ).called(1);
       verifyNever(
         () => codePushClientWrapper.promotePatch(
           appId: any(named: 'appId'),
@@ -206,6 +211,28 @@ void main() {
           channel: any(named: 'channel'),
         ),
       );
+    });
+
+    test('--json emits the set-track success envelope', () async {
+      parse([]);
+
+      final (:exitCode, :json) = await captureJson(
+        () => runScoped(
+          command.run,
+          values: {
+            codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+            isJsonModeRef.overrideWith(() => true),
+            loggerRef.overrideWith(() => logger),
+            shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+            shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          },
+        ),
+      );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      final data = json['data'] as Map<String, dynamic>;
+      expect(data['track'], equals('stable'));
+      expect(data['changed'], isTrue);
     });
   });
 }
