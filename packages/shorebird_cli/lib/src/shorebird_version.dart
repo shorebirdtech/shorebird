@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdVersion] instance.
 final shorebirdVersionRef = create(ShorebirdVersion.new);
@@ -56,6 +57,39 @@ class ShorebirdVersion {
       directory: _workingDirectory,
       args: ['--hard'],
     );
+  }
+
+  /// Whether this checkout of shorebird has an upstream branch to compare
+  /// against. A checkout of a commit or tag (a detached HEAD), or a local
+  /// branch with no upstream, has nothing newer to compare it to.
+  ///
+  /// Throws a [ProcessException] if git fails for another reason.
+  Future<bool> hasUpstream() async {
+    try {
+      await git.git([
+        'rev-parse',
+        '-q',
+        '--verify',
+        '@{upstream}',
+      ], workingDirectory: _workingDirectory);
+      return true;
+    } on ProcessException catch (e) {
+      // `rev-parse -q --verify` exits 1 when the ref doesn't resolve and 128
+      // for other errors.
+      if (e.errorCode == 1) return false;
+      rethrow;
+    }
+  }
+
+  /// Tells the user how to get back on the latest Shorebird when
+  /// [hasUpstream] is false.
+  String get noUpstreamMessage {
+    final root = shorebirdEnv.shorebirdRoot.path;
+    return '''
+Shorebird at $root is not on a branch that receives updates.
+To get the latest Shorebird, run:
+  git -C $root checkout stable
+  shorebird upgrade''';
   }
 
   /// Whether the current version of shorebird is tracking the stable branch. If

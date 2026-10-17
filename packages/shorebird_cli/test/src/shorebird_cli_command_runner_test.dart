@@ -82,6 +82,7 @@ void main() {
       when(() => cache.pruneUnusedPreviews()).thenReturn([]);
       when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
       when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
+      when(shorebirdVersion.hasUpstream).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
     });
 

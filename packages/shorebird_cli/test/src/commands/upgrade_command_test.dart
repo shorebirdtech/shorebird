@@ -42,6 +42,7 @@ void main() {
       when(
         shorebirdVersion.fetchCurrentGitHash,
       ).thenAnswer((_) async => currentShorebirdRevision);
+      when(shorebirdVersion.hasUpstream).thenAnswer((_) async => true);
       when(
         shorebirdVersion.fetchLatestGitHash,
       ).thenAnswer((_) async => newerShorebirdRevision);
@@ -87,6 +88,21 @@ void main() {
       expect(result, equals(ExitCode.software.code));
       verify(() => logger.progress('Checking for updates')).called(1);
       verify(() => logger.err('Checking for updates failed: oops')).called(1);
+    });
+
+    test('explains how to get updates when there is no upstream', () async {
+      const message = 'Shorebird is not on a branch that receives updates.';
+      when(shorebirdVersion.hasUpstream).thenAnswer((_) async => false);
+      when(() => shorebirdVersion.noUpstreamMessage).thenReturn(message);
+
+      final result = await runWithOverrides(command.run);
+
+      expect(result, equals(ExitCode.software.code));
+      verify(() => logger.err(message)).called(1);
+      verifyNever(shorebirdVersion.fetchLatestGitHash);
+      verifyNever(
+        () => shorebirdVersion.attemptReset(revision: any(named: 'revision')),
+      );
     });
 
     test('handles errors when updating', () async {
