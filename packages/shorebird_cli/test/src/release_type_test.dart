@@ -185,24 +185,22 @@ Did you mean --release-version=1.0.0+1?''',
             ),
           );
         });
-        test('throws on a .dart positional for platforms without a target', () {
-          for (final platform in ['aar', 'ios-framework']) {
-            expect(
-              () => parser
-                  .parse([platform, 'lib/main_prod.dart'])
-                  .releaseTypes
-                  .toList(),
-              throwsA(
-                isA<PlatformArgumentException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
+        test('throws on a .dart positional for aar', () {
+          expect(
+            () => parser
+                .parse(['aar', 'lib/main_prod.dart'])
+                .releaseTypes
+                .toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
 Unexpected argument: "lib/main_prod.dart".
-$platform builds always use lib/main.dart.''',
-                ),
+aar builds always use lib/main.dart. Remove "lib/main_prod.dart".''',
               ),
-            );
-          }
+            ),
+          );
         });
       });
 
@@ -240,17 +238,20 @@ $platform builds always use lib/main.dart.''',
           );
         });
 
-        test('is null for platforms that take no target', () {
+        test('is null for aar, which takes no target', () {
           expect(
             parser.parse(['aar', 'lib/main_prod.dart']).positionalTarget,
             isNull,
           );
+        });
+
+        test('is the .dart second positional for ios-framework', () {
           expect(
             parser.parse([
               'ios-framework',
               'lib/main_prod.dart',
             ]).positionalTarget,
-            isNull,
+            equals('lib/main_prod.dart'),
           );
         });
 

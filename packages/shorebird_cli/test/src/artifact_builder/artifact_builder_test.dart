@@ -2150,6 +2150,27 @@ Reason: Exited with code 70.'''),
         ).called(1);
       });
 
+      test('passes the target to flutter build', () async {
+        await runWithOverrides(
+          () => builder.buildIosFramework(target: 'lib/main_prod.dart'),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            [
+              'build',
+              'ios-framework',
+              '--no-debug',
+              '--no-profile',
+              '--target=lib/main_prod.dart',
+            ],
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 

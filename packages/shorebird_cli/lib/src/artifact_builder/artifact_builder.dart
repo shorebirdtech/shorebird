@@ -366,6 +366,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
 
   /// Builds a release iOS framework (.xcframework) for the current project.
   Future<AppleBuildResult> buildIosFramework({
+    String? target,
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
@@ -373,7 +374,11 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     return _buildAppleKernel(
       command: 'ios-framework',
       description: 'iOS framework',
-      flags: ['--no-debug', '--no-profile'],
+      flags: [
+        '--no-debug',
+        '--no-profile',
+        if (target != null) '--target=$target',
+      ],
       args: args,
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,

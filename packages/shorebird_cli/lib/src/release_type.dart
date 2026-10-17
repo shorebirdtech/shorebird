@@ -45,10 +45,9 @@ enum ReleaseType {
     }
   }
 
-  /// Whether builds of this type take a Flutter target (`--target`). `aar`
-  /// and `ios-framework` builds always use `lib/main.dart`.
-  bool get acceptsTarget =>
-      this != ReleaseType.aar && this != ReleaseType.iosFramework;
+  /// Whether builds of this type take a Flutter target (`--target`).
+  /// `flutter build aar` always uses `lib/main.dart`.
+  bool get acceptsTarget => this != ReleaseType.aar;
 
   /// The platform associated with the release type.
   ReleasePlatform get releasePlatform {
@@ -75,10 +74,14 @@ enum ReleaseType {
 /// is written for the user.
 class PlatformArgumentException implements Exception {
   /// Creates an exception carrying the user-facing [message].
-  const PlatformArgumentException(this.message);
+  const PlatformArgumentException(this.message, {this.unexpectedVersion});
 
   /// Why the arguments were rejected, and what to do instead.
   final String message;
+
+  /// The extra positional, when it looks like a version (`1.0.0+1`). The
+  /// command may know a better hint than `--release-version`.
+  final String? unexpectedVersion;
 
   @override
   String toString() => message;
@@ -148,9 +151,12 @@ Valid platforms: $validPlatformNames''',
         if (positionalArgs.length > extraIndex) {
           final unexpected = positionalArgs[extraIndex];
           final String hint;
+          final looksLikeVersion = RegExp(r'^\d+\.\d+').hasMatch(unexpected);
           if (unexpected.endsWith('.dart')) {
-            hint = '$platformCliName builds always use lib/main.dart.';
-          } else if (RegExp(r'^\d+\.\d+').hasMatch(unexpected)) {
+            hint =
+                '$platformCliName builds always use lib/main.dart. '
+                'Remove "$unexpected".';
+          } else if (looksLikeVersion) {
             hint = 'Did you mean --release-version=$unexpected?';
           } else if (ReleaseType.values.any((t) => t.cliName == unexpected)) {
             hint = 'Did you mean --platforms=$platformCliName,$unexpected?';
@@ -161,6 +167,7 @@ Valid platforms: $validPlatformNames''',
             '''
 Unexpected argument: "$unexpected".
 $hint''',
+            unexpectedVersion: looksLikeVersion ? unexpected : null,
           );
         }
         releaseTypeCliNames = [platformCliName];

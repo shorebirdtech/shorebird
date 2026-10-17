@@ -59,6 +59,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIosFramework(
+        target: target,
         args: buildArgs,
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,

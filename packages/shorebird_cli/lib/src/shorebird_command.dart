@@ -92,9 +92,12 @@ abstract class ShorebirdCommand extends Command<int> {
   /// Throws a [UsageException] when no platform was given, the platform is
   /// not valid, or an extra positional argument was passed. When the invalid
   /// platform is a subcommand of [siblingCommand] (e.g. `rollback` under
-  /// `patches`), the message points there.
+  /// `patches`), the message points there. When the extra positional looks
+  /// like a version, [versionHint] may replace the default
+  /// `--release-version` hint by returning non-null.
   Iterable<ReleaseType> releaseTypesOrUsageError({
     required String siblingCommand,
+    String? Function(String version)? versionHint,
   }) {
     final List<ReleaseType> types;
     try {
@@ -109,6 +112,13 @@ abstract class ShorebirdCommand extends Command<int> {
 ${e.message}
 Did you mean "shorebird $siblingCommand $positional"?''',
         );
+      }
+      final version = e.unexpectedVersion;
+      final hint = version == null ? null : versionHint?.call(version);
+      if (hint != null) {
+        usageException('''
+Unexpected argument: "$version".
+$hint''');
       }
       usageException(e.message);
     }
