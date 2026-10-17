@@ -63,11 +63,6 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/artifact_proxy/**
-            discord_gcp_alerts:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/discord_gcp_alerts/**
 
       - uses: dorny/paths-filter@v4
         name: Build Detection
