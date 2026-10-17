@@ -241,23 +241,34 @@ class _SocketConnection implements RespServerConnection {
   _SocketConnection(this._socket);
 
   final Socket _socket;
+  var _closing = false;
 
   @override
   StreamSink<List<int>> get outputSink => _socket;
 
-  @override
-  Stream<List<int>> get inputStream => _socket;
-
-  /// Flushes pending writes, then tears the socket down in both directions.
+  /// The socket's input, minus any error that arrives once [close] has begun.
   ///
-  /// Not [Socket.close]: on a [SecureSocket] that closes only the write side,
-  /// with a FIN and no TLS close_notify, and leaves the read side listening.
-  /// OpenSSL servers, Memorystore for Valkey among them, answer that with a
-  /// fatal alert, which arrives as an error on a stream nothing reads any
-  /// more and is unhandled. [Socket.destroy] stops delivery first.
+  /// On a [SecureSocket], [Socket.close] closes only the write side, with a
+  /// FIN and no TLS close_notify, and the read side keeps listening. OpenSSL
+  /// servers, Memorystore for Valkey among them, answer that with a fatal
+  /// alert. `resp_client` reads this stream without an error handler, so
+  /// passed through, that alert would be an unhandled error.
+  @override
+  late final Stream<List<int>> inputStream = _socket.handleError(
+    (Object _) {},
+    test: (_) => _closing,
+  );
+
+  /// Flushes and closes the socket, then stops reading from it.
+  ///
+  /// [Socket.close] rather than only [Socket.destroy], because closing the
+  /// sink is what completes `outputSink.done`, and that is how the reconnect
+  /// loop learns this connection is gone.
   @override
   Future<void> close() async {
+    _closing = true;
     await _socket.flush();
+    await _socket.close();
     _socket.destroy();
   }
 }

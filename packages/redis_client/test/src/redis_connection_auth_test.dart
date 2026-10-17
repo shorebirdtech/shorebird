@@ -1,4 +1,4 @@
-// cspell:words newkey keyout Acreateserial extfile
+// cspell:words newkey keyout Acreateserial extfile Memorystore Valkey
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -365,6 +365,54 @@ void main() {
         // alert time to arrive.
         await proxy.alertSent;
         await Future<void>.delayed(const Duration(milliseconds: 100));
+      },
+    );
+
+    test('reconnects after a disconnect', () async {
+      // The reconnect loop learns a connection is gone from its output
+      // sink's done future, so closing a TLS connection must complete it.
+      final client = RedisClient(
+        socket: RedisSocketOptions(
+          host: '127.0.0.1',
+          port: server.port,
+          tls: true,
+          securityContext: pki.clientTrusting('ca'),
+        ),
+      );
+      addTearDown(client.close);
+
+      await client.connect();
+      await client.disconnect();
+
+      expect(
+        await client.execute(['PING']).timeout(const Duration(seconds: 5)),
+        equals('PONG'),
+      );
+    });
+
+    test(
+      'reconnects after a disconnect the server answers with an alert',
+      () async {
+        final proxy = await _AlertOnHangUpProxy.start(server.port);
+        addTearDown(proxy.close);
+        final client = RedisClient(
+          socket: RedisSocketOptions(
+            host: '127.0.0.1',
+            port: proxy.port,
+            tls: true,
+            securityContext: pki.clientTrusting('ca'),
+          ),
+        );
+        addTearDown(client.close);
+
+        await client.connect();
+        await client.disconnect();
+        await proxy.alertSent;
+
+        expect(
+          await client.execute(['PING']).timeout(const Duration(seconds: 5)),
+          equals('PONG'),
+        );
       },
     );
 
