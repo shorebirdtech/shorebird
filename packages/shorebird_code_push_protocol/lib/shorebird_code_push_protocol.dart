@@ -36,6 +36,7 @@ export 'package:shorebird_code_push_protocol/src/messages/get_organizations_resp
 export 'package:shorebird_code_push_protocol/src/messages/get_patch_adoption/get_patch_adoption_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_patch_metric_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_public_stats/get_public_stats200_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/get_received_invitations/get_received_invitations_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release/get_release_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release_artifacts/get_release_artifacts_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release_patches/get_release_patches_response.dart';
@@ -85,6 +86,7 @@ export 'package:shorebird_code_push_protocol/src/models/pending_release.dart';
 export 'package:shorebird_code_push_protocol/src/models/private_user.dart';
 export 'package:shorebird_code_push_protocol/src/models/public_stat.dart';
 export 'package:shorebird_code_push_protocol/src/models/public_user.dart';
+export 'package:shorebird_code_push_protocol/src/models/received_invitation.dart';
 export 'package:shorebird_code_push_protocol/src/models/release.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_analysis.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_artifact.dart';

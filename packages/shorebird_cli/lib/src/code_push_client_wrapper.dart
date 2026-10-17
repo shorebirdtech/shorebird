@@ -145,6 +145,30 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the pending invitations sent to the current user.
+  Future<List<ReceivedInvitation>> getReceivedInvitations() {
+    return _withProgress(
+      'Fetching invitations',
+      codePushClient.getReceivedInvitations,
+    );
+  }
+
+  /// Accepts the invitation with [invitationId].
+  Future<void> acceptInvitation({required String invitationId}) {
+    return _withProgress(
+      'Accepting invitation',
+      () => codePushClient.acceptInvitation(invitationId: invitationId),
+    );
+  }
+
+  /// Declines the invitation with [invitationId].
+  Future<void> declineInvitation({required String invitationId}) {
+    return _withProgress(
+      'Declining invitation',
+      () => codePushClient.declineInvitation(invitationId: invitationId),
+    );
+  }
+
   /// Fetches the apps for the current user.
   Future<List<AppMetadata>> getApps() {
     return _withProgress('Fetching apps', codePushClient.getApps);
