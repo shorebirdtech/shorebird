@@ -127,6 +127,12 @@ Also accepts the following special values:
         hide: true,
         negatable: false,
       )
+      ..addFlag(
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
+        hide: true,
+      )
       ..addOption(
         'release-version',
         help: '''

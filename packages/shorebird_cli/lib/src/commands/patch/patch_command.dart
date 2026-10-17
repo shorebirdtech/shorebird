@@ -117,6 +117,12 @@ To target the latest release (e.g. the release that was most recently updated) u
 [DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
         hide: true,
       )
+      ..addFlag(
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
+        hide: true,
+      )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
         help: CommonArguments.exportOptionsPlistArg.description,

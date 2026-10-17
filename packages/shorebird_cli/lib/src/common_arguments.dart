@@ -226,6 +226,15 @@ symbolize" command with the right program symbol file is required to obtain a hu
         'Set to 0 to disable.',
   );
 
+  /// Accepted and ignored on `release` and `patch`. `--no-confirm` was a
+  /// documented flag from 1.5.4 to 1.6.83, and the docs told CI scripts to
+  /// pass it. Neither command asks for confirmation any more. `--confirm`,
+  /// which asked for a prompt, stays an error.
+  static const noConfirmArg = ArgumentDescriber(
+    name: 'no-confirm',
+    description: 'Does nothing. Kept so existing scripts keep working.',
+  );
+
   /// Minimum valid value for [minLinkPercentage].
   static const minLinkPercentageMin = 0;
 
