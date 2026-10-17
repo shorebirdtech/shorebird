@@ -24,10 +24,27 @@ that `stable` is moved to.
   skips the patch matrix.
 - Every leg must pass. If the most recent nightly failed, find out why before
   releasing.
-- Manually check each change from step 1 that e2e does not cover, using a
-  local checkout of the commit being released. On a Mac, Shorebird staff can
-  run the `release-smoke-test` agent skill in `shorebirdtech/_shorebird`,
-  which covers macOS, iOS, add-to-app, obfuscation, `--json` and login.
+- Run the device e2e in `shorebirdtech/shorebird_e2e` against the same commit.
+  Both run on Namespace runners, so no local device is needed:
+
+  ```sh
+  SHA=$(git rev-parse origin/main)
+  gh workflow run macos_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
+  gh workflow run android_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
+  ```
+
+  - `macos_e2e` releases, patches and UI-tests the standalone macOS app,
+    obfuscated and not.
+  - `android_e2e` does the same for the standalone and add-to-app Android
+    apps on an x86_64 emulator.
+  - Both sign in with GitHub Actions OIDC. Leave `flutter_revision` empty to
+    test the Flutter pinned by the commit.
+  - Both must pass.
+- Manually check each change from step 1 that these runs do not cover, using a
+  local checkout of the commit being released. They do not cover iOS (it needs
+  a physical device) or interactive `shorebird login`. On a Mac with an iOS
+  device, Shorebird staff can run the `release-smoke-test` agent skill in
+  `shorebirdtech/_shorebird`, which covers iOS, `--json` and login.
 
 ## 3. Prepare the release commit
 
