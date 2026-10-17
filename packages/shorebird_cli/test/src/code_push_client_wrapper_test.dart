@@ -780,6 +780,35 @@ void main() {
         });
       });
 
+      group('archiveApp', () {
+        test('exits with code 70 when archiving the app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.archiveApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.archiveApp(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when the app is successfully archived', () async {
+          when(
+            () => codePushClient.archiveApp(appId: appId),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.archiveApp(appId: appId),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('deleteApp', () {
         test('exits with code 70 when deleting app fails', () async {
           const error = 'something went wrong';
@@ -803,6 +832,35 @@ void main() {
 
           await runWithOverrides(
             () => codePushClientWrapper.deleteApp(appId: appId),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('unarchiveApp', () {
+        test('exits with code 70 when unarchiving the app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.unarchiveApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.unarchiveApp(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when the app is successfully unarchived', () async {
+          when(
+            () => codePushClient.unarchiveApp(appId: appId),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.unarchiveApp(appId: appId),
           );
 
           verify(() => progress.complete()).called(1);
