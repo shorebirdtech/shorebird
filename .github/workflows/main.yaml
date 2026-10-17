@@ -43,7 +43,6 @@ jobs:
 
     outputs:
       needs_cross_platform_dart_build: ${{ steps.needs_cross_platform_dart_build.outputs.changes }}
-      needs_dart_build: ${{ steps.needs_dart_build.outputs.changes }}
       needs_redis_build: ${{ steps.needs_redis_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
@@ -52,17 +51,6 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v7
-
-      - uses: dorny/paths-filter@v4
-        name: Build Detection
-        id: needs_dart_build
-        with:
-          filters: |
-            artifact_proxy:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/artifact_proxy/**
 
       - uses: dorny/paths-filter@v4
         name: Build Detection
@@ -124,29 +112,6 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_code_push_client/**
-
-  build_dart_packages:
-    needs: changes
-    if: ${{ needs.changes.outputs.needs_dart_build != '[]' }}
-
-    strategy:
-      matrix:
-        package: ${{ fromJSON(needs.changes.outputs.needs_dart_build) }}
-
-    runs-on: ubuntu-latest
-
-    name: 🎯 Build ${{ matrix.package }}
-
-    steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@v7
-
-      - name: 🎯 Build ${{ matrix.package }}
-        uses: ./.github/actions/dart_package
-        with:
-          codecov_token: ${{ secrets.CODECOV_TOKEN }}
-          working_directory: packages/${{ matrix.package }}
-          workspace_root: ${{ github.workspace }}
 
   build_cross_platform_dart_packages:
     needs: changes
@@ -230,7 +195,6 @@ jobs:
         license_check,
         semantic_pull_request,
         build_cross_platform_dart_packages,
-        build_dart_packages,
         build_redis,
         verify_packages,
       ]
