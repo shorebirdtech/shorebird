@@ -392,11 +392,14 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
-    test('accepts and hides --confirm and --no-confirm', () {
+    test('accepts a hidden --no-confirm and rejects --confirm', () {
       final parser = PatchCommand().argParser;
-      expect(parser.options['confirm']!.hide, isTrue);
+      expect(parser.options['no-confirm']!.hide, isTrue);
       expect(() => parser.parse(['--no-confirm']), returnsNormally);
-      expect(() => parser.parse(['--confirm']), returnsNormally);
+      expect(
+        () => parser.parse(['--confirm']),
+        throwsA(isA<FormatException>()),
+      );
     });
 
     test('accepts --channel as an alias of --track', () {

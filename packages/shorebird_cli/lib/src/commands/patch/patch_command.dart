@@ -117,10 +117,12 @@ To target the latest release (e.g. the release that was most recently updated) u
 [DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
         hide: true,
       )
-      // Accepted and ignored. `--no-confirm` was a documented flag from 1.5.4
-      // to 1.6.83, and the docs told CI scripts to pass it. Nothing asks for
-      // confirmation any more.
-      ..addFlag('confirm', hide: true)
+      ..addFlag(
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
+        hide: true,
+      )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
         help: CommonArguments.exportOptionsPlistArg.description,

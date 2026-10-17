@@ -127,10 +127,12 @@ Also accepts the following special values:
         hide: true,
         negatable: false,
       )
-      // Accepted and ignored. `--no-confirm` was a documented flag from 1.5.4
-      // to 1.6.83, and the docs told CI scripts to pass it. Nothing asks for
-      // confirmation any more.
-      ..addFlag('confirm', hide: true)
+      ..addFlag(
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
+        hide: true,
+      )
       ..addOption(
         'release-version',
         help: '''

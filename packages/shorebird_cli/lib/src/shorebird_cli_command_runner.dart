@@ -527,7 +527,7 @@ ${currentRunLogFile.absolute.path}
 
   /// Option names people reach for to bypass a safety check.
   static final _safetyOverridePattern = RegExp(
-    r'^(?:f|y|force|yes|no-confirm)$|allow|skip|ignore',
+    r'^(?:f|y|force|yes)$|allow|skip|ignore',
   );
 
   /// The hint to print under an unknown-option error.
