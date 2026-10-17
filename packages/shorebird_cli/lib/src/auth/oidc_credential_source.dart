@@ -149,6 +149,10 @@ class OidcCredentialSource extends CredentialSource {
   /// The CI provider this source signs in with, as messages name it.
   String get providerName => _supplier.name;
 
+  /// When the access token from the last exchange expires, or null before
+  /// the first exchange.
+  DateTime? get accessTokenExpiresAt => _accessToken?.expiresAt;
+
   /// A source is created only for a job its provider issues ID tokens to,
   /// so it is available whenever it has a project id.
   @override

@@ -2,6 +2,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/account/whoami_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -26,6 +27,7 @@ void main() {
     );
 
     late ArgResults argResults;
+    late Auth auth;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
@@ -36,6 +38,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          authRef.overrideWith(() => auth),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           isJsonModeRef.overrideWith(() => false),
           loggerRef.overrideWith(() => logger),
@@ -46,6 +49,7 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      auth = MockAuth();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       progress = MockProgress();
@@ -55,6 +59,7 @@ void main() {
 
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => argResults.rest).thenReturn([]);
+      when(() => auth.credentialKind).thenReturn(CredentialKind.login);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -117,6 +122,37 @@ void main() {
         verify(
           () => logger.info(any(that: contains('Overage limit:  10000'))),
         ).called(1);
+        verify(
+          () => logger.info(
+            any(that: contains('Credential:     Login (shorebird login)')),
+          ),
+        ).called(1);
+      });
+
+      group('when authenticated with an API key', () {
+        setUp(() {
+          when(() => auth.credentialKind).thenReturn(CredentialKind.apiKey);
+        });
+
+        test('names the API key as the credential', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => logger.info(
+              any(that: contains('Credential:     API key (SHOREBIRD_TOKEN)')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when the credential is not known', () {
+        setUp(() {
+          when(() => auth.credentialKind).thenReturn(null);
+        });
+
+        test('omits the credential line', () async {
+          await runWithOverrides(command.run);
+          verifyNever(() => logger.info(any(that: contains('Credential'))));
+        });
       });
 
       group('when display name is null', () {
@@ -203,6 +239,7 @@ void main() {
           () => runScoped(
             command.run,
             values: {
+              authRef.overrideWith(() => auth),
               codePushClientWrapperRef.overrideWith(
                 () => codePushClientWrapper,
               ),
@@ -229,6 +266,7 @@ void main() {
           () => runScoped(
             command.run,
             values: {
+              authRef.overrideWith(() => auth),
               codePushClientWrapperRef.overrideWith(
                 () => codePushClientWrapper,
               ),
@@ -256,6 +294,7 @@ void main() {
         return runScoped(
           body,
           values: {
+            authRef.overrideWith(() => auth),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             isJsonModeRef.overrideWith(() => true),
             loggerRef.overrideWith(() => logger),
@@ -278,6 +317,18 @@ void main() {
         expect(userData['plan'], 'paid');
         expect(userData['plan_level'], 'enterprise');
         expect(userData['overage_limit'], 10000);
+        expect(data['credential'], 'login');
+      });
+
+      test('reports the GitHub Actions OIDC credential', () async {
+        when(
+          () => auth.credentialKind,
+        ).thenReturn(CredentialKind.gitHubActionsOidc);
+        final json = (await captureJson(
+          () => runJsonMode(command.run),
+        )).json;
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['credential'], 'github_actions_oidc');
       });
 
       test('reports plan as free on the free plan level', () async {
@@ -319,6 +370,16 @@ void main() {
         expect(userData.containsKey('jwt_issuer'), isFalse);
         expect(userData.containsKey('has_active_subscription'), isFalse);
       });
+    });
+  });
+
+  group(TopLevelWhoamiCommand, () {
+    test('is hidden', () {
+      expect(TopLevelWhoamiCommand().hidden, isTrue);
+    });
+
+    test('is named whoami', () {
+      expect(TopLevelWhoamiCommand().name, equals('whoami'));
     });
   });
 }

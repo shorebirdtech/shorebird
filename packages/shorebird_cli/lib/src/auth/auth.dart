@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -30,6 +31,34 @@ const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
 
 /// The prefix every Shorebird API key starts with.
 const apiKeyPrefix = 'sb_api_';
+
+/// A kind of credential the CLI authenticates requests with.
+enum CredentialKind {
+  /// An API key from [shorebirdTokenEnvVar]: a personal access token or a
+  /// service account key.
+  apiKey(
+    jsonName: 'api_key',
+    description: 'API key ($shorebirdTokenEnvVar)',
+  ),
+
+  /// A Shorebird access token exchanged for this GitHub Actions job's OIDC
+  /// token.
+  gitHubActionsOidc(
+    jsonName: 'github_actions_oidc',
+    description: 'GitHub Actions OIDC',
+  ),
+
+  /// The login `shorebird login` stored.
+  login(jsonName: 'login', description: 'Login (shorebird login)');
+
+  const CredentialKind({required this.jsonName, required this.description});
+
+  /// How `--json` output names this kind.
+  final String jsonName;
+
+  /// How text output names this kind.
+  final String description;
+}
 
 /// Callback for obtaining Shorebird access credentials via loopback login.
 typedef ObtainCredentialsViaLoopbackLogin =
@@ -568,6 +597,41 @@ class Auth {
   /// instead if signing in with OIDC fails before it has ever succeeded in
   /// this run.
   bool get isUsingGitHubActionsOidc => _oidcSource?.isAvailable ?? false;
+
+  /// The kind of credential requests are authenticated with: the one that
+  /// authenticated the last request, or, before any, the first one that will
+  /// be tried. Null when there is none.
+  CredentialKind? get credentialKind {
+    final source =
+        _credentials.lastResolvedSource ??
+        _credentials.sources.where((source) => source.isAvailable).firstOrNull;
+    return switch (source) {
+      null => null,
+      ApiKeySource() => CredentialKind.apiKey,
+      OidcCredentialSource() => CredentialKind.gitHubActionsOidc,
+      _ => CredentialKind.login,
+    };
+  }
+
+  /// The access token the next request would send, refreshed or exchanged
+  /// first if it needs to be. For an API key, the key itself.
+  ///
+  /// Ends the command, as any request would, when no credential can
+  /// authenticate.
+  Future<String> accessToken() async {
+    final (:source, :authorization) = await _credentials.resolve();
+    return authorization.replaceFirst(RegExp('^Bearer '), '');
+  }
+
+  /// When the access token from [accessToken] expires, when known: for a
+  /// login or GitHub Actions OIDC, after a request or [accessToken]. Null for
+  /// an API key, which the server checks on every request.
+  DateTime? get accessTokenExpiresAt =>
+      switch (_credentials.lastResolvedSource) {
+        final OidcCredentialSource source => source.accessTokenExpiresAt,
+        StoredLoginSource() => _oauthClient?.credentials.expiration,
+        _ => null,
+      };
 
   /// Why a way of authenticating this environment was meant to use cannot
   /// be used, such as GitHub Actions OIDC without

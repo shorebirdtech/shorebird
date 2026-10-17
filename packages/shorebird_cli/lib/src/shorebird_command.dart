@@ -61,6 +61,11 @@ abstract class ShorebirdCommand extends Command<int> {
   /// and the upgrade notice goes to stderr.
   bool get reservesStdout => false;
 
+  /// The subcommand that runs when this command is given none, such as
+  /// `whoami` for a bare `shorebird account`, or null to print usage as
+  /// usual.
+  String? get defaultSubcommand => null;
+
   /// Whether the `--json` global flag was passed.
   ///
   /// Reads from the [isJsonModeRef] scoped dependency, which is set by the
