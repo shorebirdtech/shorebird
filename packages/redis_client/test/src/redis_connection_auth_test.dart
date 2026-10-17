@@ -1,4 +1,4 @@
-// cspell:words newkey keyout Acreateserial extfile Memorystore Valkey
+// cspell:words newkey keyout Acreateserial extfile
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';

@@ -1,6 +1,6 @@
 # 0.0.15
 
-- fix: closing a TLS connection no longer raises an unhandled `TlsException` when the server answers the hang-up with an alert, as Memorystore for Valkey does. Errors that arrive on a connection being closed are dropped, and the socket stops reading once closed
+- fix: closing a TLS connection no longer raises an unhandled `TlsException` when the server answers the hang-up with an alert, as Memorystore for Valkey does. Errors that arrive on a connection being closed are dropped, and a failed flush no longer stops the close
 
 # 0.0.14
 

@@ -259,17 +259,19 @@ class _SocketConnection implements RespServerConnection {
     test: (_) => _closing,
   );
 
-  /// Flushes and closes the socket, then stops reading from it.
+  /// Flushes and closes the socket.
   ///
-  /// [Socket.close] rather than only [Socket.destroy], because closing the
-  /// sink is what completes `outputSink.done`, and that is how the reconnect
-  /// loop learns this connection is gone.
+  /// The close runs even if the flush fails: closing the sink is what
+  /// completes `outputSink.done`, and that is how the reconnect loop learns
+  /// this connection is gone.
   @override
   Future<void> close() async {
     _closing = true;
-    await _socket.flush();
-    await _socket.close();
-    _socket.destroy();
+    try {
+      await _socket.flush();
+    } finally {
+      await _socket.close();
+    }
   }
 }
 
