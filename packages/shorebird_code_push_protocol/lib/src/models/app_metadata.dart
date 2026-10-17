@@ -21,6 +21,7 @@ class AppMetadata {
     this.latestReleases,
     this.pendingReleases,
     this.iconUrl,
+    this.archivedAt,
   });
 
   /// Converts a `Map<String, dynamic>` to an [AppMetadata].
@@ -52,6 +53,7 @@ class AppMetadata {
               ),
             ),
         iconUrl: json['icon_url'] as String?,
+        archivedAt: maybeParseDateTime(json['archived_at'] as String?),
       ),
     );
   }
@@ -115,6 +117,11 @@ class AppMetadata {
   /// release has an icon.
   final String? iconUrl;
 
+  /// When the app was archived. Omitted when it is not archived.
+  /// While archived, devices are told there is no new patch, and
+  /// new releases and patches are refused.
+  final DateTime? archivedAt;
+
   /// Converts an [AppMetadata] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -132,6 +139,7 @@ class AppMetadata {
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
       'icon_url': ?iconUrl,
+      'archived_at': ?archivedAt?.toUtc().toIso8601String(),
     };
   }
 
@@ -147,6 +155,7 @@ class AppMetadata {
     mapHash(latestReleases),
     mapHash(pendingReleases),
     iconUrl,
+    archivedAt,
   ]);
 
   @override
@@ -162,6 +171,7 @@ class AppMetadata {
         listsEqual(platforms, other.platforms) &&
         mapsEqual(latestReleases, other.latestReleases) &&
         mapsEqual(pendingReleases, other.pendingReleases) &&
-        iconUrl == other.iconUrl;
+        iconUrl == other.iconUrl &&
+        archivedAt == other.archivedAt;
   }
 }

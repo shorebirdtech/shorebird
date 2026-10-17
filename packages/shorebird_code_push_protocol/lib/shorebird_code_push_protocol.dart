@@ -11,6 +11,7 @@ export 'package:shorebird_code_push_protocol/extensions/auth_provider.dart';
 export 'package:shorebird_code_push_protocol/extensions/release_patch_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/release_platform_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/test_helpers.dart';
+export 'package:shorebird_code_push_protocol/src/messages/archive_inactive_organization_apps/archive_inactive_organization_apps_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_app/create_app_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_app_collaborator/create_app_collaborator_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_channel/create_channel_request.dart';
