@@ -593,6 +593,105 @@ void main() {
         });
       });
 
+      group('getReceivedInvitations', () {
+        test('exits with code 70 when fetching invitations fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getReceivedInvitations()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              codePushClientWrapper.getReceivedInvitations,
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns the invitations', () async {
+          final invitation = ReceivedInvitation(
+            id: 'id',
+            organizationId: 1,
+            targetName: 'Acme',
+            inviterEmail: 'admin@shorebird.dev',
+            role: Role.developer,
+            createdAt: DateTime.utc(2026, 4, 20),
+            expiresAt: DateTime.utc(2026, 5, 4),
+          );
+          when(
+            () => codePushClient.getReceivedInvitations(),
+          ).thenAnswer((_) async => [invitation]);
+
+          final invitations = await runWithOverrides(
+            codePushClientWrapper.getReceivedInvitations,
+          );
+
+          expect(invitations, equals([invitation]));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('acceptInvitation', () {
+        test('exits with code 70 when accepting fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.acceptInvitation(
+              invitationId: any(named: 'invitationId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.acceptInvitation(invitationId: 'id'),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when the invitation is accepted', () async {
+          when(
+            () => codePushClient.acceptInvitation(invitationId: 'id'),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.acceptInvitation(invitationId: 'id'),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('declineInvitation', () {
+        test('exits with code 70 when declining fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.declineInvitation(
+              invitationId: any(named: 'invitationId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.declineInvitation(invitationId: 'id'),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when the invitation is declined', () async {
+          when(
+            () => codePushClient.declineInvitation(invitationId: 'id'),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.declineInvitation(invitationId: 'id'),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('account', () {
         test('updateCurrentUser sends the display name', () async {
           when(

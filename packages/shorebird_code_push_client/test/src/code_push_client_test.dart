@@ -3292,6 +3292,148 @@ void main() {
       });
     });
 
+    group('getReceivedInvitations', () {
+      ReceivedInvitation invitation(String id) => ReceivedInvitation(
+        id: id,
+        organizationId: 1,
+        targetName: 'Acme',
+        inviterEmail: 'admin@shorebird.dev',
+        role: Role.developer,
+        createdAt: DateTime.utc(2026, 4, 20),
+        expiresAt: DateTime.utc(2026, 5, 4),
+      );
+
+      http.StreamedResponse page(
+        List<ReceivedInvitation> invitations, {
+        String? nextCursor,
+      }) => http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            json.encode(
+              GetReceivedInvitationsResponse(
+                invitations: invitations,
+                nextCursor: nextCursor,
+              ).toJson(),
+            ),
+          ),
+        ),
+        HttpStatus.ok,
+      );
+
+      test('throws when the response is not success', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getReceivedInvitations,
+          throwsA(isA<CodePushException>()),
+        );
+      });
+
+      test('stops at an empty page even if it carries a cursor', () async {
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => page([], nextCursor: 'again'));
+
+        final invitations = await codePushClient.getReceivedInvitations();
+
+        expect(invitations, isEmpty);
+        verify(() => httpClient.send(any())).called(1);
+      });
+
+      test('follows next_cursor through every page', () async {
+        final responses = [
+          page([invitation('a')], nextCursor: 'next'),
+          page([invitation('b')]),
+        ];
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
+
+        final invitations = await codePushClient.getReceivedInvitations();
+
+        expect(invitations.map((i) => i.id), equals(['a', 'b']));
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+        expect(requests.map((r) => r.method), everyElement(equals('GET')));
+        expect(
+          requests.map((r) => r.url),
+          equals([
+            v1('invitations').replace(queryParameters: {'per_page': '100'}),
+            v1('invitations').replace(
+              queryParameters: {'per_page': '100', 'cursor': 'next'},
+            ),
+          ]),
+        );
+      });
+    });
+
+    for (final (name, call) in [
+      (
+        'acceptInvitation',
+        (CodePushClient client) => client.acceptInvitation(invitationId: 'id'),
+      ),
+      (
+        'declineInvitation',
+        (CodePushClient client) => client.declineInvitation(invitationId: 'id'),
+      ),
+    ]) {
+      group(name, () {
+        final action = name.replaceAll('Invitation', '');
+
+        test('posts to the invitation', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.noContent,
+            ),
+          );
+
+          await call(codePushClient);
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.method, equals('POST'));
+          expect(request.url, equals(v1('invitations/id/$action')));
+        });
+
+        test('throws the API error when the response is not success', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  json.encode(
+                    const ErrorResponse(
+                      code: 'invitation_gone',
+                      message: 'This invitation is no longer valid.',
+                    ).toJson(),
+                  ),
+                ),
+              ),
+              HttpStatus.gone,
+            ),
+          );
+
+          expect(
+            () => call(codePushClient),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.code,
+                'code',
+                'invitation_gone',
+              ),
+            ),
+          );
+        });
+      });
+    }
+
     group('getPlanLevel', () {
       group('when request fails', () {
         setUp(() {

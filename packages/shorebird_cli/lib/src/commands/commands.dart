@@ -10,6 +10,7 @@ export 'create_command.dart';
 export 'doctor_command.dart';
 export 'flutter/flutter.dart';
 export 'init_command.dart';
+export 'invitations/invitations.dart';
 export 'login_ci_command.dart';
 export 'login_command.dart';
 export 'logout_command.dart';

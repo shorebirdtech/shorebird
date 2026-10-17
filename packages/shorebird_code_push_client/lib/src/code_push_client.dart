@@ -916,6 +916,58 @@ class CodePushClient {
     ).organizations;
   }
 
+  /// Gets the pending invitations sent to the current user, most recently
+  /// sent first, following every page.
+  Future<List<ReceivedInvitation>> getReceivedInvitations() async {
+    final invitations = <ReceivedInvitation>[];
+    String? cursor;
+    do {
+      final response = await _httpClient.get(
+        Uri.parse('$_v1/invitations').replace(
+          queryParameters: {'per_page': '100', 'cursor': ?cursor},
+        ),
+      );
+
+      if (!response.isSuccess) {
+        throw _parseErrorResponse(response.statusCode, response.body);
+      }
+
+      final page = GetReceivedInvitationsResponse.fromJson(
+        json.decode(response.body) as Map<String, dynamic>,
+      );
+      invitations.addAll(page.invitations);
+      // An empty page ends the list even if it carries a cursor, so a
+      // misbehaving server cannot keep this loop going.
+      cursor = page.invitations.isEmpty ? null : page.nextCursor;
+    } while (cursor != null);
+    return invitations;
+  }
+
+  /// Accepts the invitation with [invitationId], which must have been sent
+  /// to the current user.
+  Future<void> acceptInvitation({required String invitationId}) =>
+      _respondToInvitation(invitationId: invitationId, response: 'accept');
+
+  /// Declines the invitation with [invitationId], which must have been sent
+  /// to the current user.
+  Future<void> declineInvitation({required String invitationId}) =>
+      _respondToInvitation(invitationId: invitationId, response: 'decline');
+
+  Future<void> _respondToInvitation({
+    required String invitationId,
+    required String response,
+  }) async {
+    final httpResponse = await _httpClient.post(
+      Uri.parse(
+        '$_v1/invitations/${Uri.encodeComponent(invitationId)}/$response',
+      ),
+    );
+
+    if (!httpResponse.isSuccess) {
+      throw _parseErrorResponse(httpResponse.statusCode, httpResponse.body);
+    }
+  }
+
   /// Returns a GCP upload link for measuring upload speed.
   Future<Uri> getGCPUploadSpeedTestUrl() async {
     final response = await _httpClient.get(
