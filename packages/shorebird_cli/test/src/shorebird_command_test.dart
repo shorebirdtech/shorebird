@@ -317,7 +317,7 @@ void main() {
       });
 
       group('when not in JSON mode', () {
-        test('logs the message, details, documentation and code', () {
+        test('logs the message, details and code', () {
           final exitCode = runWithOverrides(
             () => command.reportApiError(
               fullError,
@@ -333,9 +333,6 @@ void main() {
             ),
           ).called(1);
           verify(() => logger.info('Some details.')).called(1);
-          verify(
-            () => logger.info('See: https://docs.shorebird.dev/plans'),
-          ).called(1);
           verify(
             () => logger.info('Error code: shorebird_plan_insufficient_tier'),
           ).called(1);

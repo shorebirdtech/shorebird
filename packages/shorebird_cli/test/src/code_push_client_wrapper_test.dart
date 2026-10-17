@@ -476,6 +476,38 @@ void main() {
         );
 
         test(
+          '''doesn't repeat the upgrade command when the server names it''',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              const CodePushUpgradeRequiredException(
+                message: 'Flutter 3.41.9 requires a newer CLI.',
+                details: 'Run `shorebird upgrade` and retry.',
+                response: ErrorResponse(
+                  code: 'cli_flutter_incompatible',
+                  message: 'Flutter 3.41.9 requires a newer CLI.',
+                ),
+              ),
+            );
+            await expectLater(
+              () async =>
+                  runWithOverrides(() => codePushClientWrapper.getApps()),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err('Flutter 3.41.9 requires a newer CLI.'),
+            ).called(1);
+            verify(
+              () => logger.info('Run `shorebird upgrade` and retry.'),
+            ).called(1);
+            verifyNever(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            );
+          },
+        );
+
+        test(
           '''prints the generic upgrade message on a 426 without an error body''',
           () async {
             when(codePushClient.getApps).thenThrow(

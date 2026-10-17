@@ -248,7 +248,6 @@ abstract class ShorebirdCommand extends Command<int> {
     } else {
       logger.err(fullMessage);
       if (error.details case final details?) logger.info(details);
-      if (error.documentationUrl case final url?) logger.info('See: $url');
       if (error.code case final apiCode?) logger.info('Error code: $apiCode');
     }
     return ExitCode.software.code;

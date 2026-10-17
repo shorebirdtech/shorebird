@@ -1214,9 +1214,11 @@ $name artifact already exists, continuing...''');
         if (error.details case final details?) logger.info(details);
         if (error.documentationUrl case final url?) logger.info('See: $url');
       }
-      logger.info(
-        '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
-      );
+      if (!'${error.message} ${error.details}'.contains('shorebird upgrade')) {
+        logger.info(
+          '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+        );
+      }
     } else if (progress != null) {
       progress.fail(message ?? '$error');
     }
