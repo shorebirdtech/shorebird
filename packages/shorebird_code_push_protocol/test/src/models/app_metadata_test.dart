@@ -18,6 +18,29 @@ void main() {
       );
     });
 
+    test('round-trips archivedAt as UTC, and omits it when null', () {
+      final archivedAt = DateTime.utc(2026, 10, 16, 12, 30);
+      final appMetadata = AppMetadata(
+        appId: '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        displayName: 'My App',
+        createdAt: DateTime.utc(2022),
+        updatedAt: DateTime.utc(2023),
+        archivedAt: archivedAt,
+      );
+      final json = appMetadata.toJson();
+      expect(json['archived_at'], equals('2026-10-16T12:30:00.000Z'));
+      expect(AppMetadata.fromJson(json).archivedAt, equals(archivedAt));
+      expect(
+        AppMetadata(
+          appId: appMetadata.appId,
+          displayName: appMetadata.displayName,
+          createdAt: appMetadata.createdAt,
+          updatedAt: appMetadata.updatedAt,
+        ).toJson(),
+        isNot(contains('archived_at')),
+      );
+    });
+
     test('can be (de)serialized with platforms, latestReleases, '
         'pendingReleases, and iconUrl', () {
       final appMetadata = AppMetadata(
