@@ -38,6 +38,9 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
   confirmation is needed.
 - 🐛 Declining a prompt no longer prints the generic "re-run with --verbose"
   failure text.
+- 🐛 `shorebird doctor` and `shorebird init` no longer fail with
+  `HEAD does not point to a branch` when Shorebird is checked out at a commit
+  or tag. The up-to-date check is skipped for a pinned checkout.
 - 🔧 `shorebird api` treats an endpoint that repeats `/api/v1` as the route
   under it, and says so on stderr.
 - 🔧 `shorebird account apps` now prints `shorebird apps list` and exits 64.
