@@ -640,6 +640,93 @@ void main() {
         expect(sentUrls(), hasLength(1));
       });
 
+      test('prints a single page byte for byte', () async {
+        pages = ['{ "apps": [1], "next_cursor": null }'];
+        await runApi(['/apps', '--paginate']);
+        expect(fakeStdout.text, equals('{ "apps": [1], "next_cursor": null }'));
+      });
+
+      /// Serves a first page with a cursor, then [second].
+      void stubSecondPage(
+        int status,
+        Map<String, String> headers,
+        String body,
+      ) {
+        var calls = 0;
+        when(() => codePushClient.send(any())).thenAnswer((_) async {
+          calls++;
+          return calls == 1
+              ? http.StreamedResponse(
+                  Stream.value(utf8.encode('{"a":[1],"next_cursor":"c"}')),
+                  HttpStatus.ok,
+                  headers: {'content-type': 'application/json'},
+                )
+              : http.StreamedResponse(
+                  Stream.value(utf8.encode(body)),
+                  status,
+                  headers: headers,
+                );
+        });
+      }
+
+      test('fails when a later page is not JSON', () async {
+        stubSecondPage(HttpStatus.ok, {'content-type': 'text/html'}, '<p>');
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(fakeStdout.text, isEmpty);
+        expect(
+          fakeStderr.text,
+          equals('shorebird: --paginate: page 2 is not a JSON object\n'),
+        );
+      });
+
+      test('fails when a later page is empty', () async {
+        stubSecondPage(HttpStatus.noContent, {}, '');
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(
+          fakeStderr.text,
+          equals('shorebird: --paginate: page 2 is not a JSON object\n'),
+        );
+      });
+
+      test('fails on a cursor that is not a string', () async {
+        pages = ['{"a":[1],"next_cursor":7}'];
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(fakeStdout.text, isEmpty);
+        expect(
+          fakeStderr.text,
+          equals(
+            'shorebird: --paginate: the cursor 7 is not a string, so the '
+            'next page cannot be requested.\n',
+          ),
+        );
+      });
+
+      test('treats an empty cursor as the last page', () async {
+        pages = ['{"a":[1],"next_cursor":""}'];
+        expect(await runApi(['/x', '--paginate']), equals(0));
+        expect(sentUrls(), hasLength(1));
+      });
+
+      test('rejects --input', () async {
+        await expectLater(
+          runApi(['/x', '--paginate', '--input', '-']),
+          usageError('it does not work with --input'),
+        );
+        verifyNever(() => codePushClient.send(any()));
+      });
+
+      test('does not hint at POST on a 405 for its fields', () async {
+        when(() => codePushClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode('{"message":"No"}')),
+            HttpStatus.methodNotAllowed,
+            headers: {'content-type': 'application/json'},
+          ),
+        );
+        expect(await runApi(['/x', '--paginate', '-f', 'a=1']), equals(1));
+        expect(fakeStderr.text, equals('shorebird: No (HTTP 405)\n'));
+      });
+
       test('prints a response that is not an object as it is', () async {
         pages = ['[1, 2]'];
         await runApi(['/x', '--paginate']);

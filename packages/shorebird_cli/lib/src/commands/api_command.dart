@@ -130,7 +130,7 @@ Pass one or more -f/--raw-field values in "key=value" format to add string param
 
 The response body is printed as-is (JSON is indented when printing to a terminal). On a non-2xx response the body is still printed, an error is printed to stderr, and the command exits with status 1.
 
---paginate fetches every page of a list. While a response has a "next_cursor" (or "nextCursor"), the same request is sent again with "cursor" set to it. The pages are printed as one JSON object: list fields are concatenated and the cursor is dropped. --jq applies to the merged object. A response without a cursor is printed as it is, so --paginate is safe on any endpoint. --paginate only works with GET, so fields become the query string.
+--paginate fetches every page of a list. While a response has a "next_cursor" (or "nextCursor"), the same request is sent again with "cursor" set to it. The pages are printed as one JSON object: list fields are concatenated and the cursor is dropped. --jq applies to the merged object. A response without a cursor is printed as it is, so --paginate is safe on any endpoint. --paginate only works with GET, so fields become the query string, and it does not work with --input.
 
 --jq takes a jq expression and prints each result: strings without quotes, other values as JSON. It supports a common subset of jq: paths (".", ".a.b", ".[]", ".[0]", "?"), slices (".[1:3]", ".[2:]", ".[:-1]"), "|", ",", comparisons, "and", "or", "not", object and array construction, string interpolation, and length, keys, map(f), select(f), empty, first, first(f), last, sort_by(f), unique, unique_by(f), join(sep), to_entries, from_entries and with_entries(f).
 
@@ -214,6 +214,12 @@ Examples:
         '--paginate only works with GET requests, not $explicitMethod.',
       );
     }
+    if (paginate && results.wasParsed('input')) {
+      usageException(
+        '--paginate sends GET requests, which take no body, so it does not '
+        'work with --input. Pass parameters with -f/--raw-field instead.',
+      );
+    }
     final jqSource = results['jq'] as String?;
     JqQuery? jq;
     if (jqSource != null) {
@@ -252,7 +258,10 @@ Examples:
     // Whether fields alone made this a POST, which a caller who meant them
     // as a GET query string may not expect.
     final fieldsMadePost =
-        methodDefaulted && params.isNotEmpty && inputPath == null;
+        methodDefaulted &&
+        method == 'POST' &&
+        params.isNotEmpty &&
+        inputPath == null;
 
     final codePushClient = codePushClientWrapper.codePushClient;
     final apiBase = '${codePushClient.apiBaseUri}';
@@ -320,8 +329,8 @@ Examples:
       } on SocketException catch (error) {
         return _fail(error.message);
       }
-      if (!paginate || !_succeeded(response) || !_isJson(response)) break;
-      final page = _decodeObject(responseBody);
+      if (!paginate || !_succeeded(response)) break;
+      final page = _isJson(response) ? _decodeObject(responseBody) : null;
       if (page == null) {
         // The first page is printed as it is; a later one can't be merged.
         if (merged == null) break;
@@ -333,7 +342,13 @@ Examples:
       final cursor = _cursorKeys
           .map((key) => page[key])
           .firstWhere((value) => value != null, orElse: () => null);
-      if (cursor is! String || cursor.isEmpty) break;
+      if (cursor == null || cursor == '') break;
+      if (cursor is! String) {
+        return _fail(
+          '--paginate: the cursor ${jsonEncode(cursor)} is not a string, so '
+          'the next page cannot be requested.',
+        );
+      }
       if (!seenCursors.add(cursor)) {
         return _fail(
           '--paginate: the API returned the cursor "$cursor" twice, so the '
@@ -342,7 +357,8 @@ Examples:
       }
       url = _withCursor(url, cursor);
     }
-    if (merged != null && _succeeded(response)) {
+    // A single page is printed exactly as it came.
+    if (merged != null && seenCursors.isNotEmpty && _succeeded(response)) {
       _cursorKeys.forEach(merged.remove);
       responseBody = utf8.encode(jsonEncode(merged));
     }
