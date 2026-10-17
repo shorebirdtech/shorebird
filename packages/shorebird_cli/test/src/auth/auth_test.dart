@@ -1395,6 +1395,8 @@ void main() {
             'Bearer $shorebirdAccessToken',
           );
           verifyNever(() => logger.err(any()));
+          // The credential that authenticated, not the first one tried.
+          expect(auth.credentialKind, equals(CredentialKind.login));
         });
 
         test('does not fall back to it once OIDC has signed in', () async {

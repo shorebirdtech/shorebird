@@ -122,8 +122,10 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       final command = commands[next.name];
       if (command == null) return results;
       if (next.command == null) {
+        // After `--`, an added subcommand would be read as an argument.
         if (command is! ShorebirdCommand ||
             next.rest.isNotEmpty ||
+            args.contains('--') ||
             (next.options.contains('help') && next.flag('help'))) {
           return results;
         }

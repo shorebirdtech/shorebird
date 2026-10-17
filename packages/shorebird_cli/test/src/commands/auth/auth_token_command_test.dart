@@ -1,10 +1,13 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/auth/auth.dart';
 import 'package:shorebird_cli/src/json_output.dart';
-import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:test/test.dart';
@@ -40,6 +43,7 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       command = AuthTokenCommand();
 
+      when(() => logger.level).thenReturn(Level.info);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -64,15 +68,45 @@ void main() {
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
         ),
       ).thenThrow(exception);
-      final result = await runWithOverrides(command.run);
+      final captured = <String>[];
+      final result = await captureStdout(
+        () => runWithOverrides(command.run),
+        captured: captured,
+      );
       expect(result, equals(exception.exitCode.code));
+      expect(captured, isEmpty);
       verifyNever(() => auth.accessToken());
     });
 
-    test('prints only the token', () async {
-      final result = await runWithOverrides(command.run);
+    test('writes only the token to stdout', () async {
+      final captured = <String>[];
+      final result = await captureStdout(
+        () => runWithOverrides(command.run),
+        captured: captured,
+      );
       expect(result, equals(ExitCode.success.code));
-      verify(() => logger.info('sb_at_test')).called(1);
+      expect(captured, equals(['sb_at_test']));
+    });
+
+    test("leaves the token out of the run's log file", () async {
+      final logFile = File(
+        p.join(Directory.systemTemp.createTempSync().path, 'run.log'),
+      )..createSync();
+      final captured = <String>[];
+      final realStdout = stdout;
+      final result = await IOOverrides.runZoned(
+        () => runWithOverrides(command.run),
+        stdout: () => LoggingStdout(
+          baseStdOut: CapturingStdout(
+            baseStdOut: realStdout,
+            captured: captured,
+          ),
+          logFile: logFile,
+        ),
+      );
+      expect(result, equals(ExitCode.success.code));
+      expect(captured, equals(['sb_at_test']));
+      expect(logFile.readAsStringSync(), isNot(contains('sb_at_test')));
     });
 
     test('emits the token as JSON', () async {

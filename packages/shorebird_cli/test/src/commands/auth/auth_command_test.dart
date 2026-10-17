@@ -24,11 +24,10 @@ void main() {
       expect(command.subcommands['token'], isA<AuthTokenCommand>());
     });
 
-    test('accepts print-access-token for token', () {
-      expect(
-        command.subcommands['print-access-token'],
-        isA<AuthTokenCommand>(),
-      );
+    test('accepts print-access-token for token, keeping stdout clean', () {
+      final alias = command.subcommands['print-access-token'];
+      expect(alias, isA<AuthTokenCommand>());
+      expect((alias! as AuthTokenCommand).reservesStdout, isTrue);
     });
 
     test('has hidden login and logout aliases', () {

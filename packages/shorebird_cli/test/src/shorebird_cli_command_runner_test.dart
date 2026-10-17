@@ -427,6 +427,19 @@ Engine • revision $shorebirdEngineRevision'''),
         expect(grandparent.nested.child.ran, isTrue);
       });
 
+      test('keeps global flags after the command', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', '--verbose']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('is not added after --', () async {
+        await runWithOverrides(() => commandRunner.run(['parent', '--']));
+        expect(parent.child.ran, isFalse);
+      });
+
       test('prints usage instead with --help', () async {
         await runWithOverrides(() => commandRunner.run(['parent', '--help']));
         expect(parent.child.ran, isFalse);
