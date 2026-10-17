@@ -55,6 +55,27 @@ void main() {
       verifyNever(shorebirdVersion.isLatest);
     });
 
+    test('returns an error when the branch cannot be determined', () async {
+      when(shorebirdVersion.isOnBranch).thenThrow(
+        const ProcessException(
+          'git',
+          [
+            'symbolic-ref',
+            '-q',
+            'HEAD',
+          ],
+          'fatal: detected dubious ownership in repository',
+          128,
+        ),
+      );
+
+      final results = await runWithOverrides(validator.validate);
+
+      expect(results, hasLength(1));
+      expect(results.first.severity, ValidationIssueSeverity.error);
+      expect(results.first.message, contains('dubious ownership'));
+    });
+
     test(
       'returns an error when shorebird version cannot be determined',
       () async {

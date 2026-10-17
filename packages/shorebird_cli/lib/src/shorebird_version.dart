@@ -59,13 +59,22 @@ class ShorebirdVersion {
   }
 
   /// Whether this checkout of shorebird is on a branch. A checkout of a commit
-  /// or tag (a detached HEAD) has no upstream to compare against.
+  /// or tag (a detached HEAD) is pinned, so there is no newer version to
+  /// compare it to.
+  ///
+  /// Throws a [ProcessException] if git fails for another reason.
   Future<bool> isOnBranch() async {
     try {
-      await git.symbolicRef(directory: Directory(_workingDirectory));
+      await git.git([
+        'symbolic-ref',
+        '-q',
+        'HEAD',
+      ], workingDirectory: _workingDirectory);
       return true;
-    } on ProcessException {
-      return false;
+    } on ProcessException catch (e) {
+      // `symbolic-ref -q` exits 1 for a detached HEAD and 128 for errors.
+      if (e.errorCode == 1) return false;
+      rethrow;
     }
   }
 

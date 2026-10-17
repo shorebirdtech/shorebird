@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:test/test.dart';
 
@@ -202,10 +203,23 @@ void main() {
     });
 
     group('isOnBranch', () {
-      test('returns true when HEAD is a branch', () async {
+      void stubSymbolicRef(Future<ShorebirdProcessResult> Function() answer) {
         when(
-          () => git.symbolicRef(directory: any(named: 'directory')),
-        ).thenAnswer((_) async => 'refs/heads/stable');
+          () => git.git(
+            ['symbolic-ref', '-q', 'HEAD'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) => answer());
+      }
+
+      test('returns true when HEAD is a branch', () async {
+        stubSymbolicRef(
+          () async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: 'refs/heads/stable',
+            stderr: '',
+          ),
+        );
 
         expect(
           await runWithOverrides(shorebirdVersionManager.isOnBranch),
@@ -214,18 +228,38 @@ void main() {
       });
 
       test('returns false when HEAD is detached', () async {
-        when(
-          () => git.symbolicRef(directory: any(named: 'directory')),
-        ).thenThrow(
-          const ProcessException('git', [
-            'symbolic-ref',
-            'HEAD',
-          ], 'fatal: ref HEAD is not a symbolic ref'),
+        stubSymbolicRef(
+          () async => throw const ProcessException(
+            'git',
+            [
+              'symbolic-ref',
+              '-q',
+              'HEAD',
+            ],
+            '',
+            1,
+          ),
         );
 
         expect(
           await runWithOverrides(shorebirdVersionManager.isOnBranch),
           isFalse,
+        );
+      });
+
+      test('rethrows other git failures', () async {
+        stubSymbolicRef(
+          () async => throw const ProcessException(
+            'git',
+            ['symbolic-ref', '-q', 'HEAD'],
+            'fatal: detected dubious ownership in repository',
+            128,
+          ),
+        );
+
+        await expectLater(
+          runWithOverrides(shorebirdVersionManager.isOnBranch),
+          throwsA(isA<ProcessException>()),
         );
       });
     });
