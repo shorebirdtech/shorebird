@@ -138,6 +138,22 @@ void main() {
       expect(command.name, 'set-track');
     });
 
+    test('accepts --channel as an alias of --track', () {
+      final results = command.argParser.parse([
+        '--release-version',
+        releaseVersion,
+        '--patch-number',
+        '$patchNumber',
+        '--channel',
+        'beta',
+      ]);
+      expect(results['track'], equals('beta'));
+    });
+
+    test('requires --track', () {
+      expect(command.argParser.options['track']!.mandatory, isTrue);
+    });
+
     test('has correct description', () {
       expect(command.description, startsWith('Sets the track of a patch.'));
     });

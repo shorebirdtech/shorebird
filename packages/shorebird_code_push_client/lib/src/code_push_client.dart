@@ -233,6 +233,45 @@ class CodePushClient {
     return json['level'] as String?;
   }
 
+  /// Sets the currently logged-in user's display name to [displayName].
+  Future<void> updateCurrentUser({required String displayName}) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/users/me'),
+      body: json.encode({'display_name': displayName}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Whether the currently logged-in user receives email notifications.
+  Future<bool> getEmailNotificationsEnabled() async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/users/me/notification_preferences'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final body = json.decode(response.body) as Map<String, dynamic>;
+    final preferences = body['preferences'] as Map<String, dynamic>;
+    return preferences['are_email_notifications_enabled'] as bool;
+  }
+
+  /// Turns the currently logged-in user's email notifications on or off.
+  Future<void> setEmailNotificationsEnabled({required bool enabled}) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/users/me/notification_preferences'),
+      body: json.encode({'are_email_notifications_enabled': enabled}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Create a new artifact for a specific [patchId].
   Future<void> createPatchArtifact({
     required String artifactPath,

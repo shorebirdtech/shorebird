@@ -8,6 +8,8 @@ class AccountCommand extends ShorebirdCommand {
   /// {@macro account_command}
   AccountCommand() {
     addSubcommand(AccountAppsCommand());
+    addSubcommand(AccountNotificationsCommand());
+    addSubcommand(AccountUpdateCommand());
     addSubcommand(OrgsCommand());
     addSubcommand(WhoamiCommand());
   }
@@ -16,5 +18,10 @@ class AccountCommand extends ShorebirdCommand {
   String get name => 'account';
 
   @override
-  String get description => 'Manage your Shorebird account.';
+  String get description =>
+      'Manage your Shorebird account. With no subcommand, shows who you are '
+      '(the same as `shorebird account whoami`).';
+
+  @override
+  String get defaultSubcommand => 'whoami';
 }

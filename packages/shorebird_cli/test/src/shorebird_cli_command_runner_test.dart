@@ -393,6 +393,69 @@ Engine • revision $shorebirdEngineRevision'''),
       });
     });
 
+    group('default subcommand', () {
+      late _ParentCommand parent;
+
+      setUp(() {
+        parent = _ParentCommand();
+        commandRunner.addCommand(parent);
+      });
+
+      test('runs the default subcommand when given none', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('keeps global flags before the command', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--verbose', 'parent']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('runs a default subcommand of a nested command', () async {
+        final grandparent = _GrandparentCommand();
+        commandRunner.addCommand(grandparent);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['grandparent', 'parent']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(grandparent.nested.child.ran, isTrue);
+      });
+
+      test('keeps global flags after the command', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', '--verbose']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('is not added after --', () async {
+        await runWithOverrides(() => commandRunner.run(['parent', '--']));
+        expect(parent.child.ran, isFalse);
+      });
+
+      test('prints usage instead with --help', () async {
+        await runWithOverrides(() => commandRunner.run(['parent', '--help']));
+        expect(parent.child.ran, isFalse);
+      });
+
+      test('leaves a command with no default alone', () async {
+        final grandparent = _GrandparentCommand();
+        commandRunner.addCommand(grandparent);
+        await expectLater(
+          runWithOverrides(() => commandRunner.run(['grandparent'])),
+          completion(equals(ExitCode.usage.code)),
+        );
+        expect(grandparent.nested.child.ran, isFalse);
+      });
+    });
+
     group('--dev', () {
       test('selects the dev environment for the command', () async {
         final command = _RecordsDevModeCommand();
@@ -1381,6 +1444,56 @@ class _RecordsDevModeCommand extends ShorebirdCommand {
     isDevMode = read(isDevModeRef);
     return ExitCode.success.code;
   }
+}
+
+/// A command with no subcommands of its own that records whether it ran.
+class _ChildCommand extends ShorebirdCommand {
+  bool ran = false;
+
+  @override
+  String get name => 'child';
+
+  @override
+  String get description => 'Records that it ran';
+
+  @override
+  Future<int> run() async {
+    ran = true;
+    return ExitCode.success.code;
+  }
+}
+
+/// A command whose [defaultSubcommand] is its only subcommand, `child`.
+class _ParentCommand extends ShorebirdCommand {
+  _ParentCommand() {
+    addSubcommand(child);
+  }
+
+  final child = _ChildCommand();
+
+  @override
+  String get name => 'parent';
+
+  @override
+  String get description => 'Runs child by default';
+
+  @override
+  String get defaultSubcommand => 'child';
+}
+
+/// A command with no [defaultSubcommand], whose subcommand has one.
+class _GrandparentCommand extends ShorebirdCommand {
+  _GrandparentCommand() {
+    addSubcommand(nested);
+  }
+
+  final nested = _ParentCommand();
+
+  @override
+  String get name => 'grandparent';
+
+  @override
+  String get description => 'Has no default subcommand';
 }
 
 class _TestCommand extends ShorebirdCommand {

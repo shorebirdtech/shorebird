@@ -130,7 +130,7 @@ void main() {
       expect(command.name, equals('api'));
       expect(
         command.invocation,
-        equals('shorebird api <endpoint> [arguments]'),
+        equals('shorebird api [<method>] <endpoint> [arguments]'),
       );
       expect(command.reservesStdout, isTrue);
       expect(
@@ -149,6 +149,8 @@ void main() {
         '-f channel=beta',
         '.[1:3]',
         'pass --method GET',
+        r'$ shorebird api DELETE /apps/{appId}/releases/123',
+        '--paginate only works with GET',
       ]) {
         expect(command.description, contains(text));
       }
@@ -158,8 +160,23 @@ void main() {
       test('requires exactly one endpoint', () async {
         await expectLater(runApi([]), usageError('exactly one <endpoint>'));
         await expectLater(
+          runApi(['GET', '/apps', '/organizations']),
+          usageError(
+            'Expected exactly one <endpoint> argument, optionally after the '
+            'HTTP method (as in "shorebird api GET /apps"), got 3.',
+          ),
+        );
+        verifyNever(() => codePushClient.send(any()));
+      });
+
+      test('rejects two arguments when the first is not a method', () async {
+        await expectLater(
           runApi(['/apps', '/organizations']),
-          usageError('exactly one <endpoint>'),
+          usageError(
+            '"/apps" is not an HTTP method. Pass the endpoint alone, or the '
+            'method and then the endpoint, as in "shorebird api GET /apps". '
+            'Methods: GET, POST, PUT, PATCH, DELETE, HEAD.',
+          ),
         );
         verifyNever(() => codePushClient.send(any()));
       });
@@ -499,6 +516,306 @@ void main() {
           usageError('--input: no file found at missing.json'),
         );
       });
+    });
+
+    group('method before the endpoint', () {
+      test('sets the method', () async {
+        expect(await runApi(['GET', '/apps']), equals(ExitCode.success.code));
+        final request = sentRequest();
+        expect(request.method, equals('GET'));
+        expect(
+          request.url,
+          equals(Uri.parse('https://api.shorebird.dev/api/v1/apps')),
+        );
+      });
+
+      test('is case-insensitive', () async {
+        await runApi(['delete', '/apps/{appId}/releases/1']);
+        final request = sentRequest();
+        expect(request.method, equals('DELETE'));
+        expect(request.url.path, equals('/api/v1/apps/$appId/releases/1'));
+        expect(retriesEnabled, isFalse);
+      });
+
+      test('keeps fields as the query string for GET', () async {
+        await runApi(['GET', '/apps/{appId}/releases', '-f', 'a=1']);
+        final request = sentRequest();
+        expect(request.method, equals('GET'));
+        expect(request.url.queryParameters, equals({'a': '1'}));
+        expect(request.bodyBytes, isEmpty);
+      });
+
+      test('may repeat the same --method', () async {
+        await runApi(['PATCH', '/apps/{appId}', '-X', 'patch', '-f', 'a=b']);
+        expect(sentRequest().method, equals('PATCH'));
+      });
+
+      test('must agree with --method', () async {
+        await expectLater(
+          runApi(['GET', '/apps', '-X', 'POST']),
+          usageError(
+            'The method is given twice, as "GET" and as --method POST. Pass '
+            'one of them.',
+          ),
+        );
+        verifyNever(() => codePushClient.send(any()));
+      });
+    });
+
+    group('--paginate', () {
+      // The bodies of successive pages, served in order.
+      late List<String> pages;
+
+      setUp(() {
+        pages = [];
+        when(() => codePushClient.send(any())).thenAnswer((_) async {
+          return http.StreamedResponse(
+            Stream.value(utf8.encode(pages.removeAt(0))),
+            HttpStatus.ok,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+      });
+
+      List<Uri> sentUrls() => verify(
+        () => codePushClient.send(captureAny()),
+      ).captured.cast<http.Request>().map((r) => r.url).toList();
+
+      test('follows next_cursor and merges the pages', () async {
+        pages = [
+          '{"apps":[{"id":1},{"id":2}],"next_cursor":"c2"}',
+          '{"apps":[{"id":3}],"next_cursor":"c3"}',
+          '{"apps":[]}',
+        ];
+        expect(
+          await runApi(['/apps', '--paginate', '-f', 'per_page=2']),
+          equals(ExitCode.success.code),
+        );
+        expect(
+          fakeStdout.text,
+          equals('{"apps":[{"id":1},{"id":2},{"id":3}]}'),
+        );
+        final urls = sentUrls();
+        expect(urls, hasLength(3));
+        expect(urls[0].queryParameters, equals({'per_page': '2'}));
+        expect(
+          urls[1].queryParameters,
+          equals({'per_page': '2', 'cursor': 'c2'}),
+        );
+        expect(
+          urls[2].queryParameters,
+          equals({'per_page': '2', 'cursor': 'c3'}),
+        );
+      });
+
+      test('follows the audit log nextCursor', () async {
+        pages = [
+          '{"data":[{"action":"a"}],"nextCursor":"t|1"}',
+          '{"data":[{"action":"b"}],"nextCursor":null}',
+        ];
+        await runApi(['/organizations/1/audit-logs', '--paginate']);
+        expect(
+          fakeStdout.text,
+          equals('{"data":[{"action":"a"},{"action":"b"}]}'),
+        );
+        expect(sentUrls()[1].queryParameters, equals({'cursor': 't|1'}));
+      });
+
+      test('keeps the first value of non-list fields', () async {
+        pages = [
+          '{"items":[1],"total":2,"next_cursor":"c"}',
+          '{"items":[2],"total":9,"extra":true}',
+        ];
+        await runApi(['/x', '--paginate']);
+        expect(
+          fakeStdout.text,
+          equals('{"items":[1,2],"total":2,"extra":true}'),
+        );
+      });
+
+      test('sends one request when there is no cursor', () async {
+        pages = ['{"apps":[{"id":1}]}'];
+        await runApi(['/apps', '--paginate']);
+        expect(fakeStdout.text, equals('{"apps":[{"id":1}]}'));
+        expect(sentUrls(), hasLength(1));
+      });
+
+      test('prints a single page byte for byte', () async {
+        pages = ['{ "apps": [1], "next_cursor": null }'];
+        await runApi(['/apps', '--paginate']);
+        expect(fakeStdout.text, equals('{ "apps": [1], "next_cursor": null }'));
+      });
+
+      /// Serves a first page with a cursor, then [second].
+      void stubSecondPage(
+        int status,
+        Map<String, String> headers,
+        String body,
+      ) {
+        var calls = 0;
+        when(() => codePushClient.send(any())).thenAnswer((_) async {
+          calls++;
+          return calls == 1
+              ? http.StreamedResponse(
+                  Stream.value(utf8.encode('{"a":[1],"next_cursor":"c"}')),
+                  HttpStatus.ok,
+                  headers: {'content-type': 'application/json'},
+                )
+              : http.StreamedResponse(
+                  Stream.value(utf8.encode(body)),
+                  status,
+                  headers: headers,
+                );
+        });
+      }
+
+      test('fails when a later page is not JSON', () async {
+        stubSecondPage(HttpStatus.ok, {'content-type': 'text/html'}, '<p>');
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(fakeStdout.text, isEmpty);
+        expect(
+          fakeStderr.text,
+          equals('shorebird: --paginate: page 2 is not a JSON object\n'),
+        );
+      });
+
+      test('fails when a later page is empty', () async {
+        stubSecondPage(HttpStatus.noContent, {}, '');
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(
+          fakeStderr.text,
+          equals('shorebird: --paginate: page 2 is not a JSON object\n'),
+        );
+      });
+
+      test('fails on a cursor that is not a string', () async {
+        pages = ['{"a":[1],"next_cursor":7}'];
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(fakeStdout.text, isEmpty);
+        expect(
+          fakeStderr.text,
+          equals(
+            'shorebird: --paginate: the cursor 7 is not a string, so the '
+            'next page cannot be requested.\n',
+          ),
+        );
+      });
+
+      test('treats an empty cursor as the last page', () async {
+        pages = ['{"a":[1],"next_cursor":""}'];
+        expect(await runApi(['/x', '--paginate']), equals(0));
+        expect(sentUrls(), hasLength(1));
+      });
+
+      test('rejects --input', () async {
+        await expectLater(
+          runApi(['/x', '--paginate', '--input', '-']),
+          usageError('it does not work with --input'),
+        );
+        verifyNever(() => codePushClient.send(any()));
+      });
+
+      test('does not hint at POST on a 405 for its fields', () async {
+        when(() => codePushClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode('{"message":"No"}')),
+            HttpStatus.methodNotAllowed,
+            headers: {'content-type': 'application/json'},
+          ),
+        );
+        expect(await runApi(['/x', '--paginate', '-f', 'a=1']), equals(1));
+        expect(fakeStderr.text, equals('shorebird: No (HTTP 405)\n'));
+      });
+
+      test('prints a response that is not an object as it is', () async {
+        pages = ['[1, 2]'];
+        await runApi(['/x', '--paginate']);
+        expect(fakeStdout.text, equals('[1, 2]'));
+        expect(sentUrls(), hasLength(1));
+      });
+
+      test('applies --jq to the merged pages', () async {
+        pages = [
+          '{"apps":[{"id":"a"}],"next_cursor":"c"}',
+          '{"apps":[{"id":"b"}]}',
+        ];
+        await runApi(['/apps', '--paginate', '--jq', '.apps[].id']);
+        expect(fakeStdout.text, equals('a\nb\n'));
+      });
+
+      test('pretty-prints the merged pages on a terminal', () async {
+        fakeStdout.hasTerminal = true;
+        pages = ['{"a":[1],"next_cursor":"c"}', '{"a":[2]}'];
+        await runApi(['/x', '--paginate']);
+        expect(fakeStdout.text, equals('{\n  "a": [\n    1,\n    2\n  ]\n}\n'));
+      });
+
+      test('reports a failed page and exits 1', () async {
+        var calls = 0;
+        when(() => codePushClient.send(any())).thenAnswer((_) async {
+          calls++;
+          return calls == 1
+              ? http.StreamedResponse(
+                  Stream.value(utf8.encode('{"a":[1],"next_cursor":"c"}')),
+                  HttpStatus.ok,
+                  headers: {'content-type': 'application/json'},
+                )
+              : http.StreamedResponse(
+                  Stream.value(utf8.encode('{"message":"Bad cursor"}')),
+                  HttpStatus.badRequest,
+                  headers: {'content-type': 'application/json'},
+                );
+        });
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(fakeStdout.text, equals('{"message":"Bad cursor"}'));
+        expect(fakeStderr.text, equals('shorebird: Bad cursor (HTTP 400)\n'));
+      });
+
+      test('stops when the API repeats a cursor', () async {
+        pages = [
+          '{"a":[1],"next_cursor":"c"}',
+          '{"a":[2],"next_cursor":"c"}',
+        ];
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(fakeStdout.text, isEmpty);
+        expect(
+          fakeStderr.text,
+          equals(
+            'shorebird: --paginate: the API returned the cursor "c" twice, '
+            'so the pages would never end.\n',
+          ),
+        );
+      });
+
+      test('fails when a later page is not an object', () async {
+        pages = ['{"a":[1],"next_cursor":"c"}', '[2]'];
+        expect(await runApi(['/x', '--paginate']), equals(1));
+        expect(
+          fakeStderr.text,
+          equals('shorebird: --paginate: page 2 is not a JSON object\n'),
+        );
+      });
+
+      test('keeps the default GET when fields are added', () async {
+        pages = ['{"a":[]}'];
+        await runApi(['/x', '--paginate', '-f', 'per_page=100']);
+        final request = sentRequest();
+        expect(request.method, equals('GET'));
+        expect(request.url.queryParameters, equals({'per_page': '100'}));
+      });
+
+      for (final args in [
+        ['POST', '/x', '--paginate'],
+        ['/x', '--paginate', '-X', 'post'],
+      ]) {
+        test('rejects a method other than GET: $args', () async {
+          await expectLater(
+            runApi(args),
+            usageError('--paginate only works with GET requests, not POST.'),
+          );
+          verifyNever(() => codePushClient.send(any()));
+        });
+      }
     });
 
     group('retries', () {

@@ -9,6 +9,7 @@ class PatchesCommand extends ShorebirdCommand {
   PatchesCommand() {
     addSubcommand(PatchesInfoCommand());
     addSubcommand(PatchesListCommand());
+    addSubcommand(PatchesStatsCommand());
     addSubcommand(PromoteCommand());
     addSubcommand(RollbackCommand());
     addSubcommand(RollforwardCommand());
