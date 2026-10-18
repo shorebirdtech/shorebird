@@ -44,11 +44,16 @@ jobs:
         run: |
           branch="bot/bundletool-$VERSION"
           title="chore(shorebird_cli): update bundletool to $VERSION"
+          # A maintainer may have pushed fixes to an existing bump branch.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "$branch already exists; leaving it alone"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git commit -am "$title"
-          git push --force origin "$branch"
+          git push origin "$branch"
 
           existing=$(gh issue list --repo "$REPO" --state open \
             --search "\"$title\" in:title" --json number --jq '.[0].number')
@@ -65,6 +70,6 @@ jobs:
 
           $compare
 
-          Close this issue once that PR lands.
+          Close this issue once that PR lands. To skip this version, close the issue and leave the branch: the check stays quiet while \`$branch\` exists.
           BODY
           )"

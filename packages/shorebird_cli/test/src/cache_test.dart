@@ -100,8 +100,9 @@ void main() {
       shorebirdProcess = MockShorebirdProcess();
 
       when(() => mockAbi.current).thenReturn(Abi.macosX64);
-      when(() => shorebirdFlutter.resolveFlutterVersion(any()))
-          .thenAnswer((_) async => null);
+      when(
+        () => shorebirdFlutter.resolveFlutterVersion(any()),
+      ).thenAnswer((_) async => null);
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       when(
@@ -115,16 +116,20 @@ void main() {
         );
       });
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => shorebirdEnv.shorebirdEngineRevision)
-          .thenReturn(shorebirdEngineRevision);
-      when(() => shorebirdEnv.flutterRevision)
-          .thenReturn('test-flutter-revision');
+      when(
+        () => shorebirdEnv.shorebirdEngineRevision,
+      ).thenReturn(shorebirdEngineRevision);
+      when(
+        () => shorebirdEnv.flutterRevision,
+      ).thenReturn('test-flutter-revision');
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
-      when(() => shorebirdProcess.start(any(), any()))
-          .thenAnswer((_) async => chmodProcess);
-      when(() => chmodProcess.exitCode)
-          .thenAnswer((_) async => ExitCode.success.code);
+      when(
+        () => shorebirdProcess.start(any(), any()),
+      ).thenAnswer((_) async => chmodProcess);
+      when(
+        () => chmodProcess.exitCode,
+      ).thenAnswer((_) async => ExitCode.success.code);
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
           Stream.value(ZipEncoder().encode(Archive())),
@@ -429,7 +434,9 @@ void main() {
         expect(prune(), isEmpty);
         expect(directory.existsSync(), isTrue);
         expect(
-          File(p.join(directory.path, lastUsedStampName)).lastModifiedSync(),
+          File(
+            p.join(directory.path, lastUsedStampName),
+          ).lastModifiedSync(),
           equals(now),
         );
       });
@@ -459,7 +466,9 @@ void main() {
             lastUsed: now.subtract(const Duration(days: 31)),
           ),
         );
-        when(() => shorebirdEnv.shorebirdEngineRevision).thenThrow(
+        when(
+          () => shorebirdEnv.shorebirdEngineRevision,
+        ).thenThrow(
           const CacheCorruptedException('Could not read engine.version.'),
         );
 
@@ -538,30 +547,43 @@ void main() {
               setOperatingSystem(NativePlatform.macOS);
             });
 
-            test('uses darwin-arm64 on Apple Silicon when the Flutter version '
-                'satisfies the arm64 patch constraint', () async {
-              when(() => mockAbi.current).thenReturn(Abi.macosArm64);
-              when(
-                () => shorebirdFlutter.resolveFlutterVersion(any()),
-              ).thenAnswer((_) async => arm64PatchSupportConstraint.minVersion);
-              final url = await runWithOverrides(
-                () =>
-                    PatchArtifact(cache: cache, platform: platform).storageUrl,
-              );
-              expect(url, contains('patch-darwin-arm64.zip'));
-            });
+            test(
+              'uses darwin-arm64 on Apple Silicon when the Flutter version '
+              'satisfies the arm64 patch constraint',
+              () async {
+                when(() => mockAbi.current).thenReturn(Abi.macosArm64);
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer(
+                  (_) async => arm64PatchSupportConstraint.minVersion,
+                );
+                final url = await runWithOverrides(
+                  () => PatchArtifact(
+                    cache: cache,
+                    platform: platform,
+                  ).storageUrl,
+                );
+                expect(url, contains('patch-darwin-arm64.zip'));
+              },
+            );
 
-            test('uses darwin-x64 on Apple Silicon when the Flutter version '
-                'is below the arm64 patch constraint floor', () async {
-              when(() => mockAbi.current).thenReturn(Abi.macosArm64);
-              when(() => shorebirdFlutter.resolveFlutterVersion(any()))
-                  .thenAnswer((_) async => Version(3, 41, 6));
-              final url = await runWithOverrides(
-                () =>
-                    PatchArtifact(cache: cache, platform: platform).storageUrl,
-              );
-              expect(url, contains('patch-darwin-x64.zip'));
-            });
+            test(
+              'uses darwin-x64 on Apple Silicon when the Flutter version '
+              'is below the arm64 patch constraint floor',
+              () async {
+                when(() => mockAbi.current).thenReturn(Abi.macosArm64);
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer((_) async => Version(3, 41, 6));
+                final url = await runWithOverrides(
+                  () => PatchArtifact(
+                    cache: cache,
+                    platform: platform,
+                  ).storageUrl,
+                );
+                expect(url, contains('patch-darwin-x64.zip'));
+              },
+            );
 
             test('uses darwin-x64 on Intel', () async {
               when(() => mockAbi.current).thenReturn(Abi.macosX64);
@@ -627,8 +649,9 @@ void main() {
               throwsA(isA<CacheUpdateFailure>()),
             );
 
-            verify(() => logger.detail('Failed to update patch, retrying...'))
-                .called(2);
+            verify(
+              () => logger.detail('Failed to update patch, retrying...'),
+            ).called(2);
           });
         });
 
@@ -682,8 +705,9 @@ void main() {
         });
 
         test('fails the download progress when the request throws', () async {
-          when(() => httpClient.send(any()))
-              .thenThrow(const SocketException('test'));
+          when(
+            () => httpClient.send(any()),
+          ).thenThrow(const SocketException('test'));
 
           await expectLater(
             runWithOverrides(() => cache.updateAll(Duration.zero)),
@@ -726,8 +750,9 @@ void main() {
               ),
             );
             // Retried, so the step fails once per attempt.
-            verify(() => progress.fail('Failed to make patch executable'))
-                .called(3);
+            verify(
+              () => progress.fail('Failed to make patch executable'),
+            ).called(3);
             // No stamp means the next run downloads the artifact again.
             final patchArtifact = runWithOverrides(
               () => cache.getArtifactDirectory('patch'),
@@ -774,8 +799,9 @@ void main() {
 
         group('when checksum validation fails', () {
           setUp(() {
-            when(() => checksumChecker.checkFile(any(), any()))
-                .thenReturn(false);
+            when(
+              () => checksumChecker.checkFile(any(), any()),
+            ).thenReturn(false);
           });
 
           test('fails with the correct message', () async {
@@ -799,8 +825,9 @@ void main() {
         test('records the use of per-engine-revision artifacts', () async {
           const engineRevision = '5555555555555555555555555555555555555555';
           final now = DateTime(2026, 10, 9);
-          when(() => shorebirdEnv.shorebirdEngineRevision)
-              .thenReturn(engineRevision);
+          when(
+            () => shorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn(engineRevision);
           setOperatingSystem(NativePlatform.macOS);
 
           await withClock(
@@ -824,8 +851,9 @@ void main() {
           expect(
             File(
               p.join(
-                runWithOverrides(() => cache.getArtifactDirectory('patch'))
-                    .path,
+                runWithOverrides(
+                  () => cache.getArtifactDirectory('patch'),
+                ).path,
                 lastUsedStampName,
               ),
             ).existsSync(),
@@ -841,10 +869,9 @@ void main() {
             completes,
           );
 
-          final requests = verify(() => httpClient.send(captureAny())).captured
-              .cast<http.BaseRequest>()
-              .map((r) => r.url)
-              .toList();
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
               '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
@@ -868,10 +895,9 @@ void main() {
             completes,
           );
 
-          final requests = verify(() => httpClient.send(captureAny())).captured
-              .cast<http.BaseRequest>()
-              .map((r) => r.url)
-              .toList();
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
               '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
@@ -893,10 +919,9 @@ void main() {
             completes,
           );
 
-          final requests = verify(() => httpClient.send(captureAny())).captured
-              .cast<http.BaseRequest>()
-              .map((r) => r.url)
-              .toList();
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
               '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
@@ -996,8 +1021,9 @@ void main() {
 
             group('when the checksum matches', () {
               setUp(() {
-                when(() => checksumChecker.checkFile(any(), any()))
-                    .thenReturn(true);
+                when(
+                  () => checksumChecker.checkFile(any(), any()),
+                ).thenReturn(true);
               });
 
               test('returns true', () async {
@@ -1007,8 +1033,9 @@ void main() {
 
             group('when the checksum does not match', () {
               setUp(() {
-                when(() => checksumChecker.checkFile(any(), any()))
-                    .thenReturn(false);
+                when(
+                  () => checksumChecker.checkFile(any(), any()),
+                ).thenReturn(false);
               });
 
               test('returns false', () async {
