@@ -671,7 +671,10 @@ void main() {
               isA<CacheUpdateFailure>().having(
                 (e) => e.message,
                 'message',
-                contains('Failed to download patch: 404 Not Found'),
+                allOf(
+                  contains('Failed to download patch from https://'),
+                  contains(': 404 Not Found'),
+                ),
               ),
             ),
           );
@@ -814,7 +817,8 @@ void main() {
                   (e) => e.message,
                   'message',
                   contains(
-                    'Failed to download bundletool.jar: checksum mismatch',
+                    'Failed to download bundletool.jar from '
+                    '$defaultBundletoolUrl: checksum mismatch',
                   ),
                 ),
               ),

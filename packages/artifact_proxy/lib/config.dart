@@ -120,6 +120,11 @@ final engineArtifactPatterns = {
   r'download.flutter.io\/io\/flutter\/arm64_v8a_debug\/1\.0\.0-(.*)\/arm64_v8a_debug-1\.0\.0-(.*)\.pom',
 };
 
+/// Shorebird's own per-engine tools (patch, aot-tools, analyze-snapshot), which
+/// the Shorebird CLI downloads as `shorebird/<engine revision>/<file>`. They
+/// live in Shorebird's storage bucket, not Flutter's.
+final shorebirdToolPattern = RegExp(r'^shorebird\/[0-9a-f]{40}\/[\w.-]+$');
+
 /// Patterns for Flutter artifacts which don't depend on an engine revision.
 final flutterArtifactPatterns = {
   // Pre-3.44 layout: ios-usb-dependencies/<artifact>/<hash>/<artifact>.zip

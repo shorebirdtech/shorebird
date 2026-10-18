@@ -46,6 +46,14 @@ Handler artifactProxyHandler({required ArtifactManifestClient client}) {
       );
     }
 
+    // Serving these here as well means a mirror of this one host covers
+    // everything the CLI downloads.
+    if (shorebirdToolPattern.hasMatch(path)) {
+      final location = getShorebirdToolLocation(path);
+      print('Shorebird tool detected, forwarding to: $location');
+      return Response.found(location);
+    }
+
     RegExpMatch? engineArtifactMatch;
     for (final pattern in engineArtifactPatterns) {
       final match = RegExp(pattern).firstMatch(path);
@@ -119,6 +127,11 @@ String getFlutterArtifactLocation({
 
   return 'https://storage.googleapis.com/$adjustedPath';
 }
+
+/// Returns the location of the Shorebird tool at [toolPath], a path matching
+/// [shorebirdToolPattern].
+String getShorebirdToolLocation(String toolPath) =>
+    'https://storage.googleapis.com/download.shorebird.dev/$toolPath';
 
 /// Returns the location of the artifact at [artifactPath] using the
 /// specified [engine] revision for Shorebird artifacts.

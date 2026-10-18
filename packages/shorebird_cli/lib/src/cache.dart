@@ -400,7 +400,7 @@ allowed to access $url.''');
 
       updateProgress.fail();
       throw CacheUpdateFailure(
-        '''Failed to download $fileName: ${response.statusCode} ${response.reasonPhrase}''',
+        '''Failed to download $fileName from $url: ${response.statusCode} ${response.reasonPhrase}''',
       );
     }
 
@@ -426,7 +426,7 @@ allowed to access $url.''');
       // be re-downloaded.
       artifactDirectory.deleteSync(recursive: true);
       throw CacheUpdateFailure(
-        '''Failed to download $fileName: checksum mismatch''',
+        '''Failed to download $fileName from $url: checksum mismatch''',
       );
     }
 
