@@ -103,7 +103,6 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     );
   }
 
-
   @override
   String get postReleaseInstructions {
     final relativeFrameworkDirectoryPath = p.relative(releaseDirectory.path);

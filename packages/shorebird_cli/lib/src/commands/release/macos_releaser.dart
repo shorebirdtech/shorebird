@@ -103,7 +103,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
     );
   }
 
-
   @override
   String get postReleaseInstructions =>
       '''

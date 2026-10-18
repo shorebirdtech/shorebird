@@ -79,5 +79,4 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
       stagingDirectory: stagingDirectory,
     );
   }
-
 }

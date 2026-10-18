@@ -418,51 +418,45 @@ void main() {
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const releaseVersion = '1.0.0';
-      const appId = 'appId';
-      const flutterRevision = 'deadbeef';
-      const flutterVersion = '3.22.1';
-
-      final release = Release(
-        id: 42,
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: flutterRevision,
-        flutterVersion: flutterVersion,
-        displayName: '1.2.3+1',
-        platformStatuses: const {},
-        createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
-      );
+    group('prepareReleaseArtifacts', () {
+      late Directory stagingDirectory;
+      late List<ReleaseArtifactUpload> artifacts;
 
       setUp(() {
-        when(
-          () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            appFrameworkPath: any(named: 'appFrameworkPath'),
+        stagingDirectory = Directory.systemTemp.createTempSync();
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: File(p.join(stagingDirectory.path, 'App.xcframework.zip')),
+            name: 'xcframework',
+            arch: 'xcframework',
+            platform: ReleasePlatform.ios,
+            canSideload: false,
           ),
-        ).thenAnswer((_) async {});
+        ];
+        when(
+          () => codePushClientWrapper.prepareIosFrameworkReleaseArtifacts(
+            appFrameworkPath: any(named: 'appFrameworkPath'),
+            stagingDirectory: any(named: 'stagingDirectory'),
+          ),
+        ).thenAnswer((_) async => artifacts);
       });
 
-      test('uploads artifacts', () async {
-        await runWithOverrides(
-          () => iosFrameworkReleaser.uploadReleaseArtifacts(
-            release: release,
-            appId: appId,
+      test('returns the prepared xcframework artifacts', () async {
+        final result = await runWithOverrides(
+          () => iosFrameworkReleaser.prepareReleaseArtifacts(
+            stagingDirectory: stagingDirectory,
           ),
         );
 
+        expect(result, equals(artifacts));
         verify(
-          () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-            appId: appId,
-            releaseId: release.id,
+          () => codePushClientWrapper.prepareIosFrameworkReleaseArtifacts(
             appFrameworkPath: p.join(
               projectRoot.path,
               'release',
               ArtifactManager.appXcframeworkName,
             ),
+            stagingDirectory: stagingDirectory,
           ),
         ).called(1);
       });

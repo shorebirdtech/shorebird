@@ -145,7 +145,6 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
     );
   }
 
-
   @override
   String get postReleaseInstructions {
     final relativeArchivePath = p.relative(

@@ -54,11 +54,24 @@ class _TestReleaser extends Releaser {
     required FileSystemEntity releaseArtifactRoot,
   }) async => '1.0.0';
 
+  /// What [prepareReleaseArtifacts] returns.
+  List<ReleaseArtifactUpload> artifacts = const [];
+
+  /// What [prepareReleaseArtifacts] throws, if anything.
+  Exception? prepareError;
+
+  /// The staging directory [prepareReleaseArtifacts] was last called with.
+  Directory? stagingDirectory;
+
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {}
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) async {
+    this.stagingDirectory = stagingDirectory;
+    expect(stagingDirectory.existsSync(), isTrue);
+    if (prepareError != null) throw prepareError!;
+    return artifacts;
+  }
 }
 
 void main() {
@@ -95,7 +108,9 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(Directory(''));
       registerFallbackValue(ReleasePlatform.linux);
+      registerFallbackValue(<ReleaseArtifactUpload>[]);
     });
 
     setUp(() {
@@ -486,15 +501,208 @@ To change the version of this release, change your app's version in your pubspec
       });
     });
 
-    group('uploadSupplementArtifact', () {
+    group('uploadReleaseArtifacts', () {
+      const appId = 'test-app-id';
+      late Release release;
+      late List<ReleaseArtifactUpload> artifacts;
+
       setUp(() {
+        release = MockRelease();
+        when(() => release.id).thenReturn(42);
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: File('artifact.zip'),
+            name: 'bundle',
+            arch: 'bundle',
+            platform: ReleasePlatform.linux,
+            canSideload: true,
+          ),
+        ];
+        releaser.artifacts = artifacts;
         when(
-          () => codePushClientWrapper.createSupplementReleaseArtifact(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
+            artifacts: any(named: 'artifacts'),
+          ),
+        ).thenAnswer((_) async {});
+      });
+
+      test('uploads the prepared artifacts to the release', () async {
+        await runWithOverrides(
+          () => releaser.uploadReleaseArtifacts(release: release, appId: appId),
+        );
+
+        verify(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
+            appId: appId,
+            releaseId: 42,
+            artifacts: artifacts,
+          ),
+        ).called(1);
+      });
+
+      test('deletes the staging directory after uploading', () async {
+        await runWithOverrides(
+          () => releaser.uploadReleaseArtifacts(release: release, appId: appId),
+        );
+
+        expect(releaser.stagingDirectory, isNotNull);
+        expect(releaser.stagingDirectory!.existsSync(), isFalse);
+      });
+
+      test('deletes the staging directory when preparing fails', () async {
+        releaser.prepareError = Exception('oops');
+
+        await expectLater(
+          () => runWithOverrides(
+            () =>
+                releaser.uploadReleaseArtifacts(release: release, appId: appId),
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(releaser.stagingDirectory!.existsSync(), isFalse);
+        verifyNever(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            artifacts: any(named: 'artifacts'),
+          ),
+        );
+      });
+
+      test('deletes the staging directory when uploading fails', () async {
+        when(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            artifacts: any(named: 'artifacts'),
+          ),
+        ).thenThrow(Exception('oops'));
+
+        await expectLater(
+          () => runWithOverrides(
+            () =>
+                releaser.uploadReleaseArtifacts(release: release, appId: appId),
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(releaser.stagingDirectory!.existsSync(), isFalse);
+      });
+    });
+
+    group('prepareSupplementArtifact', () {
+      late Directory stagingDirectory;
+
+      setUp(() {
+        stagingDirectory = Directory.systemTemp.createTempSync();
+      });
+
+      test('returns null when there is no supplement', () async {
+        when(
+          () => artifactManager.getReleaseSupplementDirectory(
+            platformSubdir: any(named: 'platformSubdir'),
+            create: any(named: 'create'),
+          ),
+        ).thenReturn(null);
+
+        final result = await runWithOverrides(
+          () => releaser.prepareSupplementArtifact(
+            stagingDirectory: stagingDirectory,
+          ),
+        );
+
+        expect(result, isNull);
+        verifyNever(
+          () => codePushClientWrapper.prepareSupplementReleaseArtifact(
             platform: any(named: 'platform'),
             supplementDirectoryPath: any(named: 'supplementDirectoryPath'),
             arch: any(named: 'arch'),
+            stagingDirectory: any(named: 'stagingDirectory'),
+          ),
+        );
+      });
+
+      test('prepares the supplement directory when there is one', () async {
+        setObfuscate(enabled: true);
+        File(obfuscationMapPath()).createSync(recursive: true);
+        final supplementDir = Directory(
+          p.join(projectRoot.path, 'build', 'test', 'shorebird'),
+        )..createSync(recursive: true);
+        when(
+          () => artifactManager.getReleaseSupplementDirectory(
+            platformSubdir: any(named: 'platformSubdir'),
+            create: any(named: 'create'),
+          ),
+        ).thenReturn(supplementDir);
+        final supplement = ReleaseArtifactUpload(
+          file: File(p.join(stagingDirectory.path, 'test_supplement.zip')),
+          name: 'supplement',
+          arch: 'test_supplement',
+          platform: ReleasePlatform.linux,
+          canSideload: false,
+        );
+        when(
+          () => codePushClientWrapper.prepareSupplementReleaseArtifact(
+            platform: any(named: 'platform'),
+            supplementDirectoryPath: any(named: 'supplementDirectoryPath'),
+            arch: any(named: 'arch'),
+            stagingDirectory: any(named: 'stagingDirectory'),
+          ),
+        ).thenAnswer((_) async => supplement);
+
+        final result = await runWithOverrides(
+          () => releaser.prepareSupplementArtifact(
+            stagingDirectory: stagingDirectory,
+          ),
+        );
+
+        expect(result, equals(supplement));
+        verify(
+          () => codePushClientWrapper.prepareSupplementReleaseArtifact(
+            platform: ReleasePlatform.linux,
+            supplementDirectoryPath: supplementDir.path,
+            arch: 'test_supplement',
+            stagingDirectory: stagingDirectory,
+          ),
+        ).called(1);
+      });
+    });
+
+    group('uploadSupplementArtifact', () {
+      late ReleaseArtifactUpload supplement;
+      Directory? stagingDirectory;
+
+      setUp(() {
+        stagingDirectory = null;
+        supplement = ReleaseArtifactUpload(
+          file: File('test_supplement.zip'),
+          name: 'supplement',
+          arch: 'test_supplement',
+          platform: ReleasePlatform.linux,
+          canSideload: false,
+        );
+        when(
+          () => codePushClientWrapper.prepareSupplementReleaseArtifact(
+            platform: any(named: 'platform'),
+            supplementDirectoryPath: any(named: 'supplementDirectoryPath'),
+            arch: any(named: 'arch'),
+            stagingDirectory: any(named: 'stagingDirectory'),
+          ),
+        ).thenAnswer((invocation) async {
+          stagingDirectory =
+              invocation.namedArguments[#stagingDirectory] as Directory;
+          expect(stagingDirectory!.existsSync(), isTrue);
+          return supplement;
+        });
+        when(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            artifacts: any(named: 'artifacts'),
+            message: any(named: 'message'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -512,42 +720,77 @@ To change the version of this release, change your app's version in your pubspec
         );
 
         verifyNever(
-          () => codePushClientWrapper.createSupplementReleaseArtifact(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
-            platform: any(named: 'platform'),
-            supplementDirectoryPath: any(named: 'supplementDirectoryPath'),
-            arch: any(named: 'arch'),
+            artifacts: any(named: 'artifacts'),
+            message: any(named: 'message'),
           ),
         );
       });
 
-      test('uploads the supplement directory when there is one', () async {
-        setObfuscate(enabled: true);
-        File(obfuscationMapPath()).createSync(recursive: true);
-        final supplementDir = Directory(
-          p.join(projectRoot.path, 'build', 'test', 'shorebird'),
-        )..createSync(recursive: true);
-        when(
-          () => artifactManager.getReleaseSupplementDirectory(
-            platformSubdir: any(named: 'platformSubdir'),
-            create: any(named: 'create'),
-          ),
-        ).thenReturn(supplementDir);
+      group('when there is a supplement', () {
+        late Directory supplementDir;
 
-        await runWithOverrides(
-          () => releaser.uploadSupplementArtifact(appId: 'app', releaseId: 1),
-        );
+        setUp(() {
+          setObfuscate(enabled: true);
+          File(obfuscationMapPath()).createSync(recursive: true);
+          supplementDir = Directory(
+            p.join(projectRoot.path, 'build', 'test', 'shorebird'),
+          )..createSync(recursive: true);
+          when(
+            () => artifactManager.getReleaseSupplementDirectory(
+              platformSubdir: any(named: 'platformSubdir'),
+              create: any(named: 'create'),
+            ),
+          ).thenReturn(supplementDir);
+        });
 
-        verify(
-          () => codePushClientWrapper.createSupplementReleaseArtifact(
-            appId: 'app',
-            releaseId: 1,
-            platform: ReleasePlatform.linux,
-            supplementDirectoryPath: supplementDir.path,
-            arch: 'test_supplement',
-          ),
-        ).called(1);
+        test('uploads the prepared supplement', () async {
+          await runWithOverrides(
+            () => releaser.uploadSupplementArtifact(appId: 'app', releaseId: 1),
+          );
+
+          verify(
+            () => codePushClientWrapper.prepareSupplementReleaseArtifact(
+              platform: ReleasePlatform.linux,
+              supplementDirectoryPath: supplementDir.path,
+              arch: 'test_supplement',
+              stagingDirectory: any(named: 'stagingDirectory'),
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.uploadReleaseArtifacts(
+              appId: 'app',
+              releaseId: 1,
+              artifacts: [supplement],
+              message: 'Uploading supplement artifacts',
+            ),
+          ).called(1);
+          expect(stagingDirectory, isNotNull);
+          expect(stagingDirectory!.existsSync(), isFalse);
+        });
+
+        test('deletes the staging directory when uploading fails', () async {
+          when(
+            () => codePushClientWrapper.uploadReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              artifacts: any(named: 'artifacts'),
+              message: any(named: 'message'),
+            ),
+          ).thenThrow(Exception('oops'));
+
+          await expectLater(
+            () => runWithOverrides(
+              () =>
+                  releaser.uploadSupplementArtifact(appId: 'app', releaseId: 1),
+            ),
+            throwsA(isA<Exception>()),
+          );
+
+          expect(stagingDirectory!.existsSync(), isFalse);
+        });
       });
     });
   });

@@ -144,7 +144,6 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
     );
   }
 
-
   @override
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
     UpdateReleaseMetadata metadata,

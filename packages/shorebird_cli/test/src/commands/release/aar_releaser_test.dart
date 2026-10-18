@@ -489,25 +489,21 @@ void main() {
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const releaseVersion = '1.0.0';
-      const appId = 'appId';
-      const flutterRevision = 'deadbeef';
-      const flutterVersion = '3.22.0';
-
-      final release = Release(
-        id: 42,
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: flutterRevision,
-        flutterVersion: flutterVersion,
-        displayName: '1.2.3+1',
-        platformStatuses: const {},
-        createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
-      );
+    group('prepareReleaseArtifacts', () {
+      late Directory stagingDirectory;
+      late List<ReleaseArtifactUpload> artifacts;
 
       setUp(() {
+        stagingDirectory = Directory.systemTemp.createTempSync();
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: File('release.aar'),
+            name: 'aar',
+            arch: 'aar',
+            platform: ReleasePlatform.android,
+            canSideload: false,
+          ),
+        ];
         when(
           () => shorebirdAndroidArtifacts.extractAar(
             packageName: any(named: 'packageName'),
@@ -516,29 +512,25 @@ void main() {
           ),
         ).thenAnswer((_) async => Directory('path'));
         when(
-          () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
+          () => codePushClientWrapper.prepareAndroidArchiveReleaseArtifacts(
             platform: any(named: 'platform'),
             aarPath: any(named: 'aarPath'),
             extractedAarDir: any(named: 'extractedAarDir'),
             architectures: any(named: 'architectures'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenReturn(artifacts);
       });
 
-      test('uploads artifacts', () async {
-        await runWithOverrides(
-          () => aarReleaser.uploadReleaseArtifacts(
-            release: release,
-            appId: appId,
+      test('returns the prepared android archive artifacts', () async {
+        final result = await runWithOverrides(
+          () => aarReleaser.prepareReleaseArtifacts(
+            stagingDirectory: stagingDirectory,
           ),
         );
 
+        expect(result, equals(artifacts));
         verify(
-          () => codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-            appId: appId,
-            releaseId: release.id,
+          () => codePushClientWrapper.prepareAndroidArchiveReleaseArtifacts(
             platform: ReleasePlatform.android,
             aarPath: any(
               named: 'aarPath',

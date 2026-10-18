@@ -71,6 +71,7 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(Directory(''));
       registerFallbackValue(ReleasePlatform.macos);
     });
 
@@ -558,47 +559,40 @@ To change the version of this release, change your app's version in your pubspec
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const appId = 'appId';
-      const releaseVersion = '1.0.0';
-      const flutterRevision = 'deadbeef';
-      const flutterVersion = '3.22.0';
-      const codesign = true;
+    group('prepareReleaseArtifacts', () {
       const podfileLockContent = 'podfile-lock';
 
-      final release = Release(
-        id: 42,
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: flutterRevision,
-        flutterVersion: flutterVersion,
-        displayName: '1.2.3+1',
-        platformStatuses: const {},
-        createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
-      );
-
       late Directory appDirectory;
+      late Directory stagingDirectory;
+      late List<ReleaseArtifactUpload> artifacts;
 
       setUp(() {
-        when(() => argResults['codesign']).thenReturn(codesign);
         when(
           () => shorebirdEnv.getShorebirdProjectRoot(),
         ).thenReturn(projectRoot);
 
         appDirectory = Directory.systemTemp.createTempSync();
+        stagingDirectory = Directory.systemTemp.createTempSync();
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: File(p.join(stagingDirectory.path, 'Runner.app.zip')),
+            name: 'app',
+            arch: 'app',
+            platform: ReleasePlatform.macos,
+            canSideload: true,
+          ),
+        ];
 
         when(
           () => artifactManager.getMacOSAppDirectory(),
         ).thenReturn(appDirectory);
         when(
-          () => codePushClientWrapper.createMacosReleaseArtifacts(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
+          () => codePushClientWrapper.prepareMacosReleaseArtifacts(
             appPath: any(named: 'appPath'),
             podfileLockHash: any(named: 'podfileLockHash'),
+            stagingDirectory: any(named: 'stagingDirectory'),
           ),
-        ).thenAnswer((_) async => {});
+        ).thenAnswer((_) async => artifacts);
 
         when(
           () => shorebirdEnv.macosPodfileLockHash,
@@ -613,9 +607,8 @@ To change the version of this release, change your app's version in your pubspec
         test('logs error and exits with code 70', () async {
           await expectLater(
             () => runWithOverrides(
-              () => releaser.uploadReleaseArtifacts(
-                release: release,
-                appId: appId,
+              () => releaser.prepareReleaseArtifacts(
+                stagingDirectory: stagingDirectory,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -625,55 +618,22 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
-      test('forwards call to codePushClientWrapper', () async {
-        await runWithOverrides(
-          () => releaser.uploadReleaseArtifacts(release: release, appId: appId),
+      test('returns the prepared macOS artifacts', () async {
+        final result = await runWithOverrides(
+          () => releaser.prepareReleaseArtifacts(
+            stagingDirectory: stagingDirectory,
+          ),
         );
 
+        expect(result, equals(artifacts));
         verify(
-          () => codePushClientWrapper.createMacosReleaseArtifacts(
-            appId: appId,
-            releaseId: release.id,
+          () => codePushClientWrapper.prepareMacosReleaseArtifacts(
             appPath: appDirectory.path,
             podfileLockHash:
                 '${sha256.convert(utf8.encode(podfileLockContent))}',
+            stagingDirectory: stagingDirectory,
           ),
         ).called(1);
-      });
-
-      group('when obfuscation map exists', () {
-        setUp(() {
-          // Create the obfuscation map file at the expected path.
-          File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'shorebird',
-                'obfuscation_map.json',
-              ),
-            )
-            ..createSync(recursive: true)
-            ..writeAsStringSync('{"key": "value"}');
-        });
-
-        test('passes obfuscation map path to wrapper', () async {
-          await runWithOverrides(
-            () => releaser.uploadReleaseArtifacts(
-              release: release,
-              appId: appId,
-            ),
-          );
-
-          verify(
-            () => codePushClientWrapper.createMacosReleaseArtifacts(
-              appId: appId,
-              releaseId: release.id,
-              appPath: appDirectory.path,
-              podfileLockHash:
-                  '${sha256.convert(utf8.encode(podfileLockContent))}',
-            ),
-          ).called(1);
-        });
       });
     });
 

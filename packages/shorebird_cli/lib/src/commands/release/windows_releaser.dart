@@ -87,7 +87,6 @@ class WindowsReleaser extends Releaser {
     );
   }
 
-
   @override
   String get postReleaseInstructions =>
       '''

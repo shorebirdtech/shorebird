@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -1733,57 +1734,44 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         });
       });
 
-      group('createAndroidReleaseArtifacts', () {
+      group('prepareAndroidReleaseArtifacts', () {
         final aabPath = p.join('path', 'to', 'app.aab');
+
+        String libappPath(Arch arch, {String? flavor}) => p.join(
+          projectRoot.path,
+          'build',
+          'app',
+          'intermediates',
+          'stripped_native_libs',
+          flavor != null ? '${flavor}Release' : 'release',
+          'out',
+          'lib',
+          arch.androidBuildPath,
+          'libapp.so',
+        );
 
         void setUpProjectRoot({String? flavor}) {
           File(p.join(projectRoot.path, aabPath)).createSync(recursive: true);
-          for (final archMetadata in Arch.values) {
-            final artifactPath = p.join(
-              projectRoot.path,
-              'build',
-              'app',
-              'intermediates',
-              'stripped_native_libs',
-              flavor != null ? '${flavor}Release' : 'release',
-              'out',
-              'lib',
-              archMetadata.androidBuildPath,
-              'libapp.so',
-            );
-            File(artifactPath).createSync(recursive: true);
+          for (final arch in Arch.values) {
+            File(libappPath(arch, flavor: flavor)).createSync(recursive: true);
           }
         }
 
-        setUp(() {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenAnswer((_) async {});
-        });
+        Future<List<ReleaseArtifactUpload>> prepare({
+          String? aab,
+          String? flavor,
+        }) => runWithOverrides(
+          () => codePushClientWrapper.prepareAndroidReleaseArtifacts(
+            platform: ReleasePlatform.android,
+            projectRoot: projectRoot.path,
+            aabPath: aab ?? p.join(projectRoot.path, aabPath),
+            architectures: Arch.values,
+            flavor: flavor,
+          ),
+        );
 
         test('exits with code 70 when artifacts cannot be found', () async {
-          await expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: p.join(projectRoot.path, aabPath),
-                architectures: Arch.values,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
+          await expectLater(prepare, exitsWithCode(ExitCode.software));
 
           verify(
             () => progress.fail(
@@ -1792,147 +1780,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).called(1);
         });
 
-        test(
-          'logs message when uploading release artifact that already exists',
-          () async {
-            const error = 'something went wrong';
-            when(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(named: 'artifactPath'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).thenThrow(const CodePushConflictException(message: error));
-            setUpProjectRoot();
-
-            await runWithOverrides(
-              () => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: p.join(projectRoot.path, aabPath),
-                architectures: Arch.values,
-              ),
-            );
-
-            // 1 for each arch, 1 for the aab
-            final numArtifactsUploaded = Arch.values.length + 1;
-            verify(
-              () => logger.info(any(that: contains('already exists'))),
-            ).called(numArtifactsUploaded);
-            verifyNever(() => progress.fail(error));
-          },
-        );
-
-        test(
-          'exits with code 70 when storage rejects an upload with a 409',
-          () async {
-            when(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(named: 'artifactPath'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).thenThrow(
-              const CodePushUploadException(
-                message: 'Failed to upload artifact (Conflict 409)',
-                statusCode: HttpStatus.conflict,
-              ),
-            );
-            setUpProjectRoot();
-
-            await expectLater(
-              () => runWithOverrides(
-                () => codePushClientWrapper.createAndroidReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  projectRoot: projectRoot.path,
-                  aabPath: p.join(projectRoot.path, aabPath),
-                  architectures: Arch.values,
-                ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-            verifyNever(
-              () => logger.info(any(that: contains('already exists'))),
-            );
-          },
-        );
-
-        test('completes successfully when all artifacts are created', () async {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenAnswer((_) async {});
+        test('returns the libapp.so of each arch and the aab', () async {
           setUpProjectRoot();
 
-          await runWithOverrides(
-            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              platform: releasePlatform,
-              projectRoot: projectRoot.path,
-              aabPath: p.join(projectRoot.path, aabPath),
-              architectures: Arch.values,
-            ),
-          );
+          final artifacts = await prepare();
 
+          expect(
+            artifacts,
+            equals([
+              for (final arch in Arch.values)
+                ReleaseArtifactUpload(
+                  file: File(libappPath(arch)),
+                  name: arch.arch,
+                  arch: arch.arch,
+                  platform: ReleasePlatform.android,
+                  canSideload: false,
+                ),
+              ReleaseArtifactUpload(
+                file: File(p.join(projectRoot.path, aabPath)),
+                name: 'aab',
+                arch: 'aab',
+                platform: ReleasePlatform.android,
+                canSideload: true,
+              ),
+            ]),
+          );
+          verify(() => logger.progress('Preparing artifacts')).called(1);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
-          for (final arch in Arch.values) {
-            verify(
-              () => codePushClient.createReleaseArtifact(
-                appId: app.appId,
-                artifactPath: any(
-                  named: 'artifactPath',
-                  that: endsWith(p.join(arch.androidBuildPath, 'libapp.so')),
-                ),
-                releaseId: releaseId,
-                arch: arch.arch,
-                platform: releasePlatform,
-                hash: any(named: 'hash'),
-                canSideload: false,
-                podfileLockHash: null,
-              ),
-            ).called(1);
-          }
-          verify(
-            () => codePushClient.createReleaseArtifact(
-              appId: app.appId,
-              artifactPath: p.join(projectRoot.path, aabPath),
-              releaseId: releaseId,
-              arch: 'aab',
-              platform: releasePlatform,
-              hash: any(named: 'hash'),
-              canSideload: true,
-              podfileLockHash: null,
-            ),
-          ).called(1);
-        });
-
-        test('completes successfully when a flavor is provided', () async {
-          const flavorName = 'myFlavor';
-          when(
+          verifyNever(
             () => codePushClient.createReleaseArtifact(
               appId: any(named: 'appId'),
               artifactPath: any(named: 'artifactPath'),
@@ -1943,36 +1819,23 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               canSideload: any(named: 'canSideload'),
               podfileLockHash: any(named: 'podfileLockHash'),
             ),
-          ).thenAnswer((_) async {});
+          );
+        });
+
+        test('looks in the flavor build directory when a flavor is '
+            'provided', () async {
+          const flavorName = 'myFlavor';
           setUpProjectRoot(flavor: flavorName);
 
-          await runWithOverrides(
-            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              platform: releasePlatform,
-              projectRoot: projectRoot.path,
-              aabPath: p.join(projectRoot.path, aabPath),
-              architectures: Arch.values,
-              flavor: flavorName,
-            ),
-          );
+          final artifacts = await prepare(flavor: flavorName);
 
-          verify(
-            () => codePushClient.createReleaseArtifact(
-              appId: app.appId,
-              artifactPath: any(
-                named: 'artifactPath',
-                that: contains(flavorName),
-              ),
-              releaseId: releaseId,
-              arch: any(named: 'arch'),
-              platform: releasePlatform,
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: null,
-            ),
-          ).called(Arch.values.length);
+          expect(
+            artifacts.take(Arch.values.length).map((a) => a.file.path),
+            equals([
+              for (final arch in Arch.values)
+                libappPath(arch, flavor: flavorName),
+            ]),
+          );
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
@@ -1984,57 +1847,15 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             // Simulate AGP filtering: remove armeabi-v7a libapp.so to mirror
             // a project with ndk.abiFilters that excludes arm32.
             const missingArch = Arch.arm32;
-            File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'app',
-                'intermediates',
-                'stripped_native_libs',
-                'release',
-                'out',
-                'lib',
-                missingArch.androidBuildPath,
-                'libapp.so',
-              ),
-            ).deleteSync();
+            File(libappPath(missingArch)).deleteSync();
 
-            await runWithOverrides(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: p.join(projectRoot.path, aabPath),
-                architectures: Arch.values,
-              ),
-            );
+            final artifacts = await prepare();
 
-            // One upload per surviving arch, plus one for the aab.
-            final expectedUploads = Arch.values.length - 1 + 1;
-            verify(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(named: 'artifactPath'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).called(expectedUploads);
-            verifyNever(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(named: 'artifactPath'),
-                releaseId: any(named: 'releaseId'),
-                arch: missingArch.arch,
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
+            // One artifact per surviving arch, plus one for the aab.
+            expect(artifacts, hasLength(Arch.values.length - 1 + 1));
+            expect(
+              artifacts.map((a) => a.arch),
+              isNot(contains(missingArch.arch)),
             );
             verify(() => progress.complete()).called(1);
             verifyNever(() => progress.fail(any()));
@@ -2047,36 +1868,12 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             // Create the archs directory but no libapp.so files inside it.
             // This mirrors AGP producing an empty strip output (all archs
             // filtered out).
-            for (final archMetadata in Arch.values) {
-              Directory(
-                p.join(
-                  projectRoot.path,
-                  'build',
-                  'app',
-                  'intermediates',
-                  'stripped_native_libs',
-                  'release',
-                  'out',
-                  'lib',
-                  archMetadata.androidBuildPath,
-                ),
-              ).createSync(recursive: true);
+            for (final arch in Arch.values) {
+              File(libappPath(arch)).parent.createSync(recursive: true);
             }
             File(p.join(projectRoot.path, aabPath)).createSync(recursive: true);
 
-            await expectLater(
-              () async => runWithOverrides(
-                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  projectRoot: projectRoot.path,
-                  aabPath: p.join(projectRoot.path, aabPath),
-                  architectures: Arch.values,
-                ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
+            await expectLater(prepare, exitsWithCode(ExitCode.software));
 
             verify(
               () => progress.fail(
@@ -2085,18 +1882,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 ),
               ),
             ).called(1);
-            verifyNever(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(named: 'artifactPath'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            );
+            verifyNever(() => progress.complete());
           },
         );
 
@@ -2105,56 +1891,27 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           () async {
             // The strip output dirs exist but contain no libapp.so, as happens
             // when AGP's strip task emits nothing on Flutter 3.44+. The
-            // libraries still ship inside the aab, which is read first, so the
-            // upload succeeds regardless of the strip output.
-            for (final archMetadata in Arch.values) {
-              Directory(
-                p.join(
-                  projectRoot.path,
-                  'build',
-                  'app',
-                  'intermediates',
-                  'stripped_native_libs',
-                  'release',
-                  'out',
-                  'lib',
-                  archMetadata.androidBuildPath,
-                ),
-              ).createSync(recursive: true);
+            // libraries still ship inside the aab, which is read first, so
+            // preparing succeeds regardless of the strip output.
+            for (final arch in Arch.values) {
+              File(libappPath(arch)).parent.createSync(recursive: true);
             }
             // A real aab containing base/lib/<arch>/libapp.so for three arches.
             final aab = File(
               p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
             );
 
-            await runWithOverrides(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: aab.path,
-                architectures: Arch.values,
-              ),
-            );
+            final artifacts = await prepare(aab: aab.path);
 
-            // Each per-arch artifact was uploaded from the directory the aab
-            // was extracted into, not from the empty strip output.
-            verify(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(
-                  named: 'artifactPath',
-                  that: contains('shorebird_aab_libapps'),
-                ),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).called(3);
+            // Each per-arch artifact comes from the directory the aab was
+            // extracted into, not from the empty strip output.
+            final archArtifacts = artifacts.where((a) => a.arch != 'aab');
+            expect(archArtifacts, hasLength(3));
+            for (final artifact in archArtifacts) {
+              expect(artifact.file.path, contains('shorebird_aab_libapps'));
+              expect(artifact.file.existsSync(), isTrue);
+            }
+            expect(artifacts.last.file.path, equals(aab.path));
             verify(() => progress.complete()).called(1);
             verifyNever(() => progress.fail(any()));
           },
@@ -2175,16 +1932,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               ..writeAsBytesSync(ZipEncoder().encode(archive));
 
             await expectLater(
-              () async => runWithOverrides(
-                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  projectRoot: projectRoot.path,
-                  aabPath: aab.path,
-                  architectures: Arch.values,
-                ),
-              ),
+              () => prepare(aab: aab.path),
               exitsWithCode(ExitCode.software),
             );
 
@@ -2201,80 +1949,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         );
       });
 
-      group('createWindowsReleaseArtifacts', () {
-        late Directory releaseDirectory;
-        setUp(() {
-          releaseDirectory = Directory(
-            p.join(projectRoot.path, 'path', 'to', 'Release'),
-          )..createSync(recursive: true);
-          File(
-            p.join(releaseDirectory.path, 'app.exe'),
-          ).writeAsStringSync('exe');
-        });
-
-        group('when createReleaseArtifact succeeds', () {
-          setUp(() {
-            when(
-              () => codePushClient.createReleaseArtifact(
-                artifactPath: any(named: 'artifactPath'),
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).thenAnswer((_) async {});
-          });
-
-          test('completes successfully', () async {
-            await runWithOverrides(
-              () async => codePushClientWrapper.createWindowsReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                releaseDirectory: releaseDirectory,
-              ),
-            );
-
-            verify(() => progress.complete()).called(1);
-            verifyNever(() => progress.fail(any()));
-            verify(
-              () => codePushClient.createReleaseArtifact(
-                artifactPath: any(
-                  named: 'artifactPath',
-                  that: endsWith('.zip'),
-                ),
-                appId: appId,
-                releaseId: releaseId,
-                arch: primaryWindowsReleaseArtifactArch,
-                platform: ReleasePlatform.windows,
-                hash: any(named: 'hash'),
-                canSideload: true,
-                podfileLockHash: null,
-              ),
-            ).called(1);
-          });
-
-          test('deletes the zipped release', () async {
-            final systemTemp = createSystemTemp();
-            await runWithSystemTemp(
-              systemTemp,
-              () => runWithOverrides(
-                () => codePushClientWrapper.createWindowsReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  releaseDirectory: releaseDirectory,
-                ),
-              ),
-            );
-
-            expect(systemTemp.listSync(), isEmpty);
-          });
-        });
-      });
-
-      group('createAndroidArchiveReleaseArtifacts', () {
+      group('prepareAndroidArchiveReleaseArtifacts', () {
         const buildNumber = '1.0';
 
         final aarDir = p.join(
@@ -2291,718 +1966,703 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         final aarPath = p.join(aarDir, 'flutter_release-$buildNumber.aar');
         final extractedAarPath = p.join(aarDir, 'flutter_release-$buildNumber');
 
-        void setUpProjectRoot({String? flavor}) {
+        String libappPath(Arch arch) => p.join(
+          projectRoot.path,
+          extractedAarPath,
+          'jni',
+          arch.androidBuildPath,
+          'libapp.so',
+        );
+
+        void setUpProjectRoot() {
           for (final arch in Arch.values) {
-            final artifactPath = p.join(
-              projectRoot.path,
-              extractedAarPath,
-              'jni',
-              arch.androidBuildPath,
-              'libapp.so',
-            );
-            File(artifactPath).createSync(recursive: true);
+            File(libappPath(arch)).createSync(recursive: true);
           }
           File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
         }
 
-        setUp(() {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenAnswer((_) async {});
-        });
+        List<ReleaseArtifactUpload> prepare() => runWithOverrides(
+          () => codePushClientWrapper.prepareAndroidArchiveReleaseArtifacts(
+            platform: ReleasePlatform.android,
+            aarPath: p.join(projectRoot.path, aarPath),
+            extractedAarDir: p.join(projectRoot.path, extractedAarPath),
+            architectures: Arch.values,
+          ),
+        );
 
-        test('completes successfully when all artifacts are created', () async {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenAnswer((_) async {});
+        test('returns the libapp.so of each arch and the aar', () {
           setUpProjectRoot();
 
-          await runWithOverrides(
-            () async =>
-                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aarPath: p.join(projectRoot.path, aarPath),
-                  extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                  architectures: Arch.values,
-                ),
-          );
+          final artifacts = prepare();
 
-          verify(() => progress.complete()).called(1);
-          verifyNever(() => progress.fail(any()));
-          for (final arch in Arch.values) {
-            verify(
-              () => codePushClient.createReleaseArtifact(
-                appId: app.appId,
-                artifactPath: any(
-                  named: 'artifactPath',
-                  that: endsWith(p.join(arch.androidBuildPath, 'libapp.so')),
+          expect(
+            artifacts,
+            equals([
+              for (final arch in Arch.values)
+                ReleaseArtifactUpload(
+                  file: File(libappPath(arch)),
+                  name: arch.arch,
+                  arch: arch.arch,
+                  platform: ReleasePlatform.android,
+                  canSideload: false,
                 ),
-                releaseId: releaseId,
-                arch: arch.arch,
-                platform: releasePlatform,
-                hash: any(named: 'hash'),
+              ReleaseArtifactUpload(
+                file: File(p.join(projectRoot.path, aarPath)),
+                name: 'aar',
+                arch: 'aar',
+                platform: ReleasePlatform.android,
                 canSideload: false,
-                podfileLockHash: null,
               ),
-            ).called(1);
-          }
-          verify(
-            () => codePushClient.createReleaseArtifact(
-              appId: app.appId,
-              artifactPath: p.join(projectRoot.path, aarPath),
-              releaseId: releaseId,
-              arch: 'aar',
-              platform: releasePlatform,
-              hash: any(named: 'hash'),
-              canSideload: false,
-              podfileLockHash: null,
-            ),
-          ).called(1);
-        });
-
-        test('completes successfully when a flavor is provided', () async {
-          const flavorName = 'myFlavor';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenAnswer((_) async {});
-          setUpProjectRoot(flavor: flavorName);
-
-          await runWithOverrides(
-            () async =>
-                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aarPath: p.join(projectRoot.path, aarPath),
-                  extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                  architectures: Arch.values,
-                ),
+            ]),
           );
-
-          verify(
-            () => codePushClient.createReleaseArtifact(
-              appId: app.appId,
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: releaseId,
-              arch: any(named: 'arch'),
-              platform: releasePlatform,
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: null,
-            ),
-          ).called(Arch.values.length + 1);
+          verify(() => logger.progress('Preparing artifacts')).called(1);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
 
-        test('skips archs with no libapp.so and uploads the rest', () async {
+        test('skips archs with no libapp.so and returns the rest', () {
           setUpProjectRoot();
           const missingArch = Arch.x86_64;
-          File(
-            p.join(
-              projectRoot.path,
-              extractedAarPath,
-              'jni',
-              missingArch.androidBuildPath,
-              'libapp.so',
-            ),
-          ).deleteSync();
+          File(libappPath(missingArch)).deleteSync();
 
-          await runWithOverrides(
-            () async =>
-                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aarPath: p.join(projectRoot.path, aarPath),
-                  extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                  architectures: Arch.values,
-                ),
-          );
+          final artifacts = prepare();
 
-          // One upload per surviving arch, plus one for the aar.
-          verify(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).called(Arch.values.length);
-          verifyNever(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: missingArch.arch,
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
+          // One artifact per surviving arch, plus one for the aar.
+          expect(artifacts, hasLength(Arch.values.length));
+          expect(
+            artifacts.map((a) => a.arch),
+            isNot(contains(missingArch.arch)),
           );
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
 
-        test(
-          'exits with code 70 when every requested arch is missing',
-          () async {
-            File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
-            final jniDir = p.join(projectRoot.path, extractedAarPath, 'jni');
+        test('exits with code 70 when every requested arch is missing', () {
+          File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
+          final jniDir = p.join(projectRoot.path, extractedAarPath, 'jni');
 
-            await expectLater(
-              () async => runWithOverrides(
-                () async =>
-                    codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                      appId: app.appId,
-                      releaseId: releaseId,
-                      platform: releasePlatform,
-                      aarPath: p.join(projectRoot.path, aarPath),
-                      extractedAarDir: p.join(
-                        projectRoot.path,
-                        extractedAarPath,
-                      ),
-                      architectures: Arch.values,
-                    ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => progress.fail(
-                any(
-                  that: allOf(
-                    contains('No architecture artifacts found to upload'),
-                    contains('under $jniDir '),
-                  ),
-                ),
-              ),
-            ).called(1);
-            verifyNever(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(named: 'artifactPath'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            );
-          },
-        );
-      });
-    });
-
-    group('createIosReleaseArtifacts', () {
-      const podfileLockHash = 'podfile-lock-hash';
-      final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
-      final runnerPath = p.join('path', 'to', 'runner.app');
-
-      void setUpProjectRoot({String? flavor}) {
-        Directory(
-          p.join(projectRoot.path, xcarchivePath),
-        ).createSync(recursive: true);
-        Directory(
-          p.join(projectRoot.path, runnerPath),
-        ).createSync(recursive: true);
-      }
-
-      setUp(() {
-        when(
-          () => codePushClient.createReleaseArtifact(
-            appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-            hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
-            podfileLockHash: any(named: 'podfileLockHash'),
-          ),
-        ).thenAnswer((_) async {});
-      });
-
-      test('completes successfully when artifact is created', () async {
-        when(
-          () => codePushClient.createReleaseArtifact(
-            appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-            hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
-            podfileLockHash: any(named: 'podfileLockHash'),
-          ),
-        ).thenAnswer((_) async {});
-        setUpProjectRoot();
-
-        await runWithOverrides(
-          () async => codePushClientWrapper.createIosReleaseArtifacts(
-            appId: app.appId,
-            releaseId: releaseId,
-            xcarchivePath: p.join(projectRoot.path, xcarchivePath),
-            runnerPath: p.join(projectRoot.path, runnerPath),
-            isCodesigned: true,
-            podfileLockHash: podfileLockHash,
-          ),
-        );
-
-        verify(() => progress.complete()).called(1);
-        verifyNever(() => progress.fail(any()));
-        verify(
-          () => codePushClient.createReleaseArtifact(
-            appId: app.appId,
-            artifactPath: any(
-              named: 'artifactPath',
-              that: endsWith('.xcarchive.zip'),
-            ),
-            releaseId: releaseId,
-            arch: 'xcarchive',
-            platform: ReleasePlatform.ios,
-            hash: any(named: 'hash'),
-            canSideload: false,
-            podfileLockHash: podfileLockHash,
-          ),
-        ).called(1);
-        verify(
-          () => codePushClient.createReleaseArtifact(
-            appId: app.appId,
-            artifactPath: any(
-              named: 'artifactPath',
-              that: endsWith('runner.app.zip'),
-            ),
-            releaseId: releaseId,
-            arch: 'runner',
-            platform: ReleasePlatform.ios,
-            hash: any(named: 'hash'),
-            canSideload: true,
-            podfileLockHash: podfileLockHash,
-          ),
-        ).called(1);
-      });
-
-      test('deletes the thinned archive and zips it creates', () async {
-        setUpProjectRoot();
-
-        final systemTemp = createSystemTemp();
-        await runWithSystemTemp(
-          systemTemp,
-          () => runWithOverrides(
-            () => codePushClientWrapper.createIosReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
-              runnerPath: p.join(projectRoot.path, runnerPath),
-              isCodesigned: true,
-              podfileLockHash: podfileLockHash,
-            ),
-          ),
-        );
-
-        expect(systemTemp.listSync(), isEmpty);
-      });
-
-      test(
-        'marks the runner as not sideloadable when not codesigned',
-        () async {
-          setUpProjectRoot();
-
-          await runWithOverrides(
-            () async => codePushClientWrapper.createIosReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
-              runnerPath: p.join(projectRoot.path, runnerPath),
-              isCodesigned: false,
-              podfileLockHash: podfileLockHash,
-            ),
-          );
+          expect(prepare, exitsWithCode(ExitCode.software));
 
           verify(
-            () => codePushClient.createReleaseArtifact(
-              appId: app.appId,
-              artifactPath: any(
-                named: 'artifactPath',
-                that: endsWith('runner.app.zip'),
+            () => progress.fail(
+              any(
+                that: allOf(
+                  contains('No architecture artifacts found to upload'),
+                  contains('under $jniDir '),
+                ),
               ),
-              releaseId: releaseId,
-              arch: 'runner',
-              platform: ReleasePlatform.ios,
-              hash: any(named: 'hash'),
-              canSideload: false,
-              podfileLockHash: podfileLockHash,
             ),
           ).called(1);
-        },
-      );
-    });
-
-    group('createLinuxReleaseArtifacts', () {
-      late Directory releaseBundle;
-
-      setUp(() {
-        releaseBundle = Directory(
-          p.join(projectRoot.path, 'path', 'to', 'bundle'),
-        )..createSync(recursive: true);
+          verifyNever(() => progress.complete());
+        });
       });
 
-      group('when createReleaseArtifact succeeds', () {
+      group('prepareWindowsReleaseArtifacts', () {
+        late Directory releaseDirectory;
+        late Directory stagingDirectory;
+
         setUp(() {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              artifactPath: any(named: 'artifactPath'),
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenAnswer((_) async {});
+          releaseDirectory = Directory(
+            p.join(projectRoot.path, 'path', 'to', 'Release'),
+          )..createSync(recursive: true);
+          File(
+            p.join(releaseDirectory.path, 'app.exe'),
+          ).writeAsStringSync('exe');
+          stagingDirectory = Directory.systemTemp.createTempSync();
         });
 
-        test('completes successfully', () async {
-          await runWithOverrides(
-            () async => codePushClientWrapper.createLinuxReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              bundle: releaseBundle,
-            ),
-          );
+        Future<List<ReleaseArtifactUpload>> prepare() => runWithOverrides(
+          () => codePushClientWrapper.prepareWindowsReleaseArtifacts(
+            releaseDirectory: releaseDirectory,
+            stagingDirectory: stagingDirectory,
+          ),
+        );
 
+        test('returns the release directory zipped into staging', () async {
+          final artifacts = await prepare();
+
+          final zip = File(p.join(stagingDirectory.path, 'Release.zip'));
+          expect(
+            artifacts,
+            equals([
+              ReleaseArtifactUpload(
+                file: zip,
+                name: 'Windows release (exe)',
+                arch: primaryWindowsReleaseArtifactArch,
+                platform: ReleasePlatform.windows,
+                canSideload: true,
+              ),
+            ]),
+          );
+          expect(zip.existsSync(), isTrue);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
-          verify(
-            () => codePushClient.createReleaseArtifact(
-              artifactPath: any(named: 'artifactPath', that: endsWith('.zip')),
-              appId: appId,
-              releaseId: releaseId,
-              arch: primaryLinuxReleaseArtifactArch,
-              platform: ReleasePlatform.linux,
-              hash: any(named: 'hash'),
-              canSideload: true,
-              podfileLockHash: null,
-            ),
-          ).called(1);
         });
 
-        test('deletes the zipped bundle', () async {
+        test('writes nothing outside the staging directory', () async {
           final systemTemp = createSystemTemp();
-          await runWithSystemTemp(
-            systemTemp,
-            () => runWithOverrides(
-              () => codePushClientWrapper.createLinuxReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                bundle: releaseBundle,
-              ),
-            ),
-          );
+          await runWithSystemTemp(systemTemp, prepare);
 
           expect(systemTemp.listSync(), isEmpty);
         });
       });
-    });
 
-    group('createMacosReleaseArtifacts', () {
-      final appPath = p.join('path', 'to', 'Runner.app');
+      group('prepareIosReleaseArtifacts', () {
+        const podfileLockHash = 'podfile-lock-hash';
+        final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
+        final runnerPath = p.join('path', 'to', 'runner.app');
 
-      void setUpProjectRoot({String? flavor}) {
-        Directory(
-          p.join(projectRoot.path, appPath),
-        ).createSync(recursive: true);
-      }
+        late Directory stagingDirectory;
 
-      setUp(() {
-        when(
-          () => codePushClient.createReleaseArtifact(
-            appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-            hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
-            podfileLockHash: any(named: 'podfileLockHash'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => ditto.archive(
-            source: any(named: 'source'),
-            destination: any(named: 'destination'),
-          ),
-        ).thenAnswer((invocation) async {
-          final destination = invocation.namedArguments[#destination] as String;
-          File(destination).createSync(recursive: true);
+        setUp(() {
+          Directory(
+            p.join(projectRoot.path, xcarchivePath),
+          ).createSync(recursive: true);
+          Directory(
+            p.join(projectRoot.path, runnerPath),
+          ).createSync(recursive: true);
+          stagingDirectory = Directory.systemTemp.createTempSync();
         });
-        setUpProjectRoot();
+
+        Future<List<ReleaseArtifactUpload>> prepare({
+          bool isCodesigned = true,
+        }) => runWithOverrides(
+          () => codePushClientWrapper.prepareIosReleaseArtifacts(
+            xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+            runnerPath: p.join(projectRoot.path, runnerPath),
+            isCodesigned: isCodesigned,
+            podfileLockHash: podfileLockHash,
+            stagingDirectory: stagingDirectory,
+          ),
+        );
+
+        test('returns the xcarchive and runner zipped into staging', () async {
+          final artifacts = await prepare();
+
+          expect(
+            artifacts,
+            equals([
+              ReleaseArtifactUpload(
+                file: File(p.join(stagingDirectory.path, 'app.xcarchive.zip')),
+                name: 'xcarchive',
+                arch: 'xcarchive',
+                platform: ReleasePlatform.ios,
+                canSideload: false,
+                podfileLockHash: podfileLockHash,
+              ),
+              ReleaseArtifactUpload(
+                file: File(p.join(stagingDirectory.path, 'runner.app.zip')),
+                name: 'runner.app',
+                arch: 'runner',
+                platform: ReleasePlatform.ios,
+                canSideload: true,
+                podfileLockHash: podfileLockHash,
+              ),
+            ]),
+          );
+          for (final artifact in artifacts) {
+            expect(artifact.file.existsSync(), isTrue);
+          }
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('removes .dylib files from the zipped xcarchive', () async {
+          File(
+            p.join(projectRoot.path, xcarchivePath, 'Info.plist'),
+          ).writeAsStringSync('plist');
+          File(
+              p.join(projectRoot.path, xcarchivePath, 'Products', 'a.dylib'),
+            )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('dylib');
+
+          final artifacts = await prepare();
+
+          final archive = ZipDecoder().decodeBytes(
+            artifacts.first.file.readAsBytesSync(),
+          );
+          final names = archive.files.map((f) => f.name);
+          expect(names, contains(endsWith('Info.plist')));
+          expect(names, isNot(contains(endsWith('.dylib'))));
+          // The original xcarchive is left alone.
+          expect(
+            File(
+              p.join(projectRoot.path, xcarchivePath, 'Products', 'a.dylib'),
+            ).existsSync(),
+            isTrue,
+          );
+        });
+
+        test('deletes the thinned archive it creates', () async {
+          final systemTemp = createSystemTemp();
+          await runWithSystemTemp(systemTemp, prepare);
+
+          expect(systemTemp.listSync(), isEmpty);
+        });
+
+        test(
+          'marks the runner as not sideloadable when not codesigned',
+          () async {
+            final artifacts = await prepare(isCodesigned: false);
+
+            final runner = artifacts.singleWhere((a) => a.arch == 'runner');
+            expect(runner.canSideload, isFalse);
+          },
+        );
       });
 
-      test('completes successfully when release artifact is created', () async {
-        await expectLater(
-          runWithOverrides(
-            () => codePushClientWrapper.createMacosReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              appPath: p.join(projectRoot.path, appPath),
-              podfileLockHash: 'podfile-lock-hash',
-            ),
+      group('prepareLinuxReleaseArtifacts', () {
+        late Directory releaseBundle;
+        late Directory stagingDirectory;
+
+        setUp(() {
+          releaseBundle = Directory(
+            p.join(projectRoot.path, 'path', 'to', 'bundle'),
+          )..createSync(recursive: true);
+          stagingDirectory = Directory.systemTemp.createTempSync();
+        });
+
+        Future<List<ReleaseArtifactUpload>> prepare() => runWithOverrides(
+          () => codePushClientWrapper.prepareLinuxReleaseArtifacts(
+            bundle: releaseBundle,
+            stagingDirectory: stagingDirectory,
           ),
-          completes,
         );
-        verify(
-          () => codePushClient.createReleaseArtifact(
-            appId: app.appId,
-            artifactPath: any(
-              named: 'artifactPath',
-              that: endsWith('Runner.app.zip'),
+
+        test('returns the bundle zipped into staging', () async {
+          final artifacts = await prepare();
+
+          final zip = File(p.join(stagingDirectory.path, 'bundle.zip'));
+          expect(
+            artifacts,
+            equals([
+              ReleaseArtifactUpload(
+                file: zip,
+                name: 'bundle',
+                arch: primaryLinuxReleaseArtifactArch,
+                platform: ReleasePlatform.linux,
+                canSideload: true,
+              ),
+            ]),
+          );
+          expect(zip.existsSync(), isTrue);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('writes nothing outside the staging directory', () async {
+          final systemTemp = createSystemTemp();
+          await runWithSystemTemp(systemTemp, prepare);
+
+          expect(systemTemp.listSync(), isEmpty);
+        });
+      });
+
+      group('prepareMacosReleaseArtifacts', () {
+        final appPath = p.join('path', 'to', 'Runner.app');
+
+        late Directory stagingDirectory;
+
+        setUp(() {
+          when(
+            () => ditto.archive(
+              source: any(named: 'source'),
+              destination: any(named: 'destination'),
             ),
-            releaseId: releaseId,
-            arch: 'app',
-            platform: ReleasePlatform.macos,
-            hash: any(named: 'hash'),
-            canSideload: true,
+          ).thenAnswer((invocation) async {
+            final destination =
+                invocation.namedArguments[#destination] as String;
+            File(destination).createSync(recursive: true);
+          });
+          Directory(
+            p.join(projectRoot.path, appPath),
+          ).createSync(recursive: true);
+          stagingDirectory = Directory.systemTemp.createTempSync();
+        });
+
+        Future<List<ReleaseArtifactUpload>> prepare() => runWithOverrides(
+          () => codePushClientWrapper.prepareMacosReleaseArtifacts(
+            appPath: p.join(projectRoot.path, appPath),
             podfileLockHash: 'podfile-lock-hash',
+            stagingDirectory: stagingDirectory,
           ),
-        ).called(1);
+        );
+
+        test('returns the app archived into staging', () async {
+          final artifacts = await prepare();
+
+          final zip = File(p.join(stagingDirectory.path, 'Runner.app.zip'));
+          expect(
+            artifacts,
+            equals([
+              ReleaseArtifactUpload(
+                file: zip,
+                name: 'app',
+                arch: 'app',
+                platform: ReleasePlatform.macos,
+                canSideload: true,
+                podfileLockHash: 'podfile-lock-hash',
+              ),
+            ]),
+          );
+          verify(
+            () => ditto.archive(
+              source: p.join(projectRoot.path, appPath),
+              destination: zip.path,
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('writes nothing outside the staging directory', () async {
+          final systemTemp = createSystemTemp();
+          await runWithSystemTemp(systemTemp, prepare);
+
+          expect(systemTemp.listSync(), isEmpty);
+        });
       });
 
-      test('deletes the archived app', () async {
-        final systemTemp = createSystemTemp();
-        await runWithSystemTemp(
-          systemTemp,
-          () => runWithOverrides(
-            () => codePushClientWrapper.createMacosReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              appPath: p.join(projectRoot.path, appPath),
+      group('prepareIosFrameworkReleaseArtifacts', () {
+        final frameworkPath = p.join('path', 'to', 'App.xcframework');
+
+        late Directory stagingDirectory;
+
+        setUp(() {
+          Directory(
+            p.join(projectRoot.path, frameworkPath),
+          ).createSync(recursive: true);
+          stagingDirectory = Directory.systemTemp.createTempSync();
+        });
+
+        Future<List<ReleaseArtifactUpload>> prepare() => runWithOverrides(
+          () => codePushClientWrapper.prepareIosFrameworkReleaseArtifacts(
+            appFrameworkPath: p.join(projectRoot.path, frameworkPath),
+            stagingDirectory: stagingDirectory,
+          ),
+        );
+
+        test('returns the xcframework zipped into staging', () async {
+          final artifacts = await prepare();
+
+          final zip = File(
+            p.join(stagingDirectory.path, 'App.xcframework.zip'),
+          );
+          expect(
+            artifacts,
+            equals([
+              ReleaseArtifactUpload(
+                file: zip,
+                name: 'xcframework',
+                arch: 'xcframework',
+                platform: ReleasePlatform.ios,
+                canSideload: false,
+              ),
+            ]),
+          );
+          expect(zip.existsSync(), isTrue);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('writes nothing outside the staging directory', () async {
+          final systemTemp = createSystemTemp();
+          await runWithSystemTemp(systemTemp, prepare);
+
+          expect(systemTemp.listSync(), isEmpty);
+        });
+      });
+
+      group('prepareSupplementReleaseArtifact', () {
+        late Directory supplementDirectory;
+        late Directory stagingDirectory;
+
+        setUp(() {
+          supplementDirectory = Directory(
+            p.join(projectRoot.path, 'path', 'to', 'supplement'),
+          )..createSync(recursive: true);
+          stagingDirectory = Directory.systemTemp.createTempSync();
+        });
+
+        Future<ReleaseArtifactUpload> prepare() => runWithOverrides(
+          () => codePushClientWrapper.prepareSupplementReleaseArtifact(
+            platform: ReleasePlatform.ios,
+            supplementDirectoryPath: supplementDirectory.path,
+            arch: 'ios_supplement',
+            stagingDirectory: stagingDirectory,
+          ),
+        );
+
+        test(
+          'returns the supplement zipped into staging as its arch',
+          () async {
+            final artifact = await prepare();
+
+            final zip = File(
+              p.join(stagingDirectory.path, 'ios_supplement.zip'),
+            );
+            expect(
+              artifact,
+              equals(
+                ReleaseArtifactUpload(
+                  file: zip,
+                  name: 'supplement',
+                  arch: 'ios_supplement',
+                  platform: ReleasePlatform.ios,
+                  canSideload: false,
+                ),
+              ),
+            );
+            expect(zip.existsSync(), isTrue);
+          },
+        );
+
+        test('writes nothing outside the staging directory', () async {
+          final systemTemp = createSystemTemp();
+          await runWithSystemTemp(systemTemp, prepare);
+
+          expect(systemTemp.listSync(), isEmpty);
+        });
+      });
+
+      group('uploadReleaseArtifacts', () {
+        late File firstFile;
+        late File secondFile;
+        late List<ReleaseArtifactUpload> artifacts;
+
+        setUp(() {
+          final dir = Directory.systemTemp.createTempSync();
+          firstFile = File(p.join(dir.path, 'runner.app.zip'))
+            ..writeAsStringSync('runner');
+          secondFile = File(p.join(dir.path, 'supplement.zip'))
+            ..writeAsStringSync('supplement');
+          artifacts = [
+            ReleaseArtifactUpload(
+              file: firstFile,
+              name: 'runner.app',
+              arch: 'runner',
+              platform: ReleasePlatform.ios,
+              canSideload: true,
               podfileLockHash: 'podfile-lock-hash',
             ),
-          ),
-        );
-
-        expect(systemTemp.listSync(), isEmpty);
-      });
-    });
-
-    group('createIosFrameworkReleaseArtifacts', () {
-      final frameworkPath = p.join('path', 'to', 'App.xcframework');
-
-      void setUpProjectRoot({String? flavor}) {
-        Directory(
-          p.join(projectRoot.path, frameworkPath),
-        ).createSync(recursive: true);
-      }
-
-      setUp(() {
-        when(
-          () => codePushClient.createReleaseArtifact(
-            appId: any(named: 'appId'),
-            artifactPath: any(named: 'artifactPath'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-            hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
-            podfileLockHash: any(named: 'podfileLockHash'),
-          ),
-        ).thenAnswer((_) async {});
-        setUpProjectRoot();
-      });
-
-      test('completes successfully when release artifact is created', () async {
-        await expectLater(
-          runWithOverrides(
-            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              appFrameworkPath: p.join(projectRoot.path, frameworkPath),
+            ReleaseArtifactUpload(
+              file: secondFile,
+              name: 'supplement',
+              arch: 'ios_supplement',
+              platform: ReleasePlatform.ios,
+              canSideload: false,
             ),
-          ),
-          completes,
-        );
-        verify(
-          () => codePushClient.createReleaseArtifact(
-            appId: app.appId,
-            artifactPath: any(named: 'artifactPath', that: endsWith('.zip')),
-            releaseId: releaseId,
-            arch: 'xcframework',
-            platform: ReleasePlatform.ios,
-            hash: any(named: 'hash'),
-            canSideload: false,
-            podfileLockHash: null,
-          ),
-        ).called(1);
-      });
+          ];
+        });
 
-      test('deletes the zipped framework', () async {
-        final systemTemp = createSystemTemp();
-        await runWithSystemTemp(
-          systemTemp,
-          () => runWithOverrides(
-            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              appFrameworkPath: p.join(projectRoot.path, frameworkPath),
+        Future<void> upload({String? message}) => runWithOverrides(
+          () => message == null
+              ? codePushClientWrapper.uploadReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  artifacts: artifacts,
+                )
+              : codePushClientWrapper.uploadReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  artifacts: artifacts,
+                  message: message,
+                ),
+        );
+
+        void stubCreateReleaseArtifact(Object? error, {String? arch}) {
+          final stub = when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: arch ?? any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
-          ),
-        );
-
-        expect(systemTemp.listSync(), isEmpty);
-      });
-    });
-
-    group('createSupplementReleaseArtifact', () {
-      late Directory supplementDirectory;
-
-      setUp(() {
-        supplementDirectory = Directory(
-          p.join(projectRoot.path, 'path', 'to', 'supplement'),
-        )..createSync(recursive: true);
-      });
-
-      Future<void> createSupplement() => runWithOverrides(
-        () => codePushClientWrapper.createSupplementReleaseArtifact(
-          appId: app.appId,
-          releaseId: releaseId,
-          platform: ReleasePlatform.ios,
-          supplementDirectoryPath: supplementDirectory.path,
-          arch: 'ios_supplement',
-        ),
-      );
-
-      void stubCreateReleaseArtifact(Object? error) {
-        final stub = when(
-          () => codePushClient.createReleaseArtifact(
-            artifactPath: any(named: 'artifactPath'),
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-            hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
-            podfileLockHash: any(named: 'podfileLockHash'),
-          ),
-        );
-        if (error == null) {
-          stub.thenAnswer((_) async {});
-        } else {
-          stub.thenThrow(error);
+          );
+          if (error == null) {
+            stub.thenAnswer((_) async {});
+          } else {
+            stub.thenThrow(error);
+          }
         }
-      }
 
-      // Every release artifact upload goes through the same helper, so these
-      // tests cover the failure and conflict handling for every platform.
-      test('exits with code 70 when creating the artifact fails', () async {
-        stubCreateReleaseArtifact(Exception('oh no'));
+        setUp(() => stubCreateReleaseArtifact(null));
 
-        await expectLater(createSupplement, exitsWithCode(ExitCode.software));
-        verify(
-          () => progress.fail(
-            'Error uploading supplement artifact: Exception: oh no',
-          ),
-        ).called(1);
-        verifyNever(() => progress.complete());
-      });
+        test('uploads each artifact with what it says about itself', () async {
+          await upload();
 
-      test('logs and continues when the artifact already exists', () async {
-        stubCreateReleaseArtifact(
-          const CodePushConflictException(message: 'exists'),
+          verify(() => logger.progress('Uploading artifacts')).called(1);
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
+              artifactPath: firstFile.path,
+              releaseId: releaseId,
+              arch: 'runner',
+              platform: ReleasePlatform.ios,
+              hash: '${sha256.convert(utf8.encode('runner'))}',
+              canSideload: true,
+              podfileLockHash: 'podfile-lock-hash',
+            ),
+          ).called(1);
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
+              artifactPath: secondFile.path,
+              releaseId: releaseId,
+              arch: 'ios_supplement',
+              platform: ReleasePlatform.ios,
+              hash: '${sha256.convert(utf8.encode('supplement'))}',
+              canSideload: false,
+              podfileLockHash: null,
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('shows the given message while uploading', () async {
+          await upload(message: 'Uploading supplement artifacts');
+
+          verify(
+            () => logger.progress('Uploading supplement artifacts'),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('completes without uploading when given no artifacts', () async {
+          artifacts = [];
+
+          await upload();
+
+          verifyNever(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+            ),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('logs and continues when an artifact already exists', () async {
+          stubCreateReleaseArtifact(
+            const CodePushConflictException(message: 'exists'),
+            arch: 'runner',
+          );
+
+          await upload();
+
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  'runner.app artifact already exists, continuing',
+                ),
+              ),
+            ),
+          ).called(1);
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: secondFile.path,
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'ios_supplement',
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('logs once per artifact that already exists', () async {
+          stubCreateReleaseArtifact(
+            const CodePushConflictException(message: 'exists'),
+          );
+
+          await upload();
+
+          verify(
+            () => logger.info(any(that: contains('already exists'))),
+          ).called(artifacts.length);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+        });
+
+        test('exits with code 70 when uploading an artifact fails', () async {
+          stubCreateReleaseArtifact(Exception('oh no'), arch: 'runner');
+
+          await expectLater(upload, exitsWithCode(ExitCode.software));
+
+          verify(
+            () => progress.fail(
+              'Error uploading runner.app artifact: Exception: oh no',
+            ),
+          ).called(1);
+          verifyNever(() => progress.complete());
+          // The remaining artifacts are not uploaded.
+          verifyNever(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'ios_supplement',
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+            ),
+          );
+        });
+
+        test(
+          'exits with code 70 when storage rejects an upload with a 409',
+          () async {
+            stubCreateReleaseArtifact(
+              const CodePushUploadException(
+                message: 'Failed to upload artifact (Conflict 409)',
+                statusCode: HttpStatus.conflict,
+              ),
+            );
+
+            await expectLater(upload, exitsWithCode(ExitCode.software));
+
+            verifyNever(
+              () => logger.info(any(that: contains('already exists'))),
+            );
+            verify(
+              () => progress.fail(
+                any(that: startsWith('Error uploading runner.app artifact')),
+              ),
+            ).called(1);
+          },
         );
 
-        await createSupplement();
+        test('tells the user to upgrade when the server requires it', () async {
+          stubCreateReleaseArtifact(
+            const CodePushUpgradeRequiredException(message: 'upgrade'),
+          );
 
-        verify(
-          () => logger.info(
-            any(
-              that: contains('supplement artifact already exists, continuing'),
-            ),
-          ),
-        ).called(1);
-        verify(() => progress.complete()).called(1);
-        verifyNever(() => progress.fail(any()));
-      });
+          await expectLater(upload, exitsWithCode(ExitCode.software));
 
-      test('completes successfully when the artifact is created', () async {
-        stubCreateReleaseArtifact(null);
-
-        await createSupplement();
-
-        verify(() => progress.complete()).called(1);
-        verifyNever(() => progress.fail(any()));
-        verify(
-          () => codePushClient.createReleaseArtifact(
-            appId: app.appId,
-            artifactPath: any(
-              named: 'artifactPath',
-              that: endsWith('ios_supplement.zip'),
-            ),
-            releaseId: releaseId,
-            arch: 'ios_supplement',
-            platform: ReleasePlatform.ios,
-            hash: any(named: 'hash'),
-            canSideload: false,
-            podfileLockHash: null,
-          ),
-        ).called(1);
-      });
-
-      test('deletes the zipped supplement after uploading it', () async {
-        stubCreateReleaseArtifact(null);
-
-        final systemTemp = createSystemTemp();
-        await runWithSystemTemp(systemTemp, createSupplement);
-
-        expect(systemTemp.listSync(), isEmpty);
-      });
-
-      test('deletes the zipped supplement when the upload fails', () async {
-        stubCreateReleaseArtifact(Exception('oh no'));
-
-        final systemTemp = createSystemTemp();
-        await expectLater(
-          () => runWithSystemTemp(systemTemp, createSupplement),
-          exitsWithCode(ExitCode.software),
-        );
-        expect(systemTemp.listSync(), isEmpty);
+          verify(() => progress.fail()).called(1);
+          verify(
+            () => logger.err('Your version of shorebird is out of date.'),
+          ).called(1);
+          verifyNever(() => progress.complete());
+        });
       });
     });
 

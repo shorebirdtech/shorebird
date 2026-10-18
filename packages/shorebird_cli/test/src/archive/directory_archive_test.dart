@@ -36,5 +36,40 @@ void main() {
         }
       });
     });
+
+    group('zipInto', () {
+      late Directory directoryToZip;
+      late Directory outDirectory;
+
+      setUp(() {
+        directoryToZip = Directory(
+          p.join(Directory.systemTemp.createTempSync().path, 'my_dir'),
+        )..createSync();
+        File(p.join(directoryToZip.path, 'a.txt')).writeAsStringSync('a');
+        outDirectory = Directory.systemTemp.createTempSync();
+      });
+
+      test('zips directory into the given directory', () async {
+        final zipFile = await directoryToZip.zipInto(outDirectory);
+
+        expect(zipFile.path, equals(p.join(outDirectory.path, 'my_dir.zip')));
+        expect(zipFile.existsSync(), isTrue);
+
+        final extractDir = Directory.systemTemp.createTempSync();
+        await extractFileToDisk(zipFile.path, extractDir.path);
+        final extracted = File(p.join(extractDir.path, 'a.txt'));
+        expect(extracted.readAsStringSync(), equals('a'));
+      });
+
+      test('names the zip after name when provided', () async {
+        final zipFile = await directoryToZip.zipInto(
+          outDirectory,
+          name: 'other',
+        );
+
+        expect(zipFile.path, equals(p.join(outDirectory.path, 'other.zip')));
+        expect(zipFile.existsSync(), isTrue);
+      });
+    });
   });
 }

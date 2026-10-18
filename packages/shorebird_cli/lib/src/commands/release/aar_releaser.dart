@@ -115,7 +115,6 @@ class AarReleaser extends Releaser {
     );
   }
 
-
   @override
   String get postReleaseInstructions {
     final targetLibraryDirectory = Directory(
