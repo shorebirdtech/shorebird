@@ -870,6 +870,68 @@ dependencies:
       });
     });
 
+    group('flutterGitUrl', () {
+      test('defaults to the Shorebird Flutter fork on GitHub', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterGitUrl),
+          equals('https://github.com/shorebirdtech/flutter.git'),
+        );
+      });
+
+      test('returns SHOREBIRD_FLUTTER_GIT_URL when set', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_FLUTTER_GIT_URL': 'https://git.example.com/flutter.git',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterGitUrl),
+          equals('https://git.example.com/flutter.git'),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_FLUTTER_GIT_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_FLUTTER_GIT_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterGitUrl),
+          equals(defaultFlutterGitUrl),
+        );
+      });
+    });
+
+    group('bundletoolUrl', () {
+      test('defaults to the bundletool GitHub release', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.bundletoolUrl),
+          equals(defaultBundletoolUrl),
+        );
+      });
+
+      test('returns SHOREBIRD_BUNDLETOOL_URL when set', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_BUNDLETOOL_URL': 'https://mirror.example.com/bt.jar',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.bundletoolUrl),
+          equals('https://mirror.example.com/bt.jar'),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_BUNDLETOOL_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_BUNDLETOOL_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.bundletoolUrl),
+          equals(defaultBundletoolUrl),
+        );
+      });
+    });
+
     group('hostedUrl', () {
       test('returns hosted url from env if available', () {
         platform = platform.copyWith(

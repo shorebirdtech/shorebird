@@ -123,6 +123,8 @@ void main() {
         () => shorebirdEnv.flutterRevision,
       ).thenReturn('test-flutter-revision');
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(() => shorebirdEnv.downloadUrl).thenReturn(defaultDownloadUrl);
+      when(() => shorebirdEnv.bundletoolUrl).thenReturn(defaultBundletoolUrl);
 
       when(
         () => shorebirdProcess.start(any(), any()),
@@ -874,7 +876,7 @@ void main() {
           ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+              'https://download.shorebird.dev/shorebird/$shorebirdEngineRevision/$name';
 
           final expected = [
             perEngine('patch-darwin-x64.zip'),
@@ -885,6 +887,38 @@ void main() {
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
+        });
+
+        test('pulls every artifact from the mirror when set', () async {
+          setOperatingSystem(NativePlatform.linux);
+          when(
+            () => shorebirdEnv.downloadUrl,
+          ).thenReturn('https://mirror.example.com/shorebird');
+          when(
+            () => shorebirdEnv.bundletoolUrl,
+          ).thenReturn('https://mirror.example.com/bundletool.jar');
+
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
+
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
+
+          const perEngine =
+              'https://mirror.example.com/shorebird/shorebird/$shorebirdEngineRevision';
+          expect(
+            requests,
+            equals(
+              [
+                '$perEngine/patch-linux-x64.zip',
+                'https://mirror.example.com/bundletool.jar',
+                '$perEngine/aot-tools.dill',
+              ].map(Uri.parse).toList(),
+            ),
+          );
         });
 
         test('pulls correct artifact for Windows', () async {
@@ -900,7 +934,7 @@ void main() {
           ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+              'https://download.shorebird.dev/shorebird/$shorebirdEngineRevision/$name';
 
           final expected = [
             perEngine('patch-windows-x64.zip'),
@@ -924,7 +958,7 @@ void main() {
           ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+              'https://download.shorebird.dev/shorebird/$shorebirdEngineRevision/$name';
 
           final expected = [
             perEngine('patch-linux-x64.zip'),

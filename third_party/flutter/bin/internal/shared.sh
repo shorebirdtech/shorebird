@@ -13,7 +13,8 @@ function update_flutter {
   if [[ -d "$FLUTTER_PATH" ]]; then
     git -C "$FLUTTER_PATH" fetch
   else
-    git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$FLUTTER_PATH"
+    # Keep the default in sync with defaultFlutterGitUrl in shorebird_env.dart.
+    git clone --filter=tree:0 "${SHOREBIRD_FLUTTER_GIT_URL:-https://github.com/shorebirdtech/flutter.git}" --no-checkout "$FLUTTER_PATH"
   fi
   # -c to avoid printing a warning about being in a detached head state.
   git -C "$FLUTTER_PATH" -c advice.detachedHead=false checkout "$FLUTTER_VERSION"

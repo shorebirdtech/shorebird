@@ -38,10 +38,6 @@ class ShorebirdFlutter {
   /// is pinned to.
   static const fvmExecutable = 'fvm';
 
-  /// The Shorebird Flutter fork git URL.
-  static const String flutterGitUrl =
-      'https://github.com/shorebirdtech/flutter.git';
-
   /// Arguments to pass to `flutter precache`.
   List<String> get precacheArgs => ['--android', if (platform.isMacOS) '--ios'];
 
@@ -114,7 +110,7 @@ class ShorebirdFlutter {
         body: () async {
           // Clone the Shorebird Flutter repo into the staging directory.
           await git.clone(
-            url: flutterGitUrl,
+            url: shorebirdEnv.flutterGitUrl,
             outputDirectory: stagingDirectory.path,
             args: ['--filter=tree:0', '--no-checkout'],
           );
