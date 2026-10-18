@@ -33,6 +33,25 @@ void main() {
       );
     });
 
+    test('differs by organizationId alone', () {
+      final appMetadata = AppMetadata(
+        appId: '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        organizationId: 42,
+        displayName: 'My App',
+        createdAt: DateTime(2022),
+        updatedAt: DateTime(2023),
+      );
+      final other = AppMetadata(
+        appId: '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        organizationId: 43,
+        displayName: 'My App',
+        createdAt: DateTime(2022),
+        updatedAt: DateTime(2023),
+      );
+      expect(appMetadata, isNot(equals(other)));
+      expect(appMetadata.hashCode, isNot(equals(other.hashCode)));
+    });
+
     test('parses a payload without organization_id', () {
       final appMetadata = AppMetadata.fromJson({
         'app_id': '30370f27-dbf1-4673-8b20-fb096e38dffa',
