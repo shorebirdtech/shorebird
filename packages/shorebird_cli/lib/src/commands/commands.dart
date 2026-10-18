@@ -21,3 +21,4 @@ export 'preview_command.dart';
 export 'release/release.dart';
 export 'releases/releases.dart';
 export 'upgrade_command.dart';
+export 'upload_command.dart';
