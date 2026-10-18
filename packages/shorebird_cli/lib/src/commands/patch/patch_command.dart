@@ -232,6 +232,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// The deployment track to publish the patch to.
   DeploymentTrack get track => DeploymentTrack(results['track'] as String);
 
+  /// The project's git commit and whether its working tree is dirty, read once
+  /// before the first build: a build's own outputs (add-to-app copies its
+  /// artifacts into `release/`) must not count as uncommitted changes, and
+  /// every platform of one run must record the same state.
+  late final Future<GitSourceState> gitSourceState = git.sourceState(
+    directory: shorebirdEnv.getShorebirdProjectRoot()!,
+  );
+
   @override
   Future<int> run() async {
     if (results.releaseTypes.isEmpty) {
@@ -338,6 +346,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   @visibleForTesting
   Future<PublishedPatch> createPatch(Patcher patcher) async {
     await _assertCanPatch(patcher);
+    await gitSourceState;
 
     await cache.updateAll();
 
@@ -823,7 +832,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required DiffStatus diffStatus,
     required bool inferredReleaseVersion,
   }) async {
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    final gitState = await gitSourceState;
     final baseMetadata = CreatePatchMetadata(
       releasePlatform: patcher.releaseType.releasePlatform,
       usedIgnoreAssetChangesFlag: allowAssetDiffs,
@@ -841,10 +850,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         shorebirdVersion: packageVersion,
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
         usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
-        gitCommit: await git.headCommit(directory: projectRoot),
-        gitHasUncommittedChanges: await git.hasUncommittedChanges(
-          directory: projectRoot,
-        ),
+        gitCommit: gitState.commit,
+        gitHasUncommittedChanges: gitState.hasUncommittedChanges,
       ),
       // Attach the build-trace summary if the build produced one.
       // Null for older Flutter pins without the --shorebird-trace

@@ -377,11 +377,10 @@ void main() {
 
       git = MockGit();
       when(
-        () => git.headCommit(directory: any(named: 'directory')),
-      ).thenAnswer((_) async => gitCommit);
-      when(
-        () => git.hasUncommittedChanges(directory: any(named: 'directory')),
-      ).thenAnswer((_) async => false);
+        () => git.sourceState(directory: any(named: 'directory')),
+      ).thenAnswer(
+        (_) async => (commit: gitCommit, hasUncommittedChanges: false),
+      );
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -502,7 +501,12 @@ void main() {
       test('records the git commit the patch was built from', () async {
         await runWithOverrides(() => command.createPatch(patcher));
 
-        verify(() => git.headCommit(directory: projectRoot)).called(1);
+        verifyInOrder([
+          () => git.sourceState(directory: projectRoot),
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ]);
         verify(
           () => patcher.updatedCreatePatchMetadata(
             any(

@@ -48,6 +48,10 @@ String _buildServerErrorMessage(String stderr) {
   return buffer.toString();
 }
 
+/// The commit a working tree is at and whether it has changes beyond it,
+/// each null when it can't be read. See [Git.sourceState].
+typedef GitSourceState = ({String? commit, bool? hasUncommittedChanges});
+
 /// A wrapper around all git related functionality.
 class Git {
   /// Name of the git executable.
@@ -175,6 +179,9 @@ class Git {
   Future<bool?> hasUncommittedChanges({required Directory directory}) async {
     try {
       final result = await git([
+        // Don't take the index lock to refresh it: this is a read, and may
+        // run beside the user's own git commands.
+        '--no-optional-locks',
         'status',
         '--porcelain',
       ], workingDirectory: directory.path);
@@ -183,6 +190,12 @@ class Git {
       return null;
     }
   }
+
+  /// The [headCommit] and [hasUncommittedChanges] of [directory].
+  Future<GitSourceState> sourceState({required Directory directory}) async => (
+    commit: await headCommit(directory: directory),
+    hasUncommittedChanges: await hasUncommittedChanges(directory: directory),
+  );
 
   /// The output of `git symbolic-ref [revision]` for the git repository located
   /// in [directory]. If not provided, [revision] defaults to 'HEAD'.

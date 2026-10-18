@@ -218,11 +218,10 @@ void main() {
 
       git = MockGit();
       when(
-        () => git.headCommit(directory: any(named: 'directory')),
-      ).thenAnswer((_) async => gitCommit);
-      when(
-        () => git.hasUncommittedChanges(directory: any(named: 'directory')),
-      ).thenAnswer((_) async => false);
+        () => git.sourceState(directory: any(named: 'directory')),
+      ).thenAnswer(
+        (_) async => (commit: gitCommit, hasUncommittedChanges: false),
+      );
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -1137,12 +1136,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
 
       test('records the git commit the release was built from', () async {
         when(
-          () => git.hasUncommittedChanges(directory: any(named: 'directory')),
-        ).thenAnswer((_) async => true);
+          () => git.sourceState(directory: any(named: 'directory')),
+        ).thenAnswer(
+          (_) async => (commit: gitCommit, hasUncommittedChanges: true),
+        );
         await runWithOverrides(
           () => command.finalizeRelease(release: release, releaser: releaser),
         );
-        verify(() => git.headCommit(directory: projectRoot)).called(1);
+        verify(() => git.sourceState(directory: projectRoot)).called(1);
         verify(
           () => releaser.updatedReleaseMetadata(
             any(

@@ -496,6 +496,7 @@ origin/flutter_release/3.10.6''';
         );
         verify(
           () => process.run('git', [
+            '--no-optional-locks',
             'status',
             '--porcelain',
           ], workingDirectory: directory.path),
@@ -521,6 +522,49 @@ origin/flutter_release/3.10.6''';
           ),
           completion(isNull),
         );
+      });
+
+      test('returns null when git is not installed', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenThrow(const ProcessException('git', [], 'not found'));
+        await expectLater(
+          runWithOverrides(
+            () => git.hasUncommittedChanges(directory: directory),
+          ),
+          completion(isNull),
+        );
+      });
+    });
+
+    group('sourceState', () {
+      final directory = Directory('project');
+
+      test('reads the commit and the working tree state', () async {
+        when(
+          () => process.run('git', [
+            'rev-parse',
+            '--verify',
+            'HEAD',
+          ], workingDirectory: directory.path),
+        ).thenAnswer((_) async {
+          final result = MockShorebirdProcessResult();
+          when(() => result.exitCode).thenReturn(ExitCode.success.code);
+          when(() => result.stdout).thenReturn('abc123\n');
+          return result;
+        });
+        when(() => processResult.stdout).thenReturn('?? notes.txt\n');
+
+        final state = await runWithOverrides(
+          () => git.sourceState(directory: directory),
+        );
+
+        expect(state.commit, equals('abc123'));
+        expect(state.hasUncommittedChanges, isTrue);
       });
     });
 

@@ -180,6 +180,14 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   @override
   String get name => 'release';
 
+  /// The project's git commit and whether its working tree is dirty, read once
+  /// before the first build: a build's own outputs (add-to-app copies its
+  /// artifacts into `release/`) must not count as uncommitted changes, and
+  /// every platform of one run must record the same state.
+  late final Future<GitSourceState> gitSourceState = git.sourceState(
+    directory: shorebirdEnv.getShorebirdProjectRoot()!,
+  );
+
   @override
   Future<int> run() async {
     if (results.releaseTypes.isEmpty) {
@@ -336,6 +344,7 @@ $error''');
   @visibleForTesting
   Future<Release> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
+    await gitSourceState;
     await assertArgsAreValid(releaser);
     await _validateFlavors(releaser);
 
@@ -779,7 +788,7 @@ ${summary.join('\n')}
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    final gitState = await gitSourceState;
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
       flutterVersionOverride: flutterVersionArg,
@@ -791,10 +800,8 @@ ${summary.join('\n')}
         shorebirdVersion: packageVersion,
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
         usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
-        gitCommit: await git.headCommit(directory: projectRoot),
-        gitHasUncommittedChanges: await git.hasUncommittedChanges(
-          directory: projectRoot,
-        ),
+        gitCommit: gitState.commit,
+        gitHasUncommittedChanges: gitState.hasUncommittedChanges,
       ),
       // Attach the build-trace summary if the build produced one.
       // Null for older Flutter pins without the --shorebird-trace flag
