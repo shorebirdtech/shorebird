@@ -187,12 +187,13 @@ void main() {
       });
 
       // Regression test for https://github.com/shorebirdtech/shorebird/issues/2233:
-      // `shorebird cache clean` logs after clearing, so deleting the log file
-      // out from under the logger broke the command.
+      // clear used to delete the logs directory too, and the logger writes
+      // there while the command runs, so the delete failed.
       test('does not delete the logs directory', () async {
-        final logsDirectory = Directory(
-          p.join(Directory.systemTemp.createTempSync().path, 'logs'),
+        final logsDirectory = Directory.systemTemp.createTempSync(
+          'shorebird_logs',
         );
+        addTearDown(() => logsDirectory.deleteSync(recursive: true));
         final logFile = File(p.join(logsDirectory.path, 'shorebird.log'))
           ..createSync(recursive: true);
         when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
