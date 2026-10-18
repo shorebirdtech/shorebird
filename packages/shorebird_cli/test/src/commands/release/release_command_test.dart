@@ -6,6 +6,7 @@ import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
@@ -18,6 +19,8 @@ import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/release_bundle.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -551,6 +554,227 @@ void main() {
           );
           verifyNever(() => logger.info('No issues detected.'));
         });
+      });
+    });
+
+    group('with --no-upload', () {
+      late File aab;
+
+      File bundleAt(String name) =>
+          File(p.join(projectRoot.path, 'build', 'shorebird', name));
+
+      setUp(() {
+        when(() => argResults['upload']).thenReturn(false);
+        when(
+          () => shorebirdFlutter.getVersionForRevision(
+            flutterRevision: any(named: 'flutterRevision'),
+          ),
+        ).thenAnswer((_) async => flutterVersionString);
+        aab = File(p.join(projectRoot.path, 'app-release.aab'))
+          ..writeAsStringSync('aab');
+        when(() => releaser.projectRoot).thenReturn(projectRoot);
+        when(
+          () => releaser.prepareReleaseArtifacts(
+            stagingDirectory: any(named: 'stagingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            ReleaseArtifactUpload(
+              file: aab,
+              name: 'aab',
+              arch: 'aab',
+              platform: ReleasePlatform.android,
+              canSideload: true,
+            ),
+          ],
+        );
+        when(
+          () => releaser.prepareSupplementArtifact(
+            stagingDirectory: any(named: 'stagingDirectory'),
+          ),
+        ).thenAnswer((_) async => null);
+      });
+
+      test('saves a bundle instead of publishing', () async {
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.success.code),
+        );
+
+        verifyNever(
+          () => codePushClientWrapper.createRelease(
+            appId: any(named: 'appId'),
+            version: any(named: 'version'),
+            flutterRevision: any(named: 'flutterRevision'),
+            platform: any(named: 'platform'),
+          ),
+        );
+        verifyNever(
+          () => codePushClientWrapper.updateReleaseStatus(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            status: any(named: 'status'),
+            metadata: any(named: 'metadata'),
+          ),
+        );
+        verifyNever(
+          () => releaser.uploadReleaseArtifacts(
+            release: any(named: 'release'),
+            appId: any(named: 'appId'),
+          ),
+        );
+
+        final bundleFile = bundleAt('release-$releaseVersion-android.zip');
+        final bundle = await ReleaseBundle.extract(
+          file: bundleFile,
+          directory: Directory.systemTemp.createTempSync(),
+        );
+        expect(bundle.appId, equals(appId));
+        expect(bundle.flavor, isNull);
+        expect(bundle.releaseType, equals(ReleaseType.android));
+        expect(bundle.releaseVersion, equals(releaseVersion));
+        expect(bundle.flutterRevision, equals(flutterRevision));
+        expect(bundle.flutterVersion, equals(flutterVersionString));
+        expect(
+          bundle.metadata,
+          equals(UpdateReleaseMetadata.forTest().toJson()),
+        );
+        expect(bundle.artifacts.single.arch, equals('aab'));
+        expect(bundle.artifacts.single.file.readAsStringSync(), 'aab');
+
+        verify(
+          () => logger.success(any(that: contains('not on Shorebird yet'))),
+        ).called(1);
+        verify(() => logger.info(postReleaseInstructions)).called(1);
+        verify(
+          () => logger.info(
+            any(that: contains('shorebird upload ${bundleFile.path}')),
+          ),
+        ).called(1);
+        verify(artifactBuilder.writeBuildTraceSummary).called(1);
+      });
+
+      test(
+        'records the target, and names the bundle after the release type',
+        () async {
+          when(() => argResults['target']).thenReturn('lib/main_dev.dart');
+          when(() => releaser.releaseType).thenReturn(ReleaseType.aar);
+          await runWithOverrides(command.run);
+          final bundle = await ReleaseBundle.extract(
+            file: bundleAt('release-$releaseVersion-aar.zip'),
+            directory: Directory.systemTemp.createTempSync(),
+          );
+          expect(bundle.target, equals('lib/main_dev.dart'));
+          expect(bundle.releaseType, equals(ReleaseType.aar));
+        },
+      );
+
+      group('quotes the printed path when it needs it', () {
+        late Directory spaced;
+        late String path;
+
+        Future<void> runOn(String operatingSystem) {
+          final platform = TestNativePlatform(
+            operatingSystem: operatingSystem,
+            operatingSystemVersion: 'test',
+            environment: {},
+          );
+          return runScoped(
+            () => runWithOverrides(command.run),
+            values: {platformRef.overrideWith(() => platform)},
+          );
+        }
+
+        setUp(() {
+          spaced = Directory(p.join(projectRoot.path, "Bob's App"))
+            ..createSync();
+          when(() => releaser.projectRoot).thenReturn(spaced);
+          path = p.join(
+            spaced.path,
+            'build',
+            'shorebird',
+            'release-$releaseVersion-android.zip',
+          );
+        });
+
+        test('in single quotes on macOS and Linux', () async {
+          await runOn(NativePlatform.linux);
+          final quoted = "'${path.replaceAll("'", r"'\''")}'";
+          verify(
+            () => logger.info(any(that: contains('shorebird upload $quoted'))),
+          ).called(1);
+        });
+
+        test('in double quotes on Windows', () async {
+          await runOn(NativePlatform.windows);
+          verify(
+            () => logger.info(any(that: contains('shorebird upload "$path"'))),
+          ).called(1);
+        });
+      });
+
+      test('names the bundle after the flavor', () async {
+        when(() => argResults['flavor']).thenReturn('internal');
+        await runWithOverrides(command.run);
+        expect(
+          bundleAt('release-$releaseVersion-android-internal.zip').existsSync(),
+          isTrue,
+        );
+      });
+
+      test('emits the saved bundles with --json', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            () => runWithOverrides(command.run),
+            values: {isJsonModeRef.overrideWith(() => true)},
+          ),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(
+          json['data'],
+          equals({
+            'app_id': appId,
+            'platforms': ['android'],
+            'bundles': [
+              {
+                'platform': 'android',
+                'release_type': 'android',
+                'release_version': releaseVersion,
+                'path': bundleAt('release-$releaseVersion-android.zip').path,
+              },
+            ],
+          }),
+        );
+      });
+
+      test('exits when the bundle cannot be written', () async {
+        // A file where the bundle's directory should be.
+        File(p.join(projectRoot.path, 'build', 'shorebird'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('in the way');
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+        verify(
+          () => progress.fail(
+            any(that: contains('Failed to save the release bundle')),
+          ),
+        ).called(1);
+      });
+
+      test('cannot be combined with --dry-run', () async {
+        when(() => argResults['dry-run']).thenReturn(true);
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(
+          () => logger.err(
+            any(that: contains('--dry-run and --no-upload cannot be used')),
+          ),
+        ).called(1);
       });
     });
 
