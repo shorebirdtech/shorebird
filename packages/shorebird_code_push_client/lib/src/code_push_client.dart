@@ -140,7 +140,7 @@ class _CodePushHttpClient extends http.BaseClient {
     final response = await _client.send(request);
     final notice = response.headers[CodePushClient.noticeHeader];
     if (notice != null && notice.isNotEmpty && request.url.host == _apiHost) {
-      _onNotice?.call(notice);
+      parseNotices(notice).forEach((n) => _onNotice?.call(n));
     }
     return response;
   }
@@ -186,12 +186,10 @@ class CodePushClient {
        ),
        _uploadRetryBaseDelay = uploadRetryBaseDelay;
 
-  /// The response header carrying a notice for the customer, such as a warning
-  /// that patches are near the account's install limit. Its value is a
-  /// sentence to show as is; `onNotice` receives it. The server sends at most
-  /// one per response, in printable ASCII, since HTTP header values are not
-  /// reliably decoded as anything else and repeated headers are joined with
-  /// commas.
+  /// The response header carrying notices for the customer, such as a warning
+  /// that patches are near the account's install limit. Its value is an
+  /// RFC 9651 Structured Field List of Strings, one sentence per notice, to
+  /// show as is; `onNotice` receives each (see [parseNotices]).
   ///
   /// A header, rather than a field on each response, so any response can
   /// carry one and clients that predate it ignore it: the way Heroku's CLI
@@ -1287,4 +1285,54 @@ class CodePushClient {
 extension on http.BaseResponse {
   /// Whether the response has a 2xx status code.
   bool get isSuccess => statusCode >= 200 && statusCode < 300;
+}
+
+/// Splits a [CodePushClient.noticeHeader] value into its notices.
+///
+/// The value is an RFC 9651 List of sf-strings (`"one", "two"`), which lets
+/// one response carry several notices and a notice contain commas. Only what
+/// the server sends is parsed: quoted strings with `\"` and `\\` escapes,
+/// separated by commas and optional whitespace. A value that is not such a
+/// list is returned whole as one notice, so a malformed header still reaches
+/// the customer rather than vanishing.
+@visibleForTesting
+List<String> parseNotices(String value) {
+  final notices = <String>[];
+  var i = 0;
+  void skipSpace() {
+    while (i < value.length && (value[i] == ' ' || value[i] == '\t')) {
+      i++;
+    }
+  }
+
+  skipSpace();
+  while (i < value.length) {
+    if (value[i] != '"') return [value];
+    i++;
+    final notice = StringBuffer();
+    var closed = false;
+    while (i < value.length) {
+      final char = value[i++];
+      if (char == r'\') {
+        if (i >= value.length) return [value];
+        final escaped = value[i++];
+        if (escaped != '"' && escaped != r'\') return [value];
+        notice.write(escaped);
+      } else if (char == '"') {
+        closed = true;
+        break;
+      } else {
+        notice.write(char);
+      }
+    }
+    if (!closed) return [value];
+    if (notice.isNotEmpty) notices.add(notice.toString());
+    skipSpace();
+    if (i == value.length) break;
+    if (value[i] != ',') return [value];
+    i++;
+    skipSpace();
+    if (i == value.length) return [value];
+  }
+  return notices;
 }

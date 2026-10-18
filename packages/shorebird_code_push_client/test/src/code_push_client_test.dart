@@ -95,7 +95,7 @@ void main() {
       );
 
       test('passes a notice header to onNotice', () async {
-        respondWith({CodePushClient.noticeHeader: 'Patches are paused.'});
+        respondWith({CodePushClient.noticeHeader: '"Patches are paused."'});
         await createPatch();
         expect(notices, equals(['Patches are paused.']));
       });
@@ -110,6 +110,15 @@ void main() {
         respondWith({CodePushClient.noticeHeader: ''});
         await createPatch();
         expect(notices, isEmpty);
+      });
+
+      test('passes each notice in the list', () async {
+        respondWith({
+          CodePushClient.noticeHeader:
+              '"Patches are paused.", "Upgrade, soon."',
+        });
+        await createPatch();
+        expect(notices, equals(['Patches are paused.', 'Upgrade, soon.']));
       });
 
       test('ignores a notice from a host other than the API', () async {
@@ -128,7 +137,7 @@ void main() {
 
       test('tolerates no onNotice', () async {
         codePushClient = CodePushClient(httpClient: httpClient);
-        respondWith({CodePushClient.noticeHeader: 'Patches are paused.'});
+        respondWith({CodePushClient.noticeHeader: '"Patches are paused."'});
         await expectLater(createPatch(), completes);
       });
     });

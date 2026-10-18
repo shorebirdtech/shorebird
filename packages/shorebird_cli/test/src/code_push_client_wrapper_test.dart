@@ -111,7 +111,7 @@ void main() {
             utf8.encode(json.encode(const GetAppsResponse(apps: []).toJson())),
           ),
           HttpStatus.ok,
-          headers: {'shorebird-notice': 'Patches are paused.'},
+          headers: {'shorebird-notice': '"Patches are paused."'},
         ),
       );
       final notices = _MockServerNotices();
