@@ -61,6 +61,9 @@ void main() {
       when(
         () => shorebirdEnv.flutterBinaryFile,
       ).thenReturn(File(p.join('bin', 'cache', 'flutter', 'bin', 'flutter')));
+      when(
+        () => shorebirdEnv.downloadUrl,
+      ).thenReturn('https://download.shorebird.dev');
 
       when(() => runProcessResult.stderr).thenReturn('stderr');
       when(() => runProcessResult.stdout).thenReturn('stdout');
@@ -154,6 +157,24 @@ void main() {
             ['--version'],
             environment: flutterStorageBaseUrlEnv,
             workingDirectory: '~',
+          ),
+        ).called(1);
+      });
+
+      test('points flutter at the download url from shorebirdEnv', () async {
+        when(
+          () => shorebirdEnv.downloadUrl,
+        ).thenReturn('http://localhost:8080');
+        await runWithOverrides(
+          () => shorebirdProcess.run('flutter', ['--version']),
+        );
+
+        verify(
+          () => processWrapper.run(
+            any(),
+            ['--version'],
+            environment: {'FLUTTER_STORAGE_BASE_URL': 'http://localhost:8080'},
+            workingDirectory: any(named: 'workingDirectory'),
           ),
         ).called(1);
       });

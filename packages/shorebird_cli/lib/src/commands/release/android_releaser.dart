@@ -140,6 +140,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       aabPath: aabFile.path,
       platform: releaseType.releasePlatform,
       architectures: architectures,
+      stagingDirectory: stagingDirectory,
       flavor: flavor,
     );
   }

@@ -658,6 +658,7 @@ To change the version of this release, change your app's version in your pubspec
             aabPath: any(named: 'aabPath'),
             platform: any(named: 'platform'),
             architectures: any(named: 'architectures'),
+            stagingDirectory: any(named: 'stagingDirectory'),
             flavor: any(named: 'flavor'),
           ),
         ).thenAnswer((_) async => artifacts);
@@ -683,6 +684,7 @@ To change the version of this release, change your app's version in your pubspec
             aabPath: aabFile.path,
             platform: ReleasePlatform.android,
             architectures: Arch.values,
+            stagingDirectory: stagingDirectory,
             flavor: androidReleaser.flavor,
           ),
         ).called(1);

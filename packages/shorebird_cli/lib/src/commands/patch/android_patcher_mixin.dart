@@ -107,8 +107,10 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
     }
     if (patchArtifactBundles.isEmpty) {
       createDiffProgress.fail(
-        'No patch artifacts produced: no libapp.so found for any architecture '
-        'under ${patchArchsDir.path}.',
+        // No path here: patchArchsDir may be a temporary directory that is
+        // deleted before the command exits.
+        'No patch artifacts produced: the patch build has no libapp.so for '
+        'any architecture in the release.',
       );
       throw ProcessExit(ExitCode.software.code);
     }

@@ -615,12 +615,14 @@ Please create a release using "shorebird release" and try again.
   }
 
   /// Returns the artifacts of an Android app bundle release: the libapp.so of
-  /// each of [architectures] the build produced, and the .aab at [aabPath].
+  /// each of [architectures] the build produced, copied into
+  /// [stagingDirectory], and the .aab at [aabPath].
   Future<List<ReleaseArtifactUpload>> prepareAndroidReleaseArtifacts({
     required ReleasePlatform platform,
     required String projectRoot,
     required String aabPath,
     required Iterable<Arch> architectures,
+    required Directory stagingDirectory,
     String? flavor,
   }) async {
     final progress = logger.progress('Preparing artifacts');
@@ -639,17 +641,17 @@ Please create a release using "shorebird release" and try again.
       );
     }
 
-    final archsDir = await ArtifactManager.androidArchsDirectoryFromAab(
-      projectRoot: Directory(projectRoot),
-      flavor: flavor,
-      aab: File(aabPath),
-    );
-
-    if (archsDir == null) {
-      _handleErrorAndExit(
-        Exception('Cannot find patch build artifacts.'),
-        progress: progress,
-        message: '''
+    final archArtifacts =
+        await ArtifactManager.withAndroidArchsDirectoryFromAab(
+          projectRoot: Directory(projectRoot),
+          flavor: flavor,
+          aab: File(aabPath),
+          action: (archsDir) async {
+            if (archsDir == null) {
+              _handleErrorAndExit(
+                Exception('Cannot find patch build artifacts.'),
+                progress: progress,
+                message: '''
 Cannot find release build artifacts.
 
 Please run `shorebird cache clean` and try again. If the issue persists, please
@@ -659,16 +661,33 @@ Looked in:
   - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib''',
-      );
-    }
+              );
+            }
+
+            // archsDir may be a temporary directory deleted once this action
+            // returns, so copy each libapp.so into stagingDirectory.
+            return _androidArchArtifacts(
+              platform: platform,
+              archsDir: archsDir.path,
+              architectures: architectures,
+              progress: progress,
+            ).map((artifact) {
+              final staged = File(
+                p.join(stagingDirectory.path, artifact.arch, 'libapp.so'),
+              )..parent.createSync(recursive: true);
+              return ReleaseArtifactUpload(
+                file: artifact.file.copySync(staged.path),
+                name: artifact.name,
+                arch: artifact.arch,
+                platform: artifact.platform,
+                canSideload: artifact.canSideload,
+              );
+            }).toList();
+          },
+        );
 
     final artifacts = [
-      ..._androidArchArtifacts(
-        platform: platform,
-        archsDir: archsDir.path,
-        architectures: architectures,
-        progress: progress,
-      ),
+      ...archArtifacts,
       ReleaseArtifactUpload(
         file: File(aabPath),
         name: 'aab',
@@ -746,7 +765,7 @@ Looked in:
     // `jniLibs.excludes`. Iterating only over present files lets a filtered
     // release succeed instead of crashing on the first missing arch
     // (https://github.com/shorebirdtech/shorebird/issues/3388).
-    final missingArchPaths = <String>[];
+    final missingArchs = <Arch>[];
     final artifacts = <ReleaseArtifactUpload>[];
     for (final arch in architectures) {
       final artifactPath = p.join(
@@ -761,7 +780,7 @@ Looked in:
           'This is expected if the project filters this ABI via '
           'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
         );
-        missingArchPaths.add(artifactPath);
+        missingArchs.add(arch);
         continue;
       }
       artifacts.add(
@@ -783,9 +802,8 @@ Looked in:
             '''
 No architecture artifacts found to upload.
 
-Shorebird looked for libapp.so under $archsDir but every requested
-architecture was missing:
-${missingArchPaths.map((p) => '  - $p').join('\n')}
+The build has no libapp.so for any requested architecture:
+${missingArchs.map((arch) => '  - ${arch.androidBuildPath}').join('\n')}
 
 This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
 configuration excludes every architecture Shorebird was asked to build. Either

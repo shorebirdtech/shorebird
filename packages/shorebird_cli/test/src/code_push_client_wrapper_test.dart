@@ -1793,10 +1793,21 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           'libapp.so',
         );
 
+        late Directory stagingDirectory;
+
+        String stagedLibappPath(Arch arch) =>
+            p.join(stagingDirectory.path, arch.arch, 'libapp.so');
+
+        setUp(() {
+          stagingDirectory = Directory.systemTemp.createTempSync();
+        });
+
         void setUpProjectRoot({String? flavor}) {
           File(p.join(projectRoot.path, aabPath)).createSync(recursive: true);
           for (final arch in Arch.values) {
-            File(libappPath(arch, flavor: flavor)).createSync(recursive: true);
+            File(libappPath(arch, flavor: flavor))
+              ..createSync(recursive: true)
+              ..writeAsStringSync('${flavor ?? ''}${arch.arch}');
           }
         }
 
@@ -1809,6 +1820,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             projectRoot: projectRoot.path,
             aabPath: aab ?? p.join(projectRoot.path, aabPath),
             architectures: Arch.values,
+            stagingDirectory: stagingDirectory,
             flavor: flavor,
           ),
         );
@@ -1823,17 +1835,24 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).called(1);
         });
 
-        test('returns the libapp.so of each arch and the aab', () async {
+        test('returns the libapp.so of each arch, copied into staging, and '
+            'the aab', () async {
           setUpProjectRoot();
 
           final artifacts = await prepare();
 
+          for (final arch in Arch.values) {
+            expect(
+              File(stagedLibappPath(arch)).readAsStringSync(),
+              equals(arch.arch),
+            );
+          }
           expect(
             artifacts,
             equals([
               for (final arch in Arch.values)
                 ReleaseArtifactUpload(
-                  file: File(libappPath(arch)),
+                  file: File(stagedLibappPath(arch)),
                   name: arch.arch,
                   arch: arch.arch,
                   platform: ReleasePlatform.android,
@@ -1873,11 +1892,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           final artifacts = await prepare(flavor: flavorName);
 
           expect(
-            artifacts.take(Arch.values.length).map((a) => a.file.path),
-            equals([
-              for (final arch in Arch.values)
-                libappPath(arch, flavor: flavorName),
-            ]),
+            artifacts
+                .take(Arch.values.length)
+                .map((a) => a.file.readAsStringSync()),
+            equals([for (final arch in Arch.values) '$flavorName${arch.arch}']),
           );
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
@@ -1944,15 +1962,22 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
             );
 
-            final artifacts = await prepare(aab: aab.path);
+            final systemTemp = createSystemTemp();
+            late final List<ReleaseArtifactUpload> artifacts;
+            await runWithSystemTemp(
+              systemTemp,
+              () async => artifacts = await prepare(aab: aab.path),
+            );
 
-            // Each per-arch artifact comes from the directory the aab was
-            // extracted into, not from the empty strip output.
+            // The directory the aab was extracted into is deleted afterwards,
+            // and each per-arch artifact was copied out of it into staging,
+            // not taken from the empty strip output.
+            expect(systemTemp.listSync(), isEmpty);
             final archArtifacts = artifacts.where((a) => a.arch != 'aab');
             expect(archArtifacts, hasLength(3));
             for (final artifact in archArtifacts) {
-              expect(artifact.file.path, contains('shorebird_aab_libapps'));
-              expect(artifact.file.existsSync(), isTrue);
+              expect(artifact.file.path, startsWith(stagingDirectory.path));
+              expect(artifact.file.lengthSync(), isPositive);
             }
             expect(artifacts.last.file.path, equals(aab.path));
             verify(() => progress.complete()).called(1);
@@ -2082,7 +2107,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
         test('exits with code 70 when every requested arch is missing', () {
           File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
-          final jniDir = p.join(projectRoot.path, extractedAarPath, 'jni');
 
           expect(prepare, exitsWithCode(ExitCode.software));
 
@@ -2091,7 +2115,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               any(
                 that: allOf(
                   contains('No architecture artifacts found to upload'),
-                  contains('under $jniDir '),
+                  // ABI names, not paths: the directory searched may be
+                  // a temporary one deleted before the command exits.
+                  contains('  - ${Arch.arm64.androidBuildPath}\n'),
                 ),
               ),
             ),

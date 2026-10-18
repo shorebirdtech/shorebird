@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -238,9 +239,14 @@ class ArtifactManager {
     return archsDirectory.existsSync() ? archsDirectory : null;
   }
 
-  /// Returns a directory laid out as `<arch>/libapp.so`, extracting each
-  /// library from [aab] and falling back to AGP's stripped output when [aab]
-  /// is unavailable or unreadable.
+  /// Runs [action] with a directory laid out as `<arch>/libapp.so`,
+  /// extracting each library from [aab] and falling back to AGP's stripped
+  /// output when [aab] is unavailable or unreadable. [action] receives null
+  /// when neither has a library.
+  ///
+  /// Libraries extracted from [aab] land in a temporary directory that is
+  /// deleted once [action] completes, so [action] must not hold onto any path
+  /// inside it.
   ///
   /// The AAB is the exact artifact installed on devices, so libraries
   /// extracted from it always match what ships and a patch diffed against
@@ -256,27 +262,50 @@ class ArtifactManager {
   /// fallback: in a normal stripping build those bytes differ from the
   /// library in the AAB, so a patch built against them would fail to link on
   /// device.
-  static Future<Directory?> androidArchsDirectoryFromAab({
+  static Future<T> withAndroidArchsDirectoryFromAab<T>({
     required Directory projectRoot,
+    required Future<T> Function(Directory? archsDir) action,
     String? flavor,
     File? aab,
   }) async {
     if (aab != null && aab.existsSync()) {
+      final extracted = Directory.systemTemp.createTempSync(
+        'shorebird_aab_libapps',
+      );
       try {
-        final extracted = await extractAndroidLibappsFromAab(aab);
-        if (_containsLibapp(extracted)) return extracted;
-        logger.detail(
-          'No libapp.so entries found in ${aab.path}; falling back to the '
-          'stripped native libs.',
-        );
-      } on Exception catch (error) {
-        logger.detail(
-          'Failed to extract libapp.so from ${aab.path} ($error); falling '
-          'back to the stripped native libs.',
-        );
+        if (await _tryExtractAndroidLibappsFromAab(aab, into: extracted)) {
+          return await action(extracted);
+        }
+      } finally {
+        extracted.deleteTemporarySync();
       }
     }
-    return androidArchsDirectory(projectRoot: projectRoot, flavor: flavor);
+    return action(
+      androidArchsDirectory(projectRoot: projectRoot, flavor: flavor),
+    );
+  }
+
+  /// Extracts [aab]'s libraries into [into] and returns whether it holds a
+  /// `libapp.so` for at least one architecture, logging why when it does not.
+  static Future<bool> _tryExtractAndroidLibappsFromAab(
+    File aab, {
+    required Directory into,
+  }) async {
+    try {
+      await extractAndroidLibappsFromAab(aab, into: into);
+    } on Exception catch (error) {
+      logger.detail(
+        'Failed to extract libapp.so from ${aab.path} ($error); falling '
+        'back to the stripped native libs.',
+      );
+      return false;
+    }
+    if (_containsLibapp(into)) return true;
+    logger.detail(
+      'No libapp.so entries found in ${aab.path}; falling back to the '
+      'stripped native libs.',
+    );
+    return false;
   }
 
   /// Whether [archsDir] holds a `<arch>/libapp.so` for at least one
@@ -288,17 +317,18 @@ class ArtifactManager {
     );
   }
 
-  /// Extracts every `base/lib/<arch>/libapp.so` entry from [aab] into a fresh
-  /// temporary directory laid out as `<arch>/libapp.so`, and returns it. The
-  /// extracted bytes are exactly those packaged into the AAB and installed on
-  /// the device.
+  /// Extracts every `base/lib/<arch>/libapp.so` entry from [aab] into [into],
+  /// laid out as `<arch>/libapp.so`. The extracted bytes are exactly those
+  /// packaged into the AAB and installed on the device.
   ///
   /// The decode runs in a separate isolate to avoid blocking progress
   /// animations while reading a potentially large bundle.
-  static Future<Directory> extractAndroidLibappsFromAab(File aab) async {
-    final outDir = Directory.systemTemp.createTempSync('shorebird_aab_libapps');
+  static Future<void> extractAndroidLibappsFromAab(
+    File aab, {
+    required Directory into,
+  }) async {
     final aabPath = aab.path;
-    final outPath = outDir.path;
+    final outPath = into.path;
     await Isolate.run(() {
       final libappEntry = RegExp(r'^base/lib/([^/]+)/libapp\.so$');
       final inputStream = InputFileStream(aabPath);
@@ -316,7 +346,6 @@ class ArtifactManager {
       }
       inputStream.closeSync();
     });
-    return outDir;
   }
 
   /// When [aab] is readable but packages no `libapp.so` for any architecture,

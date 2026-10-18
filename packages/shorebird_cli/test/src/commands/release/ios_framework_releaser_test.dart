@@ -339,6 +339,42 @@ void main() {
         verify(() => artifactBuilder.buildIosFramework(args: [])).called(1);
       });
 
+      test(
+        'replaces each .xcframework from a previous release but keeps other '
+        'files in the release directory',
+        () async {
+          final releaseDir = p.join(projectRoot.path, 'release');
+          // Not empty, so renaming Flutter.xcframework onto it would fail if
+          // it were left in place.
+          final staleShorebirdFlutterMarker = File(
+            p.join(releaseDir, 'ShorebirdFlutter.xcframework', 'stale'),
+          )..createSync(recursive: true);
+          final stalePlugin = Directory(
+            p.join(releaseDir, 'RemovedPlugin.xcframework'),
+          )..createSync(recursive: true);
+          // What `shorebird release aar` writes to the same directory.
+          final aarFile = File(
+            p.join(releaseDir, 'com', 'example', 'flutter_release-1.0.aar'),
+          )..createSync(recursive: true);
+
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+          expect(aarFile.existsSync(), isTrue);
+          expect(stalePlugin.existsSync(), isFalse);
+          expect(staleShorebirdFlutterMarker.existsSync(), isFalse);
+          expect(
+            Directory(
+              p.join(releaseDir, 'ShorebirdFlutter.xcframework'),
+            ).existsSync(),
+            isTrue,
+          );
+          expect(
+            Directory(p.join(releaseDir, 'Flutter.xcframework')).existsSync(),
+            isFalse,
+          );
+        },
+      );
+
       group('when --obfuscate is passed', () {
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
