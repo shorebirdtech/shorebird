@@ -68,13 +68,35 @@ class ShorebirdLogger extends Logger {
     }
   }
 
+  /// Asks [message] as a yes/no question and returns the answer.
+  ///
+  /// Unlike [Logger.confirm], which treats any answer it doesn't recognize as
+  /// [defaultValue], an unrecognized answer asks again: a typo at the end of a
+  /// long build must not throw the build away
+  /// (https://github.com/shorebirdtech/shorebird/issues/1572). An empty
+  /// answer, or the end of input, takes [defaultValue].
   @override
   bool confirm(String? message, {bool defaultValue = false, String? hint}) {
     _failIfNonInteractive(promptText: message, hint: hint);
-    // The interactive branch reads from real stdin; not unit-testable.
-    // coverage:ignore-start
-    return super.confirm(message, defaultValue: defaultValue);
-    // coverage:ignore-end
+    final suffix = darkGray.wrap('(${defaultValue ? 'Y/n' : 'y/N'})');
+    while (true) {
+      stdout.write('$message $suffix ');
+      final input = stdin.readLineSync()?.trim();
+      if (input == null || input.isEmpty) return defaultValue;
+      final answer = _parseYesNo(input);
+      if (answer != null) return answer;
+      info('Please answer y or n.');
+    }
+  }
+
+  /// The answer [input] gives to a yes/no question, or null if it is neither.
+  /// Accepts the same words as [Logger.confirm].
+  static bool? _parseYesNo(String input) {
+    return switch (input.toLowerCase()) {
+      'y' || 'yes' || 'yea' || 'yeah' || 'yep' || 'yup' => true,
+      'n' || 'no' || 'nope' => false,
+      _ => null,
+    };
   }
 
   @override
