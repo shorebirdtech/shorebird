@@ -102,6 +102,42 @@ void main() {
 
       expect(request.headers['x-cli-version'], equals(packageVersion));
     });
+    test('prints the notices its client receives, once each', () async {
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          Stream.value(
+            utf8.encode(json.encode(const GetAppsResponse(apps: []).toJson())),
+          ),
+          HttpStatus.ok,
+          headers: {'shorebird-notice': 'Patches are paused.'},
+        ),
+      );
+      // Built fresh: the ref holds one instance for the whole run, and an
+      // earlier test's would carry that test's client.
+      final instance = runScoped(
+        buildCodePushClientWrapper,
+        values: {
+          authRef.overrideWith(() => auth),
+          platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+        },
+      );
+
+      await runScoped(
+        () async {
+          await instance.getApps();
+          await instance.getApps();
+          instance
+            ..printNotices()
+            // Already printed, so nothing more.
+            ..printNotices();
+        },
+        values: {loggerRef.overrideWith(() => logger)},
+      );
+
+      verify(() => logger.warn('Patches are paused.')).called(1);
+    });
   });
 
   group(CodePushClientWrapper, () {
@@ -3528,6 +3564,30 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               channelId: channel.id,
             ),
           ).called(1);
+        });
+
+        test('prints the notices the server sent, after the result', () async {
+          codePushClientWrapper = runWithOverrides(
+            () => CodePushClientWrapper(
+              codePushClient: codePushClient,
+              notices: {'Patches are paused.'},
+            ),
+          );
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              track: track,
+              patchArtifactBundles: patchArtifactBundles,
+              metadata: {'foo': 'bar'},
+            ),
+          );
+
+          verifyInOrder([
+            () => logger.success(any(that: contains('Published Patch'))),
+            () => logger.warn('Patches are paused.'),
+          ]);
         });
 
         test('creates channel if none exists', () async {

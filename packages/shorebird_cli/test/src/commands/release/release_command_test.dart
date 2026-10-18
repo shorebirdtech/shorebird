@@ -382,6 +382,8 @@ void main() {
         () => logger.info(
           '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platforms=android --release-version=${release.version}')}''',
         ),
+        // Last, so a notice is the final thing the developer reads.
+        codePushClientWrapper.printNotices,
       ]);
     });
 
