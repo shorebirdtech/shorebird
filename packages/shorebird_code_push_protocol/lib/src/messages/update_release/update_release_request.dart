@@ -14,6 +14,7 @@ class UpdateReleaseRequest {
     this.platform,
     this.metadata,
     this.notes,
+    this.hidden,
   });
 
   /// Converts a `Map<String, dynamic>` to a [UpdateReleaseRequest].
@@ -26,6 +27,7 @@ class UpdateReleaseRequest {
         platform: ReleasePlatform.maybeFromJson(json['platform'] as String?),
         metadata: json['metadata'] as Map<String, dynamic>?,
         notes: json['notes'] as String?,
+        hidden: json['hidden'] as bool?,
       ),
     );
   }
@@ -54,6 +56,11 @@ class UpdateReleaseRequest {
   /// not be updated.
   final String? notes;
 
+  /// Whether to hide the release from the console's release list (true)
+  /// or show it again (false). Display only: a hidden release still
+  /// serves its patches. If null, it is unchanged.
+  final bool? hidden;
+
   /// Converts a [UpdateReleaseRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -61,6 +68,7 @@ class UpdateReleaseRequest {
       'platform': ?platform?.toJson(),
       'metadata': ?metadata,
       'notes': ?notes,
+      'hidden': ?hidden,
     };
   }
 
@@ -70,6 +78,7 @@ class UpdateReleaseRequest {
     platform,
     mapHash(metadata),
     notes,
+    hidden,
   ]);
 
   @override
@@ -79,6 +88,7 @@ class UpdateReleaseRequest {
         status == other.status &&
         platform == other.platform &&
         mapsEqual(metadata, other.metadata) &&
-        notes == other.notes;
+        notes == other.notes &&
+        hidden == other.hidden;
   }
 }

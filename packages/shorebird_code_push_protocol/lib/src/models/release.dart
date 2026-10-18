@@ -21,6 +21,7 @@ class Release {
     this.flutterVersion,
     this.displayName,
     this.notes,
+    this.hiddenAt,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Release].
@@ -45,6 +46,7 @@ class Release {
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         notes: json['notes'] as String?,
+        hiddenAt: maybeParseDateTime(json['hidden_at'] as String?),
       ),
     );
   }
@@ -89,6 +91,11 @@ class Release {
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
+  /// When the release was hidden from the console's release list, or
+  /// absent while it is shown. Hiding changes only what the console
+  /// lists: a hidden release still serves its patches.
+  final DateTime? hiddenAt;
+
   /// Converts a [Release] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -104,6 +111,7 @@ class Release {
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'notes': ?notes,
+      'hidden_at': ?hiddenAt?.toUtc().toIso8601String(),
     };
   }
 
@@ -119,6 +127,7 @@ class Release {
     createdAt,
     updatedAt,
     notes,
+    hiddenAt,
   ]);
 
   @override
@@ -134,6 +143,7 @@ class Release {
         mapsEqual(platformStatuses, other.platformStatuses) &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
-        notes == other.notes;
+        notes == other.notes &&
+        hiddenAt == other.hiddenAt;
   }
 }

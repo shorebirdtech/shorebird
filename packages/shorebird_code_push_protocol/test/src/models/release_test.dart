@@ -3,6 +3,34 @@ import 'package:test/test.dart';
 
 void main() {
   group(Release, () {
+    test('round-trips hiddenAt', () {
+      final release = Release(
+        id: 1,
+        appId: 'app-id',
+        version: '1.0.0',
+        flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
+        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        createdAt: DateTime.utc(2023),
+        updatedAt: DateTime.utc(2023),
+        hiddenAt: DateTime.utc(2026, 10, 18),
+      );
+      expect(release.toJson()['hidden_at'], equals('2026-10-18T00:00:00.000Z'));
+      expect(Release.fromJson(release.toJson()), equals(release));
+    });
+
+    test('parses a payload without hidden_at', () {
+      final release = Release.fromJson(const {
+        'id': 1,
+        'app_id': 'app-id',
+        'version': '1.0.0',
+        'flutter_revision': '83305b5088e6fe327fb3334a73ff190828d85713',
+        'platform_statuses': {'android': 'active'},
+        'created_at': '2023-01-01T00:00:00.000Z',
+        'updated_at': '2023-01-01T00:00:00.000Z',
+      });
+      expect(release.hiddenAt, isNull);
+    });
+
     test('can be (de)serialized', () {
       final release = Release(
         id: 1,

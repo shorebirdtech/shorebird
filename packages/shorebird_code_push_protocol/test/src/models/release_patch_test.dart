@@ -3,6 +3,28 @@ import 'package:test/test.dart';
 
 void main() {
   group(ReleasePatch, () {
+    test('round-trips hiddenAt', () {
+      final patch = ReleasePatch(
+        id: 0,
+        number: 1,
+        isRolledBack: false,
+        artifacts: const [],
+        hiddenAt: DateTime.utc(2026, 10, 18),
+      );
+      expect(patch.toJson()['hidden_at'], equals('2026-10-18T00:00:00.000Z'));
+      expect(ReleasePatch.fromJson(patch.toJson()), equals(patch));
+    });
+
+    test('parses a payload without hidden_at', () {
+      final patch = ReleasePatch.fromJson(const {
+        'id': 0,
+        'number': 1,
+        'artifacts': <Object>[],
+        'is_rolled_back': false,
+      });
+      expect(patch.hiddenAt, isNull);
+    });
+
     test('is equatable', () {
       expect(
         // Ignoring const constructor for equality comparison.
@@ -48,6 +70,7 @@ void main() {
         expect(copy.channel, equals(patch.channel));
         expect(copy.artifacts, equals(patch.artifacts));
         expect(copy.notes, equals(patch.notes));
+        expect(copy.hiddenAt, equals(patch.hiddenAt));
       });
 
       test('replaces every field when all are provided', () {
@@ -67,6 +90,7 @@ void main() {
           artifacts: [artifact],
           isRolledBack: true,
           notes: 'other-notes',
+          hiddenAt: DateTime.utc(2026, 10, 18),
         );
         expect(
           copy,
@@ -78,6 +102,7 @@ void main() {
               artifacts: [artifact],
               isRolledBack: true,
               notes: 'other-notes',
+              hiddenAt: DateTime.utc(2026, 10, 18),
             ),
           ),
         );

@@ -10,5 +10,11 @@ void main() {
         equals(request.toJson()),
       );
     });
+
+    test('carries hidden', () {
+      const request = UpdatePatchRequest(hidden: true);
+      expect(request.toJson(), equals({'hidden': true}));
+      expect(UpdatePatchRequest.fromJson(request.toJson()), equals(request));
+    });
   });
 }

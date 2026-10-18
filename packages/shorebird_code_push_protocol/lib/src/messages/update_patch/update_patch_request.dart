@@ -10,6 +10,7 @@ class UpdatePatchRequest {
   /// {@macro update_patch_request}
   const UpdatePatchRequest({
     this.notes,
+    this.hidden,
   });
 
   /// Converts a `Map<String, dynamic>` to a [UpdatePatchRequest].
@@ -19,6 +20,7 @@ class UpdatePatchRequest {
       json,
       () => UpdatePatchRequest(
         notes: json['notes'] as String?,
+        hidden: json['hidden'] as bool?,
       ),
     );
   }
@@ -35,19 +37,30 @@ class UpdatePatchRequest {
   /// Freeform notes about the patch. If null, notes are unchanged.
   final String? notes;
 
+  /// Whether to hide the patch from the console's patch list (true) or
+  /// show it again (false). Display only: a hidden patch stays live on
+  /// its track. If null, it is unchanged.
+  final bool? hidden;
+
   /// Converts a [UpdatePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'notes': ?notes,
+      'hidden': ?hidden,
     };
   }
 
   @override
-  int get hashCode => notes.hashCode;
+  int get hashCode => Object.hashAll([
+    notes,
+    hidden,
+  ]);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is UpdatePatchRequest && notes == other.notes;
+    return other is UpdatePatchRequest &&
+        notes == other.notes &&
+        hidden == other.hidden;
   }
 }

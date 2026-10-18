@@ -13,6 +13,7 @@ extension ReleasePatchExtensions on ReleasePatch {
     List<PatchArtifact>? artifacts,
     bool? isRolledBack,
     String? notes,
+    DateTime? hiddenAt,
   }) => ReleasePatch(
     id: id ?? this.id,
     number: number ?? this.number,
@@ -20,5 +21,6 @@ extension ReleasePatchExtensions on ReleasePatch {
     artifacts: artifacts ?? this.artifacts,
     isRolledBack: isRolledBack ?? this.isRolledBack,
     notes: notes ?? this.notes,
+    hiddenAt: hiddenAt ?? this.hiddenAt,
   );
 }

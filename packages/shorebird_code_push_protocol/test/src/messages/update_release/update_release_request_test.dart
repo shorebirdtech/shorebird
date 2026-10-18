@@ -3,6 +3,12 @@ import 'package:test/test.dart';
 
 void main() {
   group(UpdateReleaseRequest, () {
+    test('carries hidden', () {
+      const request = UpdateReleaseRequest(hidden: false);
+      expect(request.toJson(), equals({'hidden': false}));
+      expect(UpdateReleaseRequest.fromJson(request.toJson()), equals(request));
+    });
+
     test('can be (de)serialized', () {
       const request = UpdateReleaseRequest(
         platform: ReleasePlatform.android,

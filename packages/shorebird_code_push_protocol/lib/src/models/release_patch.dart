@@ -15,6 +15,7 @@ class ReleasePatch {
     required this.isRolledBack,
     this.channel,
     this.notes,
+    this.hiddenAt,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleasePatch].
@@ -33,6 +34,7 @@ class ReleasePatch {
             .toList(),
         isRolledBack: json['is_rolled_back'] as bool,
         notes: json['notes'] as String?,
+        hiddenAt: maybeParseDateTime(json['hidden_at'] as String?),
       ),
     );
   }
@@ -64,6 +66,11 @@ class ReleasePatch {
   /// Freeform notes associated with the patch, if any.
   final String? notes;
 
+  /// When the patch was hidden from the console's patch list, or absent
+  /// while it is shown. Hiding changes only what the console lists: a
+  /// hidden patch stays live on its track.
+  final DateTime? hiddenAt;
+
   /// Converts a [ReleasePatch] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -73,6 +80,7 @@ class ReleasePatch {
       'artifacts': artifacts.map((e) => e.toJson()).toList(),
       'is_rolled_back': isRolledBack,
       'notes': ?notes,
+      'hidden_at': ?hiddenAt?.toUtc().toIso8601String(),
     };
   }
 
@@ -84,6 +92,7 @@ class ReleasePatch {
     listHash(artifacts),
     isRolledBack,
     notes,
+    hiddenAt,
   ]);
 
   @override
@@ -95,6 +104,7 @@ class ReleasePatch {
         channel == other.channel &&
         listsEqual(artifacts, other.artifacts) &&
         isRolledBack == other.isRolledBack &&
-        notes == other.notes;
+        notes == other.notes &&
+        hiddenAt == other.hiddenAt;
   }
 }
