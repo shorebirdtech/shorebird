@@ -169,6 +169,26 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Finds which of [memberships]' organizations app [appId] is in, or null
+  /// if none of them lists it.
+  ///
+  /// The app metadata doesn't name its organization, so this lists each
+  /// organization's apps in turn, stopping at the first that has it.
+  Future<OrganizationMembership?> findAppOrganization({
+    required String appId,
+    required List<OrganizationMembership> memberships,
+  }) {
+    return _withProgress("Finding the app's organization", () async {
+      for (final membership in memberships) {
+        final apps = await codePushClient.getOrganizationApps(
+          organizationId: membership.organization.id,
+        );
+        if (apps.any((app) => app.appId == appId)) return membership;
+      }
+      return null;
+    });
+  }
+
   /// Fetches the pending invitations sent to the current user.
   Future<List<ReceivedInvitation>> getReceivedInvitations() {
     return _withProgress(

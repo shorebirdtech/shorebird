@@ -89,94 +89,6 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
-    // Only these roles hold the server's create-apps permission; offering
-    // other organizations would just defer the refusal to createApp.
-    final creatableMemberships = organizationMemberships
-        .where((m) => _canCreateApps(m.role))
-        .toList();
-    final skippedMemberships = organizationMemberships
-        .where((m) => !_canCreateApps(m.role))
-        .toList();
-
-    final Organization organization;
-    final orgIdArg = results[CommonArguments.orgIdArg.name] as String?;
-    if (orgIdArg != null) {
-      final (id: orgId, error: parseError) = parseOrganizationId(
-        orgIdArg,
-        memberships: organizationMemberships,
-      );
-      if (parseError != null) {
-        usageException('${parseError.message}\n${parseError.hint}');
-      }
-
-      final (:membership, error: membershipError) = findOrganizationMembership(
-        id: orgId!,
-        memberships: organizationMemberships,
-      );
-      if (membershipError != null) {
-        usageException('${membershipError.message}\n${membershipError.hint}');
-      }
-      if (!_canCreateApps(membership!.role)) {
-        logger
-          ..err(
-            'You cannot create apps in ${_describe(membership.organization)}: '
-            '${_roleIn(membership)}.',
-          )
-          ..info(
-            creatableMemberships.isEmpty
-                ? _askForRole
-                : availableOrganizations(
-                    creatableMemberships,
-                    label: _creatableLabel,
-                  ),
-          );
-        return ExitCode.noPerm.code;
-      }
-      organization = membership.organization;
-    } else if (creatableMemberships.isEmpty) {
-      logger
-        ..err('You cannot create apps in any of your organizations.')
-        ..info(
-          '${_rolesIn(organizationMemberships)}\n$_askForRole',
-        );
-      return ExitCode.noPerm.code;
-    } else {
-      if (skippedMemberships.isNotEmpty) {
-        logger.info(
-          'Skipping organizations you cannot create apps in. '
-          '${_rolesIn(skippedMemberships)}',
-        );
-      }
-      if (creatableMemberships.length > 1) {
-        if (!shorebirdEnv.canAcceptUserInput) {
-          final creatable = availableOrganizations(
-            creatableMemberships,
-            label: _creatableLabel,
-          );
-          usageException(
-            'You can create apps in multiple organizations. '
-            'Pass --org-id=<id> to choose one.\n$creatable',
-          );
-        }
-        organization = logger.chooseOne(
-          'Which organization should this app belong to?',
-          choices: creatableMemberships.map((o) => o.organization).toList(),
-          display: (o) => o.name,
-          hint:
-              'Pass --org-id=<id> to select an organization without '
-              'prompting.',
-        );
-      } else {
-        organization = creatableMemberships.single.organization;
-        if (skippedMemberships.isNotEmpty) {
-          logger.info(
-            'Creating the app in ${_describe(organization)}, the only '
-            'organization you can create apps in.',
-          );
-        }
-      }
-    }
-
     final force = results['force'] == true;
 
     Set<String>? androidFlavors;
@@ -288,6 +200,39 @@ This app may not exist or you may not have permission to view it.''')
         return ExitCode.software.code;
       }
 
+      // Flavor apps belong with the app they are flavors of, wherever that
+      // is, rather than wherever a new app would go.
+      final appMembership = await codePushClientWrapper.findAppOrganization(
+        appId: existingApp.appId,
+        memberships: organizationMemberships,
+      );
+      if (appMembership == null) {
+        updateShorebirdYamlProgress.fail();
+        logger.err(
+          'Could not find which of your organizations app '
+          '"${existingApp.displayName}" (${existingApp.appId}) is in.',
+        );
+        return ExitCode.software.code;
+      }
+      final organization = appMembership.organization;
+      if (!_canCreateApps(appMembership.role)) {
+        updateShorebirdYamlProgress.fail();
+        logger
+          ..err(
+            'You cannot create apps in ${_describe(organization)}, which '
+            '"${existingApp.displayName}" is in: ${_roleIn(appMembership)}.',
+          )
+          ..info(_askForRole);
+        return ExitCode.noPerm.code;
+      }
+      final orgIdArg = results[CommonArguments.orgIdArg.name] as String?;
+      if (orgIdArg != null && orgIdArg != '${organization.id}') {
+        logger.warn(
+          'Ignoring --${CommonArguments.orgIdArg.name}: new flavors go in '
+          '${_describe(organization)} with "${existingApp.displayName}".',
+        );
+      }
+
       final deflavoredAppName = existingApp.displayName
           .replaceAll(RegExp(r'\(.*\)'), '')
           .trim();
@@ -316,6 +261,9 @@ This app may not exist or you may not have permission to view it.''')
         );
       return ExitCode.software.code;
     }
+
+    final organization = _chooseOrganization(organizationMemberships);
+    if (organization == null) return ExitCode.noPerm.code;
 
     final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
     final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
@@ -443,6 +391,100 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
       return await gradlew.productFlavors(projectPath);
     } on MissingAndroidProjectException {
       return null;
+    }
+  }
+
+  /// Chooses the organization a new app goes in, from [memberships]: the
+  /// one `--org-id` names, the only one the user can create apps in, or the
+  /// one they pick. Returns null, having said why, when the user cannot
+  /// create apps in it.
+  Organization? _chooseOrganization(List<OrganizationMembership> memberships) {
+    // Only these roles hold the server's create-apps permission; offering
+    // other organizations would just defer the refusal to createApp.
+    final creatableMemberships = memberships
+        .where((m) => _canCreateApps(m.role))
+        .toList();
+    final skippedMemberships = memberships
+        .where((m) => !_canCreateApps(m.role))
+        .toList();
+
+    final orgIdArg = results[CommonArguments.orgIdArg.name] as String?;
+    if (orgIdArg != null) {
+      final (id: orgId, error: parseError) = parseOrganizationId(
+        orgIdArg,
+        memberships: memberships,
+      );
+      if (parseError != null) {
+        usageException('${parseError.message}\n${parseError.hint}');
+      }
+
+      final (:membership, error: membershipError) = findOrganizationMembership(
+        id: orgId!,
+        memberships: memberships,
+      );
+      if (membershipError != null) {
+        usageException('${membershipError.message}\n${membershipError.hint}');
+      }
+      if (!_canCreateApps(membership!.role)) {
+        logger
+          ..err(
+            'You cannot create apps in ${_describe(membership.organization)}: '
+            '${_roleIn(membership)}.',
+          )
+          ..info(
+            creatableMemberships.isEmpty
+                ? _askForRole
+                : availableOrganizations(
+                    creatableMemberships,
+                    label: _creatableLabel,
+                  ),
+          );
+        return null;
+      }
+      return membership.organization;
+    } else if (creatableMemberships.isEmpty) {
+      logger
+        ..err('You cannot create apps in any of your organizations.')
+        ..info(
+          '${_rolesIn(memberships)}\n$_askForRole',
+        );
+      return null;
+    } else {
+      if (skippedMemberships.isNotEmpty) {
+        logger.info(
+          'Skipping organizations you cannot create apps in. '
+          '${_rolesIn(skippedMemberships)}',
+        );
+      }
+      if (creatableMemberships.length > 1) {
+        if (!shorebirdEnv.canAcceptUserInput) {
+          final creatable = availableOrganizations(
+            creatableMemberships,
+            label: _creatableLabel,
+          );
+          usageException(
+            'You can create apps in multiple organizations. '
+            'Pass --org-id=<id> to choose one.\n$creatable',
+          );
+        }
+        return logger.chooseOne<Organization>(
+          'Which organization should this app belong to?',
+          choices: creatableMemberships.map((o) => o.organization).toList(),
+          display: (o) => o.name,
+          hint:
+              'Pass --org-id=<id> to select an organization without '
+              'prompting.',
+        );
+      } else {
+        final organization = creatableMemberships.single.organization;
+        if (skippedMemberships.isNotEmpty) {
+          logger.info(
+            'Creating the app in ${_describe(organization)}, the only '
+            'organization you can create apps in.',
+          );
+        }
+        return organization;
+      }
     }
   }
 

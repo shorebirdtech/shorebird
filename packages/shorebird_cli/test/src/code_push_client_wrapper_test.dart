@@ -394,6 +394,85 @@ void main() {
         });
       });
 
+      group('findAppOrganization', () {
+        final first = OrganizationMembership(
+          organization: organizationForTest(id: 1),
+          role: Role.owner,
+        );
+        final second = OrganizationMembership(
+          organization: organizationForTest(id: 2),
+          role: Role.admin,
+        );
+        AppMetadata appWithId(String id) => AppMetadata(
+          appId: id,
+          displayName: id,
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
+        );
+
+        setUp(() {
+          when(
+            () => codePushClient.getOrganizationApps(organizationId: 1),
+          ).thenAnswer((_) async => [appWithId('other')]);
+          when(
+            () => codePushClient.getOrganizationApps(organizationId: 2),
+          ).thenAnswer((_) async => [appWithId('target')]);
+        });
+
+        test(
+          'returns the membership whose organization lists the app',
+          () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, equals(second));
+            verify(() => progress.complete()).called(1);
+          },
+        );
+
+        test('stops at the first organization that lists the app', () async {
+          await runWithOverrides(
+            () => codePushClientWrapper.findAppOrganization(
+              appId: 'other',
+              memberships: [first, second],
+            ),
+          );
+          verifyNever(
+            () => codePushClient.getOrganizationApps(organizationId: 2),
+          );
+        });
+
+        test('returns null when no organization lists the app', () async {
+          final membership = await runWithOverrides(
+            () => codePushClientWrapper.findAppOrganization(
+              appId: 'missing',
+              memberships: [first, second],
+            ),
+          );
+          expect(membership, isNull);
+        });
+
+        test('exits with code 70 when listing apps fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getOrganizationApps(organizationId: 1),
+          ).thenThrow(error);
+          await expectLater(
+            () => runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                memberships: [first, second],
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+      });
+
       group('getApps', () {
         test('exits with code 70 when getting apps fails', () async {
           const error = 'something went wrong';

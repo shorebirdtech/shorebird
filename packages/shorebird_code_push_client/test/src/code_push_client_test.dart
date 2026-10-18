@@ -3292,6 +3292,75 @@ void main() {
       });
     });
 
+    group('getOrganizationApps', () {
+      const organizationId = 42;
+
+      group('when response is not success', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getOrganizationApps(
+              organizationId: organizationId,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when response is successful', () {
+        final app = AppMetadata(
+          appId: 'app-id',
+          displayName: 'My App',
+          createdAt: DateTime.utc(2023),
+          updatedAt: DateTime.utc(2023),
+        );
+
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  json.encode(GetOrganizationAppsResponse(apps: [app])),
+                ),
+              ),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('requests the organization apps and returns them', () async {
+          final apps = await codePushClient.getOrganizationApps(
+            organizationId: organizationId,
+          );
+          expect(apps, equals([app]));
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.method, equals('GET'));
+          expect(
+            request.url,
+            equals(v1('organizations/$organizationId/apps')),
+          );
+        });
+      });
+    });
+
     group('getReceivedInvitations', () {
       ReceivedInvitation invitation(String id) => ReceivedInvitation(
         id: id,

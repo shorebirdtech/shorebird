@@ -110,6 +110,17 @@ environment:
         ],
       );
       when(
+        () => codePushClientWrapper.findAppOrganization(
+          appId: any(named: 'appId'),
+          memberships: any(named: 'memberships'),
+        ),
+      ).thenAnswer(
+        (_) async => OrganizationMembership(
+          role: Role.owner,
+          organization: organizationForTest(id: organizationId),
+        ),
+      );
+      when(
         () => codePushClientWrapper.createApp(
           appName: any(named: 'appName'),
           organizationId: any(named: 'organizationId'),
@@ -220,6 +231,35 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
+
+    test(
+      'reports an up-to-date shorebird.yaml before checking roles',
+      () async {
+        when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+        when(
+          () => codePushClientWrapper.getOrganizationMemberships(),
+        ).thenAnswer(
+          (_) async => [
+            OrganizationMembership(
+              role: Role.viewer,
+              organization: organizationForTest(id: organizationId),
+            ),
+          ],
+        );
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.software.code);
+        verify(
+          () => logger.err(
+            'A "shorebird.yaml" file already exists and seems up-to-date.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => logger.err(
+            'You cannot create apps in any of your organizations.',
+          ),
+        );
+      },
+    );
 
     test(
       'shows up-to-date error when yaml exists without flavors '
@@ -1646,7 +1686,8 @@ flavors:
           when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
           when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
           when(() => shorebirdYaml.appId).thenReturn(appId);
-          when(() => shorebirdYaml.flavors).thenReturn(existingFlavors);
+          // A copy, since init adds the new flavors to the map it reads.
+          when(() => shorebirdYaml.flavors).thenReturn({...existingFlavors});
         });
 
         test('names the fix when the existing app is gone', () async {
@@ -1683,6 +1724,151 @@ flavors:
               '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
             ),
           );
+        });
+
+        group('when the existing app is in another organization', () {
+          final appOrg = organizationForTest(name: 'team', id: 77);
+          final personalOrg = organizationForTest(name: 'personal', id: 1);
+          final existingApp = AppMetadata(
+            appId: appId,
+            displayName: 'my-app',
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          );
+
+          void stubAppIn(Role role) {
+            final memberships = [
+              OrganizationMembership(
+                role: Role.owner,
+                organization: personalOrg,
+              ),
+              OrganizationMembership(role: role, organization: appOrg),
+            ];
+            when(
+              () => codePushClientWrapper.getOrganizationMemberships(),
+            ).thenAnswer((_) async => memberships);
+            when(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: appId,
+                memberships: memberships,
+              ),
+            ).thenAnswer((_) async => memberships.last);
+          }
+
+          setUp(() {
+            when(
+              () => codePushClientWrapper.maybeGetApp(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer((_) async => existingApp);
+            when(
+              () => codePushClientWrapper.createApp(
+                appName: any(named: 'appName'),
+                organizationId: any(named: 'organizationId'),
+              ),
+            ).thenAnswer(
+              (invocation) async => App(
+                id: 'new-app-id',
+                displayName: invocation.namedArguments[#appName] as String,
+              ),
+            );
+          });
+
+          test('creates the flavor apps there without prompting', () async {
+            stubAppIn(Role.admin);
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verify(
+              () => codePushClientWrapper.createApp(
+                appName: 'my-app (c)',
+                organizationId: appOrg.id,
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.createApp(
+                appName: any(named: 'appName'),
+                organizationId: personalOrg.id,
+              ),
+            );
+            verifyNever(
+              () => logger.chooseOne<Organization>(
+                any(),
+                choices: any(named: 'choices'),
+                display: any(named: 'display'),
+                hint: any(named: 'hint'),
+              ),
+            );
+          });
+
+          test('warns that a different --org-id is ignored', () async {
+            stubAppIn(Role.admin);
+            when(() => argResults['org-id']).thenReturn('${personalOrg.id}');
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verify(
+              () => logger.warn(
+                'Ignoring --org-id: new flavors go in team (id: 77) with '
+                '"my-app".',
+              ),
+            ).called(1);
+            verify(
+              () => codePushClientWrapper.createApp(
+                appName: 'my-app (c)',
+                organizationId: appOrg.id,
+              ),
+            ).called(1);
+          });
+
+          test(
+            'exits with noPerm when the user cannot create apps there',
+            () async {
+              stubAppIn(Role.developer);
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, equals(ExitCode.noPerm.code));
+              verify(
+                () => logger.err(
+                  'You cannot create apps in team (id: 77), which "my-app" is '
+                  'in: your role is developer.',
+                ),
+              ).called(1);
+              verifyNever(
+                () => codePushClientWrapper.createApp(
+                  appName: any(named: 'appName'),
+                  organizationId: any(named: 'organizationId'),
+                ),
+              );
+            },
+          );
+        });
+
+        test('exits when no organization lists the existing app', () async {
+          when(
+            () => codePushClientWrapper.maybeGetApp(
+              appId: any(named: 'appId'),
+            ),
+          ).thenAnswer(
+            (_) async => AppMetadata(
+              appId: appId,
+              displayName: 'my-app',
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+            ),
+          );
+          when(
+            () => codePushClientWrapper.findAppOrganization(
+              appId: any(named: 'appId'),
+              memberships: any(named: 'memberships'),
+            ),
+          ).thenAnswer((_) async => null);
+
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => logger.err(
+              'Could not find which of your organizations app "my-app" '
+              '($appId) is in.',
+            ),
+          ).called(1);
         });
 
         test('creates new flavor entries in shorebird.yaml', () async {
