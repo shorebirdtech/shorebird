@@ -144,7 +144,7 @@ dependencyResolutionManagement {
 +       }
 +       maven {
 -           url 'https://storage.googleapis.com/download.flutter.io'
-+           url 'https://download.shorebird.dev/download.flutter.io'
++           url '${shorebirdEnv.artifactProxyUrl}/download.flutter.io'
 +       }
     }
 }

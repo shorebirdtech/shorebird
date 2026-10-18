@@ -109,6 +109,9 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.androidPackageName).thenReturn(packageName);
+      when(
+        () => shorebirdEnv.artifactProxyUrl,
+      ).thenReturn('https://download.shorebird.dev');
 
       aarReleaser = AarReleaser(
         argResults: argResults,
