@@ -60,13 +60,13 @@ class CreatePatchArtifactRequest {
   /// the patch does not uses code signing.
   final String? hashSignature;
 
-  /// The sha256 hash of the Podfile.lock file, if a Podfile.lock file was
-  /// involved in the creation of the patch (iOS only).
+  /// sha256 of the Podfile.lock used to create the artifact, or, for an app
+  /// on Swift Package Manager alone, of the pins in its Package.resolved (iOS
+  /// and macOS only).
   final String? podfileLockHash;
 
-  /// The sha256 hash of the pinned packages in the Swift Package Manager
-  /// Package.resolved, if one was involved in the creation of the patch (iOS
-  /// and macOS only).
+  /// sha256 of the pins in the Swift Package Manager Package.resolved used to
+  /// create the artifact (iOS and macOS only).
   final String? packageResolvedHash;
 
   /// The size of the artifact in bytes.

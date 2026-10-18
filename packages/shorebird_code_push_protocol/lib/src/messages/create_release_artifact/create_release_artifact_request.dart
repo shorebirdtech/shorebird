@@ -69,12 +69,13 @@ class CreateReleaseArtifactRequest {
   /// The size of the artifact in bytes.
   final int size;
 
-  /// The hash of the Podfile.lock file used to create this artifact (iOS
-  /// only).
+  /// sha256 of the Podfile.lock used to create the artifact, or, for an app
+  /// on Swift Package Manager alone, of the pins in its Package.resolved (iOS
+  /// and macOS only).
   final String? podfileLockHash;
 
-  /// The hash of the pinned packages in the Swift Package Manager
-  /// Package.resolved used to create this artifact (iOS and macOS only).
+  /// sha256 of the pins in the Swift Package Manager Package.resolved used to
+  /// create the artifact (iOS and macOS only).
   final String? packageResolvedHash;
 
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
