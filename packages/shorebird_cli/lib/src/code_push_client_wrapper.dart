@@ -172,14 +172,21 @@ class CodePushClientWrapper {
   /// Finds which of [memberships]' organizations app [appId] is in, or null
   /// if none of them lists it.
   ///
-  /// The app metadata doesn't name its organization, so this lists each
-  /// organization's apps in turn, stopping at the first that has it. An
-  /// organization whose listing fails is skipped; the failure is reported
-  /// only if no other organization has the app.
+  /// Pass the app metadata's [organizationId] when it has one: that names
+  /// the organization outright. Servers that predate the field leave it out,
+  /// so without it this lists each organization's apps in turn, stopping at
+  /// the first that has it. An organization whose listing fails is skipped;
+  /// the failure is reported only if no other organization has the app.
   Future<OrganizationMembership?> findAppOrganization({
     required String appId,
     required List<OrganizationMembership> memberships,
-  }) {
+    int? organizationId,
+  }) async {
+    if (organizationId != null) {
+      return memberships.firstWhereOrNull(
+        (m) => m.organization.id == organizationId,
+      );
+    }
     return _withProgress("Finding the app's organization", () async {
       CodePushException? failure;
       for (final membership in memberships) {

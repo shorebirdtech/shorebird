@@ -202,6 +202,7 @@ This app may not exist or you may not have permission to view it.''')
       // is, rather than wherever a new app would go.
       final appMembership = await codePushClientWrapper.findAppOrganization(
         appId: existingApp.appId,
+        organizationId: existingApp.organizationId,
         memberships: organizationMemberships,
       );
       if (appMembership == null) {

@@ -433,6 +433,35 @@ void main() {
           },
         );
 
+        group('when the app names its organization', () {
+          test('returns that membership without listing apps', () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                organizationId: 2,
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, equals(second));
+            verifyNever(
+              () => codePushClient.getOrganizationApps(
+                organizationId: any(named: 'organizationId'),
+              ),
+            );
+          });
+
+          test('returns null when the user is not a member of it', () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                organizationId: 3,
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, isNull);
+          });
+        });
+
         test('stops at the first organization that lists the app', () async {
           final membership = await runWithOverrides(
             () => codePushClientWrapper.findAppOrganization(

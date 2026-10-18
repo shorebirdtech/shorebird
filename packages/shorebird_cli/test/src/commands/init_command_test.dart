@@ -1800,6 +1800,42 @@ flavors:
             );
           });
 
+          test("passes along the app's organization id", () async {
+            stubAppIn(Role.admin);
+            final appWithOrg = AppMetadata(
+              appId: appId,
+              displayName: 'my-app',
+              organizationId: appOrg.id,
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+            );
+            when(
+              () => codePushClientWrapper.maybeGetApp(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer((_) async => appWithOrg);
+            when(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: appId,
+                organizationId: appOrg.id,
+                memberships: any(named: 'memberships'),
+              ),
+            ).thenAnswer(
+              (_) async => OrganizationMembership(
+                role: Role.admin,
+                organization: appOrg,
+              ),
+            );
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verify(
+              () => codePushClientWrapper.createApp(
+                appName: 'my-app (c)',
+                organizationId: appOrg.id,
+              ),
+            ).called(1);
+          });
+
           test('does not warn when --org-id names its organization', () async {
             stubAppIn(Role.admin);
             when(() => argResults['org-id']).thenReturn('${appOrg.id}');
