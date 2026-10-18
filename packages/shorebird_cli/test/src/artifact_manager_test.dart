@@ -709,17 +709,6 @@ void main() {
         expect(extracted!.existsSync(), isFalse);
       });
 
-      test('leaves the stripped dir in place', () async {
-        final stripped = strippedOutLib()..createSync(recursive: true);
-
-        await ArtifactManager.withAndroidArchsDirectoryFromAab(
-          projectRoot: projectRoot,
-          action: (result) async => result,
-        );
-
-        expect(stripped.existsSync(), isTrue);
-      });
-
       test('falls back to the stripped dir when no aab is provided', () async {
         final stripped = strippedOutLib()..createSync(recursive: true);
 
@@ -816,6 +805,7 @@ void main() {
 
         expect(result, isNotNull);
         expect(result!.path, equals(stripped.path));
+        expect(stripped.existsSync(), isTrue);
       });
 
       test('returns null when there is no stripped dir and no aab', () async {
