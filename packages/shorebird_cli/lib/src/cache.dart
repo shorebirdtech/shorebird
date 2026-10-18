@@ -622,11 +622,11 @@ class BundleToolArtifact extends CachedArtifact {
   ///
   /// Bump this and [sha256] together with `scripts/update_bundletool.sh`,
   /// which the weekly `update_bundletool` workflow runs for us.
-  static const version = '1.18.1';
+  static const version = '1.18.3';
 
   /// SHA-256 checksum of `bundletool-all-<version>.jar`.
   static const sha256 =
-      '675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c';
+      'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29';
 
   @override
   String get fileName => 'bundletool.jar';
