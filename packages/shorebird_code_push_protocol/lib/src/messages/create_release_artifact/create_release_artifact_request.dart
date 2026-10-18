@@ -20,7 +20,7 @@ class CreateReleaseArtifactRequest {
     this.canSideload,
     this.podfileLockHash,
     this.packageResolvedHash,
-    this.pluginSwiftPackageHash,
+    this.nativePluginsHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactRequest].
@@ -37,7 +37,7 @@ class CreateReleaseArtifactRequest {
         size: json['size'] as int,
         podfileLockHash: json['podfile_lock_hash'] as String?,
         packageResolvedHash: json['package_resolved_hash'] as String?,
-        pluginSwiftPackageHash: json['plugin_swift_package_hash'] as String?,
+        nativePluginsHash: json['native_plugins_hash'] as String?,
       ),
     );
   }
@@ -80,12 +80,10 @@ class CreateReleaseArtifactRequest {
   /// macOS only).
   final String? packageResolvedHash;
 
-  /// sha256 of the Swift package Flutter generates for the app's Swift
-  /// Package Manager plugins
-  /// (FlutterGeneratedPluginSwiftPackage/Package.swift, with each plugin path
-  /// reduced to its last component, which names the plugin and its version),
-  /// or `none` if there was none (iOS and macOS only).
-  final String? pluginSwiftPackageHash;
+  /// sha256 of the Flutter plugins with native code for the platform and
+  /// their pubspec.lock entries (versions and sources), or `none` if there
+  /// were none (iOS and macOS only).
+  final String? nativePluginsHash;
 
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -98,7 +96,7 @@ class CreateReleaseArtifactRequest {
       'size': size,
       'podfile_lock_hash': ?podfileLockHash,
       'package_resolved_hash': ?packageResolvedHash,
-      'plugin_swift_package_hash': ?pluginSwiftPackageHash,
+      'native_plugins_hash': ?nativePluginsHash,
     };
   }
 
@@ -112,7 +110,7 @@ class CreateReleaseArtifactRequest {
     size,
     podfileLockHash,
     packageResolvedHash,
-    pluginSwiftPackageHash,
+    nativePluginsHash,
   ]);
 
   @override
@@ -127,6 +125,6 @@ class CreateReleaseArtifactRequest {
         size == other.size &&
         podfileLockHash == other.podfileLockHash &&
         packageResolvedHash == other.packageResolvedHash &&
-        pluginSwiftPackageHash == other.pluginSwiftPackageHash;
+        nativePluginsHash == other.nativePluginsHash;
   }
 }
