@@ -66,6 +66,59 @@ void main() {
       );
     });
 
+    group('notices', () {
+      late List<String> notices;
+
+      setUp(() {
+        notices = [];
+        codePushClient = CodePushClient(
+          httpClient: httpClient,
+          customHeaders: customHeaders,
+          onNotice: notices.add,
+        );
+      });
+
+      void respondWith(Map<String, String> headers) {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode({'id': 1, 'number': 1}))),
+            HttpStatus.created,
+            headers: headers,
+          ),
+        );
+      }
+
+      Future<void> createPatch() => codePushClient.createPatch(
+        appId: appId,
+        releaseId: 1,
+        metadata: {},
+      );
+
+      test('passes a notice header to onNotice', () async {
+        respondWith({CodePushClient.noticeHeader: 'Patches are paused.'});
+        await createPatch();
+        expect(notices, equals(['Patches are paused.']));
+      });
+
+      test('calls nothing when there is no notice', () async {
+        respondWith({});
+        await createPatch();
+        expect(notices, isEmpty);
+      });
+
+      test('ignores an empty notice', () async {
+        respondWith({CodePushClient.noticeHeader: ''});
+        await createPatch();
+        expect(notices, isEmpty);
+      });
+
+      test('tolerates no onNotice', () async {
+        codePushClient = CodePushClient(httpClient: httpClient);
+        respondWith({CodePushClient.noticeHeader: 'Patches are paused.'});
+        await expectLater(createPatch(), completes);
+      });
+    });
+
     group('send', () {
       test('sends the request with the standard and custom headers', () async {
         final request = http.Request('POST', v1('apps'))..body = '{}';

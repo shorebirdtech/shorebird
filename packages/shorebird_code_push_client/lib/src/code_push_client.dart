@@ -114,17 +114,25 @@ class CodePushUploadException extends CodePushException {
 /// A wrapper around [http.Client] that ensures all outbound requests
 /// are consistent.
 /// For example, all requests include the standard `x-version` header.
+///
+/// Every response carrying a [CodePushClient.noticeHeader] is passed to
+/// [_onNotice].
 class _CodePushHttpClient extends http.BaseClient {
-  _CodePushHttpClient(this._client, this._headers);
+  _CodePushHttpClient(this._client, this._headers, this._onNotice);
 
   final http.Client _client;
 
   final Map<String, String> _headers;
 
+  final void Function(String notice)? _onNotice;
+
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
     request.headers.addAll(_headers);
-    return _client.send(request);
+    final response = await _client.send(request);
+    final notice = response.headers[CodePushClient.noticeHeader];
+    if (notice != null && notice.isNotEmpty) _onNotice?.call(notice);
+    return response;
   }
 
   @override
@@ -143,14 +151,25 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
     Map<String, String>? customHeaders,
+    void Function(String notice)? onNotice,
     @visibleForTesting
     Duration uploadRetryBaseDelay = const Duration(seconds: 1),
   }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
          ...standardHeaders,
          ...?customHeaders,
-       }),
+       }, onNotice),
        _uploadRetryBaseDelay = uploadRetryBaseDelay,
        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+
+  /// The response header carrying a notice for the customer, such as a warning
+  /// that patches are near the account's install limit. Its value is a
+  /// sentence to show as is; `onNotice` receives it.
+  ///
+  /// A header, rather than a field on each response, so any response can
+  /// carry one and clients that predate it ignore it: the way Heroku's CLI
+  /// shows `Warning-Message` and npm shows `npm-notice`. Lowercase, as
+  /// `package:http` reports header names.
+  static const noticeHeader = 'shorebird-notice';
 
   /// The standard headers applied to all requests.
   @visibleForTesting
