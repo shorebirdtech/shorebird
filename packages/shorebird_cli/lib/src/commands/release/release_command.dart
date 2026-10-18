@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -778,6 +779,7 @@ ${summary.join('\n')}
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
       flutterVersionOverride: flutterVersionArg,
@@ -789,6 +791,10 @@ ${summary.join('\n')}
         shorebirdVersion: packageVersion,
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
         usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
+        gitCommit: await git.headCommit(directory: projectRoot),
+        gitHasUncommittedChanges: await git.hasUncommittedChanges(
+          directory: projectRoot,
+        ),
       ),
       // Attach the build-trace summary if the build produced one.
       // Null for older Flutter pins without the --shorebird-trace flag

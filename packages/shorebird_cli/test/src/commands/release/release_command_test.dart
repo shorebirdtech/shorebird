@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -70,6 +71,8 @@ void main() {
     late ShorebirdLogger logger;
     late Progress progress;
     late Releaser releaser;
+    const gitCommit = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
+    late Git git;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
@@ -87,6 +90,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
+          gitRef.overrideWith(() => git),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -211,6 +215,14 @@ void main() {
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.usesShorebirdCodePushPackage).thenReturn(true);
+
+      git = MockGit();
+      when(
+        () => git.headCommit(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => gitCommit);
+      when(
+        () => git.hasUncommittedChanges(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => false);
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -1121,6 +1133,33 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           ).called(1);
         });
+      });
+
+      test('records the git commit the release was built from', () async {
+        when(
+          () => git.hasUncommittedChanges(directory: any(named: 'directory')),
+        ).thenAnswer((_) async => true);
+        await runWithOverrides(
+          () => command.finalizeRelease(release: release, releaser: releaser),
+        );
+        verify(() => git.headCommit(directory: projectRoot)).called(1);
+        verify(
+          () => releaser.updatedReleaseMetadata(
+            any(
+              that: isA<UpdateReleaseMetadata>()
+                  .having(
+                    (m) => m.environment.gitCommit,
+                    'gitCommit',
+                    gitCommit,
+                  )
+                  .having(
+                    (m) => m.environment.gitHasUncommittedChanges,
+                    'gitHasUncommittedChanges',
+                    isTrue,
+                  ),
+            ),
+          ),
+        ).called(1);
       });
 
       group('when no public key is provided', () {

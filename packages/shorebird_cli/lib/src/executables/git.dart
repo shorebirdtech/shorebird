@@ -158,6 +158,32 @@ class Git {
     return '${result.stdout}'.trim();
   }
 
+  /// The commit checked out in [directory], or null when it can't be read:
+  /// [directory] is not in a git repository, the repository has no commits,
+  /// or git is not installed.
+  Future<String?> headCommit({required Directory directory}) async {
+    try {
+      return await revParse(revision: 'HEAD', directory: directory.path);
+    } on Exception {
+      return null;
+    }
+  }
+
+  /// Whether the working tree containing [directory] has changes not in its
+  /// checked-out commit, counting untracked files that are not ignored. Null
+  /// when it can't be read, as for [headCommit].
+  Future<bool?> hasUncommittedChanges({required Directory directory}) async {
+    try {
+      final result = await git([
+        'status',
+        '--porcelain',
+      ], workingDirectory: directory.path);
+      return '${result.stdout}'.trim().isNotEmpty;
+    } on Exception {
+      return null;
+    }
+  }
+
   /// The output of `git symbolic-ref [revision]` for the git repository located
   /// in [directory]. If not provided, [revision] defaults to 'HEAD'.
   Future<String> symbolicRef({

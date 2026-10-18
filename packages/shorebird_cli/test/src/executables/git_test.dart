@@ -441,6 +441,89 @@ origin/flutter_release/3.10.6''';
       });
     });
 
+    group('headCommit', () {
+      final directory = Directory('project');
+
+      test('returns the commit HEAD points at', () async {
+        when(() => processResult.stdout).thenReturn('abc123\n');
+        await expectLater(
+          runWithOverrides(() => git.headCommit(directory: directory)),
+          completion(equals('abc123')),
+        );
+        verify(
+          () => process.run('git', [
+            'rev-parse',
+            '--verify',
+            'HEAD',
+          ], workingDirectory: directory.path),
+        ).called(1);
+      });
+
+      test('returns null when git fails', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn('not a git repository');
+        await expectLater(
+          runWithOverrides(() => git.headCommit(directory: directory)),
+          completion(isNull),
+        );
+      });
+
+      test('returns null when git is not installed', () async {
+        when(
+          () => process.run(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenThrow(const ProcessException('git', [], 'not found'));
+        await expectLater(
+          runWithOverrides(() => git.headCommit(directory: directory)),
+          completion(isNull),
+        );
+      });
+    });
+
+    group('hasUncommittedChanges', () {
+      final directory = Directory('project');
+
+      test('returns false for a clean working tree', () async {
+        when(() => processResult.stdout).thenReturn('');
+        await expectLater(
+          runWithOverrides(
+            () => git.hasUncommittedChanges(directory: directory),
+          ),
+          completion(isFalse),
+        );
+        verify(
+          () => process.run('git', [
+            'status',
+            '--porcelain',
+          ], workingDirectory: directory.path),
+        ).called(1);
+      });
+
+      test('returns true when files have changed', () async {
+        when(() => processResult.stdout).thenReturn(' M lib/main.dart\n');
+        await expectLater(
+          runWithOverrides(
+            () => git.hasUncommittedChanges(directory: directory),
+          ),
+          completion(isTrue),
+        );
+      });
+
+      test('returns null when git fails', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn('not a git repository');
+        await expectLater(
+          runWithOverrides(
+            () => git.hasUncommittedChanges(directory: directory),
+          ),
+          completion(isNull),
+        );
+      });
+    });
+
     group('symbolicRef', () {
       setUp(() {
         when(() => processResult.exitCode).thenReturn(ExitCode.success.code);

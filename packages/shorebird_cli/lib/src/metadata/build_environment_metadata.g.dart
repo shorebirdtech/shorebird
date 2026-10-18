@@ -34,6 +34,11 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
         (v) => v as bool,
       ),
       xcodeVersion: $checkedConvert('xcode_version', (v) => v as String?),
+      gitCommit: $checkedConvert('git_commit', (v) => v as String?),
+      gitHasUncommittedChanges: $checkedConvert(
+        'git_has_uncommitted_changes',
+        (v) => v as bool?,
+      ),
     );
     return val;
   },
@@ -45,6 +50,8 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
     'shorebirdYaml': 'shorebird_yaml',
     'usesShorebirdCodePushPackage': 'uses_shorebird_code_push_package',
     'xcodeVersion': 'xcode_version',
+    'gitCommit': 'git_commit',
+    'gitHasUncommittedChanges': 'git_has_uncommitted_changes',
   },
 );
 
@@ -58,4 +65,6 @@ Map<String, dynamic> _$BuildEnvironmentMetadataToJson(
   'shorebird_yaml': instance.shorebirdYaml.toJson(),
   'uses_shorebird_code_push_package': instance.usesShorebirdCodePushPackage,
   'xcode_version': instance.xcodeVersion,
+  'git_commit': instance.gitCommit,
+  'git_has_uncommitted_changes': instance.gitHasUncommittedChanges,
 };

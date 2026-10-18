@@ -131,6 +131,9 @@ void main() {
     late ShorebirdLogger logger;
     late Patcher patcher;
     late Progress progress;
+    const gitCommit = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
+    final projectRoot = Directory('project');
+    late Git git;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
@@ -150,6 +153,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
+          gitRef.overrideWith(() => git),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -367,6 +371,17 @@ void main() {
       });
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(() => shorebirdEnv.usesShorebirdCodePushPackage).thenReturn(false);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
+
+      git = MockGit();
+      when(
+        () => git.headCommit(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => gitCommit);
+      when(
+        () => git.hasUncommittedChanges(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => false);
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -484,6 +499,29 @@ void main() {
     });
 
     group('createPatch', () {
+      test('records the git commit the patch was built from', () async {
+        await runWithOverrides(() => command.createPatch(patcher));
+
+        verify(() => git.headCommit(directory: projectRoot)).called(1);
+        verify(
+          () => patcher.updatedCreatePatchMetadata(
+            any(
+              that: isA<CreatePatchMetadata>()
+                  .having(
+                    (m) => m.environment.gitCommit,
+                    'gitCommit',
+                    gitCommit,
+                  )
+                  .having(
+                    (m) => m.environment.gitHasUncommittedChanges,
+                    'gitHasUncommittedChanges',
+                    isFalse,
+                  ),
+            ),
+          ),
+        ).called(1);
+      });
+
       test('publishes the patch', () async {
         await runWithOverrides(() => command.createPatch(patcher));
 

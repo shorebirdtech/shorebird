@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
@@ -821,7 +822,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required Patcher patcher,
     required DiffStatus diffStatus,
     required bool inferredReleaseVersion,
-  }) {
+  }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final baseMetadata = CreatePatchMetadata(
       releasePlatform: patcher.releaseType.releasePlatform,
       usedIgnoreAssetChangesFlag: allowAssetDiffs,
@@ -839,6 +841,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         shorebirdVersion: packageVersion,
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
         usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
+        gitCommit: await git.headCommit(directory: projectRoot),
+        gitHasUncommittedChanges: await git.hasUncommittedChanges(
+          directory: projectRoot,
+        ),
       ),
       // Attach the build-trace summary if the build produced one.
       // Null for older Flutter pins without the --shorebird-trace

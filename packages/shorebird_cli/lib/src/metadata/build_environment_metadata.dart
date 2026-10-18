@@ -25,6 +25,8 @@ class BuildEnvironmentMetadata extends Equatable {
     required this.shorebirdYaml,
     required this.usesShorebirdCodePushPackage,
     this.xcodeVersion,
+    this.gitCommit,
+    this.gitHasUncommittedChanges,
   });
 
   /// coverage:ignore-start
@@ -38,6 +40,8 @@ class BuildEnvironmentMetadata extends Equatable {
     ShorebirdYaml shorebirdYaml = const ShorebirdYaml(appId: '123'),
     bool usesShorebirdCodePushPackage = false,
     String? xcodeVersion = '15.0',
+    String? gitCommit,
+    bool? gitHasUncommittedChanges,
   }) => BuildEnvironmentMetadata(
     flutterRevision: flutterRevision,
     shorebirdVersion: shorebirdVersion,
@@ -46,6 +50,8 @@ class BuildEnvironmentMetadata extends Equatable {
     shorebirdYaml: shorebirdYaml,
     usesShorebirdCodePushPackage: usesShorebirdCodePushPackage,
     xcodeVersion: xcodeVersion,
+    gitCommit: gitCommit,
+    gitHasUncommittedChanges: gitHasUncommittedChanges,
   );
   // coverage:ignore-end
 
@@ -66,6 +72,8 @@ class BuildEnvironmentMetadata extends Equatable {
     ShorebirdYaml? shorebirdYaml,
     bool? usesShorebirdCodePushPackage,
     String? xcodeVersion,
+    String? gitCommit,
+    bool? gitHasUncommittedChanges,
   }) => BuildEnvironmentMetadata(
     flutterRevision: flutterRevision ?? this.flutterRevision,
     shorebirdVersion: shorebirdVersion ?? this.shorebirdVersion,
@@ -76,6 +84,9 @@ class BuildEnvironmentMetadata extends Equatable {
     usesShorebirdCodePushPackage:
         usesShorebirdCodePushPackage ?? this.usesShorebirdCodePushPackage,
     xcodeVersion: xcodeVersion ?? this.xcodeVersion,
+    gitCommit: gitCommit ?? this.gitCommit,
+    gitHasUncommittedChanges:
+        gitHasUncommittedChanges ?? this.gitHasUncommittedChanges,
   );
 
   /// The revision of Flutter used to run the command.
@@ -118,6 +129,20 @@ class BuildEnvironmentMetadata extends Equatable {
   /// `shorebird preview` mechanism changed entirely between Xcode 14 and 15.
   final String? xcodeVersion;
 
+  /// The git commit checked out in the project when it was built, or null
+  /// when the project is not in a git repository (or git is unavailable).
+  ///
+  /// Reason: lets customers tie a release or patch to the source it was built
+  /// from, and recognize the same change patched on several platforms.
+  final String? gitCommit;
+
+  /// Whether the git working tree had changes not in [gitCommit] (including
+  /// untracked files that are not ignored), or null when unknown.
+  ///
+  /// Reason: [gitCommit] alone overstates what was built when there were
+  /// local changes.
+  final bool? gitHasUncommittedChanges;
+
   @override
   List<Object?> get props => [
     flutterRevision,
@@ -127,5 +152,7 @@ class BuildEnvironmentMetadata extends Equatable {
     shorebirdYaml,
     usesShorebirdCodePushPackage,
     xcodeVersion,
+    gitCommit,
+    gitHasUncommittedChanges,
   ];
 }

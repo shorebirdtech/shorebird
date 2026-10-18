@@ -15,7 +15,11 @@ void main() {
         shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
         usesShorebirdCodePushPackage: false,
         xcodeVersion: '15.0',
+        gitCommit: 'a1b2c3d',
+        gitHasUncommittedChanges: true,
       );
+      expect(metadata.toJson()['git_commit'], equals('a1b2c3d'));
+      expect(metadata.toJson()['git_has_uncommitted_changes'], isTrue);
       expect(
         BuildEnvironmentMetadata.fromJson(metadata.toJson()).toJson(),
         equals(metadata.toJson()),
@@ -55,6 +59,8 @@ void main() {
           shorebirdYaml: const ShorebirdYaml(appId: 'app-id2'),
           usesShorebirdCodePushPackage: true,
           xcodeVersion: '14.0',
+          gitCommit: 'a1b2c3d',
+          gitHasUncommittedChanges: true,
         );
         expect(
           newMetadata,
@@ -67,6 +73,8 @@ void main() {
               shorebirdYaml: ShorebirdYaml(appId: 'app-id2'),
               usesShorebirdCodePushPackage: true,
               xcodeVersion: '14.0',
+              gitCommit: 'a1b2c3d',
+              gitHasUncommittedChanges: true,
             ),
           ),
         );
