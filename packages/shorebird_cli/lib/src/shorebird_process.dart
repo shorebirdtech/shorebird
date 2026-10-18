@@ -285,8 +285,8 @@ $stderr''');
 
   Map<String, String> _environmentOverrides({required String executable}) {
     if (executable == 'flutter') {
-      // If this ever changes we also need to update the `shorebird` shell
-      // wrapper which downloads runs Flutter to fetch artifacts the first time.
+      // If this ever changes we also need to update shared.sh and
+      // shorebird.ps1, which run Flutter to fetch artifacts the first time.
       return {'FLUTTER_STORAGE_BASE_URL': shorebirdEnv.downloadUrl};
     }
 

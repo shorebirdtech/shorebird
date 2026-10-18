@@ -123,10 +123,10 @@ function Update-Flutter {
     }
 
     # Set FLUTTER_STORAGE_BASE_URL to Shorebird's download host and execute a
-    # `flutter` command to trigger a download of Dart, etc. Keep the default in
-    # sync with defaultDownloadUrl in shorebird_env.dart.
+    # `flutter` command to trigger a download of Dart, etc. Keep the default and
+    # the trailing slash handling in sync with ShorebirdEnv.downloadUrl.
     if ($env:SHOREBIRD_DOWNLOAD_URL) {
-        $env:FLUTTER_STORAGE_BASE_URL = $env:SHOREBIRD_DOWNLOAD_URL;
+        $env:FLUTTER_STORAGE_BASE_URL = $env:SHOREBIRD_DOWNLOAD_URL.TrimEnd('/');
     }
     else {
         $env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';

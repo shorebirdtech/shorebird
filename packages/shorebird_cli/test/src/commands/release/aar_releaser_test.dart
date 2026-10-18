@@ -578,6 +578,18 @@ void main() {
     });
 
     group('postReleaseInstructions', () {
+      test('points the Flutter maven repo at the download url', () {
+        when(
+          () => shorebirdEnv.downloadUrl,
+        ).thenReturn('https://mirror.example.com/shorebird');
+        expect(
+          runWithOverrides(() => aarReleaser.postReleaseInstructions),
+          contains(
+            "url 'https://mirror.example.com/shorebird/download.flutter.io'",
+          ),
+        );
+      });
+
       test('returns expected instructions', () {
         expect(
           runWithOverrides(() => aarReleaser.postReleaseInstructions),
