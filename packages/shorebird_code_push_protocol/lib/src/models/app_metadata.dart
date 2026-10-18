@@ -15,6 +15,7 @@ class AppMetadata {
     required this.displayName,
     required this.createdAt,
     required this.updatedAt,
+    this.organizationId,
     this.latestReleaseVersion,
     this.latestPatchNumber,
     this.platforms,
@@ -30,6 +31,7 @@ class AppMetadata {
       json,
       () => AppMetadata(
         appId: json['app_id'] as String,
+        organizationId: json['organization_id'] as int?,
         displayName: json['display_name'] as String,
         latestReleaseVersion: json['latest_release_version'] as String?,
         latestPatchNumber: json['latest_patch_number'] as int?,
@@ -67,6 +69,12 @@ class AppMetadata {
 
   /// The ID of the app.
   final String appId;
+
+  /// The ID of the organization the app belongs to. Every app
+  /// belongs to exactly one organization and the server always
+  /// sends this; it is optional only so that clients tolerate
+  /// servers that predate it.
+  final int? organizationId;
 
   /// The display name of the app.
   final String displayName;
@@ -119,6 +127,7 @@ class AppMetadata {
   Map<String, dynamic> toJson() {
     return {
       'app_id': appId,
+      'organization_id': ?organizationId,
       'display_name': displayName,
       'latest_release_version': ?latestReleaseVersion,
       'latest_patch_number': ?latestPatchNumber,
@@ -138,6 +147,7 @@ class AppMetadata {
   @override
   int get hashCode => Object.hashAll([
     appId,
+    organizationId,
     displayName,
     latestReleaseVersion,
     latestPatchNumber,
@@ -154,6 +164,7 @@ class AppMetadata {
     if (identical(this, other)) return true;
     return other is AppMetadata &&
         appId == other.appId &&
+        organizationId == other.organizationId &&
         displayName == other.displayName &&
         latestReleaseVersion == other.latestReleaseVersion &&
         latestPatchNumber == other.latestPatchNumber &&
