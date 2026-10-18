@@ -112,6 +112,20 @@ void main() {
         expect(notices, isEmpty);
       });
 
+      test('ignores a notice from a host other than the API', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.ok,
+            headers: {CodePushClient.noticeHeader: 'Not ours.'},
+          ),
+        );
+        await codePushClient.send(
+          http.Request('PUT', Uri.parse('https://storage.googleapis.com/x')),
+        );
+        expect(notices, isEmpty);
+      });
+
       test('tolerates no onNotice', () async {
         codePushClient = CodePushClient(httpClient: httpClient);
         respondWith({CodePushClient.noticeHeader: 'Patches are paused.'});

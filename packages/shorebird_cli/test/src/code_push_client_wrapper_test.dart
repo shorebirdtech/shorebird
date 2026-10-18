@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
@@ -79,6 +80,7 @@ void main() {
         values: {
           codePushClientWrapperRef,
           authRef.overrideWith(() => auth),
+          serverNoticesRef,
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -102,7 +104,7 @@ void main() {
 
       expect(request.headers['x-cli-version'], equals(packageVersion));
     });
-    test('prints the notices its client receives, once each', () async {
+    test('hands the notices its client receives to serverNotices', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
           Stream.value(
@@ -112,6 +114,7 @@ void main() {
           headers: {'shorebird-notice': 'Patches are paused.'},
         ),
       );
+      final notices = _MockServerNotices();
       // Built fresh: the ref holds one instance for the whole run, and an
       // earlier test's would carry that test's client.
       final instance = runScoped(
@@ -119,24 +122,18 @@ void main() {
         values: {
           authRef.overrideWith(() => auth),
           platformRef.overrideWith(() => platform),
+          serverNoticesRef.overrideWith(() => notices),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
 
       await runScoped(
-        () async {
-          await instance.getApps();
-          await instance.getApps();
-          instance
-            ..printNotices()
-            // Already printed, so nothing more.
-            ..printNotices();
-        },
+        instance.getApps,
         values: {loggerRef.overrideWith(() => logger)},
       );
 
-      verify(() => logger.warn('Patches are paused.')).called(1);
+      verify(() => notices.add('Patches are paused.')).called(1);
     });
   });
 
@@ -3566,30 +3563,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).called(1);
         });
 
-        test('prints the notices the server sent, after the result', () async {
-          codePushClientWrapper = runWithOverrides(
-            () => CodePushClientWrapper(
-              codePushClient: codePushClient,
-              notices: {'Patches are paused.'},
-            ),
-          );
-          await runWithOverrides(
-            () => codePushClientWrapper.publishPatch(
-              appId: appId,
-              releaseId: releaseId,
-              platform: releasePlatform,
-              track: track,
-              patchArtifactBundles: patchArtifactBundles,
-              metadata: {'foo': 'bar'},
-            ),
-          );
-
-          verifyInOrder([
-            () => logger.success(any(that: contains('Published Patch'))),
-            () => logger.warn('Patches are paused.'),
-          ]);
-        });
-
         test('creates channel if none exists', () async {
           when(
             () => codePushClient.getChannels(appId: any(named: 'appId')),
@@ -3708,3 +3681,5 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     });
   });
 }
+
+class _MockServerNotices extends Mock implements ServerNotices {}

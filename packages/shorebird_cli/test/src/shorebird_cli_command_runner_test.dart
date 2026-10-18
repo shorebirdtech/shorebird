@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -139,6 +140,23 @@ void main() {
             any(that: contains('Unable to prune unused previews')),
           ),
         ).called(1);
+      });
+    });
+
+    group('server notices', () {
+      test('prints them after a command that succeeds', () async {
+        commandRunner.addCommand(_NoticeCommand(ExitCode.success));
+        await runWithOverrides(() => commandRunner.run(['notice']));
+        verify(() => logger.warn('Patches are paused.')).called(1);
+      });
+
+      test('prints them after a command that fails, below its error', () async {
+        commandRunner.addCommand(_NoticeCommand(ExitCode.software));
+        final result = await runWithOverrides(
+          () => commandRunner.run(['notice']),
+        );
+        expect(result, equals(ExitCode.software.code));
+        verify(() => logger.warn('Patches are paused.')).called(1);
       });
     });
 
@@ -1690,4 +1708,26 @@ class _GroupCommand extends ShorebirdCommand {
 
   @override
   String get description => 'A command group.';
+}
+
+/// Records a server notice twice, as two responses carrying the same header
+/// would, then exits with [exitCode].
+class _NoticeCommand extends ShorebirdCommand {
+  _NoticeCommand(this.exitCode);
+
+  final ExitCode exitCode;
+
+  @override
+  String get name => 'notice';
+
+  @override
+  String get description => 'A command the server sends a notice during';
+
+  @override
+  Future<int> run() async {
+    serverNotices
+      ..add('Patches are paused.')
+      ..add('Patches are paused.');
+    throw ProcessExit(exitCode.code);
+  }
 }

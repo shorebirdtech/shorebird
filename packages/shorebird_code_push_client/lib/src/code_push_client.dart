@@ -115,10 +115,16 @@ class CodePushUploadException extends CodePushException {
 /// are consistent.
 /// For example, all requests include the standard `x-version` header.
 ///
-/// Every response carrying a [CodePushClient.noticeHeader] is passed to
-/// [_onNotice].
+/// Every response from [_apiHost] carrying a [CodePushClient.noticeHeader] is
+/// passed to [_onNotice]. Other hosts, such as signed storage URLs, are not
+/// ours to speak for.
 class _CodePushHttpClient extends http.BaseClient {
-  _CodePushHttpClient(this._client, this._headers, this._onNotice);
+  _CodePushHttpClient(
+    this._client,
+    this._headers,
+    this._onNotice,
+    this._apiHost,
+  );
 
   final http.Client _client;
 
@@ -126,12 +132,16 @@ class _CodePushHttpClient extends http.BaseClient {
 
   final void Function(String notice)? _onNotice;
 
+  final String _apiHost;
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     request.headers.addAll(_headers);
     final response = await _client.send(request);
     final notice = response.headers[CodePushClient.noticeHeader];
-    if (notice != null && notice.isNotEmpty) _onNotice?.call(notice);
+    if (notice != null && notice.isNotEmpty && request.url.host == _apiHost) {
+      _onNotice?.call(notice);
+    }
     return response;
   }
 
@@ -154,16 +164,34 @@ class CodePushClient {
     void Function(String notice)? onNotice,
     @visibleForTesting
     Duration uploadRetryBaseDelay = const Duration(seconds: 1),
-  }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
-         ...standardHeaders,
-         ...?customHeaders,
-       }, onNotice),
-       _uploadRetryBaseDelay = uploadRetryBaseDelay,
-       hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+  }) : this._(
+         httpClient: httpClient,
+         hostedUri: hostedUri ?? Uri.https('api.shorebird.dev'),
+         customHeaders: customHeaders,
+         onNotice: onNotice,
+         uploadRetryBaseDelay: uploadRetryBaseDelay,
+       );
+
+  CodePushClient._({
+    required http.Client? httpClient,
+    required this.hostedUri,
+    required Map<String, String>? customHeaders,
+    required void Function(String notice)? onNotice,
+    required Duration uploadRetryBaseDelay,
+  }) : _httpClient = _CodePushHttpClient(
+         httpClient ?? http.Client(),
+         {...standardHeaders, ...?customHeaders},
+         onNotice,
+         hostedUri.host,
+       ),
+       _uploadRetryBaseDelay = uploadRetryBaseDelay;
 
   /// The response header carrying a notice for the customer, such as a warning
   /// that patches are near the account's install limit. Its value is a
-  /// sentence to show as is; `onNotice` receives it.
+  /// sentence to show as is; `onNotice` receives it. The server sends at most
+  /// one per response, in printable ASCII, since HTTP header values are not
+  /// reliably decoded as anything else and repeated headers are joined with
+  /// commas.
   ///
   /// A header, rather than a field on each response, so any response can
   /// carry one and clients that predate it ignore it: the way Heroku's CLI

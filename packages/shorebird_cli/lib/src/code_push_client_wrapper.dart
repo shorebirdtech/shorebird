@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
@@ -76,21 +77,19 @@ ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(
 );
 
 /// Builds the [CodePushClientWrapper] for the current environment, its client
-/// collecting the server's notices for [CodePushClientWrapper.printNotices].
+/// handing the server's notices to [serverNotices].
 ///
 /// [codePushClientWrapperRef] holds the one instance; tests that need a fresh
 /// one call this.
 @visibleForTesting
 CodePushClientWrapper buildCodePushClientWrapper() {
-  final notices = <String>{};
   return CodePushClientWrapper(
     codePushClient: CodePushClient(
       httpClient: auth.client,
       hostedUri: shorebirdEnv.hostedUri,
       customHeaders: {'x-cli-version': packageVersion},
-      onNotice: notices.add,
+      onNotice: serverNotices.add,
     ),
-    notices: notices,
   );
 }
 
@@ -104,31 +103,10 @@ CodePushClientWrapper get codePushClientWrapper =>
 /// {@endtemplate}
 class CodePushClientWrapper {
   /// {@macro code_push_client_wrapper}
-  CodePushClientWrapper({
-    required this.codePushClient,
-    Set<String>? notices,
-  }) : _notices = notices ?? <String>{};
+  CodePushClientWrapper({required this.codePushClient});
 
   /// The underlying code push client.
   final CodePushClient codePushClient;
-
-  /// Notices the server has sent and [printNotices] has not yet printed, as
-  /// collected by [codePushClient]'s `onNotice`. A set, so a notice repeated
-  /// on several responses prints once.
-  final Set<String> _notices;
-
-  /// Prints the notices the server has sent since the last call, such as a
-  /// warning that the account's patches are paused or near the install
-  /// limit, then forgets them.
-  ///
-  /// Called once a command's work is done rather than as each notice
-  /// arrives, so a notice is not lost among progress output, and it is the
-  /// last thing the developer reads.
-  void printNotices() {
-    _notices
-      ..forEach(logger.warn)
-      ..clear();
-  }
 
   /// Create an app with the given [organizationId] and [appName].
   Future<App> createApp({required int organizationId, String? appName}) async {
@@ -1198,7 +1176,6 @@ $name artifact already exists, continuing...''');
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
 
     logger.success('\n✅ Published Patch ${patch.number}!');
-    printNotices();
     return patch;
   }
 

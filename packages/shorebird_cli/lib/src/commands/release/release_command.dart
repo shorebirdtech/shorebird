@@ -529,7 +529,6 @@ $error''');
       flavor: flavor,
       target: target,
     );
-    codePushClientWrapper.printNotices();
     return release;
   }
 

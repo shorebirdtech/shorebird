@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -214,9 +215,11 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       // Suppress ANSI escape codes when the user has opted into a
       // non-interactive output mode. When stdout/stderr aren't TTYs the io
       // package already disables ANSI automatically.
+      final notices = ServerNotices();
       Future<int?> runWithRefs() => runScoped<Future<int?>>(
         () => runCommand(topLevelResults),
         values: {
+          serverNoticesRef.overrideWith(() => notices),
           engineConfigRef.overrideWith(() => engineConfig),
           isDevModeRef.overrideWith(() => devMode),
           isJsonModeRef.overrideWith(() => jsonMode),
@@ -421,6 +424,10 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
           ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
+      // After the command's own output and any error, so the notice is the
+      // last thing read. In --json mode it goes to stderr with the rest of
+      // the human output.
+      serverNotices.printAll();
       // Every --json run leaves exactly one envelope on stdout. A command
       // that succeeded without writing one (it has no JSON output, or it only
       // printed usage for --help, where the exit code is null) gets an empty
