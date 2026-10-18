@@ -186,6 +186,25 @@ void main() {
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
       });
 
+      // Regression test for https://github.com/shorebirdtech/shorebird/issues/2233:
+      // `shorebird cache clean` logs after clearing, so deleting the log file
+      // out from under the logger broke the command.
+      test('does not delete the logs directory', () async {
+        final logsDirectory = Directory(
+          p.join(Directory.systemTemp.createTempSync().path, 'logs'),
+        );
+        final logFile = File(p.join(logsDirectory.path, 'shorebird.log'))
+          ..createSync(recursive: true);
+        when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
+        runWithOverrides(
+          () => Cache.shorebirdCacheDirectory,
+        ).createSync(recursive: true);
+
+        await runWithOverrides(cache.clear);
+
+        expect(logFile.existsSync(), isTrue);
+      });
+
       test('does nothing if directory does not exist', () {
         final shorebirdCacheDirectory = runWithOverrides(
           () => Cache.shorebirdCacheDirectory,
