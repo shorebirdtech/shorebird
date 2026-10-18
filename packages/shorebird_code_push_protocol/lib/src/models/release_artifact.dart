@@ -20,6 +20,7 @@ class ReleaseArtifact {
     required this.canSideload,
     this.podfileLockHash,
     this.packageResolvedHash,
+    this.pluginSwiftPackageHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact].
@@ -37,6 +38,7 @@ class ReleaseArtifact {
         url: json['url'] as String,
         podfileLockHash: json['podfile_lock_hash'] as String?,
         packageResolvedHash: json['package_resolved_hash'] as String?,
+        pluginSwiftPackageHash: json['plugin_swift_package_hash'] as String?,
         canSideload: json['can_sideload'] as bool,
       ),
     );
@@ -81,6 +83,13 @@ class ReleaseArtifact {
   /// macOS only).
   final String? packageResolvedHash;
 
+  /// sha256 of the Swift package Flutter generates for the app's Swift
+  /// Package Manager plugins
+  /// (FlutterGeneratedPluginSwiftPackage/Package.swift, with each plugin path
+  /// reduced to its last component, which names the plugin and its version),
+  /// or `none` if there was none (iOS and macOS only).
+  final String? pluginSwiftPackageHash;
+
   /// Whether the artifact can be sideloaded onto a device.
   final bool canSideload;
 
@@ -96,6 +105,7 @@ class ReleaseArtifact {
       'url': url,
       'podfile_lock_hash': ?podfileLockHash,
       'package_resolved_hash': ?packageResolvedHash,
+      'plugin_swift_package_hash': ?pluginSwiftPackageHash,
       'can_sideload': canSideload,
     };
   }
@@ -111,6 +121,7 @@ class ReleaseArtifact {
     url,
     podfileLockHash,
     packageResolvedHash,
+    pluginSwiftPackageHash,
     canSideload,
   ]);
 
@@ -127,6 +138,7 @@ class ReleaseArtifact {
         url == other.url &&
         podfileLockHash == other.podfileLockHash &&
         packageResolvedHash == other.packageResolvedHash &&
+        pluginSwiftPackageHash == other.pluginSwiftPackageHash &&
         canSideload == other.canSideload;
   }
 }
