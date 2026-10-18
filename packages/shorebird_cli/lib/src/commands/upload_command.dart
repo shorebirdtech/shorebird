@@ -59,6 +59,15 @@ class UploadCommand extends ShorebirdCommand {
     }
 
     final bundleFile = File(results.rest.single);
+    if (!bundleFile.existsSync()) {
+      return reportError(
+        message: 'No file at ${bundleFile.path}.',
+        hint:
+            '`shorebird release --no-upload` prints the path of the bundle it '
+            'saves.',
+        exitCode: ExitCode.noInput.code,
+      );
+    }
     final extractDirectory = Directory.systemTemp.createTempSync();
     try {
       final ReleaseBundle bundle;
@@ -101,11 +110,15 @@ class UploadCommand extends ShorebirdCommand {
       // All artifacts of a release must be built with the same Flutter
       // revision.
       if (existingRelease.flutterRevision != bundle.flutterRevision) {
+        final existingFlutter = [
+          ?existingRelease.flutterVersion,
+          '(${existingRelease.flutterRevision})',
+        ].join(' ');
         return reportError(
           message:
               'Release ${bundle.releaseVersion} already exists, built with '
-              'Flutter ${existingRelease.flutterVersion ?? ''} '
-              '(${existingRelease.flutterRevision}), but this bundle was '
+              'Flutter $existingFlutter, '
+              'but this bundle was '
               'built with Flutter revision ${bundle.flutterRevision}. All '
               'platforms of a release must be built with the same Flutter '
               'revision.',
@@ -165,11 +178,22 @@ ${bundle.flavor == null ? '' : '🍧 Flavor: ${lightCyan.wrap(bundle.flavor)}\n'
     );
 
     if (isJsonMode) {
+      // The same shape as `shorebird release --json`, with the release as it
+      // is now. Best-effort: the release is published, so a failed refresh
+      // falls back to the release in hand rather than failing the run.
+      Release? refreshed;
+      try {
+        refreshed = await codePushClientWrapper.maybeGetRelease(
+          appId: appId,
+          releaseVersion: bundle.releaseVersion,
+        );
+      } on Exception {
+        refreshed = null;
+      }
       emitJsonSuccess({
         'app_id': appId,
-        'platform': platform.name,
-        'release_version': bundle.releaseVersion,
-        'release_id': release.id,
+        'platforms': [platform.name],
+        'releases': [(refreshed ?? release).toJson()],
       });
       return ExitCode.success.code;
     }
@@ -178,6 +202,7 @@ ${bundle.flavor == null ? '' : '🍧 Flavor: ${lightCyan.wrap(bundle.flavor)}\n'
       'shorebird patch',
       '--platforms=${bundle.releaseType.cliName}',
       if (bundle.flavor case final flavor?) '--flavor=$flavor',
+      if (bundle.target case final target?) '--target=$target',
       '--release-version=${bundle.releaseVersion}',
     ].join(' ');
     logger

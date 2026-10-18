@@ -565,7 +565,7 @@ $error''');
         [
           'release',
           releaseVersion,
-          platform.name,
+          releaser.releaseType.cliName,
           ?flavor,
         ].join('-').replaceAll(RegExp('[^A-Za-z0-9.+_-]'), '_'),
       ),
@@ -581,6 +581,7 @@ $error''');
       final bundle = ReleaseBundle(
         appId: appId,
         flavor: flavor,
+        target: target,
         releaseType: releaser.releaseType,
         releaseVersion: releaseVersion,
         flutterRevision: flutterRevision,
@@ -614,9 +615,15 @@ $error''');
       ..info(releaser.postReleaseInstructions)
       ..info(
         'To publish it to Shorebird, run '
-        '${lightCyan.wrap('shorebird upload $bundlePath')}\n'
+        '${lightCyan.wrap('shorebird upload ${_shellQuote(bundlePath)}')}\n'
         'Patches can be made once it is published.',
       );
+  }
+
+  /// [path], quoted for a POSIX shell if it needs to be.
+  static String _shellQuote(String path) {
+    if (RegExp(r'^[A-Za-z0-9_./+:=@%-]+$').hasMatch(path)) return path;
+    return "'${path.replaceAll("'", r"'\''")}'";
   }
 
   /// Creates or reuses the release for [releaseVersion], uploads its

@@ -13,6 +13,7 @@ import 'helpers.dart';
 
 void main() {
   useTempWorkingDirectory();
+  const manifestName = ReleaseBundle.manifestFileName;
   group(ReleaseBundle, () {
     late Directory tempDir;
     late File bundleFile;
@@ -28,6 +29,7 @@ void main() {
       return ReleaseBundle(
         appId: 'app-id',
         flavor: 'internal',
+        target: 'lib/main_internal.dart',
         releaseType: ReleaseType.android,
         releaseVersion: '1.0.0+1',
         flutterRevision: 'deadbeef',
@@ -101,6 +103,7 @@ void main() {
 
       expect(read.appId, equals('app-id'));
       expect(read.flavor, equals('internal'));
+      expect(read.target, equals('lib/main_internal.dart'));
       expect(read.releaseType, equals(ReleaseType.android));
       expect(read.platform, equals(ReleasePlatform.android));
       expect(read.releaseVersion, equals('1.0.0+1'));
@@ -206,7 +209,10 @@ void main() {
       test('a manifest missing a field', () async {
         await androidBundle().writeTo(bundleFile);
         editManifest((m) => m.remove('app_id'));
-        expect(extract, throwsBundleError('could not be read'));
+        expect(
+          extract,
+          throwsBundleError('could not be read as a release bundle'),
+        );
       });
 
       test('an artifact the manifest lists but the zip lacks', () async {
@@ -231,7 +237,92 @@ void main() {
               (m['artifacts'] as List<dynamic>).first as Map<String, dynamic>
                 ..['path'] = '../outside.txt',
         );
-        expect(extract, throwsBundleError('is missing ../outside.txt'));
+        expect(extract, throwsBundleError('not a path inside the bundle'));
+      });
+
+      for (final path in [
+        '/etc/passwd',
+        'artifacts/../../escape',
+        'artifacts/./0/x',
+        'artifacts//x',
+        r'artifacts\..\x',
+        '',
+      ]) {
+        test('an artifact path "$path"', () async {
+          await androidBundle().writeTo(bundleFile);
+          editManifest(
+            (m) =>
+                (m['artifacts'] as List<dynamic>).first as Map<String, dynamic>
+                  ..['path'] = path,
+          );
+          expect(extract, throwsBundleError('not a path inside the bundle'));
+        });
+      }
+
+      test('an artifact that is a link', () async {
+        await androidBundle().writeTo(bundleFile);
+        final archive = ZipDecoder().decodeBytes(bundleFile.readAsBytesSync());
+        final out = Archive();
+        for (final file in archive.files) {
+          if (file.name == 'artifacts/0/libapp.so') {
+            out.addFile(
+              _symlink(file.name, '../../$manifestName'),
+            );
+          } else {
+            out.addFile(file);
+          }
+        }
+        bundleFile.writeAsBytesSync(ZipEncoder().encode(out));
+        expect(
+          extract,
+          throwsBundleError('is missing artifacts/0/libapp.so'),
+        );
+      });
+    });
+
+    test('writes nothing outside its directory from a crafted zip', () async {
+      // Links through earlier links are how a naive extractor escapes its
+      // directory. Only the manifest and the files it lists are written, so
+      // none of these entries is.
+      await androidBundle().writeTo(bundleFile);
+      final archive = ZipDecoder().decodeBytes(bundleFile.readAsBytesSync())
+        ..addFile(_symlink('a/b/c', '..'))
+        ..addFile(_symlink('a/b/c/d', '../..'))
+        ..addFile(ArchiveFile.string('a/b/c/d/escaped.txt', 'gotcha'))
+        ..addFile(ArchiveFile.string('../escaped2.txt', 'gotcha'));
+      bundleFile.writeAsBytesSync(ZipEncoder().encode(archive));
+
+      await extract();
+
+      final written = extractDir
+          .listSync(recursive: true)
+          .map((e) => p.relative(e.path, from: extractDir.path))
+          .toSet();
+      expect(written, isNot(contains('a')));
+      expect(
+        tempDir.listSync(recursive: true).map((e) => p.basename(e.path)),
+        isNot(anyOf(contains('escaped.txt'), contains('escaped2.txt'))),
+      );
+    });
+
+    group('extract also refuses', () {
+      Matcher throwsBundleError(String containing) => throwsA(
+        isA<ReleaseBundleException>().having(
+          (e) => e.toString(),
+          'message',
+          contains(containing),
+        ),
+      );
+
+      test('a manifest that is a link', () async {
+        bundleFile
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(
+            ZipEncoder().encode(
+              Archive()..addFile(_symlink(manifestName, '/etc/passwd')),
+            ),
+          );
+        expect(extract, throwsBundleError('is not a release bundle'));
       });
 
       test('an artifact whose contents changed', () async {
@@ -246,3 +337,8 @@ void main() {
     });
   });
 }
+
+/// A zip entry that is a symbolic link from [name] to [target], encoded as a
+/// Unix zip tool encodes one: link mode, with the target as its contents.
+ArchiveFile _symlink(String name, String target) =>
+    ArchiveFile.bytes(name, utf8.encode(target))..mode = 0xA1FF;

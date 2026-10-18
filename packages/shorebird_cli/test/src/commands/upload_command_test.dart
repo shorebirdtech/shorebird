@@ -66,7 +66,11 @@ void main() {
       );
     }
 
-    Future<void> writeBundle({String? flavor, bool withSupplement = false}) {
+    Future<void> writeBundle({
+      String? flavor,
+      String? target,
+      bool withSupplement = false,
+    }) {
       File file(String name, String contents) =>
           File(p.join(tempDir.path, 'build', name))
             ..createSync(recursive: true)
@@ -74,6 +78,7 @@ void main() {
       return ReleaseBundle(
         appId: appId,
         flavor: flavor,
+        target: target,
         releaseType: ReleaseType.android,
         releaseVersion: releaseVersion,
         flutterRevision: flutterRevision,
@@ -215,9 +220,23 @@ void main() {
       );
     });
 
+    test('exits with a no-input error when there is no file', () async {
+      expect(
+        await runWithOverrides(command.run),
+        equals(ExitCode.noInput.code),
+      );
+      verify(() => logger.err('No file at ${bundleFile.path}.')).called(1);
+      verifyNever(
+        () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+      );
+    });
+
     test('exits with a data error when the bundle cannot be read', () async {
+      bundleFile.writeAsStringSync('not a zip');
       expect(await runWithOverrides(command.run), equals(ExitCode.data.code));
-      verify(() => logger.err(any(that: contains('No file at')))).called(1);
+      verify(
+        () => logger.err(any(that: contains('is not a release bundle'))),
+      ).called(1);
       verifyNever(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       );
@@ -297,6 +316,22 @@ void main() {
       );
     });
 
+    test('names the flavor and target in the patch command', () async {
+      await writeBundle(flavor: 'internal', target: 'lib/main_internal.dart');
+      await runWithOverrides(command.run);
+      verify(
+        () => logger.info(
+          any(
+            that: contains(
+              'shorebird patch --platforms=android --flavor=internal '
+              '--target=lib/main_internal.dart '
+              '--release-version=$releaseVersion',
+            ),
+          ),
+        ),
+      ).called(1);
+    });
+
     test('names the flavor in the summary and patch command', () async {
       await writeBundle(flavor: 'internal');
       await runWithOverrides(command.run);
@@ -374,19 +409,53 @@ void main() {
       },
     );
 
-    test('emits the published release with --json', () async {
-      await writeBundle();
-      final (:exitCode, :json) = await captureJson(
-        () => runWithOverrides(command.run, jsonMode: true),
-      );
-      expect(exitCode, equals(ExitCode.success.code));
-      expect(json['data'], {
-        'app_id': appId,
-        'platform': 'android',
-        'release_version': releaseVersion,
-        'release_id': 42,
+    group('with --json', () {
+      Future<({int exitCode, Map<String, dynamic> json})> runJson() =>
+          captureJson(() => runWithOverrides(command.run, jsonMode: true));
+
+      test('emits the published release as release --json does', () async {
+        await writeBundle();
+        final active = release(
+          statuses: {ReleasePlatform.android: ReleaseStatus.active},
+        );
+        var calls = 0;
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => ++calls == 1 ? null : active);
+
+        final (:exitCode, :json) = await runJson();
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['data'], {
+          'app_id': appId,
+          'platforms': ['android'],
+          'releases': [active.toJson()],
+        });
+        verifyNever(() => logger.success(any()));
       });
-      verifyNever(() => logger.success(any()));
+
+      test('falls back to the release in hand if the refresh fails', () async {
+        await writeBundle();
+        var calls = 0;
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async {
+          if (++calls == 1) return null;
+          throw Exception('network');
+        });
+
+        final (:exitCode, :json) = await runJson();
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(
+          (json['data'] as Map<String, dynamic>)['releases'],
+          equals([release().toJson()]),
+        );
+      });
     });
 
     test('deletes what it extracted', () async {

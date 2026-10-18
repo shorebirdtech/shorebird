@@ -47,6 +47,7 @@ class ReleaseBundle {
     required this.metadata,
     required this.artifacts,
     this.flavor,
+    this.target,
     this.supplement,
   });
 
@@ -62,6 +63,10 @@ class ReleaseBundle {
 
   /// The flavor the release was built with, if any.
   final String? flavor;
+
+  /// The entrypoint the release was built from (`--target`), if not the
+  /// default.
+  final String? target;
 
   /// What was built (e.g. android, ios, aar).
   final ReleaseType releaseType;
@@ -113,6 +118,7 @@ class ReleaseBundle {
       'format_version': formatVersion,
       'app_id': appId,
       'flavor': flavor,
+      'target': target,
       'release_type': releaseType.cliName,
       'release_version': releaseVersion,
       'flutter_revision': flutterRevision,
@@ -143,6 +149,12 @@ class ReleaseBundle {
   /// Extracts the bundle at [file] into [directory] and returns it, with each
   /// artifact pointing at its extracted file.
   ///
+  /// A bundle may come from anywhere (e.g. a CI artifact), so only the
+  /// manifest and the regular files it lists are written, each to a path
+  /// checked to be inside [directory]. Anything else in the zip (links,
+  /// directories, unlisted files) is ignored, and an artifact that isn't a
+  /// regular file is refused.
+  ///
   /// Throws a [ReleaseBundleException] if [file] isn't a release bundle this
   /// CLI can read, or an artifact's contents don't match the manifest.
   static Future<ReleaseBundle> extract({
@@ -152,24 +164,20 @@ class ReleaseBundle {
     if (!file.existsSync()) {
       throw ReleaseBundleException('No file at ${file.path}.');
     }
-    // extractFileToDisk extracts what it can read and skips the rest, so a
-    // file that isn't a zip, or is a damaged one, shows up as a missing
-    // manifest or artifact below.
     final zipPath = file.path;
     final outPath = directory.path;
-    await Isolate.run(() => extractFileToDisk(zipPath, outPath));
-
-    final manifestFile = File(p.join(directory.path, manifestFileName));
-    if (!manifestFile.existsSync()) {
-      throw ReleaseBundleException(
-        '${file.path} is not a release bundle (no $manifestFileName in it). '
-        'Pass the zip that `shorebird release --no-upload` wrote; if this is '
-        'that file, it was damaged after it was written, so build it again.',
-      );
-    }
 
     try {
-      final manifest = jsonDecode(manifestFile.readAsStringSync()) as Json;
+      // The zip decoder reads what it can, so a file that isn't a zip reads
+      // as an empty one, with no manifest.
+      final manifestJson = await Isolate.run(() => _readManifest(zipPath));
+      if (manifestJson == null) {
+        throw ReleaseBundleException(
+          '${file.path} is not a release bundle (no $manifestFileName in '
+          'it). Pass the zip that `shorebird release --no-upload` wrote.',
+        );
+      }
+      final manifest = jsonDecode(manifestJson) as Json;
       final version = manifest['format_version'] as int;
       if (version > formatVersion) {
         throw ReleaseBundleException(
@@ -188,15 +196,35 @@ class ReleaseBundle {
         ),
       );
 
-      Future<ReleaseArtifactUpload> readArtifact(Json json) async {
-        final path = json['path'] as String;
-        final artifactFile = File(p.join(directory.path, path));
-        if (!p.isWithin(directory.path, artifactFile.path) ||
-            !artifactFile.existsSync()) {
+      final supplementJson = manifest['supplement'] as Json?;
+      final artifactsJson = [
+        for (final artifact in manifest['artifacts'] as List<dynamic>)
+          artifact as Json,
+        ?supplementJson,
+      ];
+      final paths = [for (final a in artifactsJson) a['path'] as String];
+      for (final path in paths) {
+        if (!_isSafeRelativePath(path)) {
           throw ReleaseBundleException(
-            '${file.path} is missing $path, which its manifest lists.',
+            "${file.path}'s manifest lists $path, which is not a path inside "
+            'the bundle.',
           );
         }
+      }
+
+      final unreadable = await Isolate.run(
+        () => _extractFiles(zipPath, outPath, paths),
+      );
+      if (unreadable != null) {
+        throw ReleaseBundleException(
+          '${file.path} is missing $unreadable, which its manifest lists, or '
+          'it is not a regular file.',
+        );
+      }
+
+      Future<ReleaseArtifactUpload> readArtifact(Json json) async {
+        final path = json['path'] as String;
+        final artifactFile = File(p.join(outPath, path));
         if (await _sha256(artifactFile) != json['sha256'] as String) {
           throw ReleaseBundleException(
             '$path in ${file.path} does not match the hash in its manifest. '
@@ -214,10 +242,10 @@ class ReleaseBundle {
         );
       }
 
-      final supplement = manifest['supplement'] as Json?;
       return ReleaseBundle(
         appId: manifest['app_id'] as String,
         flavor: manifest['flavor'] as String?,
+        target: manifest['target'] as String?,
         releaseType: releaseType,
         releaseVersion: manifest['release_version'] as String,
         flutterRevision: manifest['flutter_revision'] as String,
@@ -227,17 +255,84 @@ class ReleaseBundle {
           for (final artifact in manifest['artifacts'] as List<dynamic>)
             await readArtifact(artifact as Json),
         ],
-        supplement: supplement == null ? null : await readArtifact(supplement),
+        supplement: supplementJson == null
+            ? null
+            : await readArtifact(supplementJson),
       );
     } on ReleaseBundleException {
       rethrow;
     } on Object catch (error) {
-      // A malformed manifest: bad JSON, or a field missing or of the wrong
-      // type.
+      // A malformed manifest (bad JSON, or a field missing or of the wrong
+      // type), or a damaged zip.
       throw ReleaseBundleException(
-        "${file.path}'s $manifestFileName could not be read ($error). "
+        '${file.path} could not be read as a release bundle ($error). '
         'Build the bundle again.',
       );
+    }
+  }
+
+  /// Whether [path] is a relative path that stays inside the directory it is
+  /// resolved against: no root, no `..`, no `.` or empty segments.
+  static bool _isSafeRelativePath(String path) {
+    if (path.contains(r'\') || p.isAbsolute(path)) return false;
+    // Split by hand: p.split drops empty segments, which would hide `a//b`
+    // and a leading `/`.
+    return path
+        .split('/')
+        .every(
+          (segment) => segment.isNotEmpty && segment != '.' && segment != '..',
+        );
+  }
+
+  /// Whether [entry] is a regular file: not a directory, and not
+  /// a link (by the decoder's reading, or by its Unix mode, which some zip
+  /// tools set without the "made by Unix" marker the decoder looks for).
+  static bool _isRegularFile(ArchiveFile entry) {
+    if (!entry.isFile || entry.isSymbolicLink) return false;
+    const fileTypeMask = 0xF000;
+    const symbolicLinkType = 0xA000;
+    return entry.mode & fileTypeMask != symbolicLinkType;
+  }
+
+  /// Returns the manifest in the zip at [zipPath], or null if it has none.
+  /// Throws if [zipPath] is not a zip.
+  static String? _readManifest(String zipPath) {
+    final input = InputFileStream(zipPath);
+    try {
+      final entry = ZipDecoder().decodeStream(input).findFile(manifestFileName);
+      if (entry == null || !_isRegularFile(entry)) return null;
+      return utf8.decode(entry.content);
+    } finally {
+      input.closeSync();
+    }
+  }
+
+  /// Writes each of [paths] in the zip at [zipPath] to the same path under
+  /// [outPath]. Returns the first path that is not a regular file in the zip,
+  /// or null once all are written.
+  static String? _extractFiles(
+    String zipPath,
+    String outPath,
+    List<String> paths,
+  ) {
+    final input = InputFileStream(zipPath);
+    try {
+      final archive = ZipDecoder().decodeStream(input);
+      for (final path in paths) {
+        final entry = archive.findFile(path);
+        if (entry == null || !_isRegularFile(entry)) return path;
+        final outFile = File(p.join(outPath, path))
+          ..parent.createSync(recursive: true);
+        final output = OutputFileStream(outFile.path);
+        try {
+          entry.writeContent(output);
+        } finally {
+          output.closeSync();
+        }
+      }
+      return null;
+    } finally {
+      input.closeSync();
     }
   }
 

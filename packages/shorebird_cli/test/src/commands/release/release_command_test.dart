@@ -647,6 +647,43 @@ void main() {
         verify(artifactBuilder.writeBuildTraceSummary).called(1);
       });
 
+      test(
+        'records the target, and names the bundle after the release type',
+        () async {
+          when(() => argResults['target']).thenReturn('lib/main_dev.dart');
+          when(() => releaser.releaseType).thenReturn(ReleaseType.aar);
+          await runWithOverrides(command.run);
+          final bundle = await ReleaseBundle.extract(
+            file: bundleAt('release-$releaseVersion-aar.zip'),
+            directory: Directory.systemTemp.createTempSync(),
+          );
+          expect(bundle.target, equals('lib/main_dev.dart'));
+          expect(bundle.releaseType, equals(ReleaseType.aar));
+        },
+      );
+
+      test('quotes the printed path when it needs it', () async {
+        final spaced = Directory(p.join(projectRoot.path, "Bob's App"))
+          ..createSync();
+        when(() => releaser.projectRoot).thenReturn(spaced);
+        await runWithOverrides(command.run);
+        final path = p.join(
+          spaced.path,
+          'build',
+          'shorebird',
+          'release-$releaseVersion-android.zip',
+        );
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                "shorebird upload '${path.replaceAll("'", r"'\''")}'",
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
       test('names the bundle after the flavor', () async {
         when(() => argResults['flavor']).thenReturn('internal');
         await runWithOverrides(command.run);
