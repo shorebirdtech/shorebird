@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -45,6 +46,16 @@ const defaultAuthServiceUrl = 'https://auth.shorebird.dev';
 /// Where Flutter downloads its engine and SDK artifacts from unless
 /// `SHOREBIRD_DOWNLOAD_URL` names another, such as a mirror.
 const defaultDownloadUrl = 'https://download.shorebird.dev';
+
+/// The Shorebird Flutter fork the CLI clones unless
+/// `SHOREBIRD_FLUTTER_GIT_URL` names another, such as a mirror.
+const defaultFlutterGitUrl = 'https://github.com/shorebirdtech/flutter.git';
+
+/// The bundletool jar the CLI downloads unless `SHOREBIRD_BUNDLETOOL_URL`
+/// names another, such as a mirror. Whichever URL serves it, the jar must
+/// match the checksum the CLI expects.
+const defaultBundletoolUrl =
+    'https://github.com/google/bundletool/releases/download/${BundleToolArtifact.version}/bundletool-all-${BundleToolArtifact.version}.jar';
 
 /// The code push server the hidden `--dev` flag selects.
 const devHostedUrl = 'https://api-dev.shorebird.dev';
@@ -311,13 +322,35 @@ class ShorebirdEnv {
   /// Artifactory remote repository) or a local server. A user's own
   /// `FLUTTER_STORAGE_BASE_URL` is deliberately not used: it usually names a
   /// mirror of Google's Flutter artifacts, which lacks Shorebird's engine.
+  ///
+  /// The CLI's own per-engine tools come from here too, under
+  /// `shorebird/<engine revision>/`, so a mirror of this one host covers
+  /// every artifact the CLI downloads.
   String get downloadUrl {
-    final override = platform.environment['SHOREBIRD_DOWNLOAD_URL'];
-    if (override == null || override.isEmpty) return defaultDownloadUrl;
+    final override = _environmentOverride('SHOREBIRD_DOWNLOAD_URL');
+    if (override == null) return defaultDownloadUrl;
     // Flutter appends paths that begin with '/'.
     return override.endsWith('/')
         ? override.substring(0, override.length - 1)
         : override;
+  }
+
+  /// The git URL of the Shorebird Flutter fork: the
+  /// `SHOREBIRD_FLUTTER_GIT_URL` environment variable when it is set,
+  /// otherwise [defaultFlutterGitUrl].
+  String get flutterGitUrl =>
+      _environmentOverride('SHOREBIRD_FLUTTER_GIT_URL') ?? defaultFlutterGitUrl;
+
+  /// The URL of the bundletool jar: the `SHOREBIRD_BUNDLETOOL_URL`
+  /// environment variable when it is set, otherwise [defaultBundletoolUrl].
+  String get bundletoolUrl =>
+      _environmentOverride('SHOREBIRD_BUNDLETOOL_URL') ?? defaultBundletoolUrl;
+
+  /// The value of the environment variable [name], or null when it is unset
+  /// or empty.
+  String? _environmentOverride(String name) {
+    final value = platform.environment[name];
+    return value == null || value.isEmpty ? null : value;
   }
 
   /// The base URL for the Shorebird code push server that overrides the default

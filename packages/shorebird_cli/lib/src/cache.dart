@@ -290,11 +290,11 @@ class Cache {
 
   final List<CachedArtifact> _artifacts = [];
 
-  /// The storage base url.
-  String get storageBaseUrl => 'https://storage.googleapis.com';
-
-  /// The storage bucket host.
-  String get storageBucket => 'download.shorebird.dev';
+  /// Where the Shorebird tools for the current engine revision are
+  /// downloaded from: `shorebird/<engine revision>/` under
+  /// [ShorebirdEnv.downloadUrl].
+  String get shorebirdToolsBaseUrl =>
+      '${shorebirdEnv.downloadUrl}/shorebird/${shorebirdEnv.shorebirdEngineRevision}';
 
   /// Clear the cache.
   Future<void> clear() async {
@@ -400,7 +400,7 @@ allowed to access $url.''');
 
       updateProgress.fail();
       throw CacheUpdateFailure(
-        '''Failed to download $fileName: ${response.statusCode} ${response.reasonPhrase}''',
+        '''Failed to download $fileName from $url: ${response.statusCode} ${response.reasonPhrase}''',
       );
     }
 
@@ -426,7 +426,7 @@ allowed to access $url.''');
       // be re-downloaded.
       artifactDirectory.deleteSync(recursive: true);
       throw CacheUpdateFailure(
-        '''Failed to download $fileName: checksum mismatch''',
+        '''Failed to download $fileName from $url: checksum mismatch''',
       );
     }
 
@@ -492,7 +492,7 @@ class AotToolsArtifact extends CachedArtifact {
 
   @override
   Future<String> get storageUrl async =>
-      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
+      '${cache.shorebirdToolsBaseUrl}/$fileName';
 
   @override
   String? get checksum => null;
@@ -543,7 +543,7 @@ class AnalyzeSnapshotMacosArtifact extends CachedArtifact {
 
   @override
   Future<String> get storageUrl async =>
-      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
+      '${cache.shorebirdToolsBaseUrl}/$fileName';
 
   @override
   String? get checksum => null;
@@ -594,7 +594,7 @@ class PatchArtifact extends CachedArtifact {
       artifactName += 'windows-x64.zip';
     }
 
-    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
+    return '${cache.shorebirdToolsBaseUrl}/$artifactName';
   }
 
   Future<bool> _supportsArm64Patch() async {
@@ -635,9 +635,7 @@ class BundleToolArtifact extends CachedArtifact {
   bool get isExecutable => false;
 
   @override
-  Future<String> get storageUrl async {
-    return 'https://github.com/google/bundletool/releases/download/$version/bundletool-all-$version.jar';
-  }
+  Future<String> get storageUrl async => shorebirdEnv.bundletoolUrl;
 
   @override
   String? get checksum => sha256;

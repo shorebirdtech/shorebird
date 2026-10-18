@@ -112,6 +112,30 @@ void main() {
       verifyNever(() => client.getManifest(shorebirdEngineRevision));
     });
 
+    test('should redirect Shorebird tools to the Shorebird bucket', () async {
+      const path = 'shorebird/$shorebirdEngineRevision/patch-darwin-arm64.zip';
+      final request = buildRequest(path);
+      final response = await handler(request);
+      expect(
+        response,
+        isRedirectTo(
+          'https://storage.googleapis.com/download.shorebird.dev/$path',
+        ),
+      );
+      verifyNever(() => client.getManifest(any()));
+    });
+
+    test('should return 404 for other paths under shorebird/', () async {
+      for (final path in [
+        'shorebird/not-a-revision/patch.zip',
+        'shorebird/$shorebirdEngineRevision/nested/patch.zip',
+        'shorebird/$shorebirdEngineRevision/../secret',
+      ]) {
+        final response = await handler(buildRequest(path));
+        expect(response.statusCode, equals(HttpStatus.notFound), reason: path);
+      }
+    });
+
     test('should return explainer at /', () async {
       const path = '/';
       final request = buildRequest(path);

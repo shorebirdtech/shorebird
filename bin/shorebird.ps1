@@ -107,8 +107,14 @@ function Update-Flutter {
     Write-Output "Updating Flutter..."
 
     if (!(Test-Path $flutterPath)) {
+        # Keep the default in sync with defaultFlutterGitUrl in
+        # shorebird_env.dart.
+        $flutterGitUrl = 'https://github.com/shorebirdtech/flutter.git'
+        if ($env:SHOREBIRD_FLUTTER_GIT_URL) {
+            $flutterGitUrl = $env:SHOREBIRD_FLUTTER_GIT_URL
+        }
         Invoke-SilentlyIfNeeded {
-            git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$flutterPath" 
+            git clone --filter=tree:0 "$flutterGitUrl" --no-checkout "$flutterPath"
         }
     }
     else {

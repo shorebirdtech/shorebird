@@ -22,6 +22,9 @@ import 'package:test/test.dart';
 import 'helpers.dart';
 import 'mocks.dart';
 
+// Not the default, so a clone that ignores shorebirdEnv fails these tests.
+const flutterGitUrl = 'https://git.example.com/shorebirdtech/flutter.git';
+
 void main() {
   useTempWorkingDirectory();
   group(ShorebirdFlutter, () {
@@ -105,6 +108,7 @@ void main() {
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
+      when(() => shorebirdEnv.flutterGitUrl).thenReturn(flutterGitUrl);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdEnv.copyWith(
@@ -1315,7 +1319,7 @@ origin/flutter_release/3.10.6''';
           expect(otherInstall.existsSync(), isTrue);
           verify(
             () => git.clone(
-              url: ShorebirdFlutter.flutterGitUrl,
+              url: flutterGitUrl,
               outputDirectory: any(named: 'outputDirectory'),
               args: any(named: 'args'),
             ),
@@ -1748,7 +1752,7 @@ origin/flutter_release/3.10.6''';
 
         verify(
           () => git.clone(
-            url: ShorebirdFlutter.flutterGitUrl,
+            url: flutterGitUrl,
             outputDirectory: any(named: 'outputDirectory'),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
@@ -1779,7 +1783,7 @@ origin/flutter_release/3.10.6''';
         );
         verify(
           () => git.clone(
-            url: ShorebirdFlutter.flutterGitUrl,
+            url: flutterGitUrl,
             outputDirectory: any(named: 'outputDirectory'),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
