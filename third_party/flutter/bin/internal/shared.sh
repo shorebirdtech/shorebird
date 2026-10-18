@@ -19,8 +19,10 @@ function update_flutter {
   git -C "$FLUTTER_PATH" -c advice.detachedHead=false checkout "$FLUTTER_VERSION"
   SHOREBIRD_ENGINE_VERSION=`cat "$FLUTTER_PATH/bin/internal/engine.version"`
   echo "Shorebird Engine • revision $SHOREBIRD_ENGINE_VERSION"
-  # Install Shorebird Flutter Artifacts
-  FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev $FLUTTER_PATH/bin/flutter --version
+  # Install Shorebird Flutter Artifacts. Keep the default and the trailing
+  # slash handling in sync with ShorebirdEnv.downloadUrl.
+  local download_url="${SHOREBIRD_DOWNLOAD_URL:-https://download.shorebird.dev}"
+  FLUTTER_STORAGE_BASE_URL="${download_url%/}" $FLUTTER_PATH/bin/flutter --version
 }
 
 function pub_get_with_retry {

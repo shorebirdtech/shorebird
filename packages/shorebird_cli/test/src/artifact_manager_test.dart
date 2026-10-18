@@ -595,7 +595,10 @@ void main() {
           p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
         );
 
-        final dir = await ArtifactManager.extractAndroidLibappsFromAab(aab);
+        final dir = Directory.systemTemp.createTempSync();
+        addTearDown(() => dir.deleteSync(recursive: true));
+
+        await ArtifactManager.extractAndroidLibappsFromAab(aab, into: dir);
 
         final archDirs =
             dir
@@ -613,7 +616,7 @@ void main() {
       });
     });
 
-    group('androidArchsDirectoryFromAab', () {
+    group('withAndroidArchsDirectoryFromAab', () {
       late Directory projectRoot;
       final aab = File(p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'));
 
@@ -645,36 +648,73 @@ void main() {
           ..createSync(recursive: true)
           ..writeAsStringSync(staleContents);
 
-        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+        await ArtifactManager.withAndroidArchsDirectoryFromAab(
           projectRoot: projectRoot,
           aab: aab,
+          action: (result) async {
+            expect(result, isNotNull);
+            expect(result!.path, isNot(equals(stripped.path)));
+            final libapp = File(p.join(result.path, 'arm64-v8a', 'libapp.so'));
+            expect(libapp.existsSync(), isTrue);
+            expect(libapp.lengthSync(), isNot(equals(staleContents.length)));
+          },
         );
-
-        expect(result, isNotNull);
-        expect(result!.path, isNot(equals(stripped.path)));
-        final libapp = File(p.join(result.path, 'arm64-v8a', 'libapp.so'));
-        expect(libapp.existsSync(), isTrue);
-        expect(libapp.lengthSync(), isNot(equals(staleContents.length)));
       });
 
       test('extracts from the aab when no stripped dir exists', () async {
-        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+        await ArtifactManager.withAndroidArchsDirectoryFromAab(
           projectRoot: projectRoot,
           aab: aab,
+          action: (result) async {
+            expect(result, isNotNull);
+            expect(
+              File(p.join(result!.path, 'x86_64', 'libapp.so')).existsSync(),
+              isTrue,
+            );
+          },
+        );
+      });
+
+      test('deletes the extracted libraries once action completes', () async {
+        final result = await ArtifactManager.withAndroidArchsDirectoryFromAab(
+          projectRoot: projectRoot,
+          aab: aab,
+          action: (result) async => result,
         );
 
         expect(result, isNotNull);
-        expect(
-          File(p.join(result!.path, 'x86_64', 'libapp.so')).existsSync(),
-          isTrue,
+        expect(result!.existsSync(), isFalse);
+      });
+
+      test('deletes the extracted libraries when action throws', () async {
+        Directory? extracted;
+        var calls = 0;
+        await expectLater(
+          ArtifactManager.withAndroidArchsDirectoryFromAab(
+            projectRoot: projectRoot,
+            aab: aab,
+            action: (result) async {
+              calls++;
+              extracted = result;
+              throw Exception('oops');
+            },
+          ),
+          throwsException,
         );
+
+        // The action's own error must not be taken for an extraction failure
+        // and retried against the stripped dir.
+        expect(calls, equals(1));
+        expect(extracted, isNotNull);
+        expect(extracted!.existsSync(), isFalse);
       });
 
       test('falls back to the stripped dir when no aab is provided', () async {
         final stripped = strippedOutLib()..createSync(recursive: true);
 
-        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+        final result = await ArtifactManager.withAndroidArchsDirectoryFromAab(
           projectRoot: projectRoot,
+          action: (result) async => result,
         );
 
         expect(result, isNotNull);
@@ -691,9 +731,10 @@ void main() {
           ..writeAsStringSync('not a zip');
 
         final result = await runWithOverrides(
-          () => ArtifactManager.androidArchsDirectoryFromAab(
+          () => ArtifactManager.withAndroidArchsDirectoryFromAab(
             projectRoot: projectRoot,
             aab: invalidAab,
+            action: (result) async => result,
           ),
         );
 
@@ -725,9 +766,10 @@ void main() {
           ..writeAsBytesSync(bytes);
 
         final result = await runWithOverrides(
-          () => ArtifactManager.androidArchsDirectoryFromAab(
+          () => ArtifactManager.withAndroidArchsDirectoryFromAab(
             projectRoot: projectRoot,
             aab: corruptAab,
+            action: (result) async => result,
           ),
         );
 
@@ -754,19 +796,22 @@ void main() {
           );
 
         final result = await runWithOverrides(
-          () => ArtifactManager.androidArchsDirectoryFromAab(
+          () => ArtifactManager.withAndroidArchsDirectoryFromAab(
             projectRoot: projectRoot,
             aab: libappLessAab,
+            action: (result) async => result,
           ),
         );
 
         expect(result, isNotNull);
         expect(result!.path, equals(stripped.path));
+        expect(stripped.existsSync(), isTrue);
       });
 
       test('returns null when there is no stripped dir and no aab', () async {
-        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+        final result = await ArtifactManager.withAndroidArchsDirectoryFromAab(
           projectRoot: projectRoot,
+          action: (result) async => result,
         );
 
         expect(result, isNull);

@@ -36,46 +36,15 @@ the artifact is one we're providing, add it in `tool/generate_manifest.sh`
 
 To do so, you will need to determine the artifact URLs. Follow these steps:
 
-- Adjust shorebird_cli to point to http://localhost:8080 instead of https://download.shorebird.dev:
+- Point Shorebird at the local proxy by setting `SHOREBIRD_DOWNLOAD_URL`:
 
-  - packages\shorebird_cli\lib\src\shorebird_process.dart
+  ```bash
+  export SHOREBIRD_DOWNLOAD_URL=http://localhost:8080
+  ```
 
-    ```diff
-        Map<String, String> _environmentOverrides({
-        required String executable,
-    }) {
-        if (executable == 'flutter') {
-        // If this ever changes we also need to update the `shorebird` shell
-        // wrapper which downloads runs Flutter to fetch artifacts the first time.
-    -      return {'FLUTTER_STORAGE_BASE_URL': 'https://download.shorebird.dev'};
-    +      return {'FLUTTER_STORAGE_BASE_URL': 'http://localhost:8080'};
-        }
-
-        return {};
-    }
-    ```
-
-- Adjust third_party Flutter to point to http://localhost:8080 instead of https://download.shorebird.dev:
-
-  - third_party\flutter\bin\internal\shared.sh
-
-    ```diff
-    # Either clones or pulls the Shorebird Flutter repository, depending on whether FLUTTER_PATH exists.
-    function update_flutter {
-    if [[ -d "$FLUTTER_PATH" ]]; then
-        git -C "$FLUTTER_PATH" fetch
-    else
-        git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$FLUTTER_PATH"
-    fi
-    # -c to avoid printing a warning about being in a detached head state.
-    git -C "$FLUTTER_PATH" -c advice.detachedHead=false checkout "$FLUTTER_VERSION"
-    SHOREBIRD_ENGINE_VERSION=`cat "$FLUTTER_PATH/bin/internal/engine.version"`
-    echo "Shorebird Engine • revision $SHOREBIRD_ENGINE_VERSION"
-    # Install Shorebird Flutter Artifacts
-    -  FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev $FLUTTER_PATH/bin/flutter --version
-    +  FLUTTER_STORAGE_BASE_URL=http://localhost:8080 $FLUTTER_PATH/bin/flutter --version
-    }
-    ```
+  The CLI passes it to Flutter as `FLUTTER_STORAGE_BASE_URL`, and so do
+  `third_party/flutter/bin/internal/shared.sh` and `bin/shorebird.ps1` on the
+  first run of a Flutter revision.
 
 - Modify flutter_tool used by Shorebird to allow downloads from insecure URLs:
   - shorebird\bin\cache\flutter\packages\flutter_tools\gradle\flutter.gradle

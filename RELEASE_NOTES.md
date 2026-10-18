@@ -4,7 +4,7 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
-## 1.6.130 (October 19, 2026)
+## 1.6.130 (October 17, 2026)
 
 - ✨ `shorebird invitations list`, `accept` and `decline` manage the
   invitations sent to you.

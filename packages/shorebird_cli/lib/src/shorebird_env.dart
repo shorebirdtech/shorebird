@@ -42,6 +42,10 @@ class CacheCorruptedException implements Exception {
 /// another.
 const defaultAuthServiceUrl = 'https://auth.shorebird.dev';
 
+/// Where Flutter downloads its engine and SDK artifacts from unless
+/// `SHOREBIRD_DOWNLOAD_URL` names another, such as a mirror.
+const defaultDownloadUrl = 'https://download.shorebird.dev';
+
 /// The code push server the hidden `--dev` flag selects.
 const devHostedUrl = 'https://api-dev.shorebird.dev';
 
@@ -298,6 +302,23 @@ class ShorebirdEnv {
     platform.environment['AUTH_SERVICE_URL'] ??
         (isDevMode ? devAuthServiceUrl : defaultAuthServiceUrl),
   );
+
+  /// The base URL Flutter downloads its artifacts from, passed to Flutter as
+  /// `FLUTTER_STORAGE_BASE_URL`: the `SHOREBIRD_DOWNLOAD_URL`
+  /// environment variable when it is set, otherwise [defaultDownloadUrl].
+  ///
+  /// Point this at a mirror of [defaultDownloadUrl] (for example an
+  /// Artifactory remote repository) or a local server. A user's own
+  /// `FLUTTER_STORAGE_BASE_URL` is deliberately not used: it usually names a
+  /// mirror of Google's Flutter artifacts, which lacks Shorebird's engine.
+  String get downloadUrl {
+    final override = platform.environment['SHOREBIRD_DOWNLOAD_URL'];
+    if (override == null || override.isEmpty) return defaultDownloadUrl;
+    // Flutter appends paths that begin with '/'.
+    return override.endsWith('/')
+        ? override.substring(0, override.length - 1)
+        : override;
+  }
 
   /// The base URL for the Shorebird code push server that overrides the default
   /// used by [CodePushClient]: the `SHOREBIRD_HOSTED_URL` environment
