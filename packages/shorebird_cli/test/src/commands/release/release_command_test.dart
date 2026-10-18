@@ -563,6 +563,11 @@ void main() {
 
       setUp(() {
         when(() => argResults['upload']).thenReturn(false);
+        when(
+          () => shorebirdFlutter.getVersionForRevision(
+            flutterRevision: any(named: 'flutterRevision'),
+          ),
+        ).thenAnswer((_) async => flutterVersionString);
         aab = File(p.join(projectRoot.path, 'app-release.aab'))
           ..writeAsStringSync('aab');
         when(() => releaser.projectRoot).thenReturn(projectRoot);
@@ -628,6 +633,7 @@ void main() {
         expect(bundle.releaseType, equals(ReleaseType.android));
         expect(bundle.releaseVersion, equals(releaseVersion));
         expect(bundle.flutterRevision, equals(flutterRevision));
+        expect(bundle.flutterVersion, equals(flutterVersionString));
         expect(
           bundle.metadata,
           equals(UpdateReleaseMetadata.forTest().toJson()),
@@ -709,6 +715,7 @@ void main() {
             'bundles': [
               {
                 'platform': 'android',
+                'release_type': 'android',
                 'release_version': releaseVersion,
                 'path': bundleAt('release-$releaseVersion-android.zip').path,
               },

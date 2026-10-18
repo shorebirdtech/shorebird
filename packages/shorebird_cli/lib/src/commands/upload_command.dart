@@ -148,6 +148,7 @@ ${bundle.flavor == null ? '' : '🍧 Flavor: ${lightCyan.wrap(bundle.flavor)}\n'
           appId: appId,
           version: bundle.releaseVersion,
           flutterRevision: bundle.flutterRevision,
+          flutterVersion: bundle.flutterVersion,
           platform: platform,
         );
     await codePushClientWrapper.updateReleaseStatus(

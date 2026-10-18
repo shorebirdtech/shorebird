@@ -1492,6 +1492,49 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).called(1);
           verify(() => progress.complete()).called(1);
         });
+
+        test('uses a given Flutter version instead of looking it up', () async {
+          when(
+            () => codePushClient.createRelease(
+              appId: any(named: 'appId'),
+              version: any(named: 'version'),
+              flutterRevision: any(named: 'flutterRevision'),
+              flutterVersion: any(named: 'flutterVersion'),
+            ),
+          ).thenAnswer((_) async => release);
+          when(
+            () => codePushClient.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: any(named: 'status'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () async => codePushClientWrapper.createRelease(
+              appId: appId,
+              version: releaseVersion,
+              flutterRevision: flutterRevision,
+              flutterVersion: '3.99.0',
+              platform: releasePlatform,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createRelease(
+              appId: appId,
+              version: releaseVersion,
+              flutterRevision: flutterRevision,
+              flutterVersion: '3.99.0',
+            ),
+          ).called(1);
+          verifyNever(
+            () => shorebirdFlutter.getVersionForRevision(
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          );
+        });
       });
     });
 

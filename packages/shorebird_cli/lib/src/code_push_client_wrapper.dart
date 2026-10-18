@@ -461,15 +461,20 @@ Please create a release using "shorebird release" and try again.
   }
 
   /// Creates a release for the given [appId], [version], [flutterRevision], and
-  /// [platform].
+  /// [platform]. [flutterVersion] is looked up from [flutterRevision] if not
+  /// given.
   Future<Release> createRelease({
     required String appId,
     required String version,
     required String flutterRevision,
     required ReleasePlatform platform,
+    String? flutterVersion,
   }) async {
     final createReleaseProgress = logger.progress('Creating release');
-    final flutterVersion = await shorebirdFlutter.getVersionForRevision(
+    // Looking the version up needs [flutterRevision] in the local Flutter
+    // checkout, which a machine publishing a release built elsewhere may not
+    // have; such callers pass the version they recorded instead.
+    flutterVersion ??= await shorebirdFlutter.getVersionForRevision(
       flutterRevision: flutterRevision,
     );
     try {

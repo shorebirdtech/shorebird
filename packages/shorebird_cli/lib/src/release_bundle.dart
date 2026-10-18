@@ -46,6 +46,7 @@ class ReleaseBundle {
     required this.shorebirdVersion,
     required this.metadata,
     required this.artifacts,
+    this.flutterVersion,
     this.flavor,
     this.target,
     this.supplement,
@@ -76,6 +77,11 @@ class ReleaseBundle {
 
   /// The Flutter revision the release was built with.
   final String flutterRevision;
+
+  /// The Flutter version [flutterRevision] is (e.g. `3.35.0`), if known.
+  /// Recorded at build time, because the machine that uploads the bundle may
+  /// not have that revision to look it up.
+  final String? flutterVersion;
 
   /// The version of the Shorebird CLI that built the release.
   final String shorebirdVersion;
@@ -122,6 +128,7 @@ class ReleaseBundle {
       'release_type': releaseType.cliName,
       'release_version': releaseVersion,
       'flutter_revision': flutterRevision,
+      'flutter_version': flutterVersion,
       'shorebird_version': shorebirdVersion,
       'metadata': metadata,
       'artifacts': [
@@ -202,6 +209,11 @@ class ReleaseBundle {
           artifact as Json,
         ?supplementJson,
       ];
+      if ((manifest['artifacts'] as List<dynamic>).isEmpty) {
+        throw ReleaseBundleException(
+          '${file.path} lists no artifacts. Build the bundle again.',
+        );
+      }
       final paths = [for (final a in artifactsJson) a['path'] as String];
       for (final path in paths) {
         if (!_isSafeRelativePath(path)) {
@@ -249,6 +261,7 @@ class ReleaseBundle {
         releaseType: releaseType,
         releaseVersion: manifest['release_version'] as String,
         flutterRevision: manifest['flutter_revision'] as String,
+        flutterVersion: manifest['flutter_version'] as String?,
         shorebirdVersion: manifest['shorebird_version'] as String,
         metadata: manifest['metadata'] as Json,
         artifacts: [

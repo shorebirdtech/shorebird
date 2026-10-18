@@ -82,6 +82,7 @@ void main() {
         releaseType: ReleaseType.android,
         releaseVersion: releaseVersion,
         flutterRevision: flutterRevision,
+        flutterVersion: '3.35.0',
         shorebirdVersion: '1.6.0',
         metadata: metadata,
         artifacts: [
@@ -163,6 +164,7 @@ void main() {
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          flutterVersion: any(named: 'flutterVersion'),
           platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => release());
@@ -254,6 +256,7 @@ void main() {
           appId: appId,
           version: releaseVersion,
           flutterRevision: flutterRevision,
+          flutterVersion: '3.35.0',
           platform: ReleasePlatform.android,
         ),
       ).called(1);
@@ -369,6 +372,7 @@ void main() {
           appId: any(named: 'appId'),
           version: any(named: 'version'),
           flutterRevision: any(named: 'flutterRevision'),
+          flutterVersion: any(named: 'flutterVersion'),
           platform: any(named: 'platform'),
         ),
       );

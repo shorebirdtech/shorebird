@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/release_bundle.dart';
@@ -33,6 +34,7 @@ void main() {
         releaseType: ReleaseType.android,
         releaseVersion: '1.0.0+1',
         flutterRevision: 'deadbeef',
+        flutterVersion: '3.35.0',
         shorebirdVersion: '1.6.0',
         metadata: const {'platform': 'android', 'generated_apks': false},
         artifacts: [
@@ -83,6 +85,14 @@ void main() {
       bundleFile.writeAsBytesSync(ZipEncoder().encode(out));
     }
 
+    Matcher throwsBundleError(String containing) => throwsA(
+      isA<ReleaseBundleException>().having(
+        (e) => e.toString(),
+        'message',
+        contains(containing),
+      ),
+    );
+
     Future<ReleaseBundle> extract() =>
         ReleaseBundle.extract(file: bundleFile, directory: extractDir);
 
@@ -108,6 +118,7 @@ void main() {
       expect(read.platform, equals(ReleasePlatform.android));
       expect(read.releaseVersion, equals('1.0.0+1'));
       expect(read.flutterRevision, equals('deadbeef'));
+      expect(read.flutterVersion, equals('3.35.0'));
       expect(read.shorebirdVersion, equals('1.6.0'));
       expect(read.metadata, equals(bundle.metadata));
       expect(read.supplement, isNull);
@@ -155,14 +166,6 @@ void main() {
     });
 
     group('extract refuses', () {
-      Matcher throwsBundleError(String containing) => throwsA(
-        isA<ReleaseBundleException>().having(
-          (e) => e.toString(),
-          'message',
-          contains(containing),
-        ),
-      );
-
       test('a missing file', () {
         expect(extract, throwsBundleError('No file at'));
       });
@@ -280,6 +283,47 @@ void main() {
       });
     });
 
+    test('follows no link in the zip, even along a listed path', () async {
+      // The manifest lists a file whose path runs through link entries. The
+      // links are never created, so the file lands inside the directory, as
+      // a plain file under plain directories.
+      await androidBundle().writeTo(bundleFile);
+      final archive = ZipDecoder().decodeBytes(bundleFile.readAsBytesSync())
+        ..addFile(_symlink('a/b/c', '..'))
+        ..addFile(_symlink('a/b/c/d', '../..'))
+        ..addFile(ArchiveFile.string('a/b/c/d/escaped.txt', 'gotcha'));
+      bundleFile.writeAsBytesSync(ZipEncoder().encode(archive));
+      final digest = sha256.convert(utf8.encode('gotcha')).toString();
+      editManifest(
+        (m) => (m['artifacts'] as List<dynamic>).add({
+          'path': 'a/b/c/d/escaped.txt',
+          'name': 'x',
+          'arch': 'x',
+          'can_sideload': false,
+          'sha256': digest,
+        }),
+      );
+
+      final read = await extract();
+
+      final escaped = read.artifacts.last.file;
+      expect(p.isWithin(extractDir.path, escaped.path), isTrue);
+      expect(
+        FileSystemEntity.typeSync(
+          p.join(extractDir.path, 'a', 'b', 'c'),
+          followLinks: false,
+        ),
+        equals(FileSystemEntityType.directory),
+      );
+      expect(
+        tempDir
+            .listSync(recursive: true)
+            .where((e) => p.basename(e.path) == 'escaped.txt')
+            .map((e) => e.path),
+        equals([escaped.path]),
+      );
+    });
+
     test('writes nothing outside its directory from a crafted zip', () async {
       // Links through earlier links are how a naive extractor escapes its
       // directory. Only the manifest and the files it lists are written, so
@@ -305,14 +349,12 @@ void main() {
       );
     });
 
-    group('extract also refuses', () {
-      Matcher throwsBundleError(String containing) => throwsA(
-        isA<ReleaseBundleException>().having(
-          (e) => e.toString(),
-          'message',
-          contains(containing),
-        ),
-      );
+    group('extract refuses, besides', () {
+      test('a bundle with no artifacts', () async {
+        await androidBundle().writeTo(bundleFile);
+        editManifest((m) => m['artifacts'] = <dynamic>[]);
+        expect(extract, throwsBundleError('lists no artifacts'));
+      });
 
       test('a manifest that is a link', () async {
         bundleFile

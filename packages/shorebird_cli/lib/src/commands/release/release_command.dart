@@ -220,6 +220,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
             for (final bundle in _savedBundles)
               {
                 'platform': bundle.platform.name,
+                'release_type': bundle.releaseType.cliName,
                 'release_version': bundle.version,
                 'path': bundle.file.path,
               },
@@ -351,7 +352,14 @@ $error''');
 
   /// The bundles saved by this run, when [upload] is false.
   final _savedBundles =
-      <({ReleasePlatform platform, String version, File file})>[];
+      <
+        ({
+          ReleaseType releaseType,
+          ReleasePlatform platform,
+          String version,
+          File file,
+        })
+      >[];
 
   /// The build name specified via `--build-name`.
   String? get buildName =>
@@ -585,6 +593,9 @@ $error''');
         releaseType: releaser.releaseType,
         releaseVersion: releaseVersion,
         flutterRevision: flutterRevision,
+        flutterVersion: await shorebirdFlutter.getVersionForRevision(
+          flutterRevision: flutterRevision,
+        ),
         shorebirdVersion: packageVersion,
         metadata: await releaseMetadata(releaser),
         artifacts: artifacts,
@@ -604,6 +615,7 @@ $error''');
 
     final bundlePath = '${bundleFile.path}.zip';
     _savedBundles.add((
+      releaseType: releaser.releaseType,
       platform: platform,
       version: releaseVersion,
       file: File(bundlePath),
