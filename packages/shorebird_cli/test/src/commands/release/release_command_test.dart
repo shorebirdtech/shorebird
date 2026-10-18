@@ -6,6 +6,7 @@ import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
@@ -18,6 +19,7 @@ import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/release_bundle.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -668,26 +670,48 @@ void main() {
         },
       );
 
-      test('quotes the printed path when it needs it', () async {
-        final spaced = Directory(p.join(projectRoot.path, "Bob's App"))
-          ..createSync();
-        when(() => releaser.projectRoot).thenReturn(spaced);
-        await runWithOverrides(command.run);
-        final path = p.join(
-          spaced.path,
-          'build',
-          'shorebird',
-          'release-$releaseVersion-android.zip',
-        );
-        verify(
-          () => logger.info(
-            any(
-              that: contains(
-                "shorebird upload '${path.replaceAll("'", r"'\''")}'",
-              ),
-            ),
-          ),
-        ).called(1);
+      group('quotes the printed path when it needs it', () {
+        late Directory spaced;
+        late String path;
+
+        Future<void> runOn(String operatingSystem) {
+          final platform = TestNativePlatform(
+            operatingSystem: operatingSystem,
+            operatingSystemVersion: 'test',
+            environment: {},
+          );
+          return runScoped(
+            () => runWithOverrides(command.run),
+            values: {platformRef.overrideWith(() => platform)},
+          );
+        }
+
+        setUp(() {
+          spaced = Directory(p.join(projectRoot.path, "Bob's App"))
+            ..createSync();
+          when(() => releaser.projectRoot).thenReturn(spaced);
+          path = p.join(
+            spaced.path,
+            'build',
+            'shorebird',
+            'release-$releaseVersion-android.zip',
+          );
+        });
+
+        test('in single quotes on macOS and Linux', () async {
+          await runOn(NativePlatform.linux);
+          final quoted = "'${path.replaceAll("'", r"'\''")}'";
+          verify(
+            () => logger.info(any(that: contains('shorebird upload $quoted'))),
+          ).called(1);
+        });
+
+        test('in double quotes on Windows', () async {
+          await runOn(NativePlatform.windows);
+          verify(
+            () => logger.info(any(that: contains('shorebird upload "$path"'))),
+          ).called(1);
+        });
       });
 
       test('names the bundle after the flavor', () async {

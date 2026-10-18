@@ -632,9 +632,14 @@ $error''');
       );
   }
 
-  /// [path], quoted for a POSIX shell if it needs to be.
+  /// [path], quoted for the user's shell if it needs to be: in double quotes
+  /// on Windows (where paths can't contain them), in single quotes elsewhere.
   static String _shellQuote(String path) {
-    if (RegExp(r'^[A-Za-z0-9_./+:=@%-]+$').hasMatch(path)) return path;
+    final safe = platform.isWindows
+        ? RegExp(r'^[A-Za-z0-9_./\\:~+=@%-]+$')
+        : RegExp(r'^[A-Za-z0-9_./:~+=@%-]+$');
+    if (safe.hasMatch(path)) return path;
+    if (platform.isWindows) return '"$path"';
     return "'${path.replaceAll("'", r"'\''")}'";
   }
 
