@@ -236,7 +236,7 @@ class ReleaseBundle {
 
       Future<ReleaseArtifactUpload> readArtifact(Json json) async {
         final path = json['path'] as String;
-        final artifactFile = File(p.join(outPath, path));
+        final artifactFile = File(_localPath(outPath, path));
         if (await _sha256(artifactFile) != json['sha256'] as String) {
           throw ReleaseBundleException(
             '$path in ${file.path} does not match the hash in its manifest. '
@@ -307,6 +307,11 @@ class ReleaseBundle {
     return entry.mode & fileTypeMask != symbolicLinkType;
   }
 
+  /// The local path of the zip path [path] (always `/`-separated) under
+  /// [outPath], with the platform's separators.
+  static String _localPath(String outPath, String path) =>
+      p.joinAll([outPath, ...path.split('/')]);
+
   /// Returns the manifest in the zip at [zipPath], or null if it has none.
   /// Throws if [zipPath] is not a zip.
   static String? _readManifest(String zipPath) {
@@ -334,7 +339,7 @@ class ReleaseBundle {
       for (final path in paths) {
         final entry = archive.findFile(path);
         if (entry == null || !_isRegularFile(entry)) return path;
-        final outFile = File(p.join(outPath, path))
+        final outFile = File(_localPath(outPath, path))
           ..parent.createSync(recursive: true);
         final output = OutputFileStream(outFile.path);
         try {
