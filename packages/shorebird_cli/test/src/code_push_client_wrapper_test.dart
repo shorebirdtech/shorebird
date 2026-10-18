@@ -2525,6 +2525,25 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verifyNever(() => progress.fail(any()));
         });
 
+        test('uploads the artifacts in the order given', () async {
+          await upload();
+
+          Object? uploadOf(String arch) => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: arch,
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          );
+          verifyInOrder([
+            () => uploadOf('runner'),
+            () => uploadOf('ios_supplement'),
+          ]);
+        });
+
         test('shows the given message while uploading', () async {
           await upload(message: 'Uploading supplement artifacts');
 
