@@ -146,7 +146,10 @@ void main() {
       when(() => shorebirdEnv.iosPodfileLockHash).thenReturn(null);
       when(
         () => shorebirdEnv.iosPackageResolvedHash,
-      ).thenReturn(ShorebirdEnv.noPackageResolvedHash);
+      ).thenReturn(ShorebirdEnv.noFileHash);
+      when(
+        () => shorebirdEnv.iosPluginSwiftPackageHash,
+      ).thenReturn(ShorebirdEnv.noFileHash);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
@@ -601,7 +604,7 @@ Your $packageResolvedPath is different from the one used to build the release.''
           test('says Package.resolved is gone', () async {
             when(
               () => shorebirdEnv.iosPackageResolvedHash,
-            ).thenReturn(ShorebirdEnv.noPackageResolvedHash);
+            ).thenReturn(ShorebirdEnv.noFileHash);
             await assertUnpatchableDiffs(releaseArtifact());
             verifyWarned(
               'This project has no $packageResolvedPath, but the release was built with one.',
@@ -619,7 +622,7 @@ Your $packageResolvedPath is different from the one used to build the release.''
           test('says Package.resolved is new', () async {
             await assertUnpatchableDiffs(
               releaseArtifact(
-                releasePackageResolvedHash: ShorebirdEnv.noPackageResolvedHash,
+                releasePackageResolvedHash: ShorebirdEnv.noFileHash,
               ),
             );
             verifyWarned(
@@ -648,6 +651,69 @@ Your $packageResolvedPath is different from the one used to build the release.''
               verifyNever(() => logger.warn(any()));
             },
           );
+
+          group('when the release recorded its plugin Swift package', () {
+            const pluginHash = 'plugin-swift-package-hash';
+
+            ReleaseArtifact withPlugins(String hash) => ReleaseArtifact(
+              id: 0,
+              releaseId: 0,
+              arch: 'aarch64',
+              platform: releaseArtifact().platform,
+              hash: '#',
+              size: 42,
+              url: 'https://example.com',
+              podfileLockHash: podfileLockHash,
+              packageResolvedHash: packageResolvedHash,
+              pluginSwiftPackageHash: hash,
+              canSideload: true,
+            );
+
+            setUp(() {
+              when(
+                () => shorebirdEnv.iosPluginSwiftPackageHash,
+              ).thenReturn(pluginHash);
+            });
+
+            test('does not warn when the plugins match', () async {
+              await assertUnpatchableDiffs(withPlugins(pluginHash));
+              verifyNever(() => logger.warn(any()));
+            });
+
+            test('warns when the plugins changed', () async {
+              await assertUnpatchableDiffs(withPlugins('old-plugin-hash'));
+              verifyWarned(
+                '''The Flutter plugins this project builds with Swift Package Manager, or their versions, are different from the ones used to build the release.''',
+              );
+            });
+
+            test('warns when the app no longer has any', () async {
+              when(
+                () => shorebirdEnv.iosPluginSwiftPackageHash,
+              ).thenReturn(ShorebirdEnv.noFileHash);
+              await assertUnpatchableDiffs(withPlugins(pluginHash));
+              verifyWarned(
+                '''This project builds no Flutter plugins with Swift Package Manager, but the release did.''',
+              );
+            });
+
+            test('warns when the release had none', () async {
+              await assertUnpatchableDiffs(
+                withPlugins(ShorebirdEnv.noFileHash),
+              );
+              verifyWarned(
+                '''This project builds Flutter plugins with Swift Package Manager, but the release didn't.''',
+              );
+            });
+
+            test(
+              'skips the check for a release that did not record it',
+              () async {
+                await assertUnpatchableDiffs(releaseArtifact());
+                verifyNever(() => logger.warn(any()));
+              },
+            );
+          });
 
           group('when the release had no Podfile.lock', () {
             test('checks Package.resolved alone', () async {
@@ -1352,6 +1418,9 @@ Your $packageResolvedPath is different from the one used to build the release.''
           when(
             () => shorebirdEnv.iosPackageResolvedHash,
           ).thenReturn('package-resolved-hash');
+          when(
+            () => shorebirdEnv.iosPluginSwiftPackageHash,
+          ).thenReturn('plugin-swift-package-hash');
 
           final patchBundle = await runWithOverrides(
             () => patcher.createPatchArtifacts(
@@ -1368,6 +1437,10 @@ Your $packageResolvedPath is different from the one used to build the release.''
           expect(
             patchBundle[Arch.arm64]!.packageResolvedHash,
             equals('package-resolved-hash'),
+          );
+          expect(
+            patchBundle[Arch.arm64]!.pluginSwiftPackageHash,
+            equals('plugin-swift-package-hash'),
           );
         });
 

@@ -190,26 +190,76 @@ class ShorebirdEnv {
   File get iosPackageResolvedFile => packageResolvedFile('ios');
 
   /// The hash of the pins in [iosPackageResolvedFile], or
-  /// [noPackageResolvedHash] if the file does not exist. See
+  /// [noFileHash] if the file does not exist. See
   /// [packageResolvedHash].
   String get iosPackageResolvedHash =>
-      packageResolvedHash(iosPackageResolvedFile) ?? noPackageResolvedHash;
+      packageResolvedHash(iosPackageResolvedFile) ?? noFileHash;
 
   /// The Swift Package Manager lockfile for this project's macOS app.
   File get macosPackageResolvedFile => packageResolvedFile('macos');
 
   /// The hash of the pins in [macosPackageResolvedFile], or
-  /// [noPackageResolvedHash] if the file does not exist. See
+  /// [noFileHash] if the file does not exist. See
   /// [packageResolvedHash].
   String get macosPackageResolvedHash =>
-      packageResolvedHash(macosPackageResolvedFile) ?? noPackageResolvedHash;
+      packageResolvedHash(macosPackageResolvedFile) ?? noFileHash;
 
-  /// The package resolved hash recorded for an iOS or macOS app with no
-  /// Package.resolved. Recording it, rather than nothing, tells a later patch
-  /// that the release was made by a CLI that records Package.resolved, so an
+  /// The hash recorded for a Package.resolved or plugin Swift package that an
+  /// iOS or macOS app doesn't have. Recording it, rather than nothing, tells a
+  /// later patch that the release was made by a CLI that records these, so an
   /// app that adds Swift Package Manager or CocoaPods after the release is
   /// caught.
-  static const noPackageResolvedHash = 'none';
+  static const noFileHash = 'none';
+
+  /// The Swift package Flutter generates for this project's iOS app to pull
+  /// in its Swift Package Manager plugins. See [pluginSwiftPackageHash].
+  File get iosPluginSwiftPackageFile => pluginSwiftPackageFile('ios');
+
+  /// The hash of [iosPluginSwiftPackageFile], or [noFileHash] if the file
+  /// does not exist. See [pluginSwiftPackageHash].
+  String get iosPluginSwiftPackageHash =>
+      pluginSwiftPackageHash(iosPluginSwiftPackageFile) ?? noFileHash;
+
+  /// The Swift package Flutter generates for this project's macOS app to pull
+  /// in its Swift Package Manager plugins. See [pluginSwiftPackageHash].
+  File get macosPluginSwiftPackageFile => pluginSwiftPackageFile('macos');
+
+  /// The hash of [macosPluginSwiftPackageFile], or [noFileHash] if the file
+  /// does not exist. See [pluginSwiftPackageHash].
+  String get macosPluginSwiftPackageHash =>
+      pluginSwiftPackageHash(macosPluginSwiftPackageFile) ?? noFileHash;
+
+  /// The Package.swift Flutter generates (on every build) for the Apple app
+  /// in [platformDirectory] (`ios` or `macos`), whose dependencies are the
+  /// app's Flutter plugins that use Swift Package Manager.
+  File pluginSwiftPackageFile(String platformDirectory) => File(
+    p.join(
+      getFlutterProjectRoot()!.path,
+      platformDirectory,
+      'Flutter',
+      'ephemeral',
+      'Packages',
+      'FlutterGeneratedPluginSwiftPackage',
+      'Package.swift',
+    ),
+  );
+
+  /// The hash of the generated plugin Package.swift [file], or null if it
+  /// does not exist.
+  ///
+  /// Package.resolved pins only remote packages, and Flutter adds plugins as
+  /// local packages, so this is what changes when a plugin is added, removed
+  /// or moved to another version. Each plugin's `path:` is reduced to its last
+  /// component (such as `url_launcher_ios-6.4.2`), which names the plugin and
+  /// its version, so the hash doesn't depend on where the pub cache is.
+  static String? pluginSwiftPackageHash(File file) {
+    if (!file.existsSync()) return null;
+    final contents = file.readAsStringSync().replaceAllMapped(
+      RegExp(r'path:\s*"([^"]*)"'),
+      (match) => 'path: "${p.posix.basename(match[1]!)}"',
+    );
+    return sha256.convert(utf8.encode(contents)).toString();
+  }
 
   /// The project-relative path of the Package.resolved that Xcode writes with
   /// the pinned versions of the Swift Package Manager dependencies of the

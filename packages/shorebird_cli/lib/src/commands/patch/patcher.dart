@@ -288,6 +288,7 @@ More info: ${troubleshootingUrl.toLink()}.
     required Progress progress,
     String? podfileLockHash,
     String? packageResolvedHash,
+    String? pluginSwiftPackageHash,
   }) async {
     final hash = sha256
         .convert(await File(patchArtifactPath).readAsBytes())
@@ -313,6 +314,7 @@ More info: ${troubleshootingUrl.toLink()}.
       hashSignature: hashSignature,
       podfileLockHash: podfileLockHash,
       packageResolvedHash: packageResolvedHash,
+      pluginSwiftPackageHash: pluginSwiftPackageHash,
     );
   }
 

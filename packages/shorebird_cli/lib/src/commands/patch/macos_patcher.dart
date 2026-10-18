@@ -84,6 +84,10 @@ class MacosPatcher extends Patcher
       ShorebirdEnv.packageResolvedRelativePath('macos');
 
   @override
+  String get localPluginSwiftPackageHash =>
+      shorebirdEnv.macosPluginSwiftPackageHash;
+
+  @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,
@@ -186,6 +190,7 @@ class MacosPatcher extends Patcher
         progress: createDiffProgress,
         podfileLockHash: shorebirdEnv.macosPodfileLockHash,
         packageResolvedHash: shorebirdEnv.macosPackageResolvedHash,
+        pluginSwiftPackageHash: shorebirdEnv.macosPluginSwiftPackageHash,
       );
       final x64Bundle = await createDiffBundle(
         arch: Arch.x86_64,
@@ -194,6 +199,7 @@ class MacosPatcher extends Patcher
         progress: createDiffProgress,
         podfileLockHash: shorebirdEnv.macosPodfileLockHash,
         packageResolvedHash: shorebirdEnv.macosPackageResolvedHash,
+        pluginSwiftPackageHash: shorebirdEnv.macosPluginSwiftPackageHash,
       );
       createDiffProgress.complete();
 

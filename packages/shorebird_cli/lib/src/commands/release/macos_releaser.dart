@@ -104,6 +104,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
       appPath: appDirectory.path,
       podfileLockHash: shorebirdEnv.macosPodfileLockHash,
       packageResolvedHash: shorebirdEnv.macosPackageResolvedHash,
+      pluginSwiftPackageHash: shorebirdEnv.macosPluginSwiftPackageHash,
     );
   }
 

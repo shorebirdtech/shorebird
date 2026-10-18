@@ -373,11 +373,11 @@ void main() {
               : shorebirdEnv.macosPodfileLockHash,
         );
 
-        test('is noPackageResolvedHash when there is no Package.resolved', () {
+        test('is noFileHash when there is no Package.resolved', () {
           podfileLock.createSync(recursive: true);
           expect(
             packageResolvedHash(),
-            equals(ShorebirdEnv.noPackageResolvedHash),
+            equals(ShorebirdEnv.noFileHash),
           );
         });
 
@@ -386,7 +386,7 @@ void main() {
             ..createSync(recursive: true)
             ..writeAsStringSync('{"pins": [], "version": 3}');
           final hash = packageResolvedHash();
-          expect(hash, isNot(equals(ShorebirdEnv.noPackageResolvedHash)));
+          expect(hash, isNot(equals(ShorebirdEnv.noFileHash)));
           expect(podfileLockHash(), isNull);
 
           podfileLock
@@ -401,6 +401,63 @@ void main() {
         });
       });
     }
+
+    group('pluginSwiftPackageHash', () {
+      late File packageSwift;
+
+      setUp(() {
+        packageSwift = File(
+          p.join(Directory.systemTemp.createTempSync().path, 'Package.swift'),
+        );
+      });
+
+      String? hashOf(String path, {String version = '6.4.2'}) {
+        packageSwift.writeAsStringSync('''
+let package = Package(
+    name: "FlutterGeneratedPluginSwiftPackage",
+    dependencies: [
+        .package(name: "url_launcher_ios", path: "$path/url_launcher_ios-$version"),
+        .package(name: "FlutterFramework", path: "$path/FlutterFramework")
+    ]
+)''');
+        return ShorebirdEnv.pluginSwiftPackageHash(packageSwift);
+      }
+
+      test('is null when the file does not exist', () {
+        expect(ShorebirdEnv.pluginSwiftPackageHash(packageSwift), isNull);
+      });
+
+      test('does not depend on where the plugins are', () {
+        final hash = hashOf('../.packages');
+        expect(hash, isNotNull);
+        expect(
+          hashOf('/Users/someone/.pub-cache/hosted/pub.dev'),
+          equals(hash),
+        );
+      });
+
+      test('changes when a plugin version changes', () {
+        final hash = hashOf('../.packages');
+        expect(
+          hashOf('../.packages', version: '6.4.3'),
+          isNot(equals(hash)),
+        );
+      });
+
+      test('is noFileHash for an app without one', () {
+        final projectRoot = Directory.systemTemp.createTempSync();
+        File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => shorebirdEnv.iosPluginSwiftPackageHash,
+            ),
+            getCurrentDirectory: () => projectRoot,
+          ),
+          equals(ShorebirdEnv.noFileHash),
+        );
+      });
+    });
 
     group('packageResolvedHash', () {
       late File packageResolved;

@@ -40,6 +40,7 @@ class PatchArtifactBundle extends Equatable {
     this.hashSignature,
     this.podfileLockHash,
     this.packageResolvedHash,
+    this.pluginSwiftPackageHash,
   });
 
   /// The corresponding architecture.
@@ -64,6 +65,10 @@ class PatchArtifactBundle extends Equatable {
   /// present and relevant.
   final String? packageResolvedHash;
 
+  /// The hash of the Swift package Flutter generates for the app's Swift
+  /// Package Manager plugins, if present and relevant.
+  final String? pluginSwiftPackageHash;
+
   @override
   List<Object?> get props => [
     arch,
@@ -73,6 +78,7 @@ class PatchArtifactBundle extends Equatable {
     hashSignature,
     podfileLockHash,
     packageResolvedHash,
+    pluginSwiftPackageHash,
   ];
 }
 
@@ -791,6 +797,7 @@ to the architectures your project actually builds.''',
     required Progress progress,
     String? podfileLockHash,
     String? packageResolvedHash,
+    String? pluginSwiftPackageHash,
   }) async {
     logger.detail('Uploading $name artifact from ${file.path}');
     try {
@@ -804,6 +811,7 @@ to the architectures your project actually builds.''',
         canSideload: canSideload,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
+        pluginSwiftPackageHash: pluginSwiftPackageHash,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -869,6 +877,7 @@ $name artifact already exists, continuing...''');
     required String appPath,
     required String? podfileLockHash,
     required String? packageResolvedHash,
+    required String? pluginSwiftPackageHash,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
@@ -888,6 +897,7 @@ $name artifact already exists, continuing...''');
         canSideload: true,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
+        pluginSwiftPackageHash: pluginSwiftPackageHash,
         progress: createArtifactProgress,
       );
     } finally {
@@ -907,6 +917,7 @@ $name artifact already exists, continuing...''');
     required bool isCodesigned,
     required String? podfileLockHash,
     required String? packageResolvedHash,
+    required String? pluginSwiftPackageHash,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory = await _thinXcarchive(
@@ -929,6 +940,7 @@ $name artifact already exists, continuing...''');
         canSideload: false,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
+        pluginSwiftPackageHash: pluginSwiftPackageHash,
         progress: createArtifactProgress,
       );
     } finally {
@@ -948,6 +960,7 @@ $name artifact already exists, continuing...''');
         canSideload: isCodesigned,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
+        pluginSwiftPackageHash: pluginSwiftPackageHash,
         progress: createArtifactProgress,
       );
     } finally {
@@ -1059,6 +1072,7 @@ $name artifact already exists, continuing...''');
           hashSignature: artifact.hashSignature,
           podfileLockHash: artifact.podfileLockHash,
           packageResolvedHash: artifact.packageResolvedHash,
+          pluginSwiftPackageHash: artifact.pluginSwiftPackageHash,
         );
       } catch (error) {
         _handleErrorAndExit(error, progress: createArtifactProgress);

@@ -142,6 +142,7 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
     required Directory releaseSupplementDir,
     String? podfileLockHash,
     String? packageResolvedHash,
+    String? pluginSwiftPackageHash,
   }) async {
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
@@ -223,13 +224,15 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
         hashSignature: hashSignature,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
+        pluginSwiftPackageHash: pluginSwiftPackageHash,
       ),
     };
   }
 }
 
-/// Adds native-change detection based on the native dependency lockfiles
-/// (CocoaPods' Podfile.lock and Swift Package Manager's Package.resolved) to
+/// Adds native-change detection based on the native dependency lock files
+/// (CocoaPods' Podfile.lock and Swift Package Manager's Package.resolved) and
+/// the Swift package Flutter generates for the app's plugins to
 /// [ApplePatcherMixin]. Implemented by iOS and macOS patchers; the iOS
 /// framework patcher doesn't emit a lockfile.
 mixin AppleLockFilesPatcherMixin on Patcher, ApplePatcherMixin {
@@ -241,12 +244,17 @@ mixin AppleLockFilesPatcherMixin on Patcher, ApplePatcherMixin {
   String get podfileLockRelativePath;
 
   /// The hash of the pins in the local Swift Package Manager Package.resolved
-  /// for this Apple platform, or [ShorebirdEnv.noPackageResolvedHash] if
+  /// for this Apple platform, or [ShorebirdEnv.noFileHash] if
   /// there is none. See [ShorebirdEnv.packageResolvedHash].
   String get localPackageResolvedHash;
 
   /// Project-relative path of the Package.resolved surfaced in the warning.
   String get packageResolvedRelativePath;
+
+  /// The hash of the Swift package Flutter generates for this Apple
+  /// platform's Swift Package Manager plugins, or [ShorebirdEnv.noFileHash]
+  /// if there is none. See [ShorebirdEnv.pluginSwiftPackageHash].
+  String get localPluginSwiftPackageHash;
 
   @override
   Future<DiffStatus> assertUnpatchableDiffs({
@@ -273,7 +281,7 @@ mixin AppleLockFilesPatcherMixin on Patcher, ApplePatcherMixin {
     if (!diffStatus.hasNativeChanges) return diffStatus;
 
     // A CLI that records packageResolvedHash records it for every iOS and
-    // macOS release, as noPackageResolvedHash if there was no
+    // macOS release, as noFileHash if there was no
     // Package.resolved. So for such a release, a null podfileLockHash means
     // it had no Podfile.lock. Older releases have no packageResolvedHash, and
     // only their Podfile.lock is checked, as it was.
@@ -292,6 +300,10 @@ mixin AppleLockFilesPatcherMixin on Patcher, ApplePatcherMixin {
           releaseArtifact.packageResolvedHash,
         ),
         localHash: _packageResolvedHashOrNull(localPackageResolvedHash),
+      ),
+      ?_pluginSwiftPackageDifference(
+        releaseHash: releaseArtifact.pluginSwiftPackageHash,
+        localHash: localPluginSwiftPackageHash,
       ),
     ];
 
@@ -335,6 +347,23 @@ This may indicate that the patch contains native changes, which cannot be applie
     return 'Your $path is different from the one used to build the release.';
   }
 
+  /// Describes how the app's Swift Package Manager plugins differ from the
+  /// release's, or returns null if they don't or the release didn't record
+  /// them.
+  String? _pluginSwiftPackageDifference({
+    required String? releaseHash,
+    required String localHash,
+  }) {
+    if (releaseHash == null || localHash == releaseHash) return null;
+    if (localHash == ShorebirdEnv.noFileHash) {
+      return '''This project builds no Flutter plugins with Swift Package Manager, but the release did.''';
+    }
+    if (releaseHash == ShorebirdEnv.noFileHash) {
+      return '''This project builds Flutter plugins with Swift Package Manager, but the release didn't.''';
+    }
+    return '''The Flutter plugins this project builds with Swift Package Manager, or their versions, are different from the ones used to build the release.''';
+  }
+
   static String? _packageResolvedHashOrNull(String? hash) =>
-      hash == ShorebirdEnv.noPackageResolvedHash ? null : hash;
+      hash == ShorebirdEnv.noFileHash ? null : hash;
 }

@@ -598,6 +598,7 @@ To change the version of this release, change your app's version in your pubspec
             appPath: any(named: 'appPath'),
             podfileLockHash: any(named: 'podfileLockHash'),
             packageResolvedHash: any(named: 'packageResolvedHash'),
+            pluginSwiftPackageHash: any(named: 'pluginSwiftPackageHash'),
           ),
         ).thenAnswer((_) async => {});
 
@@ -607,6 +608,9 @@ To change the version of this release, change your app's version in your pubspec
         when(
           () => shorebirdEnv.macosPackageResolvedHash,
         ).thenReturn('package-resolved-hash');
+        when(
+          () => shorebirdEnv.macosPluginSwiftPackageHash,
+        ).thenReturn('plugin-swift-package-hash');
       });
 
       group('when app directory does not exist', () {
@@ -642,6 +646,7 @@ To change the version of this release, change your app's version in your pubspec
             podfileLockHash:
                 '${sha256.convert(utf8.encode(podfileLockContent))}',
             packageResolvedHash: 'package-resolved-hash',
+            pluginSwiftPackageHash: 'plugin-swift-package-hash',
           ),
         ).called(1);
       });
@@ -677,6 +682,7 @@ To change the version of this release, change your app's version in your pubspec
               podfileLockHash:
                   '${sha256.convert(utf8.encode(podfileLockContent))}',
               packageResolvedHash: 'package-resolved-hash',
+              pluginSwiftPackageHash: 'plugin-swift-package-hash',
             ),
           ).called(1);
         });
