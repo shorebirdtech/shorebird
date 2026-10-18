@@ -618,6 +618,16 @@ class BundleToolArtifact extends CachedArtifact {
   /// {@macro bundle_tool_artifact}
   BundleToolArtifact({required super.cache, required super.platform});
 
+  /// The pinned bundletool release.
+  ///
+  /// Bump this and [sha256] together with `scripts/update_bundletool.sh`,
+  /// which the weekly `update_bundletool` workflow runs for us.
+  static const version = '1.18.1';
+
+  /// SHA-256 checksum of `bundletool-all-<version>.jar`.
+  static const sha256 =
+      '675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c';
+
   @override
   String get fileName => 'bundletool.jar';
 
@@ -626,16 +636,9 @@ class BundleToolArtifact extends CachedArtifact {
 
   @override
   Future<String> get storageUrl async {
-    return 'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar';
+    return 'https://github.com/google/bundletool/releases/download/$version/bundletool-all-$version.jar';
   }
 
   @override
-  String? get checksum =>
-      // SHA-256 checksum of the bundletool.jar file.
-      // When updating the bundletool version, be sure to update this checksum.
-      // This can be done by running the following command:
-      // ```shell
-      // shasum --algorithm 256 /path/to/file
-      // ```
-      '''675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c''';
+  String? get checksum => sha256;
 }

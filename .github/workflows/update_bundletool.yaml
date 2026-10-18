@@ -1,0 +1,70 @@
+name: update_bundletool
+
+# Weekly check for a new google/bundletool release. Dependabot can't track a
+# jar pinned in Dart source, so this does it: when the CLI is behind, it pushes
+# a branch with the bump (scripts/update_bundletool.sh) and opens an issue
+# linking to it. A maintainer opens the PR from that link, so CI runs on it
+# (PRs opened with GITHUB_TOKEN don't trigger workflows).
+
+on:
+  schedule:
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+
+      - name: ⬆️ Bump bundletool
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(scripts/update_bundletool.sh)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 🚀 Push branch and open issue
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          branch="bot/bundletool-$VERSION"
+          title="chore(shorebird_cli): update bundletool to $VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "$title"
+          git push --force origin "$branch"
+
+          existing=$(gh issue list --repo "$REPO" --state open \
+            --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            echo "Issue #$existing already tracks $VERSION"
+            exit 0
+          fi
+          encoded_title=$(jq -rn --arg t "$title" '$t|@uri')
+          compare="https://github.com/$REPO/compare/main...$branch?expand=1&title=$encoded_title"
+          gh issue create --repo "$REPO" --title "$title" --body "$(cat <<BODY
+          bundletool $VERSION is out: https://github.com/google/bundletool/releases/tag/$VERSION
+
+          The branch \`$branch\` pins the CLI to it (made by \`scripts/update_bundletool.sh\`). Open the PR from it, read the release notes for anything that changes \`build-apks\`, \`install-apks\` or \`dump manifest\`, and land it once CI passes:
+
+          $compare
+
+          Close this issue once that PR lands.
+          BODY
+          )"
