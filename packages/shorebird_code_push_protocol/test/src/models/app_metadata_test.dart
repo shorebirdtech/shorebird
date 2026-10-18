@@ -18,6 +18,31 @@ void main() {
       );
     });
 
+    test('can be (de)serialized with organizationId', () {
+      final appMetadata = AppMetadata(
+        appId: '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        organizationId: 42,
+        displayName: 'My App',
+        createdAt: DateTime(2022),
+        updatedAt: DateTime(2023),
+      );
+      expect(appMetadata.toJson()['organization_id'], equals(42));
+      expect(
+        AppMetadata.fromJson(appMetadata.toJson()).organizationId,
+        equals(42),
+      );
+    });
+
+    test('parses a payload without organization_id', () {
+      final appMetadata = AppMetadata.fromJson({
+        'app_id': '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        'display_name': 'My App',
+        'created_at': DateTime(2022).toIso8601String(),
+        'updated_at': DateTime(2023).toIso8601String(),
+      });
+      expect(appMetadata.organizationId, isNull);
+    });
+
     test('can be (de)serialized with platforms, latestReleases, '
         'pendingReleases, and iconUrl', () {
       final appMetadata = AppMetadata(
