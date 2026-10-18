@@ -30,5 +30,19 @@ void main() {
         expect(instance.hashSignature, equals('Shh'));
       });
     });
+
+    test('can be (de)serialized with native lockfile hashes', () {
+      const request = CreatePatchArtifactRequest(
+        arch: 'arm64',
+        platform: ReleasePlatform.ios,
+        hash: '1234',
+        size: 9876,
+        podfileLockHash: 'podfile-lock-hash',
+        packageResolvedHash: 'package-resolved-hash',
+      );
+      final json = request.toJson();
+      expect(json['package_resolved_hash'], equals('package-resolved-hash'));
+      expect(CreatePatchArtifactRequest.fromJson(json), equals(request));
+    });
   });
 }

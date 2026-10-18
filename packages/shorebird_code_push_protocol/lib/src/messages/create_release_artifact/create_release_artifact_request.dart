@@ -19,6 +19,7 @@ class CreateReleaseArtifactRequest {
     required this.size,
     this.canSideload,
     this.podfileLockHash,
+    this.packageResolvedHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactRequest].
@@ -34,6 +35,7 @@ class CreateReleaseArtifactRequest {
         canSideload: json['can_sideload'] as bool?,
         size: json['size'] as int,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        packageResolvedHash: json['package_resolved_hash'] as String?,
       ),
     );
   }
@@ -71,6 +73,10 @@ class CreateReleaseArtifactRequest {
   /// only).
   final String? podfileLockHash;
 
+  /// The hash of the pinned packages in the Swift Package Manager
+  /// Package.resolved used to create this artifact (iOS and macOS only).
+  final String? packageResolvedHash;
+
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -81,6 +87,7 @@ class CreateReleaseArtifactRequest {
       'can_sideload': ?canSideload,
       'size': size,
       'podfile_lock_hash': ?podfileLockHash,
+      'package_resolved_hash': ?packageResolvedHash,
     };
   }
 
@@ -93,6 +100,7 @@ class CreateReleaseArtifactRequest {
     canSideload,
     size,
     podfileLockHash,
+    packageResolvedHash,
   ]);
 
   @override
@@ -105,6 +113,7 @@ class CreateReleaseArtifactRequest {
         filename == other.filename &&
         canSideload == other.canSideload &&
         size == other.size &&
-        podfileLockHash == other.podfileLockHash;
+        podfileLockHash == other.podfileLockHash &&
+        packageResolvedHash == other.packageResolvedHash;
   }
 }

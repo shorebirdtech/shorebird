@@ -17,6 +17,7 @@ class CreatePatchArtifactRequest {
     required this.size,
     this.hashSignature,
     this.podfileLockHash,
+    this.packageResolvedHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchArtifactRequest].
@@ -30,6 +31,7 @@ class CreatePatchArtifactRequest {
         hash: json['hash'] as String,
         hashSignature: json['hash_signature'] as String?,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        packageResolvedHash: json['package_resolved_hash'] as String?,
         size: json['size'] as int,
       ),
     );
@@ -62,6 +64,11 @@ class CreatePatchArtifactRequest {
   /// involved in the creation of the patch (iOS only).
   final String? podfileLockHash;
 
+  /// The sha256 hash of the pinned packages in the Swift Package Manager
+  /// Package.resolved, if one was involved in the creation of the patch (iOS
+  /// and macOS only).
+  final String? packageResolvedHash;
+
   /// The size of the artifact in bytes.
   final int size;
 
@@ -73,6 +80,7 @@ class CreatePatchArtifactRequest {
       'hash': hash,
       'hash_signature': ?hashSignature,
       'podfile_lock_hash': ?podfileLockHash,
+      'package_resolved_hash': ?packageResolvedHash,
       'size': size,
     };
   }
@@ -84,6 +92,7 @@ class CreatePatchArtifactRequest {
     hash,
     hashSignature,
     podfileLockHash,
+    packageResolvedHash,
     size,
   ]);
 
@@ -96,6 +105,7 @@ class CreatePatchArtifactRequest {
         hash == other.hash &&
         hashSignature == other.hashSignature &&
         podfileLockHash == other.podfileLockHash &&
+        packageResolvedHash == other.packageResolvedHash &&
         size == other.size;
   }
 }

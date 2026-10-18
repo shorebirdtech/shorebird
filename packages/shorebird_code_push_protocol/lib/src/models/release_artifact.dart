@@ -19,6 +19,7 @@ class ReleaseArtifact {
     required this.url,
     required this.canSideload,
     this.podfileLockHash,
+    this.packageResolvedHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact].
@@ -35,6 +36,7 @@ class ReleaseArtifact {
         size: json['size'] as int,
         url: json['url'] as String,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        packageResolvedHash: json['package_resolved_hash'] as String?,
         canSideload: json['can_sideload'] as bool,
       ),
     );
@@ -73,6 +75,10 @@ class ReleaseArtifact {
   /// sha256 of the Podfile.lock used to create the artifact (iOS only).
   final String? podfileLockHash;
 
+  /// sha256 of the pinned packages in the Swift Package Manager
+  /// Package.resolved used to create the artifact (iOS and macOS only).
+  final String? packageResolvedHash;
+
   /// Whether the artifact can be sideloaded onto a device.
   final bool canSideload;
 
@@ -87,6 +93,7 @@ class ReleaseArtifact {
       'size': size,
       'url': url,
       'podfile_lock_hash': ?podfileLockHash,
+      'package_resolved_hash': ?packageResolvedHash,
       'can_sideload': canSideload,
     };
   }
@@ -101,6 +108,7 @@ class ReleaseArtifact {
     size,
     url,
     podfileLockHash,
+    packageResolvedHash,
     canSideload,
   ]);
 
@@ -116,6 +124,7 @@ class ReleaseArtifact {
         size == other.size &&
         url == other.url &&
         podfileLockHash == other.podfileLockHash &&
+        packageResolvedHash == other.packageResolvedHash &&
         canSideload == other.canSideload;
   }
 }
