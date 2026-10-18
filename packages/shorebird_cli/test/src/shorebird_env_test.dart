@@ -815,6 +815,61 @@ dependencies:
       });
     });
 
+    group('downloadUrl', () {
+      test('defaults to download.shorebird.dev', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://download.shorebird.dev'),
+        );
+      });
+
+      test('returns SHOREBIRD_DOWNLOAD_URL when set', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_DOWNLOAD_URL': 'http://localhost:8080',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('http://localhost:8080'),
+        );
+      });
+
+      test('strips a trailing slash', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_DOWNLOAD_URL': 'https://mirror.example.com/sb/',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://mirror.example.com/sb'),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_DOWNLOAD_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_DOWNLOAD_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://download.shorebird.dev'),
+        );
+      });
+
+      test('ignores FLUTTER_STORAGE_BASE_URL', () {
+        platform = platform.copyWith(
+          environment: {
+            'FLUTTER_STORAGE_BASE_URL': 'https://storage.flutter-io.cn',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://download.shorebird.dev'),
+        );
+      });
+    });
+
     group('hostedUrl', () {
       test('returns hosted url from env if available', () {
         platform = platform.copyWith(
