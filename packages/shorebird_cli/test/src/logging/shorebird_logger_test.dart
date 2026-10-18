@@ -112,11 +112,15 @@ void main() {
       late Stdout stdout;
       late List<String> written;
 
-      bool confirm(List<String?> answers, {bool defaultValue = false}) {
+      /// Answers the prompt with [answers] in turn. An answer that is a
+      /// [FormatException] is thrown, as stdin does for input that isn't text.
+      bool confirm(List<Object?> answers, {bool defaultValue = false}) {
         final remaining = [...answers];
-        when(
-          () => stdin.readLineSync(),
-        ).thenAnswer((_) => remaining.removeAt(0));
+        when(() => stdin.readLineSync()).thenAnswer((_) {
+          final answer = remaining.removeAt(0);
+          if (answer is FormatException) throw answer;
+          return answer as String?;
+        });
         // A Logger keeps the stdout it was created with, so create one inside
         // the overrides.
         return IOOverrides.runZoned(
@@ -173,6 +177,26 @@ void main() {
           hasLength(2),
         );
         expect(written, contains(contains('Please answer y or n.')));
+      });
+
+      test('asks again after an answer that is not text', () {
+        expect(confirm([const FormatException(), 'y']), isTrue);
+        expect(written, contains(contains('Please answer y or n.')));
+      });
+
+      test('ends the line at the end of input', () {
+        confirm([null]);
+        expect(written.last, isEmpty);
+      });
+
+      test('writes the answer to the log file', () {
+        confirm(['yes']);
+        expect(
+          // Replacing this with a tear-off influences
+          // ignore: unnecessary_lambdas
+          runWithOverrides(() => currentRunLogFile.readAsStringSync()),
+          contains('Continue? Yes'),
+        );
       });
 
       test('shows the default in the prompt', () {

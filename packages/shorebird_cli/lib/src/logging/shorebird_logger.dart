@@ -80,11 +80,29 @@ class ShorebirdLogger extends Logger {
     _failIfNonInteractive(promptText: message, hint: hint);
     final suffix = darkGray.wrap('(${defaultValue ? 'Y/n' : 'y/N'})');
     while (true) {
-      stdout.write('$message $suffix ');
-      final input = stdin.readLineSync()?.trim();
-      if (input == null || input.isEmpty) return defaultValue;
-      final answer = _parseYesNo(input);
-      if (answer != null) return answer;
+      write('$message $suffix ');
+      final String? input;
+      try {
+        input = stdin.readLineSync()?.trim();
+      } on FormatException {
+        // The answer wasn't valid text (e.g. a stray byte). Ask again.
+        info('');
+        info('Please answer y or n.');
+        continue;
+      }
+      if (input == null) {
+        // End of input: finish the prompt's line before taking the default.
+        info('');
+      }
+      final answer = (input == null || input.isEmpty)
+          ? defaultValue
+          : _parseYesNo(input);
+      if (answer != null) {
+        // The terminal echoes what was typed, but stdout (and so the log
+        // file) only sees the prompt. Record the answer the command acts on.
+        detail('$message ${answer ? 'Yes' : 'No'}');
+        return answer;
+      }
       info('Please answer y or n.');
     }
   }
