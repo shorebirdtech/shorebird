@@ -173,18 +173,28 @@ class CodePushClientWrapper {
   /// if none of them lists it.
   ///
   /// The app metadata doesn't name its organization, so this lists each
-  /// organization's apps in turn, stopping at the first that has it.
+  /// organization's apps in turn, stopping at the first that has it. An
+  /// organization whose listing fails is skipped; the failure is reported
+  /// only if no other organization has the app.
   Future<OrganizationMembership?> findAppOrganization({
     required String appId,
     required List<OrganizationMembership> memberships,
   }) {
     return _withProgress("Finding the app's organization", () async {
+      CodePushException? failure;
       for (final membership in memberships) {
-        final apps = await codePushClient.getOrganizationApps(
-          organizationId: membership.organization.id,
-        );
+        final List<AppMetadata> apps;
+        try {
+          apps = await codePushClient.getOrganizationApps(
+            organizationId: membership.organization.id,
+          );
+        } on CodePushException catch (error) {
+          failure = error;
+          continue;
+        }
         if (apps.any((app) => app.appId == appId)) return membership;
       }
+      if (failure != null) throw failure;
       return null;
     });
   }

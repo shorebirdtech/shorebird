@@ -1800,6 +1800,29 @@ flavors:
             );
           });
 
+          test('does not warn when --org-id names its organization', () async {
+            stubAppIn(Role.admin);
+            when(() => argResults['org-id']).thenReturn('${appOrg.id}');
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verifyNever(() => logger.warn(any()));
+          });
+
+          test('rejects an --org-id naming no organization of yours', () async {
+            stubAppIn(Role.admin);
+            when(() => argResults['org-id']).thenReturn('999');
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(isA<UsageException>()),
+            );
+            verifyNever(
+              () => codePushClientWrapper.createApp(
+                appName: any(named: 'appName'),
+                organizationId: any(named: 'organizationId'),
+              ),
+            );
+          });
+
           test('warns that a different --org-id is ignored', () async {
             stubAppIn(Role.admin);
             when(() => argResults['org-id']).thenReturn('${personalOrg.id}');
@@ -1831,6 +1854,15 @@ flavors:
                   'in: your role is developer.',
                 ),
               ).called(1);
+              verify(
+                () => logger.info(
+                  'Ask an owner or admin of the organization to make you an '
+                  'admin.',
+                ),
+              ).called(1);
+              verifyNever(
+                () => logger.progress('Adding flavors to shorebird.yaml'),
+              );
               verifyNever(
                 () => codePushClientWrapper.createApp(
                   appName: any(named: 'appName'),

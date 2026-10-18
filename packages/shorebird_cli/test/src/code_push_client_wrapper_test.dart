@@ -434,12 +434,13 @@ void main() {
         );
 
         test('stops at the first organization that lists the app', () async {
-          await runWithOverrides(
+          final membership = await runWithOverrides(
             () => codePushClientWrapper.findAppOrganization(
               appId: 'other',
               memberships: [first, second],
             ),
           );
+          expect(membership, equals(first));
           verifyNever(
             () => codePushClient.getOrganizationApps(organizationId: 2),
           );
@@ -453,6 +454,38 @@ void main() {
             ),
           );
           expect(membership, isNull);
+        });
+
+        group('when listing one organization fails', () {
+          const error = CodePushException(message: 'listing failed');
+
+          setUp(() {
+            when(
+              () => codePushClient.getOrganizationApps(organizationId: 1),
+            ).thenThrow(error);
+          });
+
+          test('still finds the app in another organization', () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, equals(second));
+          });
+
+          test('fails when no other organization has the app', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.findAppOrganization(
+                  appId: 'missing',
+                  memberships: [first, second],
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
         });
 
         test('exits with code 70 when listing apps fails', () async {
