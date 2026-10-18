@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template aar_releaser}
 /// Functions to create an aar release.
@@ -94,9 +93,8 @@ class AarReleaser extends Releaser {
   }
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
   }) async {
     final extractAarProgress = logger.progress('Creating artifacts');
     final extractedAarDir = await shorebirdAndroidArtifacts.extractAar(
@@ -106,9 +104,7 @@ class AarReleaser extends Releaser {
     );
     extractAarProgress.complete();
 
-    await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+    return codePushClientWrapper.prepareAndroidArchiveReleaseArtifacts(
       platform: releaseType.releasePlatform,
       aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
         packageName: shorebirdEnv.androidPackageName!,
@@ -118,6 +114,7 @@ class AarReleaser extends Releaser {
       architectures: architectures,
     );
   }
+
 
   @override
   String get postReleaseInstructions {

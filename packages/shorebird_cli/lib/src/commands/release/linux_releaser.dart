@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template linux_releaser}
 /// Functions to create a linux release.
@@ -72,14 +71,13 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
 ''';
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {
-    await codePushClientWrapper.createLinuxReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) {
+    return codePushClientWrapper.prepareLinuxReleaseArtifacts(
       bundle: artifactManager.linuxBundleDirectory,
+      stagingDirectory: stagingDirectory,
     );
   }
+
 }

@@ -15,7 +15,6 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template macos_releaser}
 /// Functions to build and publish a macOS release.
@@ -88,23 +87,22 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   );
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) {
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
 
-    await codePushClientWrapper.createMacosReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+    return codePushClientWrapper.prepareMacosReleaseArtifacts(
       appPath: appDirectory.path,
       podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+      stagingDirectory: stagingDirectory,
     );
   }
+
 
   @override
   String get postReleaseInstructions =>
