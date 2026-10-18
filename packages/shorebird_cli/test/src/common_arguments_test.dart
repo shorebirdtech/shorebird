@@ -39,14 +39,18 @@ void main() {
     test('shows a single line as is', () {
       expect(
         notesSummary('Fixes the login crash'),
-        equals('📝 Notes: ${lightCyan.wrap('Fixes the login crash')}'),
+        equals(
+          '📝 Notes (private): ${lightCyan.wrap('Fixes the login crash')}',
+        ),
       );
     });
 
     test('shows the first line of Windows line endings', () {
       expect(
         notesSummary('Fixes the login crash\r\nAlso the timeout'),
-        equals('📝 Notes: ${lightCyan.wrap('Fixes the login crash')} …'),
+        equals(
+          '📝 Notes (private): ${lightCyan.wrap('Fixes the login crash')} …',
+        ),
       );
     });
   });

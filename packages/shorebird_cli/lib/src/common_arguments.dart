@@ -32,9 +32,10 @@ class CommonArguments {
   static const notesArg = ArgumentDescriber(
     name: 'notes',
     description:
-        'Private notes to attach, such as what changed. Shown to people with '
-        'access to the app, in the console and in `releases info` / '
-        '`patches info`. On a release, replaces any notes it already has.',
+        'Private notes to attach, such as what changed. Only people with '
+        'access to the app see them, in the console and in `releases info` / '
+        '`patches info`; they are never sent to devices. On a release, '
+        'replaces any notes it already has.',
   );
 
   /// The Flutter --build-name argument.
@@ -272,5 +273,5 @@ Patches with a lower link percentage than what is provided here will fail.
 String notesSummary(String notes) {
   final lines = const LineSplitter().convert(notes);
   final more = lines.length > 1 ? ' …' : '';
-  return '📝 Notes: ${lightCyan.wrap(lines.first)}$more';
+  return '📝 Notes (private): ${lightCyan.wrap(lines.first)}$more';
 }

@@ -1219,7 +1219,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           verify(
             () => logger.info(
               any(
-                that: contains('📝 Notes: ${lightCyan.wrap('Spring launch')}'),
+                that: contains(
+                  '📝 Notes (private): ${lightCyan.wrap('Spring launch')}',
+                ),
               ),
             ),
           ).called(1);
