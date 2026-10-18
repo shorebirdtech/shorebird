@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
@@ -199,8 +200,45 @@ class ShorebirdEnv {
 
   String? _hashFile(File? file) {
     if (file == null) return null;
-    return sha256.convert(file.readAsBytesSync()).toString();
+    final bytes = file.readAsBytesSync();
+    if (p.basename(file.path) == 'Package.resolved') {
+      final pins = _packageResolvedPins(utf8.decode(bytes));
+      if (pins != null) return sha256.convert(utf8.encode(pins)).toString();
+    }
+    return sha256.convert(bytes).toString();
   }
+
+  /// The pinned packages in a Package.resolved, sorted and encoded so that
+  /// only the resolved versions affect the hash. Xcode also writes fields
+  /// that change without any native dependency changing (`originHash`,
+  /// which tracks the manifests, and the file format `version`, which
+  /// differs between Xcode versions). Null if [contents] can't be parsed.
+  static String? _packageResolvedPins(String contents) {
+    final Object? json;
+    try {
+      json = jsonDecode(contents);
+    } on FormatException {
+      return null;
+    }
+    final pins = switch (json) {
+      {'pins': final List<dynamic> pins} => pins,
+      // Format version 1 nests the pins under "object".
+      {'object': {'pins': final List<dynamic> pins}} => pins,
+      _ => null,
+    };
+    if (pins == null) return null;
+    final encoded = pins.map((pin) => jsonEncode(_sortKeys(pin))).toList()
+      ..sort();
+    return encoded.join('\n');
+  }
+
+  static Object? _sortKeys(Object? value) => switch (value) {
+    final Map<String, dynamic> map => {
+      for (final key in map.keys.sorted()) key: _sortKeys(map[key]),
+    },
+    final List<dynamic> list => list.map(_sortKeys).toList(),
+    _ => value,
+  };
 
   /// The build directory of the current shorebird project.
   Directory get buildDirectory {

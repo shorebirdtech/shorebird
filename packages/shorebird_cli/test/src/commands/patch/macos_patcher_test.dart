@@ -475,7 +475,7 @@ This may indicate that the patch contains native changes, which cannot be applie
                   ).thenReturn(null);
                 });
 
-                test('warns without naming a file', () async {
+                test('warns that the lockfile is gone', () async {
                   await runWithOverrides(
                     () => patcher.assertUnpatchableDiffs(
                       releaseArtifact: releaseArtifact,
@@ -486,7 +486,7 @@ This may indicate that the patch contains native changes, which cannot be applie
                   verify(
                     () => logger.warn(
                       '''
-Your native dependency lockfile is different from the one used to build the release.
+This project has no Podfile.lock or Package.resolved, but the release was built with one.
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
                     ),
                   ).called(1);

@@ -264,15 +264,12 @@ mixin AppleNativeDependencyLockPatcherMixin on Patcher, ApplePatcherMixin {
     if (releaseArtifact.podfileLockHash != null &&
         localNativeDependencyLockHash != releaseArtifact.podfileLockHash) {
       final lockFile = localNativeDependencyLockFile;
-      final lockFileName = lockFile == null
-          ? 'native dependency lockfile'
-          : p.relative(
-              lockFile.path,
-              from: shorebirdEnv.getFlutterProjectRoot()!.path,
-            );
+      final difference = lockFile == null
+          ? '''This project has no Podfile.lock or Package.resolved, but the release was built with one.'''
+          : '''Your ${p.relative(lockFile.path, from: shorebirdEnv.getFlutterProjectRoot()!.path)} is different from the one used to build the release.''';
       logger.warn(
         '''
-Your $lockFileName is different from the one used to build the release.
+$difference
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
       );
 
