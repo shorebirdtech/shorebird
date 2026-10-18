@@ -608,8 +608,8 @@ Your organizations: Test Organization (id: $organizationId).''',
                   (e) => e.message,
                   'message',
                   '''
-You belong to multiple organizations. Pass --org-id=<id> to choose one.
-Your organizations: ${org1.name} (id: ${org1.id}), ${org2.name} (id: ${org2.id}).''',
+You can create apps in multiple organizations. Pass --org-id=<id> to choose one.
+Organizations you can create apps in: ${org1.name} (id: ${org1.id}), ${org2.name} (id: ${org2.id}).''',
                 ),
               ),
             );
@@ -623,6 +623,234 @@ Your organizations: ${org1.name} (id: ${org1.id}), ${org2.name} (id: ${org2.id})
             );
           },
         );
+      });
+    });
+
+    group('when user cannot create apps in some organizations', () {
+      final ownerOrg = organizationForTest(name: 'owned', id: 1);
+      final managerOrg = organizationForTest(name: 'managed', id: 2);
+      final developerOrg = organizationForTest(name: 'developed', id: 3);
+      final viewerOrg = organizationForTest(name: 'viewed', id: 4);
+      final collaboratorOrg = organizationForTest(name: 'shared', id: 5);
+
+      void stubMemberships(List<OrganizationMembership> memberships) {
+        when(
+          () => codePushClientWrapper.getOrganizationMemberships(),
+        ).thenAnswer((_) async => memberships);
+      }
+
+      void verifyNoAppCreated() {
+        verifyNever(
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
+        );
+      }
+
+      void verifyNoPrompt() {
+        verifyNever(
+          () => logger.chooseOne<Organization>(
+            any(),
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+            hint: any(named: 'hint'),
+          ),
+        );
+      }
+
+      group('when several qualify', () {
+        setUp(() {
+          stubMemberships([
+            OrganizationMembership(role: Role.owner, organization: ownerOrg),
+            OrganizationMembership(
+              role: Role.developer,
+              organization: developerOrg,
+            ),
+            OrganizationMembership(
+              role: Role.appManager,
+              organization: managerOrg,
+            ),
+            OrganizationMembership(role: Role.viewer, organization: viewerOrg),
+          ]);
+          when(
+            () => logger.chooseOne<Organization>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+              hint: any(named: 'hint'),
+            ),
+          ).thenReturn(managerOrg);
+        });
+
+        test('offers only organizations it can create apps in', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+          verify(
+            () => logger.info(
+              'Skipping organizations you cannot create apps in. '
+              'Your access: developed (id: 3): your role is developer; '
+              'viewed (id: 4): your role is viewer.',
+            ),
+          ).called(1);
+          verify(
+            () => logger.chooseOne<Organization>(
+              'Which organization should this app belong to?',
+              choices: [ownerOrg, managerOrg],
+              display: any(named: 'display'),
+              hint: any(named: 'hint'),
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: appName,
+              organizationId: managerOrg.id,
+            ),
+          ).called(1);
+        });
+
+        group('when not interactive', () {
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+          });
+
+          test('lists only organizations it can create apps in', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '''
+You can create apps in multiple organizations. Pass --org-id=<id> to choose one.
+Organizations you can create apps in: owned (id: 1), managed (id: 2).''',
+                ),
+              ),
+            );
+          });
+        });
+      });
+
+      // The common real case: every user owns a personal organization, so a
+      // developer on a team still has exactly one organization that qualifies.
+      group('when only a personal organization qualifies', () {
+        setUp(() {
+          stubMemberships([
+            OrganizationMembership(
+              role: Role.developer,
+              organization: developerOrg,
+            ),
+            OrganizationMembership(role: Role.owner, organization: ownerOrg),
+          ]);
+        });
+
+        test('uses it without prompting, saying so', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+          verifyNoPrompt();
+          verifyInOrder([
+            () => logger.info(
+              'Skipping organizations you cannot create apps in. '
+              'Your access: developed (id: 3): your role is developer.',
+            ),
+            () => logger.info(
+              'Creating the app in owned (id: 1), the only organization you '
+              'can create apps in.',
+            ),
+          ]);
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: appName,
+              organizationId: ownerOrg.id,
+            ),
+          ).called(1);
+        });
+
+        group('when --org-id names the other organization', () {
+          setUp(() {
+            when(() => argResults['org-id']).thenReturn('${developerOrg.id}');
+          });
+
+          test('explains the role and exits with noPerm', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.noPerm.code));
+            verify(
+              () => logger.err(
+                'You cannot create apps in developed (id: 3): '
+                'your role is developer.',
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(
+                'Organizations you can create apps in: owned (id: 1).',
+              ),
+            ).called(1);
+            verifyNoAppCreated();
+          });
+        });
+      });
+
+      group('when none qualify', () {
+        setUp(() {
+          stubMemberships([
+            OrganizationMembership(
+              role: Role.developer,
+              organization: developerOrg,
+            ),
+            OrganizationMembership(role: Role.auditor, organization: viewerOrg),
+            OrganizationMembership(
+              role: Role.none,
+              organization: collaboratorOrg,
+            ),
+          ]);
+        });
+
+        test('explains why and exits with noPerm', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.noPerm.code));
+          verify(
+            () => logger.err(
+              'You cannot create apps in any of your organizations.',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              'Your access: developed (id: 3): your role is developer; '
+              'viewed (id: 4): your role is auditor; '
+              'shared (id: 5): you are not a member, you only have access '
+              'to some of its apps.\n'
+              'Ask an owner or admin of the organization to make you an '
+              'admin.',
+            ),
+          ).called(1);
+          verifyNoAppCreated();
+        });
+
+        group('when --org-id names one you only collaborate in', () {
+          setUp(() {
+            when(
+              () => argResults['org-id'],
+            ).thenReturn('${collaboratorOrg.id}');
+          });
+
+          test('says you are not a member and exits with noPerm', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.noPerm.code));
+            verify(
+              () => logger.err(
+                'You cannot create apps in shared (id: 5): you are not a '
+                'member, you only have access to some of its apps.',
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(
+                'Ask an owner or admin of the organization to make you an '
+                'admin.',
+              ),
+            ).called(1);
+            verifyNoAppCreated();
+          });
+        });
       });
     });
 
