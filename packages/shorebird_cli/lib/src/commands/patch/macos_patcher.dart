@@ -38,7 +38,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 ///   Podfile.lock hash and codesigning.
 /// {@endtemplate}
 class MacosPatcher extends Patcher
-    with ApplePatcherMixin, ApplePodfileLockPatcherMixin {
+    with ApplePatcherMixin, AppleLockFilesPatcherMixin {
   /// {@macro macos_patcher}
   MacosPatcher({
     required super.argParser,
@@ -77,11 +77,11 @@ class MacosPatcher extends Patcher
   String get podfileLockRelativePath => 'macos/Podfile.lock';
 
   @override
-  String? get localPackageResolvedHash => shorebirdEnv.macosPackageResolvedHash;
+  String get localPackageResolvedHash => shorebirdEnv.macosPackageResolvedHash;
 
   @override
   String get packageResolvedRelativePath =>
-      'macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved';
+      ShorebirdEnv.packageResolvedRelativePath('macos');
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {

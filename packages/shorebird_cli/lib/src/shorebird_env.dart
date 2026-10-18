@@ -189,39 +189,58 @@ class ShorebirdEnv {
   /// The Swift Package Manager lockfile for this project's iOS app.
   File get iosPackageResolvedFile => packageResolvedFile('ios');
 
-  /// The hash of the pins in [iosPackageResolvedFile], or null if the file
-  /// does not exist. See [packageResolvedHash].
-  String? get iosPackageResolvedHash =>
-      packageResolvedHash(iosPackageResolvedFile);
+  /// The hash of the pins in [iosPackageResolvedFile], or
+  /// [noPackageResolvedHash] if the file does not exist. See
+  /// [packageResolvedHash].
+  String get iosPackageResolvedHash =>
+      packageResolvedHash(iosPackageResolvedFile) ?? noPackageResolvedHash;
 
   /// The Swift Package Manager lockfile for this project's macOS app.
   File get macosPackageResolvedFile => packageResolvedFile('macos');
 
-  /// The hash of the pins in [macosPackageResolvedFile], or null if the file
-  /// does not exist. See [packageResolvedHash].
-  String? get macosPackageResolvedHash =>
-      packageResolvedHash(macosPackageResolvedFile);
+  /// The hash of the pins in [macosPackageResolvedFile], or
+  /// [noPackageResolvedHash] if the file does not exist. See
+  /// [packageResolvedHash].
+  String get macosPackageResolvedHash =>
+      packageResolvedHash(macosPackageResolvedFile) ?? noPackageResolvedHash;
 
-  /// The Package.resolved that Xcode writes into Runner.xcworkspace with the
-  /// pinned versions of the Swift Package Manager dependencies of the Apple
-  /// app in [platformDirectory] (`ios` or `macos`).
+  /// The package resolved hash recorded for an iOS or macOS app with no
+  /// Package.resolved. Recording it, rather than nothing, tells a later patch
+  /// that the release was made by a CLI that records Package.resolved, so an
+  /// app that adds Swift Package Manager or CocoaPods after the release is
+  /// caught.
+  static const noPackageResolvedHash = 'none';
+
+  /// The project-relative path of the Package.resolved that Xcode writes with
+  /// the pinned versions of the Swift Package Manager dependencies of the
+  /// Apple app in [platformDirectory] (`ios` or `macos`). Like the
+  /// Podfile.lock check, this assumes the workspace is Runner.xcworkspace.
+  static String packageResolvedRelativePath(String platformDirectory) => p.join(
+    platformDirectory,
+    'Runner.xcworkspace',
+    'xcshareddata',
+    'swiftpm',
+    'Package.resolved',
+  );
+
+  /// See [packageResolvedRelativePath].
   File packageResolvedFile(String platformDirectory) => File(
     p.join(
       getFlutterProjectRoot()!.path,
-      platformDirectory,
-      'Runner.xcworkspace',
-      'xcshareddata',
-      'swiftpm',
-      'Package.resolved',
+      packageResolvedRelativePath(platformDirectory),
     ),
   );
 
   /// The hash of the pinned packages in the Package.resolved [file], or null
   /// if it does not exist. Only the pins count: Xcode also writes fields that
-  /// change without any native dependency changing (`originHash`, which
-  /// tracks the manifests, and the file format `version`, which differs
-  /// between Xcode versions). A file that isn't valid Package.resolved JSON is
-  /// hashed whole.
+  /// change without any native dependency changing, such as `originHash`,
+  /// which tracks the manifests. (A move between format versions with
+  /// different pin fields, v1 to v2, still changes the hash.) A file that
+  /// isn't valid Package.resolved JSON is hashed whole.
+  ///
+  /// Package.resolved pins only remote packages. Flutter adds plugins that
+  /// support Swift Package Manager as local packages, so a plugin's own
+  /// native code is not covered here.
   static String? packageResolvedHash(File file) {
     if (!file.existsSync()) return null;
     final bytes = file.readAsBytesSync();

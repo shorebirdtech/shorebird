@@ -373,16 +373,20 @@ void main() {
               : shorebirdEnv.macosPodfileLockHash,
         );
 
-        test('is null when there is no Package.resolved', () {
+        test('is noPackageResolvedHash when there is no Package.resolved', () {
           podfileLock.createSync(recursive: true);
-          expect(packageResolvedHash(), isNull);
+          expect(
+            packageResolvedHash(),
+            equals(ShorebirdEnv.noPackageResolvedHash),
+          );
         });
 
         test('is kept apart from the Podfile.lock hash', () {
           packageResolved
             ..createSync(recursive: true)
             ..writeAsStringSync('{"pins": [], "version": 3}');
-          expect(packageResolvedHash(), isNotNull);
+          final hash = packageResolvedHash();
+          expect(hash, isNot(equals(ShorebirdEnv.noPackageResolvedHash)));
           expect(podfileLockHash(), isNull);
 
           podfileLock
@@ -392,7 +396,8 @@ void main() {
             podfileLockHash(),
             equals(sha256.convert(utf8.encode('podfile lock')).toString()),
           );
-          expect(packageResolvedHash(), isNot(equals(podfileLockHash())));
+          // Adding a Podfile.lock leaves the Package.resolved hash alone.
+          expect(packageResolvedHash(), equals(hash));
         });
       });
     }

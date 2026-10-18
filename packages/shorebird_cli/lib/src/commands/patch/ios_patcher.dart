@@ -28,7 +28,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 class IosPatcher extends Patcher
     with
         ApplePatcherMixin,
-        ApplePodfileLockPatcherMixin,
+        AppleLockFilesPatcherMixin,
         AppleLinkerPatcherMixin {
   /// {@macro ios_patcher}
   IosPatcher({
@@ -60,11 +60,11 @@ class IosPatcher extends Patcher
   String get podfileLockRelativePath => 'ios/Podfile.lock';
 
   @override
-  String? get localPackageResolvedHash => shorebirdEnv.iosPackageResolvedHash;
+  String get localPackageResolvedHash => shorebirdEnv.iosPackageResolvedHash;
 
   @override
   String get packageResolvedRelativePath =>
-      'ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved';
+      ShorebirdEnv.packageResolvedRelativePath('ios');
 
   @override
   Future<void> assertArgsAreValid() async =>

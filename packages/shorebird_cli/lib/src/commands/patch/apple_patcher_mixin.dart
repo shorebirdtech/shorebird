@@ -228,10 +228,11 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
   }
 }
 
-/// Adds Podfile.lock-based native-change detection to [ApplePatcherMixin].
-/// Implemented by iOS and macOS patchers; the iOS framework patcher doesn't
-/// emit a Podfile.lock.
-mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
+/// Adds native-change detection based on the native dependency lockfiles
+/// (CocoaPods' Podfile.lock and Swift Package Manager's Package.resolved) to
+/// [ApplePatcherMixin]. Implemented by iOS and macOS patchers; the iOS
+/// framework patcher doesn't emit a lockfile.
+mixin AppleLockFilesPatcherMixin on Patcher, ApplePatcherMixin {
   /// SHA-256 of the local Podfile.lock for this Apple platform, or null if
   /// no Podfile.lock exists.
   String? get localPodfileLockHash;
@@ -240,9 +241,9 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
   String get podfileLockRelativePath;
 
   /// The hash of the pins in the local Swift Package Manager Package.resolved
-  /// for this Apple platform, or null if there is none. See
-  /// [ShorebirdEnv.packageResolvedHash].
-  String? get localPackageResolvedHash;
+  /// for this Apple platform, or [ShorebirdEnv.noPackageResolvedHash] if
+  /// there is none. See [ShorebirdEnv.packageResolvedHash].
+  String get localPackageResolvedHash;
 
   /// Project-relative path of the Package.resolved surfaced in the warning.
   String get packageResolvedRelativePath;
@@ -271,16 +272,26 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
 
     if (!diffStatus.hasNativeChanges) return diffStatus;
 
+    // A CLI that records packageResolvedHash records it for every iOS and
+    // macOS release, as noPackageResolvedHash if there was no
+    // Package.resolved. So for such a release, a null podfileLockHash means
+    // it had no Podfile.lock. Older releases have no packageResolvedHash, and
+    // only their Podfile.lock is checked, as it was.
+    final recordsBoth = releaseArtifact.packageResolvedHash != null;
     final differences = [
       ?_lockFileDifference(
         path: podfileLockRelativePath,
+        recorded: recordsBoth || releaseArtifact.podfileLockHash != null,
         releaseHash: releaseArtifact.podfileLockHash,
         localHash: localPodfileLockHash,
       ),
       ?_lockFileDifference(
         path: packageResolvedRelativePath,
-        releaseHash: releaseArtifact.packageResolvedHash,
-        localHash: localPackageResolvedHash,
+        recorded: recordsBoth,
+        releaseHash: _packageResolvedHashOrNull(
+          releaseArtifact.packageResolvedHash,
+        ),
+        localHash: _packageResolvedHashOrNull(localPackageResolvedHash),
       ),
     ];
 
@@ -306,16 +317,24 @@ This may indicate that the patch contains native changes, which cannot be applie
   }
 
   /// Describes how the lockfile at [path] differs from the release's, or
-  /// returns null if it doesn't or the release recorded no hash for it.
+  /// returns null if it doesn't or the release didn't record it ([recorded]
+  /// is false). A null hash means there is no such file.
   String? _lockFileDifference({
     required String path,
+    required bool recorded,
     required String? releaseHash,
     required String? localHash,
   }) {
-    if (releaseHash == null || localHash == releaseHash) return null;
+    if (!recorded || localHash == releaseHash) return null;
     if (localHash == null) {
       return 'This project has no $path, but the release was built with one.';
     }
+    if (releaseHash == null) {
+      return 'This project has a $path, but the release was built without one.';
+    }
     return 'Your $path is different from the one used to build the release.';
   }
+
+  static String? _packageResolvedHashOrNull(String? hash) =>
+      hash == ShorebirdEnv.noPackageResolvedHash ? null : hash;
 }

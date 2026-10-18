@@ -32,13 +32,7 @@ class TrackedLockFilesValidator extends Validator {
       'pubspec.lock',
       for (final platform in ['ios', 'macos']) ...[
         p.join(platform, 'Podfile.lock'),
-        p.join(
-          platform,
-          'Runner.xcworkspace',
-          'xcshareddata',
-          'swiftpm',
-          'Package.resolved',
-        ),
+        ShorebirdEnv.packageResolvedRelativePath(platform),
       ],
     ];
 

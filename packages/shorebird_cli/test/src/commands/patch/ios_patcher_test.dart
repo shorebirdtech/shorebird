@@ -144,6 +144,9 @@ void main() {
         Directory(p.join(projectRoot.path, 'build', 'shorebird', 'ios')),
       );
       when(() => shorebirdEnv.iosPodfileLockHash).thenReturn(null);
+      when(
+        () => shorebirdEnv.iosPackageResolvedHash,
+      ).thenReturn(ShorebirdEnv.noPackageResolvedHash);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
@@ -529,6 +532,7 @@ This may indicate that the patch contains native changes, which cannot be applie
 
           ReleaseArtifact releaseArtifact({
             String? releasePodfileLockHash = podfileLockHash,
+            String? releasePackageResolvedHash = packageResolvedHash,
           }) => ReleaseArtifact(
             id: 0,
             releaseId: 0,
@@ -538,7 +542,7 @@ This may indicate that the patch contains native changes, which cannot be applie
             size: 42,
             url: 'https://example.com',
             podfileLockHash: releasePodfileLockHash,
-            packageResolvedHash: packageResolvedHash,
+            packageResolvedHash: releasePackageResolvedHash,
             canSideload: true,
           );
 
@@ -595,7 +599,9 @@ Your $packageResolvedPath is different from the one used to build the release.''
           });
 
           test('says Package.resolved is gone', () async {
-            when(() => shorebirdEnv.iosPackageResolvedHash).thenReturn(null);
+            when(
+              () => shorebirdEnv.iosPackageResolvedHash,
+            ).thenReturn(ShorebirdEnv.noPackageResolvedHash);
             await assertUnpatchableDiffs(releaseArtifact());
             verifyWarned(
               'This project has no $packageResolvedPath, but the release was built with one.',
@@ -610,8 +616,42 @@ Your $packageResolvedPath is different from the one used to build the release.''
             );
           });
 
+          test('says Package.resolved is new', () async {
+            await assertUnpatchableDiffs(
+              releaseArtifact(
+                releasePackageResolvedHash: ShorebirdEnv.noPackageResolvedHash,
+              ),
+            );
+            verifyWarned(
+              'This project has a $packageResolvedPath, but the release was built without one.',
+            );
+          });
+
+          test('says Podfile.lock is new', () async {
+            await assertUnpatchableDiffs(
+              releaseArtifact(releasePodfileLockHash: null),
+            );
+            verifyWarned(
+              'This project has a ios/Podfile.lock, but the release was built without one.',
+            );
+          });
+
+          test(
+            'checks only Podfile.lock for a release made by an older CLI',
+            () async {
+              when(
+                () => shorebirdEnv.iosPackageResolvedHash,
+              ).thenReturn('changed-package-resolved-hash');
+              await assertUnpatchableDiffs(
+                releaseArtifact(releasePackageResolvedHash: null),
+              );
+              verifyNever(() => logger.warn(any()));
+            },
+          );
+
           group('when the release had no Podfile.lock', () {
             test('checks Package.resolved alone', () async {
+              when(() => shorebirdEnv.iosPodfileLockHash).thenReturn(null);
               when(
                 () => shorebirdEnv.iosPackageResolvedHash,
               ).thenReturn('changed-package-resolved-hash');
