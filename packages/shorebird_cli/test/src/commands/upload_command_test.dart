@@ -19,6 +19,7 @@ import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group(UploadCommand, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0+1';
