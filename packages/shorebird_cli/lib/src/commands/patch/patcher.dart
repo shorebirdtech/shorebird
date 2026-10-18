@@ -163,6 +163,7 @@ More info: ${troubleshootingUrl.toLink()}.
     required Map<String, dynamic> metadata,
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
+    String? notes,
   }) {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -171,6 +172,7 @@ More info: ${troubleshootingUrl.toLink()}.
       platform: releaseType.releasePlatform,
       track: track,
       patchArtifactBundles: artifacts,
+      notes: notes,
     );
   }
 

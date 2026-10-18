@@ -1150,6 +1150,61 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           ).called(1);
         });
       });
+
+      group('when --notes is passed', () {
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.notesArg.name],
+          ).thenReturn('Spring launch');
+          when(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: any(named: 'status'),
+              metadata: any(named: 'metadata'),
+              notes: any(named: 'notes'),
+            ),
+          ).thenAnswer((_) async {});
+        });
+
+        test('sends the notes with the active status', () async {
+          await runWithOverrides(
+            () => command.finalizeRelease(
+              release: release,
+              releaser: releaser,
+            ),
+          );
+          verify(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: release.id,
+              platform: any(named: 'platform'),
+              status: ReleaseStatus.active,
+              metadata: any(named: 'metadata'),
+              notes: 'Spring launch',
+            ),
+          ).called(1);
+        });
+
+        test('shows the notes in the release summary', () async {
+          await runWithOverrides(
+            () => command.printReleaseSummary(
+              app: appMetadata,
+              releaseVersion: '1.0.0',
+              flutterVersion: '3.0.0',
+              releasePlatform: ReleasePlatform.android,
+            ),
+          );
+          verify(
+            () => logger.info(
+              any(
+                that: contains('📝 Notes: ${lightCyan.wrap('Spring launch')}'),
+              ),
+            ),
+          ).called(1);
+        });
+      });
     });
   });
 }

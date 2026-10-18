@@ -67,6 +67,10 @@ class ReleaseCommand extends ShorebirdCommand {
         help: CommonArguments.buildNumberArg.description,
         defaultsTo: CommonArguments.buildNumberArg.defaultValue,
       )
+      ..addOption(
+        CommonArguments.notesArg.name,
+        help: CommonArguments.notesArg.description,
+      )
       ..addFlag(
         'codesign',
         help: 'Codesign the application bundle (iOS only).',
@@ -178,6 +182,13 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   @override
   String get name => 'release';
+
+  /// The notes to attach (--notes), or null when absent or blank. Blank counts
+  /// as absent so an unset variable in `--notes="$NOTES"` never erases notes.
+  String? get notes {
+    final value = (results[CommonArguments.notesArg.name] as String?)?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
 
   @override
   Future<int> run() async {
@@ -724,6 +735,7 @@ To resolve this issue, you can:
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}',
       '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+      if (notes case final notes?) notesSummary(notes),
     ];
 
     logger.info('''
@@ -802,6 +814,7 @@ ${summary.join('\n')}
       platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.active,
       metadata: updatedMetadata.toJson(),
+      notes: notes,
     );
   }
 

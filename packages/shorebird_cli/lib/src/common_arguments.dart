@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 
 /// {@template argument_describer}
@@ -25,6 +26,15 @@ class ArgumentDescriber {
 /// A class that houses the name of arguments that are shared between different
 /// commands and layers.
 class CommonArguments {
+  /// The --notes argument for releases and patches.
+  static const notesArg = ArgumentDescriber(
+    name: 'notes',
+    description:
+        'Notes to attach, such as what changed. Visible only to members of '
+        'your organization, in the console and in `releases info` / '
+        '`patches info`.',
+  );
+
   /// The Flutter --build-name argument.
   static const buildNameArg = ArgumentDescriber(
     name: 'build-name',
@@ -253,4 +263,12 @@ The minimum link percentage ($minLinkPercentageMin-$minLinkPercentageMax) requir
 Patches with a lower link percentage than what is provided here will fail.
 ''',
   );
+}
+
+/// The confirm-summary line for --notes: the first line of [notes], with an
+/// ellipsis when there are more.
+String notesSummary(String notes) {
+  final lines = notes.split('\n');
+  final more = lines.length > 1 ? ' …' : '';
+  return '📝 Notes: ${lightCyan.wrap(lines.first)}$more';
 }

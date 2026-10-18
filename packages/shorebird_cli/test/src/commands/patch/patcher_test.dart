@@ -298,6 +298,7 @@ void main() {
             platform: any(named: 'platform'),
             track: any(named: 'track'),
             patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            notes: any(named: 'notes'),
           ),
         ).thenAnswer((_) async => const Patch(id: 1, number: 1));
         await runScoped(
@@ -308,6 +309,7 @@ void main() {
               metadata: metadata,
               artifacts: artifacts,
               track: track,
+              notes: 'Fixes the login crash',
             );
           },
           values: {
@@ -322,6 +324,7 @@ void main() {
             platform: ReleaseType.android.releasePlatform,
             track: track,
             patchArtifactBundles: artifacts,
+            notes: 'Fixes the login crash',
           ),
         ).called(1);
       });

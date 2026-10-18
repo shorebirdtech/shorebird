@@ -105,6 +105,10 @@ To target the latest release (e.g. the release that was most recently updated) u
         negatable: false,
       )
       ..addOption(
+        CommonArguments.notesArg.name,
+        help: CommonArguments.notesArg.description,
+      )
+      ..addOption(
         'track',
         aliases: const ['channel'],
         help: 'The track to publish the patch to.',
@@ -230,6 +234,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// The deployment track to publish the patch to.
   DeploymentTrack get track => DeploymentTrack(results['track'] as String);
+
+  /// The notes to attach (--notes), or null when absent or blank. Blank counts
+  /// as absent so an unset variable in `--notes="$NOTES"` never erases notes.
+  String? get notes {
+    final value = (results[CommonArguments.notesArg.name] as String?)?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
 
   @override
   Future<int> run() async {
@@ -760,6 +771,7 @@ Building patch with Flutter $flutterVersionString
       metadata: metadata.toJson(),
       track: track,
       artifacts: patchArtifactBundles,
+      notes: notes,
     );
 
     return PublishedPatch(
@@ -995,6 +1007,7 @@ Please re-run the release command for this version or create a new release.''');
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
       trackSummary,
+      if (notes case final notes?) notesSummary(notes),
       if (linkPercentage != null &&
           linkPercentage < Patcher.linkPercentageWarningThreshold)
         '''🔍 Debug Info: ${lightCyan.wrap(Patcher.debugInfoFile.path)}''',

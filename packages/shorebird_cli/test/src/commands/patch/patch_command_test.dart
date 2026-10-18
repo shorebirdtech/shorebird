@@ -498,6 +498,52 @@ void main() {
         ).called(1);
       });
 
+      test('forwards --notes to the patcher', () async {
+        when(
+          () => argResults[CommonArguments.notesArg.name],
+        ).thenReturn('  Fixes the login crash\n');
+        when(
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            metadata: any(named: 'metadata'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenAnswer((_) async => const Patch(id: 3, number: 2));
+
+        await runWithOverrides(() => command.createPatch(patcher));
+
+        verify(
+          () => patcher.uploadPatchArtifacts(
+            appId: appId,
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            track: any(named: 'track'),
+            artifacts: patchArtifactBundles,
+            notes: 'Fixes the login crash',
+          ),
+        ).called(1);
+      });
+
+      test('treats blank --notes as absent', () async {
+        when(() => argResults[CommonArguments.notesArg.name]).thenReturn('  ');
+
+        await runWithOverrides(() => command.createPatch(patcher));
+
+        verify(
+          () => patcher.uploadPatchArtifacts(
+            appId: appId,
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            track: any(named: 'track'),
+            artifacts: patchArtifactBundles,
+          ),
+        ).called(1);
+        expect(command.notes, isNull);
+      });
+
       group('when the patcher has a minimum Flutter version', () {
         final minimumFlutterVersion = Version(3, 27, 4);
 
@@ -1102,6 +1148,34 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           );
           verify(
             () => logger.info(any(that: contains(expectedSummary.join('\n')))),
+          ).called(1);
+        });
+      });
+
+      group('when --notes is passed', () {
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.notesArg.name],
+          ).thenReturn('Fixes the login crash\nAlso bumps the timeout');
+        });
+
+        test('logs the first line of the notes', () async {
+          await runWithOverrides(
+            () => command.logPatchSummary(
+              app: appMetadata,
+              releaseVersion: releaseVersion,
+              patcher: patcher,
+              patchArtifactBundles: patchArtifactBundles,
+            ),
+          );
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  '📝 Notes: ${lightCyan.wrap('Fixes the login crash')} …',
+                ),
+              ),
+            ),
           ).called(1);
         });
       });

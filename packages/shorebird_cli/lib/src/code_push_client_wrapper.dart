@@ -449,13 +449,15 @@ Please create a release using "shorebird release" and try again.
   }
 
   /// Updates the status of a release for the given [appId], [releaseId],
-  /// [platform], and [status].
+  /// [platform], and [status]. [notes], when provided, replaces the release's
+  /// notes.
   Future<void> updateReleaseStatus({
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
     Json? metadata,
+    String? notes,
   }) {
     return _withProgress(
       'Updating release status',
@@ -465,6 +467,7 @@ Please create a release using "shorebird release" and try again.
         platform: platform,
         status: status,
         metadata: metadata,
+        notes: notes,
       ),
     );
   }
@@ -1025,6 +1028,25 @@ $name artifact already exists, continuing...''');
     );
   }
 
+  /// Replaces the notes of [patch], which belongs to [releaseId].
+  @visibleForTesting
+  Future<void> updatePatchNotes({
+    required String appId,
+    required int releaseId,
+    required Patch patch,
+    required String notes,
+  }) {
+    return _withProgress(
+      'Adding patch notes',
+      () => codePushClient.updatePatchNotes(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patch.id,
+        notes: notes,
+      ),
+    );
+  }
+
   /// Uploads patch artifacts for a specific app/patch combination.
   @visibleForTesting
   Future<void> createPatchArtifacts({
@@ -1135,7 +1157,8 @@ $name artifact already exists, continuing...''');
 
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
-  /// channel based on the provided [track].
+  /// channel based on the provided [track]. [notes], when provided, are
+  /// attached before the patch is promoted, so it is never live without them.
   Future<Patch> publishPatch({
     required String appId,
     required int releaseId,
@@ -1143,12 +1166,22 @@ $name artifact already exists, continuing...''');
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
+    String? notes,
   }) async {
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
     );
+
+    if (notes != null) {
+      await updatePatchNotes(
+        appId: appId,
+        releaseId: releaseId,
+        patch: patch,
+        notes: notes,
+      );
+    }
 
     await createPatchArtifacts(
       appId: appId,

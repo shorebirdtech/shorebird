@@ -3060,6 +3060,38 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         verify(() => progress.complete()).called(1);
       });
 
+      test('forwards notes to the code push client', () async {
+        when(
+          () => codePushClient.updateReleaseStatus(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            status: any(named: 'status'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenAnswer((_) async {});
+
+        await runWithOverrides(
+          () => codePushClientWrapper.updateReleaseStatus(
+            appId: app.appId,
+            releaseId: releaseId,
+            platform: releasePlatform,
+            status: ReleaseStatus.active,
+            notes: 'Spring launch',
+          ),
+        );
+
+        verify(
+          () => codePushClient.updateReleaseStatus(
+            appId: app.appId,
+            releaseId: releaseId,
+            platform: releasePlatform,
+            status: ReleaseStatus.active,
+            notes: 'Spring launch',
+          ),
+        ).called(1);
+      });
+
       group('when metadata is provided', () {
         setUp(() {
           when(
@@ -3601,6 +3633,103 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(
             () => logger.success(any(that: contains('Published Patch 2!'))),
           ).called(1);
+        });
+
+        test('does not update notes when none are provided', () async {
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              track: track,
+              patchArtifactBundles: patchArtifactBundles,
+              metadata: {'foo': 'bar'},
+            ),
+          );
+
+          verifyNever(
+            () => codePushClient.updatePatchNotes(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              notes: any(named: 'notes'),
+            ),
+          );
+        });
+
+        test('attaches notes before promoting the patch', () async {
+          when(
+            () => codePushClient.updatePatchNotes(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              notes: any(named: 'notes'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              track: track,
+              patchArtifactBundles: patchArtifactBundles,
+              metadata: {'foo': 'bar'},
+              notes: 'Fixes the login crash',
+            ),
+          );
+
+          verifyInOrder([
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+            ),
+            () => codePushClient.updatePatchNotes(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              notes: 'Fixes the login crash',
+            ),
+            () => codePushClient.promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channel.id,
+            ),
+          ]);
+        });
+
+        test('exits when updating notes fails', () async {
+          when(
+            () => codePushClient.updatePatchNotes(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              notes: any(named: 'notes'),
+            ),
+          ).thenThrow(Exception('oops'));
+
+          await expectLater(
+            () => runWithOverrides(
+              () => codePushClientWrapper.publishPatch(
+                appId: appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                track: track,
+                patchArtifactBundles: patchArtifactBundles,
+                metadata: {'foo': 'bar'},
+                notes: 'Fixes the login crash',
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verifyNever(
+            () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              channelId: any(named: 'channelId'),
+            ),
+          );
         });
       });
     });
