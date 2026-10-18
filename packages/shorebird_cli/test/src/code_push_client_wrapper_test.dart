@@ -2555,7 +2555,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             canSideload: any(named: 'canSideload'),
             podfileLockHash: any(named: 'podfileLockHash'),
             packageResolvedHash: any(named: 'packageResolvedHash'),
-            pluginSwiftPackageHash: any(named: 'pluginSwiftPackageHash'),
+            nativePluginsHash: any(named: 'nativePluginsHash'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -2572,7 +2572,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             canSideload: any(named: 'canSideload'),
             podfileLockHash: any(named: 'podfileLockHash'),
             packageResolvedHash: any(named: 'packageResolvedHash'),
-            pluginSwiftPackageHash: any(named: 'pluginSwiftPackageHash'),
+            nativePluginsHash: any(named: 'nativePluginsHash'),
           ),
         ).thenAnswer((_) async {});
         setUpProjectRoot();
@@ -2586,7 +2586,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             isCodesigned: true,
             podfileLockHash: podfileLockHash,
             packageResolvedHash: 'package-resolved-hash',
-            pluginSwiftPackageHash: 'plugin-swift-package-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         );
 
@@ -2606,7 +2606,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             canSideload: false,
             podfileLockHash: podfileLockHash,
             packageResolvedHash: 'package-resolved-hash',
-            pluginSwiftPackageHash: 'plugin-swift-package-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         ).called(1);
         verify(
@@ -2623,7 +2623,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             canSideload: true,
             podfileLockHash: podfileLockHash,
             packageResolvedHash: 'package-resolved-hash',
-            pluginSwiftPackageHash: 'plugin-swift-package-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         ).called(1);
       });
@@ -2643,7 +2643,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               isCodesigned: true,
               podfileLockHash: podfileLockHash,
               packageResolvedHash: null,
-              pluginSwiftPackageHash: null,
+              nativePluginsHash: null,
             ),
           ),
         );
@@ -2665,7 +2665,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               isCodesigned: false,
               podfileLockHash: podfileLockHash,
               packageResolvedHash: null,
-              pluginSwiftPackageHash: null,
+              nativePluginsHash: null,
             ),
           );
 
@@ -2777,7 +2777,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             canSideload: any(named: 'canSideload'),
             podfileLockHash: any(named: 'podfileLockHash'),
             packageResolvedHash: any(named: 'packageResolvedHash'),
-            pluginSwiftPackageHash: any(named: 'pluginSwiftPackageHash'),
+            nativePluginsHash: any(named: 'nativePluginsHash'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2801,7 +2801,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appPath: p.join(projectRoot.path, appPath),
               podfileLockHash: 'podfile-lock-hash',
               packageResolvedHash: 'package-resolved-hash',
-              pluginSwiftPackageHash: 'plugin-swift-package-hash',
+              nativePluginsHash: 'native-plugins-hash',
             ),
           ),
           completes,
@@ -2820,7 +2820,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             canSideload: true,
             podfileLockHash: 'podfile-lock-hash',
             packageResolvedHash: 'package-resolved-hash',
-            pluginSwiftPackageHash: 'plugin-swift-package-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         ).called(1);
       });
@@ -2836,7 +2836,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appPath: p.join(projectRoot.path, appPath),
               podfileLockHash: 'podfile-lock-hash',
               packageResolvedHash: null,
-              pluginSwiftPackageHash: null,
+              nativePluginsHash: null,
             ),
           ),
         );
@@ -3486,7 +3486,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: any(named: 'hash'),
               podfileLockHash: any(named: 'podfileLockHash'),
               packageResolvedHash: any(named: 'packageResolvedHash'),
-              pluginSwiftPackageHash: any(named: 'pluginSwiftPackageHash'),
+              nativePluginsHash: any(named: 'nativePluginsHash'),
             ),
           ).thenAnswer((_) async {});
           const bundle = PatchArtifactBundle(
@@ -3496,7 +3496,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             size: 4,
             podfileLockHash: 'podfile-lock-hash',
             packageResolvedHash: 'package-resolved-hash',
-            pluginSwiftPackageHash: 'plugin-swift-package-hash',
+            nativePluginsHash: 'native-plugins-hash',
           );
 
           await runWithOverrides(
@@ -3518,7 +3518,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: bundle.hash,
               podfileLockHash: 'podfile-lock-hash',
               packageResolvedHash: 'package-resolved-hash',
-              pluginSwiftPackageHash: 'plugin-swift-package-hash',
+              nativePluginsHash: 'native-plugins-hash',
             ),
           ).called(1);
         });

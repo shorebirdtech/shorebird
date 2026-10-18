@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:yaml/yaml.dart';
 
 /// Exception thrown when the Shorebird cache appears to be corrupted.
 class CacheCorruptedException implements Exception {
@@ -204,62 +205,102 @@ class ShorebirdEnv {
   String get macosPackageResolvedHash =>
       packageResolvedHash(macosPackageResolvedFile) ?? noFileHash;
 
-  /// The hash recorded for a Package.resolved or plugin Swift package that an
-  /// iOS or macOS app doesn't have. Recording it, rather than nothing, tells a
+  /// The hash recorded for a Package.resolved, or a set of native plugins,
+  /// that an iOS or macOS app doesn't have. Recording it, rather than nothing, tells a
   /// later patch that the release was made by a CLI that records these, so an
   /// app that adds Swift Package Manager or CocoaPods after the release is
   /// caught.
   static const noFileHash = 'none';
 
-  /// The Swift package Flutter generates for this project's iOS app to pull
-  /// in its Swift Package Manager plugins. See [pluginSwiftPackageHash].
-  File get iosPluginSwiftPackageFile => pluginSwiftPackageFile('ios');
+  /// The hash of this project's Flutter plugins with native iOS code, or
+  /// [noFileHash] if it has none. See [nativePluginsHash].
+  String get iosNativePluginsHash => nativePluginsHash('ios');
 
-  /// The hash of [iosPluginSwiftPackageFile], or [noFileHash] if the file
-  /// does not exist. See [pluginSwiftPackageHash].
-  String get iosPluginSwiftPackageHash =>
-      pluginSwiftPackageHash(iosPluginSwiftPackageFile) ?? noFileHash;
+  /// The hash of this project's Flutter plugins with native macOS code, or
+  /// [noFileHash] if it has none. See [nativePluginsHash].
+  String get macosNativePluginsHash => nativePluginsHash('macos');
 
-  /// The Swift package Flutter generates for this project's macOS app to pull
-  /// in its Swift Package Manager plugins. See [pluginSwiftPackageHash].
-  File get macosPluginSwiftPackageFile => pluginSwiftPackageFile('macos');
-
-  /// The hash of [macosPluginSwiftPackageFile], or [noFileHash] if the file
-  /// does not exist. See [pluginSwiftPackageHash].
-  String get macosPluginSwiftPackageHash =>
-      pluginSwiftPackageHash(macosPluginSwiftPackageFile) ?? noFileHash;
-
-  /// The Package.swift Flutter generates (on every build) for the Apple app
-  /// in [platformDirectory] (`ios` or `macos`), whose dependencies are the
-  /// app's Flutter plugins that use Swift Package Manager.
-  File pluginSwiftPackageFile(String platformDirectory) => File(
-    p.join(
-      getFlutterProjectRoot()!.path,
-      platformDirectory,
-      'Flutter',
-      'ephemeral',
-      'Packages',
-      'FlutterGeneratedPluginSwiftPackage',
-      'Package.swift',
-    ),
-  );
-
-  /// The hash of the generated plugin Package.swift [file], or null if it
-  /// does not exist.
+  /// The hash of this project's Flutter plugins with native code for
+  /// [platform] (`ios` or `macos`, as keyed in `.flutter-plugins-dependencies`)
+  /// and their pubspec.lock entries, or [noFileHash] if it has none.
   ///
-  /// Package.resolved pins only remote packages, and Flutter adds plugins as
-  /// local packages, so this is what changes when a plugin is added, removed
-  /// or moved to another version. Each plugin's `path:` is reduced to its last
-  /// component (such as `url_launcher_ios-6.4.2`), which names the plugin and
-  /// its version, so the hash doesn't depend on where the pub cache is.
-  static String? pluginSwiftPackageHash(File file) {
-    if (!file.existsSync()) return null;
-    final contents = file.readAsStringSync().replaceAllMapped(
-      RegExp(r'path:\s*"([^"]*)"'),
-      (match) => 'path: "${p.posix.basename(match[1]!)}"',
+  /// Package.resolved pins only remote packages, and Flutter adds plugins
+  /// that use Swift Package Manager as local packages, so a plugin version
+  /// change shows up here and not there. The plugins are the ones Flutter
+  /// lists for [platform] in `.flutter-plugins-dependencies`, less dev
+  /// dependencies and plugins without native code. Each counts with its
+  /// pubspec.lock entry (version and source), which, unlike the paths Flutter
+  /// writes, is the same on every machine.
+  String nativePluginsHash(String platform) {
+    final projectRoot = getFlutterProjectRoot()!;
+    final dependencies = File(
+      p.join(projectRoot.path, '.flutter-plugins-dependencies'),
     );
-    return sha256.convert(utf8.encode(contents)).toString();
+    if (!dependencies.existsSync()) return noFileHash;
+    final Object? json;
+    try {
+      json = jsonDecode(dependencies.readAsStringSync());
+    } on FormatException {
+      return noFileHash;
+    }
+    final plugins = switch (json) {
+      {'plugins': final Map<String, dynamic> byPlatform}
+          when byPlatform[platform] is List<dynamic> =>
+        byPlatform[platform] as List<dynamic>,
+      _ => const <dynamic>[],
+    };
+    final names = {
+      for (final plugin in plugins)
+        if (plugin case {'name': final String name}
+            when plugin['native_build'] != false &&
+                plugin['dev_dependency'] != true)
+          name,
+    }.sorted();
+    if (names.isEmpty) return noFileHash;
+
+    final lockedPackages = _lockedPackages(projectRoot);
+    final entries = [
+      for (final name in names)
+        jsonEncode([
+          name,
+          _sortKeys(_withoutDependencyKind(lockedPackages[name])),
+        ]),
+    ];
+    return sha256.convert(utf8.encode(entries.join('\n'))).toString();
   }
+
+  /// The `packages` of the pubspec.lock that resolves [projectRoot]: its own,
+  /// or, in a pub workspace, the workspace root's. Empty if there is none or
+  /// it can't be read.
+  static Map<String, dynamic> _lockedPackages(Directory projectRoot) {
+    var directory = projectRoot.absolute;
+    while (true) {
+      final lockFile = File(p.join(directory.path, 'pubspec.lock'));
+      if (lockFile.existsSync()) {
+        try {
+          final yaml = loadYaml(lockFile.readAsStringSync());
+          if (yaml case {'packages': final YamlMap packages}) {
+            return jsonDecode(jsonEncode(packages)) as Map<String, dynamic>;
+          }
+        } on YamlException {
+          // Fall through: count the plugins by name alone.
+        }
+        return {};
+      }
+      if (directory.parent.path == directory.path) return {};
+      directory = directory.parent;
+    }
+  }
+
+  /// [entry] without its `dependency` (direct or transitive), which changes
+  /// without the package changing.
+  static Object? _withoutDependencyKind(Object? entry) => switch (entry) {
+    final Map<String, dynamic> map => {
+      for (final MapEntry(:key, :value) in map.entries)
+        if (key != 'dependency') key: value,
+    },
+    _ => entry,
+  };
 
   /// The project-relative path of the Package.resolved that Xcode writes with
   /// the pinned versions of the Swift Package Manager dependencies of the

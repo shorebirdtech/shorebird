@@ -40,7 +40,7 @@ class PatchArtifactBundle extends Equatable {
     this.hashSignature,
     this.podfileLockHash,
     this.packageResolvedHash,
-    this.pluginSwiftPackageHash,
+    this.nativePluginsHash,
   });
 
   /// The corresponding architecture.
@@ -65,9 +65,9 @@ class PatchArtifactBundle extends Equatable {
   /// present and relevant.
   final String? packageResolvedHash;
 
-  /// The hash of the Swift package Flutter generates for the app's Swift
-  /// Package Manager plugins, if present and relevant.
-  final String? pluginSwiftPackageHash;
+  /// The hash of the app's Flutter plugins with native code and their
+  /// versions, if relevant.
+  final String? nativePluginsHash;
 
   @override
   List<Object?> get props => [
@@ -78,7 +78,7 @@ class PatchArtifactBundle extends Equatable {
     hashSignature,
     podfileLockHash,
     packageResolvedHash,
-    pluginSwiftPackageHash,
+    nativePluginsHash,
   ];
 }
 
@@ -797,7 +797,7 @@ to the architectures your project actually builds.''',
     required Progress progress,
     String? podfileLockHash,
     String? packageResolvedHash,
-    String? pluginSwiftPackageHash,
+    String? nativePluginsHash,
   }) async {
     logger.detail('Uploading $name artifact from ${file.path}');
     try {
@@ -811,7 +811,7 @@ to the architectures your project actually builds.''',
         canSideload: canSideload,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
-        pluginSwiftPackageHash: pluginSwiftPackageHash,
+        nativePluginsHash: nativePluginsHash,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -877,7 +877,7 @@ $name artifact already exists, continuing...''');
     required String appPath,
     required String? podfileLockHash,
     required String? packageResolvedHash,
-    required String? pluginSwiftPackageHash,
+    required String? nativePluginsHash,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
@@ -897,7 +897,7 @@ $name artifact already exists, continuing...''');
         canSideload: true,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
-        pluginSwiftPackageHash: pluginSwiftPackageHash,
+        nativePluginsHash: nativePluginsHash,
         progress: createArtifactProgress,
       );
     } finally {
@@ -917,7 +917,7 @@ $name artifact already exists, continuing...''');
     required bool isCodesigned,
     required String? podfileLockHash,
     required String? packageResolvedHash,
-    required String? pluginSwiftPackageHash,
+    required String? nativePluginsHash,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory = await _thinXcarchive(
@@ -940,7 +940,7 @@ $name artifact already exists, continuing...''');
         canSideload: false,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
-        pluginSwiftPackageHash: pluginSwiftPackageHash,
+        nativePluginsHash: nativePluginsHash,
         progress: createArtifactProgress,
       );
     } finally {
@@ -960,7 +960,7 @@ $name artifact already exists, continuing...''');
         canSideload: isCodesigned,
         podfileLockHash: podfileLockHash,
         packageResolvedHash: packageResolvedHash,
-        pluginSwiftPackageHash: pluginSwiftPackageHash,
+        nativePluginsHash: nativePluginsHash,
         progress: createArtifactProgress,
       );
     } finally {
@@ -1072,7 +1072,7 @@ $name artifact already exists, continuing...''');
           hashSignature: artifact.hashSignature,
           podfileLockHash: artifact.podfileLockHash,
           packageResolvedHash: artifact.packageResolvedHash,
-          pluginSwiftPackageHash: artifact.pluginSwiftPackageHash,
+          nativePluginsHash: artifact.nativePluginsHash,
         );
       } catch (error) {
         _handleErrorAndExit(error, progress: createArtifactProgress);

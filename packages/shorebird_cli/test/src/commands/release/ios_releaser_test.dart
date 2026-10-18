@@ -765,7 +765,7 @@ $body
             isCodesigned: any(named: 'isCodesigned'),
             podfileLockHash: any(named: 'podfileLockHash'),
             packageResolvedHash: any(named: 'packageResolvedHash'),
-            pluginSwiftPackageHash: any(named: 'pluginSwiftPackageHash'),
+            nativePluginsHash: any(named: 'nativePluginsHash'),
           ),
         ).thenAnswer((_) async => {});
         when(
@@ -775,8 +775,8 @@ $body
           () => shorebirdEnv.iosPackageResolvedHash,
         ).thenReturn('package-resolved-hash');
         when(
-          () => shorebirdEnv.iosPluginSwiftPackageHash,
-        ).thenReturn('plugin-swift-package-hash');
+          () => shorebirdEnv.iosNativePluginsHash,
+        ).thenReturn('native-plugins-hash');
       });
 
       test('forwards call to codePushClientWrapper', () async {
@@ -797,7 +797,7 @@ $body
             podfileLockHash:
                 '${sha256.convert(utf8.encode(podfileLockContent))}',
             packageResolvedHash: 'package-resolved-hash',
-            pluginSwiftPackageHash: 'plugin-swift-package-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         ).called(1);
       });
@@ -835,7 +835,7 @@ $body
               podfileLockHash:
                   '${sha256.convert(utf8.encode(podfileLockContent))}',
               packageResolvedHash: 'package-resolved-hash',
-              pluginSwiftPackageHash: 'plugin-swift-package-hash',
+              nativePluginsHash: 'native-plugins-hash',
             ),
           ).called(1);
         });

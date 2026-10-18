@@ -148,7 +148,7 @@ void main() {
         () => shorebirdEnv.iosPackageResolvedHash,
       ).thenReturn(ShorebirdEnv.noFileHash);
       when(
-        () => shorebirdEnv.iosPluginSwiftPackageHash,
+        () => shorebirdEnv.iosNativePluginsHash,
       ).thenReturn(ShorebirdEnv.noFileHash);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
@@ -652,8 +652,8 @@ Your $packageResolvedPath is different from the one used to build the release.''
             },
           );
 
-          group('when the release recorded its plugin Swift package', () {
-            const pluginHash = 'plugin-swift-package-hash';
+          group('when the release recorded its native plugins', () {
+            const pluginHash = 'native-plugins-hash';
 
             ReleaseArtifact withPlugins(String hash) => ReleaseArtifact(
               id: 0,
@@ -665,13 +665,13 @@ Your $packageResolvedPath is different from the one used to build the release.''
               url: 'https://example.com',
               podfileLockHash: podfileLockHash,
               packageResolvedHash: packageResolvedHash,
-              pluginSwiftPackageHash: hash,
+              nativePluginsHash: hash,
               canSideload: true,
             );
 
             setUp(() {
               when(
-                () => shorebirdEnv.iosPluginSwiftPackageHash,
+                () => shorebirdEnv.iosNativePluginsHash,
               ).thenReturn(pluginHash);
             });
 
@@ -683,17 +683,17 @@ Your $packageResolvedPath is different from the one used to build the release.''
             test('warns when the plugins changed', () async {
               await assertUnpatchableDiffs(withPlugins('old-plugin-hash'));
               verifyWarned(
-                '''The Flutter plugins this project builds with Swift Package Manager, or their versions, are different from the ones used to build the release.''',
+                '''The Flutter plugins with native code in this project, or their versions, are different from the ones used to build the release.''',
               );
             });
 
             test('warns when the app no longer has any', () async {
               when(
-                () => shorebirdEnv.iosPluginSwiftPackageHash,
+                () => shorebirdEnv.iosNativePluginsHash,
               ).thenReturn(ShorebirdEnv.noFileHash);
               await assertUnpatchableDiffs(withPlugins(pluginHash));
               verifyWarned(
-                '''This project builds no Flutter plugins with Swift Package Manager, but the release did.''',
+                '''This project has no Flutter plugins with native code, but the release was built with some.''',
               );
             });
 
@@ -702,7 +702,7 @@ Your $packageResolvedPath is different from the one used to build the release.''
                 withPlugins(ShorebirdEnv.noFileHash),
               );
               verifyWarned(
-                '''This project builds Flutter plugins with Swift Package Manager, but the release didn't.''',
+                '''This project has Flutter plugins with native code, but the release was built without any.''',
               );
             });
 
@@ -1419,8 +1419,8 @@ Your $packageResolvedPath is different from the one used to build the release.''
             () => shorebirdEnv.iosPackageResolvedHash,
           ).thenReturn('package-resolved-hash');
           when(
-            () => shorebirdEnv.iosPluginSwiftPackageHash,
-          ).thenReturn('plugin-swift-package-hash');
+            () => shorebirdEnv.iosNativePluginsHash,
+          ).thenReturn('native-plugins-hash');
 
           final patchBundle = await runWithOverrides(
             () => patcher.createPatchArtifacts(
@@ -1439,8 +1439,8 @@ Your $packageResolvedPath is different from the one used to build the release.''
             equals('package-resolved-hash'),
           );
           expect(
-            patchBundle[Arch.arm64]!.pluginSwiftPackageHash,
-            equals('plugin-swift-package-hash'),
+            patchBundle[Arch.arm64]!.nativePluginsHash,
+            equals('native-plugins-hash'),
           );
         });
 

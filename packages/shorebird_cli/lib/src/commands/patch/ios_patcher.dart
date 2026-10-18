@@ -67,8 +67,7 @@ class IosPatcher extends Patcher
       ShorebirdEnv.packageResolvedRelativePath('ios');
 
   @override
-  String get localPluginSwiftPackageHash =>
-      shorebirdEnv.iosPluginSwiftPackageHash;
+  String get localNativePluginsHash => shorebirdEnv.iosNativePluginsHash;
 
   @override
   Future<void> assertArgsAreValid() async =>
@@ -160,7 +159,7 @@ class IosPatcher extends Patcher
             supplementDirectory ?? fallbackSupplementDirectory!,
         podfileLockHash: shorebirdEnv.iosPodfileLockHash,
         packageResolvedHash: shorebirdEnv.iosPackageResolvedHash,
-        pluginSwiftPackageHash: shorebirdEnv.iosPluginSwiftPackageHash,
+        nativePluginsHash: shorebirdEnv.iosNativePluginsHash,
       );
     } finally {
       releaseXcarchiveDirectory.deleteTemporarySync();

@@ -402,60 +402,118 @@ void main() {
       });
     }
 
-    group('pluginSwiftPackageHash', () {
-      late File packageSwift;
+    group('nativePluginsHash', () {
+      late Directory projectRoot;
 
       setUp(() {
-        packageSwift = File(
-          p.join(Directory.systemTemp.createTempSync().path, 'Package.swift'),
-        );
+        projectRoot = Directory.systemTemp.createTempSync();
+        File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
       });
 
-      String? hashOf(String path, {String version = '6.4.2'}) {
-        packageSwift.writeAsStringSync('''
-let package = Package(
-    name: "FlutterGeneratedPluginSwiftPackage",
-    dependencies: [
-        .package(name: "url_launcher_ios", path: "$path/url_launcher_ios-$version"),
-        .package(name: "FlutterFramework", path: "$path/FlutterFramework")
-    ]
-)''');
-        return ShorebirdEnv.pluginSwiftPackageHash(packageSwift);
+      String hash(String platform) => IOOverrides.runZoned(
+        () => runWithOverrides(() => shorebirdEnv.nativePluginsHash(platform)),
+        getCurrentDirectory: () => projectRoot,
+      );
+
+      void writePlugins(
+        List<Map<String, Object?>> ios, {
+        String pubCache = '/Users/someone/.pub-cache',
+      }) {
+        File(
+          p.join(projectRoot.path, '.flutter-plugins-dependencies'),
+        ).writeAsStringSync(
+          jsonEncode({
+            'plugins': {
+              'ios': [
+                for (final plugin in ios)
+                  {
+                    'path': '$pubCache/hosted/pub.dev/${plugin['name']}/',
+                    'native_build': true,
+                    'dev_dependency': false,
+                    ...plugin,
+                  },
+              ],
+              'macos': <Object>[],
+            },
+          }),
+        );
       }
 
-      test('is null when the file does not exist', () {
-        expect(ShorebirdEnv.pluginSwiftPackageHash(packageSwift), isNull);
+      void writeLock(
+        String version, {
+        String dependency = 'direct main',
+        Directory? directory,
+      }) {
+        File(
+          p.join((directory ?? projectRoot).path, 'pubspec.lock'),
+        ).writeAsStringSync('''
+packages:
+  url_launcher_ios:
+    dependency: "$dependency"
+    description:
+      name: url_launcher_ios
+      sha256: "8faa1aab"
+      url: "https://pub.dev"
+    source: hosted
+    version: "$version"
+''');
+      }
+
+      test('is noFileHash without .flutter-plugins-dependencies', () {
+        expect(hash('ios'), equals(ShorebirdEnv.noFileHash));
       });
 
-      test('does not depend on where the plugins are', () {
-        final hash = hashOf('../.packages');
-        expect(hash, isNotNull);
-        expect(
-          hashOf('/Users/someone/.pub-cache/hosted/pub.dev'),
-          equals(hash),
-        );
+      test('is noFileHash without native plugins for the platform', () {
+        writePlugins([
+          {'name': 'url_launcher_ios'},
+        ]);
+        writeLock('6.4.2');
+        expect(hash('macos'), equals(ShorebirdEnv.noFileHash));
+        expect(hash('ios'), isNot(equals(ShorebirdEnv.noFileHash)));
+      });
+
+      test('ignores dev dependencies and plugins without native code', () {
+        writePlugins([
+          {'name': 'dev_plugin', 'dev_dependency': true},
+          {'name': 'dart_only_plugin', 'native_build': false},
+        ]);
+        expect(hash('ios'), equals(ShorebirdEnv.noFileHash));
       });
 
       test('changes when a plugin version changes', () {
-        final hash = hashOf('../.packages');
-        expect(
-          hashOf('../.packages', version: '6.4.3'),
-          isNot(equals(hash)),
-        );
+        writePlugins([
+          {'name': 'url_launcher_ios'},
+        ]);
+        writeLock('6.4.2');
+        final before = hash('ios');
+        writeLock('6.4.3');
+        expect(hash('ios'), isNot(equals(before)));
       });
 
-      test('is noFileHash for an app without one', () {
-        final projectRoot = Directory.systemTemp.createTempSync();
+      test('does not depend on the machine or dependency kind', () {
+        writePlugins([
+          {'name': 'url_launcher_ios'},
+        ]);
+        writeLock('6.4.2');
+        final before = hash('ios');
+        writePlugins([
+          {'name': 'url_launcher_ios'},
+        ], pubCache: '/home/ci/.pub-cache');
+        writeLock('6.4.2', dependency: 'transitive');
+        expect(hash('ios'), equals(before));
+      });
+
+      test('reads the pub workspace pubspec.lock', () {
+        final workspace = Directory.systemTemp.createTempSync();
+        projectRoot = Directory(p.join(workspace.path, 'app'))..createSync();
         File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
-        expect(
-          IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => shorebirdEnv.iosPluginSwiftPackageHash,
-            ),
-            getCurrentDirectory: () => projectRoot,
-          ),
-          equals(ShorebirdEnv.noFileHash),
-        );
+        writePlugins([
+          {'name': 'url_launcher_ios'},
+        ]);
+        writeLock('6.4.2', directory: workspace);
+        final before = hash('ios');
+        writeLock('6.4.3', directory: workspace);
+        expect(hash('ios'), isNot(equals(before)));
       });
     });
 
