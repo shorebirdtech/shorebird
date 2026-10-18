@@ -78,32 +78,36 @@ class ShorebirdLogger extends Logger {
   @override
   bool confirm(String? message, {bool defaultValue = false, String? hint}) {
     _failIfNonInteractive(promptText: message, hint: hint);
-    final suffix = darkGray.wrap('(${defaultValue ? 'Y/n' : 'y/N'})');
+    final prompt =
+        '$message ${darkGray.wrap('(${defaultValue ? 'Y/n' : 'y/N'})')} ';
     while (true) {
-      write('$message $suffix ');
+      // Written regardless of log level, like Logger.confirm, so the
+      // question and its follow-ups never disappear under --quiet.
+      write(prompt);
       final String? input;
       try {
         input = stdin.readLineSync()?.trim();
       } on FormatException {
-        // The answer wasn't valid text (e.g. a stray byte). Ask again.
-        info('');
-        info('Please answer y or n.');
+        // The answer wasn't valid text (e.g. a stray byte). Its line was
+        // consumed, so ask again on the next one.
+        write('Please answer y or n.\n');
         continue;
       }
-      if (input == null) {
-        // End of input: finish the prompt's line before taking the default.
-        info('');
-      }
+      // At the end of input, nothing ended the prompt's line.
+      if (input == null) write('\n');
       final answer = (input == null || input.isEmpty)
           ? defaultValue
           : _parseYesNo(input);
-      if (answer != null) {
-        // The terminal echoes what was typed, but stdout (and so the log
-        // file) only sees the prompt. Record the answer the command acts on.
-        detail('$message ${answer ? 'Yes' : 'No'}');
-        return answer;
+      if (answer == null) {
+        write('Please answer y or n.\n');
+        continue;
       }
-      info('Please answer y or n.');
+      // As Logger.confirm does, rewrite the prompt's line to show the answer
+      // taken, so a default taken on Enter is visible and the answer reaches
+      // the log file (which records stdout, not what was typed).
+      final shown = styleDim.wrap(lightCyan.wrap(answer ? 'Yes' : 'No'));
+      write('\x1b[A\u001B[2K$prompt$shown\n');
+      return answer;
     }
   }
 

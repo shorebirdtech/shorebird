@@ -186,17 +186,16 @@ void main() {
 
       test('ends the line at the end of input', () {
         confirm([null]);
-        expect(written.last, isEmpty);
+        expect(written[written.length - 2], equals('\n'));
       });
 
-      test('writes the answer to the log file', () {
+      test('shows the answer taken on the prompt line', () {
         confirm(['yes']);
-        expect(
-          // Replacing this with a tear-off influences
-          // ignore: unnecessary_lambdas
-          runWithOverrides(() => currentRunLogFile.readAsStringSync()),
-          contains('Continue? Yes'),
-        );
+        expect(written.last, endsWith('Continue? (y/N) Yes\n'));
+        confirm(['']);
+        expect(written.last, endsWith('Continue? (y/N) No\n'));
+        confirm([null], defaultValue: true);
+        expect(written.last, endsWith('Continue? (Y/n) Yes\n'));
       });
 
       test('shows the default in the prompt', () {
