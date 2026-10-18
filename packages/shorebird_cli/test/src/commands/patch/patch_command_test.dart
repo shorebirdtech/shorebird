@@ -1172,7 +1172,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             () => logger.info(
               any(
                 that: contains(
-                  '📝 Notes (private): ${lightCyan.wrap('Fixes the login crash')} …',
+                  '📝 Notes (private): '
+                  '${lightCyan.wrap('Fixes the login crash')} …',
                 ),
               ),
             ),
