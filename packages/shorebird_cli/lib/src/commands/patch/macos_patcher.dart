@@ -35,10 +35,10 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 ///   release by `analyze_snapshot`, rather than against the raw library in the
 ///   release archive;
 /// - archives the app with `ditto` rather than `zip`, and checks the
-///   Podfile.lock hash and codesigning.
+///   native dependency lockfile hash and codesigning.
 /// {@endtemplate}
 class MacosPatcher extends Patcher
-    with ApplePatcherMixin, ApplePodfileLockPatcherMixin {
+    with ApplePatcherMixin, AppleNativeDependencyLockPatcherMixin {
   /// {@macro macos_patcher}
   MacosPatcher({
     required super.argParser,
@@ -71,10 +71,12 @@ class MacosPatcher extends Patcher
   List<Validator> get applePlatformValidators => doctor.macosCommandValidators;
 
   @override
-  String? get localPodfileLockHash => shorebirdEnv.macosPodfileLockHash;
+  File? get localNativeDependencyLockFile =>
+      shorebirdEnv.macosNativeDependencyLockFile;
 
   @override
-  String get podfileLockRelativePath => 'macos/Podfile.lock';
+  String? get localNativeDependencyLockHash =>
+      shorebirdEnv.macosNativeDependencyLockHash;
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
@@ -177,14 +179,14 @@ class MacosPatcher extends Patcher
         releaseArtifactPath: arm64DiffBase.path,
         patchArtifactPath: _arm64AotOutputPath,
         progress: createDiffProgress,
-        podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+        podfileLockHash: shorebirdEnv.macosNativeDependencyLockHash,
       );
       final x64Bundle = await createDiffBundle(
         arch: Arch.x86_64,
         releaseArtifactPath: x64DiffBase.path,
         patchArtifactPath: _x64AotOutputPath,
         progress: createDiffProgress,
-        podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+        podfileLockHash: shorebirdEnv.macosNativeDependencyLockHash,
       );
       createDiffProgress.complete();
 

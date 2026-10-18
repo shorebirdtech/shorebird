@@ -271,29 +271,64 @@ void main() {
       });
     });
 
-    group('iosPodfileLockFile', () {
-      test('returns correct path', () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
-        final podfileLockFile = IOOverrides.runZoned(
-          () => runWithOverrides(() => shorebirdEnv.iosPodfileLockFile),
-          getCurrentDirectory: () => tempDir,
+    group('iosNativeDependencyLockFile', () {
+      late Directory projectRoot;
+      late File podfileLock;
+      late File packageResolved;
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+        // Required to resolve the project root.
+        File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
+        podfileLock = File(p.join(projectRoot.path, 'ios', 'Podfile.lock'));
+        packageResolved = File(
+          p.join(
+            projectRoot.path,
+            'ios',
+            'Runner.xcworkspace',
+            'xcshareddata',
+            'swiftpm',
+            'Package.resolved',
+          ),
         );
-        expect(
-          podfileLockFile.path,
-          equals(p.join(tempDir.path, 'ios', 'Podfile.lock')),
-        );
+      });
+
+      File? lockFile() => IOOverrides.runZoned(
+        () => runWithOverrides(() => shorebirdEnv.iosNativeDependencyLockFile),
+        getCurrentDirectory: () => projectRoot,
+      );
+
+      test('returns null when there is no lockfile', () {
+        expect(lockFile(), isNull);
+      });
+
+      test('returns Podfile.lock for a CocoaPods app', () {
+        podfileLock.createSync(recursive: true);
+        expect(lockFile()?.path, equals(podfileLock.path));
+      });
+
+      test('returns Package.resolved for a Swift Package Manager app', () {
+        packageResolved.createSync(recursive: true);
+        expect(lockFile()?.path, equals(packageResolved.path));
+      });
+
+      test('prefers Podfile.lock when both exist', () {
+        podfileLock.createSync(recursive: true);
+        packageResolved.createSync(recursive: true);
+        expect(lockFile()?.path, equals(podfileLock.path));
       });
     });
 
-    group('iosPodfileLockHash', () {
-      group('when file does not exist', () {
+    group('iosNativeDependencyLockHash', () {
+      group('when there is no lockfile', () {
         test('returns null', () {
           final projectRoot = Directory.systemTemp.createTempSync();
           File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
           expect(
             IOOverrides.runZoned(
-              () => runWithOverrides(() => shorebirdEnv.iosPodfileLockHash),
+              () => runWithOverrides(
+                () => shorebirdEnv.iosNativeDependencyLockHash,
+              ),
               getCurrentDirectory: () => projectRoot,
             ),
             isNull,
@@ -301,9 +336,9 @@ void main() {
         });
       });
 
-      group('when file exists', () {
+      group('when there is a lockfile', () {
         late Directory tempDir;
-        late String podfileLockHash;
+        late String lockFileHash;
 
         setUp(() {
           tempDir = Directory.systemTemp.createTempSync();
@@ -313,21 +348,23 @@ void main() {
             p.join(tempDir.path, 'pubspec.yaml'),
           ).createSync(recursive: true);
 
-          const podfileLockContents = 'lock file';
-          podfileLockHash = sha256
-              .convert(utf8.encode(podfileLockContents))
+          const lockFileContents = 'lock file';
+          lockFileHash = sha256
+              .convert(utf8.encode(lockFileContents))
               .toString();
           File(p.join(tempDir.path, 'ios', 'Podfile.lock'))
             ..createSync(recursive: true)
-            ..writeAsStringSync(podfileLockContents);
+            ..writeAsStringSync(lockFileContents);
         });
 
-        test('returns correct hash', () {
+        test('returns its hash', () {
           final actualHash = IOOverrides.runZoned(
-            () => runWithOverrides(() => shorebirdEnv.iosPodfileLockHash),
+            () => runWithOverrides(
+              () => shorebirdEnv.iosNativeDependencyLockHash,
+            ),
             getCurrentDirectory: () => tempDir,
           );
-          expect(actualHash, equals(podfileLockHash));
+          expect(actualHash, equals(lockFileHash));
         });
       });
     });
@@ -363,29 +400,65 @@ void main() {
       });
     });
 
-    group('macosPodfileLockFile', () {
-      test('returns correct path', () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
-        final podfileLockFile = IOOverrides.runZoned(
-          () => runWithOverrides(() => shorebirdEnv.macosPodfileLockFile),
-          getCurrentDirectory: () => tempDir,
+    group('macosNativeDependencyLockFile', () {
+      late Directory projectRoot;
+      late File podfileLock;
+      late File packageResolved;
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+        // Required to resolve the project root.
+        File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
+        podfileLock = File(p.join(projectRoot.path, 'macos', 'Podfile.lock'));
+        packageResolved = File(
+          p.join(
+            projectRoot.path,
+            'macos',
+            'Runner.xcworkspace',
+            'xcshareddata',
+            'swiftpm',
+            'Package.resolved',
+          ),
         );
-        expect(
-          podfileLockFile.path,
-          equals(p.join(tempDir.path, 'macos', 'Podfile.lock')),
-        );
+      });
+
+      File? lockFile() => IOOverrides.runZoned(
+        () =>
+            runWithOverrides(() => shorebirdEnv.macosNativeDependencyLockFile),
+        getCurrentDirectory: () => projectRoot,
+      );
+
+      test('returns null when there is no lockfile', () {
+        expect(lockFile(), isNull);
+      });
+
+      test('returns Podfile.lock for a CocoaPods app', () {
+        podfileLock.createSync(recursive: true);
+        expect(lockFile()?.path, equals(podfileLock.path));
+      });
+
+      test('returns Package.resolved for a Swift Package Manager app', () {
+        packageResolved.createSync(recursive: true);
+        expect(lockFile()?.path, equals(packageResolved.path));
+      });
+
+      test('prefers Podfile.lock when both exist', () {
+        podfileLock.createSync(recursive: true);
+        packageResolved.createSync(recursive: true);
+        expect(lockFile()?.path, equals(podfileLock.path));
       });
     });
 
-    group('macosPodfileLockHash', () {
-      group('when file does not exist', () {
+    group('macosNativeDependencyLockHash', () {
+      group('when there is no lockfile', () {
         test('returns null', () {
           final projectRoot = Directory.systemTemp.createTempSync();
           File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
           expect(
             IOOverrides.runZoned(
-              () => runWithOverrides(() => shorebirdEnv.macosPodfileLockHash),
+              () => runWithOverrides(
+                () => shorebirdEnv.macosNativeDependencyLockHash,
+              ),
               getCurrentDirectory: () => projectRoot,
             ),
             isNull,
@@ -393,9 +466,9 @@ void main() {
         });
       });
 
-      group('when file exists', () {
+      group('when there is a lockfile', () {
         late Directory tempDir;
-        late String podfileLockHash;
+        late String lockFileHash;
 
         setUp(() {
           tempDir = Directory.systemTemp.createTempSync();
@@ -405,21 +478,23 @@ void main() {
             p.join(tempDir.path, 'pubspec.yaml'),
           ).createSync(recursive: true);
 
-          const podfileLockContents = 'lock file';
-          podfileLockHash = sha256
-              .convert(utf8.encode(podfileLockContents))
+          const lockFileContents = 'lock file';
+          lockFileHash = sha256
+              .convert(utf8.encode(lockFileContents))
               .toString();
           File(p.join(tempDir.path, 'macos', 'Podfile.lock'))
             ..createSync(recursive: true)
-            ..writeAsStringSync(podfileLockContents);
+            ..writeAsStringSync(lockFileContents);
         });
 
-        test('returns correct hash', () {
+        test('returns its hash', () {
           final actualHash = IOOverrides.runZoned(
-            () => runWithOverrides(() => shorebirdEnv.macosPodfileLockHash),
+            () => runWithOverrides(
+              () => shorebirdEnv.macosNativeDependencyLockHash,
+            ),
             getCurrentDirectory: () => tempDir,
           );
-          expect(actualHash, equals(podfileLockHash));
+          expect(actualHash, equals(lockFileHash));
         });
       });
     });

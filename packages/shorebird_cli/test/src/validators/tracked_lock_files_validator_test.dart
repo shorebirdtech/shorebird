@@ -136,6 +136,43 @@ void main() {
         });
       });
 
+      group('when a Package.resolved exists but is not tracked', () {
+        late String packageResolvedPath;
+
+        setUp(() {
+          when(
+            () => git.isGitRepo(directory: any(named: 'directory')),
+          ).thenAnswer((_) async => true);
+          when(
+            () => git.isFileTracked(file: any(named: 'file')),
+          ).thenAnswer((_) async => false);
+
+          packageResolvedPath = p.join(
+            'ios',
+            'Runner.xcworkspace',
+            'xcshareddata',
+            'swiftpm',
+            'Package.resolved',
+          );
+          File(
+            p.join(projectRoot.path, packageResolvedPath),
+          ).createSync(recursive: true);
+        });
+
+        test('recommends adding it to source control', () async {
+          final issues = await runWithOverrides(() => validator.validate());
+          expect(
+            issues,
+            equals([
+              ValidationIssue.warning(
+                message:
+                    '''$packageResolvedPath is not tracked in source control. We recommend tracking lock files in source control to avoid unexpected dependency version changes.''',
+              ),
+            ]),
+          );
+        });
+      });
+
       group('when lock file exists and is tracked', () {
         setUp(() {
           when(

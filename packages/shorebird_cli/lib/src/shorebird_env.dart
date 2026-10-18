@@ -2,6 +2,7 @@ import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:cli_util/cli_util.dart';
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -156,28 +157,49 @@ class ShorebirdEnv {
     return File(p.join(flutterDirectory.path, 'bin', dart));
   }
 
-  /// The Cocoapods lockfile for this project's iOS app.
-  File get iosPodfileLockFile {
-    return File(p.join(getFlutterProjectRoot()!.path, 'ios', 'Podfile.lock'));
+  /// The lockfile that pins this project's iOS native dependencies, or null
+  /// if there is none. See [nativeDependencyLockFile].
+  File? get iosNativeDependencyLockFile => nativeDependencyLockFile('ios');
+
+  /// The hash of [iosNativeDependencyLockFile], or null if there is none.
+  String? get iosNativeDependencyLockHash =>
+      _hashFile(iosNativeDependencyLockFile);
+
+  /// The lockfile that pins this project's macOS native dependencies, or null
+  /// if there is none. See [nativeDependencyLockFile].
+  File? get macosNativeDependencyLockFile => nativeDependencyLockFile('macos');
+
+  /// The hash of [macosNativeDependencyLockFile], or null if there is none.
+  String? get macosNativeDependencyLockHash =>
+      _hashFile(macosNativeDependencyLockFile);
+
+  /// The lockfile that pins the native dependencies of the Apple app in
+  /// [platformDirectory] (`ios` or `macos`): its Podfile.lock if it uses
+  /// CocoaPods, otherwise, for an app on Swift Package Manager alone, the
+  /// Package.resolved in Runner.xcworkspace. Null if it has neither.
+  File? nativeDependencyLockFile(String platformDirectory) {
+    final platformRoot = p.join(
+      getFlutterProjectRoot()!.path,
+      platformDirectory,
+    );
+    final candidates = [
+      File(p.join(platformRoot, 'Podfile.lock')),
+      File(
+        p.join(
+          platformRoot,
+          'Runner.xcworkspace',
+          'xcshareddata',
+          'swiftpm',
+          'Package.resolved',
+        ),
+      ),
+    ];
+    return candidates.firstWhereOrNull((file) => file.existsSync());
   }
 
-  /// The hash of the Podfile.lock file for this project's iOS app. Will be null
-  /// if the file does not exist.
-  String? get iosPodfileLockHash {
-    if (!iosPodfileLockFile.existsSync()) return null;
-    return sha256.convert(iosPodfileLockFile.readAsBytesSync()).toString();
-  }
-
-  /// The Cocoapods lockfile for this project's macOS app.
-  File get macosPodfileLockFile {
-    return File(p.join(getFlutterProjectRoot()!.path, 'macos', 'Podfile.lock'));
-  }
-
-  /// The hash of the Podfile.lock file for this project's macOS app. Will be
-  /// null if the file does not exist.
-  String? get macosPodfileLockHash {
-    if (!macosPodfileLockFile.existsSync()) return null;
-    return sha256.convert(macosPodfileLockFile.readAsBytesSync()).toString();
+  String? _hashFile(File? file) {
+    if (file == null) return null;
+    return sha256.convert(file.readAsBytesSync()).toString();
   }
 
   /// The build directory of the current shorebird project.

@@ -601,7 +601,7 @@ To change the version of this release, change your app's version in your pubspec
         ).thenAnswer((_) async => {});
 
         when(
-          () => shorebirdEnv.macosPodfileLockHash,
+          () => shorebirdEnv.macosNativeDependencyLockHash,
         ).thenReturn('${sha256.convert(utf8.encode(podfileLockContent))}');
       });
 

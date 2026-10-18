@@ -144,7 +144,7 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
           .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
           .path,
       isCodesigned: argResults.appleCodesign,
-      podfileLockHash: shorebirdEnv.iosPodfileLockHash,
+      podfileLockHash: shorebirdEnv.iosNativeDependencyLockHash,
     );
   }
 

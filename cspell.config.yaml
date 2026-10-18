@@ -147,6 +147,7 @@ words:
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
   - sysroot
+  - swiftpm # Xcode's Swift Package Manager folder (xcshareddata/swiftpm)
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
   - timebase # Mach timebase (mach_timebase_info)

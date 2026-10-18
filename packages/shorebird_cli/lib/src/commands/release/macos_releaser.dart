@@ -102,7 +102,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
       appId: appId,
       releaseId: release.id,
       appPath: appDirectory.path,
-      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+      podfileLockHash: shorebirdEnv.macosNativeDependencyLockHash,
     );
   }
 

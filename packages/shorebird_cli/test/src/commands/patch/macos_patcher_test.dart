@@ -156,7 +156,7 @@ void main() {
       when(
         () => shorebirdEnv.flutterRevision,
       ).thenReturn('5c1dcc19ebcee3565c65262dd95970186e4d81cc');
-      when(() => shorebirdEnv.macosPodfileLockHash).thenReturn(null);
+      when(() => shorebirdEnv.macosNativeDependencyLockHash).thenReturn(null);
 
       appDirectory = Directory(
         p.join(
@@ -338,8 +338,14 @@ void main() {
           ).thenAnswer((_) async => nativeChangeDiffStatus);
 
           when(
-            () => shorebirdEnv.macosPodfileLockHash,
+            () => shorebirdEnv.macosNativeDependencyLockHash,
           ).thenReturn(podfileLockHash);
+          when(
+            () => shorebirdEnv.macosNativeDependencyLockFile,
+          ).thenReturn(File(p.join(projectRoot.path, 'macos', 'Podfile.lock')));
+          when(
+            () => shorebirdEnv.getFlutterProjectRoot(),
+          ).thenReturn(projectRoot);
         });
 
         group('when release has podspec lock hash', () {
@@ -408,13 +414,84 @@ void main() {
                   verify(
                     () => logger.warn(
                       '''
-Your macos/Podfile.lock is different from the one used to build the release.
+Your ${p.join('macos', 'Podfile.lock')} is different from the one used to build the release.
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
                     ),
                   ).called(1);
                   verifyNever(() => logger.confirm(any()));
                 },
               );
+
+              group('when the app uses Swift Package Manager', () {
+                setUp(() {
+                  when(
+                    () => shorebirdEnv.macosNativeDependencyLockFile,
+                  ).thenReturn(
+                    File(
+                      p.join(
+                        projectRoot.path,
+                        'macos',
+                        'Runner.xcworkspace',
+                        'xcshareddata',
+                        'swiftpm',
+                        'Package.resolved',
+                      ),
+                    ),
+                  );
+                });
+
+                test('names Package.resolved in the warning', () async {
+                  await runWithOverrides(
+                    () => patcher.assertUnpatchableDiffs(
+                      releaseArtifact: releaseArtifact,
+                      releaseArchive: File(''),
+                      patchArchive: File(''),
+                    ),
+                  );
+                  final lockFileName = p.join(
+                    'macos',
+                    'Runner.xcworkspace',
+                    'xcshareddata',
+                    'swiftpm',
+                    'Package.resolved',
+                  );
+                  verify(
+                    () => logger.warn(
+                      '''
+Your $lockFileName is different from the one used to build the release.
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
+                    ),
+                  ).called(1);
+                });
+              });
+
+              group('when the app no longer has a lockfile', () {
+                setUp(() {
+                  when(
+                    () => shorebirdEnv.macosNativeDependencyLockHash,
+                  ).thenReturn(null);
+                  when(
+                    () => shorebirdEnv.macosNativeDependencyLockFile,
+                  ).thenReturn(null);
+                });
+
+                test('warns without naming a file', () async {
+                  await runWithOverrides(
+                    () => patcher.assertUnpatchableDiffs(
+                      releaseArtifact: releaseArtifact,
+                      releaseArchive: File(''),
+                      patchArchive: File(''),
+                    ),
+                  );
+                  verify(
+                    () => logger.warn(
+                      '''
+Your native dependency lockfile is different from the one used to build the release.
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
+                    ),
+                  ).called(1);
+                });
+              });
             });
 
             group('when native diffs are not allowed', () {
@@ -1354,7 +1431,7 @@ This may indicate that the patch contains native changes, which cannot be applie
       group('when podfile lock hash is not null', () {
         setUp(() {
           when(
-            () => shorebirdEnv.macosPodfileLockHash,
+            () => shorebirdEnv.macosNativeDependencyLockHash,
           ).thenReturn('podfile-lock-hash');
         });
 
@@ -1376,7 +1453,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
       group('when podfile lock hash is null', () {
         setUp(() {
-          when(() => shorebirdEnv.macosPodfileLockHash).thenReturn(null);
+          when(
+            () => shorebirdEnv.macosNativeDependencyLockHash,
+          ).thenReturn(null);
         });
 
         test('returns artifact bundles without podfile lock hash', () async {

@@ -28,7 +28,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Shared logic for Apple-platform patchers (iOS, macOS, iOS framework).
 ///
 /// Concrete patchers supply the platform-specific validators and (for iOS and
-/// macOS) the local Podfile.lock state used to detect native diffs that
+/// macOS) the local native dependency lockfile used to detect native diffs that
 /// `package:archive` can't reliably catch in a nondeterministic Xcode build.
 mixin ApplePatcherMixin on Patcher {
   /// The name of the file that gen_snapshot writes split debug info to. The
@@ -226,16 +226,17 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
   }
 }
 
-/// Adds Podfile.lock-based native-change detection to [ApplePatcherMixin].
-/// Implemented by iOS and macOS patchers; the iOS framework patcher doesn't
-/// emit a Podfile.lock.
-mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
-  /// SHA-256 of the local Podfile.lock for this Apple platform, or null if
-  /// no Podfile.lock exists.
-  String? get localPodfileLockHash;
+/// Adds native-change detection based on the native dependency lockfile
+/// (Podfile.lock, or Package.resolved for Swift Package Manager) to
+/// [ApplePatcherMixin]. Implemented by iOS and macOS patchers; the iOS
+/// framework patcher doesn't emit a lockfile.
+mixin AppleNativeDependencyLockPatcherMixin on Patcher, ApplePatcherMixin {
+  /// The local native dependency lockfile for this Apple platform, or null if
+  /// there is none. See [ShorebirdEnv.nativeDependencyLockFile].
+  File? get localNativeDependencyLockFile;
 
-  /// Project-relative path of the Podfile.lock surfaced in the warning.
-  String get podfileLockRelativePath;
+  /// SHA-256 of [localNativeDependencyLockFile], or null if there is none.
+  String? get localNativeDependencyLockHash;
 
   @override
   Future<DiffStatus> assertUnpatchableDiffs({
@@ -245,7 +246,8 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
   }) async {
     // Check for diffs without warning about native changes, as Xcode builds
     // can be nondeterministic. So we still have some hope of alerting users of
-    // unpatchable native changes, we compare the Podfile.lock hash between the
+    // unpatchable native changes, we compare the native dependency lockfile
+    // (Podfile.lock or Package.resolved) hash between the
     // patch and the release.
     final diffStatus = await patchDiffChecker
         .confirmUnpatchableDiffsIfNecessary(
@@ -260,10 +262,17 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
     if (!diffStatus.hasNativeChanges) return diffStatus;
 
     if (releaseArtifact.podfileLockHash != null &&
-        localPodfileLockHash != releaseArtifact.podfileLockHash) {
+        localNativeDependencyLockHash != releaseArtifact.podfileLockHash) {
+      final lockFile = localNativeDependencyLockFile;
+      final lockFileName = lockFile == null
+          ? 'native dependency lockfile'
+          : p.relative(
+              lockFile.path,
+              from: shorebirdEnv.getFlutterProjectRoot()!.path,
+            );
       logger.warn(
         '''
-Your $podfileLockRelativePath is different from the one used to build the release.
+Your $lockFileName is different from the one used to build the release.
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
       );
 

@@ -56,7 +56,8 @@ class PatchArtifactBundle extends Equatable {
   /// The signature of the artifact hash.
   final String? hashSignature;
 
-  /// The hash of the Podfile.lock file, if present and relevant.
+  /// The hash of the native dependency lockfile (Podfile.lock, or
+  /// Package.resolved for Swift Package Manager), if present and relevant.
   final String? podfileLockHash;
 
   @override

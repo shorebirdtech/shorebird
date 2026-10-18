@@ -767,7 +767,7 @@ $body
           ),
         ).thenAnswer((_) async => {});
         when(
-          () => shorebirdEnv.iosPodfileLockHash,
+          () => shorebirdEnv.iosNativeDependencyLockHash,
         ).thenReturn('${sha256.convert(utf8.encode(podfileLockContent))}');
       });
 

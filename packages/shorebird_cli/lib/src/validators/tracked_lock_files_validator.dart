@@ -5,8 +5,9 @@ import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
-/// Checks that .lock files (pubspec.lock, Podfile.lock) are tracked in source
-/// control if they exist and if the project is part of a git repository.
+/// Checks that lock files (pubspec.lock, Podfile.lock, Package.resolved) are
+/// tracked in source control if they exist and if the project is part of a
+/// git repository.
 class TrackedLockFilesValidator extends Validator {
   @override
   String get description => 'Lock files are tracked in source control';
@@ -30,8 +31,16 @@ class TrackedLockFilesValidator extends Validator {
 
     final lockFilePaths = [
       'pubspec.lock',
-      p.join('ios', 'Podfile.lock'),
-      p.join('macos', 'Podfile.lock'),
+      for (final platform in ['ios', 'macos']) ...[
+        p.join(platform, 'Podfile.lock'),
+        p.join(
+          platform,
+          'Runner.xcworkspace',
+          'xcshareddata',
+          'swiftpm',
+          'Package.resolved',
+        ),
+      ],
     ];
 
     final warnings = <ValidationIssue>[];
