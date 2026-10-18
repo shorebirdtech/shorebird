@@ -591,17 +591,16 @@ Please create a release using "shorebird release" and try again.
       );
     }
 
-    final archsDir = await ArtifactManager.androidArchsDirectoryFromAab(
+    await ArtifactManager.withAndroidArchsDirectoryFromAab(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
       aab: File(aabPath),
-    );
-
-    if (archsDir == null) {
-      _handleErrorAndExit(
-        Exception('Cannot find patch build artifacts.'),
-        progress: createArtifactProgress,
-        message: '''
+      action: (archsDir) async {
+        if (archsDir == null) {
+          _handleErrorAndExit(
+            Exception('Cannot find patch build artifacts.'),
+            progress: createArtifactProgress,
+            message: '''
 Cannot find release build artifacts.
 
 Please run `shorebird cache clean` and try again. If the issue persists, please
@@ -611,16 +610,18 @@ Looked in:
   - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib''',
-      );
-    }
+          );
+        }
 
-    await _uploadAndroidArchArtifacts(
-      appId: appId,
-      releaseId: releaseId,
-      platform: platform,
-      archsDir: archsDir.path,
-      architectures: architectures,
-      progress: createArtifactProgress,
+        await _uploadAndroidArchArtifacts(
+          appId: appId,
+          releaseId: releaseId,
+          platform: platform,
+          archsDir: archsDir.path,
+          architectures: architectures,
+          progress: createArtifactProgress,
+        );
+      },
     );
 
     await _uploadReleaseArtifact(

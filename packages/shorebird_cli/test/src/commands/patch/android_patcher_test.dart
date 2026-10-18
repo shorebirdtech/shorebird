@@ -387,29 +387,6 @@ void main() {
         });
       });
 
-      group('when patch artifacts cannot be found', () {
-        test('logs error and exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err('Cannot find patch build artifacts.'),
-          ).called(1);
-          verify(
-            () => logger.info('''
-Please run `shorebird cache clean` and try again. If the issue persists, please
-file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
-
-Looked in:
-  - the libapp.so entries inside the built .aab
-  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
-  - build/app/intermediates/stripped_native_libs/{variant}/out/lib'''),
-          ).called(1);
-        });
-      });
-
       group('when the built aab has no libapp.so', () {
         setUp(() {
           setUpProjectRootArtifacts();
@@ -622,7 +599,19 @@ Looked in:
             exitsWithCode(ExitCode.software),
           );
 
-          verify(() => logger.err('Could not find patch artifacts')).called(1);
+          verify(
+            () => logger.err('Cannot find patch build artifacts.'),
+          ).called(1);
+          verify(
+            () => logger.info('''
+Please run `shorebird cache clean` and try again. If the issue persists, please
+file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
+
+Looked in:
+  - the libapp.so entries inside the built .aab
+  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib'''),
+          ).called(1);
         });
       });
 
@@ -760,9 +749,8 @@ Looked in:
 
       group('when the strip output is empty but the aab has libapp.so', () {
         // Mirrors AGP emitting no libapp.so on Flutter 3.44+.
-        // buildPatchArtifact extracts libapp.so from the built aab and caches
-        // the resulting directory; createPatchArtifacts diffs those copies
-        // instead of failing.
+        // createPatchArtifacts extracts libapp.so from the aab that
+        // buildPatchArtifact built and diffs those copies instead of failing.
         setUp(() {
           for (final arch in Arch.values) {
             Directory(
@@ -831,6 +819,28 @@ Looked in:
             ),
           ).called(Arch.values.length);
           verifyNever(() => progress.fail(any()));
+        });
+
+        test('deletes the extracted libapp.so files afterwards', () async {
+          await runWithOverrides(() async {
+            await patcher.buildPatchArtifact();
+            return patcher.createPatchArtifacts(
+              appId: 'appId',
+              releaseId: 0,
+              releaseArtifact: File('release.aab'),
+            );
+          });
+
+          final patchArtifactPaths = verify(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: captureAny(named: 'patchArtifactPath'),
+            ),
+          ).captured.cast<String>();
+          expect(patchArtifactPaths, hasLength(Arch.values.length));
+          for (final path in patchArtifactPaths) {
+            expect(File(path).parent.parent.existsSync(), isFalse);
+          }
         });
       });
 
