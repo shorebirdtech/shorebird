@@ -71,7 +71,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     final targetLibraryDirectory = Directory(
       p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
     );
-    // Remove only the xcframeworks from a previous release: `release aar`
+    // Remove only each .xcframework from a previous release: `release aar`
     // writes its maven repo to this same directory, and deleting the whole
     // directory would lose it (shorebird#2061).
     if (targetLibraryDirectory.existsSync()) {

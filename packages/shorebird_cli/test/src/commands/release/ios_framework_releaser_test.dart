@@ -295,19 +295,22 @@ void main() {
           ).thenReturn(base64PublicKey);
         });
 
-        test('encodes the patch signing public key and '
-            'forward it to buildIosFramework', () async {
-          await runWithOverrides(
-            () => iosFrameworkReleaser.buildReleaseArtifacts(),
-          );
+        test(
+          'encodes the patch signing public key and '
+          'forward it to buildIosFramework',
+          () async {
+            await runWithOverrides(
+              () => iosFrameworkReleaser.buildReleaseArtifacts(),
+            );
 
-          verify(
-            () => artifactBuilder.buildIosFramework(
-              args: any(named: 'args'),
-              base64PublicKey: base64PublicKey,
-            ),
-          ).called(1);
-        });
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                args: any(named: 'args'),
+                base64PublicKey: base64PublicKey,
+              ),
+            ).called(1);
+          },
+        );
       });
 
       group('when platform was specified via arg results rest', () {
@@ -337,12 +340,14 @@ void main() {
       });
 
       test(
-        'replaces xcframeworks from a previous release but keeps other files '
-        'in the release directory',
+        'replaces each .xcframework from a previous release but keeps other '
+        'files in the release directory',
         () async {
           final releaseDir = p.join(projectRoot.path, 'release');
-          final staleShorebirdFlutter = Directory(
-            p.join(releaseDir, 'ShorebirdFlutter.xcframework'),
+          // Not empty, so renaming Flutter.xcframework onto it would fail if
+          // it were left in place.
+          final staleShorebirdFlutterMarker = File(
+            p.join(releaseDir, 'ShorebirdFlutter.xcframework', 'stale'),
           )..createSync(recursive: true);
           final stalePlugin = Directory(
             p.join(releaseDir, 'RemovedPlugin.xcframework'),
@@ -356,7 +361,13 @@ void main() {
 
           expect(aarFile.existsSync(), isTrue);
           expect(stalePlugin.existsSync(), isFalse);
-          expect(staleShorebirdFlutter.existsSync(), isTrue);
+          expect(staleShorebirdFlutterMarker.existsSync(), isFalse);
+          expect(
+            Directory(
+              p.join(releaseDir, 'ShorebirdFlutter.xcframework'),
+            ).existsSync(),
+            isTrue,
+          );
           expect(
             Directory(p.join(releaseDir, 'Flutter.xcframework')).existsSync(),
             isFalse,
@@ -378,7 +389,9 @@ void main() {
           ).thenAnswer((_) async => true);
           // Simulate the build creating the obfuscation map.
           when(
-            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+            () => artifactBuilder.buildIosFramework(
+              args: any(named: 'args'),
+            ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
               projectRoot.path,
