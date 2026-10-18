@@ -14,6 +14,7 @@ void main() {
         hash: 'sha256:1234567890',
         podfileLockHash: 'podfile-lock-hash',
         packageResolvedHash: 'package-resolved-hash',
+        pluginSwiftPackageHash: 'plugin-swift-package-hash',
         canSideload: true,
       );
       expect(

@@ -27,9 +27,14 @@ void main() {
         filename: 'Runner.xcarchive.zip',
         podfileLockHash: 'podfile-lock-hash',
         packageResolvedHash: 'package-resolved-hash',
+        pluginSwiftPackageHash: 'plugin-swift-package-hash',
       );
       final json = request.toJson();
       expect(json['package_resolved_hash'], equals('package-resolved-hash'));
+      expect(
+        json['plugin_swift_package_hash'],
+        equals('plugin-swift-package-hash'),
+      );
       expect(CreateReleaseArtifactRequest.fromJson(json), equals(request));
     });
   });

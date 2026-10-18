@@ -18,6 +18,7 @@ class CreatePatchArtifactRequest {
     this.hashSignature,
     this.podfileLockHash,
     this.packageResolvedHash,
+    this.pluginSwiftPackageHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchArtifactRequest].
@@ -32,6 +33,7 @@ class CreatePatchArtifactRequest {
         hashSignature: json['hash_signature'] as String?,
         podfileLockHash: json['podfile_lock_hash'] as String?,
         packageResolvedHash: json['package_resolved_hash'] as String?,
+        pluginSwiftPackageHash: json['plugin_swift_package_hash'] as String?,
         size: json['size'] as int,
       ),
     );
@@ -69,6 +71,13 @@ class CreatePatchArtifactRequest {
   /// macOS only).
   final String? packageResolvedHash;
 
+  /// sha256 of the Swift package Flutter generates for the app's Swift
+  /// Package Manager plugins
+  /// (FlutterGeneratedPluginSwiftPackage/Package.swift, with each plugin path
+  /// reduced to its last component, which names the plugin and its version),
+  /// or `none` if there was none (iOS and macOS only).
+  final String? pluginSwiftPackageHash;
+
   /// The size of the artifact in bytes.
   final int size;
 
@@ -81,6 +90,7 @@ class CreatePatchArtifactRequest {
       'hash_signature': ?hashSignature,
       'podfile_lock_hash': ?podfileLockHash,
       'package_resolved_hash': ?packageResolvedHash,
+      'plugin_swift_package_hash': ?pluginSwiftPackageHash,
       'size': size,
     };
   }
@@ -93,6 +103,7 @@ class CreatePatchArtifactRequest {
     hashSignature,
     podfileLockHash,
     packageResolvedHash,
+    pluginSwiftPackageHash,
     size,
   ]);
 
@@ -106,6 +117,7 @@ class CreatePatchArtifactRequest {
         hashSignature == other.hashSignature &&
         podfileLockHash == other.podfileLockHash &&
         packageResolvedHash == other.packageResolvedHash &&
+        pluginSwiftPackageHash == other.pluginSwiftPackageHash &&
         size == other.size;
   }
 }

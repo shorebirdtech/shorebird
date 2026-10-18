@@ -20,6 +20,7 @@ class CreateReleaseArtifactRequest {
     this.canSideload,
     this.podfileLockHash,
     this.packageResolvedHash,
+    this.pluginSwiftPackageHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactRequest].
@@ -36,6 +37,7 @@ class CreateReleaseArtifactRequest {
         size: json['size'] as int,
         podfileLockHash: json['podfile_lock_hash'] as String?,
         packageResolvedHash: json['package_resolved_hash'] as String?,
+        pluginSwiftPackageHash: json['plugin_swift_package_hash'] as String?,
       ),
     );
   }
@@ -78,6 +80,13 @@ class CreateReleaseArtifactRequest {
   /// macOS only).
   final String? packageResolvedHash;
 
+  /// sha256 of the Swift package Flutter generates for the app's Swift
+  /// Package Manager plugins
+  /// (FlutterGeneratedPluginSwiftPackage/Package.swift, with each plugin path
+  /// reduced to its last component, which names the plugin and its version),
+  /// or `none` if there was none (iOS and macOS only).
+  final String? pluginSwiftPackageHash;
+
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -89,6 +98,7 @@ class CreateReleaseArtifactRequest {
       'size': size,
       'podfile_lock_hash': ?podfileLockHash,
       'package_resolved_hash': ?packageResolvedHash,
+      'plugin_swift_package_hash': ?pluginSwiftPackageHash,
     };
   }
 
@@ -102,6 +112,7 @@ class CreateReleaseArtifactRequest {
     size,
     podfileLockHash,
     packageResolvedHash,
+    pluginSwiftPackageHash,
   ]);
 
   @override
@@ -115,6 +126,7 @@ class CreateReleaseArtifactRequest {
         canSideload == other.canSideload &&
         size == other.size &&
         podfileLockHash == other.podfileLockHash &&
-        packageResolvedHash == other.packageResolvedHash;
+        packageResolvedHash == other.packageResolvedHash &&
+        pluginSwiftPackageHash == other.pluginSwiftPackageHash;
   }
 }
