@@ -2127,17 +2127,23 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
             );
 
-            await runWithOverrides(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: aab.path,
-                architectures: Arch.values,
+            final systemTemp = createSystemTemp();
+            await runWithSystemTemp(
+              systemTemp,
+              () => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: aab.path,
+                  architectures: Arch.values,
+                ),
               ),
             );
 
+            // The directory the aab was extracted into is deleted afterwards.
+            expect(systemTemp.listSync(), isEmpty);
             // Each per-arch artifact was uploaded from the directory the aab
             // was extracted into, not from the empty strip output.
             verify(
@@ -2482,7 +2488,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           'exits with code 70 when every requested arch is missing',
           () async {
             File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
-            final jniDir = p.join(projectRoot.path, extractedAarPath, 'jni');
 
             await expectLater(
               () async => runWithOverrides(
@@ -2507,7 +2512,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 any(
                   that: allOf(
                     contains('No architecture artifacts found to upload'),
-                    contains('under $jniDir '),
+                    // ABI names, not paths: the directory searched may be
+                    // a temporary one deleted before the command exits.
+                    contains('  - ${Arch.arm64.androidBuildPath}\n'),
                   ),
                 ),
               ),
