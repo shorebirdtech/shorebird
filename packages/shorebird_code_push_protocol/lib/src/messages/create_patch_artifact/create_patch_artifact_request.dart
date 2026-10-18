@@ -65,7 +65,8 @@ class CreatePatchArtifactRequest {
   final String? podfileLockHash;
 
   /// sha256 of the pins in the Swift Package Manager Package.resolved used to
-  /// create the artifact (iOS and macOS only).
+  /// create the artifact, or `none` if there was no Package.resolved (iOS and
+  /// macOS only).
   final String? packageResolvedHash;
 
   /// The size of the artifact in bytes.
