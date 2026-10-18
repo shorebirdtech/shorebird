@@ -34,6 +34,8 @@ void main() {
   useTempWorkingDirectory();
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
+    const bundletoolUrl =
+        'https://github.com/google/bundletool/releases/download/${BundleToolArtifact.version}/bundletool-all-${BundleToolArtifact.version}.jar';
 
     late LocalAbi mockAbi;
     late ArtifactManager artifactManager;
@@ -876,7 +878,7 @@ void main() {
 
           final expected = [
             perEngine('patch-darwin-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
+            bundletoolUrl,
             perEngine('aot-tools.dill'),
             perEngine('analyze-snapshot-macos-arm64'),
             perEngine('analyze-snapshot-macos-x64'),
@@ -902,7 +904,7 @@ void main() {
 
           final expected = [
             perEngine('patch-windows-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
+            bundletoolUrl,
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
@@ -926,7 +928,7 @@ void main() {
 
           final expected = [
             perEngine('patch-linux-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
+            bundletoolUrl,
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
