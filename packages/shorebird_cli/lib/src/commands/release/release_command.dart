@@ -183,12 +183,8 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   @override
   String get name => 'release';
 
-  /// The notes to attach (--notes), or null when absent or blank. Blank counts
-  /// as absent so an unset variable in `--notes="$NOTES"` never erases notes.
-  String? get notes {
-    final value = (results[CommonArguments.notesArg.name] as String?)?.trim();
-    return value == null || value.isEmpty ? null : value;
-  }
+  /// The notes to attach (--notes), or null when absent or blank.
+  String? get notes => results.notes;
 
   @override
   Future<int> run() async {
@@ -808,13 +804,22 @@ ${summary.join('\n')}
       buildTraceSummary: buildTraceSession.summary?.toJson(),
     );
     final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);
+    // Notes go first, in their own request: once the platform is active a
+    // re-run is refused as already released, so nothing that can fail may
+    // come after activation.
+    if (notes case final notes?) {
+      await codePushClientWrapper.updateReleaseNotes(
+        appId: appId,
+        releaseId: release.id,
+        notes: notes,
+      );
+    }
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
       platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.active,
       metadata: updatedMetadata.toJson(),
-      notes: notes,
     );
   }
 

@@ -3006,6 +3006,56 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       });
     });
 
+    group('updateReleaseNotes', () {
+      test('exits with code 70 when updating notes fails', () async {
+        when(
+          () => codePushClient.updateReleaseNotes(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenThrow(Exception('oh no'));
+
+        await expectLater(
+          () async => runWithOverrides(
+            () => codePushClientWrapper.updateReleaseNotes(
+              appId: app.appId,
+              releaseId: releaseId,
+              notes: 'Spring launch',
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+      });
+
+      test('completes when updating notes succeeds', () async {
+        when(
+          () => codePushClient.updateReleaseNotes(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenAnswer((_) async {});
+
+        await runWithOverrides(
+          () => codePushClientWrapper.updateReleaseNotes(
+            appId: app.appId,
+            releaseId: releaseId,
+            notes: 'Spring launch',
+          ),
+        );
+
+        verify(
+          () => codePushClient.updateReleaseNotes(
+            appId: app.appId,
+            releaseId: releaseId,
+            notes: 'Spring launch',
+          ),
+        ).called(1);
+        verify(() => progress.complete()).called(1);
+      });
+    });
+
     group('updateReleaseStatus', () {
       test('exits with code 70 when updating release status fails', () async {
         when(
@@ -3058,38 +3108,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ),
         ).called(1);
         verify(() => progress.complete()).called(1);
-      });
-
-      test('forwards notes to the code push client', () async {
-        when(
-          () => codePushClient.updateReleaseStatus(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            platform: any(named: 'platform'),
-            status: any(named: 'status'),
-            notes: any(named: 'notes'),
-          ),
-        ).thenAnswer((_) async {});
-
-        await runWithOverrides(
-          () => codePushClientWrapper.updateReleaseStatus(
-            appId: app.appId,
-            releaseId: releaseId,
-            platform: releasePlatform,
-            status: ReleaseStatus.active,
-            notes: 'Spring launch',
-          ),
-        );
-
-        verify(
-          () => codePushClient.updateReleaseStatus(
-            appId: app.appId,
-            releaseId: releaseId,
-            platform: releasePlatform,
-            status: ReleaseStatus.active,
-            notes: 'Spring launch',
-          ),
-        ).called(1);
       });
 
       group('when metadata is provided', () {

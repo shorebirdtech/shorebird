@@ -1819,27 +1819,66 @@ void main() {
           completes,
         );
       });
+    });
 
-      test('sends notes when provided', () async {
+    group('updateReleaseNotes', () {
+      const releaseId = 42;
+      const notes = 'Spring launch';
+
+      test('makes the correct request', () async {
         codePushClient
-            .updateReleaseStatus(
+            .updateReleaseNotes(
               appId: appId,
               releaseId: releaseId,
-              platform: platform,
-              status: ReleaseStatus.active,
-              notes: 'Fixes the login crash',
+              notes: notes,
             )
             .ignore();
         final request =
             verify(() => httpClient.send(captureAny())).captured.single
                 as http.Request;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('apps/$appId/releases/$releaseId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(request.body), equals({'notes': notes}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
         expect(
-          json.decode(request.body),
-          equals({
-            'status': 'active',
-            'platform': 'android',
-            'notes': 'Fixes the login crash',
-          }),
+          codePushClient.updateReleaseNotes(
+            appId: appId,
+            releaseId: releaseId,
+            notes: notes,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when the server responds with a 204', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        expect(
+          codePushClient.updateReleaseNotes(
+            appId: appId,
+            releaseId: releaseId,
+            notes: notes,
+          ),
+          completes,
         );
       });
     });

@@ -1157,34 +1157,54 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             () => argResults[CommonArguments.notesArg.name],
           ).thenReturn('Spring launch');
           when(
-            () => codePushClientWrapper.updateReleaseStatus(
+            () => codePushClientWrapper.updateReleaseNotes(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
-              platform: any(named: 'platform'),
-              status: any(named: 'status'),
-              metadata: any(named: 'metadata'),
               notes: any(named: 'notes'),
             ),
           ).thenAnswer((_) async {});
         });
 
-        test('sends the notes with the active status', () async {
+        test('sets the notes before activating the release', () async {
           await runWithOverrides(
             () => command.finalizeRelease(
               release: release,
               releaser: releaser,
             ),
           );
-          verify(
+          verifyInOrder([
+            () => codePushClientWrapper.updateReleaseNotes(
+              appId: any(named: 'appId'),
+              releaseId: release.id,
+              notes: 'Spring launch',
+            ),
             () => codePushClientWrapper.updateReleaseStatus(
               appId: any(named: 'appId'),
               releaseId: release.id,
               platform: any(named: 'platform'),
               status: ReleaseStatus.active,
               metadata: any(named: 'metadata'),
-              notes: 'Spring launch',
             ),
-          ).called(1);
+          ]);
+        });
+
+        test('does not set notes when they are blank', () async {
+          when(
+            () => argResults[CommonArguments.notesArg.name],
+          ).thenReturn(' \n ');
+          await runWithOverrides(
+            () => command.finalizeRelease(
+              release: release,
+              releaser: releaser,
+            ),
+          );
+          verifyNever(
+            () => codePushClientWrapper.updateReleaseNotes(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              notes: any(named: 'notes'),
+            ),
+          );
         });
 
         test('shows the notes in the release summary', () async {

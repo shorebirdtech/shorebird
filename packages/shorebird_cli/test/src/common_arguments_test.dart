@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:test/test.dart';
 import 'helpers.dart';
@@ -31,6 +32,22 @@ void main() {
           equals('Channel name must be at most 5 characters (got 6).'),
         );
       });
+    });
+  });
+
+  group('notesSummary', () {
+    test('shows a single line as is', () {
+      expect(
+        notesSummary('Fixes the login crash'),
+        equals('📝 Notes: ${lightCyan.wrap('Fixes the login crash')}'),
+      );
+    });
+
+    test('shows the first line of Windows line endings', () {
+      expect(
+        notesSummary('Fixes the login crash\r\nAlso the timeout'),
+        equals('📝 Notes: ${lightCyan.wrap('Fixes the login crash')} …'),
+      );
     });
   });
 }

@@ -573,6 +573,22 @@ class CodePushClient {
     return Patch.fromJson(body);
   }
 
+  /// Replaces the notes of the release with the provided [releaseId].
+  Future<void> updateReleaseNotes({
+    required String appId,
+    required int releaseId,
+    required String notes,
+  }) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
+      body: json.encode(UpdateReleaseRequest(notes: notes).toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Replaces the notes of the patch with the provided [patchId].
   Future<void> updatePatchNotes({
     required String appId,
@@ -617,15 +633,12 @@ class CodePushClient {
   }
 
   /// Updates the specified release's status to [status].
-  ///
-  /// [notes], when provided, replaces the release's notes in the same request.
   Future<void> updateReleaseStatus({
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
     Json? metadata,
-    String? notes,
   }) async {
     final response = await _httpClient.patch(
       Uri.parse('$_v1/apps/$appId/releases/$releaseId'),
@@ -634,7 +647,6 @@ class CodePushClient {
           status: status,
           platform: platform,
           metadata: metadata,
-          notes: notes,
         ).toJson(),
       ),
     );

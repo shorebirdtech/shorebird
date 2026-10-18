@@ -177,6 +177,17 @@ extension AppleArgs on ArgResults {
   }
 }
 
+/// Extension on [ArgResults] for --notes.
+extension NotesArgs on ArgResults {
+  /// The value of --notes, trimmed, or null when absent or blank. Blank counts
+  /// as absent so an unset variable in `--notes="$NOTES"` never erases notes
+  /// already on a release.
+  String? get notes {
+    final value = (this[CommonArguments.notesArg.name] as String?)?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+}
+
 /// Extension on [ArgResults] to provide file related extensions.
 extension FileArgs on ArgResults {
   /// Returns a [File] from the argument [name] or null if the argument was not

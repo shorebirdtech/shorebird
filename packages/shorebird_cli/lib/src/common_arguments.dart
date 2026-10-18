@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 
@@ -30,9 +32,9 @@ class CommonArguments {
   static const notesArg = ArgumentDescriber(
     name: 'notes',
     description:
-        'Notes to attach, such as what changed. Visible only to members of '
-        'your organization, in the console and in `releases info` / '
-        '`patches info`.',
+        'Private notes to attach, such as what changed. Shown to people with '
+        'access to the app, in the console and in `releases info` / '
+        '`patches info`. On a release, replaces any notes it already has.',
   );
 
   /// The Flutter --build-name argument.
@@ -268,7 +270,7 @@ Patches with a lower link percentage than what is provided here will fail.
 /// The confirm-summary line for --notes: the first line of [notes], with an
 /// ellipsis when there are more.
 String notesSummary(String notes) {
-  final lines = notes.split('\n');
+  final lines = const LineSplitter().convert(notes);
   final more = lines.length > 1 ? ' …' : '';
   return '📝 Notes: ${lightCyan.wrap(lines.first)}$more';
 }

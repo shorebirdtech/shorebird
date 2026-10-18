@@ -235,12 +235,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// The deployment track to publish the patch to.
   DeploymentTrack get track => DeploymentTrack(results['track'] as String);
 
-  /// The notes to attach (--notes), or null when absent or blank. Blank counts
-  /// as absent so an unset variable in `--notes="$NOTES"` never erases notes.
-  String? get notes {
-    final value = (results[CommonArguments.notesArg.name] as String?)?.trim();
-    return value == null || value.isEmpty ? null : value;
-  }
+  /// The notes to attach (--notes), or null when absent or blank.
+  String? get notes => results.notes;
 
   @override
   Future<int> run() async {

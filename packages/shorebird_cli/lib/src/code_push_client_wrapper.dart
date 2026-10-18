@@ -449,15 +449,13 @@ Please create a release using "shorebird release" and try again.
   }
 
   /// Updates the status of a release for the given [appId], [releaseId],
-  /// [platform], and [status]. [notes], when provided, replaces the release's
-  /// notes.
+  /// [platform], and [status].
   Future<void> updateReleaseStatus({
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
     Json? metadata,
-    String? notes,
   }) {
     return _withProgress(
       'Updating release status',
@@ -467,6 +465,21 @@ Please create a release using "shorebird release" and try again.
         platform: platform,
         status: status,
         metadata: metadata,
+      ),
+    );
+  }
+
+  /// Replaces the notes of the release with the given [releaseId].
+  Future<void> updateReleaseNotes({
+    required String appId,
+    required int releaseId,
+    required String notes,
+  }) {
+    return _withProgress(
+      'Adding release notes',
+      () => codePushClient.updateReleaseNotes(
+        appId: appId,
+        releaseId: releaseId,
         notes: notes,
       ),
     );
