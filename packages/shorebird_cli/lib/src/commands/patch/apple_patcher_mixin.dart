@@ -141,6 +141,7 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
     required File releaseArtifactFile,
     required Directory releaseSupplementDir,
     String? podfileLockHash,
+    String? packageResolvedHash,
   }) async {
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
@@ -221,6 +222,7 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
         size: patchFileSize,
         hashSignature: hashSignature,
         podfileLockHash: podfileLockHash,
+        packageResolvedHash: packageResolvedHash,
       ),
     };
   }
@@ -237,6 +239,14 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
   /// Project-relative path of the Podfile.lock surfaced in the warning.
   String get podfileLockRelativePath;
 
+  /// The hash of the pins in the local Swift Package Manager Package.resolved
+  /// for this Apple platform, or null if there is none. See
+  /// [ShorebirdEnv.packageResolvedHash].
+  String? get localPackageResolvedHash;
+
+  /// Project-relative path of the Package.resolved surfaced in the warning.
+  String get packageResolvedRelativePath;
+
   @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
@@ -245,8 +255,10 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
   }) async {
     // Check for diffs without warning about native changes, as Xcode builds
     // can be nondeterministic. So we still have some hope of alerting users of
-    // unpatchable native changes, we compare the Podfile.lock hash between the
-    // patch and the release.
+    // unpatchable native changes, we compare the Podfile.lock (CocoaPods) and
+    // Package.resolved (Swift Package Manager) hashes between the patch and
+    // the release. Each is checked only if the release recorded it; releases
+    // made before the CLI recorded packageResolvedHash skip that check.
     final diffStatus = await patchDiffChecker
         .confirmUnpatchableDiffsIfNecessary(
           localArchive: patchArchive,
@@ -259,11 +271,23 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
 
     if (!diffStatus.hasNativeChanges) return diffStatus;
 
-    if (releaseArtifact.podfileLockHash != null &&
-        localPodfileLockHash != releaseArtifact.podfileLockHash) {
+    final differences = [
+      ?_lockFileDifference(
+        path: podfileLockRelativePath,
+        releaseHash: releaseArtifact.podfileLockHash,
+        localHash: localPodfileLockHash,
+      ),
+      ?_lockFileDifference(
+        path: packageResolvedRelativePath,
+        releaseHash: releaseArtifact.packageResolvedHash,
+        localHash: localPackageResolvedHash,
+      ),
+    ];
+
+    if (differences.isNotEmpty) {
       logger.warn(
         '''
-Your $podfileLockRelativePath is different from the one used to build the release.
+${differences.join('\n')}
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
       );
 
@@ -279,5 +303,19 @@ This may indicate that the patch contains native changes, which cannot be applie
     }
 
     return diffStatus;
+  }
+
+  /// Describes how the lockfile at [path] differs from the release's, or
+  /// returns null if it doesn't or the release recorded no hash for it.
+  String? _lockFileDifference({
+    required String path,
+    required String? releaseHash,
+    required String? localHash,
+  }) {
+    if (releaseHash == null || localHash == releaseHash) return null;
+    if (localHash == null) {
+      return 'This project has no $path, but the release was built with one.';
+    }
+    return 'Your $path is different from the one used to build the release.';
   }
 }

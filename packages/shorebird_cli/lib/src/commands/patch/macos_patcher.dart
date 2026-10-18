@@ -77,6 +77,13 @@ class MacosPatcher extends Patcher
   String get podfileLockRelativePath => 'macos/Podfile.lock';
 
   @override
+  String? get localPackageResolvedHash => shorebirdEnv.macosPackageResolvedHash;
+
+  @override
+  String get packageResolvedRelativePath =>
+      'macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved';
+
+  @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,
@@ -178,6 +185,7 @@ class MacosPatcher extends Patcher
         patchArtifactPath: _arm64AotOutputPath,
         progress: createDiffProgress,
         podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+        packageResolvedHash: shorebirdEnv.macosPackageResolvedHash,
       );
       final x64Bundle = await createDiffBundle(
         arch: Arch.x86_64,
@@ -185,6 +193,7 @@ class MacosPatcher extends Patcher
         patchArtifactPath: _x64AotOutputPath,
         progress: createDiffProgress,
         podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+        packageResolvedHash: shorebirdEnv.macosPackageResolvedHash,
       );
       createDiffProgress.complete();
 

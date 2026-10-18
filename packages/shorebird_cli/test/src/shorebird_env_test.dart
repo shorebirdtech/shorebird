@@ -332,6 +332,157 @@ void main() {
       });
     });
 
+    for (final platform in ['ios', 'macos']) {
+      group('${platform}PackageResolvedHash', () {
+        late Directory projectRoot;
+        late File podfileLock;
+        late File packageResolved;
+
+        setUp(() {
+          projectRoot = Directory.systemTemp.createTempSync();
+          File(p.join(projectRoot.path, 'pubspec.yaml')).createSync();
+          podfileLock = File(
+            p.join(projectRoot.path, platform, 'Podfile.lock'),
+          );
+          packageResolved = File(
+            p.join(
+              projectRoot.path,
+              platform,
+              'Runner.xcworkspace',
+              'xcshareddata',
+              'swiftpm',
+              'Package.resolved',
+            ),
+          );
+        });
+
+        T run<T>(T Function() body) => IOOverrides.runZoned(
+          () => runWithOverrides(body),
+          getCurrentDirectory: () => projectRoot,
+        );
+
+        String? packageResolvedHash() => run(
+          () => platform == 'ios'
+              ? shorebirdEnv.iosPackageResolvedHash
+              : shorebirdEnv.macosPackageResolvedHash,
+        );
+
+        String? podfileLockHash() => run(
+          () => platform == 'ios'
+              ? shorebirdEnv.iosPodfileLockHash
+              : shorebirdEnv.macosPodfileLockHash,
+        );
+
+        test('is null when there is no Package.resolved', () {
+          podfileLock.createSync(recursive: true);
+          expect(packageResolvedHash(), isNull);
+        });
+
+        test('is kept apart from the Podfile.lock hash', () {
+          packageResolved
+            ..createSync(recursive: true)
+            ..writeAsStringSync('{"pins": [], "version": 3}');
+          expect(packageResolvedHash(), isNotNull);
+          expect(podfileLockHash(), isNull);
+
+          podfileLock
+            ..createSync(recursive: true)
+            ..writeAsStringSync('podfile lock');
+          expect(
+            podfileLockHash(),
+            equals(sha256.convert(utf8.encode('podfile lock')).toString()),
+          );
+          expect(packageResolvedHash(), isNot(equals(podfileLockHash())));
+        });
+      });
+    }
+
+    group('packageResolvedHash', () {
+      late File packageResolved;
+
+      setUp(() {
+        packageResolved = File(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'Package.resolved',
+          ),
+        );
+      });
+
+      String? hashOf(String contents) {
+        packageResolved.writeAsStringSync(contents);
+        return ShorebirdEnv.packageResolvedHash(packageResolved);
+      }
+
+      String resolved({
+        String version = '12.0.0',
+        String originHash = 'abc',
+        bool reversed = false,
+      }) {
+        final pins = [
+          '''
+    {
+      "identity" : "app-check",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/google/app-check.git",
+      "state" : { "revision" : "c7eb17e5", "version" : "$version" }
+    }''',
+          '''
+    {
+      "state" : { "version" : "8.1.0", "revision" : "d4289da2" },
+      "identity" : "promises",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/google/promises.git"
+    }''',
+        ];
+        return '''
+{
+  "originHash" : "$originHash",
+  "pins" : [${(reversed ? pins.reversed : pins).join(',')}],
+  "version" : 3
+}''';
+      }
+
+      test('is null when the file does not exist', () {
+        expect(ShorebirdEnv.packageResolvedHash(packageResolved), isNull);
+      });
+
+      test('ignores originHash, formatting and pin order', () {
+        final hash = hashOf(resolved());
+        expect(hash, isNotNull);
+        expect(hashOf(resolved(originHash: 'def')), equals(hash));
+        expect(hashOf(resolved(reversed: true)), equals(hash));
+      });
+
+      test('changes when a pinned version changes', () {
+        final hash = hashOf(resolved());
+        expect(hashOf(resolved(version: '12.1.0')), isNot(equals(hash)));
+      });
+
+      test('reads format version 1', () {
+        const v1 = '''
+{
+  "object" : {
+    "pins" : [
+      { "package" : "Promises", "state" : { "version" : "8.1.0" } }
+    ]
+  },
+  "version" : 1
+}''';
+        final hash = hashOf(v1);
+        expect(hash, isNotNull);
+        expect(hashOf(v1.replaceAll('8.1.0', '8.2.0')), isNot(equals(hash)));
+      });
+
+      test('hashes the raw bytes when the file is not valid JSON', () {
+        const contents = 'not json';
+        expect(
+          hashOf(contents),
+          equals(sha256.convert(utf8.encode(contents)).toString()),
+        );
+      });
+    });
+
     group('buildDirectory', () {
       test('returns correct path', () {
         final tempDir = Directory.systemTemp.createTempSync();

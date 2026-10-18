@@ -287,6 +287,7 @@ More info: ${troubleshootingUrl.toLink()}.
     required String patchArtifactPath,
     required Progress progress,
     String? podfileLockHash,
+    String? packageResolvedHash,
   }) async {
     final hash = sha256
         .convert(await File(patchArtifactPath).readAsBytes())
@@ -311,6 +312,7 @@ More info: ${troubleshootingUrl.toLink()}.
       size: await File(diffPath).length(),
       hashSignature: hashSignature,
       podfileLockHash: podfileLockHash,
+      packageResolvedHash: packageResolvedHash,
     );
   }
 

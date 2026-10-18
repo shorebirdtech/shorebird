@@ -60,6 +60,13 @@ class IosPatcher extends Patcher
   String get podfileLockRelativePath => 'ios/Podfile.lock';
 
   @override
+  String? get localPackageResolvedHash => shorebirdEnv.iosPackageResolvedHash;
+
+  @override
+  String get packageResolvedRelativePath =>
+      'ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved';
+
+  @override
   Future<void> assertArgsAreValid() async =>
       argResults.assertValidExportOptionsPlistArg();
 
@@ -148,6 +155,7 @@ class IosPatcher extends Patcher
         releaseSupplementDir:
             supplementDirectory ?? fallbackSupplementDirectory!,
         podfileLockHash: shorebirdEnv.iosPodfileLockHash,
+        packageResolvedHash: shorebirdEnv.iosPackageResolvedHash,
       );
     } finally {
       releaseXcarchiveDirectory.deleteTemporarySync();

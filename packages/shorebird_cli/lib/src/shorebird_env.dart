@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:cli_util/cli_util.dart';
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -183,6 +185,76 @@ class ShorebirdEnv {
     if (!macosPodfileLockFile.existsSync()) return null;
     return sha256.convert(macosPodfileLockFile.readAsBytesSync()).toString();
   }
+
+  /// The Swift Package Manager lockfile for this project's iOS app.
+  File get iosPackageResolvedFile => packageResolvedFile('ios');
+
+  /// The hash of the pins in [iosPackageResolvedFile], or null if the file
+  /// does not exist. See [packageResolvedHash].
+  String? get iosPackageResolvedHash =>
+      packageResolvedHash(iosPackageResolvedFile);
+
+  /// The Swift Package Manager lockfile for this project's macOS app.
+  File get macosPackageResolvedFile => packageResolvedFile('macos');
+
+  /// The hash of the pins in [macosPackageResolvedFile], or null if the file
+  /// does not exist. See [packageResolvedHash].
+  String? get macosPackageResolvedHash =>
+      packageResolvedHash(macosPackageResolvedFile);
+
+  /// The Package.resolved that Xcode writes into Runner.xcworkspace with the
+  /// pinned versions of the Swift Package Manager dependencies of the Apple
+  /// app in [platformDirectory] (`ios` or `macos`).
+  File packageResolvedFile(String platformDirectory) => File(
+    p.join(
+      getFlutterProjectRoot()!.path,
+      platformDirectory,
+      'Runner.xcworkspace',
+      'xcshareddata',
+      'swiftpm',
+      'Package.resolved',
+    ),
+  );
+
+  /// The hash of the pinned packages in the Package.resolved [file], or null
+  /// if it does not exist. Only the pins count: Xcode also writes fields that
+  /// change without any native dependency changing (`originHash`, which
+  /// tracks the manifests, and the file format `version`, which differs
+  /// between Xcode versions). A file that isn't valid Package.resolved JSON is
+  /// hashed whole.
+  static String? packageResolvedHash(File file) {
+    if (!file.existsSync()) return null;
+    final bytes = file.readAsBytesSync();
+    final pins = _packageResolvedPins(utf8.decode(bytes, allowMalformed: true));
+    return sha256.convert(pins == null ? bytes : utf8.encode(pins)).toString();
+  }
+
+  static String? _packageResolvedPins(String contents) {
+    final Object? json;
+    try {
+      json = jsonDecode(contents);
+    } on FormatException {
+      return null;
+    }
+    final pins = switch (json) {
+      {'pins': final List<dynamic> pins} => pins,
+      // Format version 1 nests the pins under "object".
+      {'object': {'pins': final List<dynamic> pins}} => pins,
+      _ => null,
+    };
+    if (pins == null) return null;
+    final encoded = pins.map((pin) => jsonEncode(_sortKeys(pin))).toList()
+      ..sort();
+    return encoded.join('\n');
+  }
+
+  static Object? _sortKeys(Object? value) => switch (value) {
+    final Map<String, dynamic> map => {
+      for (final key in map.keys.sorted()) key: _sortKeys(map[key]),
+    },
+    final List<dynamic> list => list.map(_sortKeys).toList(),
+    _ => value,
+  };
 
   /// The build directory of the current shorebird project.
   Directory get buildDirectory {

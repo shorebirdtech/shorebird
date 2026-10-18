@@ -491,6 +491,109 @@ This may indicate that the patch contains native changes, which cannot be applie
           });
         });
 
+        group('when release has a Package.resolved hash', () {
+          const packageResolvedHash = 'package-resolved-hash';
+          const packageResolvedPath =
+              'macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved';
+
+          ReleaseArtifact releaseArtifact({
+            String? releasePodfileLockHash = podfileLockHash,
+          }) => ReleaseArtifact(
+            id: 0,
+            releaseId: 0,
+            arch: 'aarch64',
+            platform: ReleasePlatform.macos,
+            hash: '#',
+            size: 42,
+            url: 'https://example.com',
+            podfileLockHash: releasePodfileLockHash,
+            packageResolvedHash: packageResolvedHash,
+            canSideload: true,
+          );
+
+          setUp(() {
+            when(() => argResults['allow-native-diffs']).thenReturn(true);
+            when(
+              () => shorebirdEnv.macosPackageResolvedHash,
+            ).thenReturn(packageResolvedHash);
+          });
+
+          Future<void> assertUnpatchableDiffs(ReleaseArtifact artifact) =>
+              runWithOverrides(
+                () => patcher.assertUnpatchableDiffs(
+                  releaseArtifact: artifact,
+                  releaseArchive: File(''),
+                  patchArchive: File(''),
+                ),
+              );
+
+          void verifyWarned(String differences) => verify(
+            () => logger.warn(
+              '''
+$differences
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
+            ),
+          ).called(1);
+
+          test('does not warn when both hashes match', () async {
+            await assertUnpatchableDiffs(releaseArtifact());
+            verifyNever(() => logger.warn(any()));
+          });
+
+          test('names Package.resolved when only it changed', () async {
+            when(
+              () => shorebirdEnv.macosPackageResolvedHash,
+            ).thenReturn('changed-package-resolved-hash');
+            await assertUnpatchableDiffs(releaseArtifact());
+            verifyWarned(
+              'Your $packageResolvedPath is different from the one used to build the release.',
+            );
+          });
+
+          test('names both in one warning when both changed', () async {
+            when(
+              () => shorebirdEnv.macosPackageResolvedHash,
+            ).thenReturn('changed-package-resolved-hash');
+            await assertUnpatchableDiffs(
+              releaseArtifact(releasePodfileLockHash: 'old-podfile-lock-hash'),
+            );
+            verifyWarned(
+              '''Your macos/Podfile.lock is different from the one used to build the release.
+Your $packageResolvedPath is different from the one used to build the release.''',
+            );
+          });
+
+          test('says Package.resolved is gone', () async {
+            when(() => shorebirdEnv.macosPackageResolvedHash).thenReturn(null);
+            await assertUnpatchableDiffs(releaseArtifact());
+            verifyWarned(
+              'This project has no $packageResolvedPath, but the release was built with one.',
+            );
+          });
+
+          test('says Podfile.lock is gone', () async {
+            when(() => shorebirdEnv.macosPodfileLockHash).thenReturn(null);
+            await assertUnpatchableDiffs(releaseArtifact());
+            verifyWarned(
+              'This project has no macos/Podfile.lock, but the release was built with one.',
+            );
+          });
+
+          group('when the release had no Podfile.lock', () {
+            test('checks Package.resolved alone', () async {
+              when(
+                () => shorebirdEnv.macosPackageResolvedHash,
+              ).thenReturn('changed-package-resolved-hash');
+              await assertUnpatchableDiffs(
+                releaseArtifact(releasePodfileLockHash: null),
+              );
+              verifyWarned(
+                'Your $packageResolvedPath is different from the one used to build the release.',
+              );
+            });
+          });
+        });
+
         group('when release has no podspec lock hash', () {
           // Releases made before Podfile.lock hashes were recorded have
           // nothing to compare against, so the native diff passes through
@@ -1348,6 +1451,33 @@ This may indicate that the patch contains native changes, which cannot be applie
           expect(artifacts, hasLength(2));
           expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
           expect(artifacts[Arch.x86_64]!.hashSignature, 'my-signature');
+        });
+      });
+
+      group('when there is a Package.resolved', () {
+        setUp(() {
+          when(
+            () => shorebirdEnv.macosPackageResolvedHash,
+          ).thenReturn('package-resolved-hash');
+        });
+
+        test('returns artifact bundles with its hash', () async {
+          final artifacts = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expect(
+            artifacts[Arch.x86_64]!.packageResolvedHash,
+            'package-resolved-hash',
+          );
+          expect(
+            artifacts[Arch.arm64]!.packageResolvedHash,
+            'package-resolved-hash',
+          );
         });
       });
 
