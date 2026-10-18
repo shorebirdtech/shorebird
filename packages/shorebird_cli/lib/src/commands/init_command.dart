@@ -89,6 +89,12 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
+    // Only these roles hold the server's create-apps permission, so other
+    // organizations would fail at createApp after the user picked them.
+    final creatableMemberships = organizationMemberships
+        .where((m) => _canCreateApps(m.role))
+        .toList();
+
     final Organization organization;
     final orgIdArg = results[CommonArguments.orgIdArg.name] as String?;
     if (orgIdArg != null) {
@@ -107,25 +113,40 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       if (membershipError != null) {
         usageException('${membershipError.message}\n${membershipError.hint}');
       }
-      organization = membership!.organization;
-    } else if (organizationMemberships.length > 1) {
+      if (!_canCreateApps(membership!.role)) {
+        usageException(
+          'Your role in ${membership.organization.name} '
+          '(id: ${membership.organization.id}) is ${membership.role}, which '
+          'cannot create apps.\n'
+          '${_creatableOrganizationsHint(creatableMemberships)}',
+        );
+      }
+      organization = membership.organization;
+    } else if (creatableMemberships.isEmpty) {
+      logger.err(
+        'You cannot create apps in any of your organizations. '
+        'Ask an owner or admin of one to make you an admin or app manager.\n'
+        '${_rolesInOrganizations(organizationMemberships)}',
+      );
+      return ExitCode.noPerm.code;
+    } else if (creatableMemberships.length > 1) {
       if (!shorebirdEnv.canAcceptUserInput) {
         usageException(
-          'You belong to multiple organizations. '
+          'You can create apps in multiple organizations. '
           'Pass --org-id=<id> to choose one.\n'
-          '${availableOrganizations(organizationMemberships)}',
+          '${_creatableOrganizationsHint(creatableMemberships)}',
         );
       }
       organization = logger.chooseOne(
         'Which organization should this app belong to?',
-        choices: organizationMemberships.map((o) => o.organization).toList(),
+        choices: creatableMemberships.map((o) => o.organization).toList(),
         display: (o) => o.name,
         hint:
             'Pass --org-id=<id> to select an organization without '
             'prompting.',
       );
     } else {
-      organization = organizationMemberships.first.organization;
+      organization = creatableMemberships.first.organization;
     }
 
     final force = results['force'] == true;
@@ -430,4 +451,28 @@ app_id:
 
     return ShorebirdYaml(appId: appId);
   }
+}
+
+/// Whether [role] in an organization lets its holder create apps there,
+/// matching the server's `create(apps)` permission.
+bool _canCreateApps(Role role) =>
+    role == Role.owner || role == Role.admin || role == Role.appManager;
+
+/// Lists the organizations in [memberships] the user can create apps in.
+String _creatableOrganizationsHint(List<OrganizationMembership> memberships) {
+  if (memberships.isEmpty) {
+    return 'You cannot create apps in any of your organizations.';
+  }
+  final organizations = memberships.map(
+    (m) => '${m.organization.name} (id: ${m.organization.id})',
+  );
+  return 'Organizations you can create apps in: ${organizations.join(', ')}.';
+}
+
+/// Lists the user's role in each of [memberships]' organizations.
+String _rolesInOrganizations(List<OrganizationMembership> memberships) {
+  final roles = memberships.map(
+    (m) => '${m.organization.name} (id: ${m.organization.id}): ${m.role}',
+  );
+  return 'Your roles: ${roles.join(', ')}.';
 }
