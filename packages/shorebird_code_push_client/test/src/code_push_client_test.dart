@@ -429,7 +429,7 @@ void main() {
               platform: platform,
               hash: hash,
               packageResolvedHash: packageResolvedHash,
-              pluginSwiftPackageHash: 'plugin-swift-package-hash',
+              nativePluginsHash: 'native-plugins-hash',
             );
           } on Exception {
             // ignore
@@ -449,8 +449,8 @@ void main() {
             equals(packageResolvedHash),
           );
           expect(
-            request.fields['plugin_swift_package_hash'],
-            equals('plugin-swift-package-hash'),
+            request.fields['native_plugins_hash'],
+            equals('native-plugins-hash'),
           );
         });
       });
@@ -818,7 +818,7 @@ void main() {
               canSideload: canSideload,
               podfileLockHash: podfileLockHash,
               packageResolvedHash: 'package-resolved-hash',
-              pluginSwiftPackageHash: 'plugin-swift-package-hash',
+              nativePluginsHash: 'native-plugins-hash',
             );
           } on Exception {
             // ignore
@@ -842,7 +842,7 @@ void main() {
             'size': '$size',
             'podfile_lock_hash': podfileLockHash,
             'package_resolved_hash': 'package-resolved-hash',
-            'plugin_swift_package_hash': 'plugin-swift-package-hash',
+            'native_plugins_hash': 'native-plugins-hash',
           });
         });
       });
