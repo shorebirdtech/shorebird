@@ -73,6 +73,14 @@ void main() {
         expect(copy.hiddenAt, equals(patch.hiddenAt));
       });
 
+      test('keeps hiddenAt when other fields are replaced', () {
+        final hiddenAt = DateTime.utc(2026, 10, 1);
+        final copy = patch
+            .copyWith(hiddenAt: hiddenAt)
+            .copyWith(isRolledBack: true);
+        expect(copy.hiddenAt, equals(hiddenAt));
+      });
+
       test('replaces every field when all are provided', () {
         final artifact = PatchArtifact(
           id: 1,
