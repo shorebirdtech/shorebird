@@ -287,7 +287,7 @@ $stderr''');
     if (executable == 'flutter') {
       // If this ever changes we also need to update the `shorebird` shell
       // wrapper which downloads runs Flutter to fetch artifacts the first time.
-      return {'FLUTTER_STORAGE_BASE_URL': shorebirdEnv.artifactProxyUrl};
+      return {'FLUTTER_STORAGE_BASE_URL': shorebirdEnv.downloadUrl};
     }
 
     return {};

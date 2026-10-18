@@ -62,7 +62,7 @@ void main() {
         () => shorebirdEnv.flutterBinaryFile,
       ).thenReturn(File(p.join('bin', 'cache', 'flutter', 'bin', 'flutter')));
       when(
-        () => shorebirdEnv.artifactProxyUrl,
+        () => shorebirdEnv.downloadUrl,
       ).thenReturn('https://download.shorebird.dev');
 
       when(() => runProcessResult.stderr).thenReturn('stderr');
@@ -161,9 +161,9 @@ void main() {
         ).called(1);
       });
 
-      test('points flutter at the artifact proxy from shorebirdEnv', () async {
+      test('points flutter at the download url from shorebirdEnv', () async {
         when(
-          () => shorebirdEnv.artifactProxyUrl,
+          () => shorebirdEnv.downloadUrl,
         ).thenReturn('http://localhost:8080');
         await runWithOverrides(
           () => shorebirdProcess.run('flutter', ['--version']),

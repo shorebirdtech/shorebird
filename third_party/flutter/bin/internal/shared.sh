@@ -20,8 +20,8 @@ function update_flutter {
   SHOREBIRD_ENGINE_VERSION=`cat "$FLUTTER_PATH/bin/internal/engine.version"`
   echo "Shorebird Engine • revision $SHOREBIRD_ENGINE_VERSION"
   # Install Shorebird Flutter Artifacts. Keep the default in sync with
-  # defaultArtifactProxyUrl in shorebird_env.dart.
-  FLUTTER_STORAGE_BASE_URL="${SHOREBIRD_ARTIFACT_PROXY_URL:-https://download.shorebird.dev}" $FLUTTER_PATH/bin/flutter --version
+  # defaultDownloadUrl in shorebird_env.dart.
+  FLUTTER_STORAGE_BASE_URL="${SHOREBIRD_DOWNLOAD_URL:-https://download.shorebird.dev}" $FLUTTER_PATH/bin/flutter --version
 }
 
 function pub_get_with_retry {

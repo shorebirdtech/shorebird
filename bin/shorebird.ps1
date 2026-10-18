@@ -122,11 +122,11 @@ function Update-Flutter {
         git -C "$flutterPath" -c advice.detachedHead=false checkout "$flutterVersion"
     }
 
-    # Set FLUTTER_STORAGE_BASE_URL to the artifact proxy and execute a
+    # Set FLUTTER_STORAGE_BASE_URL to Shorebird's download host and execute a
     # `flutter` command to trigger a download of Dart, etc. Keep the default in
-    # sync with defaultArtifactProxyUrl in shorebird_env.dart.
-    if ($env:SHOREBIRD_ARTIFACT_PROXY_URL) {
-        $env:FLUTTER_STORAGE_BASE_URL = $env:SHOREBIRD_ARTIFACT_PROXY_URL;
+    # sync with defaultDownloadUrl in shorebird_env.dart.
+    if ($env:SHOREBIRD_DOWNLOAD_URL) {
+        $env:FLUTTER_STORAGE_BASE_URL = $env:SHOREBIRD_DOWNLOAD_URL;
     }
     else {
         $env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';

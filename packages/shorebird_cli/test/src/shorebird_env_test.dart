@@ -815,22 +815,22 @@ dependencies:
       });
     });
 
-    group('artifactProxyUrl', () {
+    group('downloadUrl', () {
       test('defaults to download.shorebird.dev', () {
         expect(
-          runWithOverrides(() => shorebirdEnv.artifactProxyUrl),
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
           equals('https://download.shorebird.dev'),
         );
       });
 
-      test('returns SHOREBIRD_ARTIFACT_PROXY_URL when set', () {
+      test('returns SHOREBIRD_DOWNLOAD_URL when set', () {
         platform = platform.copyWith(
           environment: {
-            'SHOREBIRD_ARTIFACT_PROXY_URL': 'http://localhost:8080',
+            'SHOREBIRD_DOWNLOAD_URL': 'http://localhost:8080',
           },
         );
         expect(
-          runWithOverrides(() => shorebirdEnv.artifactProxyUrl),
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
           equals('http://localhost:8080'),
         );
       });
@@ -838,21 +838,21 @@ dependencies:
       test('strips a trailing slash', () {
         platform = platform.copyWith(
           environment: {
-            'SHOREBIRD_ARTIFACT_PROXY_URL': 'https://mirror.example.com/sb/',
+            'SHOREBIRD_DOWNLOAD_URL': 'https://mirror.example.com/sb/',
           },
         );
         expect(
-          runWithOverrides(() => shorebirdEnv.artifactProxyUrl),
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
           equals('https://mirror.example.com/sb'),
         );
       });
 
-      test('ignores an empty SHOREBIRD_ARTIFACT_PROXY_URL', () {
+      test('ignores an empty SHOREBIRD_DOWNLOAD_URL', () {
         platform = platform.copyWith(
-          environment: {'SHOREBIRD_ARTIFACT_PROXY_URL': ''},
+          environment: {'SHOREBIRD_DOWNLOAD_URL': ''},
         );
         expect(
-          runWithOverrides(() => shorebirdEnv.artifactProxyUrl),
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
           equals('https://download.shorebird.dev'),
         );
       });
@@ -864,7 +864,7 @@ dependencies:
           },
         );
         expect(
-          runWithOverrides(() => shorebirdEnv.artifactProxyUrl),
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
           equals('https://download.shorebird.dev'),
         );
       });
