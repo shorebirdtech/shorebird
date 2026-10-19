@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [NetworkChecker] instance.
 final networkCheckerRef = create(NetworkChecker.new);
@@ -56,14 +57,18 @@ class ReachabilityResult {
 /// results.
 /// {@endtemplate}
 class NetworkChecker {
-  /// The URLs to check for network reachability.
-  static final urlsToCheck = [
-    'https://api.shorebird.dev',
-    'https://console.shorebird.dev',
-    'https://oauth2.googleapis.com',
-    'https://storage.googleapis.com',
-    'https://cdn.shorebird.cloud',
-  ].map(Uri.parse).toList();
+  /// The URLs to check for network reachability: the hosts the CLI talks to,
+  /// as configured (an override such as `SHOREBIRD_DOWNLOAD_URL` replaces the
+  /// default it overrides), plus the console and the CDN patches download
+  /// from.
+  List<Uri> get urlsToCheck => [
+    shorebirdEnv.hostedUri ?? Uri.https('api.shorebird.dev'),
+    shorebirdEnv.authServiceUri,
+    Uri.https('console.shorebird.dev'),
+    Uri.parse(shorebirdEnv.downloadUrl),
+    Uri.https('storage.googleapis.com'),
+    Uri.https('cdn.shorebird.cloud'),
+  ];
 
   /// Checks whether [url] responds to an HTTP GET request.
   Future<ReachabilityResult> checkUrl(Uri url) async {
