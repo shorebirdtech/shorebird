@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [NetworkChecker] instance.
 final networkCheckerRef = create(NetworkChecker.new);
@@ -40,7 +41,7 @@ class ReachabilityResult {
   final Uri url;
 
   /// Why [url] could not be reached, or null if it responded.
-  final Exception? error;
+  final Object? error;
 
   /// Whether [url] responded. Any HTTP response counts, whatever its status:
   /// several of these hosts answer a bare GET with 404, and the check is only
@@ -56,21 +57,29 @@ class ReachabilityResult {
 /// results.
 /// {@endtemplate}
 class NetworkChecker {
-  /// The URLs to check for network reachability.
-  static final urlsToCheck = [
-    'https://api.shorebird.dev',
-    'https://console.shorebird.dev',
-    'https://oauth2.googleapis.com',
-    'https://storage.googleapis.com',
-    'https://cdn.shorebird.cloud',
-  ].map(Uri.parse).toList();
+  /// The URLs to check for network reachability: the Shorebird API, auth
+  /// and download hosts as configured (an override such as
+  /// `SHOREBIRD_DOWNLOAD_URL` replaces the default it overrides), the console,
+  /// the bucket release and patch artifacts upload to and download from, and
+  /// the CDN apps download patches from. GitHub, which serves the Flutter
+  /// fork and bundletool, is not probed.
+  List<Uri> get urlsToCheck => [
+    shorebirdEnv.hostedUri ?? Uri.https('api.shorebird.dev'),
+    shorebirdEnv.authServiceUri,
+    Uri.https('console.shorebird.dev'),
+    Uri.parse(shorebirdEnv.downloadUrl),
+    Uri.https('storage.googleapis.com'),
+    Uri.https('cdn.shorebird.cloud'),
+  ];
 
   /// Checks whether [url] responds to an HTTP GET request.
   Future<ReachabilityResult> checkUrl(Uri url) async {
     try {
       await httpClient.get(url);
       return ReachabilityResult(url: url);
-    } on Exception catch (e) {
+    } on Object catch (e) {
+      // A mistyped override, such as a URL with no scheme, makes the client
+      // throw an [ArgumentError]: report it as unreachable, not a crash.
       return ReachabilityResult(url: url, error: e);
     }
   }

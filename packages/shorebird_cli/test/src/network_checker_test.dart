@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/network_checker.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
@@ -23,6 +24,7 @@ void main() {
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
     late http.Client httpClient;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdLogger logger;
     late Progress progress;
     late NetworkChecker networkChecker;
@@ -35,6 +37,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -49,11 +52,62 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
+      shorebirdEnv = MockShorebirdEnv();
       progress = MockProgress();
 
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => shorebirdEnv.hostedUri).thenReturn(null);
+      when(
+        () => shorebirdEnv.authServiceUri,
+      ).thenReturn(Uri.parse(defaultAuthServiceUrl));
+      when(() => shorebirdEnv.downloadUrl).thenReturn(defaultDownloadUrl);
 
       networkChecker = NetworkChecker();
+    });
+
+    /// The URLs probed when nothing overrides the defaults.
+    final defaultUrls = [
+      'https://api.shorebird.dev',
+      'https://auth.shorebird.dev',
+      'https://console.shorebird.dev',
+      'https://download.shorebird.dev',
+      'https://storage.googleapis.com',
+      'https://cdn.shorebird.cloud',
+    ].map(Uri.parse).toList();
+
+    group('urlsToCheck', () {
+      test('probes the default hosts', () {
+        expect(
+          runWithOverrides(() => networkChecker.urlsToCheck),
+          equals(defaultUrls),
+        );
+      });
+
+      test('probes the configured hosts in place of the defaults', () {
+        when(
+          () => shorebirdEnv.hostedUri,
+        ).thenReturn(Uri.parse('https://api.example.com'));
+        when(
+          () => shorebirdEnv.authServiceUri,
+        ).thenReturn(Uri.parse('https://auth.example.com'));
+        when(
+          () => shorebirdEnv.downloadUrl,
+        ).thenReturn('https://mirror.example.com/shorebird');
+
+        expect(
+          runWithOverrides(() => networkChecker.urlsToCheck),
+          equals(
+            [
+              'https://api.example.com',
+              'https://auth.example.com',
+              'https://console.shorebird.dev',
+              'https://mirror.example.com/shorebird',
+              'https://storage.googleapis.com',
+              'https://cdn.shorebird.cloud',
+            ].map(Uri.parse),
+          ),
+        );
+      });
     });
 
     group('checkReachability', () {
@@ -69,7 +123,7 @@ void main() {
 
           verify(
             () => progress.complete(any(that: contains('OK'))),
-          ).called(NetworkChecker.urlsToCheck.length);
+          ).called(defaultUrls.length);
         });
       });
 
@@ -83,7 +137,7 @@ void main() {
 
           verify(
             () => progress.fail(any(that: contains('unreachable'))),
-          ).called(NetworkChecker.urlsToCheck.length);
+          ).called(defaultUrls.length);
         });
       });
     });
@@ -96,7 +150,7 @@ void main() {
           // network lets us reach them.
           when(() => httpClient.get(any())).thenAnswer((invocation) async {
             final url = invocation.positionalArguments.first as Uri;
-            if (url == NetworkChecker.urlsToCheck[1]) throw Exception('oops');
+            if (url == defaultUrls[1]) throw Exception('oops');
             return http.Response('', HttpStatus.notFound);
           });
 
@@ -104,26 +158,38 @@ void main() {
 
           expect(
             results.map((r) => r.url),
-            equals(NetworkChecker.urlsToCheck),
+            equals(defaultUrls),
           );
           expect(
             results.map((r) => r.reachable),
             equals([
-              for (final url in NetworkChecker.urlsToCheck)
-                url != NetworkChecker.urlsToCheck[1],
+              for (final url in defaultUrls) url != defaultUrls[1],
             ]),
           );
           expect(results[1].error, isA<Exception>());
           expect(
             results[1].toJson(),
             equals({
-              'url': '${NetworkChecker.urlsToCheck[1]}',
+              'url': '${defaultUrls[1]}',
               'reachable': false,
             }),
           );
           verifyNever(() => logger.progress(any()));
         },
       );
+
+      test('reports a malformed url as unreachable', () async {
+        when(() => shorebirdEnv.downloadUrl).thenReturn('mirror.example.com');
+        when(
+          () => httpClient.get(any()),
+        ).thenThrow(ArgumentError('No host specified in URI'));
+
+        final results = await runWithOverrides(networkChecker.reachability);
+
+        expect(results.map((r) => r.reachable), everyElement(isFalse));
+        expect(results[3].url, equals(Uri.parse('mirror.example.com')));
+        expect(results[3].error, isA<ArgumentError>());
+      });
     });
 
     group('performGCPDownloadSpeedTest', () {
