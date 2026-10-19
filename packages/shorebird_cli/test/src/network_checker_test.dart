@@ -177,6 +177,19 @@ void main() {
           verifyNever(() => logger.progress(any()));
         },
       );
+
+      test('reports a malformed url as unreachable', () async {
+        when(() => shorebirdEnv.downloadUrl).thenReturn('mirror.example.com');
+        when(
+          () => httpClient.get(any()),
+        ).thenThrow(ArgumentError('No host specified in URI'));
+
+        final results = await runWithOverrides(networkChecker.reachability);
+
+        expect(results.map((r) => r.reachable), everyElement(isFalse));
+        expect(results[3].url, equals(Uri.parse('mirror.example.com')));
+        expect(results[3].error, isA<ArgumentError>());
+      });
     });
 
     group('performGCPDownloadSpeedTest', () {

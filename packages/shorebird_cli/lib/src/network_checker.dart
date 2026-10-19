@@ -41,7 +41,7 @@ class ReachabilityResult {
   final Uri url;
 
   /// Why [url] could not be reached, or null if it responded.
-  final Exception? error;
+  final Object? error;
 
   /// Whether [url] responded. Any HTTP response counts, whatever its status:
   /// several of these hosts answer a bare GET with 404, and the check is only
@@ -57,10 +57,12 @@ class ReachabilityResult {
 /// results.
 /// {@endtemplate}
 class NetworkChecker {
-  /// The URLs to check for network reachability: the hosts the CLI talks to,
-  /// as configured (an override such as `SHOREBIRD_DOWNLOAD_URL` replaces the
-  /// default it overrides), plus the console and the CDN patches download
-  /// from.
+  /// The URLs to check for network reachability: the Shorebird API, auth
+  /// and download hosts as configured (an override such as
+  /// `SHOREBIRD_DOWNLOAD_URL` replaces the default it overrides), the console,
+  /// the bucket release and patch artifacts upload to and download from, and
+  /// the CDN apps download patches from. GitHub, which serves the Flutter
+  /// fork and bundletool, is not probed.
   List<Uri> get urlsToCheck => [
     shorebirdEnv.hostedUri ?? Uri.https('api.shorebird.dev'),
     shorebirdEnv.authServiceUri,
@@ -75,7 +77,9 @@ class NetworkChecker {
     try {
       await httpClient.get(url);
       return ReachabilityResult(url: url);
-    } on Exception catch (e) {
+    } on Object catch (e) {
+      // A mistyped override, such as a URL with no scheme, makes the client
+      // throw an [ArgumentError]: report it as unreachable, not a crash.
       return ReachabilityResult(url: url, error: e);
     }
   }
