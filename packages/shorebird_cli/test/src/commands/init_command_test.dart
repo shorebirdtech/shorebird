@@ -1829,12 +1829,60 @@ flavors:
             final exitCode = await runWithOverrides(command.run);
             expect(exitCode, equals(ExitCode.success.code));
             verify(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: appId,
+                organizationId: appOrg.id,
+                memberships: any(named: 'memberships'),
+              ),
+            ).called(1);
+            verify(
               () => codePushClientWrapper.createApp(
                 appName: 'my-app (c)',
                 organizationId: appOrg.id,
               ),
             ).called(1);
           });
+
+          test(
+            'exits when the app is in an organization you are not in',
+            () async {
+              stubAppIn(Role.admin);
+              when(
+                () => codePushClientWrapper.maybeGetApp(
+                  appId: any(named: 'appId'),
+                ),
+              ).thenAnswer(
+                (_) async => AppMetadata(
+                  appId: appId,
+                  displayName: 'my-app',
+                  organizationId: 99,
+                  createdAt: DateTime(2023),
+                  updatedAt: DateTime(2023),
+                ),
+              );
+              when(
+                () => codePushClientWrapper.findAppOrganization(
+                  appId: appId,
+                  organizationId: 99,
+                  memberships: any(named: 'memberships'),
+                ),
+              ).thenAnswer((_) async => null);
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, equals(ExitCode.noPerm.code));
+              verify(
+                () => logger.err(
+                  'App "my-app" ($appId) is in organization 99, which you '
+                  'are not a member of.',
+                ),
+              ).called(1);
+              verifyNever(
+                () => codePushClientWrapper.createApp(
+                  appName: any(named: 'appName'),
+                  organizationId: any(named: 'organizationId'),
+                ),
+              );
+            },
+          );
 
           test('does not warn when --org-id names its organization', () async {
             stubAppIn(Role.admin);

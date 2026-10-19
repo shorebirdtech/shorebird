@@ -205,6 +205,19 @@ This app may not exist or you may not have permission to view it.''')
         organizationId: existingApp.organizationId,
         memberships: organizationMemberships,
       );
+      if (appMembership == null && existingApp.organizationId != null) {
+        logger
+          ..err(
+            'App "${existingApp.displayName}" (${existingApp.appId}) is in '
+            'organization ${existingApp.organizationId}, which you are not a '
+            'member of.',
+          )
+          ..info(
+            'Ask an owner or admin of that organization to add you, then run '
+            'init again.',
+          );
+        return ExitCode.noPerm.code;
+      }
       if (appMembership == null) {
         logger
           ..err(
