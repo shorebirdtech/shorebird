@@ -916,6 +916,23 @@ class CodePushClient {
     ).organizations;
   }
 
+  /// Gets the apps in organization [organizationId] that the user can see.
+  Future<List<AppMetadata>> getOrganizationApps({
+    required int organizationId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/organizations/$organizationId/apps'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetOrganizationAppsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).apps;
+  }
+
   /// Gets the pending invitations sent to the current user, most recently
   /// sent first, following every page.
   Future<List<ReceivedInvitation>> getReceivedInvitations() async {
