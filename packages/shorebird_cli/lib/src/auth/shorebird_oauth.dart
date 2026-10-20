@@ -62,18 +62,24 @@ Uri _endpoint(Uri authBaseUrl, String path) =>
 /// 4. Waits for the auth service to redirect back, then hands the callback's
 ///    parameters to the grant, which checks `state`, rejects an `error`, and
 ///    exchanges the code and code verifier at the token endpoint.
-/// 5. Sends the browser to the auth service's page for how the login went
-///    (see [_loginResultPage]) and returns the credentials.
+/// 5. Calls [completeLogin], if given, with the credentials, so the caller
+///    can finish the login (look up the user, save the credentials) before
+///    the browser is told how it went.
+/// 6. Sends the browser to the auth service's page for how the login went
+///    (see [_loginResultPage]) and returns the credentials. The browser is
+///    told the login succeeded only when every step, [completeLogin]
+///    included, did.
 ///
 /// Throws [oauth2.AuthorizationException] when the auth service answered with
 /// an OAuth error, [FormatException] when the callback or the token response
 /// is not a valid one, and [ShorebirdAuthException] when no callback arrives
-/// within [timeout].
+/// within [timeout]. Whatever [completeLogin] throws is rethrown.
 Future<oauth2.Credentials> obtainCredentialsViaLoopbackLogin({
   required http.Client httpClient,
   required Uri authBaseUrl,
   required void Function(String) userPrompt,
   Duration timeout = const Duration(minutes: 5),
+  Future<void> Function(oauth2.Credentials credentials)? completeLogin,
 }) async {
   HttpServer server;
   try {
@@ -112,7 +118,8 @@ Future<oauth2.Credentials> obtainCredentialsViaLoopbackLogin({
       client = await grant.handleAuthorizationResponse(
         request.uri.queryParameters,
       );
-    } on Exception {
+      await completeLogin?.call(client.credentials);
+    } on Object {
       await _respondToBrowser(
         request,
         authBaseUrl: authBaseUrl,

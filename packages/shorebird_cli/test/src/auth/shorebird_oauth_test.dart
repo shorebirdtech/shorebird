@@ -314,17 +314,20 @@ void main() {
       ('is missing', null),
     ]) {
       test('throws when the callback state $description', () async {
+        final browserPage = Completer<http.Response>();
         await expectLater(
           obtainCredentialsViaLoopbackLogin(
             httpClient: httpClient,
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final callbackUri = _redirectUri(Uri.parse(url));
-              _getWithoutFollowing(
-                callbackUri.replace(
-                  queryParameters: {'code': 'test_code', 'state': ?state},
-                ),
-              ).ignore();
+              unawaited(
+                _getWithoutFollowing(
+                  callbackUri.replace(
+                    queryParameters: {'code': 'test_code', 'state': ?state},
+                  ),
+                ).then(browserPage.complete),
+              );
             },
           ),
           throwsA(
@@ -335,9 +338,57 @@ void main() {
             ),
           ),
         );
+        expectLoginResultPage(await browserPage.future, status: 'failed');
         verifyNoTokenRequest();
       });
     }
+
+    test('completes the login before telling the browser it succeeded', () {
+      answerTokenRequestsWith(_json(tokenJson));
+      final browserPage = Completer<http.Response>();
+      final completed = <oauth2.Credentials>[];
+
+      return obtainCredentialsViaLoopbackLogin(
+        httpClient: httpClient,
+        authBaseUrl: authBaseUrl,
+        userPrompt: (url) => unawaited(
+          _getWithoutFollowing(
+            _redirectTo(Uri.parse(url), {'code': 'test_code'}),
+          ).then(browserPage.complete),
+        ),
+        completeLogin: (credentials) async {
+          expect(browserPage.isCompleted, isFalse);
+          completed.add(credentials);
+        },
+      ).then((credentials) async {
+        expect(completed.single.refreshToken, equals('sb_rt_test'));
+        expectLoginResultPage(await browserPage.future, status: 'success');
+      });
+    });
+
+    test(
+      'tells the browser the login failed when completing it fails',
+      () async {
+        answerTokenRequestsWith(_json(tokenJson));
+        final browserPage = Completer<http.Response>();
+        final error = Exception('no Shorebird account');
+
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) => unawaited(
+              _getWithoutFollowing(
+                _redirectTo(Uri.parse(url), {'code': 'test_code'}),
+              ).then(browserPage.complete),
+            ),
+            completeLogin: (_) async => throw error,
+          ),
+          throwsA(same(error)),
+        );
+        expectLoginResultPage(await browserPage.future, status: 'failed');
+      },
+    );
 
     test('throws when the callback has no code', () async {
       await expectLater(

@@ -67,6 +67,7 @@ typedef ObtainCredentialsViaLoopbackLogin =
       required Uri authBaseUrl,
       required void Function(String) userPrompt,
       Duration timeout,
+      Future<void> Function(oauth2.Credentials credentials)? completeLogin,
     });
 
 /// Callback for obtaining Shorebird access credentials via the device
@@ -485,10 +486,11 @@ class Auth {
   /// Logs in the user via the Shorebird loopback OAuth flow.
   Future<void> login({required void Function(String) prompt}) {
     return _login(
-      (client) => _obtainCredentialsViaLoopbackLogin(
+      (client, completeLogin) => _obtainCredentialsViaLoopbackLogin(
         httpClient: client,
         authBaseUrl: _authServiceUri,
         userPrompt: prompt,
+        completeLogin: completeLogin,
       ),
     );
   }
@@ -503,16 +505,26 @@ class Auth {
     required void Function(shorebird_oauth.DeviceAuthorization) prompt,
   }) {
     return _login(
-      (client) => _obtainCredentialsViaDeviceLogin(
-        httpClient: client,
-        authBaseUrl: _authServiceUri,
-        userPrompt: prompt,
+      (client, completeLogin) async => completeLogin(
+        await _obtainCredentialsViaDeviceLogin(
+          httpClient: client,
+          authBaseUrl: _authServiceUri,
+          userPrompt: prompt,
+        ),
       ),
     );
   }
 
+  /// Runs [obtainCredentials], which must call the `completeLogin` it is
+  /// given with the credentials it obtains. `completeLogin` looks up the
+  /// user and stores the credentials, so a loopback login can tell the
+  /// browser how the whole login went, not only the token exchange.
   Future<void> _login(
-    Future<oauth2.Credentials> Function(http.Client client) obtainCredentials,
+    Future<void> Function(
+      http.Client client,
+      Future<void> Function(oauth2.Credentials credentials) completeLogin,
+    )
+    obtainCredentials,
   ) async {
     if (isAuthenticated) {
       throw UserAlreadyLoggedInException(email: _email);
@@ -520,20 +532,21 @@ class Auth {
 
     final client = UserAgentClient(httpClient: http.Client());
     try {
-      final credentials = await obtainCredentials(client);
-      final oauthClient = _clientFor(credentials);
+      await obtainCredentials(client, (credentials) async {
+        final oauthClient = _clientFor(credentials);
 
-      final codePushClient = _buildCodePushClient(
-        httpClient: oauthClient,
-        hostedUri: shorebirdEnv.hostedUri,
-      );
+        final codePushClient = _buildCodePushClient(
+          httpClient: oauthClient,
+          hostedUri: shorebirdEnv.hostedUri,
+        );
 
-      final user = await codePushClient.getCurrentUser();
-      if (user == null) throw UserNotFoundException();
+        final user = await codePushClient.getCurrentUser();
+        if (user == null) throw UserNotFoundException();
 
-      _oauthClient = oauthClient;
-      _email = user.email;
-      _flushCredentials(oauthClient.credentials);
+        _oauthClient = oauthClient;
+        _email = user.email;
+        _flushCredentials(oauthClient.credentials);
+      });
     } finally {
       client.close();
     }
