@@ -19,7 +19,6 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      artifact_proxy: ${{ steps.filter.outputs.artifact_proxy }}
       dex: ${{ steps.filter.outputs.dex }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
       shorebird_build_trace: ${{ steps.filter.outputs.shorebird_build_trace }}
@@ -41,8 +40,6 @@ jobs:
         id: filter
         with:
           filters: |
-            artifact_proxy:
-              - packages/artifact_proxy/**
             dex:
               - packages/dex/**
             scoped_deps:
@@ -64,17 +61,6 @@ jobs:
               - packages/shorebird_code_push_protocol/**
             shorebird_redis_client:
               - packages/redis_client/**
-
-  artifact_proxy:
-    needs: changes
-    if: needs.changes.outputs.artifact_proxy == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: artifact_proxy
-      package_path: packages/artifact_proxy
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
 
   dex:
     needs: changes
@@ -182,7 +168,6 @@ jobs:
     if: ${{ always() }}
     needs:
       - changes
-      - artifact_proxy
       - dex
       - scoped_deps
       - shorebird_build_trace

@@ -3,7 +3,6 @@ publish_to: none
 environment:
   sdk: ^3.9.0
 workspace:
-  - packages/artifact_proxy
   - packages/dex
   - packages/redis_client
   - packages/scoped_deps
