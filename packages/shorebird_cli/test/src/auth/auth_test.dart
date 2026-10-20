@@ -154,8 +154,10 @@ void main() {
                 required Uri authBaseUrl,
                 required void Function(String) userPrompt,
                 Duration timeout = const Duration(minutes: 5),
+                Future<void> Function(oauth2.Credentials)? completeLogin,
               }) async {
                 loginHttpClient = httpClient;
+                await completeLogin?.call(accessCredentials);
                 return accessCredentials;
               },
           obtainCredentialsViaDeviceLogin:
