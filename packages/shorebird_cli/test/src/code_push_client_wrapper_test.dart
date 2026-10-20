@@ -577,7 +577,79 @@ void main() {
         });
 
         test(
-          '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
+          'prints the server message, details and documentation on a 426',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              CodePushUpgradeRequiredException(
+                message: 'shorebird CLI 1.6.0 or newer is required.',
+                details: 'You are on 1.5.0.',
+                response: ErrorResponse(
+                  code: 'upgrade_required',
+                  message: 'shorebird CLI 1.6.0 or newer is required.',
+                  documentationUrl: Uri.parse(
+                    'https://docs.shorebird.dev/deprecations',
+                  ),
+                ),
+              ),
+            );
+            await expectLater(
+              () async =>
+                  runWithOverrides(() => codePushClientWrapper.getApps()),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err('shorebird CLI 1.6.0 or newer is required.'),
+            ).called(1);
+            verify(() => logger.info('You are on 1.5.0.')).called(1);
+            verify(
+              () => logger.info('See: https://docs.shorebird.dev/deprecations'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            ).called(1);
+            verifyNever(
+              () => logger.err('Your version of shorebird is out of date.'),
+            );
+          },
+        );
+
+        test(
+          '''doesn't repeat the upgrade command when the server names it''',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              const CodePushUpgradeRequiredException(
+                message: 'Flutter 3.41.9 requires a newer CLI.',
+                details: 'Run `shorebird upgrade` and retry.',
+                response: ErrorResponse(
+                  code: 'cli_flutter_incompatible',
+                  message: 'Flutter 3.41.9 requires a newer CLI.',
+                ),
+              ),
+            );
+            await expectLater(
+              () async =>
+                  runWithOverrides(() => codePushClientWrapper.getApps()),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err('Flutter 3.41.9 requires a newer CLI.'),
+            ).called(1);
+            verify(
+              () => logger.info('Run `shorebird upgrade` and retry.'),
+            ).called(1);
+            verifyNever(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            );
+          },
+        );
+
+        test(
+          '''prints the generic upgrade message on a 426 without an error body''',
           () async {
             when(codePushClient.getApps).thenThrow(
               const CodePushUpgradeRequiredException(

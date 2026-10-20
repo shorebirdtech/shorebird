@@ -886,16 +886,19 @@ Engine • revision $shorebirdEngineRevision'''),
       });
 
       group('when an API call fails', () {
-        test('emits one envelope with the server message, code and '
-            'details', () async {
+        test('emits one envelope with the server message, code, details '
+            'and documentation', () async {
           commandRunner.addCommand(
             _FailingCommand(
               thenThrow: ApiErrorExit(
-                const CodePushException(
+                CodePushException(
                   message: 'Plan lacks this feature.',
                   response: ErrorResponse(
                     code: 'shorebird_plan_insufficient_tier',
                     message: 'Plan lacks this feature.',
+                    documentationUrl: Uri.parse(
+                      'https://docs.shorebird.dev/plans',
+                    ),
                   ),
                   details: 'Upgrade to Business.',
                 ),
@@ -918,6 +921,7 @@ Engine • revision $shorebirdEngineRevision'''),
               'message': 'Plan lacks this feature.',
               'api_code': 'shorebird_plan_insufficient_tier',
               'details': 'Upgrade to Business.',
+              'documentation_url': 'https://docs.shorebird.dev/plans',
             }),
           );
         });
