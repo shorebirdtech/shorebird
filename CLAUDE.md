@@ -16,12 +16,57 @@ For each one:
 ## Build Commands
 
 ```bash
+# Resolve the pub workspace first. Analysis fails without it: the workspace
+# packages do not see each other and shorebird_cli alone reports ~240
+# unresolved-import errors.
+dart pub get
+
 # Run all tests (must run from packages/ directory to avoid cache conflicts)
 cd packages && very_good test -r
 
 # Run tests for a single package (can use -r failures-only to reduce output)
 dart test packages/shorebird_cli
 ```
+
+**Analyze inside the package, never from the repo root.** `dart analyze` at the
+root sweeps the vendored Flutter under `third_party/` and the packages outside
+the workspace, and reports hundreds of errors on untouched `main`:
+
+```bash
+cd packages/shorebird_cli && dart analyze .
+```
+
+Note `dart analyze` exits 3 when it finds info-level issues, so a non-zero exit
+is not by itself a failure. CI uses `--fatal-warnings`.
+
+## Testing a CLI change
+
+The gate for a change under `packages/shorebird_cli`:
+
+```bash
+dart pub get
+cd packages/shorebird_cli && dart analyze . && dart test -r failures-only
+```
+
+Beyond that, three things this repo has shipped bugs in:
+
+- **A control wired to nothing.** Any new flag or option needs a test that
+  exercises it, not only one asserting it parses.
+- **Help text that names a flag the command does not have.**
+  `test/src/help_examples_test.dart` parses every `shorebird ...` line in every
+  command's description, so a renamed flag fails there. **Validate an example
+  by parsing it, never by running it:** `apps delete` and `patches promote`
+  both appear in help and both mutate real state.
+- **Output written while a progress is live.** `mason_logger`'s `Progress`
+  repaints its line every 80ms, so a `logger.info` during one scribbles over
+  it. Close the progress first, then write, then open a new one if the command
+  is still working.
+
+Do not hard-wrap a `description` or a `help` string. Nothing in the CLI wraps
+its own help, the terminal does it, and a hard-wrapped string renders ragged at
+every other width. `args` lists a subcommand by `description.split('\n').first`,
+so a multi-line description keeps its summary on the first line and everything
+else below it.
 
 ## Architecture
 
