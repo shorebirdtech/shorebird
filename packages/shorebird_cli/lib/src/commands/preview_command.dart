@@ -783,7 +783,7 @@ This is only applicable when previewing Android releases.''',
     }
 
     try {
-      final deviceLocateProgress = logger.progress('Locating device for run');
+      var deviceLocateProgress = logger.progress('Locating device for run');
       AppleDevice? deviceForLaunch;
       // Try to find a device using devicectl first. If that fails, fall back to
       // ios-deploy.
@@ -810,9 +810,11 @@ This is only applicable when previewing Android releases.''',
           final description =
               '${unreachable.name} (iOS '
               '${unreachable.osVersionString ?? 'unknown'})';
-          deviceLocateProgress.update(
-            '$description is paired but unreachable, waiting for it',
-          );
+          // The hint is what tells the user to go unlock the phone, so it has
+          // to survive on screen while they do. A live progress repaints its
+          // line every 80ms and would scribble over it, so close this one
+          // before writing and open the wait's own afterwards.
+          deviceLocateProgress.cancel();
           logger.info(
             '''
 This usually means the device is locked, or that wireless debugging dropped because the screen turned off.
@@ -820,6 +822,9 @@ This usually means the device is locked, or that wireless debugging dropped beca
 Unlock the device, or connect it via USB, and the preview will continue on its own.
 
 Skipping the ios-deploy fallback because it does not support iOS 17 or later.''',
+          );
+          deviceLocateProgress = logger.progress(
+            'Waiting for $description to become reachable',
           );
           deviceForLaunch = await _waitForDeviceToBecomeReachable(
             udid: unreachable.udid,
@@ -904,7 +909,8 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
   Duration deviceWaitDelayFactor = const Duration(seconds: 1);
 
   /// Polls devicectl until the device with [udid] is reachable, or returns
-  /// `null` once the attempts run out.
+  /// `null` once the attempts run out or devicectl fails in a way retrying
+  /// cannot fix.
   ///
   /// This waits rather than prompting so a locked phone behaves the same way
   /// with and without a terminal. Unlocking it is the user's move either way,
@@ -925,7 +931,8 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
         delayFactor: deviceWaitDelayFactor,
         maxDelay: const Duration(seconds: 2),
       );
-    } on Exception {
+    } on Exception catch (error, stackTrace) {
+      logger.detail('waiting for device $udid gave up: $error $stackTrace');
       return null;
     }
   }

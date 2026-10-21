@@ -1943,13 +1943,13 @@ channel: ${track.channel}
         test('says what it is waiting for, then that it gave up', () async {
           await runWithOverrides(command.run);
           verify(
-            () => progress.update(
+            () => logger.progress(
               any(
                 that: stringContainsInOrder([
+                  'Waiting for',
                   'Locked iPhone',
                   '17.4.1',
-                  'paired but unreachable',
-                  'waiting',
+                  'reachable',
                 ]),
               ),
             ),
