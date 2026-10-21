@@ -13,12 +13,31 @@ void main() {
         size: 42,
         hash: 'sha256:1234567890',
         podfileLockHash: 'podfile-lock-hash',
+        packageResolvedHash: 'package-resolved-hash',
+        nativePluginsHash: 'native-plugins-hash',
         canSideload: true,
       );
       expect(
         ReleaseArtifact.fromJson(artifact.toJson()).toJson(),
         equals(artifact.toJson()),
       );
+    });
+
+    test('parses a response without package_resolved_hash', () {
+      const artifact = ReleaseArtifact(
+        id: 1,
+        releaseId: 1,
+        arch: 'aarch64',
+        platform: ReleasePlatform.ios,
+        url: 'https://example.com',
+        size: 42,
+        hash: 'sha256:1234567890',
+        podfileLockHash: 'podfile-lock-hash',
+        canSideload: true,
+      );
+      final json = artifact.toJson();
+      expect(json.containsKey('package_resolved_hash'), isFalse);
+      expect(ReleaseArtifact.fromJson(json).packageResolvedHash, isNull);
     });
 
     // Intentionally removed: the handwritten ReleaseArtifact overrode

@@ -19,6 +19,8 @@ class CreateReleaseArtifactRequest {
     required this.size,
     this.canSideload,
     this.podfileLockHash,
+    this.packageResolvedHash,
+    this.nativePluginsHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactRequest].
@@ -34,6 +36,8 @@ class CreateReleaseArtifactRequest {
         canSideload: json['can_sideload'] as bool?,
         size: json['size'] as int,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        packageResolvedHash: json['package_resolved_hash'] as String?,
+        nativePluginsHash: json['native_plugins_hash'] as String?,
       ),
     );
   }
@@ -67,9 +71,19 @@ class CreateReleaseArtifactRequest {
   /// The size of the artifact in bytes.
   final int size;
 
-  /// The hash of the Podfile.lock file used to create this artifact (iOS
-  /// only).
+  /// sha256 of the CocoaPods Podfile.lock used to create the artifact (iOS
+  /// and macOS only).
   final String? podfileLockHash;
+
+  /// sha256 of the pins in the Swift Package Manager Package.resolved used to
+  /// create the artifact, or `none` if there was no Package.resolved (iOS and
+  /// macOS only).
+  final String? packageResolvedHash;
+
+  /// sha256 of the Flutter plugins with native code for the platform and
+  /// their pubspec.lock entries (versions and sources), or `none` if there
+  /// were none (iOS and macOS only).
+  final String? nativePluginsHash;
 
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -81,6 +95,8 @@ class CreateReleaseArtifactRequest {
       'can_sideload': ?canSideload,
       'size': size,
       'podfile_lock_hash': ?podfileLockHash,
+      'package_resolved_hash': ?packageResolvedHash,
+      'native_plugins_hash': ?nativePluginsHash,
     };
   }
 
@@ -93,6 +109,8 @@ class CreateReleaseArtifactRequest {
     canSideload,
     size,
     podfileLockHash,
+    packageResolvedHash,
+    nativePluginsHash,
   ]);
 
   @override
@@ -105,6 +123,8 @@ class CreateReleaseArtifactRequest {
         filename == other.filename &&
         canSideload == other.canSideload &&
         size == other.size &&
-        podfileLockHash == other.podfileLockHash;
+        podfileLockHash == other.podfileLockHash &&
+        packageResolvedHash == other.packageResolvedHash &&
+        nativePluginsHash == other.nativePluginsHash;
   }
 }

@@ -282,6 +282,8 @@ class CodePushClient {
     required String hash,
     String? hashSignature,
     String? podfileLockHash,
+    String? packageResolvedHash,
+    String? nativePluginsHash,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -295,6 +297,8 @@ class CodePushClient {
       'size': '${file.length}',
       'hash_signature': ?hashSignature,
       'podfile_lock_hash': ?podfileLockHash,
+      'package_resolved_hash': ?packageResolvedHash,
+      'native_plugins_hash': ?nativePluginsHash,
     });
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
@@ -325,6 +329,8 @@ class CodePushClient {
     required String hash,
     required bool canSideload,
     required String? podfileLockHash,
+    String? packageResolvedHash,
+    String? nativePluginsHash,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -345,6 +351,8 @@ class CodePushClient {
         canSideload: canSideload,
         filename: p.basename(artifactPath),
         podfileLockHash: podfileLockHash,
+        packageResolvedHash: packageResolvedHash,
+        nativePluginsHash: nativePluginsHash,
       ).toJson().entries)
         if (entry.value != null) entry.key: '${entry.value}',
     };

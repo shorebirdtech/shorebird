@@ -19,6 +19,8 @@ class ReleaseArtifact {
     required this.url,
     required this.canSideload,
     this.podfileLockHash,
+    this.packageResolvedHash,
+    this.nativePluginsHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact].
@@ -35,6 +37,8 @@ class ReleaseArtifact {
         size: json['size'] as int,
         url: json['url'] as String,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        packageResolvedHash: json['package_resolved_hash'] as String?,
+        nativePluginsHash: json['native_plugins_hash'] as String?,
         canSideload: json['can_sideload'] as bool,
       ),
     );
@@ -70,8 +74,19 @@ class ReleaseArtifact {
   /// The url of the artifact.
   final String url;
 
-  /// sha256 of the Podfile.lock used to create the artifact (iOS only).
+  /// sha256 of the CocoaPods Podfile.lock used to create the artifact (iOS
+  /// and macOS only).
   final String? podfileLockHash;
+
+  /// sha256 of the pins in the Swift Package Manager Package.resolved used to
+  /// create the artifact, or `none` if there was no Package.resolved (iOS and
+  /// macOS only).
+  final String? packageResolvedHash;
+
+  /// sha256 of the Flutter plugins with native code for the platform and
+  /// their pubspec.lock entries (versions and sources), or `none` if there
+  /// were none (iOS and macOS only).
+  final String? nativePluginsHash;
 
   /// Whether the artifact can be sideloaded onto a device.
   final bool canSideload;
@@ -87,6 +102,8 @@ class ReleaseArtifact {
       'size': size,
       'url': url,
       'podfile_lock_hash': ?podfileLockHash,
+      'package_resolved_hash': ?packageResolvedHash,
+      'native_plugins_hash': ?nativePluginsHash,
       'can_sideload': canSideload,
     };
   }
@@ -101,6 +118,8 @@ class ReleaseArtifact {
     size,
     url,
     podfileLockHash,
+    packageResolvedHash,
+    nativePluginsHash,
     canSideload,
   ]);
 
@@ -116,6 +135,8 @@ class ReleaseArtifact {
         size == other.size &&
         url == other.url &&
         podfileLockHash == other.podfileLockHash &&
+        packageResolvedHash == other.packageResolvedHash &&
+        nativePluginsHash == other.nativePluginsHash &&
         canSideload == other.canSideload;
   }
 }

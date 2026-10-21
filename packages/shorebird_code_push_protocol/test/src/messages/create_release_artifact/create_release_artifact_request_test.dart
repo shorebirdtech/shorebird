@@ -17,5 +17,25 @@ void main() {
         equals(request.toJson()),
       );
     });
+
+    test('can be (de)serialized with native lockfile hashes', () {
+      const request = CreateReleaseArtifactRequest(
+        arch: 'arm64',
+        platform: ReleasePlatform.ios,
+        hash: '1234',
+        size: 9876,
+        filename: 'Runner.xcarchive.zip',
+        podfileLockHash: 'podfile-lock-hash',
+        packageResolvedHash: 'package-resolved-hash',
+        nativePluginsHash: 'native-plugins-hash',
+      );
+      final json = request.toJson();
+      expect(json['package_resolved_hash'], equals('package-resolved-hash'));
+      expect(
+        json['native_plugins_hash'],
+        equals('native-plugins-hash'),
+      );
+      expect(CreateReleaseArtifactRequest.fromJson(json), equals(request));
+    });
   });
 }

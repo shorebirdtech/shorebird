@@ -412,6 +412,49 @@ void main() {
         });
       });
 
+      group('when a package resolved hash is provided', () {
+        const packageResolvedHash = 'package-resolved-hash';
+
+        test('makes the correct request', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync();
+
+          try {
+            await codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              patchId: patchId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              packageResolvedHash: packageResolvedHash,
+              nativePluginsHash: 'native-plugins-hash',
+            );
+          } on Exception {
+            // ignore
+          }
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.MultipartRequest;
+          expect(request.method, equals('POST'));
+          expect(
+            request.url,
+            equals(v1('apps/$appId/patches/$patchId/artifacts')),
+          );
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+          expect(
+            request.fields['package_resolved_hash'],
+            equals(packageResolvedHash),
+          );
+          expect(
+            request.fields['native_plugins_hash'],
+            equals('native-plugins-hash'),
+          );
+        });
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
@@ -753,6 +796,53 @@ void main() {
             'can_sideload': 'true',
             'size': '$size',
             'podfile_lock_hash': podfileLockHash,
+          });
+        });
+      });
+
+      group('when packageResolvedHash is provided', () {
+        test('makes the correct request', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync()
+            ..writeAsStringSync('hello');
+
+          try {
+            await codePushClient.createReleaseArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              canSideload: canSideload,
+              podfileLockHash: podfileLockHash,
+              packageResolvedHash: 'package-resolved-hash',
+              nativePluginsHash: 'native-plugins-hash',
+            );
+          } on Exception {
+            // ignore
+          }
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.MultipartRequest;
+          expect(request.method, equals('POST'));
+          expect(
+            request.url,
+            equals(v1('apps/$appId/releases/$releaseId/artifacts')),
+          );
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+          expect(request.fields, <String, String>{
+            'arch': arch,
+            'platform': platform.name,
+            'hash': hash,
+            'filename': 'release.txt',
+            'can_sideload': 'true',
+            'size': '$size',
+            'podfile_lock_hash': podfileLockHash,
+            'package_resolved_hash': 'package-resolved-hash',
+            'native_plugins_hash': 'native-plugins-hash',
           });
         });
       });
