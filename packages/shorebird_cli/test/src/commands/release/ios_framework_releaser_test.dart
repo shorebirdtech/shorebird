@@ -588,9 +588,9 @@ Your next step is to add the .xcframework files found in the ${lightCyan.wrap(re
 
 To do this:
     1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
-    2. Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project.
+    2. Embed the App.xcframework and ShorebirdFlutter.xcframework in your Xcode project.
 
-Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
+Instructions for these steps can be found at https://docs.shorebird.dev/code-push/guides/add-to-app/ios/#embed-the-flutter-module-in-your-ios-app.
 '''),
         );
       });
