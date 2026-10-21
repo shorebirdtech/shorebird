@@ -375,6 +375,29 @@ void main() {
         },
       );
 
+      test('forwards the target to buildIosFramework', () async {
+        when(
+          () => artifactBuilder.buildIosFramework(
+            target: any(named: 'target'),
+            args: any(named: 'args'),
+          ),
+        ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+        iosFrameworkReleaser = IosFrameworkReleaser(
+          argResults: argResults,
+          flavor: null,
+          target: 'lib/main_prod.dart',
+        );
+
+        await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+        verify(
+          () => artifactBuilder.buildIosFramework(
+            target: 'lib/main_prod.dart',
+            args: [],
+          ),
+        ).called(1);
+      });
+
       group('when --obfuscate is passed', () {
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);

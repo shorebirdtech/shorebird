@@ -216,7 +216,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   late String? flavor = results.findOption('flavor', argParser: argParser);
 
   /// The target script, if provided.
-  late String? target = results.findOption('target', argParser: argParser);
+  late final String? target = resolveTarget();
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
@@ -233,12 +233,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @override
   Future<int> run() async {
-    if (results.releaseTypes.isEmpty) {
-      logger.err(
-        '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
-      );
-      return ExitCode.usage.code;
-    }
+    final releaseTypes = releaseTypesOrUsageError(siblingCommand: 'patches');
 
     final ddMaxBytes = results[CommonArguments.ddMaxBytesArg.name] as String?;
     if (ddMaxBytes != null && (int.tryParse(ddMaxBytes) ?? -1) < 0) {
@@ -256,7 +251,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
 
     final published = <PublishedPatch>[];
-    for (final releaseType in results.releaseTypes) {
+    for (final releaseType in releaseTypes) {
       published.add(await createPatch(_resolvePatcher(releaseType)));
     }
 

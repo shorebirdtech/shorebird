@@ -181,18 +181,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   @override
   Future<int> run() async {
-    if (results.releaseTypes.isEmpty) {
-      logger.err(
-        '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
-      );
-      return ExitCode.usage.code;
-    }
+    final releaseTypes = releaseTypesOrUsageError(
+      siblingCommand: 'releases',
+      versionHint: _versionHint,
+    );
 
     // One Release can carry several platforms, so releases are collected by
     // id: each platform's pass re-fetches the release, and the last fetch is
     // the one whose platform statuses are complete.
     final releases = <int, Release>{};
-    for (final releaseType in results.releaseTypes) {
+    for (final releaseType in releaseTypes) {
       final release = await createRelease(_resolveReleaser(releaseType));
       releases[release.id] = release;
     }
@@ -201,7 +199,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       emitJsonSuccess({
         'app_id': appId,
         'platforms': [
-          for (final type in results.releaseTypes) type.releasePlatform.name,
+          for (final type in releaseTypes) type.releasePlatform.name,
         ],
         'releases': [for (final release in releases.values) release.toJson()],
       });
@@ -257,8 +255,23 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   /// The build flavor, if provided.
   String? get flavor => results.findOption('flavor', argParser: argParser);
 
+  /// `--release-version` is only valid for aar and ios-framework releases;
+  /// other platforms take their version from `--build-name` and
+  /// `--build-number` (or the pubspec).
+  String? _versionHint(String version) {
+    final platform = results.rest.first;
+    if (platform == ReleaseType.aar.cliName ||
+        platform == ReleaseType.iosFramework.cliName) {
+      return null;
+    }
+    final plus = version.indexOf('+');
+    if (plus == -1) return 'Did you mean --build-name=$version?';
+    return 'Did you mean --build-name=${version.substring(0, plus)} '
+        '--build-number=${version.substring(plus + 1)}?';
+  }
+
   /// The target script, if provided.
-  String? get target => results.findOption('target', argParser: argParser);
+  late final String? target = resolveTarget();
 
   /// The flutter version specified.
   String get flutterVersionArg => results['flutter-version'] as String;
