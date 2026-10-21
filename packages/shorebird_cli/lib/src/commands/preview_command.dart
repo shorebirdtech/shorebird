@@ -10,6 +10,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+import 'package:retry/retry.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -31,6 +32,15 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
+
+/// Signals that the device being waited on has not come back yet, so [retry]
+/// schedules another look.
+class _DeviceStillUnreachable implements Exception {}
+
+/// How many times to look for a paired device to come back before giving up.
+/// With the default delay factor this spends roughly 40 seconds, which covers
+/// walking over and unlocking the phone without stalling a scripted run.
+const _deviceWaitMaxAttempts = 20;
 
 /// {@template preview_command}
 /// `shorebird preview` command.
@@ -774,7 +784,7 @@ This is only applicable when previewing Android releases.''',
 
     try {
       final deviceLocateProgress = logger.progress('Locating device for run');
-      final AppleDevice? deviceForLaunch;
+      AppleDevice? deviceForLaunch;
       // Try to find a device using devicectl first. If that fails, fall back to
       // ios-deploy.
       if (deviceId != null) {
@@ -786,37 +796,44 @@ This is only applicable when previewing Android releases.''',
         deviceForLaunch = await devicectl.deviceForLaunch();
       }
 
-      final shouldUseDeviceCtl = deviceForLaunch != null;
-
       // Before falling back to ios-deploy, check if devicectl knows about a
       // matching iOS 17+ device that is paired but currently unreachable
       // (locked, screen off, or off the local network when wireless debugging
       // is in use). ios-deploy does not work with iOS 17 or later, so the
-      // fallback would just produce an opaque failure. Surface a hint
+      // fallback would just produce an opaque failure. Wait for the device
       // instead.
-      if (!shouldUseDeviceCtl) {
+      if (deviceForLaunch == null) {
         final unreachable = await _findUnreachableIos17OrLaterDevice(
           deviceId: deviceId,
         );
         if (unreachable != null) {
-          deviceLocateProgress.fail(
-            '${unreachable.name} (iOS '
-            '${unreachable.osVersionString ?? 'unknown'}) is paired but '
-            'currently unreachable.',
+          final description =
+              '${unreachable.name} (iOS '
+              '${unreachable.osVersionString ?? 'unknown'})';
+          deviceLocateProgress.update(
+            '$description is paired but unreachable, waiting for it',
           );
           logger.info(
             '''
 This usually means the device is locked, or that wireless debugging dropped because the screen turned off.
 
-To preview on this device:
-  • Connect it via USB, or
-  • Unlock the device and make sure it is on the same Wi-Fi network as this Mac.
+Unlock the device, or connect it via USB, and the preview will continue on its own.
 
 Skipping the ios-deploy fallback because it does not support iOS 17 or later.''',
           );
-          return ExitCode.software.code;
+          deviceForLaunch = await _waitForDeviceToBecomeReachable(
+            udid: unreachable.udid,
+          );
+          if (deviceForLaunch == null) {
+            deviceLocateProgress.fail(
+              '$description did not become reachable.',
+            );
+            return ExitCode.software.code;
+          }
         }
       }
+
+      final shouldUseDeviceCtl = deviceForLaunch != null;
 
       final progressCompleteMessage = deviceForLaunch != null
           ? 'Using device ${deviceForLaunch.name}'
@@ -879,6 +896,38 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
       return unreachableModern.firstWhereOrNull((d) => d.udid == deviceId);
     }
     return unreachableModern.firstOrNull;
+  }
+
+  /// The delay between looks while waiting for a paired device to come back,
+  /// doubling after every attempt up to two seconds. Settable for testing.
+  @visibleForTesting
+  Duration deviceWaitDelayFactor = const Duration(seconds: 1);
+
+  /// Polls devicectl until the device with [udid] is reachable, or returns
+  /// `null` once the attempts run out.
+  ///
+  /// This waits rather than prompting so a locked phone behaves the same way
+  /// with and without a terminal. Unlocking it is the user's move either way,
+  /// and a prompt would hang a scripted run where this times out.
+  Future<AppleDevice?> _waitForDeviceToBecomeReachable({
+    required String udid,
+  }) async {
+    try {
+      return await retry(
+        () async {
+          final devices = await devicectl.listAvailableIosDevices();
+          final device = devices.firstWhereOrNull((d) => d.udid == udid);
+          if (device == null) throw _DeviceStillUnreachable();
+          return device;
+        },
+        retryIf: (e) => e is _DeviceStillUnreachable || e is DevicectlException,
+        maxAttempts: _deviceWaitMaxAttempts,
+        delayFactor: deviceWaitDelayFactor,
+        maxDelay: const Duration(seconds: 2),
+      );
+    } on Exception {
+      return null;
+    }
   }
 
   /// Resolves the artifact path for the given parameters, and records the

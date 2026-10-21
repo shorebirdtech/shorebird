@@ -1921,6 +1921,11 @@ channel: ${track.channel}
           when(
             () => devicectl.listAllIosDevices(),
           ).thenAnswer((_) async => [unreachableDevice]);
+          // The device never comes back, so the wait exhausts its attempts.
+          when(
+            () => devicectl.listAvailableIosDevices(),
+          ).thenAnswer((_) async => []);
+          command.deviceWaitDelayFactor = Duration.zero;
           setupIOSShorebirdYaml();
         });
 
@@ -1935,16 +1940,27 @@ channel: ${track.channel}
           );
         });
 
-        test('shows the device name and OS version in the failure', () async {
+        test('says what it is waiting for, then that it gave up', () async {
           await runWithOverrides(command.run);
+          verify(
+            () => progress.update(
+              any(
+                that: stringContainsInOrder([
+                  'Locked iPhone',
+                  '17.4.1',
+                  'paired but unreachable',
+                  'waiting',
+                ]),
+              ),
+            ),
+          ).called(1);
           verify(
             () => progress.fail(
               any(
                 that: stringContainsInOrder([
                   'Locked iPhone',
                   '17.4.1',
-                  'paired',
-                  'unreachable',
+                  'did not become reachable',
                 ]),
               ),
             ),
@@ -1959,8 +1975,9 @@ channel: ${track.channel}
               () => logger.info(
                 any(
                   that: stringContainsInOrder([
-                    'Connect it via USB',
                     'Unlock the device',
+                    'connect it via USB',
+                    'continue on its own',
                     'ios-deploy',
                     'iOS 17',
                   ]),
@@ -1969,6 +1986,30 @@ channel: ${track.channel}
             ).called(1);
           },
         );
+
+        group('when the device becomes reachable while waiting', () {
+          setUp(() {
+            final reachable = MockAppleDevice();
+            when(() => reachable.name).thenReturn('Locked iPhone');
+            when(() => reachable.udid).thenReturn('UNREACHABLE-UDID');
+            when(() => reachable.isAvailable).thenReturn(true);
+            when(() => devicectl.listAvailableIosDevices()).thenAnswer(
+              (_) async => [reachable],
+            );
+          });
+
+          test('installs on it instead of giving up', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.success.code));
+            verify(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: any(named: 'runnerAppDirectory'),
+                device: any(named: 'device'),
+              ),
+            ).called(1);
+            verifyNever(() => progress.fail(any()));
+          });
+        });
 
         group('when --device-id matches the unreachable device', () {
           setUp(() {
