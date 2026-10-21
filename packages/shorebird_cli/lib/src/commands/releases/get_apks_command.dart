@@ -49,7 +49,14 @@ class GetApksCommand extends ShorebirdCommand with AppScopedCommand {
 
   @override
   String get description =>
-      'Generates apk(s) for the specified release version.';
+      'Generates apk(s) for the specified release version.\n\n'
+      'Writes to the project build directory unless --out is given, which is '
+      'required when running outside a Shorebird project. Pass --no-universal '
+      'for split-per-ABI apks instead of one that runs anywhere.\n\n'
+      'Examples:\n'
+      '  shorebird releases get-apks --release-version 1.0.0+1\n'
+      '  shorebird releases get-apks --release-version 1.0.0+1 --out ./build\n'
+      '  shorebird releases get-apks --release-version 1.0.0+1 --no-universal';
 
   /// The app ID, from `--app-id` or shorebird.yaml. Set by [run].
   late final String appId;
