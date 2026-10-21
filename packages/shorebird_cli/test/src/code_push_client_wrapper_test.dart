@@ -2774,6 +2774,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
             podfileLockHash: any(named: 'podfileLockHash'),
+            packageResolvedHash: any(named: 'packageResolvedHash'),
+            nativePluginsHash: any(named: 'nativePluginsHash'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -2789,6 +2791,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
             podfileLockHash: any(named: 'podfileLockHash'),
+            packageResolvedHash: any(named: 'packageResolvedHash'),
+            nativePluginsHash: any(named: 'nativePluginsHash'),
           ),
         ).thenAnswer((_) async {});
         setUpProjectRoot();
@@ -2801,6 +2805,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             runnerPath: p.join(projectRoot.path, runnerPath),
             isCodesigned: true,
             podfileLockHash: podfileLockHash,
+            packageResolvedHash: 'package-resolved-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         );
 
@@ -2819,6 +2825,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             hash: any(named: 'hash'),
             canSideload: false,
             podfileLockHash: podfileLockHash,
+            packageResolvedHash: 'package-resolved-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         ).called(1);
         verify(
@@ -2834,6 +2842,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             hash: any(named: 'hash'),
             canSideload: true,
             podfileLockHash: podfileLockHash,
+            packageResolvedHash: 'package-resolved-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         ).called(1);
       });
@@ -2852,6 +2862,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: true,
               podfileLockHash: podfileLockHash,
+              packageResolvedHash: null,
+              nativePluginsHash: null,
             ),
           ),
         );
@@ -2872,6 +2884,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
               podfileLockHash: podfileLockHash,
+              packageResolvedHash: null,
+              nativePluginsHash: null,
             ),
           );
 
@@ -2982,6 +2996,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
             podfileLockHash: any(named: 'podfileLockHash'),
+            packageResolvedHash: any(named: 'packageResolvedHash'),
+            nativePluginsHash: any(named: 'nativePluginsHash'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -3004,6 +3020,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: releaseId,
               appPath: p.join(projectRoot.path, appPath),
               podfileLockHash: 'podfile-lock-hash',
+              packageResolvedHash: 'package-resolved-hash',
+              nativePluginsHash: 'native-plugins-hash',
             ),
           ),
           completes,
@@ -3021,6 +3039,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             hash: any(named: 'hash'),
             canSideload: true,
             podfileLockHash: 'podfile-lock-hash',
+            packageResolvedHash: 'package-resolved-hash',
+            nativePluginsHash: 'native-plugins-hash',
           ),
         ).called(1);
       });
@@ -3035,6 +3055,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: releaseId,
               appPath: p.join(projectRoot.path, appPath),
               podfileLockHash: 'podfile-lock-hash',
+              packageResolvedHash: null,
+              nativePluginsHash: null,
             ),
           ),
         );
@@ -3669,6 +3691,54 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               arch: arch.arch,
               platform: releasePlatform,
               hash: patchArtifactBundle.hash,
+            ),
+          ).called(1);
+        });
+
+        test('forwards the native lockfile hashes', () async {
+          when(
+            () => codePushClient.createPatchArtifact(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              artifactPath: any(named: 'artifactPath'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+              packageResolvedHash: any(named: 'packageResolvedHash'),
+              nativePluginsHash: any(named: 'nativePluginsHash'),
+            ),
+          ).thenAnswer((_) async {});
+          const bundle = PatchArtifactBundle(
+            arch: 'aarch64',
+            path: 'path',
+            hash: 'hash',
+            size: 4,
+            podfileLockHash: 'podfile-lock-hash',
+            packageResolvedHash: 'package-resolved-hash',
+            nativePluginsHash: 'native-plugins-hash',
+          );
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createPatchArtifacts(
+              appId: appId,
+              patch: patch,
+              platform: ReleasePlatform.ios,
+              patchArtifactBundles: {Arch.arm64: bundle},
+            ),
+          );
+
+          verify(
+            () => codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: bundle.path,
+              patchId: patchId,
+              arch: bundle.arch,
+              platform: ReleasePlatform.ios,
+              hash: bundle.hash,
+              podfileLockHash: 'podfile-lock-hash',
+              packageResolvedHash: 'package-resolved-hash',
+              nativePluginsHash: 'native-plugins-hash',
             ),
           ).called(1);
         });

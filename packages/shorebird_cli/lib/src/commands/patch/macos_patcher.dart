@@ -38,7 +38,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 ///   Podfile.lock hash and codesigning.
 /// {@endtemplate}
 class MacosPatcher extends Patcher
-    with ApplePatcherMixin, ApplePodfileLockPatcherMixin {
+    with ApplePatcherMixin, AppleLockFilesPatcherMixin {
   /// {@macro macos_patcher}
   MacosPatcher({
     required super.argParser,
@@ -75,6 +75,16 @@ class MacosPatcher extends Patcher
 
   @override
   String get podfileLockRelativePath => 'macos/Podfile.lock';
+
+  @override
+  String get localPackageResolvedHash => shorebirdEnv.macosPackageResolvedHash;
+
+  @override
+  String get packageResolvedRelativePath =>
+      ShorebirdEnv.packageResolvedRelativePath('macos');
+
+  @override
+  String get localNativePluginsHash => shorebirdEnv.macosNativePluginsHash;
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
@@ -178,6 +188,8 @@ class MacosPatcher extends Patcher
         patchArtifactPath: _arm64AotOutputPath,
         progress: createDiffProgress,
         podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+        packageResolvedHash: shorebirdEnv.macosPackageResolvedHash,
+        nativePluginsHash: shorebirdEnv.macosNativePluginsHash,
       );
       final x64Bundle = await createDiffBundle(
         arch: Arch.x86_64,
@@ -185,6 +197,8 @@ class MacosPatcher extends Patcher
         patchArtifactPath: _x64AotOutputPath,
         progress: createDiffProgress,
         podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+        packageResolvedHash: shorebirdEnv.macosPackageResolvedHash,
+        nativePluginsHash: shorebirdEnv.macosNativePluginsHash,
       );
       createDiffProgress.complete();
 

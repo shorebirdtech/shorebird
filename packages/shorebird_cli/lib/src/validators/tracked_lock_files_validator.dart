@@ -30,8 +30,10 @@ class TrackedLockFilesValidator extends Validator {
 
     final lockFilePaths = [
       'pubspec.lock',
-      p.join('ios', 'Podfile.lock'),
-      p.join('macos', 'Podfile.lock'),
+      for (final platform in ['ios', 'macos']) ...[
+        p.join(platform, 'Podfile.lock'),
+        ShorebirdEnv.packageResolvedRelativePath(platform),
+      ],
     ];
 
     final warnings = <ValidationIssue>[];

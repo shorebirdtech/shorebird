@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:cli_util/cli_util.dart';
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -12,6 +14,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:yaml/yaml.dart';
 
 /// Exception thrown when the Shorebird cache appears to be corrupted.
 class CacheCorruptedException implements Exception {
@@ -194,6 +197,185 @@ class ShorebirdEnv {
     if (!macosPodfileLockFile.existsSync()) return null;
     return sha256.convert(macosPodfileLockFile.readAsBytesSync()).toString();
   }
+
+  /// The Swift Package Manager lockfile for this project's iOS app.
+  File get iosPackageResolvedFile => packageResolvedFile('ios');
+
+  /// The hash of the pins in [iosPackageResolvedFile], or
+  /// [noFileHash] if the file does not exist. See
+  /// [packageResolvedHash].
+  String get iosPackageResolvedHash =>
+      packageResolvedHash(iosPackageResolvedFile) ?? noFileHash;
+
+  /// The Swift Package Manager lockfile for this project's macOS app.
+  File get macosPackageResolvedFile => packageResolvedFile('macos');
+
+  /// The hash of the pins in [macosPackageResolvedFile], or
+  /// [noFileHash] if the file does not exist. See
+  /// [packageResolvedHash].
+  String get macosPackageResolvedHash =>
+      packageResolvedHash(macosPackageResolvedFile) ?? noFileHash;
+
+  /// The hash recorded for a Package.resolved, or a set of native plugins,
+  /// that an iOS or macOS app doesn't have. Recording it, rather than nothing, tells a
+  /// later patch that the release was made by a CLI that records these, so an
+  /// app that adds Swift Package Manager or CocoaPods after the release is
+  /// caught.
+  static const noFileHash = 'none';
+
+  /// The hash of this project's Flutter plugins with native iOS code, or
+  /// [noFileHash] if it has none. See [nativePluginsHash].
+  String get iosNativePluginsHash => nativePluginsHash('ios');
+
+  /// The hash of this project's Flutter plugins with native macOS code, or
+  /// [noFileHash] if it has none. See [nativePluginsHash].
+  String get macosNativePluginsHash => nativePluginsHash('macos');
+
+  /// The hash of this project's Flutter plugins with native code for
+  /// [platform] (`ios` or `macos`, as keyed in `.flutter-plugins-dependencies`)
+  /// and their pubspec.lock entries, or [noFileHash] if it has none.
+  ///
+  /// Package.resolved pins only remote packages, and Flutter adds plugins
+  /// that use Swift Package Manager as local packages, so a plugin version
+  /// change shows up here and not there. The plugins are the ones Flutter
+  /// lists for [platform] in `.flutter-plugins-dependencies`, less dev
+  /// dependencies and plugins without native code. Each counts with its
+  /// pubspec.lock entry (version and source), which, unlike the paths Flutter
+  /// writes, is the same on every machine.
+  String nativePluginsHash(String platform) {
+    final projectRoot = getFlutterProjectRoot()!;
+    final dependencies = File(
+      p.join(projectRoot.path, '.flutter-plugins-dependencies'),
+    );
+    if (!dependencies.existsSync()) return noFileHash;
+    final Object? json;
+    try {
+      json = jsonDecode(dependencies.readAsStringSync());
+    } on FormatException {
+      return noFileHash;
+    }
+    final plugins = switch (json) {
+      {'plugins': final Map<String, dynamic> byPlatform}
+          when byPlatform[platform] is List<dynamic> =>
+        byPlatform[platform] as List<dynamic>,
+      _ => const <dynamic>[],
+    };
+    final names = {
+      for (final plugin in plugins)
+        if (plugin case {'name': final String name}
+            when plugin['native_build'] != false &&
+                plugin['dev_dependency'] != true)
+          name,
+    }.sorted();
+    if (names.isEmpty) return noFileHash;
+
+    final lockedPackages = _lockedPackages(projectRoot);
+    final entries = [
+      for (final name in names)
+        jsonEncode([
+          name,
+          _sortKeys(_withoutDependencyKind(lockedPackages[name])),
+        ]),
+    ];
+    return sha256.convert(utf8.encode(entries.join('\n'))).toString();
+  }
+
+  /// The `packages` of the pubspec.lock that resolves [projectRoot]: its own,
+  /// or, in a pub workspace, the workspace root's. Empty if there is none or
+  /// it can't be read.
+  static Map<String, dynamic> _lockedPackages(Directory projectRoot) {
+    var directory = projectRoot.absolute;
+    while (true) {
+      final lockFile = File(p.join(directory.path, 'pubspec.lock'));
+      if (lockFile.existsSync()) {
+        try {
+          final yaml = loadYaml(lockFile.readAsStringSync());
+          if (yaml case {'packages': final YamlMap packages}) {
+            return jsonDecode(jsonEncode(packages)) as Map<String, dynamic>;
+          }
+        } on YamlException {
+          // Fall through: count the plugins by name alone.
+        }
+        return {};
+      }
+      if (directory.parent.path == directory.path) return {};
+      directory = directory.parent;
+    }
+  }
+
+  /// [entry] without its `dependency` (direct or transitive), which changes
+  /// without the package changing.
+  static Object? _withoutDependencyKind(Object? entry) => switch (entry) {
+    final Map<String, dynamic> map => {
+      for (final MapEntry(:key, :value) in map.entries)
+        if (key != 'dependency') key: value,
+    },
+    _ => entry,
+  };
+
+  /// The project-relative path of the Package.resolved that Xcode writes with
+  /// the pinned versions of the Swift Package Manager dependencies of the
+  /// Apple app in [platformDirectory] (`ios` or `macos`). Like the
+  /// Podfile.lock check, this assumes the workspace is Runner.xcworkspace.
+  static String packageResolvedRelativePath(String platformDirectory) => p.join(
+    platformDirectory,
+    'Runner.xcworkspace',
+    'xcshareddata',
+    'swiftpm',
+    'Package.resolved',
+  );
+
+  /// See [packageResolvedRelativePath].
+  File packageResolvedFile(String platformDirectory) => File(
+    p.join(
+      getFlutterProjectRoot()!.path,
+      packageResolvedRelativePath(platformDirectory),
+    ),
+  );
+
+  /// The hash of the pinned packages in the Package.resolved [file], or null
+  /// if it does not exist. Only the pins count: Xcode also writes fields that
+  /// change without any native dependency changing, such as `originHash`,
+  /// which tracks the manifests. (A move between format versions with
+  /// different pin fields, v1 to v2, still changes the hash.) A file that
+  /// isn't valid Package.resolved JSON is hashed whole.
+  ///
+  /// Package.resolved pins only remote packages. Flutter adds plugins that
+  /// support Swift Package Manager as local packages, so a plugin's own
+  /// native code is not covered here.
+  static String? packageResolvedHash(File file) {
+    if (!file.existsSync()) return null;
+    final bytes = file.readAsBytesSync();
+    final pins = _packageResolvedPins(utf8.decode(bytes, allowMalformed: true));
+    return sha256.convert(pins == null ? bytes : utf8.encode(pins)).toString();
+  }
+
+  static String? _packageResolvedPins(String contents) {
+    final Object? json;
+    try {
+      json = jsonDecode(contents);
+    } on FormatException {
+      return null;
+    }
+    final pins = switch (json) {
+      {'pins': final List<dynamic> pins} => pins,
+      // Format version 1 nests the pins under "object".
+      {'object': {'pins': final List<dynamic> pins}} => pins,
+      _ => null,
+    };
+    if (pins == null) return null;
+    final encoded = pins.map((pin) => jsonEncode(_sortKeys(pin))).toList()
+      ..sort();
+    return encoded.join('\n');
+  }
+
+  static Object? _sortKeys(Object? value) => switch (value) {
+    final Map<String, dynamic> map => {
+      for (final key in map.keys.sorted()) key: _sortKeys(map[key]),
+    },
+    final List<dynamic> list => list.map(_sortKeys).toList(),
+    _ => value,
+  };
 
   /// The build directory of the current shorebird project.
   Directory get buildDirectory {

@@ -141,6 +141,8 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
     required File releaseArtifactFile,
     required Directory releaseSupplementDir,
     String? podfileLockHash,
+    String? packageResolvedHash,
+    String? nativePluginsHash,
   }) async {
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
@@ -221,21 +223,37 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
         size: patchFileSize,
         hashSignature: hashSignature,
         podfileLockHash: podfileLockHash,
+        packageResolvedHash: packageResolvedHash,
+        nativePluginsHash: nativePluginsHash,
       ),
     };
   }
 }
 
-/// Adds Podfile.lock-based native-change detection to [ApplePatcherMixin].
-/// Implemented by iOS and macOS patchers; the iOS framework patcher doesn't
-/// emit a Podfile.lock.
-mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
+/// Adds native-change detection based on the native dependency lock files
+/// (CocoaPods' Podfile.lock and Swift Package Manager's Package.resolved) and
+/// the app's Flutter plugins with native code to [ApplePatcherMixin]. Implemented by iOS and macOS patchers; the iOS
+/// framework patcher doesn't emit a lockfile.
+mixin AppleLockFilesPatcherMixin on Patcher, ApplePatcherMixin {
   /// SHA-256 of the local Podfile.lock for this Apple platform, or null if
   /// no Podfile.lock exists.
   String? get localPodfileLockHash;
 
   /// Project-relative path of the Podfile.lock surfaced in the warning.
   String get podfileLockRelativePath;
+
+  /// The hash of the pins in the local Swift Package Manager Package.resolved
+  /// for this Apple platform, or [ShorebirdEnv.noFileHash] if
+  /// there is none. See [ShorebirdEnv.packageResolvedHash].
+  String get localPackageResolvedHash;
+
+  /// Project-relative path of the Package.resolved surfaced in the warning.
+  String get packageResolvedRelativePath;
+
+  /// The hash of this project's Flutter plugins with native code for this
+  /// Apple platform, or [ShorebirdEnv.noFileHash] if it has none. See
+  /// [ShorebirdEnv.nativePluginsHash].
+  String get localNativePluginsHash;
 
   @override
   Future<DiffStatus> assertUnpatchableDiffs({
@@ -245,8 +263,10 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
   }) async {
     // Check for diffs without warning about native changes, as Xcode builds
     // can be nondeterministic. So we still have some hope of alerting users of
-    // unpatchable native changes, we compare the Podfile.lock hash between the
-    // patch and the release.
+    // unpatchable native changes, we compare the Podfile.lock (CocoaPods) and
+    // Package.resolved (Swift Package Manager) hashes between the patch and
+    // the release. Each is checked only if the release recorded it; releases
+    // made before the CLI recorded packageResolvedHash skip that check.
     final diffStatus = await patchDiffChecker
         .confirmUnpatchableDiffsIfNecessary(
           localArchive: patchArchive,
@@ -259,11 +279,52 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
 
     if (!diffStatus.hasNativeChanges) return diffStatus;
 
-    if (releaseArtifact.podfileLockHash != null &&
-        localPodfileLockHash != releaseArtifact.podfileLockHash) {
+    // A CLI that records packageResolvedHash and nativePluginsHash records
+    // them for every iOS and macOS release, as noFileHash if the app had no
+    // such file or plugins. So for such a release, a null podfileLockHash
+    // means it had no Podfile.lock. Older releases have neither, and only
+    // their Podfile.lock is checked, as it was.
+    final recordsAll = releaseArtifact.packageResolvedHash != null;
+    final differences = [
+      ?_difference(
+        recorded: recordsAll || releaseArtifact.podfileLockHash != null,
+        releaseHash: releaseArtifact.podfileLockHash,
+        localHash: localPodfileLockHash,
+        gone:
+            'This project has no $podfileLockRelativePath, but the release was built with one.',
+        added:
+            'This project has a $podfileLockRelativePath, but the release was built without one.',
+        changed:
+            'Your $podfileLockRelativePath is different from the one used to build the release.',
+      ),
+      ?_difference(
+        recorded: recordsAll,
+        releaseHash: releaseArtifact.packageResolvedHash,
+        localHash: localPackageResolvedHash,
+        gone:
+            'This project has no $packageResolvedRelativePath, but the release was built with one.',
+        added:
+            'This project has a $packageResolvedRelativePath, but the release was built without one.',
+        changed:
+            'Your $packageResolvedRelativePath is different from the one used to build the release.',
+      ),
+      ?_difference(
+        recorded: releaseArtifact.nativePluginsHash != null,
+        releaseHash: releaseArtifact.nativePluginsHash,
+        localHash: localNativePluginsHash,
+        gone:
+            'This project has no Flutter plugins with native code, but the release was built with some.',
+        added:
+            'This project has Flutter plugins with native code, but the release was built without any.',
+        changed:
+            'The Flutter plugins with native code in this project, or their versions, are different from the ones used to build the release.',
+      ),
+    ];
+
+    if (differences.isNotEmpty) {
       logger.warn(
         '''
-Your $podfileLockRelativePath is different from the one used to build the release.
+${differences.join('\n')}
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
       );
 
@@ -279,5 +340,27 @@ This may indicate that the patch contains native changes, which cannot be applie
     }
 
     return diffStatus;
+  }
+
+  /// Returns [gone], [added] or [changed] for how [localHash] differs from
+  /// [releaseHash], or null if it doesn't or the release didn't record it
+  /// ([recorded] is false). A null or [ShorebirdEnv.noFileHash] hash means
+  /// there is no such file.
+  static String? _difference({
+    required bool recorded,
+    required String? releaseHash,
+    required String? localHash,
+    required String gone,
+    required String added,
+    required String changed,
+  }) {
+    String? orNull(String? hash) =>
+        hash == ShorebirdEnv.noFileHash ? null : hash;
+    final release = orNull(releaseHash);
+    final local = orNull(localHash);
+    if (!recorded || local == release) return null;
+    if (local == null) return gone;
+    if (release == null) return added;
+    return changed;
   }
 }

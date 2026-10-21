@@ -28,7 +28,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 class IosPatcher extends Patcher
     with
         ApplePatcherMixin,
-        ApplePodfileLockPatcherMixin,
+        AppleLockFilesPatcherMixin,
         AppleLinkerPatcherMixin {
   /// {@macro ios_patcher}
   IosPatcher({
@@ -58,6 +58,16 @@ class IosPatcher extends Patcher
 
   @override
   String get podfileLockRelativePath => 'ios/Podfile.lock';
+
+  @override
+  String get localPackageResolvedHash => shorebirdEnv.iosPackageResolvedHash;
+
+  @override
+  String get packageResolvedRelativePath =>
+      ShorebirdEnv.packageResolvedRelativePath('ios');
+
+  @override
+  String get localNativePluginsHash => shorebirdEnv.iosNativePluginsHash;
 
   @override
   Future<void> assertArgsAreValid() async =>
@@ -148,6 +158,8 @@ class IosPatcher extends Patcher
         releaseSupplementDir:
             supplementDirectory ?? fallbackSupplementDirectory!,
         podfileLockHash: shorebirdEnv.iosPodfileLockHash,
+        packageResolvedHash: shorebirdEnv.iosPackageResolvedHash,
+        nativePluginsHash: shorebirdEnv.iosNativePluginsHash,
       );
     } finally {
       releaseXcarchiveDirectory.deleteTemporarySync();

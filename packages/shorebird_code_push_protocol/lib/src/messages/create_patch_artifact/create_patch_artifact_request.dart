@@ -17,6 +17,8 @@ class CreatePatchArtifactRequest {
     required this.size,
     this.hashSignature,
     this.podfileLockHash,
+    this.packageResolvedHash,
+    this.nativePluginsHash,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchArtifactRequest].
@@ -30,6 +32,8 @@ class CreatePatchArtifactRequest {
         hash: json['hash'] as String,
         hashSignature: json['hash_signature'] as String?,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        packageResolvedHash: json['package_resolved_hash'] as String?,
+        nativePluginsHash: json['native_plugins_hash'] as String?,
         size: json['size'] as int,
       ),
     );
@@ -58,9 +62,19 @@ class CreatePatchArtifactRequest {
   /// the patch does not uses code signing.
   final String? hashSignature;
 
-  /// The sha256 hash of the Podfile.lock file, if a Podfile.lock file was
-  /// involved in the creation of the patch (iOS only).
+  /// sha256 of the CocoaPods Podfile.lock used to create the artifact (iOS
+  /// and macOS only).
   final String? podfileLockHash;
+
+  /// sha256 of the pins in the Swift Package Manager Package.resolved used to
+  /// create the artifact, or `none` if there was no Package.resolved (iOS and
+  /// macOS only).
+  final String? packageResolvedHash;
+
+  /// sha256 of the Flutter plugins with native code for the platform and
+  /// their pubspec.lock entries (versions and sources), or `none` if there
+  /// were none (iOS and macOS only).
+  final String? nativePluginsHash;
 
   /// The size of the artifact in bytes.
   final int size;
@@ -73,6 +87,8 @@ class CreatePatchArtifactRequest {
       'hash': hash,
       'hash_signature': ?hashSignature,
       'podfile_lock_hash': ?podfileLockHash,
+      'package_resolved_hash': ?packageResolvedHash,
+      'native_plugins_hash': ?nativePluginsHash,
       'size': size,
     };
   }
@@ -84,6 +100,8 @@ class CreatePatchArtifactRequest {
     hash,
     hashSignature,
     podfileLockHash,
+    packageResolvedHash,
+    nativePluginsHash,
     size,
   ]);
 
@@ -96,6 +114,8 @@ class CreatePatchArtifactRequest {
         hash == other.hash &&
         hashSignature == other.hashSignature &&
         podfileLockHash == other.podfileLockHash &&
+        packageResolvedHash == other.packageResolvedHash &&
+        nativePluginsHash == other.nativePluginsHash &&
         size == other.size;
   }
 }
