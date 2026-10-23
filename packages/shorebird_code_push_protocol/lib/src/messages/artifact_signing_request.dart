@@ -5,9 +5,7 @@ import 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dar
 /// {@template artifact_signing_request}
 /// How the CLI signed a release artifact's binary. A managed binary
 /// names the key GET /apps/{appId}/signing-key returned (key_id). A
-/// customer binary sends its RSA public key (public_key_pem), which the
-/// server stores; never anything private. An unsigned binary sends
-/// neither.
+/// customer-signed or unsigned binary sends only its mode.
 /// {@endtemplate}
 @immutable
 class ArtifactSigningRequest {
@@ -15,7 +13,6 @@ class ArtifactSigningRequest {
   const ArtifactSigningRequest({
     required this.mode,
     this.keyId,
-    this.publicKeyPem,
   });
 
   /// Converts a `Map<String, dynamic>` to an [ArtifactSigningRequest].
@@ -26,7 +23,6 @@ class ArtifactSigningRequest {
       () => ArtifactSigningRequest(
         mode: ReleaseSigningMode.fromJson(json['mode'] as String),
         keyId: json['key_id'] as int?,
-        publicKeyPem: json['public_key_pem'] as String?,
       ),
     );
   }
@@ -47,17 +43,11 @@ class ArtifactSigningRequest {
   /// managed, and refused otherwise.
   final int? keyId;
 
-  /// The customer's public key the binary embeds, PEM encoded
-  /// (SubjectPublicKeyInfo). Required when mode is customer, and
-  /// refused otherwise.
-  final String? publicKeyPem;
-
   /// Converts an [ArtifactSigningRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'mode': mode.toJson(),
       'key_id': ?keyId,
-      'public_key_pem': ?publicKeyPem,
     };
   }
 
@@ -65,7 +55,6 @@ class ArtifactSigningRequest {
   int get hashCode => Object.hashAll([
     mode,
     keyId,
-    publicKeyPem,
   ]);
 
   @override
@@ -73,7 +62,6 @@ class ArtifactSigningRequest {
     if (identical(this, other)) return true;
     return other is ArtifactSigningRequest &&
         mode == other.mode &&
-        keyId == other.keyId &&
-        publicKeyPem == other.publicKeyPem;
+        keyId == other.keyId;
   }
 }

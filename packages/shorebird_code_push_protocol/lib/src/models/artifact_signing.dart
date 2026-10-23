@@ -47,10 +47,10 @@ class ArtifactSigning {
   /// managed.
   final int? keyId;
 
-  /// The public key the binary embeds, PEM encoded
-  /// (SubjectPublicKeyInfo): Shorebird's for a managed artifact, the
-  /// customer's for a customer one. `shorebird patch` builds and
-  /// signs against it. Absent when mode is unsigned.
+  /// The managed key's public key the binary embeds, PEM encoded
+  /// (SubjectPublicKeyInfo), which `shorebird patch` builds against.
+  /// Present exactly when mode is managed: the server doesn't store
+  /// customers' keys.
   final String? publicKeyPem;
 
   /// Converts an [ArtifactSigning] to a `Map<String, dynamic>`.
