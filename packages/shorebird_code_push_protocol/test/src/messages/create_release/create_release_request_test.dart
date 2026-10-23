@@ -15,33 +15,5 @@ void main() {
         equals(request.toJson()),
       );
     });
-
-    test('carries the managed key the CLI embedded', () {
-      const request = CreateReleaseRequest(
-        version: '1.2.3',
-        flutterRevision: 'abc123',
-        signing: ReleaseSigningRequest(
-          mode: ReleaseSigningMode.managed,
-          keyId: 7,
-        ),
-      );
-      final json = request.toJson();
-      expect(json['signing'], {'mode': 'managed', 'key_id': 7});
-      expect(CreateReleaseRequest.fromJson(json), equals(request));
-    });
-
-    test("carries the customer's public key the CLI embedded", () {
-      const request = CreateReleaseRequest(
-        version: '1.2.3',
-        flutterRevision: 'abc123',
-        signing: ReleaseSigningRequest(
-          mode: ReleaseSigningMode.customer,
-          publicKeyPem: 'pem',
-        ),
-      );
-      final json = request.toJson();
-      expect(json['signing'], {'mode': 'customer', 'public_key_pem': 'pem'});
-      expect(CreateReleaseRequest.fromJson(json), equals(request));
-    });
   });
 }

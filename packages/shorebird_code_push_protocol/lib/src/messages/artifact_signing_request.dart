@@ -2,27 +2,28 @@ import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
 
-/// {@template release_signing_request}
-/// How the CLI signed a release's binaries. A managed release names the
-/// key GET /apps/{appId}/signing-key returned (key_id). A customer
-/// release sends its public key (public_key_pem), which the server
-/// stores; never anything private. An unsigned release sends neither.
+/// {@template artifact_signing_request}
+/// How the CLI signed a release artifact's binary. A managed binary
+/// names the key GET /apps/{appId}/signing-key returned (key_id). A
+/// customer binary sends its RSA public key (public_key_pem), which the
+/// server stores; never anything private. An unsigned binary sends
+/// neither.
 /// {@endtemplate}
 @immutable
-class ReleaseSigningRequest {
-  /// {@macro release_signing_request}
-  const ReleaseSigningRequest({
+class ArtifactSigningRequest {
+  /// {@macro artifact_signing_request}
+  const ArtifactSigningRequest({
     required this.mode,
     this.keyId,
     this.publicKeyPem,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [ReleaseSigningRequest].
-  factory ReleaseSigningRequest.fromJson(Map<String, dynamic> json) {
+  /// Converts a `Map<String, dynamic>` to an [ArtifactSigningRequest].
+  factory ArtifactSigningRequest.fromJson(Map<String, dynamic> json) {
     return parseFromJson(
-      'ReleaseSigningRequest',
+      'ArtifactSigningRequest',
       json,
-      () => ReleaseSigningRequest(
+      () => ArtifactSigningRequest(
         mode: ReleaseSigningMode.fromJson(json['mode'] as String),
         keyId: json['key_id'] as int?,
         publicKeyPem: json['public_key_pem'] as String?,
@@ -32,26 +33,26 @@ class ReleaseSigningRequest {
 
   /// Convenience to create a nullable type from a nullable json object.
   /// Useful when parsing optional fields.
-  static ReleaseSigningRequest? maybeFromJson(Map<String, dynamic>? json) {
+  static ArtifactSigningRequest? maybeFromJson(Map<String, dynamic>? json) {
     if (json == null) {
       return null;
     }
-    return ReleaseSigningRequest.fromJson(json);
+    return ArtifactSigningRequest.fromJson(json);
   }
 
-  /// How a release's binaries were signed for patch signing.
+  /// How a release artifact's binary is signed for patch signing.
   final ReleaseSigningMode mode;
 
-  /// The managed key the CLI embedded. Required when mode is managed,
-  /// and refused otherwise.
+  /// The managed key the binary embeds. Required when mode is
+  /// managed, and refused otherwise.
   final int? keyId;
 
-  /// The customer's public key the CLI embedded, PEM encoded
+  /// The customer's public key the binary embeds, PEM encoded
   /// (SubjectPublicKeyInfo). Required when mode is customer, and
   /// refused otherwise.
   final String? publicKeyPem;
 
-  /// Converts a [ReleaseSigningRequest] to a `Map<String, dynamic>`.
+  /// Converts an [ArtifactSigningRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'mode': mode.toJson(),
@@ -70,7 +71,7 @@ class ReleaseSigningRequest {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is ReleaseSigningRequest &&
+    return other is ArtifactSigningRequest &&
         mode == other.mode &&
         keyId == other.keyId &&
         publicKeyPem == other.publicKeyPem;

@@ -1,12 +1,12 @@
-/// How a release's binaries were signed for patch signing.
+/// How a release artifact's binary is signed for patch signing.
 enum ReleaseSigningMode {
-  /// The release embeds a key Shorebird holds, which signs every patch to it.
+  /// The binary embeds a key Shorebird holds, which signs every patch to it.
   managed._('managed'),
 
-  /// The release embeds a key the customer holds, who signs every patch.
+  /// The binary embeds a key the customer holds, who signs every patch.
   customer._('customer'),
 
-  /// The release embeds no key, so its patches are not signed.
+  /// The binary embeds no key, so its patches are not signed.
   unsigned._('unsigned');
 
   const ReleaseSigningMode._(this.value);

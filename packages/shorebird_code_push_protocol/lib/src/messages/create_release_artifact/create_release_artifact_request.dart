@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/messages/artifact_signing_request.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template create_release_artifact_request}
@@ -19,6 +20,7 @@ class CreateReleaseArtifactRequest {
     required this.size,
     this.canSideload,
     this.podfileLockHash,
+    this.signing,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactRequest].
@@ -34,6 +36,9 @@ class CreateReleaseArtifactRequest {
         canSideload: json['can_sideload'] as bool?,
         size: json['size'] as int,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        signing: ArtifactSigningRequest.maybeFromJson(
+          json['signing'] as Map<String, dynamic>?,
+        ),
       ),
     );
   }
@@ -71,6 +76,13 @@ class CreateReleaseArtifactRequest {
   /// only).
   final String? podfileLockHash;
 
+  /// How the CLI signed a release artifact's binary. A managed binary
+  /// names the key GET /apps/{appId}/signing-key returned (key_id). A
+  /// customer binary sends its RSA public key (public_key_pem), which the
+  /// server stores; never anything private. An unsigned binary sends
+  /// neither.
+  final ArtifactSigningRequest? signing;
+
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -81,6 +93,7 @@ class CreateReleaseArtifactRequest {
       'can_sideload': ?canSideload,
       'size': size,
       'podfile_lock_hash': ?podfileLockHash,
+      'signing': ?signing?.toJson(),
     };
   }
 
@@ -93,6 +106,7 @@ class CreateReleaseArtifactRequest {
     canSideload,
     size,
     podfileLockHash,
+    signing,
   ]);
 
   @override
@@ -105,6 +119,7 @@ class CreateReleaseArtifactRequest {
         filename == other.filename &&
         canSideload == other.canSideload &&
         size == other.size &&
-        podfileLockHash == other.podfileLockHash;
+        podfileLockHash == other.podfileLockHash &&
+        signing == other.signing;
   }
 }

@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/src/messages/release_signing_request.dart';
 
 /// {@template create_release_request}
 /// The request body for POST /apps/{appId}/releases.
@@ -13,7 +12,6 @@ class CreateReleaseRequest {
     required this.flutterRevision,
     this.flutterVersion,
     this.displayName,
-    this.signing,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseRequest].
@@ -26,9 +24,6 @@ class CreateReleaseRequest {
         flutterRevision: json['flutter_revision'] as String,
         flutterVersion: json['flutter_version'] as String?,
         displayName: json['display_name'] as String?,
-        signing: ReleaseSigningRequest.maybeFromJson(
-          json['signing'] as Map<String, dynamic>?,
-        ),
       ),
     );
   }
@@ -56,12 +51,6 @@ class CreateReleaseRequest {
   /// The display name for the release.
   final String? displayName;
 
-  /// How the CLI signed a release's binaries. A managed release names the
-  /// key GET /apps/{appId}/signing-key returned (key_id). A customer
-  /// release sends its public key (public_key_pem), which the server
-  /// stores; never anything private. An unsigned release sends neither.
-  final ReleaseSigningRequest? signing;
-
   /// Converts a [CreateReleaseRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -69,7 +58,6 @@ class CreateReleaseRequest {
       'flutter_revision': flutterRevision,
       'flutter_version': ?flutterVersion,
       'display_name': ?displayName,
-      'signing': ?signing?.toJson(),
     };
   }
 
@@ -79,7 +67,6 @@ class CreateReleaseRequest {
     flutterRevision,
     flutterVersion,
     displayName,
-    signing,
   ]);
 
   @override
@@ -89,7 +76,6 @@ class CreateReleaseRequest {
         version == other.version &&
         flutterRevision == other.flutterRevision &&
         flutterVersion == other.flutterVersion &&
-        displayName == other.displayName &&
-        signing == other.signing;
+        displayName == other.displayName;
   }
 }

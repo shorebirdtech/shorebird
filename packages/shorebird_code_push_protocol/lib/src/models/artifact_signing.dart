@@ -1,25 +1,26 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 
-/// {@template release_signing}
-/// How a release's binaries are signed for patch signing. Set by the
-/// release's first platform; every later platform matches it.
+/// {@template artifact_signing}
+/// How a release artifact's binary is signed for patch signing: which
+/// public key the binary embeds. Patches to that release, platform and
+/// arch are verified with it.
 /// {@endtemplate}
 @immutable
-class ReleaseSigning {
-  /// {@macro release_signing}
-  const ReleaseSigning({
+class ArtifactSigning {
+  /// {@macro artifact_signing}
+  const ArtifactSigning({
     required this.mode,
     this.keyId,
     this.publicKeyPem,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [ReleaseSigning].
-  factory ReleaseSigning.fromJson(Map<String, dynamic> json) {
+  /// Converts a `Map<String, dynamic>` to an [ArtifactSigning].
+  factory ArtifactSigning.fromJson(Map<String, dynamic> json) {
     return parseFromJson(
-      'ReleaseSigning',
+      'ArtifactSigning',
       json,
-      () => ReleaseSigning(
+      () => ArtifactSigning(
         mode: json['mode'] as String,
         keyId: json['key_id'] as int?,
         publicKeyPem: json['public_key_pem'] as String?,
@@ -29,31 +30,30 @@ class ReleaseSigning {
 
   /// Convenience to create a nullable type from a nullable json object.
   /// Useful when parsing optional fields.
-  static ReleaseSigning? maybeFromJson(Map<String, dynamic>? json) {
+  static ArtifactSigning? maybeFromJson(Map<String, dynamic>? json) {
     if (json == null) {
       return null;
     }
-    return ReleaseSigning.fromJson(json);
+    return ArtifactSigning.fromJson(json);
   }
 
   /// One of the ReleaseSigningMode values: managed, customer or
   /// unsigned. A string rather than the enum so that a client meeting
   /// a mode added after it was built reads it as unknown instead of
-  /// failing to read the release.
+  /// failing to read the artifact.
   final String mode;
 
-  /// The managed key the release embeds. Present exactly when mode is
+  /// The managed key the binary embeds. Present exactly when mode is
   /// managed.
   final int? keyId;
 
-  /// The public key the release embeds, PEM encoded
-  /// (SubjectPublicKeyInfo): Shorebird's for a managed release, the
-  /// customer's for a customer one. `shorebird patch` and the
-  /// release's later platforms build against it. Absent when mode is
-  /// unsigned.
+  /// The public key the binary embeds, PEM encoded
+  /// (SubjectPublicKeyInfo): Shorebird's for a managed artifact, the
+  /// customer's for a customer one. `shorebird patch` builds and
+  /// signs against it. Absent when mode is unsigned.
   final String? publicKeyPem;
 
-  /// Converts a [ReleaseSigning] to a `Map<String, dynamic>`.
+  /// Converts an [ArtifactSigning] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'mode': mode,
@@ -72,7 +72,7 @@ class ReleaseSigning {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is ReleaseSigning &&
+    return other is ArtifactSigning &&
         mode == other.mode &&
         keyId == other.keyId &&
         publicKeyPem == other.publicKeyPem;

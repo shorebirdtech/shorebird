@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/src/messages/release_signing_request.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
@@ -13,7 +12,6 @@ class UpdateReleaseRequest {
   const UpdateReleaseRequest({
     this.status,
     this.platform,
-    this.signing,
     this.metadata,
     this.notes,
   });
@@ -26,9 +24,6 @@ class UpdateReleaseRequest {
       () => UpdateReleaseRequest(
         status: ReleaseStatus.maybeFromJson(json['status'] as String?),
         platform: ReleasePlatform.maybeFromJson(json['platform'] as String?),
-        signing: ReleaseSigningRequest.maybeFromJson(
-          json['signing'] as Map<String, dynamic>?,
-        ),
         metadata: json['metadata'] as Map<String, dynamic>?,
         notes: json['notes'] as String?,
       ),
@@ -50,12 +45,6 @@ class UpdateReleaseRequest {
   /// A platform to which a Shorebird release can be deployed.
   final ReleasePlatform? platform;
 
-  /// How the CLI signed a release's binaries. A managed release names the
-  /// key GET /apps/{appId}/signing-key returned (key_id). A customer
-  /// release sends its public key (public_key_pem), which the server
-  /// stores; never anything private. An unsigned release sends neither.
-  final ReleaseSigningRequest? signing;
-
   /// Additional information about the command that was run to
   /// update the release and the environment it was run in.
   final Map<String, dynamic>? metadata;
@@ -70,7 +59,6 @@ class UpdateReleaseRequest {
     return {
       'status': ?status?.toJson(),
       'platform': ?platform?.toJson(),
-      'signing': ?signing?.toJson(),
       'metadata': ?metadata,
       'notes': ?notes,
     };
@@ -80,7 +68,6 @@ class UpdateReleaseRequest {
   int get hashCode => Object.hashAll([
     status,
     platform,
-    signing,
     mapHash(metadata),
     notes,
   ]);
@@ -91,7 +78,6 @@ class UpdateReleaseRequest {
     return other is UpdateReleaseRequest &&
         status == other.status &&
         platform == other.platform &&
-        signing == other.signing &&
         mapsEqual(metadata, other.metadata) &&
         notes == other.notes;
   }
