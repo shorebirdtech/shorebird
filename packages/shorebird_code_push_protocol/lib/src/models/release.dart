@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform_details.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
 /// {@template release}
@@ -20,6 +21,7 @@ class Release {
     required this.updatedAt,
     this.flutterVersion,
     this.displayName,
+    this.platforms,
     this.notes,
   });
 
@@ -42,6 +44,11 @@ class Release {
                 ReleaseStatus.fromJson(value as String),
               ),
             ),
+        platforms: (json['platforms'] as List?)
+            ?.map<ReleasePlatformDetails>(
+              (e) => ReleasePlatformDetails.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         notes: json['notes'] as String?,
@@ -77,8 +84,15 @@ class Release {
   /// The display name for the release.
   final String? displayName;
 
-  /// The status of the release for each platform.
+  /// The status of the release for each platform. `platforms` carries
+  /// the same statuses with each platform's signing; this map stays
+  /// for the CLIs already in the field.
   final Map<ReleasePlatform, ReleaseStatus> platformStatuses;
+
+  /// The release on each platform it has been released to, with that
+  /// platform's status and signing. Absent from servers that predate
+  /// it.
+  final List<ReleasePlatformDetails>? platforms;
 
   /// The date and time the release was created.
   final DateTime createdAt;
@@ -101,6 +115,7 @@ class Release {
       'platform_statuses': platformStatuses.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
+      'platforms': ?platforms?.map((e) => e.toJson()).toList(),
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'notes': ?notes,
@@ -116,6 +131,7 @@ class Release {
     flutterVersion,
     displayName,
     mapHash(platformStatuses),
+    listHash(platforms),
     createdAt,
     updatedAt,
     notes,
@@ -132,6 +148,7 @@ class Release {
         flutterVersion == other.flutterVersion &&
         displayName == other.displayName &&
         mapsEqual(platformStatuses, other.platformStatuses) &&
+        listsEqual(platforms, other.platforms) &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
         notes == other.notes;

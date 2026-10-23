@@ -63,5 +63,66 @@ void main() {
       expect(release1, equals(release1Copy));
       expect(release1, isNot(equals(release2)));
     });
+
+    group('platforms', () {
+      Map<String, dynamic> releaseJson({Object? platforms}) => {
+        'id': 1,
+        'app_id': 'app-id',
+        'version': '1.0.0',
+        'flutter_revision': '83305b5088e6fe327fb3334a73ff190828d85713',
+        'platform_statuses': {'android': 'active', 'ios': 'draft'},
+        'platforms': ?platforms,
+        'created_at': '2023-01-01T00:00:00.000Z',
+        'updated_at': '2023-01-01T00:00:00.000Z',
+      };
+
+      test('reads each platform with its status and signing', () {
+        final release = Release.fromJson(
+          releaseJson(
+            platforms: [
+              {
+                'platform': 'android',
+                'status': 'active',
+                'signing_mode': 'managed',
+              },
+              {'platform': 'ios', 'status': 'draft'},
+            ],
+          ),
+        );
+        expect(release.platforms, const [
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+            signingMode: 'managed',
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.ios,
+            status: ReleaseStatus.draft,
+          ),
+        ]);
+        expect(Release.fromJson(release.toJson()), equals(release));
+      });
+
+      test('reads a signing mode added later as an unknown string', () {
+        final release = Release.fromJson(
+          releaseJson(
+            platforms: [
+              {
+                'platform': 'android',
+                'status': 'active',
+                'signing_mode': 'quantum',
+              },
+            ],
+          ),
+        );
+        expect(release.platforms!.single.signingMode, equals('quantum'));
+      });
+
+      test('is null, and omitted, when the server sends none', () {
+        final release = Release.fromJson(releaseJson());
+        expect(release.platforms, isNull);
+        expect(release.toJson(), isNot(contains('platforms')));
+      });
+    });
   });
 }

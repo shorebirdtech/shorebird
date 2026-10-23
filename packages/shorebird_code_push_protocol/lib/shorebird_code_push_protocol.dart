@@ -96,6 +96,7 @@ export 'package:shorebird_code_push_protocol/src/models/release_analysis.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_artifact.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
+export 'package:shorebird_code_push_protocol/src/models/release_platform_details.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 export 'package:shorebird_code_push_protocol/src/models/role.dart';
