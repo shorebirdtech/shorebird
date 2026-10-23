@@ -16,11 +16,11 @@ class Release {
     required this.appId,
     required this.version,
     required this.flutterRevision,
-    required this.platformStatuses,
     required this.createdAt,
     required this.updatedAt,
     this.flutterVersion,
     this.displayName,
+    @deprecated this.platformStatuses,
     this.platforms,
     this.notes,
   });
@@ -37,8 +37,8 @@ class Release {
         flutterRevision: json['flutter_revision'] as String,
         flutterVersion: json['flutter_version'] as String?,
         displayName: json['display_name'] as String?,
-        platformStatuses: (json['platform_statuses'] as Map<String, dynamic>)
-            .map(
+        platformStatuses: (json['platform_statuses'] as Map<String, dynamic>?)
+            ?.map(
               (key, value) => MapEntry(
                 ReleasePlatform.fromJson(key),
                 ReleaseStatus.fromJson(value as String),
@@ -84,10 +84,11 @@ class Release {
   /// The display name for the release.
   final String? displayName;
 
-  /// The status of the release for each platform. `platforms` carries
-  /// the same statuses with each platform's signing; this map stays
-  /// for the CLIs already in the field.
-  final Map<ReleasePlatform, ReleaseStatus> platformStatuses;
+  /// The status of the release for each platform. Deprecated: read
+  /// `platforms`, which carries the same statuses with each platform's
+  /// signing. Still sent, for CLIs that predate `platforms`.
+  @deprecated
+  final Map<ReleasePlatform, ReleaseStatus>? platformStatuses;
 
   /// The release on each platform it has been released to, with that
   /// platform's status and signing. Absent from servers that predate
@@ -112,7 +113,7 @@ class Release {
       'flutter_revision': flutterRevision,
       'flutter_version': ?flutterVersion,
       'display_name': ?displayName,
-      'platform_statuses': platformStatuses.map(
+      'platform_statuses': ?platformStatuses?.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
       'platforms': ?platforms?.map((e) => e.toJson()).toList(),

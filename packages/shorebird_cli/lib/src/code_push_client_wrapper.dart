@@ -382,7 +382,7 @@ This app may not exist or you may not have permission to view it.''');
     required Release release,
     required ReleasePlatform platform,
   }) {
-    if (release.platformStatuses[platform] == ReleaseStatus.active) {
+    if (release.statusFor(platform) == ReleaseStatus.active) {
       final uri = ShorebirdWebConsole.appReleaseUri(release.appId, release.id);
       logger.err(
         '''

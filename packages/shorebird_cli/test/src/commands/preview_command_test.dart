@@ -277,13 +277,28 @@ void main() {
       when(() => release.id).thenReturn(releaseId);
       when(() => release.version).thenReturn(releaseVersion);
       when(() => release.createdAt).thenReturn(DateTime(2023));
-      when(() => release.platformStatuses).thenReturn({
-        ReleasePlatform.android: ReleaseStatus.active,
-        ReleasePlatform.ios: ReleaseStatus.active,
-        ReleasePlatform.linux: ReleaseStatus.active,
-        ReleasePlatform.macos: ReleaseStatus.active,
-        ReleasePlatform.windows: ReleaseStatus.active,
-      });
+      when(() => release.platforms).thenReturn([
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.android,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.ios,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.linux,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.macos,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.windows,
+          status: ReleaseStatus.active,
+        ),
+      ]);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => progress.fail(any())).thenReturn(null);
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
@@ -421,8 +436,13 @@ void main() {
         platform = platform.copyWith(operatingSystem: NativePlatform.windows);
 
         when(
-          () => release.platformStatuses,
-        ).thenReturn({ReleasePlatform.ios: ReleaseStatus.active});
+          () => release.platforms,
+        ).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.ios,
+            status: ReleaseStatus.active,
+          ),
+        ]);
       });
 
       test('prints error message and exits with usage code', () async {
@@ -445,8 +465,13 @@ void main() {
         // is no more previewable from Windows than iOS is. It used to be
         // offered here: the supported list excluded iOS and nothing else.
         when(
-          () => release.platformStatuses,
-        ).thenReturn({ReleasePlatform.macos: ReleaseStatus.active});
+          () => release.platforms,
+        ).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.macos,
+            status: ReleaseStatus.active,
+          ),
+        ]);
 
         final result = await runWithOverrides(command.run);
 
@@ -556,10 +581,16 @@ void main() {
         when(() => process.stderr).thenAnswer((_) => const Stream.empty());
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => releaseArtifact.arch).thenReturn('app');
-        when(() => release.platformStatuses).thenReturn({
-          ReleasePlatform.android: ReleaseStatus.active,
-          ReleasePlatform.ios: ReleaseStatus.active,
-        });
+        when(() => release.platforms).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.ios,
+            status: ReleaseStatus.active,
+          ),
+        ]);
       });
 
       // This should probably be outside of the android group, but because
@@ -579,10 +610,16 @@ void main() {
               ),
             ).thenAnswer(setupAndroidShorebirdYaml);
 
-            when(() => release.platformStatuses).thenReturn({
-              ReleasePlatform.ios: ReleaseStatus.active,
-              ReleasePlatform.android: ReleaseStatus.active,
-            });
+            when(() => release.platforms).thenReturn([
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.ios,
+                status: ReleaseStatus.active,
+              ),
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.android,
+                status: ReleaseStatus.active,
+              ),
+            ]);
           });
 
           test('outputs apks path', () async {
@@ -1391,10 +1428,16 @@ channel: ${track.channel}
           when(() => otherRelease.version).thenReturn(releaseVersion);
           when(() => otherRelease.createdAt).thenReturn(DateTime(2023));
           when(() => otherRelease.displayName).thenReturn('2.0.0+1');
-          when(() => otherRelease.platformStatuses).thenReturn({
-            ReleasePlatform.macos: ReleaseStatus.active,
-            ReleasePlatform.windows: ReleaseStatus.active,
-          });
+          when(() => otherRelease.platforms).thenReturn([
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.macos,
+              status: ReleaseStatus.active,
+            ),
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.windows,
+              status: ReleaseStatus.active,
+            ),
+          ]);
           when(() => argResults['release-version']).thenReturn(null);
           when(() => argResults['platform']).thenReturn(releasePlatform.name);
           when(
@@ -1558,9 +1601,12 @@ channel: ${track.channel}
           when(() => otherRelease.id).thenReturn(999);
           when(() => otherRelease.version).thenReturn('0.0.1');
           when(() => otherRelease.createdAt).thenReturn(DateTime(2022));
-          when(() => otherRelease.platformStatuses).thenReturn({
-            ReleasePlatform.android: ReleaseStatus.active,
-          });
+          when(() => otherRelease.platforms).thenReturn([
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.android,
+              status: ReleaseStatus.active,
+            ),
+          ]);
           when(
             () => codePushClientWrapper.getReleases(
               appId: any(named: 'appId'),
@@ -1717,10 +1763,16 @@ channel: ${track.channel}
             deviceId: any(named: 'deviceId'),
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
-        when(() => release.platformStatuses).thenReturn({
-          ReleasePlatform.android: ReleaseStatus.active,
-          ReleasePlatform.ios: ReleaseStatus.active,
-        });
+        when(() => release.platforms).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.ios,
+            status: ReleaseStatus.active,
+          ),
+        ]);
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => releaseArtifact.arch).thenReturn('app');
         platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
@@ -2220,13 +2272,24 @@ channel: ${DeploymentTrack.staging.channel}
           when(
             () => releaseWithAllPlatforms.version,
           ).thenReturn(releaseVersion);
-          when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
-            ReleasePlatform.ios: ReleaseStatus.active,
-            ReleasePlatform.android: ReleaseStatus.active,
-          });
+          when(() => releaseWithAllPlatforms.platforms).thenReturn([
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.ios,
+              status: ReleaseStatus.active,
+            ),
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.android,
+              status: ReleaseStatus.active,
+            ),
+          ]);
           when(
-            () => release.platformStatuses,
-          ).thenReturn({ReleasePlatform.ios: ReleaseStatus.active});
+            () => release.platforms,
+          ).thenReturn([
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.ios,
+              status: ReleaseStatus.active,
+            ),
+          ]);
           when(
             () => codePushClientWrapper.getReleases(
               appId: any(named: 'appId'),
@@ -2257,13 +2320,24 @@ channel: ${DeploymentTrack.staging.channel}
           when(
             () => releaseWithAllPlatforms.version,
           ).thenReturn(releaseVersion);
-          when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
-            ReleasePlatform.ios: ReleaseStatus.active,
-            ReleasePlatform.android: ReleaseStatus.active,
-          });
+          when(() => releaseWithAllPlatforms.platforms).thenReturn([
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.ios,
+              status: ReleaseStatus.active,
+            ),
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.android,
+              status: ReleaseStatus.active,
+            ),
+          ]);
           when(
-            () => release.platformStatuses,
-          ).thenReturn({ReleasePlatform.android: ReleaseStatus.active});
+            () => release.platforms,
+          ).thenReturn([
+            ReleasePlatformDetails(
+              platform: ReleasePlatform.android,
+              status: ReleaseStatus.active,
+            ),
+          ]);
           when(
             () => codePushClientWrapper.getReleases(
               appId: any(named: 'appId'),
@@ -2377,8 +2451,13 @@ channel: ${DeploymentTrack.staging.channel}
         when(() => linuxReleaseArtifact.arch).thenReturn('app');
 
         when(
-          () => release.platformStatuses,
-        ).thenReturn({ReleasePlatform.linux: ReleaseStatus.active});
+          () => release.platforms,
+        ).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.linux,
+            status: ReleaseStatus.active,
+          ),
+        ]);
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(
@@ -2666,8 +2745,13 @@ channel: ${DeploymentTrack.staging.channel}
           ),
         ).thenAnswer((_) async {});
         when(
-          () => release.platformStatuses,
-        ).thenReturn({ReleasePlatform.macos: ReleaseStatus.active});
+          () => release.platforms,
+        ).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.macos,
+            status: ReleaseStatus.active,
+          ),
+        ]);
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => releaseArtifact.arch).thenReturn('app');
         platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
@@ -2970,8 +3054,13 @@ channel: ${DeploymentTrack.staging.channel}
         when(() => windowsReleaseArtifact.arch).thenReturn('app');
 
         when(
-          () => release.platformStatuses,
-        ).thenReturn({ReleasePlatform.windows: ReleaseStatus.active});
+          () => release.platforms,
+        ).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.windows,
+            status: ReleaseStatus.active,
+          ),
+        ]);
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(
@@ -3265,10 +3354,16 @@ channel: ${DeploymentTrack.staging.channel}
             deviceId: any(named: 'deviceId'),
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
-        when(() => release.platformStatuses).thenReturn({
-          ReleasePlatform.android: ReleaseStatus.active,
-          ReleasePlatform.ios: ReleaseStatus.active,
-        });
+        when(() => release.platforms).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.ios,
+            status: ReleaseStatus.active,
+          ),
+        ]);
 
         when(() => iosReleaseArtifact.id).thenReturn(iosArtifactId);
         when(() => iosReleaseArtifact.url).thenReturn(iosReleaseArtifactUrl);
@@ -3354,13 +3449,24 @@ channel: ${DeploymentTrack.staging.channel}
             when(
               () => releaseWithAllPlatforms.version,
             ).thenReturn(releaseVersion);
-            when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
-              ReleasePlatform.ios: ReleaseStatus.active,
-              ReleasePlatform.android: ReleaseStatus.active,
-            });
+            when(() => releaseWithAllPlatforms.platforms).thenReturn([
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.ios,
+                status: ReleaseStatus.active,
+              ),
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.android,
+                status: ReleaseStatus.active,
+              ),
+            ]);
             when(
-              () => release.platformStatuses,
-            ).thenReturn({ReleasePlatform.ios: ReleaseStatus.active});
+              () => release.platforms,
+            ).thenReturn([
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.ios,
+                status: ReleaseStatus.active,
+              ),
+            ]);
             when(
               () => codePushClientWrapper.getReleases(
                 appId: any(named: 'appId'),
@@ -3469,13 +3575,24 @@ channel: ${DeploymentTrack.staging.channel}
             when(
               () => releaseWithAllPlatforms.version,
             ).thenReturn(releaseVersion);
-            when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
-              ReleasePlatform.ios: ReleaseStatus.active,
-              ReleasePlatform.android: ReleaseStatus.active,
-            });
+            when(() => releaseWithAllPlatforms.platforms).thenReturn([
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.ios,
+                status: ReleaseStatus.active,
+              ),
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.android,
+                status: ReleaseStatus.active,
+              ),
+            ]);
             when(
-              () => release.platformStatuses,
-            ).thenReturn({ReleasePlatform.android: ReleaseStatus.active});
+              () => release.platforms,
+            ).thenReturn([
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.android,
+                status: ReleaseStatus.active,
+              ),
+            ]);
             when(
               () => codePushClientWrapper.getReleases(
                 appId: any(named: 'appId'),
@@ -3520,19 +3637,43 @@ channel: ${DeploymentTrack.staging.channel}
       final releaseWithAllPlatforms = MockRelease();
       final release = MockRelease();
 
-      when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
-        ReleasePlatform.android: ReleaseStatus.active,
-        ReleasePlatform.ios: ReleaseStatus.active,
-        ReleasePlatform.linux: ReleaseStatus.active,
-        ReleasePlatform.macos: ReleaseStatus.active,
-        ReleasePlatform.windows: ReleaseStatus.active,
-      });
+      when(() => releaseWithAllPlatforms.platforms).thenReturn([
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.android,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.ios,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.linux,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.macos,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.windows,
+          status: ReleaseStatus.active,
+        ),
+      ]);
 
-      when(() => release.platformStatuses).thenReturn({
-        ReleasePlatform.android: ReleaseStatus.active,
-        ReleasePlatform.linux: ReleaseStatus.active,
-        ReleasePlatform.windows: ReleaseStatus.active,
-      });
+      when(() => release.platforms).thenReturn([
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.android,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.linux,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.windows,
+          status: ReleaseStatus.active,
+        ),
+      ]);
 
       runWithOverrides(
         () => assertPreviewableReleases(
@@ -3575,19 +3716,43 @@ channel: ${DeploymentTrack.staging.channel}
         final releaseWithAllPlatforms = MockRelease();
         final release = MockRelease();
 
-        when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
-          ReleasePlatform.android: ReleaseStatus.active,
-          ReleasePlatform.ios: ReleaseStatus.active,
-          ReleasePlatform.linux: ReleaseStatus.active,
-          ReleasePlatform.macos: ReleaseStatus.active,
-          ReleasePlatform.windows: ReleaseStatus.active,
-        });
+        when(() => releaseWithAllPlatforms.platforms).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.ios,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.linux,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.macos,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.windows,
+            status: ReleaseStatus.active,
+          ),
+        ]);
 
-        when(() => release.platformStatuses).thenReturn({
-          ReleasePlatform.android: ReleaseStatus.active,
-          ReleasePlatform.linux: ReleaseStatus.active,
-          ReleasePlatform.windows: ReleaseStatus.active,
-        });
+        when(() => release.platforms).thenReturn([
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.linux,
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.windows,
+            status: ReleaseStatus.active,
+          ),
+        ]);
         expect(
           () => runWithOverrides(
             () => assertPreviewableReleases(

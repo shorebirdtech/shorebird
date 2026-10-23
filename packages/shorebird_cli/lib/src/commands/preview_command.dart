@@ -1222,9 +1222,9 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
 /// that can be previewed).
 extension Previewable on Release {
   /// Returns the platforms that can be previewed.
-  List<ReleasePlatform> get activePlatforms => platformStatuses.entries
-      .where((e) => e.value == ReleaseStatus.active)
-      .map((e) => e.key)
+  List<ReleasePlatform> get activePlatforms => platformDetails
+      .where((details) => details.status == ReleaseStatus.active)
+      .map((details) => details.platform)
       .toList();
 }
 

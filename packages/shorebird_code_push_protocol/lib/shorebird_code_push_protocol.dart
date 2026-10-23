@@ -9,6 +9,7 @@ library;
 
 export 'package:shorebird_code_push_protocol/extensions/artifact_signing_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/auth_provider.dart';
+export 'package:shorebird_code_push_protocol/extensions/release_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/release_patch_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/release_platform_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/test_helpers.dart';

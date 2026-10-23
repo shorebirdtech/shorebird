@@ -87,9 +87,9 @@ class ReleasesDeleteCommand extends ShorebirdCommand
     }
 
     final releasePlatforms =
-        release.platformStatuses.keys.map((p) => p.value).toList()..sort();
+        release.platformDetails.map((d) => d.platform.value).toList()..sort();
 
-    if (platform != null && !release.platformStatuses.containsKey(platform)) {
+    if (platform != null && release.statusFor(platform) == null) {
       final available = releasePlatforms.isEmpty
           ? 'none'
           : releasePlatforms.join(', ');

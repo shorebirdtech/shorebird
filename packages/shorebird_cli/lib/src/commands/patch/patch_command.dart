@@ -441,7 +441,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       final releases = await codePushClientWrapper.getReleases(appId: appId);
       releases
         ..removeWhere(
-          (release) => !release.platformStatuses.keys.contains(releasePlatform),
+          (release) => release.statusFor(releasePlatform) == null,
         )
         ..sortByUpdatedAt();
       if (releases.isEmpty) {
@@ -850,7 +850,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     final releases = await codePushClientWrapper.getReleases(appId: appId);
 
     final releasesForPlatform = releases.where(
-      (release) => release.platformStatuses.keys.contains(platform),
+      (release) => release.statusFor(platform) != null,
     );
 
     if (releasesForPlatform.isEmpty) {
@@ -882,7 +882,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required Patcher patcher,
   }) {
     final releasePlatform = patcher.releaseType.releasePlatform;
-    final contains = release.platformStatuses.containsKey(releasePlatform);
+    final contains = release.statusFor(releasePlatform) != null;
     if (!contains) {
       final platformName = releasePlatform.name;
       logger.err(
@@ -897,8 +897,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required Release release,
     required Patcher patcher,
   }) {
-    final releaseStatus =
-        release.platformStatuses[patcher.releaseType.releasePlatform];
+    final releaseStatus = release.statusFor(
+      patcher.releaseType.releasePlatform,
+    );
     if (releaseStatus != ReleaseStatus.active) {
       logger.err('''
 Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.

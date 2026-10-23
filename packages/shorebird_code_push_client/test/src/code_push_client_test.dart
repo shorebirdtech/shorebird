@@ -1697,7 +1697,7 @@ void main() {
                       flutterRevision: flutterRevision,
                       flutterVersion: flutterVersion,
                       displayName: displayName,
-                      platformStatuses: const {},
+                      platforms: const [],
                       createdAt: DateTime.utc(2023),
                       updatedAt: DateTime.utc(2023),
                     ),
@@ -1735,9 +1735,9 @@ void main() {
                   )
                   .having((r) => r.displayName, 'displayName', displayName)
                   .having(
-                    (r) => r.platformStatuses,
-                    'platformStatuses',
-                    <ReleasePlatform, ReleaseStatus>{},
+                    (r) => r.platforms,
+                    'platforms',
+                    isEmpty,
                   ),
             ),
           ),
@@ -2702,9 +2702,12 @@ void main() {
             flutterRevision: flutterRevision,
             flutterVersion: flutterVersion,
             displayName: 'v1.0.0',
-            platformStatuses: const {
-              ReleasePlatform.android: ReleaseStatus.draft,
-            },
+            platforms: const [
+              ReleasePlatformDetails(
+                platform: ReleasePlatform.android,
+                status: ReleaseStatus.draft,
+              ),
+            ],
             createdAt: DateTime.utc(2022),
             updatedAt: DateTime.utc(2023),
           ),
@@ -2715,7 +2718,7 @@ void main() {
             flutterRevision: flutterRevision,
             flutterVersion: flutterVersion,
             displayName: 'v1.0.1',
-            platformStatuses: const {},
+            platforms: const [],
             createdAt: DateTime.utc(2022),
             updatedAt: DateTime.utc(2023),
           ),

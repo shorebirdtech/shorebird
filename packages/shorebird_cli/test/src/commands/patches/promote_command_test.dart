@@ -29,7 +29,12 @@ void main() {
       flutterRevision: 'flutter-revision',
       flutterVersion: 'flutter-version',
       displayName: releaseVersion,
-      platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+      platforms: const [
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.android,
+          status: ReleaseStatus.active,
+        ),
+      ],
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );

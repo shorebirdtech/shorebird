@@ -652,7 +652,7 @@ To change the version of this release, change your app's version in your pubspec
         flutterRevision: flutterRevision,
         flutterVersion: flutterVersion,
         displayName: '1.2.3+1',
-        platformStatuses: const {},
+        platforms: const [],
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
       );

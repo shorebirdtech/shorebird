@@ -131,7 +131,7 @@ void main() {
       flutterRevision: flutterRevision,
       flutterVersion: flutterVersion,
       displayName: displayName,
-      platformStatuses: const {},
+      platforms: const [],
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
@@ -1339,9 +1339,12 @@ void main() {
                     flutterRevision: flutterRevision,
                     flutterVersion: flutterVersion,
                     displayName: displayName,
-                    platformStatuses: const {
-                      releasePlatform: ReleaseStatus.active,
-                    },
+                    platforms: const [
+                      ReleasePlatformDetails(
+                        platform: releasePlatform,
+                        status: ReleaseStatus.active,
+                      ),
+                    ],
                     createdAt: DateTime(2023),
                     updatedAt: DateTime(2023),
                   ),
@@ -1377,7 +1380,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                     flutterRevision: flutterRevision,
                     flutterVersion: flutterVersion,
                     displayName: displayName,
-                    platformStatuses: const {},
+                    platforms: const [],
                     createdAt: DateTime(2023),
                     updatedAt: DateTime(2023),
                   ),
@@ -1402,9 +1405,12 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                     flutterRevision: flutterRevision,
                     flutterVersion: flutterVersion,
                     displayName: displayName,
-                    platformStatuses: const {
-                      releasePlatform: ReleaseStatus.draft,
-                    },
+                    platforms: const [
+                      ReleasePlatformDetails(
+                        platform: releasePlatform,
+                        status: ReleaseStatus.draft,
+                      ),
+                    ],
                     createdAt: DateTime(2023),
                     updatedAt: DateTime(2023),
                   ),

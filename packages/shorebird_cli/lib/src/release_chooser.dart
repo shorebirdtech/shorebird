@@ -31,7 +31,7 @@ final showAllReleaseSentinel = Release(
   appId: '',
   version: '',
   flutterRevision: '',
-  platformStatuses: const {},
+  platforms: const [],
   createdAt: DateTime(0),
   updatedAt: DateTime(0),
 );

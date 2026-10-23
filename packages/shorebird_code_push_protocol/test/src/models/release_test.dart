@@ -11,7 +11,12 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const [
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+        ],
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -30,7 +35,12 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const [
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+        ],
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -42,7 +52,12 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const [
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+        ],
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -54,7 +69,12 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const [
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+        ],
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),

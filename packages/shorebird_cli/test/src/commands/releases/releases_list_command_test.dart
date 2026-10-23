@@ -28,10 +28,16 @@ void main() {
       flutterRevision: 'abc123',
       flutterVersion: '3.27.0',
       displayName: '1.0.0+1',
-      platformStatuses: const {
-        ReleasePlatform.android: ReleaseStatus.active,
-        ReleasePlatform.ios: ReleaseStatus.active,
-      },
+      platforms: const [
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.android,
+          status: ReleaseStatus.active,
+        ),
+        ReleasePlatformDetails(
+          platform: ReleasePlatform.ios,
+          status: ReleaseStatus.active,
+        ),
+      ],
       createdAt: DateTime(2026, 1, 15),
       updatedAt: DateTime(2026, 1, 16),
     );
@@ -157,7 +163,12 @@ void main() {
         flutterRevision: 'def456',
         flutterVersion: '3.27.0',
         displayName: '2.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const [
+          ReleasePlatformDetails(
+            platform: ReleasePlatform.android,
+            status: ReleaseStatus.active,
+          ),
+        ],
         createdAt: DateTime(2026, 2),
         updatedAt: DateTime(2026, 2, 2),
       );
