@@ -153,6 +153,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         CommonArguments.publicKeyCmd.name,
         help: CommonArguments.publicKeyCmd.description,
       )
+      ..addFlag(
+        'patch-signing',
+        defaultsTo: true,
+        help:
+            'Embed a key that Shorebird manages and signs patches with. '
+            '--no-patch-signing builds a release whose patches are not '
+            'signed. To sign patches with your own key, pass '
+            '--${CommonArguments.publicKeyArg.name} or '
+            '--${CommonArguments.publicKeyCmd.name} instead.',
+      )
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
@@ -459,6 +469,7 @@ $error''');
       releaseVersion: releaseVersion,
       flutterVersion: flutterRevision,
       releasePlatform: releaser.releaseType.releasePlatform,
+      signing: releaser.artifactSigning,
     );
 
     final release = await _publishRelease(
@@ -579,12 +590,18 @@ $error''');
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
-    if (shorebirdYaml?.patchVerification != null && !hasPublicKey) {
+    if (hasPublicKey && !results.patchSigningEnabled) {
+      usageException(
+        '--no-patch-signing builds a release without a key, so it cannot be '
+        'combined with --${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+    }
+    if (shorebirdYaml?.patchVerification != null &&
+        !results.patchSigningEnabled) {
       logger.warn(
-        'patch_verification is set in shorebird.yaml but '
-        'no public key was provided '
-        '(--${CommonArguments.publicKeyArg.name} '
-        'or --${CommonArguments.publicKeyCmd.name}).\n'
+        'patch_verification is set in shorebird.yaml but this release '
+        'embeds no key (--no-patch-signing).\n'
         'patch_verification configuration will have no effect.',
       );
     }
@@ -727,6 +744,7 @@ To resolve this issue, you can:
     required String releaseVersion,
     required String flutterVersion,
     required ReleasePlatform releasePlatform,
+    ArtifactSigningRequest? signing,
   }) async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     // TODO(bryanoltman): include archs in the summary for android
@@ -737,6 +755,8 @@ To resolve this issue, you can:
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}',
       '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+      if (signing != null)
+        '🔏 Patch Signing: ${lightCyan.wrap(_describeSigning(signing.mode))}',
     ];
 
     logger.info('''
@@ -746,6 +766,12 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
   }
+
+  String _describeSigning(ReleaseSigningMode mode) => switch (mode) {
+    ReleaseSigningMode.managed => 'Shorebird-managed key',
+    ReleaseSigningMode.customer => 'your key',
+    ReleaseSigningMode.unsigned => 'off (--no-patch-signing)',
+  };
 
   /// Fetches the release with version [version] from the server or creates a
   /// new release if none exists.

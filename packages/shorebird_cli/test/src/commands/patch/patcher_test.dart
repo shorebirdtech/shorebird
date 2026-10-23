@@ -437,6 +437,58 @@ void main() {
       });
     });
 
+    group('getEncodedPublicKey', () {
+      late CodeSigner codeSigner;
+
+      setUp(() {
+        codeSigner = MockCodeSigner();
+        when(
+          () => codeSigner.base64PublicKeyFromPem(any()),
+        ).thenReturn('encoded-key');
+      });
+
+      test("returns the release's managed key when it has one", () async {
+        final argParser = ArgParser()
+          ..addOption(CommonArguments.publicKeyArg.name)
+          ..addOption(CommonArguments.publicKeyCmd.name);
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argParser.parse([]),
+          flavor: null,
+          target: null,
+        )..releaseManagedPublicKeyPem = 'managed-pem';
+
+        final key = await runScoped(
+          patcher.getEncodedPublicKey,
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+
+        expect(key, equals('encoded-key'));
+        verify(
+          () => codeSigner.base64PublicKeyFromPem('managed-pem'),
+        ).called(1);
+      });
+
+      test('returns null when no key is configured', () async {
+        final argParser = ArgParser()
+          ..addOption(CommonArguments.publicKeyArg.name)
+          ..addOption(CommonArguments.publicKeyCmd.name);
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argParser.parse([]),
+          flavor: null,
+          target: null,
+        );
+
+        final key = await runScoped(
+          patcher.getEncodedPublicKey,
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+
+        expect(key, isNull);
+      });
+    });
+
     group('signHash', () {
       final cryptoFixturesBasePath = p.join(fixturesDirectory, 'crypto');
       final privateKeyFile = File(

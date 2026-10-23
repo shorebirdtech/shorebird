@@ -106,6 +106,10 @@ extension CodeSign on ArgResults {
     return codeSigner.canonicalPublicKeyPem(pem);
   }
 
+  /// Whether a release's patches are signed (`--patch-signing`, the default;
+  /// `--no-patch-signing` turns it off).
+  bool get patchSigningEnabled => this['patch-signing'] != false;
+
   /// Get base64-encoded public key from either file or command.
   ///
   /// Returns null if no public key is configured.

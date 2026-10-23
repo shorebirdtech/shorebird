@@ -181,6 +181,9 @@ void main() {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(
+        const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
+      );
     });
 
     setUp(() {
@@ -682,6 +685,38 @@ void main() {
 
           expect(apps, equals([app]));
           verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('getSigningKey', () {
+        const signingKey = SigningKey(id: 7, publicKeyPem: 'pem');
+
+        test('returns the key', () async {
+          when(
+            () => codePushClient.getSigningKey(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => signingKey);
+
+          final key = await runWithOverrides(
+            () => codePushClientWrapper.getSigningKey(appId: appId),
+          );
+
+          expect(key, equals(signingKey));
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('exits with code 70 when the fetch fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getSigningKey(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getSigningKey(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
         });
       });
 
@@ -2915,6 +2950,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
               podfileLockHash: any(named: 'podfileLockHash'),
+              signing: any(named: 'signing'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -2940,6 +2976,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: any(named: 'hash'),
               canSideload: true,
               podfileLockHash: null,
+            ),
+          ).called(1);
+        });
+
+        test('records how the build is signed', () async {
+          const signing = ArtifactSigningRequest(
+            mode: ReleaseSigningMode.managed,
+            keyId: 7,
+          );
+          await runWithOverrides(
+            () async => codePushClientWrapper.createLinuxReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              bundle: releaseBundle,
+              signing: signing,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: appId,
+              releaseId: releaseId,
+              arch: primaryLinuxReleaseArtifactArch,
+              platform: ReleasePlatform.linux,
+              hash: any(named: 'hash'),
+              canSideload: true,
+              podfileLockHash: null,
+              signing: signing,
             ),
           ).called(1);
         });

@@ -696,6 +696,97 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         });
       });
 
+      group('when the release embeds a managed key', () {
+        const managedPem = 'managed-public-key-pem';
+
+        void stubReleaseSigning(ArtifactSigning signing) {
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'aab',
+              platform: ReleasePlatform.android,
+            ),
+          ).thenAnswer(
+            (_) async => ReleaseArtifact(
+              id: aabArtifact.id,
+              releaseId: aabArtifact.releaseId,
+              arch: aabArtifact.arch,
+              platform: aabArtifact.platform,
+              hash: aabArtifact.hash,
+              size: aabArtifact.size,
+              url: aabArtifact.url,
+              canSideload: aabArtifact.canSideload,
+              signing: signing,
+            ),
+          );
+        }
+
+        setUp(() {
+          stubReleaseSigning(
+            const ArtifactSigning(
+              mode: 'managed',
+              keyId: 7,
+              publicKeyPem: managedPem,
+            ),
+          );
+        });
+
+        test('builds the patch against the release key', () async {
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verify(() => patcher.releaseManagedPublicKeyPem = managedPem).called(
+            1,
+          );
+        });
+
+        test('rejects a key of your own', () async {
+          when(
+            () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults[CommonArguments.privateKeyArg.name],
+          ).thenReturn(createTempFile('private.pem').path);
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn(createTempFile('public.pem').path);
+
+          await expectLater(
+            runWithOverrides(() => command.createPatch(patcher)),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                'Release ${release.version} is signed with a Shorebird-managed '
+                    'key, and Shorebird signs its patches. Remove '
+                    '--public-key-path, --private-key-path.',
+              ),
+            ),
+          );
+        });
+
+        test('exits when the server returns no key', () async {
+          stubReleaseSigning(const ArtifactSigning(mode: 'managed', keyId: 7));
+
+          await expectLater(
+            runWithOverrides(() => command.createPatch(patcher)),
+            exitsWithCode(ExitCode.software),
+          );
+          verifyNever(() => patcher.releaseManagedPublicKeyPem = any());
+        });
+      });
+
+      group('when the release embeds no managed key', () {
+        test('builds with the configured key', () async {
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verifyNever(() => patcher.releaseManagedPublicKeyPem = any());
+        });
+      });
+
       group('correctly validates key pair', () {
         group('when no key pair is provided', () {
           test('is valid', () async {
@@ -1880,6 +1971,45 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         setUp(() {
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
+
+        test(
+          'builds again with the key when the release embeds a managed key',
+          () async {
+            when(
+              () => codePushClientWrapper.getReleaseArtifact(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: 'aab',
+                platform: ReleasePlatform.android,
+              ),
+            ).thenAnswer(
+              (_) async => ReleaseArtifact(
+                id: aabArtifact.id,
+                releaseId: aabArtifact.releaseId,
+                arch: aabArtifact.arch,
+                platform: aabArtifact.platform,
+                hash: aabArtifact.hash,
+                size: aabArtifact.size,
+                url: aabArtifact.url,
+                canSideload: aabArtifact.canSideload,
+                signing: const ArtifactSigning(
+                  mode: 'managed',
+                  keyId: 7,
+                  publicKeyPem: 'managed-public-key-pem',
+                ),
+              ),
+            );
+
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyInOrder([
+              () => patcher.buildPatchArtifact(),
+              () =>
+                  patcher.releaseManagedPublicKeyPem = 'managed-public-key-pem',
+              () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+            ]);
+          },
+        );
 
         group('when release Flutter version is not default', () {
           const releaseFlutterRevision = 'different-revision';

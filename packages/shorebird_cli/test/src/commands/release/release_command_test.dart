@@ -1120,41 +1120,65 @@ Did you mean --release-version=1.0.0+1?''',
         verify(releaser.assertArgsAreValid).called(1);
       });
 
-      group(
-        'when patch_verification is set but public-key-path is not provided',
-        () {
-          setUp(() {
-            when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
-              const ShorebirdYaml(
-                appId: appId,
-                patchVerification: PatchVerification.strict,
-              ),
-            );
-            when(
-              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-            ).thenReturn(false);
-          });
+      group('when patch_verification is set', () {
+        late Releaser releaser;
 
-          test('logs a warning', () async {
-            final releaser = MockReleaser();
-            when(
-              () => releaser.minimumFlutterVersion,
-            ).thenReturn(Version(0, 0, 0));
-            when(() => releaser.useObfuscation).thenReturn(false);
-            when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
-            await runWithOverrides(() => command.assertArgsAreValid(releaser));
-            verify(
-              () => logger.warn(
-                'patch_verification is set in shorebird.yaml but '
-                'no public key was provided '
-                '(--${CommonArguments.publicKeyArg.name} '
-                'or --${CommonArguments.publicKeyCmd.name}).\n'
-                'patch_verification configuration will have no effect.',
-              ),
-            ).called(1);
-          });
-        },
-      );
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: appId,
+              patchVerification: PatchVerification.strict,
+            ),
+          );
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(false);
+          releaser = MockReleaser();
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(Version(0, 0, 0));
+          when(() => releaser.useObfuscation).thenReturn(false);
+          when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+        });
+
+        test('does not warn when the release embeds a managed key', () async {
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+          verifyNever(() => logger.warn(any()));
+        });
+
+        test('warns with --no-patch-signing', () async {
+          when(() => argResults['patch-signing']).thenReturn(false);
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+          verify(
+            () => logger.warn(
+              'patch_verification is set in shorebird.yaml but this release '
+              'embeds no key (--no-patch-signing).\n'
+              'patch_verification configuration will have no effect.',
+            ),
+          ).called(1);
+        });
+      });
+
+      test('rejects --no-patch-signing with a public key', () async {
+        when(() => argResults['patch-signing']).thenReturn(false);
+        when(
+          () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+        ).thenReturn(true);
+        when(
+          () => argResults[CommonArguments.publicKeyArg.name],
+        ).thenReturn(null);
+        final releaser = MockReleaser();
+        await expectLater(
+          () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              contains('--no-patch-signing builds a release without a key'),
+            ),
+          ),
+        );
+      });
 
       test('exits with code 64 if flutter version is not supported', () async {
         final releaser = MockReleaser();

@@ -82,10 +82,15 @@ void main() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(
+        const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
+      );
     });
 
     setUp(() {
       argResults = MockArgResults();
+      // Managed signing, the default, is covered in releaser_test.dart.
+      when(() => argResults['patch-signing']).thenReturn(false);
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
@@ -671,6 +676,7 @@ To change the version of this release, change your app's version in your pubspec
             platform: any(named: 'platform'),
             architectures: any(named: 'architectures'),
             flavor: any(named: 'flavor'),
+            signing: any(named: 'signing'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -679,6 +685,32 @@ To change the version of this release, change your app's version in your pubspec
             flavor: any(named: 'flavor'),
           ),
         ).thenReturn(aabFile);
+      });
+
+      test('records how the build is signed on its artifacts', () async {
+        const signing = ArtifactSigningRequest(
+          mode: ReleaseSigningMode.managed,
+          keyId: 7,
+        );
+        androidReleaser.artifactSigning = signing;
+        await runWithOverrides(
+          () => androidReleaser.uploadReleaseArtifacts(
+            appId: appId,
+            release: release,
+          ),
+        );
+        verify(
+          () => codePushClientWrapper.createAndroidReleaseArtifacts(
+            appId: appId,
+            releaseId: release.id,
+            projectRoot: projectRoot.path,
+            aabPath: aabFile.path,
+            platform: ReleasePlatform.android,
+            architectures: Arch.values,
+            flavor: androidReleaser.flavor,
+            signing: signing,
+          ),
+        ).called(1);
       });
 
       test(

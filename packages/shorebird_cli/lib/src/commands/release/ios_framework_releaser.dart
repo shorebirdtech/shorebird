@@ -111,6 +111,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
       appId: appId,
       releaseId: release.id,
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
+      signing: artifactSigning,
     );
   }
 

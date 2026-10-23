@@ -214,11 +214,24 @@ More info: ${troubleshootingUrl.toLink()}.
     return null;
   }
 
-  /// Gets the base64-encoded public key from either --public-key-path or
-  /// --public-key-cmd, the same way releases do.
+  /// The managed public key (PEM) the release being patched embeds, which
+  /// the patch builds against. Null unless the release is managed-signed.
+  String? releaseManagedPublicKeyPem;
+
+  /// Gets the base64-encoded public key the patch build embeds.
+  ///
+  /// A patch builds against the key its release embeds, so its build matches
+  /// the release's. For a managed release that is the release's managed key;
+  /// otherwise the key from --public-key-path or --public-key-cmd, the same
+  /// way releases do.
   ///
   /// Returns null if no public key is configured.
-  Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
+  Future<String?> getEncodedPublicKey() async {
+    if (releaseManagedPublicKeyPem case final pem?) {
+      return codeSigner.base64PublicKeyFromPem(pem);
+    }
+    return argResults.getEncodedPublicKey();
+  }
 
   /// Returns the public key PEM from the configured source, or null.
   Future<String?> _resolvePublicKeyPem() async {

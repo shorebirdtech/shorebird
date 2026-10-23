@@ -366,6 +366,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       patcher: patcher,
       release: release,
     );
+    _configureSigning(
+      patcher: patcher,
+      release: release,
+      releaseArtifact: downloaded.releaseArtifact,
+    );
 
     // The extracted supplement (including any obfuscation map the build loads)
     // is needed until the patch is built and published.
@@ -569,6 +574,48 @@ Building with Flutter $flutterVersionString to determine the release version...
       supplementDirectory: supplementDirectory,
       obfuscationMapFile: obfuscationMapFile,
     );
+  }
+
+  /// Configures [patcher] to build the patch against the key [release]'s
+  /// [releaseArtifact] embeds.
+  ///
+  /// Shorebird signs the patches of a release that embeds a managed key, so
+  /// passing a key of your own for one is a usage error.
+  void _configureSigning({
+    required Patcher patcher,
+    required Release release,
+    required ReleaseArtifact releaseArtifact,
+  }) {
+    final signing = releaseArtifact.signing;
+    if (signing?.mode != ReleaseSigningMode.managed.value) return;
+
+    final keyArgs = [
+      CommonArguments.publicKeyArg.name,
+      CommonArguments.publicKeyCmd.name,
+      CommonArguments.privateKeyArg.name,
+      CommonArguments.signCmd.name,
+    ].where(results.wasParsed);
+    if (keyArgs.isNotEmpty) {
+      usageException(
+        'Release ${release.version} is signed with a Shorebird-managed key, '
+        'and Shorebird signs its patches. Remove '
+        '${keyArgs.map((arg) => '--$arg').join(', ')}.',
+      );
+    }
+    final publicKeyPem = signing!.publicKeyPem;
+    if (publicKeyPem == null) {
+      logger.err(
+        'Release ${release.version} is signed with a Shorebird-managed key, '
+        'but the server did not return it. Try again, and contact Shorebird '
+        'support if this persists.',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+    patcher.releaseManagedPublicKeyPem = publicKeyPem;
+
+    // A patch built to read the release version embedded no key, so it
+    // can't be compared with this release: build it again with the key.
+    lastBuiltFlutterRevision = null;
   }
 
   /// Configures [patcher] to build the patch with the same obfuscation as

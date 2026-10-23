@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -92,13 +94,14 @@ To change the version of this release, change your app's version in your pubspec
   /// supplement output. [build] receives the user's forwarded arguments plus
   /// the `--split-debug-info` default and obfuscation map options (see
   /// [addSplitDebugInfoDefault] and [addObfuscationMapArgs]), and the encoded
-  /// public key. Once it returns, [verifyObfuscationMap] checks that an
-  /// obfuscated build saved its obfuscation map.
+  /// public key (see [resolvePatchSigningKey]). Once it returns,
+  /// [verifyObfuscationMap] checks that an obfuscated build saved its
+  /// obfuscation map.
   Future<T> runReleaseBuild<T>(
     Future<T> Function(List<String> buildArgs, String? base64PublicKey) build,
   ) async {
     clearSupplementDirectory();
-    final base64PublicKey = await getEncodedPublicKey();
+    final base64PublicKey = await resolvePatchSigningKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
     await addObfuscationMapArgs(buildArgs);
@@ -141,6 +144,44 @@ To change the version of this release, change your app's version in your pubspec
   ///
   /// Returns null if no public key is configured.
   Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
+
+  /// How this platform's build is signed for patch signing, recorded on each
+  /// artifact the build uploads. Set by [resolvePatchSigningKey]; null until
+  /// the build runs.
+  ArtifactSigningRequest? artifactSigning;
+
+  /// Decides which public key this platform's build embeds, sets
+  /// [artifactSigning] to match, and returns the key base64-encoded, or null
+  /// if the build embeds none.
+  ///
+  /// A key passed with --public-key-path or --public-key-cmd is the
+  /// customer's, who signs every patch. With --no-patch-signing the build
+  /// embeds no key. Otherwise the build embeds the managed key the server
+  /// returns for the app, and Shorebird signs every patch. A failed fetch
+  /// fails the release, so a release never silently goes unsigned.
+  Future<String?> resolvePatchSigningKey() async {
+    final customerKey = await getEncodedPublicKey();
+    if (customerKey != null) {
+      artifactSigning = const ArtifactSigningRequest(
+        mode: ReleaseSigningMode.customer,
+      );
+      return customerKey;
+    }
+    if (!argResults.patchSigningEnabled) {
+      artifactSigning = const ArtifactSigningRequest(
+        mode: ReleaseSigningMode.unsigned,
+      );
+      return null;
+    }
+    final signingKey = await codePushClientWrapper.getSigningKey(
+      appId: shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor),
+    );
+    artifactSigning = ArtifactSigningRequest(
+      mode: ReleaseSigningMode.managed,
+      keyId: signingKey.id,
+    );
+    return codeSigner.base64PublicKeyFromPem(signingKey.publicKeyPem);
+  }
 
   /// Whether the user is building with obfuscation. Checks for `--obfuscate`
   /// both as a parsed flag and after the `--` separator, since it can be
@@ -315,6 +356,7 @@ To change the version of this release, change your app's version in your pubspec
         platform: releaseType.releasePlatform,
         supplementDirectoryPath: supplementDir.path,
         arch: supplementArtifactArch,
+        signing: artifactSigning,
       );
     }
   }

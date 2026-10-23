@@ -145,6 +145,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       platform: releaseType.releasePlatform,
       architectures: architectures,
       flavor: flavor,
+      signing: artifactSigning,
     );
   }
 

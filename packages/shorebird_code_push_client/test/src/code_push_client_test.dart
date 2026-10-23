@@ -714,6 +714,42 @@ void main() {
         });
       });
 
+      group('when signing is provided', () {
+        test('sends it as one JSON-encoded field', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync()
+            ..writeAsStringSync('hello');
+
+          try {
+            await codePushClient.createReleaseArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              canSideload: canSideload,
+              podfileLockHash: null,
+              signing: const ArtifactSigningRequest(
+                mode: ReleaseSigningMode.managed,
+                keyId: 7,
+              ),
+            );
+          } on Exception {
+            // ignore
+          }
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.MultipartRequest;
+          expect(
+            request.fields['signing'],
+            equals('{"mode":"managed","key_id":7}'),
+          );
+        });
+      });
+
       group('when podfileLockHash is provided', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();
@@ -2421,6 +2457,54 @@ void main() {
         );
 
         expect(await codePushClient.getApp(appId: 'app-id'), equals(app));
+      });
+    });
+
+    group('getSigningKey', () {
+      const signingKey = SigningKey(id: 7, publicKeyPem: 'pem');
+
+      test('makes the correct request', () async {
+        codePushClient.getSigningKey(appId: 'app-id').ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('apps/app-id/signing-key')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws an exception if the http request fails', () {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.serviceUnavailable,
+          ),
+        );
+
+        expect(
+          codePushClient.getSigningKey(appId: 'app-id'),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+
+      test('returns the key when the request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const GetSigningKeyResponse(signingKey: signingKey),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+
+        expect(
+          await codePushClient.getSigningKey(appId: 'app-id'),
+          equals(signingKey),
+        );
       });
     });
 
