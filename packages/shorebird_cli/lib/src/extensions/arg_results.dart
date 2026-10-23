@@ -79,7 +79,8 @@ final _publicKeyPemCache = Expando<Future<String?>>('publicKeyPem');
 
 /// Extension on [ArgResults] to provide code signing related extensions.
 extension CodeSign on ArgResults {
-  /// Resolves the public key PEM string from the configured source.
+  /// Resolves the public key PEM string from the configured source, as
+  /// [CodeSigner.canonicalPublicKeyPem] re-encodes it.
   ///
   /// The result is resolved once per parse and reused by later calls.
   ///
@@ -102,8 +103,7 @@ extension CodeSign on ArgResults {
     } else {
       return null;
     }
-    codeSigner.checkPublicKeyPem(pem);
-    return pem;
+    return codeSigner.canonicalPublicKeyPem(pem);
   }
 
   /// Get base64-encoded public key from either file or command.

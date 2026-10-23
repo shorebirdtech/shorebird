@@ -111,6 +111,11 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       ditto = MockDitto();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       doctor = MockDoctor();
       engineConfig = MockEngineConfig();
       flavorValidator = MockFlavorValidator();

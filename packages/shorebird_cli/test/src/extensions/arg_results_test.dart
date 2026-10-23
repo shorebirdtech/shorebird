@@ -450,6 +450,11 @@ void main() {
 
       setUp(() {
         codeSigner = MockCodeSigner();
+        when(
+          () => codeSigner.canonicalPublicKeyPem(any()),
+        ).thenAnswer(
+          (invocation) => invocation.positionalArguments.single as String,
+        );
       });
 
       test('runs --public-key-cmd once per parse', () async {

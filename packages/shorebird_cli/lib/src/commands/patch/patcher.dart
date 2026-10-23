@@ -231,10 +231,10 @@ More info: ${troubleshootingUrl.toLink()}.
       );
       throw ProcessExit(ExitCode.software.code);
     } on FormatException catch (e) {
-      logger.err(
-        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
-        '${e.message}',
-      );
+      final source = argResults.wasParsed(CommonArguments.publicKeyArg.name)
+          ? '--${CommonArguments.publicKeyArg.name} file'
+          : '--${CommonArguments.publicKeyCmd.name} output';
+      logger.err('The $source ${e.message}');
       throw ProcessExit(ExitCode.software.code);
     }
   }

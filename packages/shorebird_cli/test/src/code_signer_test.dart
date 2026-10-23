@@ -128,7 +128,7 @@ void main() {
         });
       });
 
-      group('checkPublicKeyPem', () {
+      group('canonicalPublicKeyPem', () {
         Matcher refusedWithout(String keyText) => throwsA(
           isA<InvalidPublicKeyException>()
               .having((e) => e.source, 'source', isNull)
@@ -138,23 +138,92 @@ void main() {
             .convert(file.readAsStringSync())
             .firstWhere((line) => !line.startsWith('-----'));
 
-        test('accepts one public key', () {
+        test('returns the same key, re-encoded', () {
+          final publicKey = publicKeyFile.readAsStringSync();
+          final canonical = codeSigner.canonicalPublicKeyPem(publicKey);
+
+          expect(canonical, startsWith('-----BEGIN PUBLIC KEY-----'));
           expect(
-            () => codeSigner.checkPublicKeyPem(
-              publicKeyFile.readAsStringSync(),
+            codeSigner.base64PublicKeyFromPem(canonical),
+            codeSigner.base64PublicKeyFromPem(publicKey),
+          );
+          // Wrapping and line endings do not change it.
+          expect(
+            codeSigner.canonicalPublicKeyPem(
+              '\n${publicKey.replaceAll('\n', '\r\n')}\n',
             ),
-            returnsNormally,
+            canonical,
+          );
+        });
+
+        test('refuses data hidden in the block', () {
+          final publicKey = publicKeyFile.readAsStringSync();
+          final privateBody = const LineSplitter()
+              .convert(privateKeyFile.readAsStringSync())
+              .where((line) => !line.startsWith('-----'))
+              .join('\n');
+          final body = const LineSplitter()
+              .convert(publicKey)
+              .where((line) => !line.startsWith('-----'))
+              .join('\n');
+          const begin = '-----BEGIN PUBLIC KEY-----';
+          const end = '-----END PUBLIC KEY-----';
+          for (final pem in [
+            // A private key's body after the public key's.
+            '$begin\n$body\n$privateBody\n$end\n',
+            // A second END line with the private key's body between.
+            '$publicKey$privateBody\n-----END PUBLIC KEY-----\n',
+          ]) {
+            expect(
+              () => codeSigner.canonicalPublicKeyPem(pem),
+              refusedWithout(privateBody.substring(0, 40)),
+            );
+          }
+        });
+
+        test('refuses a key that is not RSA', () {
+          // An Ed25519 SubjectPublicKeyInfo.
+          expect(
+            () => codeSigner.canonicalPublicKeyPem(
+              '-----BEGIN PUBLIC KEY-----\n'
+              'MCowBQYDK2VwAyEAGb9ECWmEzf6FQbrBZ9w7lshQhqowtrbLDFw4rXAxZuE=\n'
+              '-----END PUBLIC KEY-----\n',
+            ),
+            throwsA(
+              isA<InvalidPublicKeyException>().having(
+                (e) => e.message,
+                'message',
+                startsWith('is not an RSA public key'),
+              ),
+            ),
+          );
+        });
+
+        test('refuses a block that is not a key', () {
+          expect(
+            () => codeSigner.canonicalPublicKeyPem(
+              '-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n',
+            ),
+            throwsA(
+              isA<InvalidPublicKeyException>()
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    'is not a valid public key.',
+                  )
+                  .having((e) => e.source, 'source', isNull),
+            ),
           );
         });
 
         for (final file in [privateKeyFile, privateKeyPkcs1File]) {
           test('refuses ${p.basename(file.path)} without quoting it', () {
             expect(
-              () => codeSigner.checkPublicKeyPem(file.readAsStringSync()),
+              () => codeSigner.canonicalPublicKeyPem(file.readAsStringSync()),
               refusedWithout(bodyLine(file)),
             );
             expect(
-              () => codeSigner.checkPublicKeyPem(file.readAsStringSync()),
+              () => codeSigner.canonicalPublicKeyPem(file.readAsStringSync()),
               throwsA(
                 isA<InvalidPublicKeyException>().having(
                   (e) => e.message,
@@ -168,7 +237,7 @@ void main() {
 
         test('refuses a public key alongside a private one', () {
           expect(
-            () => codeSigner.checkPublicKeyPem(
+            () => codeSigner.canonicalPublicKeyPem(
               '${publicKeyFile.readAsStringSync()}'
               '${privateKeyFile.readAsStringSync()}',
             ),
@@ -186,7 +255,7 @@ void main() {
             publicKey.replaceAll('PUBLIC KEY', 'RSA PUBLIC KEY'),
           ]) {
             expect(
-              () => codeSigner.checkPublicKeyPem(pem),
+              () => codeSigner.canonicalPublicKeyPem(pem),
               throwsA(
                 isA<InvalidPublicKeyException>().having(
                   (e) => e.message,
@@ -318,7 +387,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
         );
       });
 
-      test('throws FormatException when output is empty', () async {
+      test('refuses empty output', () async {
         final result = MockShorebirdProcessResult();
         when(() => result.exitCode).thenReturn(0);
         when(() => result.stdout).thenReturn('');
@@ -331,10 +400,10 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
             await expectLater(
               () => codeSigner.runPublicKeyCmd('empty-cmd'),
               throwsA(
-                isA<FormatException>().having(
+                isA<InvalidPublicKeyException>().having(
                   (e) => e.message,
                   'message',
-                  contains('produced no output'),
+                  startsWith('is empty.'),
                 ),
               ),
             );
@@ -359,8 +428,11 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
 
         await runScoped(
           () async {
-            await expectLater(
-              () => codeSigner.runPublicKeyCmd('cat private.pem'),
+            final returned = await codeSigner.runPublicKeyCmd(
+              'cat private.pem',
+            );
+            expect(
+              () => codeSigner.canonicalPublicKeyPem(returned),
               throwsA(
                 isA<InvalidPublicKeyException>()
                     .having(
@@ -376,19 +448,26 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
         );
       });
 
-      test('throws FormatException when output is not a PEM key', () async {
+      test('never quotes output that is not a public key', () async {
+        // A raw EC private key in base64, which no PEM check recognizes.
+        const output = 'MHcCAQEEIBaUw8nMbFNd7SHfQyw0OprZQNiGn9Ag1RCLo3mQ9hRx';
         final result = MockShorebirdProcessResult();
         when(() => result.exitCode).thenReturn(0);
-        when(() => result.stdout).thenReturn('not a pem key');
+        when(() => result.stdout).thenReturn(output);
         when(
           () => shorebirdProcess.run(any(), any()),
         ).thenAnswer((_) async => result);
 
         await runScoped(
           () async {
-            await expectLater(
-              () => codeSigner.runPublicKeyCmd('echo "not a pem key"'),
-              throwsA(isA<FormatException>()),
+            final returned = await codeSigner.runPublicKeyCmd('print-key');
+            expect(
+              () => codeSigner.canonicalPublicKeyPem(returned),
+              throwsA(
+                isA<InvalidPublicKeyException>()
+                    .having((e) => '$e', 'toString', isNot(contains(output)))
+                    .having((e) => e.source, 'source', isNull),
+              ),
             );
           },
           values: {processRef.overrideWith(() => shorebirdProcess)},
@@ -453,7 +532,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
         );
       });
 
-      test('throws FormatException when output is empty', () async {
+      test('refuses empty output', () async {
         when(() => proc.stdout).thenAnswer(
           (_) => Stream.value(utf8.encode('  \n  ')),
         );

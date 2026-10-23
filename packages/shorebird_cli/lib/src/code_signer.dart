@@ -35,6 +35,10 @@ class InvalidPublicKeyException extends FormatException {
   const InvalidPublicKeyException(super.message);
 }
 
+/// The DER object identifier of `rsaEncryption`, which a
+/// SubjectPublicKeyInfo names as its algorithm for an RSA key.
+const _rsaEncryptionOid = '1.2.840.113549.1.1.1';
+
 /// {@template code_signer}
 /// Manages code signing operations.
 /// {@endtemplate}
@@ -80,15 +84,18 @@ class CodeSigner {
     return base64.encode(publicKeySeq.encodedBytes!);
   }
 
-  /// Checks that [pem] is exactly one PEM public key (`BEGIN PUBLIC KEY`)
-  /// with nothing else around it, before the CLI embeds it in a release or
-  /// sends it anywhere.
+  /// Returns the RSA public key in [pem], which must be exactly one PEM
+  /// public key (`BEGIN PUBLIC KEY`) and nothing else, re-encoded from the
+  /// parsed key rather than copied.
   ///
-  /// A private key is refused outright, in any PEM form, so a swapped
-  /// `--public-key-path` and `--private-key-path` cannot put the private key
-  /// in an app or send it to Shorebird. Throws an [InvalidPublicKeyException]
-  /// whose message never quotes [pem], since [pem] may be a private key.
-  void checkPublicKeyPem(String pem) {
+  /// The CLI embeds and sends only what this returns, so no byte of [pem]
+  /// beyond the key itself reaches a release or Shorebird, even if other
+  /// data was hidden inside the block. A private key is refused outright, in
+  /// any PEM form, so a swapped `--public-key-path` and `--private-key-path`
+  /// cannot put the private key in an app or send it to Shorebird. Throws an
+  /// [InvalidPublicKeyException] whose message never quotes [pem], since
+  /// [pem] may be a private key.
+  String canonicalPublicKeyPem(String pem) {
     if (pem.contains('PRIVATE KEY')) {
       throw const InvalidPublicKeyException(
         'contains a private key. Never pass a private key here: pass the '
@@ -97,19 +104,55 @@ class CodeSigner {
         '--private-key-path.',
       );
     }
-    final labels = RegExp(
-      '-----BEGIN ([^-]*)-----',
-    ).allMatches(pem).map((match) => match.group(1)).toList();
+    const notOneKey = InvalidPublicKeyException(
+      'must contain exactly one PEM public key (BEGIN PUBLIC KEY) and '
+      'nothing else.',
+    );
     final trimmed = pem.trim();
-    if (labels.length != 1 ||
-        labels.single != 'PUBLIC KEY' ||
+    if (RegExp('-----BEGIN ').allMatches(pem).length != 1 ||
+        RegExp('-----END ').allMatches(pem).length != 1 ||
         !trimmed.startsWith('-----BEGIN PUBLIC KEY-----') ||
         !trimmed.endsWith('-----END PUBLIC KEY-----')) {
-      throw const InvalidPublicKeyException(
-        'must contain exactly one PEM public key (BEGIN PUBLIC KEY) and '
-        'nothing else.',
-      );
+      throw notOneKey;
     }
+    final RSAPublicKey key;
+    try {
+      final der = PemCodec(PemLabel.publicKey).decode(trimmed);
+      final parser = ASN1Parser(Uint8List.fromList(der));
+      final info = parser.nextObject() as ASN1Sequence;
+      // Bytes after the key would be copied nowhere, but are refused so the
+      // block holds nothing but the key.
+      if (parser.hasNext()) throw notOneKey;
+      final algorithm = info.elements![0] as ASN1Sequence;
+      final oid = algorithm.elements![0] as ASN1ObjectIdentifier;
+      if (oid.objectIdentifierAsString != _rsaEncryptionOid) {
+        throw const InvalidPublicKeyException(
+          'is not an RSA public key. Patch signing uses RSA keys.',
+        );
+      }
+      key = _RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(der);
+    } on InvalidPublicKeyException {
+      rethrow;
+      // Malformed DER fails in ASN.1 parsing with errors and exceptions
+      // that can carry the input, so whatever is thrown is replaced.
+      // ignore: avoid_catches_without_on_clauses
+    } catch (_) {
+      throw const InvalidPublicKeyException('is not a valid public key.');
+    }
+    final publicKey = ASN1Sequence()
+      ..add(ASN1Integer(key.modulus))
+      ..add(ASN1Integer(key.exponent))
+      ..encode();
+    final info = ASN1Sequence()
+      ..add(
+        ASN1Sequence()
+          ..add(ASN1ObjectIdentifier.fromIdentifierString(_rsaEncryptionOid))
+          ..add(ASN1Null())
+          ..encode(),
+      )
+      ..add(ASN1BitString(stringValues: publicKey.encodedBytes))
+      ..encode();
+    return PemCodec(PemLabel.publicKey).encode(info.encodedBytes!);
   }
 
   /// Runs a command and returns its stdout, expected to be a PEM public key.
@@ -129,30 +172,14 @@ class CodeSigner {
     }
 
     final output = '${result.stdout}'.trim();
-    // Checked before anything below previews the output, so a command that
-    // prints a private key never has it echoed to the terminal or CI logs.
-    if (output.contains('PRIVATE KEY')) {
+    // The output is never quoted in an error: a command that prints the
+    // wrong thing may print a private key, in PEM or in a form no check
+    // recognizes, and an error lands in the terminal and in CI logs.
+    if (output.isEmpty) {
       throw const InvalidPublicKeyException(
-        'contains a private key. The command must print only your public '
-        'key.',
+        'is empty. The command must print a PEM-encoded public key.',
       );
     }
-    if (!output.contains('-----BEGIN') || !output.contains('PUBLIC KEY')) {
-      if (output.isEmpty) {
-        throw const FormatException(
-          'Command produced no output. '
-          'Expected a PEM-encoded public key.',
-        );
-      }
-      final preview = output.length > 100
-          ? '${output.substring(0, 100)}...'
-          : output;
-      throw FormatException(
-        'Command output does not appear to be a PEM-encoded public key: '
-        '$preview',
-      );
-    }
-
     return output;
   }
 
