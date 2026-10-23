@@ -383,32 +383,41 @@ To change the version of this release, change your app's version in your pubspec
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const appId = 'my-app';
-      const releaseId = 123;
-      late Release release;
+    group('prepareReleaseArtifacts', () {
+      late Directory stagingDirectory;
+      late List<ReleaseArtifactUpload> artifacts;
 
       setUp(() {
-        release = MockRelease();
-        when(() => release.id).thenReturn(releaseId);
-        when(
-          () => codePushClientWrapper.createLinuxReleaseArtifacts(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            bundle: any(named: 'bundle'),
+        stagingDirectory = Directory.systemTemp.createTempSync();
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: File(p.join(stagingDirectory.path, 'bundle.zip')),
+            name: 'bundle',
+            arch: 'bundle',
+            platform: ReleasePlatform.linux,
+            canSideload: true,
           ),
-        ).thenAnswer((_) async {});
+        ];
+        when(
+          () => codePushClientWrapper.prepareLinuxReleaseArtifacts(
+            bundle: any(named: 'bundle'),
+            stagingDirectory: any(named: 'stagingDirectory'),
+          ),
+        ).thenAnswer((_) async => artifacts);
       });
 
-      test('zips and uploads release directory', () async {
-        await runWithOverrides(
-          () => releaser.uploadReleaseArtifacts(release: release, appId: appId),
+      test('returns the prepared bundle artifacts', () async {
+        final result = await runWithOverrides(
+          () => releaser.prepareReleaseArtifacts(
+            stagingDirectory: stagingDirectory,
+          ),
         );
+
+        expect(result, equals(artifacts));
         verify(
-          () => codePushClientWrapper.createLinuxReleaseArtifacts(
-            appId: appId,
-            releaseId: releaseId,
-            bundle: any(named: 'bundle'),
+          () => codePushClientWrapper.prepareLinuxReleaseArtifacts(
+            bundle: releaseDirectory,
+            stagingDirectory: stagingDirectory,
           ),
         ).called(1);
       });

@@ -16,7 +16,6 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template ios_releaser}
 /// Functions to build and publish an iOS release.
@@ -131,20 +130,18 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
   );
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) {
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
-    await codePushClientWrapper.createIosReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+    return codePushClientWrapper.prepareIosReleaseArtifacts(
       xcarchivePath: xcarchiveDirectory.path,
       runnerPath: artifactManager
           .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
           .path,
       isCodesigned: argResults.appleCodesign,
       podfileLockHash: shorebirdEnv.iosPodfileLockHash,
+      stagingDirectory: stagingDirectory,
     );
   }
 

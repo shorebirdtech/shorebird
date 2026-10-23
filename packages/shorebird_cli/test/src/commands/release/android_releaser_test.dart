@@ -634,40 +634,34 @@ To change the version of this release, change your app's version in your pubspec
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const releaseVersion = '1.0.0';
-      const appId = 'appId';
-      const flutterRevision = 'deadbeef';
-      const flutterVersion = '3.22.1';
-
-      final release = Release(
-        id: 42,
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: flutterRevision,
-        flutterVersion: flutterVersion,
-        displayName: '1.2.3+1',
-        platformStatuses: const {},
-        createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
-      );
-
+    group('prepareReleaseArtifacts', () {
       late File aabFile;
+      late Directory stagingDirectory;
+      late List<ReleaseArtifactUpload> artifacts;
 
       setUp(() {
         aabFile = File(p.join(projectRoot.path, 'app.aab'))..createSync();
+        stagingDirectory = Directory.systemTemp.createTempSync();
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: aabFile,
+            name: 'aab',
+            arch: 'aab',
+            platform: ReleasePlatform.android,
+            canSideload: true,
+          ),
+        ];
 
         when(
-          () => codePushClientWrapper.createAndroidReleaseArtifacts(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
+          () => codePushClientWrapper.prepareAndroidReleaseArtifacts(
             projectRoot: any(named: 'projectRoot'),
             aabPath: any(named: 'aabPath'),
             platform: any(named: 'platform'),
             architectures: any(named: 'architectures'),
+            stagingDirectory: any(named: 'stagingDirectory'),
             flavor: any(named: 'flavor'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenAnswer((_) async => artifacts);
         when(
           () => shorebirdAndroidArtifacts.findAab(
             project: any(named: 'project'),
@@ -676,28 +670,25 @@ To change the version of this release, change your app's version in your pubspec
         ).thenReturn(aabFile);
       });
 
-      test(
-        'calls codePushClientWrapper.createAndroidReleaseArtifacts',
-        () async {
-          await runWithOverrides(
-            () => androidReleaser.uploadReleaseArtifacts(
-              appId: appId,
-              release: release,
-            ),
-          );
-          verify(
-            () => codePushClientWrapper.createAndroidReleaseArtifacts(
-              appId: appId,
-              releaseId: release.id,
-              projectRoot: projectRoot.path,
-              aabPath: aabFile.path,
-              platform: ReleasePlatform.android,
-              architectures: Arch.values,
-              flavor: androidReleaser.flavor,
-            ),
-          ).called(1);
-        },
-      );
+      test('returns the prepared android artifacts', () async {
+        final result = await runWithOverrides(
+          () => androidReleaser.prepareReleaseArtifacts(
+            stagingDirectory: stagingDirectory,
+          ),
+        );
+
+        expect(result, equals(artifacts));
+        verify(
+          () => codePushClientWrapper.prepareAndroidReleaseArtifacts(
+            projectRoot: projectRoot.path,
+            aabPath: aabFile.path,
+            platform: ReleasePlatform.android,
+            architectures: Arch.values,
+            stagingDirectory: stagingDirectory,
+            flavor: androidReleaser.flavor,
+          ),
+        ).called(1);
+      });
     });
 
     group('updatedReleaseMetadata', () {

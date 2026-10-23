@@ -717,28 +717,14 @@ $body
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const appId = 'appId';
-      const releaseVersion = '1.0.0';
-      const flutterRevision = 'deadbeef';
-      const flutterVersion = '3.22.0';
+    group('prepareReleaseArtifacts', () {
       const codesign = true;
       const podfileLockContent = 'podfile-lock';
 
-      final release = Release(
-        id: 42,
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: flutterRevision,
-        flutterVersion: flutterVersion,
-        displayName: '1.2.3+1',
-        platformStatuses: const {},
-        createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
-      );
-
       late Directory xcarchiveDirectory;
       late Directory iosAppDirectory;
+      late Directory stagingDirectory;
+      late List<ReleaseArtifactUpload> artifacts;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -748,6 +734,16 @@ $body
 
         xcarchiveDirectory = Directory.systemTemp.createTempSync();
         iosAppDirectory = Directory.systemTemp.createTempSync();
+        stagingDirectory = Directory.systemTemp.createTempSync();
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: File(p.join(stagingDirectory.path, 'Runner.xcarchive.zip')),
+            name: 'xcarchive',
+            arch: 'xcarchive',
+            platform: ReleasePlatform.ios,
+            canSideload: false,
+          ),
+        ];
         when(
           artifactManager.getXcarchiveDirectory,
         ).thenReturn(xcarchiveDirectory);
@@ -757,76 +753,37 @@ $body
           ),
         ).thenReturn(iosAppDirectory);
         when(
-          () => codePushClientWrapper.createIosReleaseArtifacts(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
+          () => codePushClientWrapper.prepareIosReleaseArtifacts(
             xcarchivePath: any(named: 'xcarchivePath'),
             runnerPath: any(named: 'runnerPath'),
             isCodesigned: any(named: 'isCodesigned'),
             podfileLockHash: any(named: 'podfileLockHash'),
+            stagingDirectory: any(named: 'stagingDirectory'),
           ),
-        ).thenAnswer((_) async => {});
+        ).thenAnswer((_) async => artifacts);
         when(
           () => shorebirdEnv.iosPodfileLockHash,
         ).thenReturn('${sha256.convert(utf8.encode(podfileLockContent))}');
       });
 
-      test('forwards call to codePushClientWrapper', () async {
-        await runWithOverrides(
-          () => iosReleaser.uploadReleaseArtifacts(
-            release: release,
-            appId: appId,
+      test('returns the prepared iOS artifacts', () async {
+        final result = await runWithOverrides(
+          () => iosReleaser.prepareReleaseArtifacts(
+            stagingDirectory: stagingDirectory,
           ),
         );
 
+        expect(result, equals(artifacts));
         verify(
-          () => codePushClientWrapper.createIosReleaseArtifacts(
-            appId: appId,
-            releaseId: release.id,
+          () => codePushClientWrapper.prepareIosReleaseArtifacts(
             xcarchivePath: xcarchiveDirectory.path,
             runnerPath: iosAppDirectory.path,
             isCodesigned: codesign,
             podfileLockHash:
                 '${sha256.convert(utf8.encode(podfileLockContent))}',
+            stagingDirectory: stagingDirectory,
           ),
         ).called(1);
-      });
-
-      group('when obfuscation map exists', () {
-        setUp(() {
-          // Create the obfuscation map file at the expected path.
-          File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'shorebird',
-                'obfuscation_map.json',
-              ),
-            )
-            ..createSync(recursive: true)
-            ..writeAsStringSync('{"key": "value"}');
-        });
-
-        test('passes obfuscation map path to wrapper', () async {
-          await runWithOverrides(
-            () => iosReleaser.uploadReleaseArtifacts(
-              release: release,
-              appId: appId,
-            ),
-          );
-
-          verify(
-            () => codePushClientWrapper.createIosReleaseArtifacts(
-              appId: appId,
-              releaseId: release.id,
-              xcarchivePath: xcarchiveDirectory.path,
-              runnerPath: iosAppDirectory.path,
-              isCodesigned: codesign,
-              podfileLockHash:
-                  '${sha256.convert(utf8.encode(podfileLockContent))}',
-            ),
-          ).called(1);
-        });
       });
     });
 

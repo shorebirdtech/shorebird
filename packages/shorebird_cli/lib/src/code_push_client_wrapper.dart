@@ -27,6 +27,50 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// {@template release_artifact_upload}
+/// A file to upload as one artifact of a release, and what the server is told
+/// about it.
+/// {@endtemplate}
+class ReleaseArtifactUpload extends Equatable {
+  /// {@macro release_artifact_upload}
+  const ReleaseArtifactUpload({
+    required this.file,
+    required this.name,
+    required this.arch,
+    required this.platform,
+    required this.canSideload,
+    this.podfileLockHash,
+  });
+
+  /// The file to upload.
+  final File file;
+
+  /// The artifact's name in log and error messages.
+  final String name;
+
+  /// The artifact's arch on the server (e.g. `aab`, `arm64-v8a`).
+  final String arch;
+
+  /// The platform of the release the artifact belongs to.
+  final ReleasePlatform platform;
+
+  /// Whether the artifact can be installed on a device as is.
+  final bool canSideload;
+
+  /// The hash of the Podfile.lock the release was built with, if any.
+  final String? podfileLockHash;
+
+  @override
+  List<Object?> get props => [
+    file.path,
+    name,
+    arch,
+    platform,
+    canSideload,
+    podfileLockHash,
+  ];
+}
+
 /// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
 /// {@endtemplate}
@@ -602,17 +646,18 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
-  /// Uploads android release artifacts for a specific app/release combination.
-  Future<void> createAndroidReleaseArtifacts({
-    required String appId,
-    required int releaseId,
+  /// Returns the artifacts of an Android app bundle release: the libapp.so of
+  /// each of [architectures] the build produced, copied into
+  /// [stagingDirectory], and the .aab at [aabPath].
+  Future<List<ReleaseArtifactUpload>> prepareAndroidReleaseArtifacts({
     required ReleasePlatform platform,
     required String projectRoot,
     required String aabPath,
     required Iterable<Arch> architectures,
+    required Directory stagingDirectory,
     String? flavor,
   }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final progress = logger.progress('Preparing artifacts');
 
     // When the built .aab never packaged libapp.so, surface that directly
     // instead of the generic "cannot find artifacts" or abiFilters messages,
@@ -623,21 +668,22 @@ Please create a release using "shorebird release" and try again.
     if (missingLibappMessage != null) {
       _handleErrorAndExit(
         Exception('No architecture artifacts found to upload.'),
-        progress: createArtifactProgress,
+        progress: progress,
         message: missingLibappMessage,
       );
     }
 
-    await ArtifactManager.withAndroidArchsDirectoryFromAab(
-      projectRoot: Directory(projectRoot),
-      flavor: flavor,
-      aab: File(aabPath),
-      action: (archsDir) async {
-        if (archsDir == null) {
-          _handleErrorAndExit(
-            Exception('Cannot find patch build artifacts.'),
-            progress: createArtifactProgress,
-            message: '''
+    final archArtifacts =
+        await ArtifactManager.withAndroidArchsDirectoryFromAab(
+          projectRoot: Directory(projectRoot),
+          flavor: flavor,
+          aab: File(aabPath),
+          action: (archsDir) async {
+            if (archsDir == null) {
+              _handleErrorAndExit(
+                Exception('Cannot find patch build artifacts.'),
+                progress: progress,
+                message: '''
 Cannot find release build artifacts.
 
 Please run `shorebird cache clean` and try again. If the issue persists, please
@@ -647,114 +693,112 @@ Looked in:
   - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib''',
-          );
-        }
+              );
+            }
 
-        await _uploadAndroidArchArtifacts(
-          appId: appId,
-          releaseId: releaseId,
-          platform: platform,
-          archsDir: archsDir.path,
-          architectures: architectures,
-          progress: createArtifactProgress,
+            // archsDir may be a temporary directory deleted once this action
+            // returns, so copy each libapp.so into stagingDirectory.
+            return _androidArchArtifacts(
+              platform: platform,
+              archsDir: archsDir.path,
+              architectures: architectures,
+              progress: progress,
+            ).map((artifact) {
+              final staged = File(
+                p.join(stagingDirectory.path, artifact.arch, 'libapp.so'),
+              )..parent.createSync(recursive: true);
+              return ReleaseArtifactUpload(
+                file: artifact.file.copySync(staged.path),
+                name: artifact.name,
+                arch: artifact.arch,
+                platform: artifact.platform,
+                canSideload: artifact.canSideload,
+              );
+            }).toList();
+          },
         );
-      },
-    );
 
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: File(aabPath),
-      name: 'aab',
-      arch: 'aab',
-      platform: platform,
-      canSideload: true,
-      progress: createArtifactProgress,
-    );
-
-    createArtifactProgress.complete();
+    final artifacts = [
+      ...archArtifacts,
+      ReleaseArtifactUpload(
+        file: File(aabPath),
+        name: 'aab',
+        arch: 'aab',
+        platform: platform,
+        canSideload: true,
+      ),
+    ];
+    progress.complete();
+    return artifacts;
   }
 
-  /// Zips and uploads a Windows release directory.
-  Future<void> createWindowsReleaseArtifacts({
-    required String appId,
-    required int releaseId,
+  /// Returns the artifact of a Windows release: [releaseDirectory], zipped
+  /// into [stagingDirectory].
+  Future<List<ReleaseArtifactUpload>> prepareWindowsReleaseArtifacts({
     required Directory releaseDirectory,
+    required Directory stagingDirectory,
   }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-    final zippedRelease = await releaseDirectory.zipToTempFile();
-    try {
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
+    final progress = logger.progress('Preparing artifacts');
+    final zippedRelease = await releaseDirectory.zipInto(stagingDirectory);
+    progress.complete();
+    return [
+      ReleaseArtifactUpload(
         file: zippedRelease,
         name: 'Windows release (exe)',
         arch: primaryWindowsReleaseArtifactArch,
         platform: ReleasePlatform.windows,
         canSideload: true,
-        progress: createArtifactProgress,
-      );
-    } finally {
-      zippedRelease.parent.deleteTemporarySync();
-    }
-    createArtifactProgress.complete();
+      ),
+    ];
   }
 
-  /// Uploads android archive release artifacts for a specific app/release combination.
-  Future<void> createAndroidArchiveReleaseArtifacts({
-    required String appId,
-    required int releaseId,
+  /// Returns the artifacts of an Android archive release: the libapp.so of
+  /// each of [architectures] in [extractedAarDir], and the .aar at [aarPath].
+  List<ReleaseArtifactUpload> prepareAndroidArchiveReleaseArtifacts({
     required ReleasePlatform platform,
     required String aarPath,
     required String extractedAarDir,
     required Iterable<Arch> architectures,
-  }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-
-    await _uploadAndroidArchArtifacts(
-      appId: appId,
-      releaseId: releaseId,
-      platform: platform,
-      archsDir: p.join(extractedAarDir, 'jni'),
-      architectures: architectures,
-      progress: createArtifactProgress,
-    );
-
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: File(aarPath),
-      name: 'aar',
-      arch: 'aar',
-      platform: platform,
-      canSideload: false,
-      progress: createArtifactProgress,
-    );
-
-    createArtifactProgress.complete();
+  }) {
+    final progress = logger.progress('Preparing artifacts');
+    final artifacts = [
+      ..._androidArchArtifacts(
+        platform: platform,
+        archsDir: p.join(extractedAarDir, 'jni'),
+        architectures: architectures,
+        progress: progress,
+      ),
+      ReleaseArtifactUpload(
+        file: File(aarPath),
+        name: 'aar',
+        arch: 'aar',
+        platform: platform,
+        canSideload: false,
+      ),
+    ];
+    progress.complete();
+    return artifacts;
   }
 
-  /// Uploads the libapp.so under [archsDir] for each of [architectures].
+  /// Returns the libapp.so under [archsDir] for each of [architectures].
   ///
   /// Architectures with no libapp.so are skipped, and the release fails only
-  /// if none were uploaded. Shared by the app bundle and archive releases so
+  /// if none were found. Shared by the app bundle and archive releases so
   /// both handle ABI filtering the same way.
-  Future<void> _uploadAndroidArchArtifacts({
-    required String appId,
-    required int releaseId,
+  List<ReleaseArtifactUpload> _androidArchArtifacts({
     required ReleasePlatform platform,
     required String archsDir,
     required Iterable<Arch> architectures,
     required Progress progress,
-  }) async {
+  }) {
     // Track which arch paths AGP didn't produce, so we can surface them at
-    // the end if zero archs uploaded. AGP omits an arch directory whenever
+    // the end if zero archs were found. AGP omits an arch directory whenever
     // the project filters it out via `ndk.abiFilters`, `splits.abi`, or
     // `jniLibs.excludes`. Iterating only over present files lets a filtered
     // release succeed instead of crashing on the first missing arch
     // (https://github.com/shorebirdtech/shorebird/issues/3388).
     final missingArchs = <Arch>[];
-    var uploadedArchCount = 0;
+    final artifacts = <ReleaseArtifactUpload>[];
     for (final arch in architectures) {
       final artifactPath = p.join(
         archsDir,
@@ -771,20 +815,18 @@ Looked in:
         missingArchs.add(arch);
         continue;
       }
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        file: artifact,
-        name: arch.arch,
-        arch: arch.arch,
-        platform: platform,
-        canSideload: false,
-        progress: progress,
+      artifacts.add(
+        ReleaseArtifactUpload(
+          file: artifact,
+          name: arch.arch,
+          arch: arch.arch,
+          platform: platform,
+          canSideload: false,
+        ),
       );
-      uploadedArchCount++;
     }
 
-    if (uploadedArchCount == 0) {
+    if (artifacts.isEmpty) {
       _handleErrorAndExit(
         Exception('No architecture artifacts found to upload.'),
         progress: progress,
@@ -801,10 +843,30 @@ relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
 to the architectures your project actually builds.''',
       );
     }
+    return artifacts;
   }
 
-  /// Uploads [file] as the [arch] release artifact for [platform], naming it
-  /// [name] in log and error messages.
+  /// Uploads [artifacts] to the release [releaseId], showing [message] while
+  /// it does.
+  Future<void> uploadReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required List<ReleaseArtifactUpload> artifacts,
+    String message = 'Uploading artifacts',
+  }) async {
+    final progress = logger.progress(message);
+    for (final artifact in artifacts) {
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifact: artifact,
+        progress: progress,
+      );
+    }
+    progress.complete();
+  }
+
+  /// Uploads [artifact] to the release [releaseId].
   ///
   /// The server reuses the artifacts of a release that is not yet active, so a
   /// retried release uploads over them rather than conflicting. A conflict
@@ -814,25 +876,22 @@ to the architectures your project actually builds.''',
   Future<void> _uploadReleaseArtifact({
     required String appId,
     required int releaseId,
-    required File file,
-    required String name,
-    required String arch,
-    required ReleasePlatform platform,
-    required bool canSideload,
+    required ReleaseArtifactUpload artifact,
     required Progress progress,
-    String? podfileLockHash,
   }) async {
+    final name = artifact.name;
+    final file = artifact.file;
     logger.detail('Uploading $name artifact from ${file.path}');
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
         artifactPath: file.path,
-        arch: arch,
-        platform: platform,
+        arch: artifact.arch,
+        platform: artifact.platform,
         hash: sha256.convert(await file.readAsBytes()).toString(),
-        canSideload: canSideload,
-        podfileLockHash: podfileLockHash,
+        canSideload: artifact.canSideload,
+        podfileLockHash: artifact.podfileLockHash,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -848,8 +907,9 @@ $name artifact already exists, continuing...''');
     }
   }
 
-  /// Removes all .dylib files from the given .xcarchive to reduce the size of
-  /// the uploaded artifact.
+  /// Copies the .xcarchive at [xcarchivePath] into a temporary directory with
+  /// all its .dylib files removed, to reduce the size of the uploaded
+  /// artifact. The caller deletes the returned directory's parent.
   Future<Directory> _thinXcarchive({required String xcarchivePath}) async {
     final xcarchiveDirectoryName = p.basename(xcarchivePath);
     final tempDir = Directory.systemTemp.createTempSync();
@@ -865,184 +925,141 @@ $name artifact already exists, continuing...''');
     return thinnedArchiveDirectory;
   }
 
-  /// Zips and uploads a Linux release bundle.
-  Future<void> createLinuxReleaseArtifacts({
-    required String appId,
-    required int releaseId,
+  /// Returns the artifact of a Linux release: [bundle], zipped into
+  /// [stagingDirectory].
+  Future<List<ReleaseArtifactUpload>> prepareLinuxReleaseArtifacts({
     required Directory bundle,
+    required Directory stagingDirectory,
   }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-    final zippedBundle = await Directory(bundle.path).zipToTempFile();
-    try {
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
+    final progress = logger.progress('Preparing artifacts');
+    final zippedBundle = await bundle.zipInto(stagingDirectory);
+    progress.complete();
+    return [
+      ReleaseArtifactUpload(
         file: zippedBundle,
         name: 'bundle',
         arch: primaryLinuxReleaseArtifactArch,
         platform: ReleasePlatform.linux,
         canSideload: true,
-        progress: createArtifactProgress,
-      );
-    } finally {
-      zippedBundle.parent.deleteTemporarySync();
-    }
-
-    createArtifactProgress.complete();
+      ),
+    ];
   }
 
-  /// Registers and uploads macOS release artifacts to the Shorebird server.
-  Future<void> createMacosReleaseArtifacts({
-    required String appId,
-    required int releaseId,
+  /// Returns the artifact of a macOS release: the .app at [appPath], archived
+  /// with ditto into [stagingDirectory].
+  Future<List<ReleaseArtifactUpload>> prepareMacosReleaseArtifacts({
     required String appPath,
     required String? podfileLockHash,
+    required Directory stagingDirectory,
   }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-    final tempDir = await Directory.systemTemp.createTemp();
-    try {
-      final zippedApp = File(
-        p.join(tempDir.path, '${p.basename(appPath)}.zip'),
-      );
-      await ditto.archive(source: appPath, destination: zippedApp.path);
-
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
+    final progress = logger.progress('Preparing artifacts');
+    final zippedApp = File(
+      p.join(stagingDirectory.path, '${p.basename(appPath)}.zip'),
+    );
+    await ditto.archive(source: appPath, destination: zippedApp.path);
+    progress.complete();
+    return [
+      ReleaseArtifactUpload(
         file: zippedApp,
         name: 'app',
         arch: 'app',
         platform: ReleasePlatform.macos,
         canSideload: true,
         podfileLockHash: podfileLockHash,
-        progress: createArtifactProgress,
-      );
-    } finally {
-      tempDir.deleteTemporarySync();
-    }
-
-    createArtifactProgress.complete();
+      ),
+    ];
   }
 
-  /// Uploads a release .xcarchive, .app, and supplementary files to the
-  /// Shorebird server.
-  Future<void> createIosReleaseArtifacts({
-    required String appId,
-    required int releaseId,
+  /// Returns the artifacts of an iOS release, zipped into [stagingDirectory]:
+  /// the .xcarchive at [xcarchivePath] without its .dylib files, and the
+  /// Runner.app at [runnerPath].
+  Future<List<ReleaseArtifactUpload>> prepareIosReleaseArtifacts({
     required String xcarchivePath,
     required String runnerPath,
     required bool isCodesigned,
     required String? podfileLockHash,
+    required Directory stagingDirectory,
   }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final progress = logger.progress('Preparing artifacts');
     final thinnedArchiveDirectory = await _thinXcarchive(
       xcarchivePath: xcarchivePath,
     );
     final File zippedArchive;
     try {
-      zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
+      zippedArchive = await thinnedArchiveDirectory.zipInto(stagingDirectory);
     } finally {
       thinnedArchiveDirectory.parent.deleteTemporarySync();
     }
-    try {
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
+
+    final zippedRunner = await Directory(runnerPath).zipInto(stagingDirectory);
+    logger.detail('[archive] zipped runner.app');
+    progress.complete();
+
+    return [
+      ReleaseArtifactUpload(
         file: zippedArchive,
         name: 'xcarchive',
         arch: 'xcarchive',
         platform: ReleasePlatform.ios,
         canSideload: false,
         podfileLockHash: podfileLockHash,
-        progress: createArtifactProgress,
-      );
-    } finally {
-      zippedArchive.parent.deleteTemporarySync();
-    }
-
-    final zippedRunner = await Directory(runnerPath).zipToTempFile();
-    logger.detail('[archive] zipped runner.app');
-    try {
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
+      ),
+      ReleaseArtifactUpload(
         file: zippedRunner,
         name: 'runner.app',
         arch: 'runner',
         platform: ReleasePlatform.ios,
         canSideload: isCodesigned,
         podfileLockHash: podfileLockHash,
-        progress: createArtifactProgress,
-      );
-    } finally {
-      zippedRunner.parent.deleteTemporarySync();
-    }
-
-    createArtifactProgress.complete();
+      ),
+    ];
   }
 
-  /// Zips and uploads a release xcframework and supplementary files to the
-  /// Shorebird server.
-  Future<void> createIosFrameworkReleaseArtifacts({
-    required String appId,
-    required int releaseId,
+  /// Returns the artifact of an iOS framework release: the xcframework at
+  /// [appFrameworkPath], zipped into [stagingDirectory].
+  Future<List<ReleaseArtifactUpload>> prepareIosFrameworkReleaseArtifacts({
     required String appFrameworkPath,
+    required Directory stagingDirectory,
   }) async {
-    final createArtifactProgress = logger.progress('Uploading artifacts');
-    final appFrameworkDirectory = Directory(appFrameworkPath);
-    final zippedAppFrameworkFile = await appFrameworkDirectory.zipToTempFile();
-    try {
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        file: zippedAppFrameworkFile,
+    final progress = logger.progress('Preparing artifacts');
+    final zippedAppFramework = await Directory(
+      appFrameworkPath,
+    ).zipInto(stagingDirectory);
+    progress.complete();
+    return [
+      ReleaseArtifactUpload(
+        file: zippedAppFramework,
         name: 'xcframework',
         arch: 'xcframework',
         platform: ReleasePlatform.ios,
         canSideload: false,
-        progress: createArtifactProgress,
-      );
-    } finally {
-      zippedAppFrameworkFile.parent.deleteTemporarySync();
-    }
-
-    createArtifactProgress.complete();
+      ),
+    ];
   }
 
-  /// Zips and uploads a supplement directory as a release artifact.
-  Future<void> createSupplementReleaseArtifact({
-    required String appId,
-    required int releaseId,
+  /// Returns the supplement directory at [supplementDirectoryPath] as the
+  /// [arch] artifact, zipped into [stagingDirectory].
+  Future<ReleaseArtifactUpload> prepareSupplementReleaseArtifact({
     required ReleasePlatform platform,
     required String supplementDirectoryPath,
     required String arch,
+    required Directory stagingDirectory,
   }) async {
-    final createSupplementProgress = logger.progress(
-      'Uploading supplement artifacts',
-    );
     final zippedSupplement = await Directory(
       supplementDirectoryPath,
-    ).zipToTempFile(name: arch);
-    try {
-      await _uploadReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        file: zippedSupplement,
-        name: 'supplement',
-        arch: arch,
-        platform: platform,
-        // Supplements are auxiliary snapshot metadata used during patching and
-        // can't produce a working app on their own, so sideloading isn't
-        // applicable. They contain only Dart snapshot metadata (e.g. class
-        // tables, dispatch tables) and have no dependency on native pods, so
-        // no podfile lock hash is passed either.
-        canSideload: false,
-        progress: createSupplementProgress,
-      );
-    } finally {
-      zippedSupplement.parent.deleteTemporarySync();
-    }
-    createSupplementProgress.complete();
+    ).zipInto(stagingDirectory, name: arch);
+    return ReleaseArtifactUpload(
+      file: zippedSupplement,
+      name: 'supplement',
+      arch: arch,
+      platform: platform,
+      // Supplements are auxiliary snapshot metadata used during patching and
+      // can't produce a working app on their own, so sideloading isn't
+      // applicable. They contain only Dart snapshot metadata (e.g. class
+      // tables, dispatch tables) and have no dependency on native pods, so
+      // no podfile lock hash is passed either.
+      canSideload: false,
+    );
   }
 
   /// Creates a patch for the given [appId], [releaseId], and [metadata].
