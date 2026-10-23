@@ -531,16 +531,30 @@ void main() {
         verifyNothingPublished();
       });
 
+      test('exits with a no-input error when there is no store '
+          'binary', () async {
+        await writeBundle();
+        final missing = p.join(tempDir.path, 'missing.aab');
+        when(() => argResults['verify']).thenReturn(missing);
+
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.noInput.code),
+        );
+        verify(() => logger.err('No file at $missing.')).called(1);
+        verifyNothingPublished();
+      });
+
       test('publishes nothing when the store binary cannot be '
           'compared', () async {
         await writeBundle();
-        when(
-          () => argResults['verify'],
-        ).thenReturn(p.join(tempDir.path, 'missing.aab'));
+        final ipa = File(p.join(tempDir.path, 'app.ipa'))
+          ..writeAsStringSync('');
+        when(() => argResults['verify']).thenReturn(ipa.path);
 
         expect(await runWithOverrides(command.run), equals(ExitCode.data.code));
         verify(
-          () => logger.err(any(that: startsWith('No file at'))),
+          () => logger.err(any(that: contains('is not an .aab or .apk'))),
         ).called(1);
         verifyNothingPublished();
       });

@@ -654,7 +654,12 @@ void main() {
         ).called(1);
         verify(
           () => logger.info(
-            any(that: contains('--verify <path to the .aab>')),
+            any(
+              that: allOf(
+                contains('the .aab or .apk from this build'),
+                contains('--verify <path>'),
+              ),
+            ),
           ),
         ).called(1);
         verifyNever(() => logger.warn(any()));

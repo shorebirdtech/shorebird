@@ -112,6 +112,15 @@ class UploadCommand extends ShorebirdCommand {
   /// Checks that [storeBinary] was built from the same build as [bundle].
   /// Returns null if it was, or the exit code to stop with if not.
   Future<int?> _verify(ReleaseBundle bundle, File storeBinary) async {
+    if (!storeBinary.existsSync()) {
+      return reportError(
+        message: 'No file at ${storeBinary.path}.',
+        hint:
+            'Pass --verify the .aab, .apk or .ipa you ship to the store for '
+            'this release.',
+        exitCode: ExitCode.noInput.code,
+      );
+    }
     final progress = logger.progress(
       'Checking ${p.basename(storeBinary.path)} against the bundle',
     );

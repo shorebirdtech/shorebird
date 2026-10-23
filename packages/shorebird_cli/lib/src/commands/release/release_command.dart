@@ -636,11 +636,13 @@ $error''');
       );
     if (platform == ReleasePlatform.android ||
         platform == ReleasePlatform.ios) {
-      final storeBinary = platform == ReleasePlatform.android ? '.aab' : '.ipa';
+      final storeBinary = platform == ReleasePlatform.android
+          ? 'the .aab or .apk from this build'
+          : 'the .ipa from this build (or one exported from its .xcarchive)';
       logger.info(
-        'Ship the $storeBinary from this build to the store. Add '
-        '${lightCyan.wrap('--verify <path to the $storeBinary>')} to '
-        '`shorebird upload` to check that it matches before publishing.',
+        'Ship $storeBinary to the store. Add '
+        '${lightCyan.wrap('--verify <path>')} to `shorebird upload` to check '
+        'that it matches before publishing.',
       );
     }
     if (replacedBundle) {

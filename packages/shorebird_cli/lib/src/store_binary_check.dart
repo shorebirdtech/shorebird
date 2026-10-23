@@ -128,14 +128,10 @@ abstract final class StoreBinaryCheck {
     }
     final archivePath = xcarchive.file.path;
     final ipaPath = storeBinary.path;
-    final String? inBundle;
     final String? inStoreBinary;
     try {
-      (inBundle, inStoreBinary) = await Isolate.run(
-        () => (
-          _appFrameworkHash(archivePath, _xcarchiveAppEntry),
-          _appFrameworkHash(ipaPath, _ipaAppEntry),
-        ),
+      inStoreBinary = await Isolate.run(
+        () => _appFrameworkHash(ipaPath, _ipaAppEntry),
       );
     } on Exception catch (error) {
       throw StoreBinaryException('Could not read $ipaPath ($error).');
@@ -145,6 +141,16 @@ abstract final class StoreBinaryCheck {
         '$ipaPath has no Payload/*.app/Frameworks/App.framework/App (the '
         'compiled Dart code), so it is not the build of a Flutter app. Pass '
         'the .ipa you upload to the App Store.',
+      );
+    }
+    final String? inBundle;
+    try {
+      inBundle = await Isolate.run(
+        () => _appFrameworkHash(archivePath, _xcarchiveAppEntry),
+      );
+    } on Exception catch (error) {
+      throw StoreBinaryException(
+        "Could not read the bundle's .xcarchive ($error).",
       );
     }
     if (inBundle == null) {
@@ -218,19 +224,27 @@ abstract final class StoreBinaryCheck {
     const fatMagic = 0xcafebabe;
     if (bytes.length >= 8 && data.getUint32(0) == fatMagic) {
       final count = data.getUint32(4);
+      _checkInBounds(bytes, 8 + count * 20);
       for (var i = 0; i < count; i++) {
         final arch = 8 + i * 20;
         final offset = data.getUint32(arch + 8);
-        final size = data.getUint32(arch + 12);
-        _addMachOCode(
-          Uint8List.sublistView(bytes, offset, offset + size),
-          code,
-        );
+        final end = offset + data.getUint32(arch + 12);
+        _checkInBounds(bytes, end);
+        _addMachOCode(Uint8List.sublistView(bytes, offset, end), code);
       }
     } else {
       _addMachOCode(bytes, code);
     }
     return sha256.convert(code.takeBytes()).toString();
+  }
+
+  /// Throws a [FormatException] if [end] is past the end of [bytes]: a load
+  /// command, section or slice that points outside a truncated or damaged
+  /// binary.
+  static void _checkInBounds(Uint8List bytes, int end) {
+    if (end > bytes.length) {
+      throw const FormatException('truncated or malformed Mach-O binary');
+    }
   }
 
   static void _addMachOCode(Uint8List bytes, BytesBuilder code) {
@@ -253,19 +267,30 @@ abstract final class StoreBinaryCheck {
     final commandCount = data.getUint32(16, Endian.little);
     var command = headerSize;
     for (var i = 0; i < commandCount; i++) {
+      _checkInBounds(bytes, command + 8);
       final type = data.getUint32(command, Endian.little);
       final size = data.getUint32(command + 4, Endian.little);
-      if (type == segment64 && name(command + 8) != '__LINKEDIT') {
+      if (size < 8) {
+        throw const FormatException('truncated or malformed Mach-O binary');
+      }
+      _checkInBounds(bytes, command + size);
+      if (type == segment64 && size >= segmentCommandSize) {
+        if (name(command + 8) == '__LINKEDIT') {
+          command += size;
+          continue;
+        }
         final sectionCount = data.getUint32(command + 64, Endian.little);
+        _checkInBounds(
+          bytes,
+          command + segmentCommandSize + sectionCount * sectionSize,
+        );
         for (var j = 0; j < sectionCount; j++) {
           final section = command + segmentCommandSize + j * sectionSize;
           final length = data.getUint64(section + 40, Endian.little);
           final offset = data.getUint32(section + 48, Endian.little);
           final flags = data.getUint32(section + 64, Endian.little);
           if (zeroFillTypes.contains(flags & 0xff) || length == 0) continue;
-          if (offset + length > bytes.length) {
-            throw const FormatException('section runs past the end');
-          }
+          _checkInBounds(bytes, offset + length);
           code
             ..add('${name(section + 16)},${name(section)}'.codeUnits)
             ..add(Uint8List.sublistView(bytes, offset, offset + length));

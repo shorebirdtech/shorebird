@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/release_bundle.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -178,6 +179,33 @@ void main() {
           () => StoreBinaryCheck.machOCodeHash(
             Uint8List.sublistView(truncated, 0, truncated.length - 14),
           ),
+          throwsFormatException,
+        );
+      });
+
+      test('throws a FormatException for a slice past the end', () {
+        final bytes = fat([machO('arm64')]);
+        ByteData.sublistView(bytes).setUint32(8 + 8, bytes.length + 1);
+        expect(
+          () => StoreBinaryCheck.machOCodeHash(bytes),
+          throwsFormatException,
+        );
+      });
+
+      test('throws a FormatException for load commands past the end', () {
+        final bytes = machO('code');
+        ByteData.sublistView(bytes).setUint32(16, 1000, Endian.little);
+        expect(
+          () => StoreBinaryCheck.machOCodeHash(bytes),
+          throwsFormatException,
+        );
+      });
+
+      test('throws a FormatException for a load command of size 0', () {
+        final bytes = machO('code');
+        ByteData.sublistView(bytes).setUint32(32 + 4, 0, Endian.little);
+        expect(
+          () => StoreBinaryCheck.machOCodeHash(bytes),
           throwsFormatException,
         );
       });
@@ -374,6 +402,59 @@ void main() {
               ipa(machO('dart code', signature: 'distribution')),
             ),
             isEmpty,
+          );
+        });
+
+        test('reads the .xcarchive as the release zips it', () async {
+          final xcarchiveDirectory = Directory(
+            p.join(tempDir.path, 'Runner.xcarchive'),
+          );
+          File(
+              p.joinAll([
+                xcarchiveDirectory.path,
+                ...'Products/Applications/Runner.app/Frameworks/App.framework/App'
+                    .split('/'),
+              ]),
+            )
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(machO('dart code'));
+          final zipped = await xcarchiveDirectory.zipInto(
+            Directory(p.join(tempDir.path, 'staging'))..createSync(),
+          );
+          iosBundle = bundle(ReleaseType.ios, [
+            ReleaseArtifactUpload(
+              file: zipped,
+              name: 'xcarchive',
+              arch: 'xcarchive',
+              platform: ReleasePlatform.ios,
+              canSideload: false,
+            ),
+          ]);
+          expect(await differences(ipa(machO('dart code'))), isEmpty);
+        });
+
+        test("throws when the bundle's .xcarchive cannot be read", () async {
+          iosBundle = bundle(ReleaseType.ios, [
+            ReleaseArtifactUpload(
+              file: writeZip('bad.xcarchive.zip', {
+                'Products/Applications/Runner.app/Frameworks/App.framework/App':
+                    'not mach-o'.codeUnits,
+              }),
+              name: 'xcarchive',
+              arch: 'xcarchive',
+              platform: ReleasePlatform.ios,
+              canSideload: false,
+            ),
+          ]);
+          await expectLater(
+            differences(ipa(machO('dart code'))),
+            throwsA(
+              isA<StoreBinaryException>().having(
+                (e) => e.message,
+                'message',
+                startsWith("Could not read the bundle's .xcarchive"),
+              ),
+            ),
           );
         });
 
