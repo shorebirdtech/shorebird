@@ -86,6 +86,11 @@ void main() {
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();

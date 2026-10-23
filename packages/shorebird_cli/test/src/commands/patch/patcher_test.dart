@@ -456,6 +456,11 @@ void main() {
           ..addOption(CommonArguments.publicKeyCmd.name)
           ..addOption(CommonArguments.signCmd.name);
         codeSigner = MockCodeSigner();
+        when(
+          () => codeSigner.canonicalPublicKeyPem(any()),
+        ).thenAnswer(
+          (invocation) => invocation.positionalArguments.single as String,
+        );
         logger = MockShorebirdLogger();
         publicKeyTempFile = File(
           p.join(

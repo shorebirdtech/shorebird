@@ -1,4 +1,5 @@
 // cspell:ignore qwer
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -449,6 +450,11 @@ void main() {
 
       setUp(() {
         codeSigner = MockCodeSigner();
+        when(
+          () => codeSigner.canonicalPublicKeyPem(any()),
+        ).thenAnswer(
+          (invocation) => invocation.positionalArguments.single as String,
+        );
       });
 
       test('runs --public-key-cmd once per parse', () async {
@@ -594,6 +600,49 @@ void main() {
               ),
             ),
           ).called(1);
+        });
+
+        group('when --public-key-path is a private key', () {
+          for (final name in ['private.pem', 'private_pkcs1.pem']) {
+            test('refuses $name without printing it', () async {
+              final privateKeyFile = File(
+                p.join(cryptoFixturesBasePath, name),
+              );
+              final keyLine = const LineSplitter()
+                  .convert(privateKeyFile.readAsStringSync())
+                  .firstWhere((line) => !line.startsWith('-----'));
+              final publicKeyArg =
+                  '--${CommonArguments.publicKeyArg.name}='
+                  '${privateKeyFile.path}';
+              final result = parser.parse([publicKeyArg]);
+
+              await runScoped(
+                () => expectLater(
+                  result.getEncodedPublicKey,
+                  exitsWithCode(ExitCode.software),
+                ),
+                // The real signer, so the key is checked, not stubbed.
+                values: {
+                  codeSignerRef.overrideWith(CodeSigner.new),
+                  loggerRef.overrideWith(() => logger),
+                },
+              );
+
+              final printed = [
+                ...verify(() => logger.err(captureAny())).captured,
+                ...verify(() => logger.info(captureAny())).captured,
+              ].join('\n');
+              expect(
+                printed,
+                startsWith(
+                  'The --${CommonArguments.publicKeyArg.name} file contains '
+                  'a private key.',
+                ),
+              );
+              expect(printed, contains('--private-key-path'));
+              expect(printed, isNot(contains(keyLine)));
+            });
+          }
         });
 
         test('names --public-key-cmd for bad command output', () async {
