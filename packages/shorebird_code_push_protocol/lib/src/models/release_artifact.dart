@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/artifact_signing.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template release_artifact}
@@ -19,6 +20,7 @@ class ReleaseArtifact {
     required this.url,
     required this.canSideload,
     this.podfileLockHash,
+    this.signing,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact].
@@ -36,6 +38,9 @@ class ReleaseArtifact {
         url: json['url'] as String,
         podfileLockHash: json['podfile_lock_hash'] as String?,
         canSideload: json['can_sideload'] as bool,
+        signing: ArtifactSigning.maybeFromJson(
+          json['signing'] as Map<String, dynamic>?,
+        ),
       ),
     );
   }
@@ -76,6 +81,11 @@ class ReleaseArtifact {
   /// Whether the artifact can be sideloaded onto a device.
   final bool canSideload;
 
+  /// How a release artifact's binary is signed for patch signing: which
+  /// public key the binary embeds. Patches to that release, platform and
+  /// arch are verified with it.
+  final ArtifactSigning? signing;
+
   /// Converts a [ReleaseArtifact] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -88,6 +98,7 @@ class ReleaseArtifact {
       'url': url,
       'podfile_lock_hash': ?podfileLockHash,
       'can_sideload': canSideload,
+      'signing': ?signing?.toJson(),
     };
   }
 
@@ -102,6 +113,7 @@ class ReleaseArtifact {
     url,
     podfileLockHash,
     canSideload,
+    signing,
   ]);
 
   @override
@@ -116,6 +128,7 @@ class ReleaseArtifact {
         size == other.size &&
         url == other.url &&
         podfileLockHash == other.podfileLockHash &&
-        canSideload == other.canSideload;
+        canSideload == other.canSideload &&
+        signing == other.signing;
   }
 }
