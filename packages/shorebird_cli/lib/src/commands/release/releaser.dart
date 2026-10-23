@@ -145,30 +145,29 @@ To change the version of this release, change your app's version in your pubspec
   /// Returns null if no public key is configured.
   Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
 
-  /// How this platform's build is signed for patch signing, recorded on each
-  /// artifact the build uploads. Set by [resolvePatchSigningKey]; null until
-  /// the build runs.
-  ArtifactSigningRequest? artifactSigning;
+  /// How this platform's build is signed for patch signing. Set by
+  /// [resolvePatchSigningKey]; null until the build runs.
+  ArtifactSigningRequest? signing;
 
-  /// Decides which public key this platform's build embeds, sets
-  /// [artifactSigning] to match, and returns the key base64-encoded, or null
-  /// if the build embeds none.
+  /// Decides which public key this platform's build embeds, sets [signing]
+  /// to match, and returns the key base64-encoded, or null if the build
+  /// embeds none.
   ///
   /// A key passed with --public-key-path or --public-key-cmd is the
-  /// customer's, who signs every patch. With --no-patch-signing the build
-  /// embeds no key. Otherwise the build embeds the managed key the server
-  /// returns for the app, and Shorebird signs every patch. A failed fetch
-  /// fails the release, so a release never silently goes unsigned.
+  /// customer's, who signs every patch. With --managed-signing the build
+  /// embeds the managed key the server returns for the app, and Shorebird
+  /// signs every patch; a failed fetch fails the release, so it never
+  /// silently goes unsigned. Otherwise the build embeds no key.
   Future<String?> resolvePatchSigningKey() async {
     final customerKey = await getEncodedPublicKey();
     if (customerKey != null) {
-      artifactSigning = const ArtifactSigningRequest(
+      signing = const ArtifactSigningRequest(
         mode: ReleaseSigningMode.customer,
       );
       return customerKey;
     }
-    if (!argResults.patchSigningEnabled) {
-      artifactSigning = const ArtifactSigningRequest(
+    if (!argResults.managedSigningEnabled) {
+      signing = const ArtifactSigningRequest(
         mode: ReleaseSigningMode.unsigned,
       );
       return null;
@@ -176,7 +175,7 @@ To change the version of this release, change your app's version in your pubspec
     final signingKey = await codePushClientWrapper.getSigningKey(
       appId: shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor),
     );
-    artifactSigning = ArtifactSigningRequest(
+    signing = ArtifactSigningRequest(
       mode: ReleaseSigningMode.managed,
       keyId: signingKey.id,
     );
@@ -356,7 +355,6 @@ To change the version of this release, change your app's version in your pubspec
         platform: releaseType.releasePlatform,
         supplementDirectoryPath: supplementDir.path,
         arch: supplementArtifactArch,
-        signing: artifactSigning,
       );
     }
   }

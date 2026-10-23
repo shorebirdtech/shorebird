@@ -106,9 +106,11 @@ extension CodeSign on ArgResults {
     return codeSigner.canonicalPublicKeyPem(pem);
   }
 
-  /// Whether a release's patches are signed (`--patch-signing`, the default;
-  /// `--no-patch-signing` turns it off).
-  bool get patchSigningEnabled => this['patch-signing'] != false;
+  /// Whether a release embeds a Shorebird-managed key (`--managed-signing`).
+  ///
+  /// Opt-in for now. Making it the default means defaulting the flag to true
+  /// here and adding `--no-patch-signing` to turn it off.
+  bool get managedSigningEnabled => this['managed-signing'] == true;
 
   /// Get base64-encoded public key from either file or command.
   ///

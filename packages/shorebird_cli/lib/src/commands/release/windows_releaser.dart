@@ -87,7 +87,6 @@ class WindowsReleaser extends Releaser {
       appId: appId,
       releaseId: release.id,
       releaseDirectory: releaseDir,
-      signing: artifactSigning,
     );
   }
 

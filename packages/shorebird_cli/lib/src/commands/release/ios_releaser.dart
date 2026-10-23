@@ -145,7 +145,6 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
           .path,
       isCodesigned: argResults.appleCodesign,
       podfileLockHash: shorebirdEnv.iosPodfileLockHash,
-      signing: artifactSigning,
     );
   }
 

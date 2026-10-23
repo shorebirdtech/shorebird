@@ -116,7 +116,6 @@ class AarReleaser extends Releaser {
       ),
       extractedAarDir: extractedAarDir.path,
       architectures: architectures,
-      signing: artifactSigning,
     );
   }
 

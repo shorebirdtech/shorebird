@@ -154,14 +154,13 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         help: CommonArguments.publicKeyCmd.description,
       )
       ..addFlag(
-        'patch-signing',
-        defaultsTo: true,
+        'managed-signing',
+        negatable: false,
         help:
-            'Embed a key that Shorebird manages and signs patches with. '
-            '--no-patch-signing builds a release whose patches are not '
-            'signed. To sign patches with your own key, pass '
-            '--${CommonArguments.publicKeyArg.name} or '
-            '--${CommonArguments.publicKeyCmd.name} instead.',
+            'Embed a key that Shorebird manages, and have Shorebird sign '
+            'every patch to this release. To sign patches with your own '
+            'key instead, pass --${CommonArguments.publicKeyArg.name} or '
+            '--${CommonArguments.publicKeyCmd.name}.',
       )
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
@@ -469,7 +468,7 @@ $error''');
       releaseVersion: releaseVersion,
       flutterVersion: flutterRevision,
       releasePlatform: releaser.releaseType.releasePlatform,
-      signing: releaser.artifactSigning,
+      signing: releaser.signing,
     );
 
     final release = await _publishRelease(
@@ -595,18 +594,21 @@ $error''');
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
-    if (hasPublicKey && !results.patchSigningEnabled) {
+    if (hasPublicKey && results.managedSigningEnabled) {
       usageException(
-        '--no-patch-signing builds a release without a key, so it cannot be '
+        '--managed-signing embeds a key Shorebird manages, so it cannot be '
         'combined with --${CommonArguments.publicKeyArg.name} or '
         '--${CommonArguments.publicKeyCmd.name}.',
       );
     }
     if (shorebirdYaml?.patchVerification != null &&
-        !results.patchSigningEnabled) {
+        !hasPublicKey &&
+        !results.managedSigningEnabled) {
       logger.warn(
-        'patch_verification is set in shorebird.yaml but this release '
-        'embeds no key (--no-patch-signing).\n'
+        'patch_verification is set in shorebird.yaml but '
+        'no public key was provided '
+        '(--${CommonArguments.publicKeyArg.name}, '
+        '--${CommonArguments.publicKeyCmd.name} or --managed-signing).\n'
         'patch_verification configuration will have no effect.',
       );
     }
@@ -760,8 +762,10 @@ To resolve this issue, you can:
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}',
       '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
-      if (signing != null)
-        '🔏 Patch Signing: ${lightCyan.wrap(_describeSigning(signing.mode))}',
+      if (signing?.mode == ReleaseSigningMode.managed)
+        '🔏 Patch Signing: ${lightCyan.wrap('Shorebird-managed key')}'
+      else if (signing?.mode == ReleaseSigningMode.customer)
+        '🔏 Patch Signing: ${lightCyan.wrap('your key')}',
     ];
 
     logger.info('''
@@ -771,12 +775,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
   }
-
-  String _describeSigning(ReleaseSigningMode mode) => switch (mode) {
-    ReleaseSigningMode.managed => 'Shorebird-managed key',
-    ReleaseSigningMode.customer => 'your key',
-    ReleaseSigningMode.unsigned => 'off (--no-patch-signing)',
-  };
 
   /// Fetches the release with version [version] from the server or creates a
   /// new release if none exists.

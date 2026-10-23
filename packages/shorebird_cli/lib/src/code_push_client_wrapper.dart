@@ -618,7 +618,6 @@ Please create a release using "shorebird release" and try again.
     required String aabPath,
     required Iterable<Arch> architectures,
     String? flavor,
-    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
@@ -659,7 +658,6 @@ Looked in:
         }
 
         await _uploadAndroidArchArtifacts(
-          signing: signing,
           appId: appId,
           releaseId: releaseId,
           platform: platform,
@@ -671,7 +669,6 @@ Looked in:
     );
 
     await _uploadReleaseArtifact(
-      signing: signing,
       appId: appId,
       releaseId: releaseId,
       file: File(aabPath),
@@ -690,13 +687,11 @@ Looked in:
     required String appId,
     required int releaseId,
     required Directory releaseDirectory,
-    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final zippedRelease = await releaseDirectory.zipToTempFile();
     try {
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedRelease,
@@ -720,12 +715,10 @@ Looked in:
     required String aarPath,
     required String extractedAarDir,
     required Iterable<Arch> architectures,
-    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
     await _uploadAndroidArchArtifacts(
-      signing: signing,
       appId: appId,
       releaseId: releaseId,
       platform: platform,
@@ -735,7 +728,6 @@ Looked in:
     );
 
     await _uploadReleaseArtifact(
-      signing: signing,
       appId: appId,
       releaseId: releaseId,
       file: File(aarPath),
@@ -761,7 +753,6 @@ Looked in:
     required String archsDir,
     required Iterable<Arch> architectures,
     required Progress progress,
-    ArtifactSigningRequest? signing,
   }) async {
     // Track which arch paths AGP didn't produce, so we can surface them at
     // the end if zero archs uploaded. AGP omits an arch directory whenever
@@ -788,7 +779,6 @@ Looked in:
         continue;
       }
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: artifact,
@@ -838,7 +828,6 @@ to the architectures your project actually builds.''',
     required bool canSideload,
     required Progress progress,
     String? podfileLockHash,
-    ArtifactSigningRequest? signing,
   }) async {
     logger.detail('Uploading $name artifact from ${file.path}');
     try {
@@ -851,7 +840,6 @@ to the architectures your project actually builds.''',
         hash: sha256.convert(await file.readAsBytes()).toString(),
         canSideload: canSideload,
         podfileLockHash: podfileLockHash,
-        signing: signing,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -889,13 +877,11 @@ $name artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required Directory bundle,
-    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final zippedBundle = await Directory(bundle.path).zipToTempFile();
     try {
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedBundle,
@@ -918,7 +904,6 @@ $name artifact already exists, continuing...''');
     required int releaseId,
     required String appPath,
     required String? podfileLockHash,
-    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
@@ -929,7 +914,6 @@ $name artifact already exists, continuing...''');
       await ditto.archive(source: appPath, destination: zippedApp.path);
 
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedApp,
@@ -956,7 +940,6 @@ $name artifact already exists, continuing...''');
     required String runnerPath,
     required bool isCodesigned,
     required String? podfileLockHash,
-    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory = await _thinXcarchive(
@@ -970,7 +953,6 @@ $name artifact already exists, continuing...''');
     }
     try {
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedArchive,
@@ -989,7 +971,6 @@ $name artifact already exists, continuing...''');
     logger.detail('[archive] zipped runner.app');
     try {
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedRunner,
@@ -1013,14 +994,12 @@ $name artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required String appFrameworkPath,
-    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     final zippedAppFrameworkFile = await appFrameworkDirectory.zipToTempFile();
     try {
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedAppFrameworkFile,
@@ -1044,7 +1023,6 @@ $name artifact already exists, continuing...''');
     required ReleasePlatform platform,
     required String supplementDirectoryPath,
     required String arch,
-    ArtifactSigningRequest? signing,
   }) async {
     final createSupplementProgress = logger.progress(
       'Uploading supplement artifacts',
@@ -1054,7 +1032,6 @@ $name artifact already exists, continuing...''');
     ).zipToTempFile(name: arch);
     try {
       await _uploadReleaseArtifact(
-        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedSupplement,

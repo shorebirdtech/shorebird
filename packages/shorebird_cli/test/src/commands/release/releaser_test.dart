@@ -106,9 +106,6 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.linux);
-      registerFallbackValue(
-        const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
-      );
     });
 
     setUp(() {
@@ -285,12 +282,14 @@ To change the version of this release, change your app's version in your pubspec
     });
 
     group('resolvePatchSigningKey', () {
-      test('embeds the managed key the server returns by default', () async {
+      test('embeds the managed key with --managed-signing', () async {
+        when(() => argResults['managed-signing']).thenReturn(true);
+
         final key = await runWithOverrides(releaser.resolvePatchSigningKey);
 
         expect(key, equals(managedKeyBase64));
         expect(
-          releaser.artifactSigning,
+          releaser.signing,
           equals(
             const ArtifactSigningRequest(
               mode: ReleaseSigningMode.managed,
@@ -303,14 +302,12 @@ To change the version of this release, change your app's version in your pubspec
         ).called(1);
       });
 
-      test('embeds no key with --no-patch-signing', () async {
-        when(() => argResults['patch-signing']).thenReturn(false);
-
+      test('embeds no key by default', () async {
         final key = await runWithOverrides(releaser.resolvePatchSigningKey);
 
         expect(key, isNull);
         expect(
-          releaser.artifactSigning,
+          releaser.signing,
           equals(
             const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
           ),
@@ -337,7 +334,7 @@ To change the version of this release, change your app's version in your pubspec
 
         expect(key, equals('Y3VzdG9tZXI='));
         expect(
-          releaser.artifactSigning,
+          releaser.signing,
           equals(
             const ArtifactSigningRequest(mode: ReleaseSigningMode.customer),
           ),
@@ -364,7 +361,7 @@ To change the version of this release, change your app's version in your pubspec
         final result = await runWithOverrides(
           () => releaser.runReleaseBuild((buildArgs, base64PublicKey) async {
             receivedArgs = buildArgs;
-            expect(base64PublicKey, equals(managedKeyBase64));
+            expect(base64PublicKey, isNull);
             return 'built';
           }),
         );
@@ -582,7 +579,6 @@ To change the version of this release, change your app's version in your pubspec
             platform: any(named: 'platform'),
             supplementDirectoryPath: any(named: 'supplementDirectoryPath'),
             arch: any(named: 'arch'),
-            signing: any(named: 'signing'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -622,12 +618,6 @@ To change the version of this release, change your app's version in your pubspec
             create: any(named: 'create'),
           ),
         ).thenReturn(supplementDir);
-        const signing = ArtifactSigningRequest(
-          mode: ReleaseSigningMode.managed,
-          keyId: 7,
-        );
-        releaser.artifactSigning = signing;
-
         await runWithOverrides(
           () => releaser.uploadSupplementArtifact(appId: 'app', releaseId: 1),
         );
@@ -639,7 +629,6 @@ To change the version of this release, change your app's version in your pubspec
             platform: ReleasePlatform.linux,
             supplementDirectoryPath: supplementDir.path,
             arch: 'test_supplement',
-            signing: signing,
           ),
         ).called(1);
       });

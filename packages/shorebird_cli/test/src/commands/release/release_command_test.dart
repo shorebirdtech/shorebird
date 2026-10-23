@@ -1126,21 +1126,22 @@ Did you mean --release-version=1.0.0+1?''',
     });
 
     group('printReleaseSummary', () {
+      Future<void> printSummary(ReleaseSigningMode mode) => runWithOverrides(
+        () => command.printReleaseSummary(
+          app: appMetadata,
+          releaseVersion: '1.0.0+1',
+          flutterVersion: 'deadbeef',
+          releasePlatform: ReleasePlatform.android,
+          signing: ArtifactSigningRequest(mode: mode),
+        ),
+      );
+
       for (final (mode, description) in [
         (ReleaseSigningMode.managed, 'Shorebird-managed key'),
         (ReleaseSigningMode.customer, 'your key'),
-        (ReleaseSigningMode.unsigned, 'off (--no-patch-signing)'),
       ]) {
         test('describes $mode patch signing', () async {
-          await runWithOverrides(
-            () => command.printReleaseSummary(
-              app: appMetadata,
-              releaseVersion: '1.0.0+1',
-              flutterVersion: 'deadbeef',
-              releasePlatform: ReleasePlatform.android,
-              signing: ArtifactSigningRequest(mode: mode),
-            ),
-          );
+          await printSummary(mode);
 
           verify(
             () => logger.info(
@@ -1153,6 +1154,14 @@ Did you mean --release-version=1.0.0+1?''',
           ).called(1);
         });
       }
+
+      test('says nothing about signing for an unsigned release', () async {
+        await printSummary(ReleaseSigningMode.unsigned);
+
+        verifyNever(
+          () => logger.info(any(that: contains('Patch Signing'))),
+        );
+      });
     });
 
     group('assertArgsAreValid', () {
@@ -1186,26 +1195,28 @@ Did you mean --release-version=1.0.0+1?''',
           when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
         });
 
-        test('does not warn when the release embeds a managed key', () async {
-          await runWithOverrides(() => command.assertArgsAreValid(releaser));
-          verifyNever(() => logger.warn(any()));
-        });
-
-        test('warns with --no-patch-signing', () async {
-          when(() => argResults['patch-signing']).thenReturn(false);
+        test('warns when the release embeds no key', () async {
           await runWithOverrides(() => command.assertArgsAreValid(releaser));
           verify(
             () => logger.warn(
-              'patch_verification is set in shorebird.yaml but this release '
-              'embeds no key (--no-patch-signing).\n'
+              'patch_verification is set in shorebird.yaml but '
+              'no public key was provided '
+              '(--${CommonArguments.publicKeyArg.name}, '
+              '--${CommonArguments.publicKeyCmd.name} or --managed-signing).\n'
               'patch_verification configuration will have no effect.',
             ),
           ).called(1);
         });
+
+        test('does not warn with --managed-signing', () async {
+          when(() => argResults['managed-signing']).thenReturn(true);
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+          verifyNever(() => logger.warn(any()));
+        });
       });
 
-      test('rejects --no-patch-signing with a public key', () async {
-        when(() => argResults['patch-signing']).thenReturn(false);
+      test('rejects --managed-signing with a public key', () async {
+        when(() => argResults['managed-signing']).thenReturn(true);
         when(
           () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
         ).thenReturn(true);
@@ -1219,7 +1230,7 @@ Did you mean --release-version=1.0.0+1?''',
             isA<UsageException>().having(
               (e) => e.message,
               'message',
-              contains('--no-patch-signing builds a release without a key'),
+              contains('--managed-signing embeds a key Shorebird manages'),
             ),
           ),
         );

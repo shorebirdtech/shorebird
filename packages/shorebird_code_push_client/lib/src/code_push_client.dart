@@ -325,7 +325,6 @@ class CodePushClient {
     required String hash,
     required bool canSideload,
     required String? podfileLockHash,
-    ArtifactSigningRequest? signing,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -337,7 +336,6 @@ class CodePushClient {
     // strings on the wire. Drop null-valued keys so absent-optional
     // fields don't send the literal string "null" (previously handled
     // by `@JsonKey(includeIfNull: false)` in the handwritten model).
-    // An object-valued field (`signing`) travels as one JSON-encoded field.
     final payload = <String, String>{
       for (final entry in CreateReleaseArtifactRequest(
         arch: arch,
@@ -347,12 +345,8 @@ class CodePushClient {
         canSideload: canSideload,
         filename: p.basename(artifactPath),
         podfileLockHash: podfileLockHash,
-        signing: signing,
       ).toJson().entries)
-        if (entry.value case final Map<String, dynamic> value)
-          entry.key: json.encode(value)
-        else if (entry.value != null)
-          entry.key: '${entry.value}',
+        if (entry.value != null) entry.key: '${entry.value}',
     };
     request.fields.addAll(payload);
 
