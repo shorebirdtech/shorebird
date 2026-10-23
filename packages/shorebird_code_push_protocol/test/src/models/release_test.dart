@@ -22,6 +22,28 @@ void main() {
       );
     });
 
+    test('carries its signing mode and key through JSON', () {
+      final release = Release(
+        id: 1,
+        appId: 'app-id',
+        version: '1.0.0',
+        flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
+        platformStatuses: const {},
+        createdAt: DateTime.utc(2023),
+        updatedAt: DateTime.utc(2023),
+        signingMode: ReleaseSigningMode.managed,
+        signingKeyId: 7,
+      );
+      final json = release.toJson();
+      expect(json['signing_mode'], 'managed');
+      expect(json['signing_key_id'], 7);
+      expect(Release.fromJson(json), equals(release));
+      expect(
+        Release.fromJson({...json, 'signing_key_id': 8}),
+        isNot(equals(release)),
+      );
+    });
+
     test('is equatable', () {
       final release1 = Release(
         id: 1,
