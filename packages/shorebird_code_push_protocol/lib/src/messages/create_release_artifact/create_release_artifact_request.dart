@@ -78,9 +78,7 @@ class CreateReleaseArtifactRequest {
 
   /// How the CLI signed a release artifact's binary. A managed binary
   /// names the key GET /apps/{appId}/signing-key returned (key_id). A
-  /// customer binary sends its RSA public key (public_key_pem), which the
-  /// server stores; never anything private. An unsigned binary sends
-  /// neither.
+  /// customer-signed or unsigned binary sends only its mode.
   final ArtifactSigningRequest? signing;
 
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.

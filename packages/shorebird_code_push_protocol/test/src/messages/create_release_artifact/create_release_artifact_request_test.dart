@@ -35,20 +35,17 @@ void main() {
       expect(CreateReleaseArtifactRequest.fromJson(json), equals(request));
     });
 
-    test("carries the customer's public key the binary embeds", () {
+    test('carries only the mode for a customer-signed binary', () {
       const request = CreateReleaseArtifactRequest(
         arch: 'arm64',
         platform: ReleasePlatform.android,
         hash: '1234',
         size: 9876,
         filename: 'test.apk',
-        signing: ArtifactSigningRequest(
-          mode: ReleaseSigningMode.customer,
-          publicKeyPem: 'pem',
-        ),
+        signing: ArtifactSigningRequest(mode: ReleaseSigningMode.customer),
       );
       final json = request.toJson();
-      expect(json['signing'], {'mode': 'customer', 'public_key_pem': 'pem'});
+      expect(json['signing'], {'mode': 'customer'});
       expect(CreateReleaseArtifactRequest.fromJson(json), equals(request));
     });
   });
