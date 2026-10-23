@@ -128,6 +128,78 @@ void main() {
         });
       });
 
+      group('checkPublicKeyPem', () {
+        Matcher refusedWithout(String keyText) => throwsA(
+          isA<InvalidPublicKeyException>()
+              .having((e) => e.source, 'source', isNull)
+              .having((e) => '$e', 'toString', isNot(contains(keyText))),
+        );
+        String bodyLine(File file) => const LineSplitter()
+            .convert(file.readAsStringSync())
+            .firstWhere((line) => !line.startsWith('-----'));
+
+        test('accepts one public key', () {
+          expect(
+            () => codeSigner.checkPublicKeyPem(
+              publicKeyFile.readAsStringSync(),
+            ),
+            returnsNormally,
+          );
+        });
+
+        for (final file in [privateKeyFile, privateKeyPkcs1File]) {
+          test('refuses ${p.basename(file.path)} without quoting it', () {
+            expect(
+              () => codeSigner.checkPublicKeyPem(file.readAsStringSync()),
+              refusedWithout(bodyLine(file)),
+            );
+            expect(
+              () => codeSigner.checkPublicKeyPem(file.readAsStringSync()),
+              throwsA(
+                isA<InvalidPublicKeyException>().having(
+                  (e) => e.message,
+                  'message',
+                  startsWith('contains a private key.'),
+                ),
+              ),
+            );
+          });
+        }
+
+        test('refuses a public key alongside a private one', () {
+          expect(
+            () => codeSigner.checkPublicKeyPem(
+              '${publicKeyFile.readAsStringSync()}'
+              '${privateKeyFile.readAsStringSync()}',
+            ),
+            refusedWithout(bodyLine(privateKeyFile)),
+          );
+        });
+
+        test('refuses anything but exactly one public key', () {
+          final publicKey = publicKeyFile.readAsStringSync();
+          for (final pem in [
+            '',
+            'not a key',
+            '$publicKey$publicKey',
+            'key:\n$publicKey',
+            publicKey.replaceAll('PUBLIC KEY', 'RSA PUBLIC KEY'),
+          ]) {
+            expect(
+              () => codeSigner.checkPublicKeyPem(pem),
+              throwsA(
+                isA<InvalidPublicKeyException>().having(
+                  (e) => e.message,
+                  'message',
+                  startsWith('must contain exactly one PEM public key'),
+                ),
+              ),
+              reason: pem,
+            );
+          }
+        });
+      });
+
       group('base64PublicKeyFromPem', () {
         test('output matches base64PublicKey from file', () {
           final publicKeyPem = publicKeyFile.readAsStringSync();
@@ -264,6 +336,39 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
                   'message',
                   contains('produced no output'),
                 ),
+              ),
+            );
+          },
+          values: {processRef.overrideWith(() => shorebirdProcess)},
+        );
+      });
+
+      test('refuses a private key without echoing it', () async {
+        final privateKey = File(
+          p.join(fixturesDirectory, 'crypto', 'private.pem'),
+        ).readAsStringSync();
+        final keyLine = const LineSplitter()
+            .convert(privateKey)
+            .firstWhere((line) => !line.startsWith('-----'));
+        final result = MockShorebirdProcessResult();
+        when(() => result.exitCode).thenReturn(0);
+        when(() => result.stdout).thenReturn(privateKey);
+        when(
+          () => shorebirdProcess.run(any(), any()),
+        ).thenAnswer((_) async => result);
+
+        await runScoped(
+          () async {
+            await expectLater(
+              () => codeSigner.runPublicKeyCmd('cat private.pem'),
+              throwsA(
+                isA<InvalidPublicKeyException>()
+                    .having(
+                      (e) => e.message,
+                      'message',
+                      startsWith('contains a private key.'),
+                    )
+                    .having((e) => '$e', 'toString', isNot(contains(keyLine))),
               ),
             );
           },

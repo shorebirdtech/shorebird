@@ -25,6 +25,16 @@ enum PrivateKeyFormat {
   pkcs1,
 }
 
+/// {@template invalid_public_key_exception}
+/// A public key option supplied something other than exactly one PEM public
+/// key. [message] completes "The --public-key-path file ..." or "The
+/// --public-key-cmd output ...", and never quotes what was supplied.
+/// {@endtemplate}
+class InvalidPublicKeyException extends FormatException {
+  /// {@macro invalid_public_key_exception}
+  const InvalidPublicKeyException(super.message);
+}
+
 /// {@template code_signer}
 /// Manages code signing operations.
 /// {@endtemplate}
@@ -70,6 +80,38 @@ class CodeSigner {
     return base64.encode(publicKeySeq.encodedBytes!);
   }
 
+  /// Checks that [pem] is exactly one PEM public key (`BEGIN PUBLIC KEY`)
+  /// with nothing else around it, before the CLI embeds it in a release or
+  /// sends it anywhere.
+  ///
+  /// A private key is refused outright, in any PEM form, so a swapped
+  /// `--public-key-path` and `--private-key-path` cannot put the private key
+  /// in an app or send it to Shorebird. Throws an [InvalidPublicKeyException]
+  /// whose message never quotes [pem], since [pem] may be a private key.
+  void checkPublicKeyPem(String pem) {
+    if (pem.contains('PRIVATE KEY')) {
+      throw const InvalidPublicKeyException(
+        'contains a private key. Never pass a private key here: pass the '
+        'public key, which `openssl rsa -in private.pem -pubout -out '
+        'public.pem` writes, and give the private key only to '
+        '--private-key-path.',
+      );
+    }
+    final labels = RegExp(
+      '-----BEGIN ([^-]*)-----',
+    ).allMatches(pem).map((match) => match.group(1)).toList();
+    final trimmed = pem.trim();
+    if (labels.length != 1 ||
+        labels.single != 'PUBLIC KEY' ||
+        !trimmed.startsWith('-----BEGIN PUBLIC KEY-----') ||
+        !trimmed.endsWith('-----END PUBLIC KEY-----')) {
+      throw const InvalidPublicKeyException(
+        'must contain exactly one PEM public key (BEGIN PUBLIC KEY) and '
+        'nothing else.',
+      );
+    }
+  }
+
   /// Runs a command and returns its stdout, expected to be a PEM public key.
   Future<String> runPublicKeyCmd(String command) async {
     final result = await process.run(
@@ -87,6 +129,14 @@ class CodeSigner {
     }
 
     final output = '${result.stdout}'.trim();
+    // Checked before anything below previews the output, so a command that
+    // prints a private key never has it echoed to the terminal or CI logs.
+    if (output.contains('PRIVATE KEY')) {
+      throw const InvalidPublicKeyException(
+        'contains a private key. The command must print only your public '
+        'key.',
+      );
+    }
     if (!output.contains('-----BEGIN') || !output.contains('PUBLIC KEY')) {
       if (output.isEmpty) {
         throw const FormatException(
