@@ -355,6 +355,7 @@ To change the version of this release, change your app's version in your pubspec
         platform: releaseType.releasePlatform,
         supplementDirectoryPath: supplementDir.path,
         arch: supplementArtifactArch,
+        signing: signing,
       );
     }
   }

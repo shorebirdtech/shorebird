@@ -181,6 +181,9 @@ void main() {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(
+        const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
+      );
     });
 
     setUp(() {
@@ -2947,6 +2950,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
               podfileLockHash: any(named: 'podfileLockHash'),
+              signing: any(named: 'signing'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -2972,6 +2976,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: any(named: 'hash'),
               canSideload: true,
               podfileLockHash: null,
+            ),
+          ).called(1);
+        });
+
+        test('records how the build is signed', () async {
+          const signing = ArtifactSigningRequest(
+            mode: ReleaseSigningMode.managed,
+            keyId: 7,
+          );
+          await runWithOverrides(
+            () async => codePushClientWrapper.createLinuxReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              bundle: releaseBundle,
+              signing: signing,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: appId,
+              releaseId: releaseId,
+              arch: primaryLinuxReleaseArtifactArch,
+              platform: ReleasePlatform.linux,
+              hash: any(named: 'hash'),
+              canSideload: true,
+              podfileLockHash: null,
+              signing: signing,
             ),
           ).called(1);
         });

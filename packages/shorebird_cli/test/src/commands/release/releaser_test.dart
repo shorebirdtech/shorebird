@@ -579,6 +579,7 @@ To change the version of this release, change your app's version in your pubspec
             platform: any(named: 'platform'),
             supplementDirectoryPath: any(named: 'supplementDirectoryPath'),
             arch: any(named: 'arch'),
+            signing: any(named: 'signing'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -618,6 +619,12 @@ To change the version of this release, change your app's version in your pubspec
             create: any(named: 'create'),
           ),
         ).thenReturn(supplementDir);
+        const signing = ArtifactSigningRequest(
+          mode: ReleaseSigningMode.managed,
+          keyId: 7,
+        );
+        releaser.signing = signing;
+
         await runWithOverrides(
           () => releaser.uploadSupplementArtifact(appId: 'app', releaseId: 1),
         );
@@ -629,6 +636,7 @@ To change the version of this release, change your app's version in your pubspec
             platform: ReleasePlatform.linux,
             supplementDirectoryPath: supplementDir.path,
             arch: 'test_supplement',
+            signing: signing,
           ),
         ).called(1);
       });

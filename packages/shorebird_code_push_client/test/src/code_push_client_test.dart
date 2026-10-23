@@ -714,6 +714,42 @@ void main() {
         });
       });
 
+      group('when signing is provided', () {
+        test('sends it as one JSON-encoded field', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync()
+            ..writeAsStringSync('hello');
+
+          try {
+            await codePushClient.createReleaseArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              canSideload: canSideload,
+              podfileLockHash: null,
+              signing: const ArtifactSigningRequest(
+                mode: ReleaseSigningMode.managed,
+                keyId: 7,
+              ),
+            );
+          } on Exception {
+            // ignore
+          }
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.MultipartRequest;
+          expect(
+            request.fields['signing'],
+            equals('{"mode":"managed","key_id":7}'),
+          );
+        });
+      });
+
       group('when podfileLockHash is provided', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();

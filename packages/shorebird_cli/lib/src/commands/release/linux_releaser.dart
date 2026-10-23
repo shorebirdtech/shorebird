@@ -80,6 +80,7 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
       appId: appId,
       releaseId: release.id,
       bundle: artifactManager.linuxBundleDirectory,
+      signing: signing,
     );
   }
 }
