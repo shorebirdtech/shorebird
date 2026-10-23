@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -459,6 +460,89 @@ void main() {
           (json['data'] as Map<String, dynamic>)['releases'],
           equals([release().toJson()]),
         );
+      });
+    });
+
+    group('with --verify', () {
+      File writeAab(String libapp) {
+        final archive = Archive()
+          ..addFile(
+            ArchiveFile.string('base/lib/arm64-v8a/libapp.so', libapp),
+          );
+        return File(p.join(tempDir.path, 'app.aab'))
+          ..writeAsBytesSync(ZipEncoder().encode(archive));
+      }
+
+      void verifyNothingPublished() {
+        verifyNever(
+          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+        );
+        verifyNever(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            artifacts: any(named: 'artifacts'),
+            message: any(named: 'message'),
+          ),
+        );
+      }
+
+      test('publishes when the store binary matches the bundle', () async {
+        await writeBundle();
+        final progress = MockProgress();
+        when(
+          () => logger.progress('Checking app.aab against the bundle'),
+        ).thenReturn(progress);
+        when(() => argResults['verify']).thenReturn(writeAab('arm64').path);
+
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.success.code),
+        );
+        verify(() => progress.complete('app.aab matches the bundle')).called(1);
+        verifyUploaded();
+      });
+
+      test('publishes nothing when the store binary differs', () async {
+        await writeBundle();
+        final aab = writeAab('another build');
+        when(() => argResults['verify']).thenReturn(aab.path);
+
+        expect(await runWithOverrides(command.run), equals(ExitCode.data.code));
+        verify(
+          () => logger.err(
+            any(
+              that: allOf(
+                contains(
+                  '${aab.path} was not built from the same build as this '
+                  'bundle',
+                ),
+                contains(
+                  '  - arm64-v8a: libapp.so in app.aab is not the one in the '
+                  'bundle',
+                ),
+              ),
+            ),
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(any(that: contains('Nothing was published.'))),
+        ).called(1);
+        verifyNothingPublished();
+      });
+
+      test('publishes nothing when the store binary cannot be '
+          'compared', () async {
+        await writeBundle();
+        when(
+          () => argResults['verify'],
+        ).thenReturn(p.join(tempDir.path, 'missing.aab'));
+
+        expect(await runWithOverrides(command.run), equals(ExitCode.data.code));
+        verify(
+          () => logger.err(any(that: startsWith('No file at'))),
+        ).called(1);
+        verifyNothingPublished();
       });
     });
 

@@ -652,7 +652,43 @@ void main() {
             any(that: contains('shorebird upload ${bundleFile.path}')),
           ),
         ).called(1);
+        verify(
+          () => logger.info(
+            any(that: contains('--verify <path to the .aab>')),
+          ),
+        ).called(1);
+        verifyNever(() => logger.warn(any()));
         verify(artifactBuilder.writeBuildTraceSummary).called(1);
+      });
+
+      test('warns when it replaces a bundle for the same version', () async {
+        bundleAt('release-$releaseVersion-android.zip')
+          ..createSync(recursive: true)
+          ..writeAsStringSync('an earlier build');
+
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.success.code),
+        );
+
+        verify(
+          () => logger.warn(
+            any(
+              that: allOf(
+                contains(
+                  'This replaced an earlier bundle for release '
+                  '$releaseVersion (Android).',
+                ),
+                contains('would not install on it'),
+              ),
+            ),
+          ),
+        ).called(1);
+        final bundle = await ReleaseBundle.extract(
+          file: bundleAt('release-$releaseVersion-android.zip'),
+          directory: Directory.systemTemp.createTempSync(),
+        );
+        expect(bundle.releaseVersion, equals(releaseVersion));
       });
 
       test(
@@ -742,6 +778,7 @@ void main() {
                 'release_type': 'android',
                 'release_version': releaseVersion,
                 'path': bundleAt('release-$releaseVersion-android.zip').path,
+                'replaced_existing_bundle': false,
               },
             ],
           }),

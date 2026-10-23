@@ -223,6 +223,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
                 'release_type': bundle.releaseType.cliName,
                 'release_version': bundle.version,
                 'path': bundle.file.path,
+                'replaced_existing_bundle': bundle.replacedBundle,
               },
           ],
         });
@@ -358,6 +359,7 @@ $error''');
           ReleasePlatform platform,
           String version,
           File file,
+          bool replacedBundle,
         })
       >[];
 
@@ -578,6 +580,8 @@ $error''');
         ].join('-').replaceAll(RegExp('[^A-Za-z0-9.+_-]'), '_'),
       ),
     ).absolute;
+    final bundlePath = '${bundleFile.path}.zip';
+    final replacedBundle = File(bundlePath).existsSync();
     final stagingDirectory = Directory.systemTemp.createTempSync();
     try {
       final artifacts = await releaser.prepareReleaseArtifacts(
@@ -603,7 +607,7 @@ $error''');
       );
       final progress = logger.progress('Saving release bundle');
       try {
-        await bundle.writeTo(File('${bundleFile.path}.zip'));
+        await bundle.writeTo(File(bundlePath));
       } on Exception catch (error) {
         progress.fail('Failed to save the release bundle: $error');
         throw ProcessExit(ExitCode.software.code);
@@ -613,12 +617,12 @@ $error''');
       stagingDirectory.deleteTemporarySync();
     }
 
-    final bundlePath = '${bundleFile.path}.zip';
     _savedBundles.add((
       releaseType: releaser.releaseType,
       platform: platform,
       version: releaseVersion,
       file: File(bundlePath),
+      replacedBundle: replacedBundle,
     ));
     logger
       ..success('''
@@ -630,6 +634,26 @@ $error''');
         '${lightCyan.wrap('shorebird upload ${_shellQuote(bundlePath)}')}\n'
         'Patches can be made once it is published.',
       );
+    if (platform == ReleasePlatform.android ||
+        platform == ReleasePlatform.ios) {
+      final storeBinary = platform == ReleasePlatform.android ? '.aab' : '.ipa';
+      logger.info(
+        'Ship the $storeBinary from this build to the store. Add '
+        '${lightCyan.wrap('--verify <path to the $storeBinary>')} to '
+        '`shorebird upload` to check that it matches before publishing.',
+      );
+    }
+    if (replacedBundle) {
+      // A store build from the bundle this replaced won't match the release
+      // published from this one, and would reject every patch.
+      logger.warn(
+        'This replaced an earlier bundle for release $releaseVersion '
+        '(${platform.displayName}). If a build from that bundle has gone to '
+        'a store, it does not match this one: patches for $releaseVersion '
+        'would not install on it. Ship this build instead, or give this '
+        'build a new version.',
+      );
+    }
   }
 
   /// [path], quoted for the user's shell if it needs to be: in double quotes
