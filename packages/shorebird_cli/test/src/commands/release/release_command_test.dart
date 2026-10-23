@@ -947,6 +947,78 @@ $exception'''),
       });
     });
 
+    group('patch_verification', () {
+      const brokenEngineRevision = '6eae37c3bd60906cfaa3b026b3271b896a76e46f';
+      const goodEngineRevision = '145c457f310dc800caa96f163cfde167df18f0da';
+
+      void setUpYaml(PatchVerification? patchVerification) {
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+          ShorebirdYaml(appId: appId, patchVerification: patchVerification),
+        );
+      }
+
+      group('when install_only is set on an engine where it is broken', () {
+        setUp(() {
+          setUpYaml(PatchVerification.installOnly);
+          when(
+            () => shorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn(brokenEngineRevision);
+        });
+
+        test('refuses the release before building', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            throwsA(
+              isA<PreconditionFailedExit>()
+                  .having((e) => e.exitCode, 'exitCode', ExitCode.config.code)
+                  .having(
+                    (e) => e.failure.message,
+                    'failure.message',
+                    contains('does not check patch signatures'),
+                  ),
+            ),
+          );
+          verify(
+            () => logger.err(
+              any(that: contains('`patch_verification: install_only`')),
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(any(that: contains('--flutter-version=3.41.8'))),
+          ).called(1);
+          verifyNever(() => releaser.buildReleaseArtifacts());
+        });
+      });
+
+      group('when install_only is set on an engine where it works', () {
+        setUp(() {
+          setUpYaml(PatchVerification.installOnly);
+          when(
+            () => shorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn(goodEngineRevision);
+        });
+
+        test('releases', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+        });
+      });
+
+      group('when strict is set on an engine where install_only is broken', () {
+        setUp(() {
+          setUpYaml(PatchVerification.strict);
+          when(
+            () => shorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn(brokenEngineRevision);
+        });
+
+        test('releases', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+        });
+      });
+    });
+
     group('when no platform argument is provided', () {
       setUp(() {
         when(() => argResults['platforms']).thenReturn(const <String>[]);

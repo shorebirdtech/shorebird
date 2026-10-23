@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/patch_verification.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -424,6 +425,7 @@ $error''');
     required String flutterRevision,
   }) async {
     await cache.updateAll();
+    await _assertPatchVerificationChecksSignatures();
 
     // Set up build tracing for this platform before any flutter build /
     // aot_tools / gen_snapshot call runs. Version-gated inside
@@ -466,6 +468,36 @@ $error''');
       releaseVersion: releaseVersion,
     );
     return _refreshReleaseForJson(release);
+  }
+
+  /// Exits with [ExitCode.config] if shorebird.yaml asks for
+  /// `patch_verification: install_only` on a Flutter build whose updater
+  /// never checks patch signatures in that mode (since updater#352).
+  /// Runs with [shorebirdEnv] scoped to the release's Flutter revision.
+  Future<void> _assertPatchVerificationChecksSignatures() async {
+    final patchVerification = shorebirdEnv
+        .getShorebirdYaml()
+        ?.patchVerification;
+    if (patchVerification != PatchVerification.installOnly) return;
+    if (!installOnlySkipsSignatureCheck(shorebirdEnv.shorebirdEngineRevision)) {
+      return;
+    }
+    final flutterVersion = await shorebirdFlutter.getVersionAndRevision();
+    final failure = ValidationFailedException(
+      message:
+          '`patch_verification: install_only` in shorebird.yaml does not '
+          'check patch signatures with Flutter $flutterVersion.',
+      hint:
+          'Remove `patch_verification` from shorebird.yaml (or set it to '
+          '`strict`), so patches are verified each time the app launches, or '
+          'release with a Flutter '
+          'version that checks signatures in install_only mode, such as '
+          '--flutter-version=3.41.8.',
+    );
+    logger
+      ..err(failure.message)
+      ..info(failure.hint);
+    throw PreconditionFailedExit(failure);
   }
 
   /// Builds the release artifacts, exiting with [ExitCode.software] if the
