@@ -1,4 +1,4 @@
-// cspell:words dgst genrsa genpkey
+// cspell:words dgst genrsa genpkey pubout
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
