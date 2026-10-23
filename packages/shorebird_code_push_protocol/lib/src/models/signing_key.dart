@@ -35,7 +35,7 @@ class SigningKey {
     return SigningKey.fromJson(json);
   }
 
-  /// The key's id, which a release records as signing_key_id.
+  /// The key's id, which a managed release names as signing.key_id.
   final int id;
 
   /// The public key, PEM encoded (SubjectPublicKeyInfo), which a

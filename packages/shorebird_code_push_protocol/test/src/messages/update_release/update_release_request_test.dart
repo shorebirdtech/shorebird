@@ -28,5 +28,19 @@ void main() {
         equals(request.toJson()),
       );
     });
+
+    test("carries the signing of the platform's build", () {
+      const request = UpdateReleaseRequest(
+        platform: ReleasePlatform.ios,
+        status: ReleaseStatus.draft,
+        signing: ReleaseSigningRequest(
+          mode: ReleaseSigningMode.managed,
+          keyId: 7,
+        ),
+      );
+      final json = request.toJson();
+      expect(json['signing'], {'mode': 'managed', 'key_id': 7});
+      expect(UpdateReleaseRequest.fromJson(json), equals(request));
+    });
   });
 }

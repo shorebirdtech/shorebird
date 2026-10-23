@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
-import 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_signing.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
 /// {@template release}
@@ -22,8 +22,7 @@ class Release {
     this.flutterVersion,
     this.displayName,
     this.notes,
-    this.signingMode,
-    this.signingKeyId,
+    this.signing,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Release].
@@ -48,10 +47,9 @@ class Release {
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         notes: json['notes'] as String?,
-        signingMode: ReleaseSigningMode.maybeFromJson(
-          json['signing_mode'] as String?,
+        signing: ReleaseSigning.maybeFromJson(
+          json['signing'] as Map<String, dynamic>?,
         ),
-        signingKeyId: json['signing_key_id'] as int?,
       ),
     );
   }
@@ -96,13 +94,9 @@ class Release {
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
-  /// How a release's binaries were signed for patch signing.
-  final ReleaseSigningMode? signingMode;
-
-  /// The managed key the release embeds, whose public key
-  /// GET /apps/{appId}/releases/{releaseId}/signing-key returns.
-  /// Present exactly when signing_mode is managed.
-  final int? signingKeyId;
+  /// How a release's binaries are signed for patch signing. Set by the
+  /// release's first platform; every later platform matches it.
+  final ReleaseSigning? signing;
 
   /// Converts a [Release] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -119,8 +113,7 @@ class Release {
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'notes': ?notes,
-      'signing_mode': ?signingMode?.toJson(),
-      'signing_key_id': ?signingKeyId,
+      'signing': ?signing?.toJson(),
     };
   }
 
@@ -136,8 +129,7 @@ class Release {
     createdAt,
     updatedAt,
     notes,
-    signingMode,
-    signingKeyId,
+    signing,
   ]);
 
   @override
@@ -154,7 +146,6 @@ class Release {
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
         notes == other.notes &&
-        signingMode == other.signingMode &&
-        signingKeyId == other.signingKeyId;
+        signing == other.signing;
   }
 }

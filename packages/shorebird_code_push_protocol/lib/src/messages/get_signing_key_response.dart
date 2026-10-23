@@ -3,8 +3,7 @@ import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/signing_key.dart';
 
 /// {@template get_signing_key_response}
-/// The response body for GET /apps/{appId}/signing-key and
-/// GET /apps/{appId}/releases/{releaseId}/signing-key.
+/// The response body for GET /apps/{appId}/signing-key.
 /// {@endtemplate}
 @immutable
 class GetSigningKeyResponse {

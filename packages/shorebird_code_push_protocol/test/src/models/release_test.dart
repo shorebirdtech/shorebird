@@ -22,7 +22,7 @@ void main() {
       );
     });
 
-    test('carries its signing mode and key', () {
+    test('carries its signing', () {
       final release = Release(
         id: 1,
         appId: 'app-id',
@@ -31,18 +31,39 @@ void main() {
         platformStatuses: const {},
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
-        signingMode: ReleaseSigningMode.managed,
-        signingKeyId: 7,
+        signing: const ReleaseSigning(
+          mode: 'managed',
+          keyId: 7,
+          publicKeyPem: 'pem',
+        ),
       );
       final json = release.toJson();
-      expect(json['signing_mode'], 'managed');
-      expect(json['signing_key_id'], 7);
+      expect(json['signing'], {
+        'mode': 'managed',
+        'key_id': 7,
+        'public_key_pem': 'pem',
+      });
       final parsed = Release.fromJson(json);
-      expect(parsed.signingMode, ReleaseSigningMode.managed);
-      expect(parsed.signingKeyId, 7);
+      expect(parsed.signing, release.signing);
+      expect(parsed.signing!.signingMode, ReleaseSigningMode.managed);
     });
 
-    test('omits signing fields an older server leaves out', () {
+    test('reads a signing mode it does not know as unknown', () {
+      final json = Release(
+        id: 1,
+        appId: 'app-id',
+        version: '1.0.0',
+        flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
+        platformStatuses: const {},
+        createdAt: DateTime(2023),
+        updatedAt: DateTime(2023),
+      ).toJson()..['signing'] = {'mode': 'hardware'};
+      final parsed = Release.fromJson(json);
+      expect(parsed.signing!.mode, 'hardware');
+      expect(parsed.signing!.signingMode, isNull);
+    });
+
+    test('omits signing for a release that predates it', () {
       final release = Release(
         id: 1,
         appId: 'app-id',
@@ -53,9 +74,8 @@ void main() {
         updatedAt: DateTime(2023),
       );
       final json = release.toJson();
-      expect(json.containsKey('signing_mode'), isFalse);
-      expect(json.containsKey('signing_key_id'), isFalse);
-      expect(Release.fromJson(json).signingMode, isNull);
+      expect(json.containsKey('signing'), isFalse);
+      expect(Release.fromJson(json).signing, isNull);
     });
 
     test('is equatable', () {
