@@ -15,5 +15,18 @@ void main() {
         equals(request.toJson()),
       );
     });
+
+    test('carries the signing mode and key the CLI embedded', () {
+      const request = CreateReleaseRequest(
+        version: '1.2.3',
+        flutterRevision: 'abc123',
+        signingMode: ReleaseSigningMode.managed,
+        signingKeyId: 7,
+      );
+      final json = request.toJson();
+      expect(json['signing_mode'], 'managed');
+      expect(json['signing_key_id'], 7);
+      expect(CreateReleaseRequest.fromJson(json), equals(request));
+    });
   });
 }
