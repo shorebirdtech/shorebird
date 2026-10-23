@@ -1,6 +1,6 @@
 
 <div align=center>
- <img src= "https://raw.githubusercontent.com/shorebirdtech/brand/904722544742c13348f1854a5cc45f4ed223cd17/logo-wordmark/logo_wordmark.png" alt="Shorebird logo">
+ <img src= "https://shorebird.dev/shorebird-logo-wordmark.png" alt="Shorebird logo">
 <h1>Code Push </h1>
 
 [![Discord](https://img.shields.io/discord/1030243211995791380?style=for-the-badge&logo=discord&color=blue)](https://discord.gg/shorebird)
