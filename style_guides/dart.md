@@ -67,3 +67,24 @@ final longString = 'This is a string longer than the eighty character '
 // GOOD
 final longString = '''This is a string longer than the eighty character limit that our lint rules enforce.'''
 ```
+
+## AVOID the null-assertion operator `!`
+
+`!` crashes at runtime when the value is null, and every reader has to work out
+again why it's safe. Pull the nullable expression into a local, check it, and
+let flow analysis promote the local. Flag a `!` that could be rewritten this
+way in review. Where the analyzer can't follow (for example a field you know is
+initialized), a `!` is acceptable with a comment saying why.
+
+```dart
+// BAD
+if (release.flutterRevision != null) {
+  use(release.flutterRevision!);
+}
+
+// GOOD
+final flutterRevision = release.flutterRevision;
+if (flutterRevision != null) {
+  use(flutterRevision);
+}
+```

@@ -23,6 +23,16 @@ cd packages && very_good test -r
 dart test packages/shorebird_cli
 ```
 
+Before pushing Dart changes, run these in order from the package directory; CI gates on each:
+
+1. `dart pub get` (at the workspace root; in a fresh worktree, analyze reports thousands of bogus issues without it)
+2. `dart format .`
+3. `dart analyze`
+4. `dart test`
+5. `npx cspell <changed files>` (config: `cspell.config.yaml` at the repo root)
+
+In tests, don't use a misspelling as an invalid-input fixture (cspell fails on it); use a real word that's wrong in context, such as `web` for an unsupported platform.
+
 ## Architecture
 
 Dart monorepo. Main package is `shorebird_cli`.
@@ -33,11 +43,15 @@ Dart monorepo. Main package is `shorebird_cli`.
 
 **Dependency injection** uses `scoped_deps` with zone-based refs (see any `*Ref` variable).
 
+**Two files are named `shorebird.yaml`**: the checked-in project config at the app's root, and the generated one the Flutter fork bundles into `flutter_assets`, with different keys (`patch_public_key`, `patch_verification`, ...). In code, comments, PRs and agent briefs, always say "checked-in shorebird.yaml" or "generated (bundled) shorebird.yaml", never the bare name, so a change aimed at one doesn't hit the other.
+
 ## Code Style
 
 - PR titles must follow semantic commit format (enforced in CI)
 - CSpell: use inline `// cspell:words` for 1-2 files; add to global config for more
 - Prefer new commits over amending in PRs - history gets squashed anyway
+- Dart style rules beyond the lints are in `style_guides/dart.md`
+- Name anything a customer reads (env vars, flags, doc headings, error messages) after what they see, such as the host, not our internal service names: customers configure mirrors and allowlists by hostname. The setting for `download.shorebird.dev` is `SHOREBIRD_DOWNLOAD_URL`, named for the host. Internal names are fine in code internals.
 
 ## Landing a PR
 
