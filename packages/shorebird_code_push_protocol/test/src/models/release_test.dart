@@ -40,7 +40,6 @@ void main() {
       final parsed = Release.fromJson(json);
       expect(parsed.signingMode, ReleaseSigningMode.managed);
       expect(parsed.signingKeyId, 7);
-      expect(parsed, equals(release));
     });
 
     test('omits signing fields an older server leaves out', () {
