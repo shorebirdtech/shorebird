@@ -154,6 +154,15 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         CommonArguments.publicKeyCmd.name,
         help: CommonArguments.publicKeyCmd.description,
       )
+      ..addFlag(
+        'managed-signing',
+        negatable: false,
+        help:
+            'Embed a key that Shorebird manages, and have Shorebird sign '
+            'every patch to this release. To sign patches with your own '
+            'key instead, pass --${CommonArguments.publicKeyArg.name} or '
+            '--${CommonArguments.publicKeyCmd.name}.',
+      )
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
@@ -461,6 +470,7 @@ $error''');
       releaseVersion: releaseVersion,
       flutterVersion: flutterRevision,
       releasePlatform: releaser.releaseType.releasePlatform,
+      signing: releaser.signing,
     );
 
     final release = await _publishRelease(
@@ -515,6 +525,11 @@ $error''');
         logger.info(e.fixRecommendation);
       }
       throw ProcessExit(ExitCode.software.code);
+    } on ProcessExit {
+      // A step before the build (such as fetching the patch signing key)
+      // already reported why it stopped, and an ApiErrorExit carries the
+      // server's error for --json.
+      rethrow;
     } on Exception catch (e) {
       logger.err('Failed to build release artifacts: $e');
       throw ProcessExit(ExitCode.software.code);
@@ -611,12 +626,21 @@ $error''');
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
-    if (shorebirdYaml?.patchVerification != null && !hasPublicKey) {
+    if (hasPublicKey && results.managedSigningEnabled) {
+      usageException(
+        '--managed-signing embeds a key Shorebird manages, so it cannot be '
+        'combined with --${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+    }
+    if (shorebirdYaml?.patchVerification != null &&
+        !hasPublicKey &&
+        !results.managedSigningEnabled) {
       logger.warn(
         'patch_verification is set in shorebird.yaml but '
         'no public key was provided '
-        '(--${CommonArguments.publicKeyArg.name} '
-        'or --${CommonArguments.publicKeyCmd.name}).\n'
+        '(--${CommonArguments.publicKeyArg.name}, '
+        '--${CommonArguments.publicKeyCmd.name} or --managed-signing).\n'
         'patch_verification configuration will have no effect.',
       );
     }
@@ -759,6 +783,7 @@ To resolve this issue, you can:
     required String releaseVersion,
     required String flutterVersion,
     required ReleasePlatform releasePlatform,
+    ArtifactSigningRequest? signing,
   }) async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     // TODO(bryanoltman): include archs in the summary for android
@@ -769,6 +794,10 @@ To resolve this issue, you can:
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}',
       '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+      if (signing?.mode == ReleaseSigningMode.managed)
+        '🔏 Patch Signing: ${lightCyan.wrap('Shorebird-managed key')}'
+      else if (signing?.mode == ReleaseSigningMode.customer)
+        '🔏 Patch Signing: ${lightCyan.wrap('your key')}',
     ];
 
     logger.info('''
