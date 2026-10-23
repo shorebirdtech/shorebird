@@ -327,6 +327,9 @@ To change the version of this release, change your app's version in your pubspec
           () => argResults[CommonArguments.publicKeyArg.name],
         ).thenReturn(publicKeyFile.path);
         when(
+          () => codeSigner.canonicalPublicKeyPem('customer-pem'),
+        ).thenReturn('customer-pem');
+        when(
           () => codeSigner.base64PublicKeyFromPem('customer-pem'),
         ).thenReturn('Y3VzdG9tZXI=');
 

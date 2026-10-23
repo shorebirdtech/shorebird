@@ -1125,6 +1125,36 @@ Did you mean --release-version=1.0.0+1?''',
       });
     });
 
+    group('printReleaseSummary', () {
+      for (final (mode, description) in [
+        (ReleaseSigningMode.managed, 'Shorebird-managed key'),
+        (ReleaseSigningMode.customer, 'your key'),
+        (ReleaseSigningMode.unsigned, 'off (--no-patch-signing)'),
+      ]) {
+        test('describes $mode patch signing', () async {
+          await runWithOverrides(
+            () => command.printReleaseSummary(
+              app: appMetadata,
+              releaseVersion: '1.0.0+1',
+              flutterVersion: 'deadbeef',
+              releasePlatform: ReleasePlatform.android,
+              signing: ArtifactSigningRequest(mode: mode),
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  '🔏 Patch Signing: ${lightCyan.wrap(description)}',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      }
+    });
+
     group('assertArgsAreValid', () {
       test('calls releaser.assertArgsAreValid', () async {
         final releaser = MockReleaser();
