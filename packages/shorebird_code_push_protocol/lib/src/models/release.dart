@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
 /// {@template release}
@@ -21,6 +22,8 @@ class Release {
     this.flutterVersion,
     this.displayName,
     this.notes,
+    this.signingMode,
+    this.signingKeyId,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Release].
@@ -45,6 +48,10 @@ class Release {
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         notes: json['notes'] as String?,
+        signingMode: ReleaseSigningMode.maybeFromJson(
+          json['signing_mode'] as String?,
+        ),
+        signingKeyId: json['signing_key_id'] as int?,
       ),
     );
   }
@@ -89,6 +96,14 @@ class Release {
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
+  /// How a release's binaries were signed for patch signing.
+  final ReleaseSigningMode? signingMode;
+
+  /// The managed key the release embeds, whose public key
+  /// GET /apps/{appId}/releases/{releaseId}/signing-key returns.
+  /// Present exactly when signing_mode is managed.
+  final int? signingKeyId;
+
   /// Converts a [Release] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -104,6 +119,8 @@ class Release {
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'notes': ?notes,
+      'signing_mode': ?signingMode?.toJson(),
+      'signing_key_id': ?signingKeyId,
     };
   }
 
@@ -119,6 +136,8 @@ class Release {
     createdAt,
     updatedAt,
     notes,
+    signingMode,
+    signingKeyId,
   ]);
 
   @override
@@ -134,6 +153,8 @@ class Release {
         mapsEqual(platformStatuses, other.platformStatuses) &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
-        notes == other.notes;
+        notes == other.notes &&
+        signingMode == other.signingMode &&
+        signingKeyId == other.signingKeyId;
   }
 }

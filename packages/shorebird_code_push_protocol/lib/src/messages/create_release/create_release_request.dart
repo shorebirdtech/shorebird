@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
 
 /// {@template create_release_request}
 /// The request body for POST /apps/{appId}/releases.
@@ -12,6 +13,8 @@ class CreateReleaseRequest {
     required this.flutterRevision,
     this.flutterVersion,
     this.displayName,
+    this.signingMode,
+    this.signingKeyId,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseRequest].
@@ -24,6 +27,10 @@ class CreateReleaseRequest {
         flutterRevision: json['flutter_revision'] as String,
         flutterVersion: json['flutter_version'] as String?,
         displayName: json['display_name'] as String?,
+        signingMode: ReleaseSigningMode.maybeFromJson(
+          json['signing_mode'] as String?,
+        ),
+        signingKeyId: json['signing_key_id'] as int?,
       ),
     );
   }
@@ -51,6 +58,14 @@ class CreateReleaseRequest {
   /// The display name for the release.
   final String? displayName;
 
+  /// How a release's binaries were signed for patch signing.
+  final ReleaseSigningMode? signingMode;
+
+  /// The managed key the CLI embedded, as GET
+  /// /apps/{appId}/signing-key returned it. Required when
+  /// signing_mode is managed, and refused otherwise.
+  final int? signingKeyId;
+
   /// Converts a [CreateReleaseRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -58,6 +73,8 @@ class CreateReleaseRequest {
       'flutter_revision': flutterRevision,
       'flutter_version': ?flutterVersion,
       'display_name': ?displayName,
+      'signing_mode': ?signingMode?.toJson(),
+      'signing_key_id': ?signingKeyId,
     };
   }
 
@@ -67,6 +84,8 @@ class CreateReleaseRequest {
     flutterRevision,
     flutterVersion,
     displayName,
+    signingMode,
+    signingKeyId,
   ]);
 
   @override
@@ -76,6 +95,8 @@ class CreateReleaseRequest {
         version == other.version &&
         flutterRevision == other.flutterRevision &&
         flutterVersion == other.flutterVersion &&
-        displayName == other.displayName;
+        displayName == other.displayName &&
+        signingMode == other.signingMode &&
+        signingKeyId == other.signingKeyId;
   }
 }
