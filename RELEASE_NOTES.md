@@ -4,6 +4,40 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
+## 1.6.131 (October 23, 2026)
+
+- ✨ `shorebird login` sends your browser to a styled page once the login
+  completes.
+- ✨ `SHOREBIRD_DOWNLOAD_URL` points Flutter and engine tool downloads at a
+  mirror, with separate overrides for the Flutter git URL and bundletool.
+- ✨ New Android and iOS releases require Flutter 3.24.0 or later.
+- ✨ When the server returns 426, the CLI prints the server's message instead
+  of a fixed line.
+- 🐛 Options before the platform now parse, so
+  `shorebird patch --release-version=1.0.0+1 android` works instead of failing
+  with `Invalid argument(s)`. `shorebird patch rollback` points at
+  `shorebird patches rollback`, and a version passed where a target belongs is
+  reported as a usage error.
+- 🐛 `shorebird release ios-framework --target` is honored instead of silently
+  building `lib/main.dart`.
+- 🐛 `shorebird preview` waits for a paired iOS device to become reachable
+  instead of exiting when the screen is locked.
+- 🐛 `shorebird init` only offers organizations you can create apps in, and a
+  new flavor is created in the existing app's organization.
+- 🐛 `shorebird doctor` probes the hosts the CLI actually uses.
+- 🐛 A yes/no prompt asks again when the answer is not recognized.
+- 🐛 Releasing an iOS framework into `release/` keeps the AAR.
+- 🐛 The temp directory `libapp.so` is extracted into from an `.aab` is cleaned
+  up.
+- 🐛 The `ios-framework` release instructions point at a section that exists.
+- 🔧 `patches`, `releases`, `apps` and `releases get-apks` carry example
+  invocations in their help.
+- 🔧 The per-install `client_id` no longer appears in the patch check log line.
+- 🔧 Refreshed the TLS root certificates the updater trusts.
+- 🔧 bundletool updated to 1.18.3, with a weekly check for new versions.
+
+Flutter 3.47.7 and Dart 3.13.5 are unchanged from 1.6.130.
+
 ## 1.6.130 (October 17, 2026)
 
 - ✨ `shorebird invitations list`, `accept` and `decline` manage the
