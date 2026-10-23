@@ -494,6 +494,11 @@ $error''');
         logger.info(e.fixRecommendation);
       }
       throw ProcessExit(ExitCode.software.code);
+    } on ProcessExit {
+      // A step before the build (such as fetching the patch signing key)
+      // already reported why it stopped, and an ApiErrorExit carries the
+      // server's error for --json.
+      rethrow;
     } on Exception catch (e) {
       logger.err('Failed to build release artifacts: $e');
       throw ProcessExit(ExitCode.software.code);

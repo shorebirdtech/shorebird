@@ -403,6 +403,21 @@ void main() {
         ).called(1);
       });
 
+      test('passes on an exit that was already reported', () async {
+        final exit = ProcessExit(ExitCode.unavailable.code);
+        when(() => releaser.buildReleaseArtifacts()).thenThrow(exit);
+
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(same(exit)),
+        );
+        verifyNever(
+          () => logger.err(
+            any(that: startsWith('Failed to build release artifacts')),
+          ),
+        );
+      });
+
       group('when failure is an ArtifactBuildException', () {
         late ArtifactBuildException exception;
 
