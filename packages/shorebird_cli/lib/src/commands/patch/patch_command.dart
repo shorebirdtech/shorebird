@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/patch_verification.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
@@ -355,10 +356,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     // Fail before downloading anything if the release's Flutter is too old.
     await runScoped(
-      () => _assertReleaseFlutterVersionSupported(
-        patcher: patcher,
-        release: release,
-      ),
+      () async {
+        await _assertReleaseFlutterVersionSupported(
+          patcher: patcher,
+          release: release,
+        );
+        await _warnIfInstallOnlySkipsSignatureCheck(release: release);
+      },
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
     );
 
@@ -787,6 +791,33 @@ Release ${release.version} was built with Flutter $flutterVersionAndRevision, bu
 A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ${patcher.releaseType.cliName} --flutter-version=${minimumReleaseFlutterVersion(patcher.releaseType)}')} and patch that one.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     throw ProcessExit(ExitCode.software.code);
+  }
+
+  /// Warns if shorebird.yaml asks for `patch_verification: install_only` and
+  /// [release] was built with a Flutter whose updater never checks patch
+  /// signatures in that mode (since updater#352), so devices on [release]
+  /// install this patch without checking its signature. Only a new release
+  /// can change that, so the patch goes ahead. Must run with the release's
+  /// Flutter revision in scope.
+  ///
+  /// Reads today's shorebird.yaml, which is the release's unless it has
+  /// changed since.
+  Future<void> _warnIfInstallOnlySkipsSignatureCheck({
+    required Release release,
+  }) async {
+    final patchVerification = shorebirdEnv
+        .getShorebirdYaml()
+        ?.patchVerification;
+    if (patchVerification != PatchVerification.installOnly) return;
+    if (!installOnlySkipsSignatureCheck(shorebirdEnv.shorebirdEngineRevision)) {
+      return;
+    }
+    final flutterVersion = await shorebirdFlutter.getVersionAndRevision();
+    logger.warn(
+      '''
+shorebird.yaml sets `patch_verification: install_only`, which does not check patch signatures with Flutter $flutterVersion, the Flutter release ${release.version} was built with. If the release was built with this setting, devices on it will install this patch without checking its signature.
+To have signatures checked, remove `patch_verification` from shorebird.yaml (or set it to `strict`) and create a new release, or release with a Flutter version that checks signatures in install_only mode, such as --flutter-version=3.41.8.''',
+    );
   }
 
   /// Reports a successful check and exits with success if this is a dry run.

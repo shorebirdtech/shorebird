@@ -627,6 +627,114 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         });
       });
 
+      group('when shorebird.yaml sets patch_verification: install_only', () {
+        const brokenEngine = '6eae37c3bd60906cfaa3b026b3271b896a76e46f';
+        const releaseFlutterRevision = 'release-flutter-revision';
+        const warning =
+            '''
+shorebird.yaml sets `patch_verification: install_only`, which does not check patch signatures with Flutter $flutterRevision, the Flutter release $releaseVersion was built with. If the release was built with this setting, devices on it will install this patch without checking its signature.
+To have signatures checked, remove `patch_verification` from shorebird.yaml (or set it to `strict`) and create a new release, or release with a Flutter version that checks signatures in install_only mode, such as --flutter-version=3.41.8.''';
+
+        late ShorebirdEnv releaseShorebirdEnv;
+
+        void setUpYaml(PatchVerification patchVerification) {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            ShorebirdYaml(appId: appId, patchVerification: patchVerification),
+          );
+        }
+
+        void setUpReleaseEngine(String engineRevision) {
+          when(
+            () => releaseShorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn(engineRevision);
+        }
+
+        Matcher isSignatureWarning() =>
+            contains('does not check patch signatures');
+
+        setUp(() {
+          releaseShorebirdEnv = MockShorebirdEnv();
+          // The current Flutter's engine checks signatures; only the
+          // release's, in scope once its Flutter is installed, may not.
+          when(
+            () => shorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn('fixed-engine-revision');
+          when(
+            () => shorebirdEnv.copyWith(
+              flutterRevisionOverride: releaseFlutterRevision,
+            ),
+          ).thenReturn(releaseShorebirdEnv);
+          when(
+            () => releaseShorebirdEnv.getShorebirdYaml(),
+          ).thenAnswer((_) => shorebirdEnv.getShorebirdYaml());
+          when(
+            () => releaseShorebirdEnv.flutterRevision,
+          ).thenReturn(releaseFlutterRevision);
+          when(
+            () => releaseShorebirdEnv.canAcceptUserInput,
+          ).thenReturn(true);
+          when(
+            () => releaseShorebirdEnv.usesShorebirdCodePushPackage,
+          ).thenReturn(false);
+          when(
+            () => codePushClientWrapper.getRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer(
+            (_) async => Release(
+              id: release.id,
+              appId: release.appId,
+              version: release.version,
+              flutterRevision: releaseFlutterRevision,
+              flutterVersion: release.flutterVersion,
+              displayName: release.displayName,
+              platformStatuses: release.platformStatuses,
+              createdAt: release.createdAt,
+              updatedAt: release.updatedAt,
+            ),
+          );
+          setUpYaml(PatchVerification.installOnly);
+        });
+
+        group("when the release's engine skips the signature check", () {
+          setUp(() => setUpReleaseEngine(brokenEngine));
+
+          test('warns, then builds and publishes the patch', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(() => logger.warn(warning)).called(1);
+            verify(
+              () => patcher.uploadPatchArtifacts(
+                appId: appId,
+                releaseId: any(named: 'releaseId'),
+                metadata: any(named: 'metadata'),
+                track: any(named: 'track'),
+                artifacts: patchArtifactBundles,
+              ),
+            ).called(1);
+          });
+
+          test('does not warn when patch_verification is strict', () async {
+            setUpYaml(PatchVerification.strict);
+
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyNever(() => logger.warn(any(that: isSignatureWarning())));
+          });
+        });
+
+        group("when the release's engine checks signatures", () {
+          setUp(() => setUpReleaseEngine('fixed-engine-revision'));
+
+          test('does not warn', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyNever(() => logger.warn(any(that: isSignatureWarning())));
+          });
+        });
+      });
+
       group('flavor validation', () {
         group('when no flavors are present', () {
           test('validates successfully', () async {
