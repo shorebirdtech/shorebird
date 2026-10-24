@@ -134,9 +134,13 @@ Future<void> main(List<String> args) async {
     await target.tearDown();
   }
 
-  // A cancelled or timed-out job is signaled, which skips `finally`.
+  // A cancelled or timed-out job is signaled, which skips `finally`. Windows
+  // can watch only SIGINT (and SIGBREAK).
   final signals = [
-    for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm])
+    for (final signal in [
+      ProcessSignal.sigint,
+      if (!Platform.isWindows) ProcessSignal.sigterm,
+    ])
       signal.watch().listen((_) async {
         stoppedEarly = 'got $signal';
         await cleanUp();
