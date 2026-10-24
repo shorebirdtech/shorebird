@@ -115,7 +115,7 @@ The path for a public key .pem file that will be used to validate patch signatur
   static const patchSigningArg = ArgumentDescriber(
     name: 'patch-signing',
     description: '''
-Sign every patch to this release, so apps install only patches Shorebird signed.
+Sign every patch to this release, so apps install only patches signed with its key.
 On by default: the build embeds a key Shorebird manages for your organization.
 To sign patches with your own key, pass --public-key-path or --public-key-cmd.
 --no-patch-signing builds a release whose patches are unsigned.''',
