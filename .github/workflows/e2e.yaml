@@ -164,7 +164,7 @@ jobs:
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ matrix.flutter-version == 'default' && format('{0}-{1}', env.FLUTTER_VERSION, hashFiles('bin/internal/flutter.version')) || 'pinned' }}
 
-      # android-emulator-runner installs the API 29 system image on every run.
+      # android-emulator-runner installs the API 30 system image on every run.
       # A bad download of it has failed a nightly ("Error on ZipFile unknown
       # archive"); restored here, its sdkmanager finds it installed. The env
       # context only holds what a workflow sets, so ANDROID_HOME is copied
@@ -175,13 +175,17 @@ jobs:
       - name: 🤖 System Image Cache
         uses: actions/cache@v6
         with:
-          path: ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
-          key: system-image-29-default-x86_64-${{ runner.os }}
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
 
+      # Not API 29: on its x86_64 image, 3-6% of launches of any Flutter
+      # release app (stock Flutter included) die at startup with a corrupted
+      # jemalloc heap, which failed nightly legs. API 30 and 34 crashed 0 of
+      # 400 launches each in the same loop (step 4327 of the release arc).
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 30
           arch: x86_64
           target: default
           # Run with the Dart of the Flutter the CLI pins, which `shorebird`
@@ -360,13 +364,13 @@ jobs:
       - name: 🤖 System Image Cache
         uses: actions/cache@v6
         with:
-          path: ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
-          key: system-image-29-default-x86_64-${{ runner.os }}
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
 
       - name: 🧪 Run Android Signing E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 30
           arch: x86_64
           target: default
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
