@@ -142,13 +142,12 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       # The Gradle distribution and the Maven dependencies (Android Gradle
-      # plugin, Kotlin, Flutter's engine jars) of a Flutter version's app
-      # template take about two minutes of each leg to fetch fresh. They
-      # follow the Flutter versions in the key; when one changes, the leg's
-      # previous cache is restored and Gradle fetches only what's new.
-      # caches/<gradle version> (transforms, compiled scripts) is left out:
-      # at ~1 GB per leg it would put the matrix over the repo's 10 GB cache
-      # limit, and Gradle rebuilds it in seconds.
+      # plugin, Kotlin, Flutter's engine jars) a Flutter version's app
+      # template uses. They follow the Flutter versions in the key; when one
+      # changes, the leg's previous cache is restored and Gradle fetches only
+      # what's new. caches/<gradle version> (transforms, compiled scripts)
+      # would save about another minute a leg, but at ~1.3 GB a leg it puts
+      # the matrix over the repo's 10 GB cache limit.
       - name: 🐘 Gradle Cache
         uses: actions/cache@v6
         with:
@@ -159,6 +158,20 @@ jobs:
           key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('bin/internal/flutter.version') }}
           restore-keys: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-
 
+      # android-emulator-runner installs the API 29 system image on every run.
+      # A bad download of it has failed a nightly ("Error on ZipFile unknown
+      # archive"); restored here, its sdkmanager finds it installed. The env
+      # context only holds what a workflow sets, so ANDROID_HOME is copied
+      # into it for the cache path.
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
+          key: system-image-29-default-x86_64-${{ runner.os }}
+
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -166,12 +179,6 @@ jobs:
           arch: x86_64
           target: default
           script: ./scripts/no_android_sdk_downloads.sh ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
-
-      - name: TEMP cache sizes
-        if: always()
-        run: |
-          du -sh ~/.gradle/caches/* ~/.gradle/wrapper/dists/* ~/.gradle/caches/modules-2/files-2.1/* 2>/dev/null | sort -h | tail -40
-          true
 
   # Patch signing end to end on Linux: release and patch with the real CLI
   # against dev, then run the app headless and check which code it runs. One
