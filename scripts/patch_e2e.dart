@@ -585,12 +585,17 @@ Future<void> waitForLine(
     await stream.cancel();
   }
   if (!found) {
-    final log = await Process.run('adb', [
-      'logcat',
-      '-d',
-      '-b',
-      'all',
-    ], environment: env);
+    final log = await Process.run(
+      'adb',
+      [
+        'logcat',
+        '-d',
+        '-b',
+        'all',
+      ],
+      environment: env,
+      stdoutEncoding: const Utf8Codec(allowMalformed: true),
+    );
     // A crashed app logs nothing more, so without naming the crash the
     // failure reads as a wait that timed out.
     final crash = '${log.stdout}'
