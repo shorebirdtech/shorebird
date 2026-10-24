@@ -3,7 +3,9 @@
 name: e2e
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-e2e
+  # A cli_ref dispatch tests one CLI ref and skips the patch matrix, so it
+  # gets its own group: sharing main's would cancel a full run in progress.
+  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}
   cancel-in-progress: true
 
 on:
