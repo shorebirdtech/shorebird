@@ -664,6 +664,35 @@ class CodePushClient {
     }
   }
 
+  /// Archive the app with the provided [appId].
+  ///
+  /// While archived, devices are told there is no patch to install (they keep
+  /// the one they have), and the server refuses new releases and patches.
+  /// Releases, patches and collaborators are kept. Archiving an archived app
+  /// is a no-op.
+  Future<void> archiveApp({required String appId}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/apps/$appId/archive'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Unarchive the app with the provided [appId], resuming patch serving.
+  ///
+  /// Unarchiving an app that is not archived is a no-op.
+  Future<void> unarchiveApp({required String appId}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/apps/$appId/unarchive'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Delete the app with the provided [appId].
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(Uri.parse('$_v1/apps/$appId'));
