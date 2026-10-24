@@ -1,4 +1,4 @@
-// cspell:words genrsa pubout Xvfb xfail XPASS logcat sandboxed
+// cspell:words genrsa pubout Xvfb xfail XPASS logcat sandboxed libexec
 // ignore_for_file: avoid_print
 
 // End-to-end test of patch signing: the real CLI against a real server, a
