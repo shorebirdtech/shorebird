@@ -170,7 +170,10 @@ jobs:
           api-level: 29
           arch: x86_64
           target: default
-          script: ./scripts/no_android_sdk_downloads.sh ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
+          # Run with the Dart of the Flutter the CLI pins, which `shorebird`
+          # installed above: the repo's package config needs a newer language
+          # version than the Dart of older Flutter versions this matrix sets up.
+          script: ./scripts/no_android_sdk_downloads.sh bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
 
   # Patch signing end to end on Linux: release and patch with the real CLI
   # against dev, then run the app headless and check which code it runs. One

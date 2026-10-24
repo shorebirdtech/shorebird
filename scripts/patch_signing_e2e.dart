@@ -98,7 +98,7 @@ Future<void> main(List<String> args) async {
     runAppId = null;
     if (appId != null) {
       // Each run mints an app; delete it so the e2e account's app list stays
-      // flat (see patch_e2e.sh).
+      // flat (see patch_e2e.dart).
       print('Deleting e2e app $appId');
       final result = await Process.run('shorebird', [
         'api',
