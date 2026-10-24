@@ -481,6 +481,7 @@ void main() {
       const releasePlatform = ReleasePlatform.android;
       const releaseArtifactUrl = 'https://example.com/release.aab';
       const packageName = 'com.example.app';
+      const logTimestamp = '10-24 12:56:32.517';
 
       late Adb adb;
       late Bundletool bundletool;
@@ -562,9 +563,13 @@ void main() {
           ),
         ).thenAnswer((_) async {});
         when(
+          () => adb.latestLogTimestamp(deviceId: any(named: 'deviceId')),
+        ).thenAnswer((_) async => logTimestamp);
+        when(
           () => adb.logcat(
             filter: any(named: 'filter'),
             deviceId: any(named: 'deviceId'),
+            since: any(named: 'since'),
           ),
         ).thenAnswer((_) async => process);
         when(
@@ -1130,8 +1135,28 @@ channel: ${track.channel}
         test('exits with non-zero exit code', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(1));
-          verify(() => adb.logcat(filter: 'flutter')).called(1);
+          verify(
+            () => adb.logcat(filter: 'flutter', since: logTimestamp),
+          ).called(1);
         });
+      });
+
+      test('reads the device log from just before the app starts', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(setupAndroidShorebirdYaml);
+
+        await runWithOverrides(command.run);
+
+        verifyInOrder([
+          () => adb.clearAppData(package: packageName),
+          () => adb.latestLogTimestamp(),
+          () => adb.startApp(package: packageName),
+          () => adb.logcat(filter: 'flutter', since: logTimestamp),
+        ]);
       });
 
       test('pipes stdout output to logger', () async {
@@ -1648,10 +1673,12 @@ channel: ${track.channel}
             deviceId: deviceId,
           ),
         ).called(1);
+        verify(() => adb.latestLogTimestamp(deviceId: deviceId)).called(1);
         verify(
           () => adb.logcat(
             filter: any(named: 'filter'),
             deviceId: deviceId,
+            since: logTimestamp,
           ),
         ).called(1);
       });
@@ -3511,9 +3538,13 @@ channel: ${DeploymentTrack.staging.channel}
             ),
           ).thenAnswer((_) async {});
           when(
+            () => adb.latestLogTimestamp(deviceId: any(named: 'deviceId')),
+          ).thenAnswer((_) async => '01-01 00:00:00.000');
+          when(
             () => adb.logcat(
               filter: any(named: 'filter'),
               deviceId: any(named: 'deviceId'),
+              since: any(named: 'since'),
             ),
           ).thenAnswer((_) async => process);
           when(() => process.stdout).thenAnswer((_) => const Stream.empty());
