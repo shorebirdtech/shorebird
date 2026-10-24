@@ -16,6 +16,11 @@
 //   patch 2 rolled forward     -> patch_2
 //   patches 2 and 1 rolled back -> release (back to the release)
 //
+// Booting patch 2 deletes patch 1 from disk, so rolling back 2 downloads 1
+// afresh: that step passes on the server's response alone. An updater that
+// ignores the rollback signal keeps patch 2 installed, so it fails the roll
+// forward (2 isn't downloaded again) and the roll back to the release.
+//
 // Prerequisites: Linux with the Flutter Linux build dependencies and Xvfb;
 // Shorebird on PATH and signed in (CI signs in with OIDC).
 //
@@ -196,13 +201,16 @@ Future<void> setRolledBack(
   Directory app,
   int number, {
   required bool rolledBack,
-}) => sh(app, 'shorebird', [
-  'patches',
-  if (rolledBack) 'rollback' else 'rollforward',
-  '--release-version=$releaseVersion',
-  '--patch-number=$number',
-  '--require-change',
-]);
+}) => timed(
+  '${rolledBack ? 'rollback' : 'rollforward'}_$number',
+  () => sh(app, 'shorebird', [
+    'patches',
+    if (rolledBack) 'rollback' else 'rollforward',
+    '--release-version=$releaseVersion',
+    '--patch-number=$number',
+    '--require-change',
+  ]),
+);
 
 /// Launches the install twice after [step] (once to check for an update and
 /// apply what the server says, once to boot) and records whether it runs
