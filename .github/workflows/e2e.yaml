@@ -143,10 +143,10 @@ jobs:
 
       # The Gradle distribution and the Maven dependencies (Android Gradle
       # plugin, Kotlin, Flutter's engine jars) a Flutter version's app
-      # template uses. A pinned leg's follow its Flutter version alone; the
-      # default leg's also follow the host Flutter (the template) and the
-      # pinned revision (the engine jars). When the key changes, the leg's
-      # previous cache is restored and Gradle fetches only what's new;
+      # template uses. For a pinned leg they depend only on its Flutter
+      # version; for the default leg also on the host Flutter (the template)
+      # and the pinned revision (the engine jars). When the key changes, the
+      # leg's previous cache is restored and Gradle fetches only what's new;
       # journal-1 records when each file was last used, so Gradle's 30-day
       # cleanup can drop what no longer is. caches/<gradle version>
       # (transforms, compiled scripts) would save about another minute a leg,
