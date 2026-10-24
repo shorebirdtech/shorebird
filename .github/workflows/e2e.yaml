@@ -522,13 +522,13 @@ jobs:
       - name: 🤖 System Image Cache
         uses: actions/cache@v6
         with:
-          path: ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
-          key: system-image-29-default-x86_64-${{ runner.os }}
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
 
       - name: 🧪 Run Android Boot E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 30
           arch: x86_64
           target: default
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
