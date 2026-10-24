@@ -141,28 +141,34 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: 🤖 AVD Cache
+      # Gradle and the Android Gradle plugin a Flutter version's app template
+      # uses are a few hundred MB, about two minutes of each leg when fetched
+      # fresh. They follow the Flutter versions in the key. When one changes,
+      # the leg's previous cache is restored and Gradle fetches only what's new.
+      - name: 🐘 Gradle Cache
         uses: actions/cache@v6
-        id: avd-cache
         with:
           path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('bin/internal/flutter.version') }}
+          restore-keys: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-
 
-      - name: 🤖 Cache AVD Snapshot
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+      # android-emulator-runner installs the emulator and the API 29 system
+      # image on every run, from dl.google.com. Restored first, its sdkmanager
+      # finds them installed. The env context only holds what a workflow sets,
+      # so ANDROID_HOME is copied into it for the cache path.
+      - name: 🤖 Emulator Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 Emulator Cache
+        uses: actions/cache@v6
         with:
-          api-level: 29
-          arch: x86_64
-          target: default
-          force-avd-creation: false
-          sdcard-path-or-size: 512M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          disable-animations: false
-          channel: canary
-          script: echo "Generated AVD Snapshot"
+          path: |
+            ${{ env.ANDROID_HOME }}/emulator
+            ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
+          key: emulator-29-${{ runner.os }}
 
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
