@@ -1106,6 +1106,21 @@ base_url: https://example.com''');
         );
       });
 
+      test('follows base_url in shorebird.yaml to its auth service', () {
+        platform = platform.copyWith(environment: {});
+        final directory = Directory.systemTemp.createTempSync();
+        File(p.join(directory.path, 'shorebird.yaml')).writeAsStringSync('''
+app_id: test-id
+base_url: $devHostedUrl''');
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(() => shorebirdEnv.authServiceUri),
+            getCurrentDirectory: () => directory,
+          ),
+          equals(Uri.parse(devAuthServiceUrl)),
+        );
+      });
+
       test('ignores an empty AUTH_SERVICE_URL', () {
         platform = platform.copyWith(
           environment: {
@@ -1134,6 +1149,16 @@ base_url: https://example.com''');
           () => runWithOverrides(body),
           values: {isDevModeRef.overrideWith(() => true)},
         );
+
+        test('follows SHOREBIRD_HOSTED_URL over --dev', () {
+          platform = platform.copyWith(
+            environment: {'SHOREBIRD_HOSTED_URL': 'https://api.shorebird.dev'},
+          );
+          expect(
+            runInDevMode(() => shorebirdEnv.authServiceUri),
+            equals(Uri.parse(defaultAuthServiceUrl)),
+          );
+        });
 
         test('returns the dev auth service', () {
           platform = platform.copyWith(environment: {});
@@ -1173,6 +1198,16 @@ base_url: https://example.com''');
         expect(
           runWithOverrides(() => shorebirdEnv.hostedEnvironment),
           equals(devEnvironment),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_HOSTED_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          equals(productionEnvironment),
         );
       });
 
@@ -1232,10 +1267,10 @@ base_url: https://example.com''');
           expect(
             mismatchWith({'SHOREBIRD_HOSTED_URL': 'http://localhost:8080'}),
             equals(
-              'localhost is not a Shorebird-hosted server, so the CLI cannot '
-              'tell which auth service it accepts and signed in with '
-              'https://auth.shorebird.dev. Set AUTH_SERVICE_URL to the auth '
-              'service localhost accepts, then run shorebird login.',
+              'localhost is not a Shorebird-hosted server, so the CLI signed '
+              'in with https://auth.shorebird.dev. If localhost uses another '
+              'auth service, set AUTH_SERVICE_URL to it, then run shorebird '
+              'login.',
             ),
           );
         },

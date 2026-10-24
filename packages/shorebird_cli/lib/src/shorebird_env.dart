@@ -379,9 +379,9 @@ class ShorebirdEnv {
     if (environment == null) {
       if (authOverride != null) return null;
       return '$serverHost is not a Shorebird-hosted server, so the CLI '
-          'cannot tell which auth service it accepts and signed in with '
-          '$defaultAuthServiceUrl. Set AUTH_SERVICE_URL to the auth service '
-          '$serverHost accepts, then run shorebird login.';
+          'signed in with $defaultAuthServiceUrl. If $serverHost uses '
+          'another auth service, set AUTH_SERVICE_URL to it, then run '
+          'shorebird login.';
     }
     if (authOverride == null) return null;
     final expected = Uri.parse(environment.authServiceUrl);
@@ -438,7 +438,7 @@ class ShorebirdEnv {
   Uri? get hostedUri {
     try {
       final baseUrl =
-          platform.environment['SHOREBIRD_HOSTED_URL'] ??
+          _environmentOverride('SHOREBIRD_HOSTED_URL') ??
           (isDevMode ? devHostedUrl : getShorebirdYaml()?.baseUrl);
       return baseUrl == null ? null : Uri.tryParse(baseUrl);
     } on Exception {

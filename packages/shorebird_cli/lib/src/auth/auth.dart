@@ -177,8 +177,8 @@ class StoredLoginSource extends CredentialSource {
     final error = challenge?.parameters['error'];
     if (error == null) return;
 
-    // A token the server refuses is most often one from an auth service it
-    // does not trust, so say which one to set when that may be why.
+    // A token from an auth service the server does not trust is refused
+    // like an expired one, so say which to set when that may be why.
     final description = [
       ?challenge!.parameters['error_description'],
       ?shorebirdEnv.authServiceMismatch,

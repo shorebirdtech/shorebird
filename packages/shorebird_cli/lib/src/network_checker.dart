@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 
 /// A reference to a [NetworkChecker] instance.
 final networkCheckerRef = create(NetworkChecker.new);
@@ -64,9 +65,9 @@ class NetworkChecker {
   /// the CDN apps download patches from. GitHub, which serves the Flutter
   /// fork and bundletool, is not probed.
   List<Uri> get urlsToCheck => [
-    shorebirdEnv.hostedUri ?? Uri.https('api.shorebird.dev'),
+    shorebirdEnv.hostedUri ?? Uri.parse(productionEnvironment.hostedUrl),
     shorebirdEnv.authServiceUri,
-    Uri.https('console.shorebird.dev'),
+    ShorebirdWebConsole.baseUri,
     Uri.parse(shorebirdEnv.downloadUrl),
     Uri.https('storage.googleapis.com'),
     Uri.https('cdn.shorebird.cloud'),
