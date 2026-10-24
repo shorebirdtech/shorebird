@@ -143,19 +143,25 @@ jobs:
 
       # The Gradle distribution and the Maven dependencies (Android Gradle
       # plugin, Kotlin, Flutter's engine jars) a Flutter version's app
-      # template uses. They follow the Flutter versions in the key; when one
-      # changes, the leg's previous cache is restored and Gradle fetches only
-      # what's new. caches/<gradle version> (transforms, compiled scripts)
-      # would save about another minute a leg, but at ~1.3 GB a leg it puts
-      # the matrix over the repo's 10 GB cache limit.
+      # template uses. A pinned leg's follow its Flutter version alone; the
+      # default leg's also follow the host Flutter (the template) and the
+      # pinned revision (the engine jars). When the key changes, the leg's
+      # previous cache is restored and Gradle fetches only what's new;
+      # journal-1 records when each file was last used, so Gradle's 30-day
+      # cleanup can drop what no longer is. caches/<gradle version>
+      # (transforms, compiled scripts) would save about another minute a leg,
+      # but at ~1.3 GB a leg it puts the matrix over the repo's 10 GB cache
+      # limit. The wrapper's zip is left out: it's already unpacked beside it.
+      # The glob names each dist's entries so the negation has the zip to drop.
       - name: 🐘 Gradle Cache
         uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches/modules-2
-            ~/.gradle/wrapper/dists
+            ~/.gradle/caches/journal-1
+            ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
-          key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('bin/internal/flutter.version') }}
+          key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ matrix.flutter-version == 'default' && format('{0}-{1}', env.FLUTTER_VERSION, hashFiles('bin/internal/flutter.version')) || 'pinned' }}
           restore-keys: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-
 
       # android-emulator-runner installs the API 29 system image on every run.
