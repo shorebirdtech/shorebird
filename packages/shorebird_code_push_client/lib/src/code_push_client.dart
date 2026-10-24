@@ -114,17 +114,35 @@ class CodePushUploadException extends CodePushException {
 /// A wrapper around [http.Client] that ensures all outbound requests
 /// are consistent.
 /// For example, all requests include the standard `x-version` header.
+///
+/// Every response from [_apiHost] carrying a [CodePushClient.noticeHeader] is
+/// passed to [_onNotice]. Other hosts, such as signed storage URLs, are not
+/// ours to speak for.
 class _CodePushHttpClient extends http.BaseClient {
-  _CodePushHttpClient(this._client, this._headers);
+  _CodePushHttpClient(
+    this._client,
+    this._headers,
+    this._onNotice,
+    this._apiHost,
+  );
 
   final http.Client _client;
 
   final Map<String, String> _headers;
 
+  final void Function(String notice)? _onNotice;
+
+  final String _apiHost;
+
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
     request.headers.addAll(_headers);
-    return _client.send(request);
+    final response = await _client.send(request);
+    final notice = response.headers[CodePushClient.noticeHeader];
+    if (notice != null && notice.isNotEmpty && request.url.host == _apiHost) {
+      parseNotices(notice).forEach((n) => _onNotice?.call(n));
+    }
+    return response;
   }
 
   @override
@@ -143,14 +161,41 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
     Map<String, String>? customHeaders,
+    void Function(String notice)? onNotice,
     @visibleForTesting
     Duration uploadRetryBaseDelay = const Duration(seconds: 1),
-  }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
-         ...standardHeaders,
-         ...?customHeaders,
-       }),
-       _uploadRetryBaseDelay = uploadRetryBaseDelay,
-       hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+  }) : this._(
+         httpClient: httpClient,
+         hostedUri: hostedUri ?? Uri.https('api.shorebird.dev'),
+         customHeaders: customHeaders,
+         onNotice: onNotice,
+         uploadRetryBaseDelay: uploadRetryBaseDelay,
+       );
+
+  CodePushClient._({
+    required http.Client? httpClient,
+    required this.hostedUri,
+    required Map<String, String>? customHeaders,
+    required void Function(String notice)? onNotice,
+    required Duration uploadRetryBaseDelay,
+  }) : _httpClient = _CodePushHttpClient(
+         httpClient ?? http.Client(),
+         {...standardHeaders, ...?customHeaders},
+         onNotice,
+         hostedUri.host,
+       ),
+       _uploadRetryBaseDelay = uploadRetryBaseDelay;
+
+  /// The response header carrying notices for the customer, such as a warning
+  /// that patches are near the account's install limit. Its value is an
+  /// RFC 9651 Structured Field List of Strings, one sentence per notice, to
+  /// show as is; `onNotice` receives each (see [parseNotices]).
+  ///
+  /// A header, rather than a field on each response, so any response can
+  /// carry one and clients that predate it ignore it: the way Heroku's CLI
+  /// shows `Warning-Message` and npm shows `npm-notice`. Lowercase, as
+  /// `package:http` reports header names.
+  static const noticeHeader = 'shorebird-notice';
 
   /// The standard headers applied to all requests.
   @visibleForTesting
@@ -1280,4 +1325,54 @@ class CodePushClient {
 extension on http.BaseResponse {
   /// Whether the response has a 2xx status code.
   bool get isSuccess => statusCode >= 200 && statusCode < 300;
+}
+
+/// Splits a [CodePushClient.noticeHeader] value into its notices.
+///
+/// The value is an RFC 9651 List of sf-strings (`"one", "two"`), which lets
+/// one response carry several notices and a notice contain commas. Only what
+/// the server sends is parsed: quoted strings with `\"` and `\\` escapes,
+/// separated by commas and optional whitespace. A value that is not such a
+/// list is returned whole as one notice, so a malformed header still reaches
+/// the customer rather than vanishing.
+@visibleForTesting
+List<String> parseNotices(String value) {
+  final notices = <String>[];
+  var i = 0;
+  void skipSpace() {
+    while (i < value.length && (value[i] == ' ' || value[i] == '\t')) {
+      i++;
+    }
+  }
+
+  skipSpace();
+  while (i < value.length) {
+    if (value[i] != '"') return [value];
+    i++;
+    final notice = StringBuffer();
+    var closed = false;
+    while (i < value.length) {
+      final char = value[i++];
+      if (char == r'\') {
+        if (i >= value.length) return [value];
+        final escaped = value[i++];
+        if (escaped != '"' && escaped != r'\') return [value];
+        notice.write(escaped);
+      } else if (char == '"') {
+        closed = true;
+        break;
+      } else {
+        notice.write(char);
+      }
+    }
+    if (!closed) return [value];
+    if (notice.isNotEmpty) notices.add(notice.toString());
+    skipSpace();
+    if (i == value.length) break;
+    if (value[i] != ',') return [value];
+    i++;
+    skipSpace();
+    if (i == value.length) return [value];
+  }
+  return notices;
 }
