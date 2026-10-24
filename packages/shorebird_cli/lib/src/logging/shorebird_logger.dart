@@ -246,8 +246,8 @@ class _StaticProgress implements Progress {
     _writeln('$_message...');
   }
 
-  // No shorebird code path calls cancel(); required by the Progress
-  // interface for compatibility with mason_logger.
+  // A terminal spinner erases its line on cancel; with no line to erase,
+  // say it stopped. For work that stopped short, not for success.
   // coverage:ignore-start
   @override
   void cancel() {
