@@ -9,6 +9,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 import '../helpers.dart';
@@ -44,6 +45,7 @@ void main() {
   late ShorebirdLogger logger;
   late OidcCredentialSource source;
   late DateTime now;
+  late ShorebirdEnv shorebirdEnv;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -52,7 +54,13 @@ void main() {
   R runWithOverrides<R>(R Function() body) {
     return withClock(
       Clock(() => now),
-      () => runScoped(body, values: {loggerRef.overrideWith(() => logger)}),
+      () => runScoped(
+        body,
+        values: {
+          loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+        },
+      ),
     );
   }
 
@@ -115,6 +123,8 @@ void main() {
     delays = [];
     logger = MockShorebirdLogger();
     now = DateTime(2026, 10, 15, 12);
+    shorebirdEnv = MockShorebirdEnv();
+    when(() => shorebirdEnv.hostedUri).thenReturn(null);
     source = OidcCredentialSource(
       subjectTokenSupplier: supplier,
       projectId: '42',
@@ -137,11 +147,13 @@ void main() {
         'https://console.shorebird.dev, or set SHOREBIRD_TOKEN to a '
         'Shorebird API key.';
 
-    OidcCredentialSource sourceFor(String? projectId) => OidcCredentialSource(
-      subjectTokenSupplier: supplier,
-      projectId: projectId,
-      authBaseUrl: authBaseUrl,
-      exchangeClient: exchangeClient,
+    OidcCredentialSource sourceFor(String? projectId) => runWithOverrides(
+      () => OidcCredentialSource(
+        subjectTokenSupplier: supplier,
+        projectId: projectId,
+        authBaseUrl: authBaseUrl,
+        exchangeClient: exchangeClient,
+      ),
     );
 
     test('is trimmed and sent as the audience', () async {
@@ -316,6 +328,25 @@ void main() {
                 'Check that a Test CI trust rule in project 42 at '
                     'https://console.shorebird.dev matches this job.',
               ),
+        ),
+      );
+    });
+
+    test('links the dev console for the dev code push server', () async {
+      when(() => shorebirdEnv.hostedUri).thenReturn(Uri.parse(devHostedUrl));
+      answerExchangesWith([
+        jsonResponse({'error': 'invalid_grant'}, status: 400),
+      ]);
+
+      await expectLater(
+        authorization(),
+        throwsA(
+          isA<CredentialSourceException>().having(
+            (e) => e.hint,
+            'hint',
+            'Check that a Test CI trust rule in project 42 at '
+                'https://console-dev.shorebird.dev matches this job.',
+          ),
         ),
       );
     });

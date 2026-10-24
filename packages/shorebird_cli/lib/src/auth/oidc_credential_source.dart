@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 
 /// The `grant_type` of an OAuth 2.0 token exchange (RFC 8693 section 2.1).
 const tokenExchangeGrantType =
@@ -109,24 +110,24 @@ class OidcCredentialSource extends CredentialSource {
     String? projectId, {
     required String provider,
   }) {
-    const hint =
-        'Set $shorebirdProjectIdEnvVar to the id of your project shown at '
-        'https://console.shorebird.dev, or set $shorebirdTokenEnvVar to a '
-        'Shorebird API key.';
+    final String message;
     if (projectId == null || projectId.trim().isEmpty) {
-      return CredentialSourceException(
-        'Signing in with $provider OIDC requires $shorebirdProjectIdEnvVar.',
-        hint: hint,
-      );
+      message =
+          'Signing in with $provider OIDC requires $shorebirdProjectIdEnvVar.';
+    } else if (_parseProjectId(projectId) == null) {
+      message =
+          '$shorebirdProjectIdEnvVar is not a Shorebird project id, so this '
+          'job cannot sign in with $provider OIDC.';
+    } else {
+      return null;
     }
-    if (_parseProjectId(projectId) == null) {
-      return CredentialSourceException(
-        '$shorebirdProjectIdEnvVar is not a Shorebird project id, so this '
-        'job cannot sign in with $provider OIDC.',
-        hint: hint,
-      );
-    }
-    return null;
+    return CredentialSourceException(
+      message,
+      hint:
+          'Set $shorebirdProjectIdEnvVar to the id of your project shown at '
+          '${ShorebirdWebConsole.baseUri}, or set $shorebirdTokenEnvVar to a '
+          'Shorebird API key.',
+    );
   }
 
   static final _projectIdPattern = RegExp(r'^[0-9]+$');
@@ -256,7 +257,7 @@ class OidcCredentialSource extends CredentialSource {
           'OIDC ($reason).',
           hint:
               'Check that a $provider trust rule in project $projectId at '
-              'https://console.shorebird.dev matches this job.',
+              '${ShorebirdWebConsole.baseUri} matches this job.',
         );
       }
       throw CredentialSourceException(
