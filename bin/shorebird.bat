@@ -1,5 +1,5 @@
 @ECHO OFF
-REM cspell:words SETLOCAL usebackq
+REM cspell:words ERRORLEVEL SETLOCAL usebackq
 SETLOCAL
 WHERE /Q pwsh.exe && (SET ps=pwsh.exe) || WHERE /Q PowerShell.exe && (SET ps=PowerShell.exe) || (
   ECHO Error: pwsh.exe or PowerShell.exe must be in your PATH. 1>&2
