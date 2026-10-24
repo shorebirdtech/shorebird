@@ -14,12 +14,12 @@
 # engines whose updater skips the check (#4163), but releases made before
 # that are on devices, so the test installs it on every engine.
 #
-#   1.0.0+1  --managed-signing: Shorebird embeds and signs with its own key.
-#            Patch: signed by Shorebird.            -> managed_*
-#   1.0.0+2  --public-key-path A: the customer's key.
+#   1.0.0+1  --public-key-path A: the customer's key.
 #            Patch 1: signed with key B.            -> wrong_key_*
 #            Patch 2: unsigned.                     -> unsigned_*
 #            Patch 3: signed with key A.            -> valid_*
+#   1.0.0+2  --managed-signing: Shorebird embeds and signs with its own key.
+#            Patch: signed by Shorebird.            -> managed_*
 #
 # Each patch prints its own label, so after each one every install is
 # launched twice (download and install, then boot) and the label it prints
@@ -220,33 +220,30 @@ openssl rsa -in key_b.pem -pubout -out key_b.pub.pem
 
 timed create "$FLUTTER" create e2e_test --org com.example.e2e_test --empty --platforms linux
 cd e2e_test
+# `flutter create` writes the pinned Flutter's SDK constraint and lints, which
+# older Flutter versions can't resolve.
+cat >pubspec.yaml <<'PUBSPEC'
+name: e2e_test
+version: 1.0.0+1
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+PUBSPEC
+rm -f analysis_options.yaml
 set_label release
 timed init shorebird init --force -v
 echo "base_url: $SHOREBIRD_HOSTED_URL" >>shorebird.yaml
 APP_ID=$(grep 'app_id:' shorebird.yaml | awk '{print $2}')
 
 set_version 1.0.0+1
-timed release_managed shorebird release linux "${FLUTTER_VERSION_ARGS[@]}" "${MANAGED_ARGS[@]}" -v
-grep -q patch_public_key build/linux/x64/release/bundle/data/flutter_assets/shorebird.yaml ||
-    { echo "❌ The managed release embedded no public key."; exit 1; }
-install_release managed
-
-set_version 1.0.0+2
 timed release_customer shorebird release linux "${FLUTTER_VERSION_ARGS[@]}" \
     --public-key-path="$WORK/key_a.pub.pem" -v
 install_release customer
 
-set_version 1.0.0+1
-set_label managed-patch
-timed patch_managed shorebird patch linux --release-version=1.0.0+1 "${PATCH_ARGS[@]}"
-for mode in strict install_only; do
-    timed "check_managed_$mode" check_case "managed_$mode" "$WORK/managed_$mode" \
-        "$WORK/home_managed_$mode" managed-patch
-done
-
-set_version 1.0.0+2
 set_label wrong-key-patch
-timed patch_wrong_key shorebird patch linux --release-version=1.0.0+2 "${PATCH_ARGS[@]}" \
+timed patch_wrong_key shorebird patch linux --release-version=1.0.0+1 "${PATCH_ARGS[@]}" \
     --public-key-path="$WORK/key_b.pub.pem" --private-key-path="$WORK/key_b.pem"
 for mode in strict install_only; do
     timed "check_wrong_key_$mode" check_case "wrong_key_$mode" "$WORK/customer_$mode" \
@@ -254,18 +251,32 @@ for mode in strict install_only; do
 done
 
 set_label unsigned-patch
-timed patch_unsigned shorebird patch linux --release-version=1.0.0+2 "${PATCH_ARGS[@]}"
+timed patch_unsigned shorebird patch linux --release-version=1.0.0+1 "${PATCH_ARGS[@]}"
 for mode in strict install_only; do
     timed "check_unsigned_$mode" check_case "unsigned_$mode" "$WORK/customer_$mode" \
         "$WORK/home_customer_$mode" unsigned-patch
 done
 
 set_label valid-patch
-timed patch_valid shorebird patch linux --release-version=1.0.0+2 "${PATCH_ARGS[@]}" \
+timed patch_valid shorebird patch linux --release-version=1.0.0+1 "${PATCH_ARGS[@]}" \
     --public-key-path="$WORK/key_a.pub.pem" --private-key-path="$WORK/key_a.pem"
 for mode in strict install_only; do
     timed "check_valid_$mode" check_case "valid_$mode" "$WORK/customer_$mode" \
         "$WORK/home_customer_$mode" valid-patch
+done
+
+set_label release
+set_version 1.0.0+2
+timed release_managed shorebird release linux "${FLUTTER_VERSION_ARGS[@]}" "${MANAGED_ARGS[@]}" -v
+grep -q patch_public_key build/linux/x64/release/bundle/data/flutter_assets/shorebird.yaml ||
+    { echo "❌ The managed release embedded no public key."; exit 1; }
+install_release managed
+
+set_label managed-patch
+timed patch_managed shorebird patch linux --release-version=1.0.0+2 "${PATCH_ARGS[@]}"
+for mode in strict install_only; do
+    timed "check_managed_$mode" check_case "managed_$mode" "$WORK/managed_$mode" \
+        "$WORK/home_managed_$mode" managed-patch
 done
 
 REPORT=$(
