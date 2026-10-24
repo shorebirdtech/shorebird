@@ -22,7 +22,9 @@
 // forward (2 isn't downloaded again) and the roll back to the release.
 //
 // Prerequisites: Linux with the Flutter Linux build dependencies and Xvfb;
-// Shorebird on PATH and signed in (CI signs in with OIDC).
+// Shorebird on PATH and signed in (CI signs in with OIDC). Set
+// SHOREBIRD_ORG_ID to choose the organization for the app when the account
+// can create apps in more than one.
 //
 // Usage: dart scripts/patch_rollback_e2e.dart [<flutter-version>]
 // Without a version it uses the Flutter the CLI pins.
