@@ -69,7 +69,6 @@ jobs:
     with:
       package_name: dex
       package_path: packages/dex
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -80,7 +79,6 @@ jobs:
     with:
       package_name: scoped_deps
       package_path: packages/scoped_deps
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -91,7 +89,6 @@ jobs:
     with:
       package_name: shorebird_build_trace
       package_path: packages/shorebird_build_trace
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -102,7 +99,6 @@ jobs:
     with:
       package_name: shorebird_ci
       package_path: packages/shorebird_ci
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -113,7 +109,6 @@ jobs:
     with:
       package_name: shorebird_cli
       package_path: packages/shorebird_cli
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -124,7 +119,6 @@ jobs:
     with:
       package_name: shorebird_code_push_client
       package_path: packages/shorebird_code_push_client
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -135,7 +129,6 @@ jobs:
     with:
       package_name: shorebird_code_push_protocol
       package_path: packages/shorebird_code_push_protocol
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -146,7 +139,6 @@ jobs:
     with:
       package_name: shorebird_redis_client
       package_path: packages/redis_client
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
       needs_redis: true

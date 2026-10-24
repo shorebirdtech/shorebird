@@ -9,10 +9,6 @@ on:
       package_path:
         required: true
         type: string
-      has_bloc_lint:
-        required: false
-        default: false
-        type: boolean
       has_unit_tests:
         required: false
         default: true
@@ -39,9 +35,6 @@ jobs:
           docker pull redis/redis-stack-server:latest
           docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
       - uses: dart-lang/setup-dart@v1
-      - name: Setup Bloc Tools
-        if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
       - name: Install Dependencies
         working-directory: ${{ inputs.package_path }}
         run: |
@@ -53,10 +46,6 @@ jobs:
         run: dart format --set-exit-if-changed .
       - working-directory: ${{ inputs.package_path }}
         run: dart analyze --fatal-warnings .
-      - name: Bloc Lint
-        if: inputs.has_bloc_lint
-        working-directory: ${{ inputs.package_path }}
-        run: bloc lint .
       - name: Run Tests
         if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
