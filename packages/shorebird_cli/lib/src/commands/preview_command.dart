@@ -735,14 +735,23 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.software.code;
     }
 
+    // The app can log everything it logs at startup before `adb logcat`
+    // attaches, so the log is read from the moment before launch rather than
+    // from whenever logcat happens to start.
+    String? logsSince;
     if (!await _runStep('Starting app', () async {
       await adb.clearAppData(package: package, deviceId: deviceId);
+      logsSince = await adb.latestLogTimestamp(deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
     })) {
       return ExitCode.software.code;
     }
 
-    final process = await adb.logcat(filter: 'flutter', deviceId: deviceId);
+    final process = await adb.logcat(
+      filter: 'flutter',
+      deviceId: deviceId,
+      since: logsSince,
+    );
     // adb logcat sometimes lets non-utf8 characters through, so we need to
     // not crash when it does.
     const decoder = Utf8Decoder(allowMalformed: true);
