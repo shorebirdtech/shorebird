@@ -1,8 +1,9 @@
 # cspell:words xfail
 
-# Expected results of linux_signing_e2e.sh, one row per Flutter version the
-# e2e workflow's linux_signing job runs (it reads its matrix from this file).
-# "default" is the Flutter the CLI pins.
+# Expected results of linux_signing_e2e.sh, one row per Flutter version.
+# "default" is the Flutter the CLI pins, the only one the e2e workflow's
+# linux_signing job runs. The other rows were measured 2026-10-24 (e2e run
+# 40096125987); run one with `./scripts/linux_signing_e2e.sh <version>`.
 #
 #   applied  the app runs the patch
 #   refused  the updater logs a bad or missing signature and the app keeps
