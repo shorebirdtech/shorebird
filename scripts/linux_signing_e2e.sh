@@ -179,7 +179,16 @@ check_case() {
     local running actual expected verdict
     running=$(grep -oE 'signing-e2e: [a-z-]+' "$log_prefix.boot.log" | head -1)
     running=${running#signing-e2e: }
-    if [[ "$running" == "$label" ]]; then actual=applied; else actual=refused; fi
+    if [[ "$running" == "$label" ]]; then
+        actual=applied
+    elif cat "$log_prefix.update.log" "$log_prefix.boot.log" |
+        grep -qE 'Patch signature is (invalid|missing)'; then
+        actual=refused
+    else
+        # Not running the patch proves nothing unless the updater refused it
+        # for its signature: the patch may never have been served.
+        actual="not run, with no signature failure logged"
+    fi
     expected=$(expected_for "$case_name")
     case "$expected/$actual" in
     applied/applied | refused/refused) verdict=PASS ;;

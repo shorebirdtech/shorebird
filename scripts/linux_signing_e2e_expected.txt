@@ -3,7 +3,8 @@
 # "default" is the Flutter the CLI pins.
 #
 #   applied  the app runs the patch
-#   refused  the app keeps the code it ran before the patch
+#   refused  the updater logs a bad or missing signature and the app keeps
+#            the code it ran before the patch
 #   xfail    should be refused but is applied: install_only skips the
 #            signature check on engines built from updater#352 until the
 #            fix (see installOnlyBrokenEngineRevisions). A fixed engine

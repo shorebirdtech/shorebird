@@ -174,6 +174,8 @@ jobs:
 
   linux_signing_versions:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       versions: ${{ steps.versions.outputs.versions }}
     steps:
@@ -192,8 +194,8 @@ jobs:
   # Patch signing end to end on Linux: release and patch with the real CLI
   # against dev, then run the app headless and check which code it runs. One
   # leg per row of scripts/linux_signing_e2e_expected.txt, the same versions
-  # as the patch job. Unlike the patch job it runs on a cli_ref dispatch,
-  # testing that ref.
+  # as the patch job. Runs nightly, and unlike the patch job also on a cli_ref
+  # dispatch, testing that ref.
   linux_signing:
     name: linux signing (${{ matrix.flutter-version }})
     needs: linux_signing_versions
