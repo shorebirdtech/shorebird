@@ -44,7 +44,8 @@ import 'e2e_helpers.dart';
 /// Flutter versions whose engine reports a successful launch before it
 /// builds the root isolate from the snapshot, so a patch that crashes there is
 /// never marked bad and every launch crashes. null is the Flutter the CLI
-/// pins. Measured on 2026-10-24 on Linux (e2e run 40133607074).
+/// pins. Measured on 2026-10-24 on Linux (e2e run 40133607074) and Android
+/// (e2e run 40141450017).
 const bootCrashNotRecovered = {null};
 
 /// Launches timed for each of the release and patch 1.
