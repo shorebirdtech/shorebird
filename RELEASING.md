@@ -67,9 +67,10 @@ One commit on `main`, titled `chore: prepare for release <version>`:
 
 ## 4. Publish
 
-Don't publish late at night or on a Friday night unless the release is
-urgent: nobody is around to watch it land. Landing the prepare commit is
-fine at any hour; name the next working day it could ship instead.
+Publish only when a maintainer can watch for problems for the next few
+hours, so not late at night or before a weekend, unless the release is
+urgent. Landing the prepare commit is fine at any hour; if publishing
+waits, say in the prepare PR when it will ship.
 
 ```sh
 VERSION=x.y.z
@@ -94,8 +95,8 @@ Post a short summary on the Shorebird Discord, built from the
 `RELEASE_NOTES.md` section. It is not a changelog: pick the 2-4 changes users
 would notice, lead each with a plain-language sentence on its impact (what was
 broken, who it hit), and say any action needed (for example "create a new
-release"). Only claim an impact the PR states; drop a change whose impact
-isn't clear. Everything else is in the linked GitHub release.
+release"). Only claim an impact stated in the `RELEASE_NOTES.md` entry or
+its PR; drop a change whose impact isn't clear. Everything else is in the linked GitHub release.
 
 ```md
 @here - <greeting>. Shorebird <version> is out. Run `shorebird upgrade` to pick it up.

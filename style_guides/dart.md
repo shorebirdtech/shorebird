@@ -78,13 +78,13 @@ initialized), a `!` is acceptable with a comment saying why.
 
 ```dart
 // BAD
-if (release.flutterRevision != null) {
-  use(release.flutterRevision!);
+if (release.flutterVersion != null) {
+  use(release.flutterVersion!);
 }
 
 // GOOD
-final flutterRevision = release.flutterRevision;
-if (flutterRevision != null) {
-  use(flutterRevision);
+final flutterVersion = release.flutterVersion;
+if (flutterVersion != null) {
+  use(flutterVersion);
 }
 ```

@@ -9,47 +9,39 @@
 - A `--json` run writes exactly one envelope to stdout; report errors with
   `reportError`. Breaking exit codes or JSON shape is fine if the CLI gets
   better; say so in the PR.
-- Refactors don't change user-visible output. Put such changes in their own
-  PR with before/after text.
-- In review, every user-visible output change (messages, hints, exit codes,
-  JSON shape) is at least should-fix, reported as before/after text. Judge
-  whether it's better, not whether it's consistent: the siblings may be the
-  drifted ones. In a "no behavior change" PR, any behavior change is
-  must-fix: split it out.
+- Refactors don't change user-visible output (messages, hints, exit codes,
+  JSON shape). Put such changes in their own PR with before/after text. In
+  review, ask for before/after text for every user-visible output change,
+  and judge whether it's better, not whether it matches the siblings: they
+  may be the drifted ones.
 - Deduplicate only if it fixes drift, reads easier, or is much shorter.
   Pitch it with the line delta and a before/after call site.
 - Only recursively delete a temp dir created in the same function, via
   `deleteTemporarySync()`. A leak beats a wrong delete.
-- Tests: call `useTempWorkingDirectory()` first in every test `main` and run
-  `dart test -j 4`.
-- Never run state-changing commands (`login`, `logout`, `init`, `release`,
-  `patch`, `upgrade`, `cache clean`, `apps delete`, ...) against a real
-  account or machine, including to verify a change. Use unit tests, or a
-  compiled binary pointed at scratch directories with fake credentials.
-  Agent briefs for CLI work say so.
+- Tests: call `useTempWorkingDirectory()` first in every test `main`.
+- Don't verify a change by running commands that change a real Shorebird
+  account or your own install (`login`, `logout`, `init`, `release`,
+  `patch`, `upgrade`, `cache clean`, `apps delete`, ...); cover it with unit
+  tests. The maintainer steps in `RELEASING.md` are the exception.
 
 ## Designing commands
 
-CLIs are mostly used by agents today, so make `shorebird` as normal as
-possible:
+Agents are a primary user of CLIs today, so make `shorebird` behave like
+the CLIs they already know:
 
-- Model commands on CLIs agents already know (`gh`, `kubectl`): `gh api`
-  style endpoints and flags. Model after, don't port: build what agents
-  actually reach for, not every flag of the reference tool.
-- Pick one convention, not a mix. For example, pagination is a
-  `next_cursor` in the body only, not that plus a `Link` header.
+- Model commands on `gh`: noun then verb (`shorebird apps list`), and
+  `gh api` style endpoints and flags for raw API access. Model after, don't
+  port: build what users actually reach for, not every flag of `gh`.
 - Name new commands by what an agent guesses first. Ask a model with no
   tools or docs "the CLI is `shorebird`, you want to do X, what command do
-  you try first?" and lean toward its answer. One capable model (Sonnet) is
-  enough; spend the runs on varied phrasings rather than more models.
-- When an agent uses a command wrongly, fix the command, not the docs.
-  Accept the input it wrote (flags on either side of a positional, both
-  spellings of a name, the obvious synonym for a verb), and prefer a verb
-  per question over flags on one verb, so every option shows in one
-  listing.
-- Correct in-flight: when a run went the wrong way, say what was wanted in
-  that run's own output.
-- Autofix loudly and durably: print what was missing and what was added,
-  and write the fix to the user's checkout so the next run works too.
-  Test that the message appears. A silent fix hides the lesson; a check
-  that only reports invites a bad fix.
+  you try first?" with several phrasings of X, and lean toward the answer.
+- When users get a command wrong in a predictable way, fix the command,
+  not the docs: accept flags on either side of a positional, and add the
+  obvious synonym or other spelling as a hidden alias of the one canonical
+  command. When a run is accepted through an alias, print the canonical
+  command once.
+- Autofix loudly: when a command fixes a file Shorebird owns (such as the
+  checked-in shorebird.yaml) so the next run works too, print what was
+  missing and what it changed, and test that the message appears. Never
+  autofix under `--json` or in a non-interactive run; report what's wrong
+  and the fix instead.
