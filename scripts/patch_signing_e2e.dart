@@ -1,4 +1,4 @@
-// cspell:words genrsa pubout Xvfb xfail XPASS logcat sandboxed libexec
+// cspell:words genrsa pubout Xvfb xfail XPASS logcat libexec
 // ignore_for_file: avoid_print
 
 // End-to-end test of patch signing: the real CLI against a real server, a
@@ -91,25 +91,24 @@ bool failed = false;
 String? stoppedEarly;
 
 Future<void> main(List<String> args) async {
-  if (args.isEmpty || args.length > 2) {
+  final target = switch (args.firstOrNull) {
+    'linux' => LinuxTarget(),
+    'macos' => MacosTarget(),
+    'android' => AndroidTarget(),
+    _ => null,
+  };
+  if (target == null || args.length > 2) {
     print(
       'Usage: dart scripts/patch_signing_e2e.dart <linux|macos|android> '
       '[<flutter-version>]',
     );
     exit(64);
   }
-  final target = switch (args.first) {
-    'linux' => LinuxTarget(),
-    'macos' => MacosTarget(),
-    'android' => AndroidTarget(),
-    final other => throw ArgumentError('Unknown platform: $other'),
-  };
   final flutter = args.length == 2 ? args[1] : null;
   final work = Directory.systemTemp.createTempSync('shorebird_signing_');
   await target.setUp();
   Future<void> cleanUp() async {
     report(target, flutter);
-    await target.tearDown();
     final appId = runAppId;
     runAppId = null;
     if (appId != null) {
@@ -126,6 +125,7 @@ Future<void> main(List<String> args) async {
         print('⚠️  Failed to delete e2e app $appId: ${result.stderr}');
       }
     }
+    await target.tearDown();
   }
 
   // A cancelled or timed-out job is signaled, which skips `finally`.
@@ -311,7 +311,7 @@ abstract class Target {
 
   Future<void> tearDown() async {}
 
-  /// The shorebird.yaml in the release just built.
+  /// The generated (bundled) shorebird.yaml in the release just built.
   Future<String> builtShorebirdYaml(Directory app);
 
   /// Installs the release just built, once per mode this platform checks.
@@ -331,7 +331,8 @@ abstract class Install {
   });
 }
 
-/// Writes `patch_verification: install_only` into [shorebirdYaml]: what the
+/// Writes `patch_verification: install_only` into [shorebirdYaml], a
+/// generated (bundled) shorebird.yaml: what the
 /// CLI writes when it builds with this setting. The CLI refuses to build it on
 /// engines that skip the check (#4163), but releases made before that are on
 /// devices.
@@ -421,11 +422,20 @@ class LinuxInstall extends Install {
 }
 
 class MacosTarget extends Target {
-  /// Unique per run, so every install gets a fresh sandbox container (which
-  /// holds the updater's state) and runs never see each other's patches.
-  final bundleIdBase =
-      'com.example.signing-e2e-${DateTime.now().millisecondsSinceEpoch}';
+  static const bundleIdBase = 'com.example.signing-e2e';
   final _bundleIds = <String>[];
+
+  /// Each install's sandbox container, which holds its updater state.
+  static Directory containerData(String bundleId) => Directory(
+    '${Platform.environment['HOME']}/Library/Containers/$bundleId/Data/Library',
+  );
+
+  /// Empties [bundleId]'s container. macOS doesn't let us delete a container
+  /// itself, only its contents.
+  static void clearContainer(String bundleId) {
+    final library = containerData(bundleId);
+    if (library.existsSync()) library.deleteSync(recursive: true);
+  }
 
   @override
   String get name => 'macos';
@@ -463,6 +473,8 @@ class MacosTarget extends Target {
         '-',
       );
       _bundleIds.add(bundleId);
+      // An earlier run's state would carry over.
+      clearContainer(bundleId);
       await sh(work, 'ditto', [builtApp(app).path, path]);
       await sh(work, '/usr/libexec/PlistBuddy', [
         '-c',
@@ -489,18 +501,8 @@ class MacosTarget extends Target {
     return result;
   }
 
-  /// macOS doesn't let us delete a sandbox container itself, only its
-  /// contents.
   @override
-  Future<void> tearDown() async {
-    final home = Platform.environment['HOME'];
-    for (final bundleId in _bundleIds) {
-      final library = Directory(
-        '$home/Library/Containers/$bundleId/Data/Library',
-      );
-      if (library.existsSync()) library.deleteSync(recursive: true);
-    }
-  }
+  Future<void> tearDown() async => _bundleIds.forEach(clearContainer);
 }
 
 class MacosInstall extends Install {
