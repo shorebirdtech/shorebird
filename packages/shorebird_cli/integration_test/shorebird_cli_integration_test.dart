@@ -94,6 +94,16 @@ void main() {
     expect(result.exitCode, equals(ExitCode.usage.code));
   });
 
+  // Options after `--` go to Flutter, so shorebird must not parse them, and
+  // the launcher must not drop the `--`.
+  test('options after -- are not parsed as shorebird options', () {
+    final result = runCommand(
+      'shorebird --version -- --not-a-shorebird-option',
+      workingDirectory: '.',
+    );
+    expect(result.exitCode, equals(ExitCode.success.code));
+  });
+
   test(
     'create an app with a release and patch',
     () async {

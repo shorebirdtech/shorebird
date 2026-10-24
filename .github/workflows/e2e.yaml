@@ -1,4 +1,4 @@
-# cspell:words cmdline sdkmanager
+# cspell:words cmdline sdkmanager LASTEXITCODE
 
 name: e2e
 
@@ -283,6 +283,24 @@ jobs:
             exit 1
           }
         shell: pwsh
+
+      # PowerShell runs shorebird.ps1 itself (not shorebird.bat), and drops
+      # `--` from a script's arguments unless the script puts it back.
+      - name: 🐦 Keep -- through PowerShell 7
+        if: runner.os == 'Windows'
+        run: |
+          (Get-Command shorebird).Source
+          shorebird --version -- --not-a-shorebird-option
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: pwsh
+
+      - name: 🐦 Keep -- through Windows PowerShell
+        if: runner.os == 'Windows'
+        run: |
+          (Get-Command shorebird).Source
+          shorebird --version -- --not-a-shorebird-option
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: powershell
 
       - name: ☕ Set up Java
         uses: actions/setup-java@v6
