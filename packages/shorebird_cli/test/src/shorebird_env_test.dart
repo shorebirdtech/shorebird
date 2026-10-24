@@ -1096,6 +1096,39 @@ base_url: https://example.com''');
         );
       });
 
+      test('follows SHOREBIRD_HOSTED_URL to its auth service', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': devHostedUrl},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse(devAuthServiceUrl)),
+        );
+      });
+
+      test('ignores an empty AUTH_SERVICE_URL', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_HOSTED_URL': devHostedUrl,
+            'AUTH_SERVICE_URL': '',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse(devAuthServiceUrl)),
+        );
+      });
+
+      test('is the default for a server Shorebird does not host', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': 'http://localhost:8080'},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse(defaultAuthServiceUrl)),
+        );
+      });
+
       group('with --dev', () {
         R runInDevMode<R>(R Function() body) => runScoped(
           () => runWithOverrides(body),
@@ -1121,6 +1154,101 @@ base_url: https://example.com''');
             equals(Uri.parse('https://custom-auth.example.com')),
           );
         });
+      });
+    });
+
+    group('hostedEnvironment', () {
+      test('is production by default', () {
+        platform = platform.copyWith(environment: {});
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          equals(productionEnvironment),
+        );
+      });
+
+      test('matches SHOREBIRD_HOSTED_URL by host', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': '$devHostedUrl/'},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          equals(devEnvironment),
+        );
+      });
+
+      test('is null for a server Shorebird does not host', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': 'http://localhost:8080'},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          isNull,
+        );
+      });
+    });
+
+    group('authServiceMismatch', () {
+      String? mismatchWith(Map<String, String> environment) {
+        platform = platform.copyWith(environment: environment);
+        return runWithOverrides(() => shorebirdEnv.authServiceMismatch);
+      }
+
+      test('is null by default', () {
+        expect(mismatchWith({}), isNull);
+      });
+
+      test('is null when the auth service follows the server', () {
+        expect(mismatchWith({'SHOREBIRD_HOSTED_URL': devHostedUrl}), isNull);
+      });
+
+      test('is null when AUTH_SERVICE_URL matches the server', () {
+        expect(
+          mismatchWith({
+            'SHOREBIRD_HOSTED_URL': devHostedUrl,
+            'AUTH_SERVICE_URL': devAuthServiceUrl,
+          }),
+          isNull,
+        );
+      });
+
+      test('names the auth service a Shorebird server accepts', () {
+        expect(
+          mismatchWith({
+            'SHOREBIRD_HOSTED_URL': devHostedUrl,
+            'AUTH_SERVICE_URL': defaultAuthServiceUrl,
+          }),
+          equals(
+            'api-dev.shorebird.dev accepts tokens from '
+            'https://auth-dev.shorebird.dev, but AUTH_SERVICE_URL is '
+            'https://auth.shorebird.dev. Unset AUTH_SERVICE_URL (or set it '
+            'to https://auth-dev.shorebird.dev), then run shorebird login.',
+          ),
+        );
+      });
+
+      test(
+        'asks for AUTH_SERVICE_URL for a server Shorebird does not host',
+        () {
+          expect(
+            mismatchWith({'SHOREBIRD_HOSTED_URL': 'http://localhost:8080'}),
+            equals(
+              'localhost is not a Shorebird-hosted server, so the CLI cannot '
+              'tell which auth service it accepts and signed in with '
+              'https://auth.shorebird.dev. Set AUTH_SERVICE_URL to the auth '
+              'service localhost accepts, then run shorebird login.',
+            ),
+          );
+        },
+      );
+
+      test('is null for another server when AUTH_SERVICE_URL is set', () {
+        expect(
+          mismatchWith({
+            'SHOREBIRD_HOSTED_URL': 'http://localhost:8080',
+            'AUTH_SERVICE_URL': 'http://localhost:3002',
+          }),
+          isNull,
+        );
       });
     });
 

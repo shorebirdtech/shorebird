@@ -63,12 +63,49 @@ const devHostedUrl = 'https://api-dev.shorebird.dev';
 /// The auth service the hidden `--dev` flag selects.
 const devAuthServiceUrl = 'https://auth-dev.shorebird.dev';
 
+/// The Shorebird web console for the production code push server.
+const defaultConsoleUrl = 'https://console.shorebird.dev';
+
+/// The Shorebird web console the hidden `--dev` flag selects.
+const devConsoleUrl = 'https://console-dev.shorebird.dev';
+
+/// A Shorebird-hosted environment: a code push server, the auth service whose
+/// tokens it accepts, and the web console that manages it.
+///
+/// The one place these are paired, so that whichever way the CLI is pointed
+/// at a server (`--dev`, `SHOREBIRD_HOSTED_URL`, or `base_url` in
+/// shorebird.yaml) its auth service and console follow from it, and cannot
+/// drift from it.
+typedef ShorebirdEnvironment = ({
+  String hostedUrl,
+  String authServiceUrl,
+  String consoleUrl,
+});
+
+/// The production environment, which the CLI uses by default.
+const productionEnvironment = (
+  hostedUrl: 'https://api.shorebird.dev',
+  authServiceUrl: defaultAuthServiceUrl,
+  consoleUrl: defaultConsoleUrl,
+);
+
+/// The dev environment, which the hidden `--dev` flag selects.
+const devEnvironment = (
+  hostedUrl: devHostedUrl,
+  authServiceUrl: devAuthServiceUrl,
+  consoleUrl: devConsoleUrl,
+);
+
+/// The Shorebird-hosted environments, matched by the host of their code push
+/// server (see [ShorebirdEnv.hostedEnvironment]).
+const shorebirdEnvironments = [productionEnvironment, devEnvironment];
+
 /// A reference to whether the hidden `--dev` global flag was passed.
 final isDevModeRef = create(() => false);
 
-/// Whether the hidden `--dev` global flag was passed: the CLI talks to the
-/// dev environment ([devHostedUrl] and [devAuthServiceUrl]) unless
-/// `SHOREBIRD_HOSTED_URL` or `AUTH_SERVICE_URL` name another server.
+/// Whether the hidden `--dev` global flag was passed: the CLI talks to
+/// [devEnvironment] unless `SHOREBIRD_HOSTED_URL` or `AUTH_SERVICE_URL`
+/// name another server.
 bool get isDevMode => read(isDevModeRef, orElse: () => false);
 
 /// A reference to a [ShorebirdEnv] instance.
@@ -306,13 +343,53 @@ class ShorebirdEnv {
   }
 
   /// The base URL for the Shorebird auth service: the
-  /// `AUTH_SERVICE_URL` environment variable when it is set, otherwise
-  /// [devAuthServiceUrl] with `--dev` (see [isDevMode]), otherwise
-  /// [defaultAuthServiceUrl].
+  /// `AUTH_SERVICE_URL` environment variable when it is set, otherwise the
+  /// auth service of the [hostedEnvironment] the CLI talks to (so `--dev`,
+  /// or `SHOREBIRD_HOSTED_URL` naming the dev server, selects
+  /// [devAuthServiceUrl]), otherwise [defaultAuthServiceUrl].
   Uri get authServiceUri => Uri.parse(
-    platform.environment['AUTH_SERVICE_URL'] ??
-        (isDevMode ? devAuthServiceUrl : defaultAuthServiceUrl),
+    _environmentOverride('AUTH_SERVICE_URL') ??
+        hostedEnvironment?.authServiceUrl ??
+        defaultAuthServiceUrl,
   );
+
+  /// The Shorebird-hosted environment whose code push server [hostedUri]
+  /// names, matched by host: [productionEnvironment] when [hostedUri] is
+  /// null, and null for a server Shorebird does not host, such as a local
+  /// one.
+  ShorebirdEnvironment? get hostedEnvironment {
+    final hosted = hostedUri;
+    if (hosted == null) return productionEnvironment;
+    return shorebirdEnvironments
+        .where((env) => Uri.parse(env.hostedUrl).host == hosted.host)
+        .firstOrNull;
+  }
+
+  /// Why the code push server may refuse the auth service's tokens, with
+  /// what to set, or null when the two belong together (or the CLI cannot
+  /// tell): `AUTH_SERVICE_URL` names a different auth service from the one
+  /// a Shorebird-hosted server accepts, or the server is not one Shorebird
+  /// hosts and `AUTH_SERVICE_URL` is unset, so the CLI fell back to
+  /// [defaultAuthServiceUrl].
+  String? get authServiceMismatch {
+    final authOverride = _environmentOverride('AUTH_SERVICE_URL');
+    final environment = hostedEnvironment;
+    final serverHost =
+        hostedUri?.host ?? Uri.parse(productionEnvironment.hostedUrl).host;
+    if (environment == null) {
+      if (authOverride != null) return null;
+      return '$serverHost is not a Shorebird-hosted server, so the CLI '
+          'cannot tell which auth service it accepts and signed in with '
+          '$defaultAuthServiceUrl. Set AUTH_SERVICE_URL to the auth service '
+          '$serverHost accepts, then run shorebird login.';
+    }
+    if (authOverride == null) return null;
+    final expected = Uri.parse(environment.authServiceUrl);
+    if (Uri.parse(authOverride).host == expected.host) return null;
+    return '$serverHost accepts tokens from ${environment.authServiceUrl}, '
+        'but AUTH_SERVICE_URL is $authOverride. Unset AUTH_SERVICE_URL (or '
+        'set it to ${environment.authServiceUrl}), then run shorebird login.';
+  }
 
   /// The base URL Flutter downloads its artifacts from, passed to Flutter as
   /// `FLUTTER_STORAGE_BASE_URL`: the `SHOREBIRD_DOWNLOAD_URL`

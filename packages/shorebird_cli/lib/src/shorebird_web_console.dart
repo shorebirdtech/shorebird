@@ -1,20 +1,12 @@
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
-/// The Shorebird Web Console for the production code push server.
-const defaultConsoleUrl = 'https://console.shorebird.dev';
-
-/// The Shorebird Web Console for [devHostedUrl].
-const devConsoleUrl = 'https://console-dev.shorebird.dev';
-
 /// Shorebird Web Console URLs.
 class ShorebirdWebConsole {
-  /// The console for the code push server the CLI talks to:
-  /// [devConsoleUrl] when [ShorebirdEnv.hostedUri] is [devHostedUrl],
+  /// The console of the [ShorebirdEnv.hostedEnvironment] the CLI talks to,
   /// otherwise [defaultConsoleUrl].
-  static Uri get baseUri {
-    final isDev = shorebirdEnv.hostedUri?.host == Uri.parse(devHostedUrl).host;
-    return Uri.parse(isDev ? devConsoleUrl : defaultConsoleUrl);
-  }
+  static Uri get baseUri => Uri.parse(
+    shorebirdEnv.hostedEnvironment?.consoleUrl ?? defaultConsoleUrl,
+  );
 
   /// Returns a [Uri] for the Shorebird Web Console.
   static Uri uri(String path) => baseUri.resolve(path);
