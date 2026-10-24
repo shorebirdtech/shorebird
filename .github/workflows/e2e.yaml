@@ -141,34 +141,23 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Gradle and the Android Gradle plugin a Flutter version's app template
-      # uses are a few hundred MB, about two minutes of each leg when fetched
-      # fresh. They follow the Flutter versions in the key. When one changes,
-      # the leg's previous cache is restored and Gradle fetches only what's new.
+      # The Gradle distribution and the Maven dependencies (Android Gradle
+      # plugin, Kotlin, Flutter's engine jars) of a Flutter version's app
+      # template take about two minutes of each leg to fetch fresh. They
+      # follow the Flutter versions in the key; when one changes, the leg's
+      # previous cache is restored and Gradle fetches only what's new.
+      # caches/<gradle version> (transforms, compiled scripts) is left out:
+      # at ~1 GB per leg it would put the matrix over the repo's 10 GB cache
+      # limit, and Gradle rebuilds it in seconds.
       - name: 🐘 Gradle Cache
         uses: actions/cache@v6
         with:
           path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('bin/internal/flutter.version') }}
           restore-keys: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-
-
-      # android-emulator-runner installs the emulator and the API 29 system
-      # image on every run, from dl.google.com. Restored first, its sdkmanager
-      # finds them installed. The env context only holds what a workflow sets,
-      # so ANDROID_HOME is copied into it for the cache path.
-      - name: 🤖 Emulator Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
-
-      - name: 🤖 Emulator Cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            ${{ env.ANDROID_HOME }}/emulator
-            ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
-          key: emulator-29-${{ runner.os }}
 
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
@@ -182,7 +171,7 @@ jobs:
         if: always()
         run: |
           du -sh ~/.gradle/caches/* ~/.gradle/wrapper/dists/* ~/.gradle/caches/modules-2/files-2.1/* 2>/dev/null | sort -h | tail -40
-          du -sh ${ANDROID_HOME}/emulator ${ANDROID_HOME}/system-images/android-29/default/x86_64
+          true
 
   # Patch signing end to end on Linux: release and patch with the real CLI
   # against dev, then run the app headless and check which code it runs. One
