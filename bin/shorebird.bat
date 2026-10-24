@@ -18,4 +18,7 @@ SET PowerShellScriptPath=%CurrentDirectory%shorebird.ps1
 
 REM Pass up to nine arguments to the PowerShell script
 REM This number is arbitrary and can be increased if needed
-%powershell_executable% -NoProfile -ExecutionPolicy Bypass -Command "& '%PowerShellScriptPath%' %1 %2 %3 %4 %5 %6 %7 %8 %9";
+REM -Command exits 0 or 1 by whether the last statement succeeded, so pass
+REM shorebird's own exit code through explicitly, or a failing command looks
+REM like it succeeded.
+%powershell_executable% -NoProfile -ExecutionPolicy Bypass -Command "& '%PowerShellScriptPath%' %1 %2 %3 %4 %5 %6 %7 %8 %9; exit $LASTEXITCODE";

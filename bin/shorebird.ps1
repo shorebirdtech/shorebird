@@ -182,3 +182,4 @@ if (Test-ShorebirdNeedsUpdate) {
 }
 
 & $dart --disable-dart-dev --packages="$shorebirdRootDir\.dart_tool\package_config.json" "$snapshotPath" $args
+exit $LASTEXITCODE
