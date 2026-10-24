@@ -4,6 +4,27 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
+## 1.6.132 (October 24, 2026)
+
+- ✨ Refuse install_only on Flutter builds that skip its signature check
+- ✨ Add --managed-signing to sign patches with a Shorebird-managed key
+- ✨ Add Release.platforms keyed by platform, deprecate platformStatuses, and
+  move the CLI to it
+- ✨ Sign patches with a Shorebird-managed key by default
+- ✨ Derive the auth service and console from the code push server
+- 🐛 Refuse a private key passed as the public key, without printing it
+- 🐛 Link the console for the API host in OIDC sign-in hints
+- 🐛 Don't print 'Cancelled' when flutter versions list succeeds
+- 🐛 Show the app's startup logs in shorebird preview on Android
+- 🐛 Pass shorebird's exit code through the Windows launcher
+- 🐛 Forward all arguments through bin/shorebird.bat
+- 🐛 Keep -- when PowerShell runs shorebird.ps1
+- 🐛 Return dart's exit code from shorebird.bat under cmd /c
+- 🐛 Bump rustls, rustls-webpki and rand for security advisories
+- 🐛 Report updater paths relative to its directories in failure events
+
+Flutter 3.47.7 and Dart 3.13.5 are unchanged from 1.6.131.
+
 ## 1.6.131 (October 23, 2026)
 
 - ✨ `shorebird login` sends your browser to a styled page once the login
