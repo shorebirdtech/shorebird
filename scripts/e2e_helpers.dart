@@ -52,7 +52,7 @@ Future<void> runE2e({
         '-X',
         'DELETE',
         'apps/$appId',
-      ]);
+      ], runInShell: Platform.isWindows);
       if (result.exitCode != 0) {
         print('⚠️  Failed to delete e2e app $appId: ${result.stderr}');
       }
@@ -60,9 +60,13 @@ Future<void> runE2e({
     await tearDown?.call();
   }
 
-  // A cancelled or timed-out job is signaled, which skips `finally`.
+  // A cancelled or timed-out job is signaled, which skips `finally`. Dart
+  // can't watch SIGTERM on Windows.
   final signals = [
-    for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm])
+    for (final signal in [
+      ProcessSignal.sigint,
+      if (!Platform.isWindows) ProcessSignal.sigterm,
+    ])
       signal.watch().listen((_) async {
         stoppedEarly = 'got $signal';
         await cleanUp();
@@ -298,6 +302,8 @@ Future<void> sh(Directory dir, String executable, List<String> args) async {
     args,
     workingDirectory: dir.path,
     mode: ProcessStartMode.inheritStdio,
+    // Finds shorebird.bat and flutter.bat.
+    runInShell: Platform.isWindows,
   );
   final code = await process.exitCode;
   if (code != 0) {
@@ -318,5 +324,6 @@ String pinnedFlutter() {
   final revision = File(
     '$root/bin/internal/flutter.version',
   ).readAsStringSync().trim();
-  return '$root/bin/cache/flutter/$revision/bin/flutter';
+  final flutter = Platform.isWindows ? 'flutter.bat' : 'flutter';
+  return '$root/bin/cache/flutter/$revision/bin/$flutter';
 }

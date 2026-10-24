@@ -1,10 +1,10 @@
-// cspell:words genrsa pubout Xvfb xfail XPASS logcat libexec
+// cspell:words genrsa pubout Xvfb xfail XPASS logcat libexec LOCALAPPDATA
 // ignore_for_file: avoid_print
 
 // End-to-end test of patch signing: the real CLI against a real server, a
 // real Flutter build, and the built app launched, checking which code it runs
 // after it downloads each patch. Runs on Linux (the app headless under Xvfb),
-// macOS, and Android (on the one emulator or device adb sees).
+// macOS, Windows, and Android (on the one emulator or device adb sees).
 //
 // It makes two releases of a fresh app:
 //
@@ -17,21 +17,25 @@
 //
 // On Linux and macOS each release is installed twice: strict (the signature
 // is checked at every launch) and install_only (checked once, at install). A
-// device holds one install of an app, so Android checks strict only;
+// device holds one install of an app, so Android checks strict only, and so
+// does Windows, where every app shares one updater state (see WindowsTarget);
 // install_only is the updater's own logic, the same on every platform. Each
 // patch prints its own label, so after each patch every install is launched
 // twice (download and install, then boot), and the label it prints says
-// whether it ran the patch. Each install keeps its own updater state, so a
-// refused patch stays marked bad, as on a device.
+// whether it ran the patch. An install's updater state lasts across its
+// launches, so a refused patch stays marked bad, as on a device.
 //
 // Set SHOREBIRD_ORG_ID to choose the organization for the app when the
 // account can create apps in more than one.
 //
 // Prerequisites: Shorebird on PATH and signed in (CI signs in with OIDC),
 // openssl, and per platform: on Linux the Flutter Linux build dependencies and
-// Xvfb; on macOS Xcode; for Android the Android SDK and a running emulator.
+// Xvfb; on macOS Xcode; on Windows Visual Studio with the C++ desktop
+// workload; for Android the Android SDK and a running emulator. On Windows it
+// deletes the updater's state from %LOCALAPPDATA% (see WindowsTarget), so it
+// runs only where CI is set: on a throwaway machine.
 //
-// Usage: dart scripts/patch_signing_e2e.dart <linux|macos|android>
+// Usage: dart scripts/patch_signing_e2e.dart <linux|macos|windows|android>
 //     [<flutter-version>]
 // Without a version it uses the Flutter the CLI pins.
 
@@ -79,12 +83,14 @@ Future<void> main(List<String> args) async {
   final target = switch (args.firstOrNull) {
     'linux' => LinuxTarget(),
     'macos' => MacosTarget(),
+    'windows' => WindowsTarget(),
     'android' => AndroidTarget(),
     _ => null,
   };
   if (target == null || args.length > 2) {
     print(
-      'Usage: dart scripts/patch_signing_e2e.dart <linux|macos|android> '
+      'Usage: dart scripts/patch_signing_e2e.dart '
+      '<linux|macos|windows|android> '
       '[<flutter-version>]',
     );
     exit(64);
@@ -412,6 +418,97 @@ class MacosInstall extends Install {
       environment: {'OS_ACTIVITY_DT_MODE': '1'},
     );
     return watch(process, until: until, timeout: timeout);
+  }
+}
+
+class WindowsTarget extends Target {
+  @override
+  String get name => 'windows';
+
+  @override
+  String get title => 'Windows';
+
+  Directory runner(Directory app) =>
+      Directory('${app.path}/build/windows/x64/runner/Release');
+
+  @override
+  Future<String> builtShorebirdYaml(Directory app) async => File(
+    '${runner(app).path}/data/flutter_assets/shorebird.yaml',
+  ).readAsStringSync();
+
+  /// The updater's state, which the engine keeps directly in %LOCALAPPDATA%
+  /// for every app, so a stale patch from an earlier run would boot.
+  static const stateEntries = [
+    'state.json',
+    'pointers.json',
+    // Older engines' state file.
+    'patches_state.json',
+    'patches',
+    'downloads',
+  ];
+
+  @override
+  Future<void> setUp() async {
+    if (Platform.environment['CI'] == null) {
+      throw Exception(
+        'On Windows this deletes ${stateEntries.join(', ')} from '
+        '%LOCALAPPDATA%, shared by every Shorebird app (and maybe other '
+        'programs), so it runs only where CI is set.',
+      );
+    }
+  }
+
+  /// Copies the release to one install, after deleting the updater's state.
+  /// Nothing per process redirects %LOCALAPPDATA%, so a second install would
+  /// share the first one's state.
+  @override
+  Future<List<Install>> installs(
+    Directory work,
+    Directory app,
+    String release,
+  ) async {
+    final state = Platform.environment['LOCALAPPDATA']!;
+    for (final name in stateEntries) {
+      final entry = FileSystemEntity.typeSync('$state/$name');
+      if (entry == FileSystemEntityType.directory) {
+        Directory('$state/$name').deleteSync(recursive: true);
+      } else if (entry == FileSystemEntityType.file) {
+        File('$state/$name').deleteSync();
+      }
+    }
+    final dir = Directory('${work.path}/${release}_${Mode.strict.label}');
+    copyDirectory(runner(app), dir);
+    return [WindowsInstall(dir)];
+  }
+}
+
+class WindowsInstall extends Install {
+  WindowsInstall(this.dir);
+  final Directory dir;
+
+  @override
+  Mode get mode => Mode.strict;
+
+  @override
+  Future<(bool, String)> launch({
+    required RegExp until,
+    required Duration timeout,
+  }) async {
+    final process = await Process.start('${dir.path}/e2e_test.exe', []);
+    return watch(process, until: until, timeout: timeout);
+  }
+}
+
+/// Copies [from] and everything in it to [to].
+void copyDirectory(Directory from, Directory to) {
+  to.createSync(recursive: true);
+  for (final entity in from.listSync()) {
+    final name = entity.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+    if (entity is Directory) {
+      copyDirectory(entity, Directory('${to.path}/$name'));
+    } else if (entity is File) {
+      entity.copySync('${to.path}/$name');
+    }
   }
 }
 
