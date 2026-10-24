@@ -14,7 +14,8 @@ on:
           Ref the cli job checks out, for verifying a fix before it lands.
           Defaults to each matrix branch. Setting it skips the patch matrix
           and pins the cli job to the dev API, so a dispatch never writes to
-          production.
+          production. Dispatch from main (`--ref main`): the GitHub Actions
+          trust rule on the dev Shorebird E2E project (437) admits only main.
         required: false
         type: string
   schedule:
