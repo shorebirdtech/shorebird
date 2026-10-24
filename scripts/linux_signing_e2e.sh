@@ -18,7 +18,7 @@
 #            Patch 1: signed with key B.            -> wrong_key_*
 #            Patch 2: unsigned.                     -> unsigned_*
 #            Patch 3: signed with key A.            -> valid_*
-#   1.0.0+2  --managed-signing: Shorebird embeds and signs with its own key.
+#   1.0.0+2  Default: Shorebird embeds and signs with its own key.
 #            Patch: signed by Shorebird.            -> managed_*
 #
 # Each patch prints its own label, so after each one every install is
@@ -222,12 +222,6 @@ install_release() {
     mkdir -p "$WORK/home_${name}_strict" "$WORK/home_${name}_install_only"
 }
 
-# `--managed-signing` until managed signing is the default (step 3349).
-MANAGED_ARGS=()
-if shorebird release --help | grep -q -- '--managed-signing'; then
-    MANAGED_ARGS=(--managed-signing)
-fi
-
 PATCH_ARGS=(--allow-asset-diffs --allow-native-diffs -v)
 
 cd "$WORK"
@@ -285,7 +279,7 @@ done
 
 set_label release
 set_version 1.0.0+2
-timed release_managed shorebird release linux "${FLUTTER_VERSION_ARGS[@]}" "${MANAGED_ARGS[@]}" -v
+timed release_managed shorebird release linux "${FLUTTER_VERSION_ARGS[@]}" -v
 grep -q patch_public_key build/linux/x64/release/bundle/data/flutter_assets/shorebird.yaml ||
     { echo "❌ The managed release embedded no public key."; exit 1; }
 install_release managed
