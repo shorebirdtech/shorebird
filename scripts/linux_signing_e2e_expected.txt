@@ -1,3 +1,5 @@
+# cspell:words xfail
+
 # Expected results of linux_signing_e2e.sh, one row per Flutter version the
 # e2e workflow's linux_signing job runs (it reads its matrix from this file).
 # "default" is the Flutter the CLI pins.

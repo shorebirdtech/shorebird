@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# cspell:words genrsa pubout Xvfb
+# cspell:words genrsa pubout Xvfb xfail XPASS PIDS
 
 # End-to-end test of patch signing on Linux: the real CLI against a real
 # server, a real Flutter build, and the built app launched headless, checking
