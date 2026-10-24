@@ -13,16 +13,14 @@ void main() {
             flutterRevision: 'flutter-revision',
             flutterVersion: '3.22.0',
             version: '1.0.0',
-            platforms: const [
-              ReleasePlatformDetails(
-                platform: ReleasePlatform.ios,
+            platforms: const {
+              ReleasePlatform.ios: ReleasePlatformDetails(
                 status: ReleaseStatus.draft,
               ),
-              ReleasePlatformDetails(
-                platform: ReleasePlatform.android,
+              ReleasePlatform.android: ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
-            ],
+            },
             createdAt: DateTime(2022),
             updatedAt: DateTime(2023),
           ),

@@ -11,12 +11,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platforms: const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-        ],
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -35,12 +34,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platforms: const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-        ],
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -52,12 +50,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platforms: const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-        ],
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -69,12 +66,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platforms: const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-        ],
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -99,43 +95,36 @@ void main() {
       test('reads each platform with its status and signing', () {
         final release = Release.fromJson(
           releaseJson(
-            platforms: [
-              {
-                'platform': 'android',
-                'status': 'active',
-                'signing_mode': 'managed',
-              },
-              {'platform': 'ios', 'status': 'draft'},
-            ],
+            platforms: {
+              'android': {'status': 'active', 'signing_mode': 'managed'},
+              'ios': {'status': 'draft'},
+            },
           ),
         );
-        expect(release.platforms, const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        expect(release.platforms, const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
             signingMode: 'managed',
           ),
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.ios,
+          ReleasePlatform.ios: ReleasePlatformDetails(
             status: ReleaseStatus.draft,
           ),
-        ]);
+        });
         expect(Release.fromJson(release.toJson()), equals(release));
       });
 
       test('reads a signing mode added later as an unknown string', () {
         final release = Release.fromJson(
           releaseJson(
-            platforms: [
-              {
-                'platform': 'android',
-                'status': 'active',
-                'signing_mode': 'quantum',
-              },
-            ],
+            platforms: {
+              'android': {'status': 'active', 'signing_mode': 'quantum'},
+            },
           ),
         );
-        expect(release.platforms!.single.signingMode, equals('quantum'));
+        expect(
+          release.platforms![ReleasePlatform.android]!.signingMode,
+          equals('quantum'),
+        );
       });
 
       test('is null, and omitted, when the server sends none', () {

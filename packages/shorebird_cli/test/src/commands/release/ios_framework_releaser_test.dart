@@ -495,7 +495,7 @@ void main() {
         flutterRevision: flutterRevision,
         flutterVersion: flutterVersion,
         displayName: '1.2.3+1',
-        platforms: const [],
+        platforms: const {},
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
       );

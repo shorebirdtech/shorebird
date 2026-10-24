@@ -29,16 +29,14 @@ void main() {
       flutterRevision: 'abc123',
       flutterVersion: '3.27.0',
       displayName: releaseVersion,
-      platforms: const [
-        ReleasePlatformDetails(
-          platform: ReleasePlatform.android,
+      platforms: const {
+        ReleasePlatform.android: ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatformDetails(
-          platform: ReleasePlatform.ios,
+        ReleasePlatform.ios: ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-      ],
+      },
       createdAt: DateTime(2026, 1, 15),
       updatedAt: DateTime(2026, 1, 16),
       notes: 'Some release notes.',
@@ -174,12 +172,11 @@ void main() {
           version: releaseVersion,
           flutterRevision: 'abc123',
           displayName: releaseVersion,
-          platforms: const [
-            ReleasePlatformDetails(
-              platform: ReleasePlatform.android,
+          platforms: const {
+            ReleasePlatform.android: ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
-          ],
+          },
           createdAt: DateTime(2026, 1, 15),
           updatedAt: DateTime(2026, 1, 16),
         );

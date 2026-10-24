@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
 /// {@template release_platform_details}
@@ -10,7 +9,6 @@ import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 class ReleasePlatformDetails {
   /// {@macro release_platform_details}
   const ReleasePlatformDetails({
-    required this.platform,
     required this.status,
     this.signingMode,
   });
@@ -21,7 +19,6 @@ class ReleasePlatformDetails {
       'ReleasePlatformDetails',
       json,
       () => ReleasePlatformDetails(
-        platform: ReleasePlatform.fromJson(json['platform'] as String),
         status: ReleaseStatus.fromJson(json['status'] as String),
         signingMode: json['signing_mode'] as String?,
       ),
@@ -37,9 +34,6 @@ class ReleasePlatformDetails {
     return ReleasePlatformDetails.fromJson(json);
   }
 
-  /// A platform to which a Shorebird release can be deployed.
-  final ReleasePlatform platform;
-
   /// The status of a release.
   final ReleaseStatus status;
 
@@ -54,7 +48,6 @@ class ReleasePlatformDetails {
   /// Converts a [ReleasePlatformDetails] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'platform': platform.toJson(),
       'status': status.toJson(),
       'signing_mode': ?signingMode,
     };
@@ -62,7 +55,6 @@ class ReleasePlatformDetails {
 
   @override
   int get hashCode => Object.hashAll([
-    platform,
     status,
     signingMode,
   ]);
@@ -71,7 +63,6 @@ class ReleasePlatformDetails {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is ReleasePlatformDetails &&
-        platform == other.platform &&
         status == other.status &&
         signingMode == other.signingMode;
   }

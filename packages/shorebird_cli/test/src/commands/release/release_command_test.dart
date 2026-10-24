@@ -56,7 +56,7 @@ void main() {
       flutterRevision: flutterRevision,
       flutterVersion: flutterVersionString,
       displayName: '1.2.3+1',
-      platforms: const [],
+      platforms: const {},
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
@@ -306,12 +306,11 @@ void main() {
         flutterRevision: flutterRevision,
         flutterVersion: flutterVersionString,
         displayName: '1.2.3+1',
-        platforms: const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-        ],
+        },
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
       );
@@ -486,12 +485,11 @@ void main() {
           version: release.version,
           flutterRevision: release.flutterRevision,
           displayName: release.displayName,
-          platforms: const [
-            ReleasePlatformDetails(
-              platform: ReleasePlatform.android,
+          platforms: const {
+            ReleasePlatform.android: ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
-          ],
+          },
           createdAt: release.createdAt,
           updatedAt: release.updatedAt,
         );
@@ -682,7 +680,7 @@ void main() {
             flutterRevision: 'different',
             flutterVersion: '3.12.1',
             displayName: '1.2.3+1',
-            platforms: const [],
+            platforms: const {},
             createdAt: DateTime(2023),
             updatedAt: DateTime(2023),
           );

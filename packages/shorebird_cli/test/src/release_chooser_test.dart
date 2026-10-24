@@ -14,7 +14,7 @@ Release _release(String version, DateTime createdAt) {
     appId: 'app',
     version: version,
     flutterRevision: 'rev',
-    platforms: const [],
+    platforms: const {},
     createdAt: createdAt,
     updatedAt: createdAt,
   );

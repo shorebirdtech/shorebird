@@ -30,12 +30,11 @@ void main() {
       flutterRevision: 'abc123',
       flutterVersion: '3.27.0',
       displayName: releaseVersion,
-      platforms: const [
-        ReleasePlatformDetails(
-          platform: ReleasePlatform.android,
+      platforms: const {
+        ReleasePlatform.android: ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-      ],
+      },
       createdAt: DateTime(2026, 1, 15),
       updatedAt: DateTime(2026, 1, 16),
     );

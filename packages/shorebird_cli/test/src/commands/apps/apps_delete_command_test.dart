@@ -36,16 +36,14 @@ void main() {
       flutterRevision: 'flutter-revision',
       flutterVersion: 'flutter-version',
       displayName: '1.0.0+1',
-      platforms: const [
-        ReleasePlatformDetails(
-          platform: ReleasePlatform.android,
+      platforms: const {
+        ReleasePlatform.android: ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatformDetails(
-          platform: ReleasePlatform.ios,
+        ReleasePlatform.ios: ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-      ],
+      },
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );

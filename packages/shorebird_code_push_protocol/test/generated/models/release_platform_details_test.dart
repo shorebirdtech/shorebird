@@ -5,11 +5,8 @@ import 'package:test/test.dart';
 void main() {
   group('ReleasePlatformDetails', () {
     test('round-trips via maybeFromJson/toJson', () {
-      const instance = ReleasePlatformDetails(
-        platform: ReleasePlatform.android,
-        status: ReleaseStatus.draft,
-      );
-      final parsed = ReleasePlatformDetails.maybeFromJson(instance.toJson());
+      const instance = ReleasePlatformDetails(status: ReleaseStatus.draft);
+      final parsed = ReleasePlatformDetails.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -87,12 +87,9 @@ void main() {
       flutterRevision: flutterRevision,
       flutterVersion: flutterVersion,
       displayName: '1.2.3+1',
-      platforms: const [
-        ReleasePlatformDetails(
-          platform: releasePlatform,
-          status: ReleaseStatus.active,
-        ),
-      ],
+      platforms: const {
+        releasePlatform: ReleasePlatformDetails(status: ReleaseStatus.active),
+      },
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
@@ -183,16 +180,14 @@ void main() {
         flutterRevision: flutterRevision,
         flutterVersion: version,
         displayName: release.displayName,
-        platforms: const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.ios,
+          ReleasePlatform.ios: ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-        ],
+        },
         createdAt: release.createdAt,
         updatedAt: release.updatedAt,
       );
@@ -534,12 +529,11 @@ void main() {
                 flutterRevision: release.flutterRevision,
                 flutterVersion: release.flutterVersion,
                 displayName: release.displayName,
-                platforms: const [
-                  ReleasePlatformDetails(
-                    platform: ReleasePlatform.ios,
+                platforms: const {
+                  ReleasePlatform.ios: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                ],
+                },
                 createdAt: release.createdAt,
                 updatedAt: release.updatedAt,
               ),
@@ -1653,12 +1647,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: '1.0.0+1',
-                platforms: const [
-                  ReleasePlatformDetails(
-                    platform: ReleasePlatform.windows,
+                platforms: const {
+                  ReleasePlatform.windows: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                ],
+                },
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
               ),
@@ -1701,12 +1694,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: releaseVersion,
-                platforms: const [
-                  ReleasePlatformDetails(
-                    platform: releasePlatform,
+                platforms: const {
+                  releasePlatform: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                ],
+                },
                 createdAt: DateTime(2024),
                 updatedAt: DateTime(2024),
               ),
@@ -1717,12 +1709,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: '99.99.99+99',
-                platforms: const [
-                  ReleasePlatformDetails(
-                    platform: releasePlatform,
+                platforms: const {
+                  releasePlatform: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                ],
+                },
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
               ),
@@ -1753,12 +1744,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           flutterRevision: flutterRevision,
           flutterVersion: flutterVersion,
           displayName: '0.0.1',
-          platforms: const [
-            ReleasePlatformDetails(
-              platform: releasePlatform,
+          platforms: const {
+            releasePlatform: ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
-          ],
+          },
           createdAt: DateTime(2022),
           updatedAt: DateTime(2022),
         );
@@ -1867,12 +1857,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: releaseVersion,
-                platforms: const [
-                  ReleasePlatformDetails(
-                    platform: releasePlatform,
+                platforms: const {
+                  releasePlatform: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                ],
+                },
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
               ),
@@ -1883,16 +1872,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: '2.0.0+1',
-                platforms: const [
-                  ReleasePlatformDetails(
-                    platform: ReleasePlatform.macos,
+                platforms: const {
+                  ReleasePlatform.macos: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                  ReleasePlatformDetails(
-                    platform: ReleasePlatform.windows,
+                  ReleasePlatform.windows: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                ],
+                },
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
               ),
@@ -1941,12 +1928,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flutterRevision: releaseFlutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: '1.2.3+1',
-                platforms: const [
-                  ReleasePlatformDetails(
-                    platform: releasePlatform,
+                platforms: const {
+                  releasePlatform: ReleasePlatformDetails(
                     status: ReleaseStatus.active,
                   ),
-                ],
+                },
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
               ),
@@ -2178,12 +2164,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             flutterRevision: flutterRevision,
             flutterVersion: flutterVersion,
             displayName: '1.2.3+1',
-            platforms: const [
-              ReleasePlatformDetails(
-                platform: releasePlatform,
+            platforms: const {
+              releasePlatform: ReleasePlatformDetails(
                 status: ReleaseStatus.draft,
               ),
-            ],
+            },
             createdAt: DateTime(2023),
             updatedAt: DateTime(2023),
           ),
@@ -2219,12 +2204,11 @@ Please re-run the release command for this version or create a new release.'''),
             flutterRevision: flutterRevision,
             flutterVersion: flutterVersion,
             displayName: '1.2.3+1',
-            platforms: const [
-              ReleasePlatformDetails(
-                platform: ReleasePlatform.ios,
+            platforms: const {
+              ReleasePlatform.ios: ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
-            ],
+            },
             createdAt: DateTime(2023),
             updatedAt: DateTime(2023),
           ),

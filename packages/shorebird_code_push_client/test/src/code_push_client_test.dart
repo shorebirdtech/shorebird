@@ -1697,7 +1697,7 @@ void main() {
                       flutterRevision: flutterRevision,
                       flutterVersion: flutterVersion,
                       displayName: displayName,
-                      platforms: const [],
+                      platforms: const {},
                       createdAt: DateTime.utc(2023),
                       updatedAt: DateTime.utc(2023),
                     ),
@@ -2702,12 +2702,11 @@ void main() {
             flutterRevision: flutterRevision,
             flutterVersion: flutterVersion,
             displayName: 'v1.0.0',
-            platforms: const [
-              ReleasePlatformDetails(
-                platform: ReleasePlatform.android,
+            platforms: const {
+              ReleasePlatform.android: ReleasePlatformDetails(
                 status: ReleaseStatus.draft,
               ),
-            ],
+            },
             createdAt: DateTime.utc(2022),
             updatedAt: DateTime.utc(2023),
           ),
@@ -2718,7 +2717,7 @@ void main() {
             flutterRevision: flutterRevision,
             flutterVersion: flutterVersion,
             displayName: 'v1.0.1',
-            platforms: const [],
+            platforms: const {},
             createdAt: DateTime.utc(2022),
             updatedAt: DateTime.utc(2023),
           ),

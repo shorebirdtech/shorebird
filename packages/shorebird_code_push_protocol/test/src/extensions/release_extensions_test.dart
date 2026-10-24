@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group('ReleaseExtensions', () {
     Release release({
-      List<ReleasePlatformDetails>? platforms,
+      Map<ReleasePlatform, ReleasePlatformDetails>? platforms,
       Map<ReleasePlatform, ReleaseStatus>? platformStatuses,
     }) => Release(
       id: 1,
@@ -21,21 +21,24 @@ void main() {
 
     test('reads platforms when the server sends them', () {
       final subject = release(
-        platforms: const [
-          ReleasePlatformDetails(
-            platform: ReleasePlatform.android,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
             status: ReleaseStatus.active,
             signingMode: 'managed',
           ),
-        ],
+          ReleasePlatform.macos: ReleasePlatformDetails(
+            status: ReleaseStatus.draft,
+          ),
+        },
         platformStatuses: const {ReleasePlatform.ios: ReleaseStatus.draft},
       );
-      expect(subject.platformDetails, hasLength(1));
-      expect(
-        subject.statusFor(ReleasePlatform.android),
-        equals(ReleaseStatus.active),
-      );
-      expect(subject.statusFor(ReleasePlatform.ios), isNull);
+      expect(subject.platformDetails, hasLength(2));
+      expect(subject.hasPlatform(ReleasePlatform.android), isTrue);
+      expect(subject.hasPlatform(ReleasePlatform.ios), isFalse);
+      expect(subject.statusFor(ReleasePlatform.macos), ReleaseStatus.draft);
+      expect(subject.isActiveOn(ReleasePlatform.android), isTrue);
+      expect(subject.isActiveOn(ReleasePlatform.macos), isFalse);
+      expect(subject.activePlatforms, [ReleasePlatform.android]);
     });
 
     test('falls back to the statuses a server that predates platforms '
@@ -43,18 +46,22 @@ void main() {
       final subject = release(
         platformStatuses: const {ReleasePlatform.ios: ReleaseStatus.draft},
       );
-      expect(subject.platformDetails, const [
-        ReleasePlatformDetails(
-          platform: ReleasePlatform.ios,
+      expect(subject.platformDetails, const {
+        ReleasePlatform.ios: ReleasePlatformDetails(
           status: ReleaseStatus.draft,
         ),
-      ]);
+      });
+      expect(subject.hasPlatform(ReleasePlatform.ios), isTrue);
       expect(subject.statusFor(ReleasePlatform.ios), ReleaseStatus.draft);
     });
 
     test('is empty when the server sends neither', () {
-      expect(release().platformDetails, isEmpty);
-      expect(release().statusFor(ReleasePlatform.android), isNull);
+      final subject = release();
+      expect(subject.platformDetails, isEmpty);
+      expect(subject.hasPlatform(ReleasePlatform.android), isFalse);
+      expect(subject.statusFor(ReleasePlatform.android), isNull);
+      expect(subject.isActiveOn(ReleasePlatform.android), isFalse);
+      expect(subject.activePlatforms, isEmpty);
     });
   });
 }
