@@ -174,8 +174,8 @@ jobs:
 
   # Patch signing end to end on Linux: release and patch with the real CLI
   # against dev, then run the app headless and check which code it runs. One
-  # leg, on the Flutter the CLI pins; other versions run by hand (see
-  # scripts/linux_signing_e2e_expected.txt). Runs nightly, and unlike the patch
+  # leg, on the Flutter the CLI pins; pass a version to the script to run
+  # another (scripts/patch_signing_e2e.dart). Runs nightly, and unlike the patch
   # job also on a cli_ref dispatch, testing that ref.
   linux_signing:
     name: linux signing
@@ -208,8 +208,11 @@ jobs:
       - name: 🐦 Install Shorebird
         run: shorebird --version
 
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
       - name: 🧪 Run Linux Signing E2E Tests
-        run: ./scripts/linux_signing_e2e.sh default
+        run: dart scripts/patch_signing_e2e.dart
 
   cli:
     strategy:
