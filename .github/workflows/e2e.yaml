@@ -266,8 +266,8 @@ jobs:
   windows_signing:
     name: windows signing
     runs-on: windows-latest
-    # A Windows build takes a few minutes, and this makes six.
-    timeout-minutes: 50
+    # The test took 3 minutes (e2e run 40134798921).
+    timeout-minutes: 20
 
     permissions:
       contents: read
