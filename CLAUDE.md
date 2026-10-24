@@ -16,11 +16,20 @@ For each one:
 ## Build Commands
 
 ```bash
+# Install dependencies (once, at the repo root: packages share one pub
+# workspace, and without it analyze reports thousands of bogus issues)
+dart pub get
+
 # Run all tests (must run from packages/ directory to avoid cache conflicts)
 cd packages && very_good test -r
 
-# Run tests for a single package (can use -r failures-only to reduce output)
-dart test packages/shorebird_cli
+# Before pushing, from each package you changed, run what CI checks there
+dart format --set-exit-if-changed .
+dart analyze --fatal-warnings .
+dart test -j 4
+
+# and spell check the files you changed (CI checks the whole repo)
+npx cspell <changed files>
 ```
 
 ## Architecture
@@ -33,11 +42,15 @@ Dart monorepo. Main package is `shorebird_cli`.
 
 **Dependency injection** uses `scoped_deps` with zone-based refs (see any `*Ref` variable).
 
+**Two files are named `shorebird.yaml`**: the checked-in project config at the app's root, and the generated one the Flutter fork bundles into `flutter_assets`, which has keys the checked-in one doesn't (such as `patch_public_key`). In code that touches the bundled file, and in comments, PRs and issues about either one, say "checked-in shorebird.yaml" or "generated (bundled) shorebird.yaml", so a change aimed at one doesn't hit the other. Messages customers read keep saying `shorebird.yaml`: to them it is the checked-in file.
+
 ## Code Style
 
 - PR titles must follow semantic commit format (enforced in CI)
-- CSpell: use inline `// cspell:words` for 1-2 files; add to global config for more
+- CSpell: use inline `// cspell:words` for 1-2 files; add to global config for more. For an invalid-input test fixture, prefer a real word that's wrong in context (such as `web` for an unsupported platform) over a misspelling.
 - Prefer new commits over amending in PRs - history gets squashed anyway
+- Dart style rules beyond the lints are in `style_guides/dart.md`
+- Name anything a customer reads (env vars, flags, doc headings, error messages) after what they see, such as the host, not our internal service names: customers configure mirrors and allowlists by hostname. The setting for `download.shorebird.dev` is `SHOREBIRD_DOWNLOAD_URL`, named for the host. Internal names are fine in code internals.
 
 ## Landing a PR
 
