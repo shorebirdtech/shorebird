@@ -456,7 +456,84 @@ jobs:
         uses: dart-lang/setup-dart@v1
 
       - name: 🧪 Run Linux Boot E2E Tests
-        run: dart scripts/boot_recovery_e2e.dart
+        run: dart scripts/boot_recovery_e2e.dart linux
+
+  # The same checks on an Android emulator, set up as in android_signing.
+  android_boot:
+    name: android boot
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      # The packages the pinned Flutter's build downloads otherwise; see the
+      # patch job's android-packages.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.2.13676358"
+
+      - name: 🚀 Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # android_signing's cache: the same app template and pinned Flutter.
+      - name: 🐘 Gradle Cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
+
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
+          key: system-image-29-default-x86_64-${{ runner.os }}
+
+      - name: 🧪 Run Android Boot E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          disable-animations: true
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
   cli:
     strategy:
