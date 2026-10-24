@@ -188,8 +188,11 @@ function Update-Shorebird {
 # is passed on as it came.
 function Restore-EndOfOptions($arguments, $invocation) {
     # Statement holds the whole statement (PowerShell 7.4+); Line, only the
-    # first line of it.
-    $source = $invocation.Statement
+    # first line of it. Read Statement through PSObject: older versions don't
+    # have it, and under Set-StrictMode reading a missing property throws.
+    $source = $null
+    $statement = $invocation.PSObject.Properties['Statement']
+    if ($statement) { $source = $statement.Value }
     if (!$source) { $source = $invocation.Line }
     if (!$source -or $source.TrimEnd().EndsWith('`')) { return $arguments }
 
@@ -231,7 +234,11 @@ function Restore-EndOfOptions($arguments, $invocation) {
             return $arguments
         }
     }
-    return @($arguments | Select-Object -First $at) + '--' + @($arguments | Select-Object -Skip $at)
+    # Insert by index: the pipeline (Select-Object) would drop $null arguments
+    # and shift where `--` goes.
+    $restored = [System.Collections.ArrayList]::new($arguments)
+    $restored.Insert($at, '--')
+    return $restored.ToArray()
 }
 
 Test-GitInstalled

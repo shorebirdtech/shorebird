@@ -289,7 +289,9 @@ jobs:
       - name: 🐦 Keep -- through PowerShell 7
         if: runner.os == 'Windows'
         run: |
-          (Get-Command shorebird).Source
+          # The test only means something if PowerShell runs the script.
+          $source = (Get-Command shorebird).Source
+          if (-not $source.EndsWith('shorebird.ps1')) { throw "shorebird resolved to $source, not shorebird.ps1" }
           shorebird --version -- --not-a-shorebird-option
           if ($LASTEXITCODE -ne 0) { exit 1 }
         shell: pwsh
@@ -297,7 +299,9 @@ jobs:
       - name: 🐦 Keep -- through Windows PowerShell
         if: runner.os == 'Windows'
         run: |
-          (Get-Command shorebird).Source
+          # The test only means something if PowerShell runs the script.
+          $source = (Get-Command shorebird).Source
+          if (-not $source.EndsWith('shorebird.ps1')) { throw "shorebird resolved to $source, not shorebird.ps1" }
           shorebird --version -- --not-a-shorebird-option
           if ($LASTEXITCODE -ne 0) { exit 1 }
         shell: powershell
