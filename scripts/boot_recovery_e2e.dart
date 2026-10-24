@@ -48,8 +48,11 @@ import 'e2e_helpers.dart';
 /// (e2e run 40141450017).
 const bootCrashNotRecovered = {null};
 
-/// Launches timed for each of the release and patch 1.
-const timedLaunches = 5;
+/// Launches timed for each of the release and patch 1. Ten, so one fast
+/// outlier doesn't set the release's fastest alone: among five emulator
+/// launches the release's fastest was 114 ms against 158 to 212 for the rest,
+/// which puts a patch launching anywhere in its own usual range past 1.5x.
+const timedLaunches = 10;
 
 /// The most a patch's fastest boot may take, as a multiple of the release's.
 /// The fastest of several launches, because a CI runner only ever adds time:
@@ -320,7 +323,9 @@ class AndroidInstall extends Install {
   Future<Run> run({required RegExp until, required Duration timeout}) async {
     // The crash buffer holds this launch's crash, if it has one.
     await sh(work, 'adb', ['logcat', '-b', 'crash', '-c']);
-    // -W returns once the app is up, so it has a pid.
+    // -W waits for the activity's first frame, which this app never draws,
+    // so it returns after its 10 s timeout. The app has a pid by then unless
+    // it died.
     await sh(work, 'adb', [
       'shell',
       'am',
@@ -430,7 +435,9 @@ class Run {
   /// How the launch ended, for the report.
   final String ending;
 
-  /// From launch to the matching line, if one matched.
+  /// From the start of the process to the matching line, if one matched: on
+  /// Linux by the host's clock from launch, on Android by the device's from
+  /// the process's first log line.
   final Duration? elapsed;
 
   String get description => 'runs ${labelIn(log) ?? 'nothing'}, $ending';
