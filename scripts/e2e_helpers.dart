@@ -244,21 +244,22 @@ Future<Process> startXvfb() => Process.start('Xvfb', [
   '1024x768x24',
 ], mode: ProcessStartMode.inheritStdio);
 
-/// Launches the Linux app in [bundle] on the [startXvfb] display, with
-/// [home] as its HOME, where the updater keeps its state. See [Launch].
+/// Starts the Linux app in [bundle] on the [startXvfb] display, with [home]
+/// as its HOME, where the updater keeps its state.
+Future<Process> startLinux(Directory bundle, Directory home) => Process.start(
+  '${bundle.path}/e2e_test',
+  [],
+  environment: {'HOME': home.path, 'DISPLAY': _display},
+);
+
+/// Launches the Linux app in [bundle] with [startLinux]. See [Launch].
 Future<(bool, String)> launchLinux(
   Directory bundle,
   Directory home, {
   required RegExp until,
   required Duration timeout,
-}) async {
-  final process = await Process.start(
-    '${bundle.path}/e2e_test',
-    [],
-    environment: {'HOME': home.path, 'DISPLAY': _display},
-  );
-  return watch(process, until: until, timeout: timeout);
-}
+}) async =>
+    watch(await startLinux(bundle, home), until: until, timeout: timeout);
 
 /// Reads [process]'s output until a line matches [until], it exits, or
 /// [timeout] passes, then kills it. Returns whether a line matched, and the
