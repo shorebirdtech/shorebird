@@ -79,6 +79,10 @@ String? appId;
 /// The emulator this run started, to shut down at the end.
 Process? emulator;
 
+/// This run's workspace, holding the app and its builds, to delete at the
+/// end.
+Directory? workspace;
+
 Future<void> main(List<String> args) async {
   final options = Options.parse(args);
   Future<void> cleanUp() async {
@@ -102,6 +106,8 @@ Future<void> main(List<String> args) async {
       }
     }
     await stopEmulator();
+    workspace?.deleteSync(recursive: true);
+    workspace = null;
   }
 
   // A cancelled or timed-out job is signaled, which skips `finally`.
@@ -198,7 +204,9 @@ Future<void> run(Options options) async {
   if (!await hasDevice()) await startEmulator(options.avd);
 
   // Intentionally including a space in the path.
-  final work = Directory.systemTemp.createTempSync('shorebird workspace-');
+  final work = workspace = Directory.systemTemp.createTempSync(
+    'shorebird workspace-',
+  );
 
   // A released CLI's pinned Flutter may not build the templates a newer host
   // Flutter writes, so create its app with that Flutter, which
@@ -300,6 +308,12 @@ Future<void> run(Options options) async {
     appId!,
     '--platform',
     'android',
+    // Set when this script booted its own emulator, or by the caller.
+    if (env['ANDROID_SERIAL'] ?? Platform.environment['ANDROID_SERIAL']
+        case final serial? when serial.isNotEmpty) ...[
+      '--device-id',
+      serial,
+    ],
     '-v',
   ];
   await waitForLine('I flutter : hello world', shorebird, preview, dir: app);
@@ -505,6 +519,7 @@ Future<String> adb(List<String> args) async {
 
 /// Runs [executable], showing its output; throws if it fails.
 Future<void> sh(String executable, List<String> args, {Directory? dir}) async {
+  print('+ $executable ${args.join(' ')}');
   final process = await Process.start(
     executable,
     args,
@@ -527,6 +542,7 @@ Future<void> waitForLine(
   List<String> args, {
   Directory? dir,
 }) async {
+  print('+ $executable ${args.join(' ')}');
   final process = await Process.start(
     executable,
     args,
@@ -545,8 +561,9 @@ Future<void> waitForLine(
     for (final stream in [process.stdout, process.stderr])
       stream.transform(decoder).transform(const LineSplitter()).listen(onLine),
   ];
+  // Not on exit: lines printed just before it may still be arriving.
   unawaited(
-    process.exitCode.then((_) {
+    Future.wait([for (final s in streams) s.asFuture<void>()]).then((_) {
       if (!matched.isCompleted) matched.complete(false);
     }),
   );
