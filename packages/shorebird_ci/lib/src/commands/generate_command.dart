@@ -276,6 +276,7 @@ updates:
     if (hasDart) {
       files['.github/workflows/_shorebird_ci_dart.yaml'] =
           _buildDartReusableWorkflow(
+            hasBlocLint: _anyDependsOnBlocLint(packages, isFlutter: false),
             hasCodecov: repository.hasCodecov,
             codecovTokenSecret: codecovTokenSecret,
           );
@@ -283,6 +284,7 @@ updates:
     if (hasFlutter) {
       files['.github/workflows/_shorebird_ci_flutter.yaml'] =
           _buildFlutterReusableWorkflow(
+            hasBlocLint: _anyDependsOnBlocLint(packages, isFlutter: true),
             hasCodecov: repository.hasCodecov,
             codecovTokenSecret: codecovTokenSecret,
           );
@@ -393,10 +395,16 @@ jobs:
     with:
       package_name: ${package.name}
       package_path: $packageDir
-      has_bloc_lint: ${RepositoryAnalyzer.dependsOnBlocLint(root: package.root)}
       has_unit_tests: ${RepositoryAnalyzer.hasUnitTests(root: package.root)}
       subpackages: "${subpackages.join(' ')}"
 ''');
+
+      // The reusable workflow declares `has_bloc_lint` only when some
+      // package of its SDK uses bloc_lint, and it defaults to false, so
+      // pass it only where it's true.
+      if (RepositoryAnalyzer.dependsOnBlocLint(root: package.root)) {
+        buffer.writeln('      has_bloc_lint: true');
+      }
 
       if (isFlutter) {
         final version = resolveFlutterVersion(
@@ -434,6 +442,7 @@ jobs:
   }
 
   String _buildDartReusableWorkflow({
+    required bool hasBlocLint,
     required bool hasCodecov,
     required String? codecovTokenSecret,
   }) {
@@ -471,11 +480,7 @@ on:
       package_path:
         required: true
         type: string
-      has_bloc_lint:
-        required: false
-        default: false
-        type: boolean
-      has_unit_tests:
+${hasBlocLint ? _staticBlocLintInput : ''}      has_unit_tests:
         required: false
         default: true
         type: boolean
@@ -492,10 +497,7 @@ jobs:
         with:
           submodules: recursive
       - uses: dart-lang/setup-dart@v1
-      - name: Setup Bloc Tools
-        if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
-      - name: Install Dependencies
+${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
         run: |
           dart pub get --no-example
@@ -506,14 +508,11 @@ jobs:
         run: dart format --set-exit-if-changed .
       - working-directory: \${{ inputs.package_path }}
         run: dart analyze --fatal-warnings .
-      - name: Bloc Lint
-        if: inputs.has_bloc_lint
-        working-directory: \${{ inputs.package_path }}
-        run: bloc lint .
-$testStep''';
+${hasBlocLint ? _staticBlocLintStep : ''}$testStep''';
   }
 
   String _buildFlutterReusableWorkflow({
+    required bool hasBlocLint,
     required bool hasCodecov,
     required String? codecovTokenSecret,
   }) {
@@ -550,11 +549,7 @@ on:
         required: false
         default: ""
         type: string
-      has_bloc_lint:
-        required: false
-        default: false
-        type: boolean
-      has_integration_tests:
+${hasBlocLint ? _staticBlocLintInput : ''}      has_integration_tests:
         required: false
         default: false
         type: boolean
@@ -579,10 +574,7 @@ jobs:
         with:
           flutter-version: \${{ inputs.flutter_version || '' }}
           channel: \${{ inputs.flutter_version && '' || 'stable' }}
-      - name: Setup Bloc Tools
-        if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
-      - name: Install Dependencies
+${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
         run: |
           flutter pub get --no-example
@@ -593,16 +585,45 @@ jobs:
         run: dart format --set-exit-if-changed .
       - working-directory: \${{ inputs.package_path }}
         run: flutter analyze .
-      - name: Bloc Lint
-        if: inputs.has_bloc_lint
-        working-directory: \${{ inputs.package_path }}
-        run: bloc lint .
-$testStep      - name: Integration Tests
+${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Tests
         if: inputs.has_integration_tests
         working-directory: \${{ inputs.package_path }}
         run: flutter test integration_test
 ''';
   }
+
+  /// Whether any of the [packages] built with Flutter (or, when
+  /// [isFlutter] is false, with plain Dart) has a bloc_lint dev
+  /// dependency. Repos with none get no bloc input or steps, so their
+  /// workflows don't pull in felangel/setup-bloc-tools at all.
+  static bool _anyDependsOnBlocLint(
+    Iterable<PackageDescription> packages, {
+    required bool isFlutter,
+  }) => packages.any(
+    (pkg) =>
+        RepositoryAnalyzer.dependsOnFlutter(root: pkg.root) == isFlutter &&
+        RepositoryAnalyzer.dependsOnBlocLint(root: pkg.root),
+  );
+
+  static const _staticBlocLintInput = '''
+      has_bloc_lint:
+        required: false
+        default: false
+        type: boolean
+''';
+
+  static const _staticBlocToolsSetupStep = '''
+      - name: Setup Bloc Tools
+        if: inputs.has_bloc_lint
+        uses: felangel/setup-bloc-tools@v0
+''';
+
+  static const _staticBlocLintStep = r'''
+      - name: Bloc Lint
+        if: inputs.has_bloc_lint
+        working-directory: ${{ inputs.package_path }}
+        run: bloc lint .
+''';
 
   // ── Dynamic (affected_packages + matrix) ─────────────────────────
 
@@ -651,6 +672,10 @@ jobs:
       _writeCiJob(
         buffer,
         jobId: 'dart_ci',
+        hasBlocLint: _anyDependsOnBlocLint(
+          repository.packages,
+          isFlutter: false,
+        ),
         outputKey: 'dart_packages',
         sdk: 'dart',
         hasCodecov: repository.hasCodecov,
@@ -662,6 +687,10 @@ jobs:
       _writeCiJob(
         buffer,
         jobId: 'flutter_ci',
+        hasBlocLint: _anyDependsOnBlocLint(
+          repository.packages,
+          isFlutter: true,
+        ),
         outputKey: 'flutter_packages',
         sdk: 'flutter',
         hasCodecov: repository.hasCodecov,
@@ -763,6 +792,7 @@ jobs:
   void _writeCiJob(
     StringBuffer buffer, {
     required String jobId,
+    required bool hasBlocLint,
     required String outputKey,
     required String sdk,
     required bool hasCodecov,
@@ -774,9 +804,10 @@ jobs:
     buffer
       ..write(_ciJobHeader(jobId: jobId, outputKey: outputKey))
       ..write(_sdkSetupStep(isFlutter: isFlutter))
-      ..write(_blocToolsSetupStep)
+      ..write(hasBlocLint ? _blocToolsSetupStep : '')
       ..write(_installDependenciesStep(executable: executable))
       ..write(_formatAndAnalyzeSteps(executable: executable))
+      ..write(hasBlocLint ? _blocLintStep : '')
       ..write(
         _testStep(
           isFlutter: isFlutter,
@@ -857,11 +888,14 @@ jobs:
     return '''
       - run: dart format --set-exit-if-changed .
       - run: $analyzeCmd
+''';
+  }
+
+  static const _blocLintStep = '''
       - name: Bloc Lint
         if: matrix.has_bloc_lint == true
         run: bloc lint .
 ''';
-  }
 
   String _testStep({
     required bool isFlutter,
@@ -902,10 +936,7 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
     return '          token: \${{ secrets.$secret }}\n';
   }
 
-  void _writeCspellJob(
-    StringBuffer buffer,
-    RepositoryDescription repository,
-  ) {
+  void _writeCspellJob(StringBuffer buffer, RepositoryDescription repository) {
     final configPath = posixRelative(
       repository.cspellConfig!.path,
       from: repository.root.path,

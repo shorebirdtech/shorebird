@@ -657,6 +657,108 @@ void main() {
     );
   });
 
+  group('bloc lint', () {
+    /// Gives the package at [relativePath] a bloc_lint dev dependency.
+    void addBlocLint(String relativePath) {
+      File(
+        p.join(tempDir.path, relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'dev_dependencies:\n  bloc_lint: ^0.3.0\n',
+        mode: FileMode.append,
+      );
+    }
+
+    String readWorkflow(String name) => File(
+      p.join(tempDir.path, '.github', 'workflows', name),
+    ).readAsStringSync();
+
+    test('dynamic: no bloc steps when no package uses bloc_lint', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+
+      final yaml = _readMain(tempDir);
+      expect(yaml, isNot(contains('bloc')));
+    });
+
+    test('dynamic: bloc steps only in the job whose SDK uses it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      addBlocLint('packages/bar');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+
+      final yaml = loadYaml(_readMain(tempDir)) as YamlMap;
+      final jobs = yaml['jobs'] as YamlMap;
+      List<Object?> stepNames(String job) => [
+        for (final step in (jobs[job] as YamlMap)['steps'] as YamlList)
+          (step as YamlMap)['name'],
+      ];
+      expect(stepNames('flutter_ci'), contains('Setup Bloc Tools'));
+      expect(stepNames('flutter_ci'), contains('Bloc Lint'));
+      expect(stepNames('dart_ci'), isNot(contains('Setup Bloc Tools')));
+      expect(stepNames('dart_ci'), isNot(contains('Bloc Lint')));
+    });
+
+    test('static: no bloc input or steps when no package uses it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), isNot(contains('bloc')));
+      expect(readWorkflow('_shorebird_ci_dart.yaml'), isNot(contains('bloc')));
+      expect(
+        readWorkflow('_shorebird_ci_flutter.yaml'),
+        isNot(contains('bloc')),
+      );
+    });
+
+    test('static: passes has_bloc_lint only to packages that use it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/baz', 'baz');
+      addBlocLint('packages/baz');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final jobs = (loadYaml(_readMain(tempDir)) as YamlMap)['jobs'] as YamlMap;
+      YamlMap withOf(String job) => (jobs[job] as YamlMap)['with'] as YamlMap;
+      expect(withOf('baz')['has_bloc_lint'], isTrue);
+      expect(withOf('foo').containsKey('has_bloc_lint'), isFalse);
+
+      final dart = readWorkflow('_shorebird_ci_dart.yaml');
+      expect(dart, contains('has_bloc_lint:'));
+      expect(dart, contains('felangel/setup-bloc-tools'));
+      expect(dart, contains('run: bloc lint .'));
+      expect(
+        readWorkflow('_shorebird_ci_flutter.yaml'),
+        isNot(contains('bloc')),
+      );
+    });
+
+    test('static: Flutter-only bloc goes to the Flutter reusable', () async {
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      addBlocLint('packages/bar');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final flutter = readWorkflow('_shorebird_ci_flutter.yaml');
+      final inputs =
+          ((loadYaml(flutter) as YamlMap)['on'] as YamlMap)['workflow_call']
+              as YamlMap;
+      expect((inputs['inputs'] as YamlMap).containsKey('has_bloc_lint'), true);
+      expect(flutter, contains('felangel/setup-bloc-tools'));
+      expect(flutter, contains('run: bloc lint .'));
+    });
+  });
+
   group('dependabot.yml', () {
     test('creates dependabot.yml when missing', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
