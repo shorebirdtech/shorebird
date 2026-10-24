@@ -62,16 +62,14 @@ class Adb {
 
   /// Returns the timestamp of the newest entry in the device log, in the
   /// `MM-DD hh:mm:ss.mmm` form `adb logcat -T` accepts, or null if the log is
-  /// empty.
+  /// empty or can't be read.
   Future<String?> latestLogTimestamp({String? deviceId}) async {
     final args = [
       if (deviceId != null) ...['-s', deviceId],
       ...['logcat', '-d', '-t', '1', '-v', 'time'],
     ];
     final result = await _exec(args);
-    if (result.exitCode != 0) {
-      throw Exception('Unable to read the device log: ${result.stderr}');
-    }
+    if (result.exitCode != 0) return null;
     final timestamp = RegExp(
       r'^\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}',
       multiLine: true,

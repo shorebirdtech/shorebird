@@ -191,7 +191,7 @@ void main() {
         );
       });
 
-      test('throws when the process exits with a non-zero code', () async {
+      test('returns null when the log cannot be read', () async {
         when(() => process.run(any(), any())).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -200,14 +200,8 @@ void main() {
           ),
         );
         await expectLater(
-          () => runWithOverrides(() => adb.latestLogTimestamp()),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'exception()',
-              contains('Unable to read the device log: oops'),
-            ),
-          ),
+          runWithOverrides(() => adb.latestLogTimestamp()),
+          completion(isNull),
         );
       });
 
