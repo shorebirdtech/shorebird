@@ -172,9 +172,20 @@ To change the version of this release, change your app's version in your pubspec
       );
       return null;
     }
-    final signingKey = await codePushClientWrapper.getSigningKey(
-      appId: shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor),
-    );
+    final SigningKey signingKey;
+    try {
+      signingKey = await codePushClientWrapper.getSigningKey(
+        appId: shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor),
+      );
+    } on ProcessExit {
+      // The fetch already said why it failed; say what the user can do.
+      logger.info(
+        'Releases embed a Shorebird-managed patch signing key by default. '
+        'To release without one (patches will be unsigned), pass '
+        '--no-${CommonArguments.patchSigningArg.name}.',
+      );
+      rethrow;
+    }
     signing = ArtifactSigningRequest(
       mode: ReleaseSigningMode.managed,
       keyId: signingKey.id,

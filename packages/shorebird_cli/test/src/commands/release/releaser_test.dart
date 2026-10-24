@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -301,6 +302,27 @@ To change the version of this release, change your app's version in your pubspec
         );
         verify(
           () => codePushClientWrapper.getSigningKey(appId: appId),
+        ).called(1);
+      });
+
+      test('says how to release without a key when the fetch fails', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(true);
+        when(
+          () => codePushClientWrapper.getSigningKey(appId: appId),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+
+        await expectLater(
+          runWithOverrides(releaser.resolvePatchSigningKey),
+          throwsA(isA<ProcessExit>()),
+        );
+        verify(
+          () => logger.info(
+            'Releases embed a Shorebird-managed patch signing key by '
+            'default. To release without one (patches will be unsigned), '
+            'pass --no-patch-signing.',
+          ),
         ).called(1);
       });
 
