@@ -178,6 +178,12 @@ jobs:
           target: default
           script: ./scripts/no_android_sdk_downloads.sh ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
+      - name: TEMP cache sizes
+        if: always()
+        run: |
+          du -sh ~/.gradle/caches/* ~/.gradle/wrapper/dists/* ~/.gradle/caches/modules-2/files-2.1/* 2>/dev/null | sort -h | tail -40
+          du -sh ${ANDROID_HOME}/emulator ${ANDROID_HOME}/system-images/android-29/default/x86_64
+
   # Patch signing end to end on Linux: release and patch with the real CLI
   # against dev, then run the app headless and check which code it runs. One
   # leg, on the Flutter the CLI pins; pass a version to the script to run
