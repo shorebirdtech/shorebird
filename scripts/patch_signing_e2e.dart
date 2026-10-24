@@ -45,7 +45,13 @@ enum Outcome {
   xfail,
 }
 
-enum Mode { strict, installOnly }
+enum Mode {
+  strict('strict'),
+  installOnly('install_only');
+
+  const Mode(this.label);
+  final String label;
+}
 
 /// Flutter versions whose engine skips the signature check in install_only
 /// (updater#352, until the fix ships). null is the Flutter the CLI pins.
@@ -74,21 +80,22 @@ String? runAppId;
 final timings = <String>[];
 bool failed = false;
 
+/// Why the run stopped before checking every case, if it did.
+String? stoppedEarly;
+
 Future<void> main(List<String> args) async {
   final flutter = args.isEmpty ? null : args.single;
   final work = Directory.systemTemp.createTempSync('shorebird_signing_');
-  final xvfb = await Process.start('Xvfb', [
-    ':99',
-    '-screen',
-    '0',
-    '1024x768x24',
-  ]);
-  try {
-    await run(work, flutter);
-  } finally {
+  final xvfb = await Process.start(
+    'Xvfb',
+    [':99', '-screen', '0', '1024x768x24'],
+    mode: ProcessStartMode.inheritStdio,
+  );
+  Future<void> cleanUp() async {
     report(flutter);
     xvfb.kill();
     final appId = runAppId;
+    runAppId = null;
     if (appId != null) {
       // Each run mints an app; delete it so the e2e account's app list stays
       // flat (see patch_e2e.sh).
@@ -99,8 +106,27 @@ Future<void> main(List<String> args) async {
         'DELETE',
         'apps/$appId',
       ]);
-      if (result.exitCode != 0) print('⚠️  Failed to delete e2e app $appId.');
+      if (result.exitCode != 0) {
+        print('⚠️  Failed to delete e2e app $appId: ${result.stderr}');
+      }
     }
+  }
+
+  // A cancelled or timed-out job is signaled, which skips `finally`.
+  for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm]) {
+    signal.watch().listen((_) async {
+      stoppedEarly = 'got $signal';
+      await cleanUp();
+      exit(1);
+    });
+  }
+  try {
+    await run(work, flutter);
+  } catch (error) {
+    stoppedEarly = '$error';
+    rethrow;
+  } finally {
+    await cleanUp();
   }
   if (failed) {
     print('❌ Results differ from what is expected.');
@@ -251,8 +277,9 @@ List<Install> installs(Directory work, Directory app, String release) {
   return [
     for (final mode in Mode.values)
       () {
-        final dir = '${work.path}/${release}_${mode.name}';
-        Process.runSync('cp', ['-r', bundle(app).path, dir]);
+        final dir = '${work.path}/${release}_${mode.label}';
+        final copy = Process.runSync('cp', ['-r', bundle(app).path, dir]);
+        if (copy.exitCode != 0) throw Exception('cp failed: ${copy.stderr}');
         if (mode == Mode.installOnly) {
           // What the CLI writes when it builds with this setting. The CLI
           // refuses to build it on engines that skip the check (#4163), but
@@ -274,25 +301,29 @@ List<Install> installs(Directory work, Directory app, String release) {
 /// Launches [install] twice after [patch] was published (once to download
 /// and install it, once to boot) and records whether it ran the patch.
 Future<void> check(String patch, Install install, String? flutter) async {
-  final name = '${patch}_${install.mode.name}';
+  final name = '${patch}_${install.mode.label}';
   final stopwatch = Stopwatch()..start();
-  final updateLog = await launch(
+  final (updated, updateLog) = await launch(
     install,
     until: RegExp('Update thread finished|Update failed'),
     timeout: updateTimeout,
   );
-  if (updateLog == null) {
+  if (!updated) {
     throw Exception(
-      "$name: the update check didn't finish within $updateTimeout.",
+      "$name: the update check didn't finish (exited, or ran past "
+      '$updateTimeout). Its output:\n$updateLog',
     );
   }
-  final bootLog = await launch(
+  final (booted, bootLog) = await launch(
     install,
     until: RegExp('signing-e2e: '),
     timeout: bootTimeout,
   );
-  if (bootLog == null) {
-    throw Exception('$name: the app printed no label within $bootTimeout.');
+  if (!booted) {
+    throw Exception(
+      '$name: the app printed no label (exited, or ran past $bootTimeout). '
+      'Its output:\n$bootLog',
+    );
   }
 
   final running = RegExp(
@@ -336,8 +367,8 @@ Future<void> check(String patch, Install install, String? flutter) async {
 }
 
 /// Runs [install] until a line of its output matches [until] or [timeout]
-/// passes, then stops it. Returns its output, or null if nothing matched.
-Future<String?> launch(
+/// passes, then stops it. Returns whether a line matched, and its output.
+Future<(bool, String)> launch(
   Install install, {
   required RegExp until,
   required Duration timeout,
@@ -375,7 +406,7 @@ Future<String?> launch(
   for (final s in streams) {
     await s.cancel();
   }
-  return found ? output.toString() : null;
+  return (found, output.toString());
 }
 
 /// Runs [executable] in [dir], showing its output; throws if it fails.
@@ -432,6 +463,7 @@ void report(String? flutter) {
     '| Case | Expected | Actual | Result | Time |',
     '| --- | --- | --- | --- | --- |',
     ...results,
+    if (stoppedEarly != null) ...['', '❌ Stopped early: $stoppedEarly'],
     '',
     'Wall time by step: ${timings.join(', ')}',
   ].join('\n');
