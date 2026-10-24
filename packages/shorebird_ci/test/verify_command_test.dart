@@ -57,6 +57,51 @@ jobs:
     expect(await runVerify(tempDir), 0);
   });
 
+  group('dynamic workflow and bloc_lint', () {
+    const workflow = '''
+# shorebird_ci-managed: dynamic
+name: CI
+on: [push]
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shorebird_ci affected_packages --sdk dart
+''';
+
+    void addBlocLint(String relativePath) {
+      File(
+        p.join(tempDir.path, relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'dev_dependencies:\n  bloc_lint: ^0.3.0\n',
+        mode: FileMode.append,
+      );
+    }
+
+    test('fails when a package uses bloc_lint and nothing runs it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      addBlocLint('packages/foo');
+      _writeWorkflow(tempDir, 'ci.yaml', workflow);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('passes when the workflow runs bloc lint', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      addBlocLint('packages/foo');
+      _writeWorkflow(
+        tempDir,
+        'ci.yaml',
+        '$workflow      - run: bloc lint .\n',
+      );
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+  });
+
   test('mention without marker does not count as dynamic coverage', () async {
     // Regression: an earlier version substring-searched for the call,
     // so any YAML comment, run-string, or commented-out step that

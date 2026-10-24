@@ -3,6 +3,7 @@
 # 0.2.5
 
 - `generate` emits bloc lint only for repos that use it. The `has_bloc_lint` input, the `felangel/setup-bloc-tools` step and the `bloc lint` step now appear only in the workflows (dynamic job or static reusable) whose SDK has a package with a `bloc_lint` dev dependency, and the static main workflow passes `has_bloc_lint: true` only to those packages. Repos without bloc no longer depend on a third-party action they never run.
+- `verify` fails on a dynamic workflow that never runs `bloc lint` while some package has a `bloc_lint` dev dependency, so a package that adopts bloc_lint after `generate` ran is caught in the `setup` job rather than silently going unlinted.
 - Generated workflows now trigger on `merge_group`, in both `--style static` and `--style dynamic`. Without it, a repo that turns on GitHub's merge queue produces no check runs on the queue's temp branch, the `required` context never reports, and the queue ejects every PR at the timeout.
 - Static action pin bumped to `dorny/paths-filter@v4`. v3 has no `merge_group` case and falls back to diffing the default branch by merge-base rather than the queue's base commit. Merge-queue support landed in v4.0.1. Only reachable via `--no-update-actions`, since `generate` resolves pins at write time by default.
 

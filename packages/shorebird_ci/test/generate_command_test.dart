@@ -741,6 +741,22 @@ void main() {
         isNot(contains('bloc')),
       );
     });
+
+    test('static: Flutter-only bloc goes to the Flutter reusable', () async {
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      addBlocLint('packages/bar');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final flutter = readWorkflow('_shorebird_ci_flutter.yaml');
+      final inputs =
+          ((loadYaml(flutter) as YamlMap)['on'] as YamlMap)['workflow_call']
+              as YamlMap;
+      expect((inputs['inputs'] as YamlMap).containsKey('has_bloc_lint'), true);
+      expect(flutter, contains('felangel/setup-bloc-tools'));
+      expect(flutter, contains('run: bloc lint .'));
+    });
   });
 
   group('dependabot.yml', () {
