@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/logout_command.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
 import '../helpers.dart';
@@ -17,6 +18,7 @@ void main() {
     late ShorebirdLogger logger;
     late http.Client httpClient;
     late LogoutCommand command;
+    late ShorebirdEnv shorebirdEnv;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -24,6 +26,7 @@ void main() {
         values: {
           authRef.overrideWith(() => auth),
           loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
@@ -32,6 +35,7 @@ void main() {
       auth = MockAuth();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
+      shorebirdEnv = MockShorebirdEnv();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => logger.progress(any())).thenReturn(MockProgress());

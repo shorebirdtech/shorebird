@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -710,7 +711,7 @@ class Auth {
         // In --json mode, info goes to stderr, never into the envelope.
         logger.info(
           'This job can sign in with GitHub Actions OIDC instead: add a '
-          'GitHub Actions trust rule at https://console.shorebird.dev, set '
+          'GitHub Actions trust rule at ${ShorebirdWebConsole.baseUri}, set '
           '$shorebirdProjectIdEnvVar to the id of its project, and remove '
           '$shorebirdTokenEnvVar to stop storing a long-lived secret.',
         );

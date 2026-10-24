@@ -1387,7 +1387,9 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
-            final uri = ShorebirdWebConsole.appReleaseUri(appId, releaseId);
+            final uri = runWithOverrides(
+              () => ShorebirdWebConsole.appReleaseUri(appId, releaseId),
+            );
 
             verify(
               () => logger.err(
