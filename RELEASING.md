@@ -65,6 +65,10 @@ One commit on `main`, titled `chore: prepare for release <version>`:
   `RELEASE_NOTES.md` is spell checked. Add new words to the `cspell:words`
   comment at the top of the file.
 
+If `main` already carries `<version>` (bumped ahead of the release so CLIs
+built from `main` pass a server minimum-version check), the commit only adds
+the release notes.
+
 ## 4. Publish
 
 ```sh
