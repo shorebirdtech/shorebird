@@ -113,13 +113,14 @@ Future<void> main(List<String> args) async {
   }
 
   // A cancelled or timed-out job is signaled, which skips `finally`.
-  for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm]) {
-    signal.watch().listen((_) async {
-      stoppedEarly = 'got $signal';
-      await cleanUp();
-      exit(1);
-    });
-  }
+  final signals = [
+    for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm])
+      signal.watch().listen((_) async {
+        stoppedEarly = 'got $signal';
+        await cleanUp();
+        exit(1);
+      }),
+  ];
   try {
     await run(work, flutter);
   } catch (error) {
@@ -127,6 +128,10 @@ Future<void> main(List<String> args) async {
     rethrow;
   } finally {
     await cleanUp();
+    // Watching a signal keeps the process alive.
+    for (final subscription in signals) {
+      await subscription.cancel();
+    }
   }
   if (failed) {
     print('❌ Results differ from what is expected.');
