@@ -278,19 +278,19 @@ void main() {
       when(() => release.version).thenReturn(releaseVersion);
       when(() => release.createdAt).thenReturn(DateTime(2023));
       when(() => release.platforms).thenReturn({
-        ReleasePlatform.android: ReleasePlatformDetails(
+        ReleasePlatform.android: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.ios: ReleasePlatformDetails(
+        ReleasePlatform.ios: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.linux: ReleasePlatformDetails(
+        ReleasePlatform.linux: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.macos: ReleasePlatformDetails(
+        ReleasePlatform.macos: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.windows: ReleasePlatformDetails(
+        ReleasePlatform.windows: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
       });
@@ -433,7 +433,7 @@ void main() {
         when(
           () => release.platforms,
         ).thenReturn({
-          ReleasePlatform.ios: ReleasePlatformDetails(
+          ReleasePlatform.ios: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -461,7 +461,7 @@ void main() {
         when(
           () => release.platforms,
         ).thenReturn({
-          ReleasePlatform.macos: ReleasePlatformDetails(
+          ReleasePlatform.macos: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -575,10 +575,10 @@ void main() {
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => releaseArtifact.arch).thenReturn('app');
         when(() => release.platforms).thenReturn({
-          ReleasePlatform.android: ReleasePlatformDetails(
+          ReleasePlatform.android: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.ios: ReleasePlatformDetails(
+          ReleasePlatform.ios: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -602,10 +602,10 @@ void main() {
             ).thenAnswer(setupAndroidShorebirdYaml);
 
             when(() => release.platforms).thenReturn({
-              ReleasePlatform.ios: ReleasePlatformDetails(
+              ReleasePlatform.ios: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
-              ReleasePlatform.android: ReleasePlatformDetails(
+              ReleasePlatform.android: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
             });
@@ -1418,10 +1418,10 @@ channel: ${track.channel}
           when(() => otherRelease.createdAt).thenReturn(DateTime(2023));
           when(() => otherRelease.displayName).thenReturn('2.0.0+1');
           when(() => otherRelease.platforms).thenReturn({
-            ReleasePlatform.macos: ReleasePlatformDetails(
+            ReleasePlatform.macos: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
-            ReleasePlatform.windows: ReleasePlatformDetails(
+            ReleasePlatform.windows: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
           });
@@ -1589,7 +1589,7 @@ channel: ${track.channel}
           when(() => otherRelease.version).thenReturn('0.0.1');
           when(() => otherRelease.createdAt).thenReturn(DateTime(2022));
           when(() => otherRelease.platforms).thenReturn({
-            ReleasePlatform.android: ReleasePlatformDetails(
+            ReleasePlatform.android: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
           });
@@ -1750,10 +1750,10 @@ channel: ${track.channel}
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
         when(() => release.platforms).thenReturn({
-          ReleasePlatform.android: ReleasePlatformDetails(
+          ReleasePlatform.android: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.ios: ReleasePlatformDetails(
+          ReleasePlatform.ios: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -2257,17 +2257,17 @@ channel: ${DeploymentTrack.staging.channel}
             () => releaseWithAllPlatforms.version,
           ).thenReturn(releaseVersion);
           when(() => releaseWithAllPlatforms.platforms).thenReturn({
-            ReleasePlatform.ios: ReleasePlatformDetails(
+            ReleasePlatform.ios: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
-            ReleasePlatform.android: ReleasePlatformDetails(
+            ReleasePlatform.android: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
           });
           when(
             () => release.platforms,
           ).thenReturn({
-            ReleasePlatform.ios: ReleasePlatformDetails(
+            ReleasePlatform.ios: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
           });
@@ -2302,17 +2302,17 @@ channel: ${DeploymentTrack.staging.channel}
             () => releaseWithAllPlatforms.version,
           ).thenReturn(releaseVersion);
           when(() => releaseWithAllPlatforms.platforms).thenReturn({
-            ReleasePlatform.ios: ReleasePlatformDetails(
+            ReleasePlatform.ios: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
-            ReleasePlatform.android: ReleasePlatformDetails(
+            ReleasePlatform.android: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
           });
           when(
             () => release.platforms,
           ).thenReturn({
-            ReleasePlatform.android: ReleasePlatformDetails(
+            ReleasePlatform.android: const ReleasePlatformDetails(
               status: ReleaseStatus.active,
             ),
           });
@@ -2431,7 +2431,7 @@ channel: ${DeploymentTrack.staging.channel}
         when(
           () => release.platforms,
         ).thenReturn({
-          ReleasePlatform.linux: ReleasePlatformDetails(
+          ReleasePlatform.linux: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -2724,7 +2724,7 @@ channel: ${DeploymentTrack.staging.channel}
         when(
           () => release.platforms,
         ).thenReturn({
-          ReleasePlatform.macos: ReleasePlatformDetails(
+          ReleasePlatform.macos: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -3032,7 +3032,7 @@ channel: ${DeploymentTrack.staging.channel}
         when(
           () => release.platforms,
         ).thenReturn({
-          ReleasePlatform.windows: ReleasePlatformDetails(
+          ReleasePlatform.windows: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -3330,10 +3330,10 @@ channel: ${DeploymentTrack.staging.channel}
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
         when(() => release.platforms).thenReturn({
-          ReleasePlatform.android: ReleasePlatformDetails(
+          ReleasePlatform.android: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.ios: ReleasePlatformDetails(
+          ReleasePlatform.ios: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
@@ -3423,17 +3423,17 @@ channel: ${DeploymentTrack.staging.channel}
               () => releaseWithAllPlatforms.version,
             ).thenReturn(releaseVersion);
             when(() => releaseWithAllPlatforms.platforms).thenReturn({
-              ReleasePlatform.ios: ReleasePlatformDetails(
+              ReleasePlatform.ios: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
-              ReleasePlatform.android: ReleasePlatformDetails(
+              ReleasePlatform.android: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
             });
             when(
               () => release.platforms,
             ).thenReturn({
-              ReleasePlatform.ios: ReleasePlatformDetails(
+              ReleasePlatform.ios: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
             });
@@ -3546,17 +3546,17 @@ channel: ${DeploymentTrack.staging.channel}
               () => releaseWithAllPlatforms.version,
             ).thenReturn(releaseVersion);
             when(() => releaseWithAllPlatforms.platforms).thenReturn({
-              ReleasePlatform.ios: ReleasePlatformDetails(
+              ReleasePlatform.ios: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
-              ReleasePlatform.android: ReleasePlatformDetails(
+              ReleasePlatform.android: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
             });
             when(
               () => release.platforms,
             ).thenReturn({
-              ReleasePlatform.android: ReleasePlatformDetails(
+              ReleasePlatform.android: const ReleasePlatformDetails(
                 status: ReleaseStatus.active,
               ),
             });
@@ -3605,31 +3605,31 @@ channel: ${DeploymentTrack.staging.channel}
       final release = MockRelease();
 
       when(() => releaseWithAllPlatforms.platforms).thenReturn({
-        ReleasePlatform.android: ReleasePlatformDetails(
+        ReleasePlatform.android: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.ios: ReleasePlatformDetails(
+        ReleasePlatform.ios: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.linux: ReleasePlatformDetails(
+        ReleasePlatform.linux: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.macos: ReleasePlatformDetails(
+        ReleasePlatform.macos: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.windows: ReleasePlatformDetails(
+        ReleasePlatform.windows: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
       });
 
       when(() => release.platforms).thenReturn({
-        ReleasePlatform.android: ReleasePlatformDetails(
+        ReleasePlatform.android: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.linux: ReleasePlatformDetails(
+        ReleasePlatform.linux: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
-        ReleasePlatform.windows: ReleasePlatformDetails(
+        ReleasePlatform.windows: const ReleasePlatformDetails(
           status: ReleaseStatus.active,
         ),
       });
@@ -3676,31 +3676,31 @@ channel: ${DeploymentTrack.staging.channel}
         final release = MockRelease();
 
         when(() => releaseWithAllPlatforms.platforms).thenReturn({
-          ReleasePlatform.android: ReleasePlatformDetails(
+          ReleasePlatform.android: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.ios: ReleasePlatformDetails(
+          ReleasePlatform.ios: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.linux: ReleasePlatformDetails(
+          ReleasePlatform.linux: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.macos: ReleasePlatformDetails(
+          ReleasePlatform.macos: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.windows: ReleasePlatformDetails(
+          ReleasePlatform.windows: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });
 
         when(() => release.platforms).thenReturn({
-          ReleasePlatform.android: ReleasePlatformDetails(
+          ReleasePlatform.android: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.linux: ReleasePlatformDetails(
+          ReleasePlatform.linux: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
-          ReleasePlatform.windows: ReleasePlatformDetails(
+          ReleasePlatform.windows: const ReleasePlatformDetails(
             status: ReleaseStatus.active,
           ),
         });

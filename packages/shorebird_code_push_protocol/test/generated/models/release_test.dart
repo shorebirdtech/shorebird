@@ -10,6 +10,11 @@ void main() {
         appId: 'example',
         version: 'example',
         flutterRevision: 'example',
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
+            status: ReleaseStatus.draft,
+          ),
+        },
         createdAt: DateTime.utc(2024),
         updatedAt: DateTime.utc(2024),
       );

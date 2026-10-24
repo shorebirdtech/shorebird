@@ -16,12 +16,12 @@ class Release {
     required this.appId,
     required this.version,
     required this.flutterRevision,
+    required this.platforms,
     required this.createdAt,
     required this.updatedAt,
     this.flutterVersion,
     this.displayName,
     @deprecated this.platformStatuses,
-    this.platforms,
     this.notes,
   });
 
@@ -44,7 +44,7 @@ class Release {
                 ReleaseStatus.fromJson(value as String),
               ),
             ),
-        platforms: (json['platforms'] as Map<String, dynamic>?)?.map(
+        platforms: (json['platforms'] as Map<String, dynamic>).map(
           (key, value) => MapEntry(
             ReleasePlatform.fromJson(key),
             ReleasePlatformDetails.fromJson(value as Map<String, dynamic>),
@@ -92,9 +92,8 @@ class Release {
   final Map<ReleasePlatform, ReleaseStatus>? platformStatuses;
 
   /// The release on each platform it has been released to: that
-  /// platform's status and signing. Absent from servers that predate
-  /// it.
-  final Map<ReleasePlatform, ReleasePlatformDetails>? platforms;
+  /// platform's status and signing.
+  final Map<ReleasePlatform, ReleasePlatformDetails> platforms;
 
   /// The date and time the release was created.
   final DateTime createdAt;
@@ -117,7 +116,7 @@ class Release {
       'platform_statuses': ?platformStatuses?.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
-      'platforms': ?platforms?.map(
+      'platforms': platforms.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
       'created_at': createdAt.toUtc().toIso8601String(),

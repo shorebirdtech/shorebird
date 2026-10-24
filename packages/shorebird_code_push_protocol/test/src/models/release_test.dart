@@ -122,15 +122,9 @@ void main() {
           ),
         );
         expect(
-          release.platforms![ReleasePlatform.android]!.signingMode,
+          release.platforms[ReleasePlatform.android]!.signingMode,
           equals('quantum'),
         );
-      });
-
-      test('is null, and omitted, when the server sends none', () {
-        final release = Release.fromJson(releaseJson());
-        expect(release.platforms, isNull);
-        expect(release.toJson(), isNot(contains('platforms')));
       });
     });
   });

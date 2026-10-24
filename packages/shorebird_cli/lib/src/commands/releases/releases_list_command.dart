@@ -68,7 +68,7 @@ class ReleasesListCommand extends ShorebirdCommand with AppScopedCommand {
     }
 
     for (final release in filtered) {
-      final platforms = release.platformDetails.entries
+      final platforms = release.platforms.entries
           .map((e) => '${e.key.value}: ${e.value.status.value}')
           .join(', ');
       final flutter = release.flutterVersion != null

@@ -92,7 +92,7 @@ class ReleasesInfoCommand extends ShorebirdCommand with AppScopedCommand {
     }
     logger.info('Platforms:');
     for (final MapEntry(key: platform, value: details)
-        in release.platformDetails.entries) {
+        in release.platforms.entries) {
       final label = '${platform.value}:'.padRight(10);
       logger.info('  $label${details.status.value}');
     }

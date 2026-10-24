@@ -57,7 +57,7 @@ class AppsDeleteCommand extends ShorebirdCommand
 
     final platforms = <String>{
       for (final release in releases)
-        ...release.platformDetails.keys.map((platform) => platform.name),
+        ...release.platforms.keys.map((platform) => platform.name),
     }.toList()..sort();
 
     final gateErrorCode = confirmDelete(
