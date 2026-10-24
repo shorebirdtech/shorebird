@@ -234,7 +234,7 @@ jobs:
   macos_signing:
     name: macos signing
     runs-on: macos-latest
-    timeout-minutes: 40
+    timeout-minutes: 20
 
     permissions:
       contents: read
@@ -266,7 +266,7 @@ jobs:
   android_signing:
     name: android signing
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 25
 
     permissions:
       contents: read
