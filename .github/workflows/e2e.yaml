@@ -178,10 +178,13 @@ jobs:
           path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
           key: system-image-30-default-x86_64-${{ runner.os }}
 
-      # Not API 29: on its x86_64 image, 3-6% of launches of any Flutter
-      # release app (stock Flutter included) die at startup with a corrupted
-      # jemalloc heap, which failed nightly legs. API 30 and 34 crashed 0 of
-      # 400 launches each in the same loop (step 4327 of the release arc).
+      # Not the API 29 x86_64 `default` image: on it 3-6% of launches of a
+      # Flutter release app, stock Flutter 3.32.8 and Shorebird releases alike,
+      # die at startup with a corrupted jemalloc heap, which failed nightly
+      # legs. In the same 400-launch loop stock 3.32.8 crashed 0 times on API
+      # 29 `google_apis` (also Android 10 and jemalloc) and API 28 `default`,
+      # so the fault is in that one image, not Android 10. A Shorebird 3.41.9
+      # release crashed 0 times here on API 30 `default`.
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
