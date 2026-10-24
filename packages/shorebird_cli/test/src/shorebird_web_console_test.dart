@@ -21,7 +21,9 @@ void main() {
 
     setUp(() {
       shorebirdEnv = MockShorebirdEnv();
-      when(() => shorebirdEnv.hostedUri).thenReturn(null);
+      when(
+        () => shorebirdEnv.hostedEnvironment,
+      ).thenReturn(productionEnvironment);
     });
 
     test('uri returns the correct uri with the received path', () {
@@ -47,9 +49,7 @@ void main() {
       });
 
       test('is the production console for another code push server', () {
-        when(
-          () => shorebirdEnv.hostedUri,
-        ).thenReturn(Uri.parse('http://localhost:8080'));
+        when(() => shorebirdEnv.hostedEnvironment).thenReturn(null);
         expect(
           runWithOverrides(() => ShorebirdWebConsole.baseUri),
           Uri.parse(defaultConsoleUrl),
@@ -57,7 +57,7 @@ void main() {
       });
 
       test('is the dev console for the dev code push server', () {
-        when(() => shorebirdEnv.hostedUri).thenReturn(Uri.parse(devHostedUrl));
+        when(() => shorebirdEnv.hostedEnvironment).thenReturn(devEnvironment);
         expect(
           runWithOverrides(() => ShorebirdWebConsole.baseUri),
           Uri.parse(devConsoleUrl),

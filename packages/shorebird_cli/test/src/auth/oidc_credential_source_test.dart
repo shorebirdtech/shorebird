@@ -213,7 +213,7 @@ void main() {
     }
 
     test('links the dev console for the dev code push server', () {
-      when(() => shorebirdEnv.hostedUri).thenReturn(Uri.parse(devHostedUrl));
+      when(() => shorebirdEnv.hostedEnvironment).thenReturn(devEnvironment);
       source = sourceFor(null);
       expect(
         source.unavailableReason?.hint,
@@ -346,7 +346,7 @@ void main() {
     });
 
     test('links the dev console for the dev code push server', () async {
-      when(() => shorebirdEnv.hostedUri).thenReturn(Uri.parse(devHostedUrl));
+      when(() => shorebirdEnv.hostedEnvironment).thenReturn(devEnvironment);
       answerExchangesWith([
         jsonResponse({'error': 'invalid_grant'}, status: 400),
       ]);

@@ -177,10 +177,16 @@ class StoredLoginSource extends CredentialSource {
     final error = challenge?.parameters['error'];
     if (error == null) return;
 
-    final uri = challenge!.parameters['error_uri'];
+    // A token from an auth service the server does not trust is refused
+    // like an expired one, so say which to set when that may be why.
+    final description = [
+      ?challenge!.parameters['error_description'],
+      ?shorebirdEnv.authServiceMismatch,
+    ].join(' ');
+    final uri = challenge.parameters['error_uri'];
     throw oauth2.AuthorizationException(
       error,
-      challenge.parameters['error_description'],
+      description.isEmpty ? null : description,
       uri == null ? null : Uri.parse(uri),
     );
   }
