@@ -1,4 +1,5 @@
 @ECHO OFF
+REM cspell:words LASTEXITCODE
 
 REM Detect which PowerShell executable is available on the Host
 REM PowerShell version <= 5: PowerShell.exe
