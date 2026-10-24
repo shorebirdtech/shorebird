@@ -13,8 +13,9 @@
 //      main() prints
 //   2. publishes patch 1 (good), installs it, and times launches of it
 //   3. publishes patch 2 (broken), lets the app download and install it, then
-//      overwrites the installed file with zeros of the same size, so the
-//      engine can't load it
+//      zeros the VM snapshot in the installed file. The file still loads as
+//      an ELF of the same size, and the engine dies starting the Dart VM,
+//      after it has recorded that it is booting patch 2: a crash on boot
 //   4. launches the app: it must not run patch 2
 //   5. launches it again: it must run patch 1, the last patch that booted
 //   6. launches it once more, letting the update check finish, then again:
@@ -32,6 +33,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 /// How long one launch may take to finish its update check, and to print its
 /// label.
@@ -210,10 +212,7 @@ dependencies:
     ]),
   );
   await update(install, 'broken');
-  final artifact = installedArtifact(install, 2);
-  final length = artifact.lengthSync();
-  artifact.writeAsBytesSync(List.filled(length, 0));
-  print('Overwrote $length bytes of ${artifact.path} with zeros.');
+  zeroVmSnapshot(installedArtifact(install, 2));
 
   final (labeled, code, crashLog) = await launch(
     install,
@@ -337,6 +336,43 @@ File installedArtifact(Install install, int number) {
     if (file.path.endsWith(suffix)) return file;
   }
   throw Exception('Patch $number is not installed under ${install.home}.');
+}
+
+/// Overwrites the VM snapshot in the ELF [file] with zeros, in place. Dart
+/// 3.13 merged it into one snapshot with the isolate's.
+void zeroVmSnapshot(File file) {
+  const symbolNames = {'_kDartSnapshotData', '_kDartVmSnapshotData'};
+  final bytes = file.readAsBytesSync();
+  final data = ByteData.sublistView(bytes);
+  int u16(int at) => data.getUint16(at, Endian.little);
+  int u32(int at) => data.getUint32(at, Endian.little);
+  int u64(int at) => data.getUint64(at, Endian.little);
+  String name(int at) => ascii.decode(bytes.sublist(at, bytes.indexOf(0, at)));
+
+  // ELF64 section headers: offset, entry size and count from the file header.
+  final sections = [
+    for (var i = 0; i < u16(0x3c); i++) u64(0x28) + i * u16(0x3a),
+  ];
+  const dynsymType = 11;
+  final dynsym = sections.firstWhere((s) => u32(s + 4) == dynsymType);
+  final strings = u64(sections[u32(dynsym + 40)] + 24);
+  // ELF64 symbols are 24 bytes: name, info, other, section, value, size.
+  for (
+    var at = u64(dynsym + 24);
+    at < u64(dynsym + 24) + u64(dynsym + 32);
+    at += 24
+  ) {
+    final symbolName = name(strings + u32(at));
+    if (!symbolNames.contains(symbolName)) continue;
+    final section = sections[u16(at + 6)];
+    final offset = u64(section + 24) + u64(at + 8) - u64(section + 16);
+    final size = u64(at + 16);
+    bytes.fillRange(offset, offset + size, 0);
+    file.writeAsBytesSync(bytes);
+    print('Zeroed $size bytes of $symbolName at $offset in ${file.path}.');
+    return;
+  }
+  throw Exception('${file.path} has none of $symbolNames.');
 }
 
 /// Runs [install] until a line of its output matches [until], it exits, or
