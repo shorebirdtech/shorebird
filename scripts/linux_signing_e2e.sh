@@ -81,7 +81,6 @@ for case_name in "${CASES[@]}"; do
     fi
 done
 
-TIMINGS=()
 # Runs a command and records its wall time under [name].
 timed() {
     local name=$1
@@ -91,11 +90,31 @@ timed() {
     TIMINGS+=("$name $((SECONDS - start))s")
 }
 
+# Prints the results so far and the wall time of each step, also to the job
+# summary. Runs on exit, so a leg that stops early still reports them.
+report() {
+    local report
+    report=$(
+        echo "### Patch signing on Linux, Flutter $FLUTTER_VERSION"
+        echo
+        echo "| Case | Expected | Actual | Result | Time |"
+        echo "| --- | --- | --- | --- | --- |"
+        printf '%s\n' "${RESULTS[@]}"
+        echo
+        echo "Wall time by step: $(printf '%s, ' "${TIMINGS[@]}" | sed 's/, $//')"
+    )
+    echo "$report"
+    if [[ -n "$GITHUB_STEP_SUMMARY" ]]; then echo "$report" >>"$GITHUB_STEP_SUMMARY"; fi
+}
+
+RESULTS=()
+TIMINGS=()
 APP_PIDS=()
 XVFB_PID=
 cleanup() {
     local status=$?
     set +e
+    report
     for pid in "${APP_PIDS[@]}"; do kill "$pid" 2>/dev/null; done
     [[ -n "$XVFB_PID" ]] && kill "$XVFB_PID" 2>/dev/null
     # Each leg mints an app; delete it so the e2e account's app list stays
@@ -137,7 +156,6 @@ launch_until() {
     return $matched
 }
 
-RESULTS=()
 FAILED=0
 # Launches the install [bundle] (state in [home]) twice after the patch that
 # prints [label] was published: once to download and install it, once to
@@ -278,18 +296,6 @@ for mode in strict install_only; do
     timed "check_managed_$mode" check_case "managed_$mode" "$WORK/managed_$mode" \
         "$WORK/home_managed_$mode" managed-patch
 done
-
-REPORT=$(
-    echo "### Patch signing on Linux, Flutter $FLUTTER_VERSION"
-    echo
-    echo "| Case | Expected | Actual | Result | Time |"
-    echo "| --- | --- | --- | --- | --- |"
-    printf '%s\n' "${RESULTS[@]}"
-    echo
-    echo "Wall time by step: $(printf '%s, ' "${TIMINGS[@]}" | sed 's/, $//')"
-)
-echo "$REPORT"
-if [[ -n "$GITHUB_STEP_SUMMARY" ]]; then echo "$REPORT" >>"$GITHUB_STEP_SUMMARY"; fi
 
 if ((FAILED)); then
     echo "❌ Results differ from $EXPECTED_FILE."
