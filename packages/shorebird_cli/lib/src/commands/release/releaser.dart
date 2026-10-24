@@ -154,10 +154,10 @@ To change the version of this release, change your app's version in your pubspec
   /// embeds none.
   ///
   /// A key passed with --public-key-path or --public-key-cmd is the
-  /// customer's, who signs every patch. With --managed-signing the build
-  /// embeds the managed key the server returns for the app, and Shorebird
-  /// signs every patch; a failed fetch fails the release, so it never
-  /// silently goes unsigned. Otherwise the build embeds no key.
+  /// customer's, who signs every patch. Otherwise the build embeds the
+  /// managed key the server returns for the app, and Shorebird signs every
+  /// patch; a failed fetch fails the release, so it never silently goes
+  /// unsigned. With --no-patch-signing the build embeds no key.
   Future<String?> resolvePatchSigningKey() async {
     final customerKey = await getEncodedPublicKey();
     if (customerKey != null) {
@@ -166,7 +166,7 @@ To change the version of this release, change your app's version in your pubspec
       );
       return customerKey;
     }
-    if (!argResults.managedSigningEnabled) {
+    if (!argResults.patchSigningEnabled) {
       signing = const ArtifactSigningRequest(
         mode: ReleaseSigningMode.unsigned,
       );

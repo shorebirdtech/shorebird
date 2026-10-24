@@ -282,8 +282,10 @@ To change the version of this release, change your app's version in your pubspec
     });
 
     group('resolvePatchSigningKey', () {
-      test('embeds the managed key with --managed-signing', () async {
-        when(() => argResults['managed-signing']).thenReturn(true);
+      test('embeds the managed key by default', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(true);
 
         final key = await runWithOverrides(releaser.resolvePatchSigningKey);
 
@@ -302,7 +304,10 @@ To change the version of this release, change your app's version in your pubspec
         ).called(1);
       });
 
-      test('embeds no key by default', () async {
+      test('embeds no key with --no-patch-signing', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(false);
         final key = await runWithOverrides(releaser.resolvePatchSigningKey);
 
         expect(key, isNull);
