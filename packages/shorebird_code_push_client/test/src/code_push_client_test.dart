@@ -1557,6 +1557,28 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
+      test('sends the signing mode', () async {
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+              signingMode: ReleaseSigningMode.managed,
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'release_id': releaseId,
+            'metadata': {'foo': 'bar'},
+            'signing_mode': 'managed',
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(

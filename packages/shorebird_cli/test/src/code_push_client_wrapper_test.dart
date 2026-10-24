@@ -181,6 +181,7 @@ void main() {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(ReleaseSigningMode.unsigned);
       registerFallbackValue(
         const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
       );
@@ -3396,6 +3397,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               metadata: any(named: 'metadata'),
+              signingMode: any(named: 'signingMode'),
             ),
           ).thenThrow(error);
 
@@ -3405,6 +3407,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 appId: appId,
                 releaseId: releaseId,
                 metadata: {'foo': 'bar'},
+                signingMode: ReleaseSigningMode.managed,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -3418,6 +3421,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               metadata: any(named: 'metadata'),
+              signingMode: any(named: 'signingMode'),
             ),
           ).thenAnswer((_) async => patch);
 
@@ -3426,6 +3430,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               metadata: {'foo': 'bar'},
+              signingMode: ReleaseSigningMode.managed,
             ),
           );
 
@@ -3750,6 +3755,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               metadata: any(named: 'metadata'),
+              signingMode: any(named: 'signingMode'),
             ),
           ).thenAnswer((_) async => patch);
           when(
@@ -3783,6 +3789,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               track: track,
               patchArtifactBundles: patchArtifactBundles,
               metadata: {'foo': 'bar'},
+              signingMode: ReleaseSigningMode.managed,
             ),
           );
 
@@ -3791,6 +3798,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               metadata: {'foo': 'bar'},
+              signingMode: ReleaseSigningMode.managed,
             ),
           ).called(1);
           verify(
@@ -3839,6 +3847,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               track: track,
               patchArtifactBundles: patchArtifactBundles,
               metadata: {'foo': 'bar'},
+              signingMode: ReleaseSigningMode.managed,
             ),
           );
 
@@ -3847,6 +3856,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               metadata: {'foo': 'bar'},
+              signingMode: ReleaseSigningMode.managed,
             ),
           ).called(1);
           verify(
@@ -3884,6 +3894,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               track: track,
               patchArtifactBundles: patchArtifactBundles,
               metadata: {'foo': 'bar'},
+              signingMode: ReleaseSigningMode.managed,
             ),
           );
 

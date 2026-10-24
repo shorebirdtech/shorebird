@@ -168,6 +168,7 @@ More info: ${troubleshootingUrl.toLink()}.
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
+      signingMode: signingMode,
       platform: releaseType.releasePlatform,
       track: track,
       patchArtifactBundles: artifacts,
@@ -217,6 +218,18 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The managed public key (PEM) the release being patched embeds, which
   /// the patch builds against. Null unless the release is managed-signed.
   String? releaseManagedPublicKeyPem;
+
+  /// How this patch is built to be signed: by Shorebird for a release that
+  /// embeds a managed key, by the caller's own key when one is given, and
+  /// not at all otherwise.
+  ///
+  /// Sent when creating the patch: the server refuses a patch to a
+  /// managed-signed release from a CLI that doesn't send it.
+  ReleaseSigningMode get signingMode {
+    if (releaseManagedPublicKeyPem != null) return ReleaseSigningMode.managed;
+    if (_resolveSigner() != null) return ReleaseSigningMode.customer;
+    return ReleaseSigningMode.unsigned;
+  }
 
   /// Gets the base64-encoded public key the patch build embeds.
   ///

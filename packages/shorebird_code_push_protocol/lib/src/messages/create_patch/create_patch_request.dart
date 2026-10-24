@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
 
 /// {@template create_patch_request}
 /// The request body for POST /apps/{appId}/patches.
@@ -10,6 +11,7 @@ class CreatePatchRequest {
   const CreatePatchRequest({
     required this.releaseId,
     required this.metadata,
+    this.signingMode,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchRequest].
@@ -20,6 +22,9 @@ class CreatePatchRequest {
       () => CreatePatchRequest(
         releaseId: json['release_id'] as int,
         metadata: json['metadata'] as Map<String, dynamic>,
+        signingMode: ReleaseSigningMode.maybeFromJson(
+          json['signing_mode'] as String?,
+        ),
       ),
     );
   }
@@ -40,11 +45,15 @@ class CreatePatchRequest {
   /// create the patch and the environment it was run in.
   final Map<String, dynamic> metadata;
 
+  /// How a release artifact's binary is signed for patch signing.
+  final ReleaseSigningMode? signingMode;
+
   /// Converts a [CreatePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'release_id': releaseId,
       'metadata': metadata,
+      'signing_mode': ?signingMode?.toJson(),
     };
   }
 
@@ -52,6 +61,7 @@ class CreatePatchRequest {
   int get hashCode => Object.hashAll([
     releaseId,
     mapHash(metadata),
+    signingMode,
   ]);
 
   @override
@@ -59,6 +69,7 @@ class CreatePatchRequest {
     if (identical(this, other)) return true;
     return other is CreatePatchRequest &&
         releaseId == other.releaseId &&
-        mapsEqual(metadata, other.metadata);
+        mapsEqual(metadata, other.metadata) &&
+        signingMode == other.signingMode;
   }
 }

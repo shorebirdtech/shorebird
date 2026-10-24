@@ -30,6 +30,7 @@ void main() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(DeploymentTrack.stable);
       registerFallbackValue(FakeFile());
+      registerFallbackValue(ReleaseSigningMode.unsigned);
     });
 
     group('linkPercentage', () {
@@ -295,6 +296,7 @@ void main() {
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
             metadata: any(named: 'metadata'),
+            signingMode: any(named: 'signingMode'),
             platform: any(named: 'platform'),
             track: any(named: 'track'),
             patchArtifactBundles: any(named: 'patchArtifactBundles'),
@@ -319,6 +321,7 @@ void main() {
             appId: appId,
             releaseId: releaseId,
             metadata: metadata,
+            signingMode: ReleaseSigningMode.unsigned,
             platform: ReleaseType.android.releasePlatform,
             track: track,
             patchArtifactBundles: artifacts,
@@ -486,6 +489,50 @@ void main() {
         );
 
         expect(key, isNull);
+      });
+    });
+
+    group('signingMode', () {
+      late ArgParser argParser;
+
+      setUp(() {
+        argParser = ArgParser()
+          ..addOption(CommonArguments.privateKeyArg.name)
+          ..addOption(CommonArguments.signCmd.name);
+      });
+
+      _TestPatcher patcherWith(List<String> args) => _TestPatcher(
+        argParser: argParser,
+        argResults: argParser.parse(args),
+        flavor: null,
+        target: null,
+      );
+
+      test('is managed when the release embeds a managed key', () {
+        final patcher = patcherWith([])
+          ..releaseManagedPublicKeyPem = 'managed-pem';
+        expect(patcher.signingMode, equals(ReleaseSigningMode.managed));
+      });
+
+      test('is customer when a private key is given', () {
+        final patcher = patcherWith([
+          '--${CommonArguments.privateKeyArg.name}=private.pem',
+        ]);
+        expect(patcher.signingMode, equals(ReleaseSigningMode.customer));
+      });
+
+      test('is customer when a sign command is given', () {
+        final patcher = patcherWith([
+          '--${CommonArguments.signCmd.name}=sign',
+        ]);
+        expect(patcher.signingMode, equals(ReleaseSigningMode.customer));
+      });
+
+      test('is unsigned otherwise', () {
+        expect(
+          patcherWith([]).signingMode,
+          equals(ReleaseSigningMode.unsigned),
+        );
       });
     });
 

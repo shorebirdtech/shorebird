@@ -1075,12 +1075,14 @@ $name artifact already exists, continuing...''');
     createSupplementProgress.complete();
   }
 
-  /// Creates a patch for the given [appId], [releaseId], and [metadata].
+  /// Creates a patch for the given [appId], [releaseId], and [metadata],
+  /// built to be signed as [signingMode].
   @visibleForTesting
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    required ReleaseSigningMode signingMode,
   }) {
     return _withProgress(
       'Creating patch',
@@ -1088,6 +1090,7 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         metadata: metadata,
+        signingMode: signingMode,
       ),
     );
   }
@@ -1207,6 +1210,7 @@ $name artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required Json metadata,
+    required ReleaseSigningMode signingMode,
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
@@ -1215,6 +1219,7 @@ $name artifact already exists, continuing...''');
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
+      signingMode: signingMode,
     );
 
     await createPatchArtifacts(

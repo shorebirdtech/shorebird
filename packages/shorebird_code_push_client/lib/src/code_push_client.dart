@@ -556,15 +556,21 @@ class CodePushClient {
     return Channel.fromJson(body);
   }
 
-  /// Create a new patch for the given [releaseId].
+  /// Create a new patch for the given [releaseId], built to be signed as
+  /// [signingMode].
+  ///
+  /// The server refuses a patch to a managed-signed release without a
+  /// [signingMode], since only a CLI that predates managed signing omits it.
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    ReleaseSigningMode? signingMode,
   }) async {
     final request = CreatePatchRequest(
       releaseId: releaseId,
       metadata: metadata,
+      signingMode: signingMode,
     );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
