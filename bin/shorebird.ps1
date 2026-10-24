@@ -1,3 +1,4 @@
+# cspell:words LASTEXITCODE
 # This is the windows equivalent of the `third_party/flutter/bin/internal/shared.sh` script
 # compiles `shorebird_cli/bin/shorebird_cli.dart` to `bin/cache/shorebird.snapshot`
 
@@ -182,3 +183,4 @@ if (Test-ShorebirdNeedsUpdate) {
 }
 
 & $dart --disable-dart-dev --packages="$shorebirdRootDir\.dart_tool\package_config.json" "$snapshotPath" $args
+exit $LASTEXITCODE

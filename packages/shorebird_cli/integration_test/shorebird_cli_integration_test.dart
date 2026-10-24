@@ -83,6 +83,17 @@ void main() {
     expect(result.stdout, stringContainsInOrder(['Engine', 'revision']));
   });
 
+  // A launcher that drops the exit code turns every failure into a success,
+  // which is what the Windows one did: each step below would then pass its
+  // exit code check and fail later on a missing file.
+  test('a failing command exits with its error code', () {
+    final result = runCommand(
+      'shorebird not-a-command',
+      workingDirectory: '.',
+    );
+    expect(result.exitCode, equals(ExitCode.usage.code));
+  });
+
   test(
     'create an app with a release and patch',
     () async {
