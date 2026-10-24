@@ -56,6 +56,13 @@ import 'dart:io';
 const waitTimeout = Duration(minutes: 5);
 
 const package = 'com.example.e2e_test.e2e_test';
+
+// The app's crash in a device log: the activity manager's record of it, or the
+// native crash line, whose thread name is the package's last 15 characters.
+final _crashLine = RegExp(
+  r'am_crash: .*com\.example\.e2e_test|Fatal signal .*e_test\.e2e_test',
+);
+
 const releaseVersion = '0.1.0+1';
 
 /// This checkout: the default CLI under test, and the one that runs `init`
@@ -584,9 +591,16 @@ Future<void> waitForLine(
       '-b',
       'all',
     ], environment: env);
+    // A crashed app logs nothing more, so without naming the crash the
+    // failure reads as a wait that timed out.
+    final crash = '${log.stdout}'
+        .split('\n')
+        .where(_crashLine.hasMatch)
+        .join('\n');
     throw Failure(
       "'$pattern' wasn't printed: `$executable ${args.join(' ')}` ended, or "
-      'ran past $waitTimeout. Device log (all buffers):\n${log.stdout}',
+      'ran past $waitTimeout. Device log (all buffers):\n${log.stdout}'
+      '${crash.isEmpty ? '' : '\n❌ The app crashed:\n$crash'}',
     );
   }
 }
