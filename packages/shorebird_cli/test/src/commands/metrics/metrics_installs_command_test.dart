@@ -18,7 +18,7 @@ void main() {
     flutterRevision: 'abc',
     flutterVersion: '3.27.0',
     displayName: '1.0.0+1',
-    platformStatuses: const {},
+    platforms: const {},
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );

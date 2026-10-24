@@ -1218,16 +1218,6 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
   }
 }
 
-/// Extension on [Release] that exposes the active platforms (e.g. platforms
-/// that can be previewed).
-extension Previewable on Release {
-  /// Returns the platforms that can be previewed.
-  List<ReleasePlatform> get activePlatforms => platformStatuses.entries
-      .where((e) => e.value == ReleaseStatus.active)
-      .map((e) => e.key)
-      .toList();
-}
-
 /// Given two [Release]s, one with all the platforms, previewable or not,
 /// and one with only the previewable platforms, this method will check for
 /// platforms that are not previewable.
