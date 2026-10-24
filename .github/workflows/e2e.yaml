@@ -189,9 +189,9 @@ jobs:
           # version than the Dart of older Flutter versions this matrix sets up.
           script: ./scripts/no_android_sdk_downloads.sh bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
 
-  # Patch signing end to end on Linux, macOS and Android: release and patch
-  # with the real CLI against dev, then run the app and check which code it
-  # runs. One leg per platform, on the Flutter the CLI pins; pass a version to
+  # Patch signing end to end on Linux, macOS, Windows and Android: release and
+  # patch with the real CLI against dev, then run the app and check which code
+  # it runs. One leg per platform, on the Flutter the CLI pins; pass a version to
   # the script to run another (scripts/patch_signing_e2e.dart). Runs nightly,
   # and unlike the patch job also on a cli_ref dispatch, testing that ref.
   linux_signing:
@@ -262,6 +262,40 @@ jobs:
 
       - name: 🧪 Run macOS Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart macos
+
+  windows_signing:
+    name: windows signing
+    runs-on: windows-latest
+    # A Windows build takes a few minutes, and this makes six.
+    timeout-minutes: 50
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: 🧪 Run Windows Signing E2E Tests
+        run: dart scripts/patch_signing_e2e.dart windows
 
   android_signing:
     name: android signing
