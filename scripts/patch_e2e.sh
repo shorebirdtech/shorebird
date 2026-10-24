@@ -9,12 +9,17 @@
 #                       [<flutter-version|default>]
 #
 #   <flutter-version>  Flutter version to release with. "default" (or nothing)
-#                      releases with the Flutter version the CLI pins.
+#                      releases with the Flutter version the CLI pins. The
+#                      test app is created with the `flutter` on PATH, so use
+#                      one whose templates that version builds (CI installs
+#                      the same version).
 #   --cli <path>       Shorebird checkout to test (the directory holding
 #                      bin/shorebird). Defaults to the checkout holding this
 #                      script.
 #   --cli <version>    A released CLI version, e.g. 1.4.0. Its tag is cloned
-#                      once into ~/.cache/shorebird_patch_e2e/ and reused.
+#                      once into ${XDG_CACHE_HOME:-~/.cache}/shorebird_patch_e2e/
+#                      and reused. Its test app is created with that
+#                      version's pinned Flutter, whose templates it can build.
 #   --avd <name>       AVD to boot when no device is attached. Defaults to
 #                      $SHOREBIRD_E2E_AVD, else the first AVD
 #                      `emulator -list-avds` prints.
@@ -25,7 +30,8 @@
 #
 # Device: an attached device or running emulator is used as is (set
 # ANDROID_SERIAL to pick one of several). With none attached, the script boots
-# the AVD headless, waits for it to finish booting, and shuts it down on exit.
+# the AVD headless (as emulator-5580, or on the port ANDROID_SERIAL=emulator-N
+# names), waits for it to finish booting, and shuts it down on exit.
 #
 # Server: $SHOREBIRD_HOSTED_URL, default https://api-dev.shorebird.dev. The app
 # the script creates there is deleted on exit, pass or fail.
@@ -49,7 +55,12 @@ FLUTTER_VERSION=default
 CLI=$REPO_ROOT
 AVD=${SHOREBIRD_E2E_AVD:-}
 ORG_ID=${SHOREBIRD_E2E_ORG_ID:-}
+EMULATOR_PID=
 while (($# > 0)); do
+    if [[ "$1" == --cli || "$1" == --avd || "$1" == --org-id ]] && (($# < 2)); then
+        echo "❌ $1 needs a value. See the usage at the top of $0."
+        exit 64
+    fi
     case $1 in
     --cli)
         CLI=$2
@@ -132,7 +143,7 @@ wait_for_boot() {
     set +x
     local deadline=$((SECONDS + WAIT_SECONDS))
     until [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; do
-        if [[ -n "${EMULATOR_PID:-}" ]] && ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+        if [[ -n "$EMULATOR_PID" ]] && ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
             echo "❌ The emulator exited while booting. Its log:"
             cat "$EMULATOR_LOG" || true
             exit 1
@@ -148,6 +159,8 @@ wait_for_boot() {
 }
 
 has_device() {
+    # A cold adb server can list a running emulator as offline at first.
+    adb start-server
     if [[ -n "${ANDROID_SERIAL:-}" ]]; then
         [[ "$(adb -s "$ANDROID_SERIAL" get-state 2>/dev/null)" == "device" ]]
     else
@@ -174,6 +187,12 @@ start_emulator() {
         fi
     fi
     local port=5580
+    if [[ "${ANDROID_SERIAL:-}" =~ ^emulator-([0-9]+)$ ]]; then
+        port=${BASH_REMATCH[1]}
+    elif [[ -n "${ANDROID_SERIAL:-}" ]]; then
+        echo "❌ ANDROID_SERIAL=$ANDROID_SERIAL is not attached."
+        exit 1
+    fi
     export ANDROID_SERIAL=emulator-$port
     EMULATOR_LOG="$TEMP_DIR/emulator.log"
     echo "No device attached; booting AVD '$AVD' as $ANDROID_SERIAL."
@@ -184,7 +203,7 @@ start_emulator() {
 }
 
 stop_emulator() {
-    if [[ -n "${EMULATOR_PID:-}" ]]; then
+    if [[ -n "$EMULATOR_PID" ]]; then
         echo "Shutting down the emulator this script started"
         adb emu kill >/dev/null 2>&1 || true
         local deadline=$((SECONDS + 30))
@@ -270,8 +289,19 @@ fi
 
 cd "$TEMP_DIR"
 
+# A released CLI's pinned Flutter may not build the templates a newer host
+# Flutter writes, so create the app with that Flutter. `shorebird --version`
+# above installed it.
+CREATE_FLUTTER=flutter
+if [[ "$FLUTTER_VERSION" == "default" && "$CLI_DIR" != "$REPO_ROOT" ]]; then
+    PINNED_FLUTTER="$CLI_DIR/bin/cache/flutter/$(cat "$CLI_DIR/bin/internal/flutter.version")/bin/flutter"
+    if [[ -x "$PINNED_FLUTTER" ]]; then
+        CREATE_FLUTTER=$PINNED_FLUTTER
+    fi
+fi
+
 # Create a new empty flutter project
-flutter create e2e_test --org com.example.e2e_test --empty --platforms android
+"$CREATE_FLUTTER" create e2e_test --org com.example.e2e_test --empty --platforms android
 cd e2e_test
 
 # Replace the contents of "lib/main.dart" with a single print statement.
@@ -282,15 +312,16 @@ echo "void main() { print('hello world'); }" >lib/main.dart
 # patch below use the CLI under test.
 "$REPO_ROOT/bin/shorebird" init --force "${INIT_ARGS[@]}" -v
 
+# Extract the app_id from the "shorebird.yaml" right away, so the cleanup trap
+# deletes the app even if a later step fails.
+APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
+
 # Run Flutter & Shorebird doctor to ensure that the project is set up correctly.
 flutter doctor --verbose
 shorebird doctor --verbose
 
 # Point to the development environment
 echo "base_url: $SHOREBIRD_HOSTED_URL" >>shorebird.yaml
-
-# Extract the app_id from the "shorebird.yaml"
-APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
 # Create Debug Keystore
 # Android Studio creates this keystore by default, but we need to create it manually for CI.
@@ -304,7 +335,7 @@ fi
 
 # CLIs before --split-debug-info became a `shorebird` option (e.g. 1.4.0)
 # take it as a flag forwarded to `flutter build`.
-if shorebird release --help | grep -q -- --split-debug-info; then
+if shorebird release --help | grep -qE '^ +--split-debug-info'; then
     SPLIT_DEBUG_INFO_ARGS=(--split-debug-info=./build/symbols)
 else
     SPLIT_DEBUG_INFO_ARGS=(-- --split-debug-info=./build/symbols)
