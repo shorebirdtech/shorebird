@@ -10,6 +10,7 @@ $shorebirdRootDir = (Get-Item $shorebirdBinDir\..\).FullName
 $flutterVersion = Get-Content "$shorebirdBinDir\internal\flutter.version"
 $shorebirdCacheDir = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache")
 $shorebirdCliDir = [IO.Path]::Combine($shorebirdRootDir, "packages", "shorebird_cli")
+# shorebird.bat builds the same dart and snapshot paths; keep them in sync.
 $snapshotPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.snapshot")
 $stampPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.stamp")
 $flutterPath = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion)
@@ -182,5 +183,11 @@ if (Test-ShorebirdNeedsUpdate) {
     Update-Shorebird
 }
 
+# shorebird.bat runs the snapshot itself, so cmd's arguments reach dart as typed.
+if ($env:SHOREBIRD_SETUP_ONLY) {
+    exit 0
+}
+
 & $dart --disable-dart-dev --packages="$shorebirdRootDir\.dart_tool\package_config.json" "$snapshotPath" $args
+# Exit with the CLI's exit code; otherwise powershell -File exits 0.
 exit $LASTEXITCODE
