@@ -35,9 +35,9 @@
 //     [<flutter-version>]
 // Without a version it uses the Flutter the CLI pins.
 
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
+
+import 'e2e_helpers.dart';
 
 /// What happens to a patch on an install.
 enum Outcome {
@@ -75,21 +75,6 @@ Outcome expected(String patch, Mode mode, String? flutter) {
   return Outcome.refused;
 }
 
-/// How long one launch may take to finish its update check, and to print its
-/// label.
-const updateTimeout = Duration(minutes: 3);
-const bootTimeout = Duration(minutes: 1);
-
-final results = <String>[];
-
-/// The app this run made, to delete at the end.
-String? runAppId;
-final timings = <String>[];
-bool failed = false;
-
-/// Why the run stopped before checking every case, if it did.
-String? stoppedEarly;
-
 Future<void> main(List<String> args) async {
   final target = switch (args.firstOrNull) {
     'linux' => LinuxTarget(),
@@ -107,53 +92,14 @@ Future<void> main(List<String> args) async {
   final flutter = args.length == 2 ? args[1] : null;
   final work = Directory.systemTemp.createTempSync('shorebird_signing_');
   await target.setUp();
-  Future<void> cleanUp() async {
-    report(target, flutter);
-    final appId = runAppId;
-    runAppId = null;
-    if (appId != null) {
-      // Each run mints an app; delete it so the e2e account's app list stays
-      // flat (see patch_e2e.dart).
-      print('Deleting e2e app $appId');
-      final result = await Process.run('shorebird', [
-        'api',
-        '-X',
-        'DELETE',
-        'apps/$appId',
-      ]);
-      if (result.exitCode != 0) {
-        print('⚠️  Failed to delete e2e app $appId: ${result.stderr}');
-      }
-    }
-    await target.tearDown();
-  }
-
-  // A cancelled or timed-out job is signaled, which skips `finally`.
-  final signals = [
-    for (final signal in [ProcessSignal.sigint, ProcessSignal.sigterm])
-      signal.watch().listen((_) async {
-        stoppedEarly = 'got $signal';
-        await cleanUp();
-        exit(1);
-      }),
-  ];
-  try {
-    await run(target, work, flutter);
-  } catch (error) {
-    stoppedEarly = '$error';
-    rethrow;
-  } finally {
-    await cleanUp();
-    // Watching a signal keeps the process alive.
-    for (final subscription in signals) {
-      await subscription.cancel();
-    }
-  }
-  if (failed) {
-    print('❌ Results differ from what is expected.');
-    exit(1);
-  }
-  print('✅ All results are as expected.');
+  await runE2e(
+    title:
+        'Patch signing on ${target.title}, '
+        'Flutter ${flutter ?? 'pinned by the CLI'}',
+    columns: ['Case', 'Expected', 'Actual', 'Result', 'Time'],
+    body: () => run(target, work, flutter),
+    tearDown: target.tearDown,
+  );
 }
 
 /// Makes the app, its releases and patches, and checks each install.
@@ -174,53 +120,9 @@ Future<void> run(Target target, Directory work, String? flutter) async {
     ]);
   }
 
-  await timed(
-    'create',
-    () => sh(work, pinnedFlutter(), [
-      'create',
-      'e2e_test',
-      '--org',
-      'com.example.e2e_test',
-      '--empty',
-      '--platforms',
-      target.name,
-    ]),
-  );
-  final app = Directory('${work.path}/e2e_test');
-  // `flutter create` writes the pinned Flutter's SDK constraint and lints,
-  // which older Flutter versions can't resolve.
-  File('${app.path}/pubspec.yaml').writeAsStringSync('''
-name: e2e_test
-version: 1.0.0+1
-environment:
-  sdk: ">=3.0.0 <4.0.0"
-dependencies:
-  flutter:
-    sdk: flutter
-''');
-  File('${app.path}/analysis_options.yaml').deleteSync();
-  setLabel(app, 'release');
-  final orgId = Platform.environment['SHOREBIRD_ORG_ID'];
-  await timed(
-    'init',
-    () => sh(app, 'shorebird', [
-      'init',
-      '--force',
-      if (orgId != null) '--org-id=$orgId',
-      '-v',
-    ]),
-  );
-  final hostedUrl =
-      Platform.environment['SHOREBIRD_HOSTED_URL'] ??
-      'https://api-dev.shorebird.dev';
-  final shorebirdYaml = File('${app.path}/shorebird.yaml')
-    ..writeAsStringSync('base_url: $hostedUrl\n', mode: FileMode.append);
-  runAppId = RegExp(
-    r'app_id: (\S+)',
-  ).firstMatch(shorebirdYaml.readAsStringSync())!.group(1);
+  final app = await createApp(work, target.name, version: '1.0.0+1');
 
   // Release 1.0.0+1 with the customer's key A.
-  setVersion(app, '1.0.0+1');
   await timed(
     'release_customer',
     () => sh(app, 'shorebird', [
@@ -353,14 +255,7 @@ class LinuxTarget extends Target {
   String get title => 'Linux';
 
   @override
-  Future<void> setUp() async {
-    _xvfb = await Process.start('Xvfb', [
-      ':99',
-      '-screen',
-      '0',
-      '1024x768x24',
-    ], mode: ProcessStartMode.inheritStdio);
-  }
+  Future<void> setUp() async => _xvfb = await startXvfb();
 
   @override
   Future<void> tearDown() async => _xvfb?.kill();
@@ -411,14 +306,7 @@ class LinuxInstall extends Install {
   Future<(bool, String)> launch({
     required RegExp until,
     required Duration timeout,
-  }) async {
-    final process = await Process.start(
-      '${bundle.path}/e2e_test',
-      [],
-      environment: {'HOME': home.path, 'DISPLAY': ':99'},
-    );
-    return watch(process, until: until, timeout: timeout);
-  }
+  }) => launchLinux(bundle, home, until: until, timeout: timeout);
 }
 
 class MacosTarget extends Target {
@@ -613,30 +501,10 @@ class AndroidInstall extends Install {
 Future<void> check(String patch, Install install, String? flutter) async {
   final name = '${patch}_${install.mode.label}';
   final stopwatch = Stopwatch()..start();
-  final (updated, updateLog) = await install.launch(
-    until: RegExp('Update thread finished|Update failed'),
-    timeout: updateTimeout,
+  final (:updateLog, :bootLog, label: running) = await updateAndBoot(
+    name,
+    install.launch,
   );
-  if (!updated) {
-    throw Exception(
-      "$name: the update check didn't finish (exited, or ran past "
-      '$updateTimeout). Its output:\n$updateLog',
-    );
-  }
-  final (booted, bootLog) = await install.launch(
-    until: RegExp('signing-e2e: '),
-    timeout: bootTimeout,
-  );
-  if (!booted) {
-    throw Exception(
-      '$name: the app printed no label (exited, or ran past $bootTimeout). '
-      'Its output:\n$bootLog',
-    );
-  }
-
-  final running = RegExp(
-    'signing-e2e: ([a-z_]+)',
-  ).firstMatch(bootLog)!.group(1);
   final String actual;
   if (running == patch) {
     actual = 'applied';
@@ -671,106 +539,5 @@ Future<void> check(String patch, Install install, String? flutter) async {
   print('$name: expected ${want.name}, $actual (runs $running): $verdict');
   if (verdict == 'FAIL' || verdict.startsWith('XPASS')) {
     print('--- update launch log\n$updateLog\n--- boot launch log\n$bootLog');
-  }
-}
-
-/// Reads [process]'s output until a line matches [until], it exits, or
-/// [timeout] passes, then kills it. Returns whether a line matched, and the
-/// output.
-Future<(bool, String)> watch(
-  Process process, {
-  required RegExp until,
-  required Duration timeout,
-}) async {
-  final output = StringBuffer();
-  final matched = Completer<bool>();
-  void onLine(String line) {
-    output.writeln(line);
-    if (!matched.isCompleted && until.hasMatch(line)) matched.complete(true);
-  }
-
-  // adb logcat sometimes lets through bytes that aren't UTF-8.
-  const decoder = Utf8Decoder(allowMalformed: true);
-  final streams = [
-    for (final stream in [process.stdout, process.stderr])
-      stream.transform(decoder).transform(const LineSplitter()).listen(onLine),
-  ];
-  unawaited(
-    process.exitCode.then(
-      (_) => matched.isCompleted ? null : matched.complete(false),
-    ),
-  );
-  final found = await matched.future.timeout(timeout, onTimeout: () => false);
-  process.kill();
-  await process.exitCode;
-  for (final s in streams) {
-    await s.cancel();
-  }
-  return (found, output.toString());
-}
-
-/// Runs [executable] in [dir], showing its output; throws if it fails.
-Future<void> sh(Directory dir, String executable, List<String> args) async {
-  final process = await Process.start(
-    executable,
-    args,
-    workingDirectory: dir.path,
-    mode: ProcessStartMode.inheritStdio,
-  );
-  final code = await process.exitCode;
-  if (code != 0) {
-    throw Exception('$executable ${args.join(' ')} exited with $code.');
-  }
-}
-
-Future<void> timed(String name, Future<void> Function() body) async {
-  final stopwatch = Stopwatch()..start();
-  await body();
-  timings.add('$name ${stopwatch.elapsed.inSeconds}s');
-}
-
-void setLabel(Directory app, String label) {
-  File(
-    '${app.path}/lib/main.dart',
-  ).writeAsStringSync("void main() { print('signing-e2e: $label'); }\n");
-}
-
-void setVersion(Directory app, String version) {
-  final pubspec = File('${app.path}/pubspec.yaml');
-  pubspec.writeAsStringSync(
-    pubspec.readAsStringSync().replaceFirst(
-      RegExp('^version: .*', multiLine: true),
-      'version: $version',
-    ),
-  );
-}
-
-/// The Flutter the CLI pins, for `flutter create`; not the version under test.
-String pinnedFlutter() {
-  final root = File(Platform.script.toFilePath()).parent.parent.path;
-  final revision = File(
-    '$root/bin/internal/flutter.version',
-  ).readAsStringSync().trim();
-  return '$root/bin/cache/flutter/$revision/bin/flutter';
-}
-
-/// Prints the results and the wall time of each step, also to the job
-/// summary.
-void report(Target target, String? flutter) {
-  final version = flutter ?? 'pinned by the CLI';
-  final text = [
-    '### Patch signing on ${target.title}, Flutter $version',
-    '',
-    '| Case | Expected | Actual | Result | Time |',
-    '| --- | --- | --- | --- | --- |',
-    ...results,
-    if (stoppedEarly != null) ...['', '❌ Stopped early: $stoppedEarly'],
-    '',
-    'Wall time by step: ${timings.join(', ')}',
-  ].join('\n');
-  print(text);
-  final summary = Platform.environment['GITHUB_STEP_SUMMARY'];
-  if (summary != null && summary.isNotEmpty) {
-    File(summary).writeAsStringSync('$text\n', mode: FileMode.append);
   }
 }
