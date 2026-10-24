@@ -189,11 +189,11 @@ jobs:
           # version than the Dart of older Flutter versions this matrix sets up.
           script: ./scripts/no_android_sdk_downloads.sh bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
 
-  # Patch signing end to end on Linux: release and patch with the real CLI
-  # against dev, then run the app headless and check which code it runs. One
-  # leg, on the Flutter the CLI pins; pass a version to the script to run
-  # another (scripts/patch_signing_e2e.dart). Runs nightly, and unlike the patch
-  # job also on a cli_ref dispatch, testing that ref.
+  # Patch signing end to end on Linux, macOS and Android: release and patch
+  # with the real CLI against dev, then run the app and check which code it
+  # runs. One leg per platform, on the Flutter the CLI pins; pass a version to
+  # the script to run another (scripts/patch_signing_e2e.dart). Runs nightly,
+  # and unlike the patch job also on a cli_ref dispatch, testing that ref.
   linux_signing:
     name: linux signing
     runs-on: ubuntu-latest
@@ -229,7 +229,96 @@ jobs:
         uses: dart-lang/setup-dart@v1
 
       - name: 🧪 Run Linux Signing E2E Tests
-        run: dart scripts/patch_signing_e2e.dart
+        run: dart scripts/patch_signing_e2e.dart linux
+
+  macos_signing:
+    name: macos signing
+    runs-on: macos-latest
+    timeout-minutes: 40
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: 🧪 Run macOS Signing E2E Tests
+        run: dart scripts/patch_signing_e2e.dart macos
+
+  android_signing:
+    name: android signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      # The packages the pinned Flutter's build downloads otherwise; see the
+      # patch job's android-packages.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.2.13676358"
+
+      - name: 🚀 Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: 🧪 Run Android Signing E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          disable-animations: true
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_signing_e2e.dart android
 
   # Rollback end to end on Linux: publish two patches, roll them back and
   # forward with the real CLI against dev, and check which code the app runs
