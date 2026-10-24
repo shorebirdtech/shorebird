@@ -1,0 +1,26 @@
+# Expected results of linux_signing_e2e.sh, one row per Flutter version the
+# e2e workflow's linux_signing job runs (it reads its matrix from this file).
+# "default" is the Flutter the CLI pins.
+#
+#   applied  the app runs the patch
+#   refused  the app keeps the code it ran before the patch
+#   xfail    should be refused but is applied: install_only skips the
+#            signature check on engines built from updater#352 until the
+#            fix (see installOnlyBrokenEngineRevisions). A fixed engine
+#            makes the leg fail until the cell says refused.
+#
+# Cases: managed_* patches a release with a Shorebird-managed key; wrong_key_*,
+# unsigned_* and valid_* patch a release with the customer's key A, signed
+# with key B, unsigned, and signed with key A. *_strict checks the signature
+# at each launch, *_install_only once at install.
+
+flutter  managed_strict managed_install_only wrong_key_strict wrong_key_install_only unsigned_strict unsigned_install_only valid_strict valid_install_only
+default  applied        applied              refused          xfail                  refused         xfail                 applied      applied
+3.47.5   applied        applied              refused          xfail                  refused         xfail                 applied      applied
+3.44.9   applied        applied              refused          xfail                  refused         xfail                 applied      applied
+3.41.9   applied        applied              refused          xfail                  refused         xfail                 applied      applied
+3.38.10  applied        applied              refused          refused                refused         refused               applied      applied
+3.35.7   applied        applied              refused          refused                refused         refused               applied      applied
+3.32.8   applied        applied              refused          refused                refused         refused               applied      applied
+3.29.3   applied        applied              refused          refused                refused         refused               applied      applied
+3.27.4   applied        applied              refused          refused                refused         refused               applied      applied

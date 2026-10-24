@@ -172,6 +172,68 @@ jobs:
           target: default
           script: ./scripts/no_android_sdk_downloads.sh ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
+  linux_signing_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+          sparse-checkout: scripts
+
+      - name: 📋 Read Flutter Versions
+        id: versions
+        run: |
+          versions=$(awk '/^#/ || NF == 0 || $1 == "flutter" { next } { printf "%s\"%s\"", sep, $1; sep="," }' scripts/linux_signing_e2e_expected.txt)
+          echo "versions=[$versions]" >> "$GITHUB_OUTPUT"
+
+  # Patch signing end to end on Linux: release and patch with the real CLI
+  # against dev, then run the app headless and check which code it runs. One
+  # leg per row of scripts/linux_signing_e2e_expected.txt, the same versions
+  # as the patch job. Unlike the patch job it runs on a cli_ref dispatch,
+  # testing that ref.
+  linux_signing:
+    name: linux signing (${{ matrix.flutter-version }})
+    needs: linux_signing_versions
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-version: ${{ fromJSON(needs.linux_signing_versions.outputs.versions) }}
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐧 Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev xvfb
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🧪 Run Linux Signing E2E Tests
+        run: ./scripts/linux_signing_e2e.sh ${{ matrix.flutter-version }}
+
   cli:
     strategy:
       fail-fast: false
