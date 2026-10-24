@@ -53,6 +53,11 @@ that `stable` is moved to.
 
 One commit on `main`, titled `chore: prepare for release <version>`:
 
+If `main` already carries `<version>` (bumped ahead of the release so CLIs
+built from `main` pass a server minimum-version check), the commit only adds
+the release notes.
+
+
 - `packages/shorebird_cli/lib/src/version.dart`: `packageVersion`
 - `packages/shorebird_cli/pubspec.yaml`: `version`
 - `RELEASE_NOTES.md`: a new section at the top,
