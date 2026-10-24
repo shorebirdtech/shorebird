@@ -126,6 +126,9 @@ void main() {
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['flutter-version']).thenReturn('latest');
+      when(
+        () => argResults[CommonArguments.patchSigningArg.name],
+      ).thenReturn(true);
       when(() => argResults.wasParsed(any())).thenReturn(true);
       when(
         () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
@@ -1201,6 +1204,24 @@ Did you mean --release-version=1.0.0+1?''',
       });
     });
 
+    group('--patch-signing', () {
+      test('is on by default', () {
+        expect(
+          command.argParser.parse([])[CommonArguments.patchSigningArg.name],
+          isTrue,
+        );
+      });
+
+      test('is turned off by --no-patch-signing', () {
+        expect(
+          command.argParser.parse([
+            '--no-patch-signing',
+          ])[CommonArguments.patchSigningArg.name],
+          isFalse,
+        );
+      });
+    });
+
     group('printReleaseSummary', () {
       Future<void> printSummary(ReleaseSigningMode mode) => runWithOverrides(
         () => command.printReleaseSummary(
@@ -1231,12 +1252,14 @@ Did you mean --release-version=1.0.0+1?''',
         });
       }
 
-      test('says nothing about signing for an unsigned release', () async {
+      test('says patch signing is off for an unsigned release', () async {
         await printSummary(ReleaseSigningMode.unsigned);
 
-        verifyNever(
-          () => logger.info(any(that: contains('Patch Signing'))),
-        );
+        verify(
+          () => logger.info(
+            any(that: contains('🔏 Patch Signing: ${yellow.wrap('off')}')),
+          ),
+        ).called(1);
       });
     });
 
@@ -1271,28 +1294,31 @@ Did you mean --release-version=1.0.0+1?''',
           when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
         });
 
-        test('warns when the release embeds no key', () async {
+        test('warns with --no-patch-signing', () async {
+          when(
+            () => argResults[CommonArguments.patchSigningArg.name],
+          ).thenReturn(false);
           await runWithOverrides(() => command.assertArgsAreValid(releaser));
           verify(
             () => logger.warn(
               'patch_verification is set in shorebird.yaml but '
-              'no public key was provided '
-              '(--${CommonArguments.publicKeyArg.name}, '
-              '--${CommonArguments.publicKeyCmd.name} or --managed-signing).\n'
+              '--no-patch-signing builds a release whose patches are '
+              'unsigned.\n'
               'patch_verification configuration will have no effect.',
             ),
           ).called(1);
         });
 
-        test('does not warn with --managed-signing', () async {
-          when(() => argResults['managed-signing']).thenReturn(true);
+        test('does not warn when patches are signed', () async {
           await runWithOverrides(() => command.assertArgsAreValid(releaser));
           verifyNever(() => logger.warn(any()));
         });
       });
 
-      test('rejects --managed-signing with a public key', () async {
-        when(() => argResults['managed-signing']).thenReturn(true);
+      test('rejects --no-patch-signing with a public key', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(false);
         when(
           () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
         ).thenReturn(true);
@@ -1306,7 +1332,9 @@ Did you mean --release-version=1.0.0+1?''',
             isA<UsageException>().having(
               (e) => e.message,
               'message',
-              contains('--managed-signing embeds a key Shorebird manages'),
+              '--no-patch-signing builds a release whose patches are '
+                  'unsigned, so it cannot be combined with '
+                  '--public-key-path or --public-key-cmd.',
             ),
           ),
         );

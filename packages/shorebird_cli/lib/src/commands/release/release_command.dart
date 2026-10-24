@@ -155,13 +155,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         help: CommonArguments.publicKeyCmd.description,
       )
       ..addFlag(
-        'managed-signing',
-        negatable: false,
-        help:
-            'Embed a key that Shorebird manages, and have Shorebird sign '
-            'every patch to this release. To sign patches with your own '
-            'key instead, pass --${CommonArguments.publicKeyArg.name} or '
-            '--${CommonArguments.publicKeyCmd.name}.',
+        CommonArguments.patchSigningArg.name,
+        defaultsTo: true,
+        help: CommonArguments.patchSigningArg.description,
       )
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
@@ -626,21 +622,20 @@ $error''');
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
-    if (hasPublicKey && results.managedSigningEnabled) {
+    if (hasPublicKey && !results.patchSigningEnabled) {
       usageException(
-        '--managed-signing embeds a key Shorebird manages, so it cannot be '
-        'combined with --${CommonArguments.publicKeyArg.name} or '
+        '--no-${CommonArguments.patchSigningArg.name} builds a release whose '
+        'patches are unsigned, so it cannot be combined with '
+        '--${CommonArguments.publicKeyArg.name} or '
         '--${CommonArguments.publicKeyCmd.name}.',
       );
     }
     if (shorebirdYaml?.patchVerification != null &&
-        !hasPublicKey &&
-        !results.managedSigningEnabled) {
+        !results.patchSigningEnabled) {
       logger.warn(
         'patch_verification is set in shorebird.yaml but '
-        'no public key was provided '
-        '(--${CommonArguments.publicKeyArg.name}, '
-        '--${CommonArguments.publicKeyCmd.name} or --managed-signing).\n'
+        '--no-${CommonArguments.patchSigningArg.name} builds a release whose '
+        'patches are unsigned.\n'
         'patch_verification configuration will have no effect.',
       );
     }
@@ -797,7 +792,9 @@ To resolve this issue, you can:
       if (signing?.mode == ReleaseSigningMode.managed)
         '🔏 Patch Signing: ${lightCyan.wrap('Shorebird-managed key')}'
       else if (signing?.mode == ReleaseSigningMode.customer)
-        '🔏 Patch Signing: ${lightCyan.wrap('your key')}',
+        '🔏 Patch Signing: ${lightCyan.wrap('your key')}'
+      else if (signing?.mode == ReleaseSigningMode.unsigned)
+        '🔏 Patch Signing: ${yellow.wrap('off')}',
     ];
 
     logger.info('''

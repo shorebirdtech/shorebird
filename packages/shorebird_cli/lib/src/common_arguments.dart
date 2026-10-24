@@ -110,6 +110,17 @@ The path for a public key .pem file that will be used to validate patch signatur
 ''',
   );
 
+  /// Whether a release signs its patches. On by default: with no key of the
+  /// customer's, the build embeds a key Shorebird manages.
+  static const patchSigningArg = ArgumentDescriber(
+    name: 'patch-signing',
+    description: '''
+Sign every patch to this release, so apps install only patches signed with its key.
+On by default: the build embeds a key Shorebird manages for your organization.
+To sign patches with your own key, pass --public-key-path or --public-key-cmd.
+--no-patch-signing builds a release whose patches are unsigned.''',
+  );
+
   /// An argument that allows the user to specify a private key file that will
   /// be used to sign the patch artifact.
   static const privateKeyArg = ArgumentDescriber(
