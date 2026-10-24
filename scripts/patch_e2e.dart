@@ -1,4 +1,5 @@
-// cspell:words genkey keyalg keysize storepass keypass dname getprop avds avdmanager
+// cspell:words genkey keyalg keysize storepass keypass dname getprop avds
+// cspell:words avdmanager
 // ignore_for_file: avoid_print
 
 // End-to-end test of release, patch and boot on Android: the real CLI against
@@ -553,6 +554,8 @@ Future<void> waitForLine(
     waitTimeout,
     onTimeout: () => false,
   );
+  // `shorebird preview` tails `adb logcat`, which would outlive it.
+  await Process.run('pkill', ['-P', '${process.pid}']);
   process.kill();
   for (final stream in streams) {
     await stream.cancel();
