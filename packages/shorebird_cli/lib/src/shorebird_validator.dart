@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -185,14 +186,15 @@ class ShorebirdValidator {
         platform.environment[githubActionsEnvVar] == 'true') {
       // Neither SHOREBIRD_TOKEN nor the ID token request variables GitHub
       // sets for a job granted `permissions: id-token: write`.
-      const oidcHint =
+      final console = ShorebirdWebConsole.baseUri;
+      final oidcHint =
           'To sign in from GitHub Actions without a stored secret, grant the '
           'job `permissions: id-token: write`, set $shorebirdProjectIdEnvVar '
           'to the id of your project, and add a GitHub Actions trust rule for '
-          'this workflow at https://console.shorebird.dev.';
-      const apiKeyHint =
+          'this workflow at $console.';
+      final apiKeyHint =
           'Or set $shorebirdTokenEnvVar to a Shorebird API key from '
-          'https://console.shorebird.dev.';
+          '$console.';
       logger
         ..err('You must be logged in to run this command.')
         ..info(oidcHint)

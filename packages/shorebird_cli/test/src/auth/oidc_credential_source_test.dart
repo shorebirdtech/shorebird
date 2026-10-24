@@ -211,6 +211,19 @@ void main() {
         );
       });
     }
+
+    test('links the dev console for the dev code push server', () {
+      when(() => shorebirdEnv.hostedUri).thenReturn(Uri.parse(devHostedUrl));
+      source = sourceFor(null);
+      expect(
+        source.unavailableReason?.hint,
+        equals(
+          'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
+          'https://console-dev.shorebird.dev, or set SHOREBIRD_TOKEN to a '
+          'Shorebird API key.',
+        ),
+      );
+    });
   });
 
   test('exchanges an ID token at the token endpoint', () async {
