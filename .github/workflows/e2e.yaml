@@ -310,6 +310,26 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # As in the patch job. The app's template and engine jars come from the
+      # Flutter the CLI pins.
+      - name: 🐘 Gradle Cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
+
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-29/default/x86_64
+          key: system-image-29-default-x86_64-${{ runner.os }}
+
       - name: 🧪 Run Android Signing E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:

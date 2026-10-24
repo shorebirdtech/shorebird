@@ -689,15 +689,11 @@ Future<(bool, String)> watch(
     if (!matched.isCompleted && until.hasMatch(line)) matched.complete(true);
   }
 
+  // adb logcat sometimes lets through bytes that aren't UTF-8.
+  const decoder = Utf8Decoder(allowMalformed: true);
   final streams = [
-    process.stdout
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen(onLine),
-    process.stderr
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen(onLine),
+    for (final stream in [process.stdout, process.stderr])
+      stream.transform(decoder).transform(const LineSplitter()).listen(onLine),
   ];
   unawaited(
     process.exitCode.then(
