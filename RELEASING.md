@@ -53,7 +53,6 @@ that `stable` is moved to.
 
 One commit on `main`, titled `chore: prepare for release <version>`:
 
-
 - `packages/shorebird_cli/lib/src/version.dart`: `packageVersion`
 - `packages/shorebird_cli/pubspec.yaml`: `version`
 - `RELEASE_NOTES.md`: a new section at the top,
