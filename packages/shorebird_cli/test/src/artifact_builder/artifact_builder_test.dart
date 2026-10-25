@@ -2099,6 +2099,16 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
           expect(exportEnvironment.existsSync(), isFalse);
         });
 
+        test('deletes them when they name no Flutter', () async {
+          writeProperties(flutterRoot: vendedRoot);
+          xcconfig.writeAsStringSync('FLUTTER_APPLICATION_PATH=/app\n');
+
+          await runWithOverrides(builder.buildIosFramework);
+
+          expect(xcconfig.existsSync(), isFalse);
+          expect(exportEnvironment.existsSync(), isFalse);
+        });
+
         test("keeps them when they name Shorebird's Flutter", () async {
           writeProperties(flutterRoot: vendedRoot);
 
