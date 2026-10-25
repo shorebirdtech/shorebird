@@ -1,10 +1,11 @@
-// cspell:words xfail XPASS dynsym
+// cspell:words xfail XPASS dynsym logcat pidof
 // ignore_for_file: avoid_print
 
 // End-to-end test of what the updater does when a patch crashes the app at
 // boot, and of how long a patch takes to boot: the real CLI against a real
-// server, a real Flutter build, and the built app launched. Linux only for
-// now; the app is run headless under Xvfb.
+// server, a real Flutter build, and the built app launched. Runs on Linux (the
+// app headless under Xvfb) and Android (on the one emulator adb sees, which
+// must let adb run as root).
 //
 // It makes one release of a fresh app, without patch signing (so a launch
 // checks only the installed patch's size, not its hash), then:
@@ -26,10 +27,11 @@
 // release's fastest. The app only prints, so this times the engine's and
 // updater's own startup with a patch.
 //
-// Prerequisites: Linux with the Flutter Linux build dependencies and Xvfb;
-// Shorebird on PATH and signed in (CI signs in with OIDC).
+// Prerequisites: Shorebird on PATH and signed in (CI signs in with OIDC), and
+// per platform: on Linux the Flutter Linux build dependencies and Xvfb; for
+// Android the Android SDK and a running emulator.
 //
-// Usage: dart scripts/boot_recovery_e2e.dart [<flutter-version>]
+// Usage: dart scripts/boot_recovery_e2e.dart <linux|android> [<flutter-version>]
 // Without a version it uses the Flutter the CLI pins.
 
 import 'dart:convert';
@@ -42,11 +44,15 @@ import 'e2e_helpers.dart';
 /// Flutter versions whose engine reports a successful launch before it
 /// builds the root isolate from the snapshot, so a patch that crashes there is
 /// never marked bad and every launch crashes. null is the Flutter the CLI
-/// pins. Measured on 2026-10-24 (e2e run 40133607074).
+/// pins. Measured on 2026-10-24 on Linux (e2e run 40133607074) and Android
+/// (e2e run 40141450017).
 const bootCrashNotRecovered = {null};
 
-/// Launches timed for each of the release and patch 1.
-const timedLaunches = 5;
+/// Launches timed for each of the release and patch 1. Ten, so one fast
+/// outlier doesn't set the release's fastest alone: among five emulator
+/// launches the release's fastest was 114 ms against 158 to 212 for the rest,
+/// which puts a patch launching anywhere in its own usual range past 1.5x.
+const timedLaunches = 10;
 
 /// The most a patch's fastest boot may take, as a multiple of the release's.
 /// The fastest of several launches, because a CI runner only ever adds time:
@@ -56,41 +62,46 @@ const maxBootRatio = 1.5;
 final labelPattern = RegExp('e2e-label: ');
 
 Future<void> main(List<String> args) async {
-  final flutter = args.isEmpty ? null : args.single;
+  final install = switch (args.firstOrNull) {
+    'linux' => LinuxInstall(),
+    'android' => AndroidInstall(),
+    _ => null,
+  };
+  if (install == null || args.length > 2) {
+    print(
+      'Usage: dart scripts/boot_recovery_e2e.dart <linux|android> '
+      '[<flutter-version>]',
+    );
+    exit(64);
+  }
+  final flutter = args.length == 2 ? args[1] : null;
   final work = Directory.systemTemp.createTempSync('shorebird_boot_');
-  final xvfb = await startXvfb();
-  final install = Install(
-    Directory('${work.path}/install'),
-    Directory('${work.path}/install_home')..createSync(),
-  );
+  await install.setUp(work);
   await runE2e(
     title:
-        'Boot recovery and boot time on Linux, '
+        'Boot recovery and boot time on ${install.title}, '
         'Flutter ${flutter ?? 'pinned by the CLI'}',
     columns: ['Check', 'Expected', 'Actual', 'Result'],
     body: () => run(work, install, flutter),
-    tearDown: () async => xvfb.kill(),
+    tearDown: install.tearDown,
   );
 }
 
 Future<void> run(Directory work, Install install, String? flutter) async {
   const patchArgs = ['--allow-asset-diffs', '--allow-native-diffs', '-v'];
-  final app = await createApp(work, 'linux', version: '1.0.0+1');
+  final app = await createApp(work, install.platform, version: '1.0.0+1');
   await timed(
     'release',
     () => sh(app, 'shorebird', [
       'release',
-      'linux',
+      install.platform,
+      ...install.releaseArgs,
       if (flutter != null) '--flutter-version=$flutter',
       '--no-patch-signing',
       '-v',
     ]),
   );
-  await sh(work, 'cp', [
-    '-r',
-    '${app.path}/build/linux/x64/release/bundle',
-    install.bundle.path,
-  ]);
+  await install.install(app);
 
   Future<void> patch(String label) async {
     setLabel(app, label);
@@ -98,7 +109,7 @@ Future<void> run(Directory work, Install install, String? flutter) async {
       'patch_$label',
       () => sh(app, 'shorebird', [
         'patch',
-        'linux',
+        install.platform,
         '--release-version=1.0.0+1',
         ...patchArgs,
       ]),
@@ -133,7 +144,7 @@ Future<void> run(Directory work, Install install, String? flutter) async {
       '$updateLog',
     );
   }
-  zeroSnapshot(install.artifact(2));
+  await install.breakPatch(2);
 
   // If patch 2 didn't crash, the next launch proves nothing about recovery.
   final crash = await install.run(until: labelPattern, timeout: bootTimeout);
@@ -170,43 +181,237 @@ Future<void> run(Directory work, Install install, String? flutter) async {
   }
 }
 
-/// A copy of the release's build, with its updater state in its own HOME.
-class Install {
-  Install(this.bundle, this.home);
-  final Directory bundle;
-  final Directory home;
+/// The one install of the app this run checks, on one platform. Its updater
+/// state starts empty.
+abstract class Install {
+  /// The platform, as `flutter create` and `shorebird release` name it.
+  String get platform;
 
-  /// Launches the app; see [Launch].
+  String get title;
+
+  List<String> get releaseArgs => const [];
+
+  late Directory work;
+
+  Future<void> setUp(Directory work) async => this.work = work;
+
+  Future<void> tearDown() async {}
+
+  /// Installs the release just built from [app].
+  Future<void> install(Directory app);
+
+  /// Launches the app and stops it once a line matches [until], or it ends
+  /// or [timeout] passes, recording how long it took and how it ended.
+  Future<Run> run({required RegExp until, required Duration timeout});
+
+  /// [run] as a [Launch].
   Future<(bool, String)> launch({
     required RegExp until,
     required Duration timeout,
-  }) => launchLinux(bundle, home, until: until, timeout: timeout);
+  }) async {
+    final launched = await run(until: until, timeout: timeout);
+    return (launched.matched, launched.log);
+  }
 
-  /// Launches the app like [launch], also recording how long it ran and how
-  /// it ended.
+  /// Zeros the snapshot in installed patch [number] (see [zeroSnapshot]).
+  Future<void> breakPatch(int number);
+}
+
+/// A copy of the release's build, with its updater state in its own HOME.
+class LinuxInstall extends Install {
+  Process? _xvfb;
+  late final Directory _bundle = Directory('${work.path}/install');
+  late final Directory _home = Directory('${work.path}/install_home');
+
+  @override
+  String get platform => 'linux';
+
+  @override
+  String get title => 'Linux';
+
+  @override
+  Future<void> setUp(Directory work) async {
+    await super.setUp(work);
+    _xvfb = await startXvfb();
+  }
+
+  @override
+  Future<void> tearDown() async => _xvfb?.kill();
+
+  @override
+  Future<void> install(Directory app) async {
+    _home.createSync();
+    await sh(work, 'cp', [
+      '-r',
+      '${app.path}/build/linux/x64/release/bundle',
+      _bundle.path,
+    ]);
+  }
+
+  @override
   Future<Run> run({required RegExp until, required Duration timeout}) async {
     final stopwatch = Stopwatch()..start();
-    final process = await startLinux(bundle, home);
+    final process = await startLinux(_bundle, _home);
     final (matched, log) = await watch(
       process,
       until: until,
       timeout: timeout,
     );
+    final elapsed = stopwatch.elapsed;
+    final exitCode = await process.exitCode;
+    // watch stops the app with SIGTERM once a line matches or the timeout
+    // passes; any other signal is the app's own.
+    final crashed =
+        !matched &&
+        exitCode < 0 &&
+        exitCode != -ProcessSignal.sigterm.signalNumber;
     return Run(
       matched: matched,
       log: log,
-      exitCode: await process.exitCode,
-      elapsed: stopwatch.elapsed,
+      crashed: crashed,
+      ending: crashed
+          ? 'crashed with signal ${-exitCode}'
+          : 'exit code $exitCode',
+      elapsed: elapsed,
     );
   }
 
-  /// Patch [number]'s installed file in the updater's state.
-  File artifact(int number) {
+  @override
+  Future<void> breakPatch(int number) async {
     final suffix = '/patches/$number/dlc.vmcode';
-    for (final file in home.listSync(recursive: true).whereType<File>()) {
-      if (file.path.endsWith(suffix)) return file;
+    for (final file in _home.listSync(recursive: true).whereType<File>()) {
+      if (file.path.endsWith(suffix)) return zeroSnapshot(file);
     }
-    throw Exception('Patch $number is not installed under $home.');
+    throw Exception('Patch $number is not installed under $_home.');
+  }
+}
+
+/// The app installed on the emulator. Its updater state is in the app's
+/// private storage, which only root can write from adb.
+class AndroidInstall extends Install {
+  static const package = 'com.example.e2e_test.e2e_test';
+
+  @override
+  String get platform => 'android';
+
+  @override
+  String get title => 'Android';
+
+  @override
+  List<String> get releaseArgs => const ['--artifact=apk'];
+
+  @override
+  Future<void> setUp(Directory work) async {
+    await super.setUp(work);
+    await sh(work, 'adb', ['root']);
+    await sh(work, 'adb', ['wait-for-device']);
+  }
+
+  /// Installs the release in place of any earlier one, clearing the updater's
+  /// state.
+  @override
+  Future<void> install(Directory app) async {
+    // Fails when it isn't installed.
+    await Process.run('adb', ['uninstall', package]);
+    await sh(work, 'adb', [
+      'install',
+      '${app.path}/build/app/outputs/flutter-apk/app-release.apk',
+    ]);
+  }
+
+  @override
+  Future<Run> run({required RegExp until, required Duration timeout}) async {
+    // The crash buffer holds this launch's crash, if it has one.
+    await sh(work, 'adb', ['logcat', '-b', 'crash', '-c']);
+    // -W waits for the activity's first frame, which this app never draws,
+    // so it returns after its 10 s timeout. The app has a pid by then unless
+    // it died.
+    await sh(work, 'adb', [
+      'shell',
+      'am',
+      'start',
+      '-W',
+      '-n',
+      '$package/.MainActivity',
+    ]);
+    // pidof finds nothing, and exits 1, if the app already died.
+    final pid = (await Process.run('adb', [
+      'shell',
+      'pidof',
+      package,
+    ])).stdout.toString().trim();
+    var matched = false;
+    var log = '';
+    if (pid.isNotEmpty) {
+      // This launch's lines from the process's first, with the device's
+      // timestamps.
+      final logcat = await Process.start('adb', [
+        'logcat',
+        '-v',
+        'epoch',
+        '--pid=$pid',
+      ]);
+      try {
+        (matched, log) = await watch(logcat, until: until, timeout: timeout);
+      } finally {
+        await sh(work, 'adb', ['shell', 'am', 'force-stop', package]);
+      }
+    }
+    final crash = (await Process.run('adb', [
+      'logcat',
+      '-b',
+      'crash',
+      '-d',
+    ])).stdout.toString();
+    final crashed = !matched && crash.contains(package);
+    final signal = RegExp(r'signal (\d+) \((\w+)\)').firstMatch(crash);
+    return Run(
+      matched: matched,
+      log: crash.isEmpty ? log : '$log\n--- crash buffer\n$crash',
+      crashed: crashed,
+      ending: crashed
+          ? 'crashed${signal == null ? '' : ' with ${signal.group(2)}'}'
+          : pid.isEmpty
+          ? 'exited right after it started'
+          : 'no crash logged',
+      elapsed: matched ? _bootTime(log, until) : null,
+    );
+  }
+
+  /// From the process's first log line to the first line matching [until],
+  /// by the device's clock.
+  static Duration _bootTime(String log, RegExp until) {
+    // Skips lines with no timestamp, such as "--------- beginning of main".
+    final timestamp = RegExp(r'^\s*(\d+\.\d+) ');
+    final lines = log.split('\n').where(timestamp.hasMatch);
+    double seconds(String line) =>
+        double.parse(timestamp.firstMatch(line)!.group(1)!);
+    final start = seconds(lines.first);
+    final end = seconds(lines.firstWhere(until.hasMatch));
+    return Duration(microseconds: ((end - start) * 1e6).round());
+  }
+
+  /// Copies the patch off the device, zeros it, and writes it back through
+  /// the existing file, which keeps its owner, mode and SELinux label.
+  @override
+  Future<void> breakPatch(int number) async {
+    final found = await Process.run('adb', [
+      'shell',
+      'find',
+      '/data/data/$package',
+      '-path',
+      "'*/patches/$number/dlc.vmcode'",
+    ]);
+    final path = found.stdout.toString().trim();
+    if (path.isEmpty || path.contains('\n')) {
+      throw Exception('Patch $number is not installed: "$path".');
+    }
+    final local = File('${work.path}/dlc.vmcode');
+    await sh(work, 'adb', ['pull', path, local.path]);
+    zeroSnapshot(local);
+    const staged = '/data/local/tmp/dlc.vmcode';
+    await sh(work, 'adb', ['push', local.path, staged]);
+    await sh(work, 'adb', ['shell', 'cat $staged > $path && rm $staged']);
   }
 }
 
@@ -215,27 +420,27 @@ class Run {
   Run({
     required this.matched,
     required this.log,
-    required this.exitCode,
+    required this.crashed,
+    required this.ending,
     required this.elapsed,
   });
 
-  /// Whether a line matched what the launch waited for. If so, [watch]
-  /// stopped the app.
+  /// Whether a line matched what the launch waited for.
   final bool matched;
   final String log;
-  final int exitCode;
-  final Duration elapsed;
 
-  /// Whether the app died of a signal it didn't get from [watch], which
-  /// stops it with SIGTERM once a line matches or the timeout passes.
-  bool get crashed =>
-      !matched &&
-      exitCode < 0 &&
-      exitCode != -ProcessSignal.sigterm.signalNumber;
+  /// Whether the app crashed, rather than being stopped.
+  final bool crashed;
 
-  String get description =>
-      'runs ${labelIn(log) ?? 'nothing'}, '
-      '${crashed ? 'crashed with signal ${-exitCode}' : 'exit code $exitCode'}';
+  /// How the launch ended, for the report.
+  final String ending;
+
+  /// From the start of the process to the matching line, if one matched: on
+  /// Linux by the host's clock from launch, on Android by the device's from
+  /// the process's first log line.
+  final Duration? elapsed;
+
+  String get description => 'runs ${labelIn(log) ?? 'nothing'}, $ending';
 }
 
 /// Launches the app [timedLaunches] times, checking each runs [expected], and
@@ -250,7 +455,7 @@ Future<List<int>> bootTimes(Install install, String expected) async {
         'Its output:\n${launch.log}',
       );
     }
-    times.add(launch.elapsed.inMilliseconds);
+    times.add(launch.elapsed!.inMilliseconds);
   }
   return times;
 }
