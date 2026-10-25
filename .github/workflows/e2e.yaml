@@ -235,9 +235,7 @@ jobs:
         run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
 
       - name: 🐧 Install Linux Build Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev xvfb
+        uses: ./.github/actions/linux_build_deps
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -421,9 +419,7 @@ jobs:
         run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
 
       - name: 🐧 Install Linux Build Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev xvfb
+        uses: ./.github/actions/linux_build_deps
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -461,9 +457,7 @@ jobs:
         run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
 
       - name: 🐧 Install Linux Build Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev xvfb
+        uses: ./.github/actions/linux_build_deps
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
