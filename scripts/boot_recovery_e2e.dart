@@ -37,9 +37,7 @@
 // Android the Android SDK and a running emulator.
 //
 // Usage: dart scripts/boot_recovery_e2e.dart <linux|android> [<flutter-version>]
-//            [--only=recovery|signed]
-// Without a version it uses the Flutter the CLI pins. --only makes one of
-// [Part]'s checks, each with its own release; without it, both.
+// Without a version it uses the Flutter the CLI pins.
 
 import 'dart:convert';
 import 'dart:io';
@@ -69,72 +67,35 @@ int typical(List<int> boots) => (boots.toList()..sort())[2];
 
 final labelPattern = RegExp('e2e-label: ');
 
-/// The checks one run makes, so CI can run them as parallel jobs. Each makes
-/// its own release.
-enum Part {
-  /// Steps 1 to 5.
-  recovery,
-
-  /// Step 6.
-  signed,
-}
-
 Future<void> main(List<String> args) async {
-  const usage =
-      'Usage: dart scripts/boot_recovery_e2e.dart <linux|android> '
-      '[<flutter-version>] [--only=recovery|signed]';
-  final only = args.where((a) => a.startsWith('--only=')).toList();
-  final positional = args.where((a) => !a.startsWith('--only=')).toList();
-  final install = switch (positional.firstOrNull) {
+  final install = switch (args.firstOrNull) {
     'linux' => LinuxInstall(),
     'android' => AndroidInstall(),
     _ => null,
   };
-  final part = only.length == 1
-      ? Part.values.asNameMap()[only.single.substring('--only='.length)]
-      : null;
-  if (install == null ||
-      positional.length > 2 ||
-      only.length > 1 ||
-      (only.isNotEmpty && part == null)) {
-    print(usage);
+  if (install == null || args.length > 2) {
+    print(
+      'Usage: dart scripts/boot_recovery_e2e.dart <linux|android> '
+      '[<flutter-version>]',
+    );
     exit(64);
   }
-  final parts = part == null ? Part.values.toSet() : {part};
-  final flutter = positional.length == 2 ? positional[1] : null;
+  final flutter = args.length == 2 ? args[1] : null;
   final work = Directory.systemTemp.createTempSync('shorebird_boot_');
   await install.setUp(work);
   await runE2e(
     title:
         'Boot recovery and boot time on ${install.title}, '
-        'Flutter ${flutter ?? 'pinned by the CLI'}'
-        '${part == null ? '' : ', ${part.name} checks'}',
+        'Flutter ${flutter ?? 'pinned by the CLI'}',
     columns: ['Check', 'Expected', 'Actual', 'Result'],
-    body: () => run(work, install, flutter, parts),
+    body: () => run(work, install, flutter),
     tearDown: install.tearDown,
   );
 }
 
-Future<void> run(
-  Directory work,
-  Install install,
-  String? flutter,
-  Set<Part> parts,
-) async {
-  final app = await createApp(work, install.platform, version: '1.0.0+1');
-  if (parts.contains(Part.recovery)) await checkRecovery(app, install, flutter);
-  if (parts.contains(Part.signed)) {
-    await checkSignedBootTime(app, install, flutter);
-  }
-}
-
-/// Steps 1 to 5.
-Future<void> checkRecovery(
-  Directory app,
-  Install install,
-  String? flutter,
-) async {
+Future<void> run(Directory work, Install install, String? flutter) async {
   const patchArgs = ['--allow-asset-diffs', '--allow-native-diffs', '-v'];
+  final app = await createApp(work, install.platform, version: '1.0.0+1');
   await timed(
     'release',
     () => sh(app, 'shorebird', [
@@ -170,6 +131,7 @@ Future<void> checkRecovery(
   checkBootTime('boot time', releaseBoots, patchBoots);
 
   await checkCrashRecovery(install, flutter, () => patch('broken'));
+  await checkSignedBootTime(app, install, flutter);
 }
 
 /// Checks that the patch's [typical] boot took at most [maxRatio] times the
@@ -400,7 +362,11 @@ class LinuxInstall extends Install {
   Future<Run> run({required RegExp until, required Duration timeout}) async {
     final stopwatch = Stopwatch()..start();
     final process = await startLinux(_bundle, _home);
-    final (matched, log) = await watch(process, until: until, timeout: timeout);
+    final (matched, log) = await watch(
+      process,
+      until: until,
+      timeout: timeout,
+    );
     final elapsed = stopwatch.elapsed;
     final exitCode = await process.exitCode;
     // watch stops the app with SIGTERM once a line matches or the timeout
