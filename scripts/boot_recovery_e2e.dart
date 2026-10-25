@@ -19,13 +19,17 @@
 //      isolate, before main(): a crash on boot
 //   4. launches the app: it must crash
 //   5. launches it again: it must run patch 1, the last patch that booted
+//   6. makes a release with the default, a Shorebird-managed key, and a 16 MiB
+//      string in the app, installs it in place of the first, and times its
+//      launches and a patch's: the updater hashes a signed patch at every
+//      launch
 //
 // Step 5 is a known failure on engines in [bootCrashNotRecovered], as long
 // as the app crashes again there.
 //
-// The patch's fastest launch may take at most [maxBootRatio] times the
-// release's fastest. The app only prints, so this times the engine's and
-// updater's own startup with a patch.
+// In steps 2 and 6 the patch's fastest launch may take at most [maxBootRatio]
+// times the release's fastest. The app only prints, so step 2 times the
+// engine's and updater's own startup with a patch, and step 6 adds the hash.
 //
 // Prerequisites: Shorebird on PATH and signed in (CI signs in with OIDC), and
 // per platform: on Linux the Flutter Linux build dependencies and Xvfb; for
@@ -122,18 +126,35 @@ Future<void> run(Directory work, Install install, String? flutter) async {
   expect('patch 1 boots', 'good', good.label);
   final patchBoots = await bootTimes(install, 'good');
 
+  checkBootTime('boot time', releaseBoots, patchBoots);
+
+  await checkCrashRecovery(install, flutter, () => patch('broken'));
+  await checkSignedBootTime(app, install, flutter);
+}
+
+/// Checks that the patch's fastest boot took at most [maxBootRatio] times
+/// the release's.
+void checkBootTime(String name, List<int> releaseBoots, List<int> patchBoots) {
   final releaseFastest = releaseBoots.reduce(min);
   final patchFastest = patchBoots.reduce(min);
   final ratio = patchFastest / releaseFastest;
   results.add(
-    '| boot time | patch fastest ≤ ${maxBootRatio}x release | '
+    '| $name | patch fastest ≤ ${maxBootRatio}x release | '
     'release ${releaseFastest}ms ($releaseBoots), '
     'patch ${patchFastest}ms ($patchBoots), ${ratio.toStringAsFixed(2)}x '
     '| ${ratio <= maxBootRatio ? 'PASS' : 'FAIL'} |',
   );
   if (ratio > maxBootRatio) failed = true;
+}
 
-  await patch('broken');
+/// Publishes patch 2 with [publish], breaks it once installed, and checks the
+/// app crashes on it and then recovers.
+Future<void> checkCrashRecovery(
+  Install install,
+  String? flutter,
+  Future<void> Function() publish,
+) async {
+  await publish();
   final (updated, updateLog) = await install.launch(
     until: RegExp('Update thread finished|Update failed'),
     timeout: updateTimeout,
@@ -179,6 +200,67 @@ Future<void> run(Directory work, Install install, String? flutter) async {
     print('--- launch with patch 2 broken\n${crash.log}');
     print('--- next launch\n${next.log}');
   }
+}
+
+/// Size of the string [checkSignedBootTime] builds into the app.
+const blobBytes = 16 << 20;
+
+/// Times boots of a release made with the default, a Shorebird-managed key,
+/// and of a patch to it. The updater checks a signed patch's hash at every
+/// launch, so the app carries a [blobBytes] string to make that cost show.
+/// Installs the release in place of the one the other checks used.
+Future<void> checkSignedBootTime(
+  Directory app,
+  Install install,
+  String? flutter,
+) async {
+  File('${app.path}/lib/blob.dart').writeAsStringSync(
+    "const blob = '${'0123456789abcdef' * (blobBytes ~/ 16)}';\n",
+  );
+  void label(String label) =>
+      File('${app.path}/lib/main.dart')
+      // Read at run time, so the compiler keeps the string.
+      .writeAsStringSync('''
+import 'blob.dart';
+void main() {
+  print('e2e-label: $label \${blob.codeUnitAt(DateTime.now().second)}');
+}
+''');
+  label('signed_release');
+  setVersion(app, '1.0.0+2');
+  await timed(
+    'release_signed',
+    () => sh(app, 'shorebird', [
+      'release',
+      install.platform,
+      ...install.releaseArgs,
+      if (flutter != null) '--flutter-version=$flutter',
+      '-v',
+    ]),
+  );
+  await install.install(app);
+  final releaseBoots = await bootTimes(install, 'signed_release');
+
+  label('signed');
+  await timed(
+    'patch_signed',
+    () => sh(app, 'shorebird', [
+      'patch',
+      install.platform,
+      '--release-version=1.0.0+2',
+      '--allow-asset-diffs',
+      '--allow-native-diffs',
+      '-v',
+    ]),
+  );
+  final signed = await updateAndBoot('signed patch', install.launch);
+  expect('signed patch boots', 'signed', signed.label);
+  final patchBoots = await bootTimes(install, 'signed');
+  checkBootTime(
+    'boot time, signed, ${blobBytes >> 20} MiB string',
+    releaseBoots,
+    patchBoots,
+  );
 }
 
 /// The one install of the app this run checks, on one platform. Its updater
@@ -238,8 +320,12 @@ class LinuxInstall extends Install {
   @override
   Future<void> tearDown() async => _xvfb?.kill();
 
+  /// Replaces any earlier install, and its updater state.
   @override
   Future<void> install(Directory app) async {
+    for (final dir in [_bundle, _home]) {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    }
     _home.createSync();
     await sh(work, 'cp', [
       '-r',
