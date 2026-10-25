@@ -1,7 +1,7 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig
  -->
 
 ## 1.6.133 (October 25, 2026)
