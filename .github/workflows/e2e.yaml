@@ -472,9 +472,15 @@ jobs:
       - name: 🧪 Run Linux Boot E2E Tests
         run: dart scripts/boot_recovery_e2e.dart linux
 
-  # The same checks on an Android emulator, set up as in android_signing.
+  # The same checks on an Android emulator, set up as in android_signing. Its
+  # two parts run as parallel jobs, each with its own release: one job took 16
+  # minutes.
   android_boot:
-    name: android boot
+    name: android boot (${{ matrix.part }})
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [recovery, signed]
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -547,7 +553,7 @@ jobs:
           target: default
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: true
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android --only=${{ matrix.part }}
 
   cli:
     strategy:
@@ -650,6 +656,17 @@ jobs:
       # Only runs the test file; shorebird uses its own pinned Flutter.
       - name: 🎯 Set up Dart
         uses: dart-lang/setup-dart@v1
+
+      # The test's app builds with Gradle, which otherwise downloads its
+      # distribution and the build's dependencies every run.
+      - name: 🐘 Gradle Cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-cli-${{ hashFiles('bin/internal/flutter.version') }}
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test

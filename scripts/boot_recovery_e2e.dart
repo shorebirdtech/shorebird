@@ -37,7 +37,9 @@
 // Android the Android SDK and a running emulator.
 //
 // Usage: dart scripts/boot_recovery_e2e.dart <linux|android> [<flutter-version>]
-// Without a version it uses the Flutter the CLI pins.
+//            [--only=recovery|signed]
+// Without a version it uses the Flutter the CLI pins. --only makes one of
+// [Part]'s checks, each with its own release; without it, both.
 
 import 'dart:convert';
 import 'dart:io';
@@ -67,35 +69,72 @@ int typical(List<int> boots) => (boots.toList()..sort())[2];
 
 final labelPattern = RegExp('e2e-label: ');
 
+/// The checks one run makes, so CI can run them as parallel jobs. Each makes
+/// its own release.
+enum Part {
+  /// Steps 1 to 5.
+  recovery,
+
+  /// Step 6.
+  signed,
+}
+
 Future<void> main(List<String> args) async {
-  final install = switch (args.firstOrNull) {
+  const usage =
+      'Usage: dart scripts/boot_recovery_e2e.dart <linux|android> '
+      '[<flutter-version>] [--only=recovery|signed]';
+  final only = args.where((a) => a.startsWith('--only=')).toList();
+  final positional = args.where((a) => !a.startsWith('--only=')).toList();
+  final install = switch (positional.firstOrNull) {
     'linux' => LinuxInstall(),
     'android' => AndroidInstall(),
     _ => null,
   };
-  if (install == null || args.length > 2) {
-    print(
-      'Usage: dart scripts/boot_recovery_e2e.dart <linux|android> '
-      '[<flutter-version>]',
-    );
+  final part = only.isEmpty
+      ? null
+      : Part.values.asNameMap()[only.single.substring('--only='.length)];
+  if (install == null ||
+      positional.length > 2 ||
+      only.length > 1 ||
+      (only.isNotEmpty && part == null)) {
+    print(usage);
     exit(64);
   }
-  final flutter = args.length == 2 ? args[1] : null;
+  final parts = part == null ? Part.values.toSet() : {part};
+  final flutter = positional.length == 2 ? positional[1] : null;
   final work = Directory.systemTemp.createTempSync('shorebird_boot_');
   await install.setUp(work);
   await runE2e(
     title:
         'Boot recovery and boot time on ${install.title}, '
-        'Flutter ${flutter ?? 'pinned by the CLI'}',
+        'Flutter ${flutter ?? 'pinned by the CLI'}'
+        '${part == null ? '' : ', ${part.name} checks'}',
     columns: ['Check', 'Expected', 'Actual', 'Result'],
-    body: () => run(work, install, flutter),
+    body: () => run(work, install, flutter, parts),
     tearDown: install.tearDown,
   );
 }
 
-Future<void> run(Directory work, Install install, String? flutter) async {
-  const patchArgs = ['--allow-asset-diffs', '--allow-native-diffs', '-v'];
+Future<void> run(
+  Directory work,
+  Install install,
+  String? flutter,
+  Set<Part> parts,
+) async {
   final app = await createApp(work, install.platform, version: '1.0.0+1');
+  if (parts.contains(Part.recovery)) await checkRecovery(app, install, flutter);
+  if (parts.contains(Part.signed)) {
+    await checkSignedBootTime(app, install, flutter);
+  }
+}
+
+/// Steps 1 to 5.
+Future<void> checkRecovery(
+  Directory app,
+  Install install,
+  String? flutter,
+) async {
+  const patchArgs = ['--allow-asset-diffs', '--allow-native-diffs', '-v'];
   await timed(
     'release',
     () => sh(app, 'shorebird', [
@@ -131,7 +170,6 @@ Future<void> run(Directory work, Install install, String? flutter) async {
   checkBootTime('boot time', releaseBoots, patchBoots);
 
   await checkCrashRecovery(install, flutter, () => patch('broken'));
-  await checkSignedBootTime(app, install, flutter);
 }
 
 /// Checks that the patch's [typical] boot took at most [maxRatio] times the
@@ -362,11 +400,7 @@ class LinuxInstall extends Install {
   Future<Run> run({required RegExp until, required Duration timeout}) async {
     final stopwatch = Stopwatch()..start();
     final process = await startLinux(_bundle, _home);
-    final (matched, log) = await watch(
-      process,
-      until: until,
-      timeout: timeout,
-    );
+    final (matched, log) = await watch(process, until: until, timeout: timeout);
     final elapsed = stopwatch.elapsed;
     final exitCode = await process.exitCode;
     // watch stops the app with SIGTERM once a line matches or the timeout
@@ -452,26 +486,10 @@ class AndroidInstall extends Install {
   Future<Run> run({required RegExp until, required Duration timeout}) async {
     // The crash buffer holds this launch's crash, if it has one.
     await sh(work, 'adb', ['logcat', '-b', 'crash', '-c']);
-    // -W waits for the activity's first frame, which this app never draws,
-    // so it returns after its 10 s timeout. The app has a pid by then unless
-    // it died.
-    await sh(work, 'adb', [
-      'shell',
-      'am',
-      'start',
-      '-W',
-      '-n',
-      '$package/.MainActivity',
-    ]);
-    // pidof finds nothing, and exits 1, if the app already died.
-    final pid = (await Process.run('adb', [
-      'shell',
-      'pidof',
-      package,
-    ])).stdout.toString().trim();
+    final pid = await startAndroidApp(package);
     var matched = false;
     var log = '';
-    if (pid.isNotEmpty) {
+    if (pid != null) {
       // This launch's lines from the process's first, with the device's
       // timestamps.
       final logcat = await Process.start('adb', [
@@ -481,7 +499,24 @@ class AndroidInstall extends Install {
         '--pid=$pid',
       ]);
       try {
-        (matched, log) = await watch(logcat, until: until, timeout: timeout);
+        // A native crash's "Fatal signal" line is the app's too, so a
+        // crashing launch doesn't wait out [timeout].
+        final (_, out) = await watch(
+          logcat,
+          until: RegExp('${until.pattern}|Fatal signal'),
+          timeout: timeout,
+        );
+        log = out;
+        matched = until.hasMatch(log);
+        // The crash buffer is written before the crashing process exits, so
+        // stopping it sooner could lose the crash this launch reports.
+        if (!matched && log.contains('Fatal signal')) {
+          await waitForAndroidApp(
+            package,
+            running: false,
+            timeout: bootTimeout,
+          );
+        }
       } finally {
         await sh(work, 'adb', ['shell', 'am', 'force-stop', package]);
       }
@@ -500,7 +535,7 @@ class AndroidInstall extends Install {
       crashed: crashed,
       ending: crashed
           ? 'crashed${signal == null ? '' : ' with ${signal.group(2)}'}'
-          : pid.isEmpty
+          : pid == null
           ? 'exited right after it started'
           : 'no crash logged',
       elapsed: matched ? _bootTime(log, until) : null,
