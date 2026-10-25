@@ -70,7 +70,7 @@ class ReleaseCommand extends ShorebirdCommand {
       )
       ..addFlag(
         'codesign',
-        help: 'Codesign the application bundle (iOS only).',
+        help: 'Codesign the app bundle or XCFrameworks (iOS and macOS only).',
         defaultsTo: true,
       )
       ..addFlag(

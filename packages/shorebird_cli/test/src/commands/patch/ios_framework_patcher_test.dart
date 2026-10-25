@@ -133,6 +133,7 @@ void main() {
 
       when(() => argResults['build-number']).thenReturn('1.0');
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.wasParsed(any())).thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
@@ -461,6 +462,19 @@ void main() {
               );
             },
           );
+        });
+
+        group('when --no-codesign is passed', () {
+          setUp(() {
+            when(() => argResults['codesign']).thenReturn(false);
+          });
+
+          test('forwards --no-codesign to flutter', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+            verify(
+              () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+            ).called(1);
+          });
         });
 
         group('when platform was specified via arg results rest', () {
