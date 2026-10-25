@@ -562,33 +562,15 @@ class AndroidInstall extends Install {
     required RegExp until,
     required Duration timeout,
   }) async {
-    // -W returns once the app is up, so it has a pid.
-    await sh(Directory.current, 'adb', [
-      'shell',
-      'am',
-      'start',
-      '-W',
-      '-n',
-      '${AndroidTarget.package}/.MainActivity',
-    ]);
-    final pid = (await Process.run('adb', [
-      'shell',
-      'pidof',
-      AndroidTarget.package,
-    ])).stdout.toString().trim();
-    if (pid.isEmpty) return (false, 'The app exited right after it started.');
+    final pid = await startAndroidApp(AndroidTarget.package);
+    if (pid == null) return (false, 'The app exited right after it started.');
     // This launch's lines, from its start, and none of an earlier launch's. A
     // native crash's "Fatal signal" line is the app's too.
     final logcat = await Process.start('adb', ['logcat', '--pid=$pid']);
     try {
       return await watch(logcat, until: until, timeout: timeout);
     } finally {
-      await sh(Directory.current, 'adb', [
-        'shell',
-        'am',
-        'force-stop',
-        AndroidTarget.package,
-      ]);
+      await stopAndroidApp(AndroidTarget.package);
     }
   }
 }

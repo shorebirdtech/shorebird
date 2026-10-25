@@ -261,6 +261,56 @@ Future<(bool, String)> launchLinux(
 }) async =>
     watch(await startLinux(bundle, home), until: until, timeout: timeout);
 
+/// Starts [package]'s main activity on the device adb sees and returns the
+/// app's pid once it has one, or null if none shows within 10 s (the app died
+/// first). Not `am start -W`: that waits for the activity's first
+/// frame, which the e2e apps never draw (they only print), so every launch
+/// waited out its 10 s timeout.
+Future<String?> startAndroidApp(String package) async {
+  await sh(Directory.current, 'adb', [
+    'shell',
+    'am',
+    'start',
+    '-n',
+    '$package/.MainActivity',
+  ]);
+  return waitForAndroidApp(
+    package,
+    running: true,
+    timeout: const Duration(seconds: 10),
+  );
+}
+
+/// Stops [package] and waits until its process is gone: `am force-stop`
+/// returns before it is, and the next [startAndroidApp] would find it.
+Future<void> stopAndroidApp(String package) async {
+  await sh(Directory.current, 'adb', ['shell', 'am', 'force-stop', package]);
+  await waitForAndroidApp(package, running: false, timeout: bootTimeout);
+}
+
+/// Polls until [package] is running, or isn't, as [running] says, or
+/// [timeout] passes. Returns its pid, null when it isn't running.
+Future<String?> waitForAndroidApp(
+  String package, {
+  required bool running,
+  required Duration timeout,
+}) async {
+  final stopwatch = Stopwatch()..start();
+  String? pid;
+  do {
+    // pidof prints nothing, and exits 1, when it isn't running.
+    final out = (await Process.run('adb', [
+      'shell',
+      'pidof',
+      package,
+    ])).stdout.toString().trim();
+    pid = out.isEmpty ? null : out;
+    if ((pid != null) == running) break;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  } while (stopwatch.elapsed < timeout);
+  return pid;
+}
+
 /// Reads [process]'s output until a line matches [until], it exits, or
 /// [timeout] passes, then kills it. Returns whether a line matched, and the
 /// output.

@@ -452,26 +452,10 @@ class AndroidInstall extends Install {
   Future<Run> run({required RegExp until, required Duration timeout}) async {
     // The crash buffer holds this launch's crash, if it has one.
     await sh(work, 'adb', ['logcat', '-b', 'crash', '-c']);
-    // -W waits for the activity's first frame, which this app never draws,
-    // so it returns after its 10 s timeout. The app has a pid by then unless
-    // it died.
-    await sh(work, 'adb', [
-      'shell',
-      'am',
-      'start',
-      '-W',
-      '-n',
-      '$package/.MainActivity',
-    ]);
-    // pidof finds nothing, and exits 1, if the app already died.
-    final pid = (await Process.run('adb', [
-      'shell',
-      'pidof',
-      package,
-    ])).stdout.toString().trim();
+    final pid = await startAndroidApp(package);
     var matched = false;
     var log = '';
-    if (pid.isNotEmpty) {
+    if (pid != null) {
       // This launch's lines from the process's first, with the device's
       // timestamps.
       final logcat = await Process.start('adb', [
@@ -481,9 +465,27 @@ class AndroidInstall extends Install {
         '--pid=$pid',
       ]);
       try {
-        (matched, log) = await watch(logcat, until: until, timeout: timeout);
+        // A native crash's "Fatal signal" line is the app's too, so a launch
+        // that crashes natively, as a broken patch does, doesn't wait out
+        // [timeout].
+        final (_, out) = await watch(
+          logcat,
+          until: RegExp('${until.pattern}|Fatal signal'),
+          timeout: timeout,
+        );
+        log = out;
+        matched = until.hasMatch(log);
+        // The crash buffer is written before the crashing process exits, so
+        // stopping it sooner could lose the crash this launch reports.
+        if (!matched && log.contains('Fatal signal')) {
+          await waitForAndroidApp(
+            package,
+            running: false,
+            timeout: bootTimeout,
+          );
+        }
       } finally {
-        await sh(work, 'adb', ['shell', 'am', 'force-stop', package]);
+        await stopAndroidApp(package);
       }
     }
     final crash = (await Process.run('adb', [
@@ -500,7 +502,7 @@ class AndroidInstall extends Install {
       crashed: crashed,
       ending: crashed
           ? 'crashed${signal == null ? '' : ' with ${signal.group(2)}'}'
-          : pid.isEmpty
+          : pid == null
           ? 'exited right after it started'
           : 'no crash logged',
       elapsed: matched ? _bootTime(log, until) : null,
