@@ -194,10 +194,12 @@ jobs:
           api-level: 30
           arch: x86_64
           target: default
-          # The action's default options plus -feature -Vulkan. Flutter 3.32 and
-          # 3.35 pick Impeller's Vulkan backend when the emulator offers
-          # Vulkan, and on API 30 the runner died mid-leg running it (twice,
-          # run 40142077237); without it they use GLES, as other versions do.
+          # The action's default options plus -feature -Vulkan, which turns off
+          # the emulator's host-side Vulkan. Under Flutter 3.32 and 3.35 on API
+          # 30, Impeller made the emulator create a Vulkan device on the runner,
+          # and the runner died within half a minute (runs 40142077237 and
+          # 40148213340). Without it 3.32 falls back to GLES, and 3.35 still
+          # uses Vulkan inside the device but no longer takes the runner down.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
           # Run with the Dart of the Flutter the CLI pins, which `shorebird`
           # installed above: the repo's package config needs a newer language
@@ -384,6 +386,7 @@ jobs:
           api-level: 30
           arch: x86_64
           target: default
+          # -feature -Vulkan as in the patch job.
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -feature -Vulkan
           disable-animations: true
           script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_signing_e2e.dart android
