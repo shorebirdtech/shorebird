@@ -4,6 +4,16 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki
  -->
 
+## 1.6.133 (October 25, 2026)
+
+- 🐛 Trust Android 14+'s updatable root certificates in dart:io
+- 🐛 Always regenerate Generated.xcconfig in flutter build ios-framework
+- 🐛 Handle broken symlinks and existing files when creating plugin symlinks
+- 🐛 Guard against a missing VM service in debugDumpFocusTree and
+  debugDumpLayerTree
+
+Flutter 3.47.8 and Dart 3.13.7.
+
 ## 1.6.132 (October 25, 2026)
 
 - ✨ Refuse install_only on Flutter builds that skip its signature check
