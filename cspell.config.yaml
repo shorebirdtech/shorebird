@@ -127,7 +127,6 @@ words:
   - resends # "server resends the same patch on rollforward"
   - reusables
   - rollforward # POST /.../patches/<id>/rollforward — un-rolls-back a patch
-  - rustls # Rust TLS crate, in updater dependency bumps
   - spawnee
   - Retryable
   - RSAPKCS
@@ -170,7 +169,6 @@ words:
   - VCRUNTIME
   - Verdana
   - vmcode
-  - webpki # rustls-webpki crate, in updater dependency bumps
   - winsize
   - worktrees
   - writeln
