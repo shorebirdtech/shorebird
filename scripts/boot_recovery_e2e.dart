@@ -90,9 +90,9 @@ Future<void> main(List<String> args) async {
     'android' => AndroidInstall(),
     _ => null,
   };
-  final part = only.isEmpty
-      ? null
-      : Part.values.asNameMap()[only.single.substring('--only='.length)];
+  final part = only.length == 1
+      ? Part.values.asNameMap()[only.single.substring('--only='.length)]
+      : null;
   if (install == null ||
       positional.length > 2 ||
       only.length > 1 ||
