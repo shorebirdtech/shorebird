@@ -1,8 +1,21 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl
  -->
+
+## 1.6.133 (October 25, 2026)
+
+- 🐦 Flutter 3.47.8 / Dart 3.13.7 support
+- 🐛 Trust Android 14+'s updatable root certificates in dart:io
+- 🐛 Roll BoringSSL to block compromised intermediate certificates and fix
+  X.509 path validation
+- 🐛 Boot the release when a desktop patch fails to load
+- 🐛 Pass Windows patch paths as UTF-8
+- 🐛 Always regenerate Generated.xcconfig in flutter build ios-framework
+- 🐛 Handle broken symlinks and existing files when creating plugin symlinks
+- 🐛 Guard against a missing VM service in debugDumpFocusTree and
+  debugDumpLayerTree
 
 ## 1.6.132 (October 25, 2026)
 
@@ -20,8 +33,6 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 Forward all arguments through bin/shorebird.bat
 - 🐛 Keep -- when PowerShell runs shorebird.ps1
 - 🐛 Return dart's exit code from shorebird.bat under cmd /c
-- 🐛 Boot the release when a desktop patch fails to load
-- 🐛 Pass Windows patch paths as UTF-8
 - 🐛 Bump rustls, rustls-webpki and rand for security advisories
 - 🐛 Report updater paths relative to its directories in failure events
 - 🐛 Verify patch signatures at install time in install_only mode
