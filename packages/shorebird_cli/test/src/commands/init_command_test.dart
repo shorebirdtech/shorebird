@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -43,9 +44,11 @@ environment:
   sdk: ">=2.19.0 <3.0.0"''';
     const organizationId = 123;
 
+    late AndroidSdk androidSdk;
     late ArgResults argResults;
     late Doctor doctor;
     late Gradlew gradlew;
+    late Java java;
     late CodePushClientWrapper codePushClientWrapper;
     late File shorebirdYamlFile;
     late ShorebirdYaml shorebirdYaml;
@@ -64,11 +67,13 @@ environment:
       return runScoped(
         body,
         values: {
+          androidSdkRef.overrideWith(() => androidSdk),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           gradlewRef.overrideWith(() => gradlew),
           appleRef.overrideWith(() => apple),
           isJsonModeRef.overrideWith(() => false),
+          javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
@@ -85,9 +90,11 @@ environment:
     });
 
     setUp(() {
+      androidSdk = MockAndroidSdk();
       argResults = MockArgResults();
       doctor = MockDoctor();
       gradlew = MockGradlew();
+      java = MockJava();
       codePushClientWrapper = MockCodePushClientWrapper();
       apple = MockApple();
       shorebirdYaml = MockShorebirdYaml();
@@ -130,6 +137,8 @@ environment:
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
       when(() => doctor.initAndDoctorValidators).thenReturn([]);
+      when(() => androidSdk.path).thenReturn('/android/sdk');
+      when(() => java.version).thenReturn('openjdk version "17.0.1"');
       when(
         () => gradlew.isDaemonAvailable(any()),
       ).thenAnswer((_) async => true);
@@ -361,6 +370,99 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verifyNever(() => gradlew.startDaemon(any()));
+    });
+
+    group('when the project has an android directory', () {
+      setUp(() {
+        Directory(p.join(projectRoot.path, 'android')).createSync();
+      });
+
+      test('detects android flavors when the SDK and Java are found', () async {
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenAnswer((_) async => {'dev'});
+        when(() => argResults['force']).thenReturn(true);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+        verifyNever(() => logger.warn(any()));
+      });
+
+      test('skips android flavor detection without an Android SDK', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.warn(
+            any(
+              that: allOf(
+                contains(
+                  'Skipping Android flavor detection: '
+                  'no Android SDK found (set ANDROID_HOME if you have one).',
+                ),
+                contains('shorebird init'),
+              ),
+            ),
+          ),
+        ).called(1);
+        verifyNever(() => gradlew.isDaemonAvailable(any()));
+        verifyNever(() => gradlew.startDaemon(any()));
+        verifyNever(() => gradlew.productFlavors(any()));
+      });
+
+      test('uses the SDK in local.properties', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        final sdkDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(projectRoot.path, 'android', 'local.properties'),
+        ).writeAsStringSync('flutter.sdk=/flutter\nsdk.dir=${sdkDir.path}\n');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.warn(any()));
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+      });
+
+      test('skips android flavors when local.properties has no SDK', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        File(
+          p.join(projectRoot.path, 'android', 'local.properties'),
+        ).writeAsStringSync('sdk.dir=${p.join(projectRoot.path, 'nope')}\n');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(() => logger.warn(any())).called(1);
+        verifyNever(() => gradlew.productFlavors(any()));
+      });
+
+      test('leaves a JAVA_HOME without java to gradlew', () async {
+        when(() => java.version).thenThrow(const ProcessException('java', []));
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.warn(any()));
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+      });
+
+      test('skips android flavor detection when Java does not run', () async {
+        when(() => java.version).thenReturn(null);
+        when(
+          () => apple.flavors(platform: ApplePlatform.ios),
+        ).thenReturn({'dev'});
+        when(() => argResults['force']).thenReturn(true);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.warn(
+            any(
+              that: contains(
+                'Skipping Android flavor detection: no Java runtime found.',
+              ),
+            ),
+          ),
+        ).called(1);
+        verifyNever(() => gradlew.isDaemonAvailable(any()));
+        verifyNever(() => gradlew.productFlavors(any()));
+        // iOS flavors are still detected.
+        verify(() => logger.info('  - dev')).called(1);
+      });
     });
 
     test('throws when unable to initialize gradle wrapper', () async {

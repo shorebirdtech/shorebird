@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/organization_id.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
@@ -98,39 +100,48 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     Set<String>? macosFlavors;
     var productFlavors = <String>{};
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
-    final initializeGradleProgress = logger.progress('Initializing gradlew');
-    final bool shouldStartGradleDaemon;
-    try {
-      shouldStartGradleDaemon = await _shouldStartGradleDaemon(
-        projectRoot.path,
+    final missingAndroidTool = _missingAndroidTool(projectRoot.path);
+    if (missingAndroidTool != null) {
+      logger.warn(
+        '''Skipping Android flavor detection: $missingAndroidTool. Once Android builds work on this machine, re-run ${lightCyan.wrap('shorebird init')} to add any Android flavors.''',
       );
-    } on Exception catch (error) {
-      initializeGradleProgress.fail();
-      logger
-        ..err('Unable to initialize gradlew: $error')
-        ..info(
-          '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --status')} in the android directory to reproduce it), then re-run "shorebird init".''',
-        );
-      return ExitCode.software.code;
-    }
-    initializeGradleProgress.complete();
-
-    if (shouldStartGradleDaemon) {
+    } else {
+      final initializeGradleProgress = logger.progress('Initializing gradlew');
+      final bool shouldStartGradleDaemon;
       try {
-        await gradlew.startDaemon(projectRoot.path);
+        shouldStartGradleDaemon = await _shouldStartGradleDaemon(
+          projectRoot.path,
+        );
       } on Exception catch (error) {
+        initializeGradleProgress.fail();
         logger
-          ..err('Unable to start the gradle daemon: $error')
+          ..err('Unable to initialize gradlew: $error')
           ..info(
-            '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --daemon')} in the android directory to reproduce it), then re-run "shorebird init".''',
+            '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --status')} in the android directory to reproduce it), then re-run "shorebird init".''',
           );
         return ExitCode.software.code;
+      }
+      initializeGradleProgress.complete();
+
+      if (shouldStartGradleDaemon) {
+        try {
+          await gradlew.startDaemon(projectRoot.path);
+        } on Exception catch (error) {
+          logger
+            ..err('Unable to start the gradle daemon: $error')
+            ..info(
+              '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --daemon')} in the android directory to reproduce it), then re-run "shorebird init".''',
+            );
+          return ExitCode.software.code;
+        }
       }
     }
 
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
-      androidFlavors = await _maybeGetAndroidFlavors(projectRoot.path);
+      androidFlavors = missingAndroidTool == null
+          ? await _maybeGetAndroidFlavors(projectRoot.path)
+          : null;
       iosFlavors = apple.flavors(platform: ApplePlatform.ios);
       macosFlavors = apple.flavors(platform: ApplePlatform.macos);
       productFlavors = <String>{
@@ -396,6 +407,41 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     );
 
     return ExitCode.success.code;
+  }
+
+  /// Why gradlew can't run for the Android project at [projectPath] (such
+  /// as on a Mac set up only for iOS), or null when it has no Android project
+  /// or has what gradlew needs.
+  String? _missingAndroidTool(String projectPath) {
+    if (!Directory(p.join(projectPath, 'android')).existsSync()) return null;
+    if (androidSdk.path == null && !_hasLocalPropertiesSdk(projectPath)) {
+      return 'no Android SDK found (set ANDROID_HOME if you have one)';
+    }
+    // macOS ships a /usr/bin/java stub that fails without a JDK, so check
+    // that java runs rather than that it exists.
+    final String? javaVersion;
+    try {
+      javaVersion = java.version;
+    } on ProcessException {
+      // A JAVA_HOME without a java in it; gradlew says what's wrong.
+      return null;
+    }
+    if (javaVersion == null) return 'no Java runtime found';
+    return null;
+  }
+
+  /// Whether `android/local.properties` (written by Flutter from
+  /// `flutter config --android-sdk`) points at an SDK directory that exists.
+  bool _hasLocalPropertiesSdk(String projectPath) {
+    final file = File(p.join(projectPath, 'android', 'local.properties'));
+    if (!file.existsSync()) return false;
+    for (final line in file.readAsLinesSync()) {
+      final trimmed = line.trim();
+      if (!trimmed.startsWith('sdk.dir=')) continue;
+      final sdkDir = trimmed.substring('sdk.dir='.length).trim();
+      return sdkDir.isNotEmpty && Directory(sdkDir).existsSync();
+    }
+    return false;
   }
 
   Future<bool> _shouldStartGradleDaemon(String projectPath) async {
