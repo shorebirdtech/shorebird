@@ -465,8 +465,9 @@ class AndroidInstall extends Install {
         '--pid=$pid',
       ]);
       try {
-        // A native crash's "Fatal signal" line is the app's too, so a
-        // crashing launch doesn't wait out [timeout].
+        // A native crash's "Fatal signal" line is the app's too, so a launch
+        // that crashes natively, as a broken patch does, doesn't wait out
+        // [timeout].
         final (_, out) = await watch(
           logcat,
           until: RegExp('${until.pattern}|Fatal signal'),
@@ -484,7 +485,7 @@ class AndroidInstall extends Install {
           );
         }
       } finally {
-        await sh(work, 'adb', ['shell', 'am', 'force-stop', package]);
+        await stopAndroidApp(package);
       }
     }
     final crash = (await Process.run('adb', [

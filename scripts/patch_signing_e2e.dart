@@ -570,12 +570,7 @@ class AndroidInstall extends Install {
     try {
       return await watch(logcat, until: until, timeout: timeout);
     } finally {
-      await sh(Directory.current, 'adb', [
-        'shell',
-        'am',
-        'force-stop',
-        AndroidTarget.package,
-      ]);
+      await stopAndroidApp(AndroidTarget.package);
     }
   }
 }

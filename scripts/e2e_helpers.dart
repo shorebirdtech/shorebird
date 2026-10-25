@@ -281,6 +281,13 @@ Future<String?> startAndroidApp(String package) async {
   );
 }
 
+/// Stops [package] and waits until its process is gone: `am force-stop`
+/// returns before it is, and the next [startAndroidApp] would find it.
+Future<void> stopAndroidApp(String package) async {
+  await sh(Directory.current, 'adb', ['shell', 'am', 'force-stop', package]);
+  await waitForAndroidApp(package, running: false, timeout: bootTimeout);
+}
+
 /// Polls until [package] is running, or isn't, as [running] says, or
 /// [timeout] passes. Returns its pid, null when it isn't running.
 Future<String?> waitForAndroidApp(
@@ -298,7 +305,9 @@ Future<String?> waitForAndroidApp(
       package,
     ])).stdout.toString().trim();
     pid = out.isEmpty ? null : out;
-  } while ((pid != null) != running && stopwatch.elapsed < timeout);
+    if ((pid != null) == running) break;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  } while (stopwatch.elapsed < timeout);
   return pid;
 }
 
