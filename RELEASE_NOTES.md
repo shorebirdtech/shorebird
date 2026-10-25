@@ -25,29 +25,10 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 Bump rustls, rustls-webpki and rand for security advisories
 - 🐛 Report updater paths relative to its directories in failure events
 - 🐛 Verify patch signatures at install time in install_only mode
-
-Flutter 3.47.7 and Dart 3.13.5 are unchanged from 1.6.131.
-
-## 1.6.132 (October 25, 2026)
-
-- ✨ Refuse install_only on Flutter builds that skip its signature check
-- ✨ Add --managed-signing to sign patches with a Shorebird-managed key
-- ✨ Add Release.platforms keyed by platform, deprecate platformStatuses, and
-  move the CLI to it
-- ✨ Sign patches with a Shorebird-managed key by default
-- ✨ Derive the auth service and console from the code push server
-- 🐛 Refuse a private key passed as the public key, without printing it
-- 🐛 Link the console for the API host in OIDC sign-in hints
-- 🐛 Don't print 'Cancelled' when flutter versions list succeeds
-- 🐛 Show the app's startup logs in shorebird preview on Android
-- 🐛 Pass shorebird's exit code through the Windows launcher
-- 🐛 Forward all arguments through bin/shorebird.bat
-- 🐛 Keep -- when PowerShell runs shorebird.ps1
-- 🐛 Return dart's exit code from shorebird.bat under cmd /c
-- 🐛 Boot the release when a desktop patch fails to load
-- 🐛 Pass Windows patch paths as UTF-8
-- 🐛 Bump rustls, rustls-webpki and rand for security advisories
-- 🐛 Report updater paths relative to its directories in failure events
+- 🐛 Skip Android flavor detection in init when the Android SDK or Java is
+  missing
+- 🐛 Forward --no-codesign to flutter build ios-framework
+- 🐛 Regenerate the module's Xcode properties when they name another Flutter
 
 Flutter 3.47.7 and Dart 3.13.5 are unchanged from 1.6.131.
 
