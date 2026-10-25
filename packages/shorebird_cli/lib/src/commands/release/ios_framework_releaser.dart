@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -60,7 +61,9 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIosFramework(
         target: target,
-        args: buildArgs,
+        // `release` parses `--no-codesign` itself (for ipa builds), so it
+        // isn't forwarded with the rest.
+        args: [...buildArgs, if (!argResults.appleCodesign) '--no-codesign'],
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
       ),

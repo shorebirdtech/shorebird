@@ -106,6 +106,7 @@ void main() {
       xcodeBuild = MockXcodeBuild();
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => argResults['flutter-version']).thenReturn('latest');
 
@@ -318,6 +319,19 @@ void main() {
             ).called(1);
           },
         );
+      });
+
+      group('when --no-codesign is passed', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(false);
+        });
+
+        test('forwards --no-codesign to flutter', () async {
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+          verify(
+            () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+          ).called(1);
+        });
       });
 
       group('when platform was specified via arg results rest', () {
