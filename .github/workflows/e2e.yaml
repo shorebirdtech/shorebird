@@ -551,7 +551,9 @@ jobs:
       matrix:
         # macos-latest-xlarge: the release gate waits on this workflow's
         # slowest job, and on macos-latest's 3 vCPUs this one took 9.5 minutes.
-        os: [macos-latest-xlarge, windows-latest, ubuntu-latest]
+        # nscloud-windows-2022-amd64-8x16 (Namespace, 8 vCPU): on
+        # windows-latest's 4 vCPUs its Gradle builds made this job 8-11 minutes.
+        os: [macos-latest-xlarge, nscloud-windows-2022-amd64-8x16, ubuntu-latest]
         # branch selects the API host as well as the ref, so a cli_ref dispatch
         # drops the stable leg rather than pointing unreleased code at prod.
         branch: ${{ inputs.cli_ref && fromJSON('["main"]') || fromJSON('["stable", "main"]') }}
@@ -560,11 +562,10 @@ jobs:
         exclude:
           - os: macos-latest-xlarge
             branch: stable
-          - os: windows-latest
+          - os: nscloud-windows-2022-amd64-8x16
             branch: stable
 
     runs-on: ${{ matrix.os }}
-    # Windows takes ~12 minutes.
     timeout-minutes: 30
 
     permissions:
