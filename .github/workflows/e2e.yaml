@@ -250,7 +250,9 @@ jobs:
 
   macos_signing:
     name: macos signing
-    runs-on: macos-latest
+    # The release gate waits on this workflow's slowest job, and this one's
+    # six serial builds took 9 minutes on macos-latest's 3 vCPUs.
+    runs-on: macos-latest-xlarge
     timeout-minutes: 20
 
     permissions:
@@ -553,14 +555,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        # macos-latest-xlarge: the release gate waits on this workflow's
+        # slowest job, and on macos-latest's 3 vCPUs this one took 9.5 minutes.
+        os: [macos-latest-xlarge, windows-latest, ubuntu-latest]
         # branch selects the API host as well as the ref, so a cli_ref dispatch
         # drops the stable leg rather than pointing unreleased code at prod.
         branch: ${{ inputs.cli_ref && fromJSON('["main"]') || fromJSON('["stable", "main"]') }}
         # The stable leg runs the released, unchanging CLI against prod, so it
         # checks the server. One OS answers that.
         exclude:
-          - os: macos-latest
+          - os: macos-latest-xlarge
             branch: stable
           - os: windows-latest
             branch: stable

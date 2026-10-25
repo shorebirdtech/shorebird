@@ -185,4 +185,5 @@ words:
   - xcschemes
   - xcshareddata
   - xcworkspace
+  - xlarge # GitHub runner labels (macos-latest-xlarge)
   - xlink
