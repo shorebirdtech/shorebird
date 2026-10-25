@@ -371,6 +371,9 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     String? base64PublicKey,
     int? ddMaxBytes,
   }) {
+    _deleteForeignModuleXcodeProperties(
+      shorebirdEnv.getShorebirdProjectRoot()!,
+    );
     return _buildAppleKernel(
       command: 'ios-framework',
       description: 'iOS framework',
@@ -757,6 +760,39 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     );
 
     return artifactManager.getWindowsReleaseDirectory();
+  }
+
+  /// Deletes a module's generated `.ios/Flutter/Generated.xcconfig` and
+  /// `flutter_export_environment.sh` when they name a Flutter other than
+  /// Shorebird's, so `flutter build ios-framework` writes them again.
+  ///
+  /// Another Flutter that runs in the project (the system Flutter's `pub get`
+  /// after our build, see [_runShorebirdBuildCommand], or an IDE's) writes its
+  /// own FLUTTER_ROOT there. Flutter only rewrites these files when they are
+  /// older than its own flutter_tools stamp, so Shorebird's Flutter keeps the
+  /// other Flutter's files and `pod install` builds against that Flutter's
+  /// engine, or fails when it has no iOS artifacts. `flutter build ios` and
+  /// `ipa` always rewrite them; `ios-framework` doesn't.
+  void _deleteForeignModuleXcodeProperties(Directory projectRoot) {
+    final flutterDir = p.join(projectRoot.path, '.ios', 'Flutter');
+    final xcconfig = File(p.join(flutterDir, 'Generated.xcconfig'));
+    if (!xcconfig.existsSync()) return;
+    final flutterRoot = xcconfig
+        .readAsLinesSync()
+        .firstWhereOrNull((line) => line.startsWith('FLUTTER_ROOT='))
+        ?.substring('FLUTTER_ROOT='.length);
+    final vendedRoot = shorebirdEnv.flutterDirectory.path;
+    if (flutterRoot != null && p.equals(flutterRoot, vendedRoot)) return;
+
+    logger.detail(
+      '${xcconfig.path} names FLUTTER_ROOT=$flutterRoot, not $vendedRoot; '
+      'deleting it so Flutter regenerates it.',
+    );
+    xcconfig.deleteSync();
+    final exportEnvironment = File(
+      p.join(flutterDir, 'flutter_export_environment.sh'),
+    );
+    if (exportEnvironment.existsSync()) exportEnvironment.deleteSync();
   }
 
   /// The directory under [projectRoot] where Flutter's build system keeps its

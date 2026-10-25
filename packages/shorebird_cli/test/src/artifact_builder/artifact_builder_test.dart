@@ -2065,6 +2065,60 @@ Reason: Exited with code 70.'''),
         });
       });
 
+      group('when the module has generated Xcode properties', () {
+        const vendedRoot = '/shorebird/bin/cache/flutter/1234';
+        late File xcconfig;
+        late File exportEnvironment;
+
+        void writeProperties({required String flutterRoot}) {
+          final flutterDir = p.join(projectRoot.path, '.ios', 'Flutter');
+          xcconfig = File(p.join(flutterDir, 'Generated.xcconfig'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('''
+// This is a generated file; do not edit or check into version control.
+FLUTTER_ROOT=$flutterRoot
+FLUTTER_APPLICATION_PATH=${projectRoot.path}
+''');
+          exportEnvironment = File(
+            p.join(flutterDir, 'flutter_export_environment.sh'),
+          )..writeAsStringSync('export "FLUTTER_ROOT=$flutterRoot"\n');
+        }
+
+        setUp(() {
+          when(
+            () => shorebirdEnv.flutterDirectory,
+          ).thenReturn(Directory(vendedRoot));
+        });
+
+        test('deletes them when they name another Flutter', () async {
+          writeProperties(flutterRoot: '/Users/me/Developer/flutter');
+
+          await runWithOverrides(builder.buildIosFramework);
+
+          expect(xcconfig.existsSync(), isFalse);
+          expect(exportEnvironment.existsSync(), isFalse);
+        });
+
+        test('deletes them when they name no Flutter', () async {
+          writeProperties(flutterRoot: vendedRoot);
+          xcconfig.writeAsStringSync('FLUTTER_APPLICATION_PATH=/app\n');
+
+          await runWithOverrides(builder.buildIosFramework);
+
+          expect(xcconfig.existsSync(), isFalse);
+          expect(exportEnvironment.existsSync(), isFalse);
+        });
+
+        test("keeps them when they name Shorebird's Flutter", () async {
+          writeProperties(flutterRoot: vendedRoot);
+
+          await runWithOverrides(builder.buildIosFramework);
+
+          expect(xcconfig.existsSync(), isTrue);
+          expect(exportEnvironment.existsSync(), isTrue);
+        });
+      });
+
       test('invokes the correct flutter build command', () async {
         final result = await runWithOverrides(builder.buildIosFramework);
 
