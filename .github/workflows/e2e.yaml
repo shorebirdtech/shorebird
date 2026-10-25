@@ -655,18 +655,6 @@ jobs:
       - name: 🎯 Set up Dart
         uses: dart-lang/setup-dart@v1
 
-      # The test's app builds with Gradle, which otherwise downloads its
-      # distribution and the build's dependencies every run: its first Gradle
-      # run, in shorebird create, took about 2 minutes on each OS.
-      - name: 🐘 Gradle Cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.gradle/caches/modules-2
-            ~/.gradle/wrapper/dists/*/*/*
-            !~/.gradle/wrapper/dists/*/*/*.zip
-          key: gradle-${{ runner.os }}-cli-${{ hashFiles('bin/internal/flutter.version') }}
-
       - name: 🧪 Run Integration Tests
         run: dart test integration_test
         working-directory: packages/shorebird_cli
