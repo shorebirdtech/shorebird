@@ -65,9 +65,9 @@ enum Mode {
 }
 
 /// Flutter versions whose engine skips the signature check in install_only
-/// (updater#352, until the fix ships). null is the Flutter the CLI pins.
+/// (updater#352). The Flutter the CLI pins (null) has the fix (updater#396).
 /// Measured on every supported version on 2026-10-24 (e2e run 40096125987).
-const installOnlySkipsSignatureCheck = {null, '3.47.5', '3.44.9', '3.41.9'};
+const installOnlySkipsSignatureCheck = {'3.47.5', '3.44.9', '3.41.9'};
 
 /// What [patch] should do on an install in [mode] built with [flutter].
 Outcome expected(String patch, Mode mode, String? flutter) {
