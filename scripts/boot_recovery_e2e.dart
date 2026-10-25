@@ -7,8 +7,8 @@
 // app headless under Xvfb) and Android (on the one emulator adb sees, which
 // must let adb run as root).
 //
-// It makes one release of a fresh app, without patch signing (so a launch
-// checks only the installed patch's size, not its hash), then:
+// It makes a release of a fresh app without patch signing (so a launch checks
+// only the installed patch's size, not its hash), then:
 //
 //   1. times launches of the release, from process start to the label its
 //      main() prints
@@ -27,9 +27,10 @@
 // Step 5 is a known failure on engines in [bootCrashNotRecovered], as long
 // as the app crashes again there.
 //
-// In steps 2 and 6 the patch's fastest launch may take at most [maxBootRatio]
-// times the release's fastest. The app only prints, so step 2 times the
-// engine's and updater's own startup with a patch, and step 6 adds the hash.
+// In steps 2 and 6 the patch's third-fastest launch may take at most
+// [maxBootRatio] times the release's. The app only prints, so step 2 times the
+// engine's and updater's own startup with a patch. Step 6 adds a bigger app
+// and the hash; it bounds their cost but doesn't separate the two.
 //
 // Prerequisites: Shorebird on PATH and signed in (CI signs in with OIDC), and
 // per platform: on Linux the Flutter Linux build dependencies and Xvfb; for
@@ -40,7 +41,6 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'e2e_helpers.dart';
@@ -52,16 +52,18 @@ import 'e2e_helpers.dart';
 /// (e2e run 40141450017).
 const bootCrashNotRecovered = {null};
 
-/// Launches timed for each of the release and patch 1. Ten, so one fast
-/// outlier doesn't set the release's fastest alone: among five emulator
-/// launches the release's fastest was 114 ms against 158 to 212 for the rest,
-/// which puts a patch launching anywhere in its own usual range past 1.5x.
+/// Launches timed for each release and patch.
 const timedLaunches = 10;
 
-/// The most a patch's fastest boot may take, as a multiple of the release's.
-/// The fastest of several launches, because a CI runner only ever adds time:
-/// one run's launches of the same patch took from 149 to 361 ms.
+/// The most a patch's third-fastest boot may take, as a multiple of the
+/// release's. Not the median: a CI runner only ever adds time, and one run's
+/// launches of the same patch took from 149 to 361 ms. Not the fastest: one
+/// fast outlier would set the bound alone, as an emulator release launch of
+/// 114 ms did against 158 to 212 for the rest.
 const maxBootRatio = 1.5;
+
+/// The third-fastest of [boots], in milliseconds.
+int typical(List<int> boots) => (boots.toList()..sort())[2];
 
 final labelPattern = RegExp('e2e-label: ');
 
@@ -132,16 +134,16 @@ Future<void> run(Directory work, Install install, String? flutter) async {
   await checkSignedBootTime(app, install, flutter);
 }
 
-/// Checks that the patch's fastest boot took at most [maxBootRatio] times
+/// Checks that the patch's [typical] boot took at most [maxBootRatio] times
 /// the release's.
 void checkBootTime(String name, List<int> releaseBoots, List<int> patchBoots) {
-  final releaseFastest = releaseBoots.reduce(min);
-  final patchFastest = patchBoots.reduce(min);
-  final ratio = patchFastest / releaseFastest;
+  final release = typical(releaseBoots);
+  final patch = typical(patchBoots);
+  final ratio = patch / release;
   results.add(
-    '| $name | patch fastest ≤ ${maxBootRatio}x release | '
-    'release ${releaseFastest}ms ($releaseBoots), '
-    'patch ${patchFastest}ms ($patchBoots), ${ratio.toStringAsFixed(2)}x '
+    '| $name | patch ≤ ${maxBootRatio}x release, third-fastest | '
+    'release ${release}ms ($releaseBoots), '
+    'patch ${patch}ms ($patchBoots), ${ratio.toStringAsFixed(2)}x '
     '| ${ratio <= maxBootRatio ? 'PASS' : 'FAIL'} |',
   );
   if (ratio > maxBootRatio) failed = true;
@@ -238,6 +240,10 @@ void main() {
       '-v',
     ]),
   );
+  // Without the key the updater skips the check, and this would time no hash.
+  if (!(await install.builtShorebirdYaml(app)).contains('patch_public_key')) {
+    throw Exception('The managed release embedded no public key.');
+  }
   await install.install(app);
   final releaseBoots = await bootTimes(install, 'signed_release');
 
@@ -282,6 +288,9 @@ abstract class Install {
   /// Installs the release just built from [app].
   Future<void> install(Directory app);
 
+  /// The shorebird.yaml the release just built from [app] carries.
+  Future<String> builtShorebirdYaml(Directory app);
+
   /// Launches the app and stops it once a line matches [until], or it ends
   /// or [timeout] passes, recording how long it took and how it ended.
   Future<Run> run({required RegExp until, required Duration timeout});
@@ -310,6 +319,12 @@ class LinuxInstall extends Install {
 
   @override
   String get title => 'Linux';
+
+  @override
+  Future<String> builtShorebirdYaml(Directory app) async => File(
+    '${app.path}/build/linux/x64/release/bundle/data/flutter_assets/'
+    'shorebird.yaml',
+  ).readAsStringSync();
 
   @override
   Future<void> setUp(Directory work) async {
@@ -386,6 +401,20 @@ class AndroidInstall extends Install {
   @override
   List<String> get releaseArgs => const ['--artifact=apk'];
 
+  File _apk(Directory app) =>
+      File('${app.path}/build/app/outputs/flutter-apk/app-release.apk');
+
+  @override
+  Future<String> builtShorebirdYaml(Directory app) async {
+    final result = await Process.run('unzip', [
+      '-p',
+      _apk(app).path,
+      'assets/flutter_assets/shorebird.yaml',
+    ]);
+    if (result.exitCode != 0) throw Exception('unzip: ${result.stderr}');
+    return result.stdout as String;
+  }
+
   @override
   Future<void> setUp(Directory work) async {
     await super.setUp(work);
@@ -399,10 +428,7 @@ class AndroidInstall extends Install {
   Future<void> install(Directory app) async {
     // Fails when it isn't installed.
     await Process.run('adb', ['uninstall', package]);
-    await sh(work, 'adb', [
-      'install',
-      '${app.path}/build/app/outputs/flutter-apk/app-release.apk',
-    ]);
+    await sh(work, 'adb', ['install', _apk(app).path]);
   }
 
   @override
