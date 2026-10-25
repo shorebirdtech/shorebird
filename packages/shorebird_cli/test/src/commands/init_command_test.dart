@@ -398,7 +398,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
               that: allOf(
                 contains(
                   'Skipping Android flavor detection: '
-                  'no Android SDK found.',
+                  'no Android SDK found (set ANDROID_HOME if you have one).',
                 ),
                 contains('shorebird init'),
               ),
@@ -408,6 +408,37 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         verifyNever(() => gradlew.isDaemonAvailable(any()));
         verifyNever(() => gradlew.startDaemon(any()));
         verifyNever(() => gradlew.productFlavors(any()));
+      });
+
+      test('uses the SDK in local.properties', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        final sdkDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(projectRoot.path, 'android', 'local.properties'),
+        ).writeAsStringSync('flutter.sdk=/flutter\nsdk.dir=${sdkDir.path}\n');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.warn(any()));
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+      });
+
+      test('skips android flavors when local.properties has no SDK', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        File(
+          p.join(projectRoot.path, 'android', 'local.properties'),
+        ).writeAsStringSync('sdk.dir=${p.join(projectRoot.path, 'nope')}\n');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(() => logger.warn(any())).called(1);
+        verifyNever(() => gradlew.productFlavors(any()));
+      });
+
+      test('leaves a JAVA_HOME without java to gradlew', () async {
+        when(() => java.version).thenThrow(const ProcessException('java', []));
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.warn(any()));
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
       });
 
       test('skips android flavor detection when Java does not run', () async {

@@ -414,11 +414,34 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
   /// or has what gradlew needs.
   String? _missingAndroidTool(String projectPath) {
     if (!Directory(p.join(projectPath, 'android')).existsSync()) return null;
-    if (androidSdk.path == null) return 'no Android SDK found';
+    if (androidSdk.path == null && !_hasLocalPropertiesSdk(projectPath)) {
+      return 'no Android SDK found (set ANDROID_HOME if you have one)';
+    }
     // macOS ships a /usr/bin/java stub that fails without a JDK, so check
     // that java runs rather than that it exists.
-    if (java.version == null) return 'no Java runtime found';
+    final String? javaVersion;
+    try {
+      javaVersion = java.version;
+    } on ProcessException {
+      // A JAVA_HOME without a java in it; gradlew says what's wrong.
+      return null;
+    }
+    if (javaVersion == null) return 'no Java runtime found';
     return null;
+  }
+
+  /// Whether `android/local.properties` (written by Flutter from
+  /// `flutter config --android-sdk`) points at an SDK directory that exists.
+  bool _hasLocalPropertiesSdk(String projectPath) {
+    final file = File(p.join(projectPath, 'android', 'local.properties'));
+    if (!file.existsSync()) return false;
+    for (final line in file.readAsLinesSync()) {
+      final trimmed = line.trim();
+      if (!trimmed.startsWith('sdk.dir=')) continue;
+      final sdkDir = trimmed.substring('sdk.dir='.length).trim();
+      return sdkDir.isNotEmpty && Directory(sdkDir).existsSync();
+    }
+    return false;
   }
 
   Future<bool> _shouldStartGradleDaemon(String projectPath) async {
@@ -502,7 +525,9 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     } else if (creatableMemberships.isEmpty) {
       logger
         ..err('You cannot create apps in any of your organizations.')
-        ..info('${_rolesIn(memberships)}\n$_askForRole');
+        ..info(
+          '${_rolesIn(memberships)}\n$_askForRole',
+        );
       return null;
     } else {
       if (skippedMemberships.isNotEmpty) {
