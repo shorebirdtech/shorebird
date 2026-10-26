@@ -697,7 +697,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
               flutterRevision: releaseFlutterRevision,
               flutterVersion: release.flutterVersion,
               displayName: release.displayName,
-              platformStatuses: release.platformStatuses,
+              platforms: release.platforms,
               createdAt: release.createdAt,
               updatedAt: release.updatedAt,
             ),
