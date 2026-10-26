@@ -187,6 +187,31 @@ void main() {
       );
     });
 
+    test('reports when GitHub fails to issue an ID token', () async {
+      answerIdTokenRequestWith(
+        () => http.Response('Gateway Timeout', HttpStatus.gatewayTimeout),
+      );
+      await expectLater(
+        supplier.subjectToken(),
+        throwsA(
+          isA<CredentialSourceException>()
+              .having(
+                (e) => e.message,
+                'message',
+                'GitHub Actions failed to issue an OIDC token (504).',
+              )
+              .having(
+                (e) => e.hint,
+                'hint',
+                allOf(
+                  contains("error on GitHub's side"),
+                  isNot(contains('permissions')),
+                ),
+              ),
+        ),
+      );
+    });
+
     for (final (description, body) in [
       ('no value', jsonEncode({'count': 0})),
       ('an empty value', jsonEncode({'value': ''})),

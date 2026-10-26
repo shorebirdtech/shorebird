@@ -89,6 +89,17 @@ class GitHubActionsSubjectTokenSupplier implements SubjectTokenSupplier {
       );
     }
 
+    // GitHub's own failure, which a job's permissions don't cause.
+    if (response.statusCode >= HttpStatus.internalServerError) {
+      throw CredentialSourceException(
+        'GitHub Actions failed to issue an OIDC token '
+        '(${response.statusCode}).',
+        hint:
+            "This is an error on GitHub's side. Re-run the job, or set "
+            '$shorebirdTokenEnvVar to a Shorebird API key.',
+      );
+    }
+
     if (response.statusCode != HttpStatus.ok) {
       throw CredentialSourceException(
         'GitHub Actions refused to issue an OIDC token '
