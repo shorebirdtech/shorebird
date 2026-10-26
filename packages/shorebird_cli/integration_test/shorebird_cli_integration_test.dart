@@ -369,25 +369,25 @@ Future<bool> isPatchAvailable({
   return json['patch_available'] as bool;
 }
 
-/// Prints the process tree under [pid], every JVM's thread stacks and, on
-/// macOS, the stacks of each Dart VM in the tree, then kills the tree.
+/// Prints the process tree under [root], every JVM's thread stacks and, on
+/// macOS, every Dart VM's stacks, then kills the tree.
 ///
-/// JVMs are dumped whether or not they are in the tree: a Gradle daemon is
-/// detached from the build that started it, and is where a hung Android
-/// build usually waits.
-Future<void> _dumpAndKillProcessTree(int pid, Logger logger) async {
+/// JVMs and Dart VMs are dumped whether or not they are in the tree: a Gradle
+/// daemon is detached from the build that started it, and is where a hung
+/// Android build usually waits, with `flutter assemble` running under it.
+Future<void> _dumpAndKillProcessTree(int root, Logger logger) async {
   const dumpTimeout = Duration(seconds: 30);
   if (Platform.isWindows) {
     try {
       final tasks = await Process.run('tasklist', ['/v']).timeout(dumpTimeout);
       logger.info('Processes:\n${tasks.stdout}');
     } finally {
-      await Process.run('taskkill', ['/T', '/F', '/PID', '$pid']);
+      await Process.run('taskkill', ['/T', '/F', '/PID', '$root']);
     }
     return;
   }
 
-  final tree = {pid};
+  final tree = {root};
   try {
     final ps = await Process.run('ps', [
       '-A',
@@ -431,11 +431,17 @@ Future<void> _dumpAndKillProcessTree(int pid, Logger logger) async {
     }
 
     // On macOS arm64 the host Dart VM can deadlock at a safepoint, so sample
-    // the stacks of every Dart VM in the tree.
+    // the stacks of every Dart VM but this test's own.
     if (Platform.isMacOS) {
       for (final row in rows) {
-        if (!tree.contains(int.parse(row[0]))) continue;
-        if (!const {'dart', 'dartvm'}.contains(p.basename(row[3]))) continue;
+        if (int.parse(row[0]) == pid) continue;
+        if (!const {
+          'dart',
+          'dartvm',
+          'dartaotruntime',
+        }.contains(p.basename(row[3]))) {
+          continue;
+        }
         logger.info(
           'Stacks of Dart VM ${row[0]} (${row.sublist(3).join(' ')}):',
         );
