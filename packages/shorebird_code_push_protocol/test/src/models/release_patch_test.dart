@@ -60,6 +60,7 @@ void main() {
         isRolledBack: false,
         artifacts: const [],
         createdAt: DateTime.utc(2026),
+        rolloutPercentage: 10,
         notes: 'notes',
       );
 
@@ -75,6 +76,7 @@ void main() {
         expect(copy.channel, equals(patch.channel));
         expect(copy.artifacts, equals(patch.artifacts));
         expect(copy.createdAt, equals(patch.createdAt));
+        expect(copy.rolloutPercentage, equals(patch.rolloutPercentage));
         expect(copy.notes, equals(patch.notes));
       });
 
@@ -95,6 +97,7 @@ void main() {
           artifacts: [artifact],
           isRolledBack: true,
           createdAt: DateTime.utc(2027),
+          rolloutPercentage: 50,
           notes: 'other-notes',
         );
         expect(
@@ -107,6 +110,7 @@ void main() {
               artifacts: [artifact],
               isRolledBack: true,
               createdAt: DateTime.utc(2027),
+              rolloutPercentage: 50,
               notes: 'other-notes',
             ),
           ),
