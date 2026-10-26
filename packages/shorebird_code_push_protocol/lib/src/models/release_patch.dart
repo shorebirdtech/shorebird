@@ -14,6 +14,7 @@ class ReleasePatch {
     required this.artifacts,
     required this.isRolledBack,
     this.channel,
+    this.rolloutPercentage,
     this.notes,
   });
 
@@ -32,6 +33,7 @@ class ReleasePatch {
             )
             .toList(),
         isRolledBack: json['is_rolled_back'] as bool,
+        rolloutPercentage: (json['rollout_percentage'] as num?)?.toDouble(),
         notes: json['notes'] as String?,
       ),
     );
@@ -61,6 +63,10 @@ class ReleasePatch {
   /// Whether the patch has been rolled back.
   final bool isRolledBack;
 
+  /// The percentage of `channel`'s devices the patch is offered to.
+  /// Absent when the patch is on no channel.
+  final double? rolloutPercentage;
+
   /// Freeform notes associated with the patch, if any.
   final String? notes;
 
@@ -72,6 +78,7 @@ class ReleasePatch {
       'channel': ?channel,
       'artifacts': artifacts.map((e) => e.toJson()).toList(),
       'is_rolled_back': isRolledBack,
+      'rollout_percentage': ?rolloutPercentage,
       'notes': ?notes,
     };
   }
@@ -83,6 +90,7 @@ class ReleasePatch {
     channel,
     listHash(artifacts),
     isRolledBack,
+    rolloutPercentage,
     notes,
   ]);
 
@@ -95,6 +103,7 @@ class ReleasePatch {
         channel == other.channel &&
         listsEqual(artifacts, other.artifacts) &&
         isRolledBack == other.isRolledBack &&
+        rolloutPercentage == other.rolloutPercentage &&
         notes == other.notes;
   }
 }

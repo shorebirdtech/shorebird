@@ -50,6 +50,7 @@ export 'package:shorebird_code_push_protocol/src/messages/get_version_distributi
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/promote_patch/promote_patch_request.dart';
+export 'package:shorebird_code_push_protocol/src/messages/set_patch_rollout/set_patch_rollout_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/update_app_collaborator/update_app_collaborator_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/update_patch/update_patch_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/update_release/update_release_request.dart';

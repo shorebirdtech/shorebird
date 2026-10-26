@@ -33,6 +33,7 @@ void main() {
         channel: 'channel',
         isRolledBack: false,
         artifacts: [],
+        rolloutPercentage: 10,
         notes: 'notes',
       );
 
@@ -47,6 +48,7 @@ void main() {
         expect(copy.number, equals(patch.number));
         expect(copy.channel, equals(patch.channel));
         expect(copy.artifacts, equals(patch.artifacts));
+        expect(copy.rolloutPercentage, equals(patch.rolloutPercentage));
         expect(copy.notes, equals(patch.notes));
       });
 
@@ -66,6 +68,7 @@ void main() {
           channel: 'other-channel',
           artifacts: [artifact],
           isRolledBack: true,
+          rolloutPercentage: 50,
           notes: 'other-notes',
         );
         expect(
@@ -77,6 +80,7 @@ void main() {
               channel: 'other-channel',
               artifacts: [artifact],
               isRolledBack: true,
+              rolloutPercentage: 50,
               notes: 'other-notes',
             ),
           ),

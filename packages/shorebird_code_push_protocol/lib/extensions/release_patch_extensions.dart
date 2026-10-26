@@ -12,6 +12,7 @@ extension ReleasePatchExtensions on ReleasePatch {
     String? channel,
     List<PatchArtifact>? artifacts,
     bool? isRolledBack,
+    double? rolloutPercentage,
     String? notes,
   }) => ReleasePatch(
     id: id ?? this.id,
@@ -19,6 +20,7 @@ extension ReleasePatchExtensions on ReleasePatch {
     channel: channel ?? this.channel,
     artifacts: artifacts ?? this.artifacts,
     isRolledBack: isRolledBack ?? this.isRolledBack,
+    rolloutPercentage: rolloutPercentage ?? this.rolloutPercentage,
     notes: notes ?? this.notes,
   );
 }
