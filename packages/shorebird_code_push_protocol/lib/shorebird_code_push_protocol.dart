@@ -78,6 +78,7 @@ export 'package:shorebird_code_push_protocol/src/messages/remove_enterprise_memb
 export 'package:shorebird_code_push_protocol/src/messages/set_enterprise_member_role/set_enterprise_member_role200_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/set_enterprise_member_role/set_enterprise_member_role_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/set_enterprise_organization_member_role/set_enterprise_organization_member_role_request.dart';
+export 'package:shorebird_code_push_protocol/src/messages/set_patch_rollout/set_patch_rollout_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/transfer_organization_app/transfer_organization_app_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/update_app/update_app_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/update_app_collaborator/update_app_collaborator_request.dart';
