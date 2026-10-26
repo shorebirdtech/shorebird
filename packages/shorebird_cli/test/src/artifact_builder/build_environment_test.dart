@@ -169,9 +169,18 @@ org.gradle.configuration-cache=true
     });
 
     group('classifies second-tier providers ahead of generic CI', () {
-      String? providerFor(Map<String, String> vars) => BuildEnvironment.detect(
-        environment: <String, String>{'CI': 'true', ...vars},
-      ).ciProvider;
+      // Each case runs with and without `CI`, since not every vendor sets it
+      // (Appcircle's docs don't list it).
+      String? providerFor(Map<String, String> vars) {
+        final withoutCi = BuildEnvironment.detect(
+          environment: vars,
+        ).ciProvider;
+        final withCi = BuildEnvironment.detect(
+          environment: <String, String>{'CI': 'true', ...vars},
+        ).ciProvider;
+        expect(withCi, withoutCi);
+        return withCi;
+      }
 
       test('codemagic', () {
         expect(
@@ -198,7 +207,7 @@ org.gradle.configuration-cache=true
 
       test('harness, which also sets Drone variables', () {
         expect(
-          providerFor({'DRONE': 'true', 'HARNESS_ACCOUNT_ID': 'abc123'}),
+          providerFor({'DRONE': 'true', 'HARNESS_BUILD_ID': '42'}),
           'harness',
         );
       });
@@ -211,7 +220,24 @@ org.gradle.configuration-cache=true
       });
 
       test('other CI_SYSTEM_NAME values stay generic', () {
-        expect(providerFor({'CI_SYSTEM_NAME': 'something-else'}), 'other');
+        expect(
+          BuildEnvironment.detect(
+            environment: const <String, String>{
+              'CI': 'true',
+              'CI_SYSTEM_NAME': 'something-else',
+            },
+          ).ciProvider,
+          'other',
+        );
+      });
+
+      test('a Harness account id alone is not CI', () {
+        expect(
+          BuildEnvironment.detect(
+            environment: const <String, String>{'HARNESS_ACCOUNT_ID': 'abc'},
+          ).ciProvider,
+          isNull,
+        );
       });
     });
 

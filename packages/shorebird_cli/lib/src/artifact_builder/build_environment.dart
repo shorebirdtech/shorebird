@@ -187,12 +187,14 @@ class BuildEnvironment {
     // https://docs.semaphore.io/reference/env-vars
     ('SEMAPHORE', 'semaphore'),
     // https://developer.harness.io/docs/continuous-integration/use-ci/optimize-and-more/ci-env-var
-    // Before Drone: Harness CI also sets `DRONE=true`.
-    ('HARNESS_ACCOUNT_ID', 'harness'),
+    // Before Drone: Harness CI also sets `DRONE=true`. Not
+    // `HARNESS_ACCOUNT_ID`, which Harness's Terraform provider has users
+    // export on their own machines.
+    ('HARNESS_BUILD_ID', 'harness'),
     // https://docs.drone.io/pipeline/environment/reference/drone/
     ('DRONE', 'drone'),
     // Generic CI indicator set by GitHub Actions, GitLab, CircleCI,
-    // Travis, Bitbucket, Buildkite, Drone, and others — catches the
+    // Travis, Bitbucket, Buildkite, and others — catches the
     // long tail without enumerating every vendor.
     ('CI', 'other'),
   ];
