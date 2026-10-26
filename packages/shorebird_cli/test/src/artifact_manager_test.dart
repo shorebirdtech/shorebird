@@ -496,7 +496,8 @@ void main() {
         expect(second.readAsBytesSync(), equals(content));
       });
 
-      test('uses but does not cache a download whose hash differs', () async {
+      test('warns about, uses, and does not cache a download whose hash '
+          'differs', () async {
         final artifact = artifactWithHash('not-the-hash');
         final first = await download(artifact);
         final second = await download(artifact);
@@ -504,12 +505,29 @@ void main() {
         expect(requests, equals(2));
         expect(first.readAsBytesSync(), equals(content));
         expect(second.path, isNot(equals(first.path)));
+        verify(
+          () => logger.warn(any(that: contains('does not match the hash'))),
+        ).called(2);
         expect(
           File(
             p.join(releaseArtifactsDirectory().path, '7-not-the-hash'),
           ).existsSync(),
           isFalse,
         );
+      });
+
+      test('uses the download when it cannot be moved into place', () async {
+        final artifact = artifactWithHash(contentHash);
+        // A directory in the way makes the rename fail on every OS, as a
+        // copy held open by another run does on Windows.
+        Directory(
+          p.join(releaseArtifactsDirectory().path, '7-$contentHash', 'x'),
+        ).createSync(recursive: true);
+
+        final file = await download(artifact);
+
+        expect(file.readAsBytesSync(), equals(content));
+        expect(p.dirname(file.path), isNot(releaseArtifactsDirectory().path));
       });
 
       test('deletes a failed download', () async {

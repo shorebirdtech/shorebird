@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
+import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
@@ -196,10 +197,11 @@ class ArtifactManager {
     final cached = File(
       p.join(directory.path, '${artifact.id}-${artifact.hash}'),
     );
-    if (cached.existsSync()) {
+    // Recording the use before hashing keeps another run's prune from
+    // deleting the copy while it is hashed.
+    if (_markUsedIfExists(cached)) {
       final progress = logger.progress(message);
       if (await _sha256Of(cached) == artifact.hash) {
-        touchStamp(cached);
         progress.complete('$message (cached)');
         return cached;
       }
@@ -225,9 +227,10 @@ class ArtifactManager {
     }
 
     if (await _sha256Of(downloaded) != artifact.hash) {
-      logger.detail(
-        '${artifact.url} does not match its hash ${artifact.hash}; '
-        'not caching it',
+      logger.warn(
+        'The downloaded release artifact does not match the hash recorded '
+        'for it, so it was not cached. If the patch fails, run the command '
+        'again to download it again.',
       );
       return downloaded;
     }
@@ -240,6 +243,20 @@ class ArtifactManager {
       // download is just as good, and pruning removes its directory later.
       logger.detail('Unable to cache ${cached.path}: $error');
       return downloaded;
+    }
+  }
+
+  /// Sets [file]'s modification time to now, returning false if it does not
+  /// exist (or can't be touched), so a missing copy is downloaded rather
+  /// than recreated empty.
+  static bool _markUsedIfExists(File file) {
+    if (!file.existsSync()) return false;
+    try {
+      file.setLastModifiedSync(clock.now());
+      return true;
+    } on FileSystemException catch (error) {
+      logger.detail('Unable to reuse ${file.path}: $error');
+      return false;
     }
   }
 

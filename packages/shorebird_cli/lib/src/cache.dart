@@ -312,6 +312,10 @@ class Cache {
     if (!directory.existsSync()) return const [];
     final downloadCutoff = clock.now().subtract(releaseArtifactDownloadMaxAge);
     final removed = <String>[];
+    // Removing another run's download directory breaks the rule that only
+    // the function that created a temporary directory deletes it, but a run
+    // that stopped mid-download leaves one behind with nobody to delete it,
+    // and a live download is never this old.
     for (final entry in directory.listSync()) {
       final modified = entry.statSync().modified;
       final isStale =
