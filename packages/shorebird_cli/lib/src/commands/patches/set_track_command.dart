@@ -124,6 +124,19 @@ class SetTrackCommand extends ShorebirdCommand
     if (patch.channel == targetChannel &&
         rolloutPercentage != null &&
         rolloutPercentage != (patch.rolloutPercentage ?? 100)) {
+      final current = patch.rolloutPercentage ?? 100;
+      if (rolloutPercentage < current) {
+        return reportError(
+          message:
+              'Patch $patchNumber on release $releaseVersion is already '
+              'rolling out to ${formatRolloutPercentage(current)} of devices '
+              'on $targetChannel, and a rollout can only be raised.',
+          hint:
+              'To stop new devices getting it, leave its rollout where it is; '
+              'to take it off devices, roll it back with `shorebird patches '
+              'rollback`.',
+        );
+      }
       return reportError(
         message:
             'Patch $patchNumber on release $releaseVersion is already in '

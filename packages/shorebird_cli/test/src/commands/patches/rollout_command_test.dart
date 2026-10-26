@@ -147,6 +147,15 @@ void main() {
         '--percentage=50',
       ]);
       expect(parsed['percentage'], equals('50'));
+      expect(
+        command.argParser.parse([
+          '--release-version=1.0.0+1',
+          '--patch-number=2',
+          '--rollout=50',
+        ])['percentage'],
+        equals('50'),
+        reason: '--rollout, as on patch and promote, works here too',
+      );
       expect(command.argParser.options['percentage']!.mandatory, isTrue);
       expect(
         command.argParser.options.keys,
@@ -285,6 +294,22 @@ void main() {
         ).called(1);
         verifyNoRolloutRequest();
       });
+
+      test('passes --app-id and --flavor through to the hint', () async {
+        when(() => argResults['app-id']).thenReturn('other-app');
+        when(() => argResults['flavor']).thenReturn('dev');
+
+        await runWithOverrides(command.run);
+
+        verify(
+          () => logger.info(
+            'Put it on a track at a percentage with: '
+            'shorebird patches promote --release-version $releaseVersion '
+            '--patch-number $patchNumber --app-id other-app --flavor dev '
+            '--rollout 50',
+          ),
+        ).called(1);
+      });
     });
 
     group('when the server rejects the percentage', () {
@@ -362,6 +387,22 @@ void main() {
         ]);
       });
 
+      test('says so when the patch is already at that percentage', () async {
+        when(() => argResults['percentage']).thenReturn('10');
+
+        await runWithOverrides(command.run);
+
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion is already '
+            'rolling out to 10% of devices on stable.',
+          ),
+        ).called(1);
+        final (:exitCode, :json) = await runJson();
+        expect(exitCode, equals(ExitCode.success.code));
+        expect((json['data'] as Map<String, dynamic>)['changed'], isFalse);
+      });
+
       test('says nothing about older devices at 100', () async {
         when(() => argResults['percentage']).thenReturn('100');
 
@@ -381,6 +422,7 @@ void main() {
         expect(data['release_version'], releaseVersion);
         expect(data['patch_number'], patchNumber);
         expect(data['action'], 'rollout');
+        expect(data['changed'], isTrue);
         expect(data['rollout_percentage'], 50);
         expect(
           data['patch'],

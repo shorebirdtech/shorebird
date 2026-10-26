@@ -285,7 +285,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       emitJsonSuccess({
         'app_id': appId,
         'track': track.channel,
-        'rollout_percentage': rolloutPercentage ?? 100,
+        'rollout_percentage': rolloutPercentage ?? 100.0,
         'patches': [for (final p in published) p.toJson()],
       });
     } else if (rolloutPercentage case final percentage? when percentage < 100) {

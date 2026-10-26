@@ -48,6 +48,9 @@ class RolloutCommand extends ShorebirdCommand
             'a number greater than 0 and at most 100 with at most two '
             'decimal places (e.g. "50"). Rollouts only go up; 100 offers it '
             'to every device on the track.',
+        // `--rollout` is the name on `patch` and `promote`, so it works here
+        // too.
+        aliases: const [rolloutArgName],
         valueHelp: 'percentage',
         mandatory: true,
       );
@@ -105,15 +108,23 @@ class RolloutCommand extends ShorebirdCommand
 
     final channel = patch.channel;
     if (channel == null) {
+      final appIdArg = results[CommonArguments.appIdArg.name] as String?;
+      final flavorArg = results[CommonArguments.flavorArg.name] as String?;
+      final promoteCommand = [
+        'shorebird patches promote',
+        '--release-version $releaseVersion',
+        '--patch-number $patchNumber',
+        if (appIdArg != null) '--app-id $appIdArg',
+        if (flavorArg != null) '--flavor $flavorArg',
+        '--rollout ${formatRolloutArgument(percentage)}',
+      ].join(' ');
       return reportError(
         message:
             'Patch $patchNumber on release $releaseVersion is on no track, so '
             'it has no rollout to raise.',
         hint:
             'Put it on a track at a percentage with: '
-            'shorebird patches promote --release-version $releaseVersion '
-            '--patch-number $patchNumber --rollout '
-            '${formatRolloutArgument(percentage)}',
+            '$promoteCommand',
       );
     }
 
@@ -134,6 +145,7 @@ class RolloutCommand extends ShorebirdCommand
     );
     if (rolloutError != null) return rolloutError;
 
+    final changed = percentage != patch.rolloutPercentage;
     final updatedPatch = patch.copyWith(
       channel: channel,
       rolloutPercentage: percentage,
@@ -145,6 +157,7 @@ class RolloutCommand extends ShorebirdCommand
         'release_version': releaseVersion,
         'patch_number': patchNumber,
         'action': name,
+        'changed': changed,
         'rollout_percentage': percentage,
         'patch': updatedPatch.toJson(),
       });
@@ -152,8 +165,13 @@ class RolloutCommand extends ShorebirdCommand
     }
 
     logger.success(
-      'Patch $patchNumber on release $releaseVersion is now rolling out to '
-      '${formatRolloutPercentage(percentage)} of devices on $channel.',
+      changed
+          ? 'Patch $patchNumber on release $releaseVersion is now rolling out '
+                'to ${formatRolloutPercentage(percentage)} of devices on '
+                '$channel.'
+          : 'Patch $patchNumber on release $releaseVersion is already rolling '
+                'out to ${formatRolloutPercentage(percentage)} of devices on '
+                '$channel.',
     );
     if (percentage < 100) logger.info(rolloutOlderDevicesNote);
     formatPatchDetails(updatedPatch).forEach(logger.info);

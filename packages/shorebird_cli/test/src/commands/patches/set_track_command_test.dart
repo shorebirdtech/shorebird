@@ -600,6 +600,25 @@ void main() {
           verifyNoPromotion();
         });
 
+        test('refuses a lower percentage without suggesting a raise', () async {
+          when(() => argResults['rollout']).thenReturn('5');
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              'Patch $patchNumber on release $releaseVersion is already '
+              'rolling out to 10% of devices on ${targetChannel.name}, and a '
+              'rollout can only be raised.',
+            ),
+          ).called(1);
+          verifyNever(
+            () => logger.info(any(that: contains('shorebird patches rollout'))),
+          );
+          verifyNoPromotion();
+        });
+
         test(
           'points at patches rollout rather than restarting the rollout',
           () async {
