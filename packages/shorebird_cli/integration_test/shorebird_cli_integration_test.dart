@@ -1,3 +1,4 @@
+// cspell:words etime jcmd ppid taskkill tasklist
 import 'dart:convert';
 import 'dart:io';
 
@@ -52,33 +53,73 @@ void main() {
   ///
   /// It will take a command string, like `shorebird --version`, run it in the
   /// shell, and return the result.
-  ProcessResult runCommand(
+  ///
+  /// Output is printed as it arrives, so a command that hangs shows where.
+  /// A command still running after [timeout] has its process tree (and the
+  /// thread stacks of any JVM in it, such as a Gradle daemon) printed, is
+  /// killed, and fails the test, rather than running into the job's timeout
+  /// with nothing in the log.
+  Future<ProcessResult> runCommand(
     String command, {
     required String workingDirectory,
-    Logger? logger,
-  }) {
-    logger ??= Logger();
+    Duration timeout = const Duration(minutes: 8),
+  }) async {
     final parts = command.split(' ');
     final executable = parts.first;
     final arguments = parts.skip(1).toList();
     logger.info('Running $command in $workingDirectory');
-    final result = Process.runSync(
+    final process = await Process.start(
       executable,
       arguments,
       runInShell: true,
       workingDirectory: workingDirectory,
     );
-    logger
-      ..info('Exited with code: ${result.exitCode}')
-      ..info(result.stdout.toString());
-    if (result.exitCode != ExitCode.success.code) {
-      logger.err(result.stderr.toString());
+    final stdoutBuffer = StringBuffer();
+    final stderrBuffer = StringBuffer();
+    final stdoutDone = process.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .forEach((line) {
+          stdoutBuffer.writeln(line);
+          logger.info(line);
+        });
+    final stderrDone = process.stderr
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .forEach((line) {
+          stderrBuffer.writeln(line);
+          logger.info('stderr: $line');
+        });
+    final exitCode = await process.exitCode
+        .then<int?>((code) => code)
+        .timeout(
+          timeout,
+          onTimeout: () async {
+            logger.err('$command still running after $timeout.');
+            await _dumpAndKillProcessTree(process.pid, logger);
+            return null;
+          },
+        );
+    if (exitCode == null) {
+      // Fail before draining the pipes: a child that outlived the kill can
+      // hold them open.
+      fail('$command timed out after $timeout');
     }
-    return result;
+    await Future.wait([stdoutDone, stderrDone]);
+    logger.info('Exited with code: $exitCode');
+    return ProcessResult(
+      process.pid,
+      exitCode,
+      stdoutBuffer.toString(),
+      stderrBuffer.toString(),
+    );
   }
 
-  test('--version', () {
-    final result = runCommand('shorebird --version', workingDirectory: '.');
+  test('--version', () async {
+    final result = await runCommand(
+      'shorebird --version',
+      workingDirectory: '.',
+    );
     expect(result.exitCode, equals(0));
     expect(result.stdout, stringContainsInOrder(['Engine', 'revision']));
   });
@@ -86,8 +127,8 @@ void main() {
   // A launcher that drops the exit code turns every failure into a success,
   // which is what the Windows one did: each step below would then pass its
   // exit code check and fail later on a missing file.
-  test('a failing command exits with its error code', () {
-    final result = runCommand(
+  test('a failing command exits with its error code', () async {
+    final result = await runCommand(
       'shorebird not-a-command',
       workingDirectory: '.',
     );
@@ -96,8 +137,8 @@ void main() {
 
   // Options after `--` go to Flutter, so shorebird must not parse them, and
   // the launcher must not drop the `--`.
-  test('options after -- are not parsed as shorebird options', () {
-    final result = runCommand(
+  test('options after -- are not parsed as shorebird options', () async {
+    final result = await runCommand(
       'shorebird --version -- --not-a-shorebird-option',
       workingDirectory: '.',
     );
@@ -122,7 +163,7 @@ void main() {
 
       // Create the default flutter counter app
       logger.info('running `shorebird create $testAppName` in $cwd');
-      final createAppResult = runCommand(
+      final createAppResult = await runCommand(
         'shorebird create $testAppName',
         workingDirectory: cwd,
       );
@@ -172,7 +213,7 @@ void main() {
       );
 
       // Create an Android release.
-      final shorebirdReleaseResult = runCommand(
+      final shorebirdReleaseResult = await runCommand(
         'shorebird release android --verbose',
         workingDirectory: cwd,
       );
@@ -212,7 +253,7 @@ void main() {
       );
 
       // Create an Android patch.
-      final shorebirdPatchResult = runCommand(
+      final shorebirdPatchResult = await runCommand(
         'shorebird patch android --verbose',
         workingDirectory: cwd,
       );
@@ -284,7 +325,9 @@ void main() {
         completion(isFalse),
       );
     },
-    timeout: const Timeout(Duration(minutes: 15)),
+    // Room for each of its three commands to reach runCommand's timeout,
+    // which says more than this one would. The job allows 30 minutes.
+    timeout: const Timeout(Duration(minutes: 25)),
   );
 }
 
@@ -312,4 +355,62 @@ Future<bool> isPatchAvailable({
   }
   final json = jsonDecode(response.body) as Map<String, dynamic>;
   return json['patch_available'] as bool;
+}
+
+/// Prints the process tree under [pid] and every JVM's thread stacks, then
+/// kills the tree.
+///
+/// JVMs are dumped whether or not they are in the tree: a Gradle daemon is
+/// detached from the build that started it, and is where a hung Android
+/// build usually waits.
+Future<void> _dumpAndKillProcessTree(int pid, Logger logger) async {
+  if (Platform.isWindows) {
+    final tasks = await Process.run('tasklist', ['/v']);
+    logger.info('Processes:\n${tasks.stdout}');
+    await Process.run('taskkill', ['/T', '/F', '/PID', '$pid']);
+    return;
+  }
+
+  final ps = await Process.run('ps', [
+    '-A',
+    '-o',
+    'pid=,ppid=,etime=,command=',
+  ]);
+  final rows = [
+    for (final line in LineSplitter.split(ps.stdout as String))
+      line.trim().split(RegExp(r'\s+')),
+  ].where((row) => row.length >= 4).toList();
+  final tree = {pid};
+  var grew = true;
+  while (grew) {
+    grew = false;
+    for (final row in rows) {
+      final child = int.parse(row[0]);
+      if (tree.contains(int.parse(row[1])) && tree.add(child)) grew = true;
+    }
+  }
+  logger.info('Process tree:');
+  for (final row in rows) {
+    if (tree.contains(int.parse(row[0]))) logger.info(row.join(' '));
+  }
+
+  final javaHome = Platform.environment['JAVA_HOME'];
+  final jcmd = javaHome == null ? 'jcmd' : p.join(javaHome, 'bin', 'jcmd');
+  for (final row in rows) {
+    if (!row.sublist(3).join(' ').contains('java')) continue;
+    logger.info('Threads of JVM ${row[0]} (${row.sublist(3).join(' ')}):');
+    try {
+      final dump = await Process.run(jcmd, [
+        row[0],
+        'Thread.print',
+      ]).timeout(const Duration(seconds: 30));
+      logger.info('${dump.stdout}${dump.stderr}');
+    } on Exception catch (error) {
+      logger.info('could not dump: $error');
+    }
+  }
+
+  for (final id in tree) {
+    Process.killPid(id, ProcessSignal.sigkill);
+  }
 }
