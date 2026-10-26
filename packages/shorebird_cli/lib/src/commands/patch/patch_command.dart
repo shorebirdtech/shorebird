@@ -366,6 +366,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
     );
 
+    await patcher.prepareForRelease(appId: appId, release: release);
     final downloaded = await _downloadReleaseArtifacts(
       patcher: patcher,
       release: release,

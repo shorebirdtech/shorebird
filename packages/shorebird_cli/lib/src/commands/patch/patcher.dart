@@ -134,6 +134,15 @@ More info: ${troubleshootingUrl.toLink()}.
     required File patchArchive,
   });
 
+  /// Called by the patch command once it knows which [release] it is
+  /// patching, before it builds the patch for that release. (When the
+  /// release version must be read from a build, that first build runs before
+  /// this.)
+  Future<void> prepareForRelease({
+    required String appId,
+    required Release release,
+  }) async {}
+
   /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
   Future<File> buildPatchArtifact({String? releaseVersion});

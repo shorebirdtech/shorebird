@@ -329,6 +329,12 @@ void main() {
 
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
+      when(
+        () => patcher.prepareForRelease(
+          appId: any(named: 'appId'),
+          release: any(named: 'release'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => patcher.requiresReleaseVersionArg).thenReturn(false);
       when(
         () => patcher.extractReleaseVersionFromArtifact(any()),
@@ -1744,6 +1750,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
             appId: appId,
             releaseVersion: releaseVersion,
           ),
+          () => patcher.prepareForRelease(appId: appId, release: release),
           () => codePushClientWrapper.getReleaseArtifact(
             appId: appId,
             releaseId: release.id,
