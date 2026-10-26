@@ -12,7 +12,7 @@ void main() {
       );
       final parsed = CreateZapPreviewNoteResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -25,7 +25,7 @@ void main() {
           ),
         ],
       );
-      final parsed = GetZapPreviewsResponse.maybeFromJson(instance.toJson());
+      final parsed = GetZapPreviewsResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

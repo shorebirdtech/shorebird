@@ -6,7 +6,7 @@ void main() {
   group('ZapPreviewNoteStatus', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = ZapPreviewNoteStatus.open;
-      final parsed = ZapPreviewNoteStatus.maybeFromJson(instance.toJson());
+      final parsed = ZapPreviewNoteStatus.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

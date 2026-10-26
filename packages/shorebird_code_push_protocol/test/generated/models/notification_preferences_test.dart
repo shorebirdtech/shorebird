@@ -8,7 +8,7 @@ void main() {
       const instance = NotificationPreferences(
         areEmailNotificationsEnabled: false,
       );
-      final parsed = NotificationPreferences.maybeFromJson(instance.toJson());
+      final parsed = NotificationPreferences.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

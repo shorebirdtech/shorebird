@@ -6,7 +6,7 @@ void main() {
   group('ServiceAccountRole', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = ServiceAccountRole.viewer;
-      final parsed = ServiceAccountRole.maybeFromJson(instance.toJson());
+      final parsed = ServiceAccountRole.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

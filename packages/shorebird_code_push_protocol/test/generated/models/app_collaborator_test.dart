@@ -10,7 +10,7 @@ void main() {
         email: 'user@example.com',
         role: Role.owner,
       );
-      final parsed = AppCollaborator.maybeFromJson(instance.toJson());
+      final parsed = AppCollaborator.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

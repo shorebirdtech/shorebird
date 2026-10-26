@@ -11,7 +11,7 @@ void main() {
         uid: 'example',
         tenantUid: 'example',
       );
-      final parsed = AuditLogEventMetadata.maybeFromJson(instance.toJson());
+      final parsed = AuditLogEventMetadata.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

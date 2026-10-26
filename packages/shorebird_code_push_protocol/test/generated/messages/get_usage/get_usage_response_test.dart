@@ -24,7 +24,7 @@ void main() {
         ),
         reportedOverage: 0,
       );
-      final parsed = GetUsageResponse.maybeFromJson(instance.toJson());
+      final parsed = GetUsageResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

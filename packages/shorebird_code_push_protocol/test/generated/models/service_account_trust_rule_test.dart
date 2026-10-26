@@ -20,7 +20,7 @@ void main() {
           refPattern: 'example',
         ),
       );
-      final parsed = ServiceAccountTrustRule.maybeFromJson(instance.toJson());
+      final parsed = ServiceAccountTrustRule.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

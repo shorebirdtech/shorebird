@@ -6,7 +6,7 @@ void main() {
   group('ZapScreenshotContentType', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = ZapScreenshotContentType.imagePng;
-      final parsed = ZapScreenshotContentType.maybeFromJson(instance.toJson());
+      final parsed = ZapScreenshotContentType.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

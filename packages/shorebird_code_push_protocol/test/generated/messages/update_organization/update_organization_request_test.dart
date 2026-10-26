@@ -8,7 +8,7 @@ void main() {
       const instance = UpdateOrganizationRequest(name: 'example');
       final parsed = UpdateOrganizationRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

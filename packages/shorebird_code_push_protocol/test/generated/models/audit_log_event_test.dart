@@ -25,7 +25,7 @@ void main() {
         ],
         unmapped: {'key': <String, dynamic>{}},
       );
-      final parsed = AuditLogEvent.maybeFromJson(instance.toJson());
+      final parsed = AuditLogEvent.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

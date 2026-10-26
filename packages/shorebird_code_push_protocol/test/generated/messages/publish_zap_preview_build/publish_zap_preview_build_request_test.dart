@@ -8,7 +8,7 @@ void main() {
       const instance = PublishZapPreviewBuildRequest();
       final parsed = PublishZapPreviewBuildRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

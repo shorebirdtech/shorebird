@@ -6,7 +6,7 @@ void main() {
   group('SizeAnalysisStatus', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = SizeAnalysisStatus.succeeded;
-      final parsed = SizeAnalysisStatus.maybeFromJson(instance.toJson());
+      final parsed = SizeAnalysisStatus.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

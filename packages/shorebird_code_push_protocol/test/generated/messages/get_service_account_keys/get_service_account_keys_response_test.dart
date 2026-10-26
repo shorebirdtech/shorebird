@@ -19,7 +19,7 @@ void main() {
       );
       final parsed = GetServiceAccountKeysResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

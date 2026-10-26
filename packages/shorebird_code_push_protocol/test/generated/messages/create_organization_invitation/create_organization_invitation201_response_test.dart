@@ -6,14 +6,14 @@ void main() {
   group('CreateOrganizationInvitation201Response', () {
     test('CreateInvitationResponse round-trips via maybeFromJson/toJson', () {
       const instance = CreateInvitationResponse(email: 'example');
-      final parsed = CreateInvitationResponse.maybeFromJson(instance.toJson());
+      final parsed = CreateInvitationResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
 
     test('AddedMemberResponse round-trips via maybeFromJson/toJson', () {
       const instance = AddedMemberResponse(email: 'example', role: Role.owner);
-      final parsed = AddedMemberResponse.maybeFromJson(instance.toJson());
+      final parsed = AddedMemberResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -8,7 +8,7 @@ void main() {
       const instance = UpdateNotificationPreferencesRequest();
       final parsed = UpdateNotificationPreferencesRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

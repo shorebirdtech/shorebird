@@ -10,7 +10,7 @@ void main() {
         name: 'example',
         patchInstallCount: 0,
       );
-      final parsed = AppUsage.maybeFromJson(instance.toJson());
+      final parsed = AppUsage.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

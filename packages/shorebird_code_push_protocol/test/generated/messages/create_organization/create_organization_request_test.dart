@@ -8,7 +8,7 @@ void main() {
       const instance = CreateOrganizationRequest(name: 'example');
       final parsed = CreateOrganizationRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

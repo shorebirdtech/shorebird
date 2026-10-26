@@ -8,7 +8,7 @@ void main() {
       const instance = CreateZapPreviewNoteRequest();
       final parsed = CreateZapPreviewNoteRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

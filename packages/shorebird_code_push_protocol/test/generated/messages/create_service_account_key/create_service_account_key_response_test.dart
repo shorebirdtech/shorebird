@@ -16,7 +16,7 @@ void main() {
       );
       final parsed = CreateServiceAccountKeyResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

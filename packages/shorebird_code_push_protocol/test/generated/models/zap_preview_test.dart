@@ -18,7 +18,7 @@ void main() {
         payloadSize: 0,
         expiresAt: DateTime.utc(2024),
       );
-      final parsed = ZapPreview.maybeFromJson(instance.toJson());
+      final parsed = ZapPreview.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

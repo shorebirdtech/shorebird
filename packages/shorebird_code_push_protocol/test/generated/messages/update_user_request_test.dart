@@ -6,7 +6,7 @@ void main() {
   group('UpdateUserRequest', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = UpdateUserRequest();
-      final parsed = UpdateUserRequest.maybeFromJson(instance.toJson());
+      final parsed = UpdateUserRequest.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

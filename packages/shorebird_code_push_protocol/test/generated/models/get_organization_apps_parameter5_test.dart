@@ -8,7 +8,7 @@ void main() {
       const instance = GetOrganizationAppsParameter5.updated;
       final parsed = GetOrganizationAppsParameter5.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

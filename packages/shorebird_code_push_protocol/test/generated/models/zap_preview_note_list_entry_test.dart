@@ -17,7 +17,7 @@ void main() {
         updatedAt: DateTime.utc(2024),
         screenshotUrl: 'example',
       );
-      final parsed = ZapPreviewNoteListEntry.maybeFromJson(instance.toJson());
+      final parsed = ZapPreviewNoteListEntry.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

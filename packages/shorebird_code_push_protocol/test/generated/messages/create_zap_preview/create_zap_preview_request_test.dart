@@ -6,7 +6,7 @@ void main() {
   group('CreateZapPreviewRequest', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = CreateZapPreviewRequest();
-      final parsed = CreateZapPreviewRequest.maybeFromJson(instance.toJson());
+      final parsed = CreateZapPreviewRequest.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

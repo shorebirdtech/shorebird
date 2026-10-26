@@ -8,7 +8,7 @@ void main() {
       const instance = UpdateOrganizationUserRequest(role: Role.owner);
       final parsed = UpdateOrganizationUserRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -13,7 +13,7 @@ void main() {
         expiresAt: DateTime.utc(2024),
         scopes: const <String>['example'],
       );
-      final parsed = ServiceAccountKey.maybeFromJson(instance.toJson());
+      final parsed = ServiceAccountKey.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

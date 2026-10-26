@@ -8,7 +8,7 @@ void main() {
       const instance = AuditLogActor(
         user: AuditLogActorUser(typeId: 0, type: AuditLogActorUserType.user),
       );
-      final parsed = AuditLogActor.maybeFromJson(instance.toJson());
+      final parsed = AuditLogActor.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

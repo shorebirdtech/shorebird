@@ -6,7 +6,7 @@ void main() {
   group('InvitationTargetType', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = InvitationTargetType.organization;
-      final parsed = InvitationTargetType.maybeFromJson(instance.toJson());
+      final parsed = InvitationTargetType.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

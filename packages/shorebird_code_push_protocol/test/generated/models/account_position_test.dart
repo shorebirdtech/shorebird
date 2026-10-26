@@ -18,7 +18,7 @@ void main() {
         consumingOverage: false,
         accruedOverageAmount: 'example',
       );
-      final parsed = AccountPosition.maybeFromJson(instance.toJson());
+      final parsed = AccountPosition.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -13,7 +13,7 @@ void main() {
         environment: 'example',
         refPattern: 'example',
       );
-      final parsed = GithubTrustRule.maybeFromJson(instance.toJson());
+      final parsed = GithubTrustRule.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

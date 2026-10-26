@@ -15,7 +15,7 @@ void main() {
         role: Role.owner,
         expiresAt: DateTime.utc(2024),
       );
-      final parsed = GetInvitationResponse.maybeFromJson(instance.toJson());
+      final parsed = GetInvitationResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

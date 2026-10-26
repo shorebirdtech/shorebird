@@ -33,7 +33,7 @@ void main() {
         billingIntervalCount: 0,
         subscriberSince: DateTime.utc(2024),
       );
-      final parsed = Plan.maybeFromJson(instance.toJson());
+      final parsed = Plan.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

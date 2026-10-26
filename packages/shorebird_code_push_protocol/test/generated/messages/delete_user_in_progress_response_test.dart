@@ -8,7 +8,7 @@ void main() {
       const instance = DeleteUserInProgressResponse(remainingAppCount: 0);
       final parsed = DeleteUserInProgressResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

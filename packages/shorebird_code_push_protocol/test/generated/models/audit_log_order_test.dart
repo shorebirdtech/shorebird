@@ -6,7 +6,7 @@ void main() {
   group('AuditLogOrder', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = AuditLogOrder.desc;
-      final parsed = AuditLogOrder.maybeFromJson(instance.toJson());
+      final parsed = AuditLogOrder.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

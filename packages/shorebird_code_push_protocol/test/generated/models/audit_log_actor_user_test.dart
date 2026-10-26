@@ -9,7 +9,7 @@ void main() {
         typeId: 0,
         type: AuditLogActorUserType.user,
       );
-      final parsed = AuditLogActorUser.maybeFromJson(instance.toJson());
+      final parsed = AuditLogActorUser.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

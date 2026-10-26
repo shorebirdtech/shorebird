@@ -8,7 +8,7 @@ void main() {
       const instance = GetPatchLimitExceededResponse(patchLimitExceeded: false);
       final parsed = GetPatchLimitExceededResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

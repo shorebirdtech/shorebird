@@ -12,7 +12,7 @@ void main() {
         updatedAt: DateTime.utc(2024),
         expiresAt: DateTime.utc(2024),
       );
-      final parsed = ZapPreviewSummary.maybeFromJson(instance.toJson());
+      final parsed = ZapPreviewSummary.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

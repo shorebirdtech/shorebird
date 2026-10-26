@@ -9,7 +9,7 @@ void main() {
         size: 0,
         contentType: ZapScreenshotContentType.imagePng,
       );
-      final parsed = ZapScreenshotUpload.maybeFromJson(instance.toJson());
+      final parsed = ZapScreenshotUpload.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

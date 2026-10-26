@@ -6,7 +6,7 @@ void main() {
   group('AuditLogActorUserType', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = AuditLogActorUserType.user;
-      final parsed = AuditLogActorUserType.maybeFromJson(instance.toJson());
+      final parsed = AuditLogActorUserType.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

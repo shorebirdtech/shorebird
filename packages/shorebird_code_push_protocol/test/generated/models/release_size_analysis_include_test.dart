@@ -8,7 +8,7 @@ void main() {
       const instance = ReleaseSizeAnalysisInclude.tree;
       final parsed = ReleaseSizeAnalysisInclude.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

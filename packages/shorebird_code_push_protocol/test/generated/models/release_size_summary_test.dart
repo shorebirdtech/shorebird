@@ -15,7 +15,7 @@ void main() {
         nativeSizeInBytes: 0,
         assetSizeInBytes: 0,
       );
-      final parsed = ReleaseSizeSummary.maybeFromJson(instance.toJson());
+      final parsed = ReleaseSizeSummary.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

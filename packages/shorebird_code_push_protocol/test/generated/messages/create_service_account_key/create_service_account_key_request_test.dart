@@ -8,7 +8,7 @@ void main() {
       const instance = CreateServiceAccountKeyRequest(name: 'example');
       final parsed = CreateServiceAccountKeyRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

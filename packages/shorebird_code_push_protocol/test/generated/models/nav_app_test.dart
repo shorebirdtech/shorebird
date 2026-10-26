@@ -10,7 +10,7 @@ void main() {
         displayName: 'example',
         iconUrl: 'example',
       );
-      final parsed = NavApp.maybeFromJson(instance.toJson());
+      final parsed = NavApp.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

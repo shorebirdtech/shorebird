@@ -12,7 +12,7 @@ void main() {
       );
       final parsed = GetNotificationPreferencesResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

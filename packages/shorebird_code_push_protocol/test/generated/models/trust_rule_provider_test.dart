@@ -6,7 +6,7 @@ void main() {
   group('TrustRuleProvider', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = TrustRuleProvider.github;
-      final parsed = TrustRuleProvider.maybeFromJson(instance.toJson());
+      final parsed = TrustRuleProvider.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

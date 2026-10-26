@@ -8,7 +8,7 @@ void main() {
       const instance = ZapPreviewNoteOrientation.portrait;
       final parsed = ZapPreviewNoteOrientation.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

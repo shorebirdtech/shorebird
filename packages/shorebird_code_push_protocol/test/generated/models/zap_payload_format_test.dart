@@ -6,7 +6,7 @@ void main() {
   group('ZapPayloadFormat', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = ZapPayloadFormat.web1;
-      final parsed = ZapPayloadFormat.maybeFromJson(instance.toJson());
+      final parsed = ZapPayloadFormat.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

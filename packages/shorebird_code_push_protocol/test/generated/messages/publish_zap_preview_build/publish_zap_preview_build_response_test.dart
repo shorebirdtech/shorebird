@@ -13,7 +13,7 @@ void main() {
       );
       final parsed = PublishZapPreviewBuildResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
