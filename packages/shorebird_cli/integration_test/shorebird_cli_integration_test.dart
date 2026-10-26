@@ -1,4 +1,5 @@
 // cspell:words etime jcmd ppid taskkill tasklist
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -77,35 +78,46 @@ void main() {
     final stdoutBuffer = StringBuffer();
     final stderrBuffer = StringBuffer();
     final stdoutDone = process.stdout
-        .transform(utf8.decoder)
+        .transform(const Utf8Decoder(allowMalformed: true))
         .transform(const LineSplitter())
         .forEach((line) {
           stdoutBuffer.writeln(line);
           logger.info(line);
         });
     final stderrDone = process.stderr
-        .transform(utf8.decoder)
+        .transform(const Utf8Decoder(allowMalformed: true))
         .transform(const LineSplitter())
         .forEach((line) {
           stderrBuffer.writeln(line);
           logger.info('stderr: $line');
         });
-    final exitCode = await process.exitCode
-        .then<int?>((code) => code)
-        .timeout(
-          timeout,
-          onTimeout: () async {
-            logger.err('$command still running after $timeout.');
-            await _dumpAndKillProcessTree(process.pid, logger);
-            return null;
-          },
-        );
+    int? exitedWith;
+    unawaited(process.exitCode.then((code) => exitedWith = code));
+    // The deadline covers the pipes too: a child that outlives the command
+    // (such as a Gradle client) can hold them open after it exits.
+    final exitCode =
+        await Future.wait([
+              process.exitCode,
+              stdoutDone,
+              stderrDone,
+            ])
+            .then<int?>((_) => exitedWith)
+            .timeout(
+              timeout,
+              onTimeout: () async {
+                logger.err(
+                  exitedWith == null
+                      ? '$command still running after $timeout.'
+                      : '$command exited with $exitedWith, but a process it '
+                            'started still held its output after $timeout.',
+                );
+                await _dumpAndKillProcessTree(process.pid, logger);
+                return null;
+              },
+            );
     if (exitCode == null) {
-      // Fail before draining the pipes: a child that outlived the kill can
-      // hold them open.
       fail('$command timed out after $timeout');
     }
-    await Future.wait([stdoutDone, stderrDone]);
     logger.info('Exited with code: $exitCode');
     return ProcessResult(
       process.pid,
@@ -325,8 +337,8 @@ void main() {
         completion(isFalse),
       );
     },
-    // Room for each of its three commands to reach runCommand's timeout,
-    // which says more than this one would. The job allows 30 minutes.
+    // Longer than runCommand's timeout, which says more than this one would,
+    // plus the other commands' usual time. The job allows 30 minutes.
     timeout: const Timeout(Duration(minutes: 25)),
   );
 }
@@ -364,53 +376,62 @@ Future<bool> isPatchAvailable({
 /// detached from the build that started it, and is where a hung Android
 /// build usually waits.
 Future<void> _dumpAndKillProcessTree(int pid, Logger logger) async {
+  const dumpTimeout = Duration(seconds: 30);
   if (Platform.isWindows) {
-    final tasks = await Process.run('tasklist', ['/v']);
-    logger.info('Processes:\n${tasks.stdout}');
-    await Process.run('taskkill', ['/T', '/F', '/PID', '$pid']);
+    try {
+      final tasks = await Process.run('tasklist', ['/v']).timeout(dumpTimeout);
+      logger.info('Processes:\n${tasks.stdout}');
+    } finally {
+      await Process.run('taskkill', ['/T', '/F', '/PID', '$pid']);
+    }
     return;
   }
 
-  final ps = await Process.run('ps', [
-    '-A',
-    '-o',
-    'pid=,ppid=,etime=,command=',
-  ]);
-  final rows = [
-    for (final line in LineSplitter.split(ps.stdout as String))
-      line.trim().split(RegExp(r'\s+')),
-  ].where((row) => row.length >= 4).toList();
   final tree = {pid};
-  var grew = true;
-  while (grew) {
-    grew = false;
+  try {
+    final ps = await Process.run('ps', [
+      '-A',
+      '-o',
+      'pid=,ppid=,etime=,command=',
+    ]).timeout(dumpTimeout);
+    final rows = [
+      for (final line in LineSplitter.split(ps.stdout as String))
+        line.trim().split(RegExp(r'\s+')),
+    ].where((row) => row.length >= 4 && int.tryParse(row[0]) != null).toList();
+    var grew = true;
+    while (grew) {
+      grew = false;
+      for (final row in rows) {
+        if (tree.contains(int.tryParse(row[1])) &&
+            tree.add(int.parse(row[0]))) {
+          grew = true;
+        }
+      }
+    }
+    logger.info('Process tree:');
     for (final row in rows) {
-      final child = int.parse(row[0]);
-      if (tree.contains(int.parse(row[1])) && tree.add(child)) grew = true;
+      if (tree.contains(int.parse(row[0]))) logger.info(row.join(' '));
     }
-  }
-  logger.info('Process tree:');
-  for (final row in rows) {
-    if (tree.contains(int.parse(row[0]))) logger.info(row.join(' '));
-  }
 
-  final javaHome = Platform.environment['JAVA_HOME'];
-  final jcmd = javaHome == null ? 'jcmd' : p.join(javaHome, 'bin', 'jcmd');
-  for (final row in rows) {
-    if (!row.sublist(3).join(' ').contains('java')) continue;
-    logger.info('Threads of JVM ${row[0]} (${row.sublist(3).join(' ')}):');
-    try {
-      final dump = await Process.run(jcmd, [
-        row[0],
-        'Thread.print',
-      ]).timeout(const Duration(seconds: 30));
-      logger.info('${dump.stdout}${dump.stderr}');
-    } on Exception catch (error) {
-      logger.info('could not dump: $error');
+    final javaHome = Platform.environment['JAVA_HOME'];
+    final jcmd = javaHome == null ? 'jcmd' : p.join(javaHome, 'bin', 'jcmd');
+    for (final row in rows) {
+      final commandLine = row.sublist(3).join(' ');
+      if (p.basename(row[3]) != 'java') continue;
+      logger.info('Threads of JVM ${row[0]} ($commandLine):');
+      try {
+        final dump = await Process.run(jcmd, [
+          row[0],
+          'Thread.print',
+        ]).timeout(dumpTimeout);
+        logger.info('${dump.stdout}${dump.stderr}');
+      } on Exception catch (error) {
+        logger.info('could not dump: $error');
+      }
     }
-  }
-
-  for (final id in tree) {
-    Process.killPid(id, ProcessSignal.sigkill);
+  } finally {
+    for (final id in tree) {
+      Process.killPid(id, ProcessSignal.sigkill);
+    }
   }
 }
