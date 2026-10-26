@@ -181,7 +181,10 @@ void main() {
               .having(
                 (e) => e.hint,
                 'hint',
-                contains('permissions: id-token: write'),
+                allOf(
+                  contains('ACTIONS_ID_TOKEN_REQUEST_TOKEN has expired'),
+                  isNot(contains('permissions')),
+                ),
               ),
         ),
       );
