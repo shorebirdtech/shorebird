@@ -135,7 +135,9 @@ More info: ${troubleshootingUrl.toLink()}.
   });
 
   /// Called by the patch command once it knows which [release] it is
-  /// patching, before it builds the patch.
+  /// patching, before it builds the patch for that release. (When the
+  /// release version must be read from a build, that first build runs before
+  /// this.)
   Future<void> prepareForRelease({
     required String appId,
     required Release release,

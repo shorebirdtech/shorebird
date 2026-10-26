@@ -1750,6 +1750,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
             appId: appId,
             releaseVersion: releaseVersion,
           ),
+          () => patcher.prepareForRelease(appId: appId, release: release),
           () => codePushClientWrapper.getReleaseArtifact(
             appId: appId,
             releaseId: release.id,

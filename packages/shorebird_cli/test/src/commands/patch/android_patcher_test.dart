@@ -414,18 +414,24 @@ void main() {
           expect(builtTargetPlatforms(), isNull);
         });
 
-        test('leaves a --target-platform passed after -- alone', () async {
-          when(
-            () => argResults.rest,
-          ).thenReturn(['--target-platform=android-arm,android-arm64']);
+        for (final rest in [
+          ['--target-platform=android-arm,android-arm64'],
+          ['--target-platform', 'android-arm'],
+        ]) {
+          test('leaves ${rest.join(' ')} passed after -- alone', () async {
+            when(() => argResults.rest).thenReturn(rest);
 
-          await runWithOverrides(() async {
-            await patcher.prepareForRelease(appId: 'app-id', release: release);
-            await patcher.buildPatchArtifact();
+            await runWithOverrides(() async {
+              await patcher.prepareForRelease(
+                appId: 'app-id',
+                release: release,
+              );
+              await patcher.buildPatchArtifact();
+            });
+
+            expect(builtTargetPlatforms(), isNull);
           });
-
-          expect(builtTargetPlatforms(), isNull);
-        });
+        }
 
         test('builds the default architectures when the release has no '
             'per-architecture artifacts', () async {
@@ -487,6 +493,23 @@ void main() {
             () => codePushClientWrapper.getReleaseArtifacts(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).called(1);
+
+          // Another release's artifacts are fetched, not reused.
+          await runWithOverrides(
+            () => patcher.downloadAndroidReleaseArtifacts(
+              appId: 'app-id',
+              releaseId: 43,
+              downloadMessageTimeout: const Duration(minutes: 1),
+            ),
+          );
+          verify(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: 'app-id',
+              releaseId: 43,
               architectures: any(named: 'architectures'),
               platform: any(named: 'platform'),
             ),
