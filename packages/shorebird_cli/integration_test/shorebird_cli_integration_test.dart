@@ -1,4 +1,4 @@
-// cspell:words etime jcmd ppid taskkill tasklist
+// cspell:words dartvm etime jcmd ppid safepoint taskkill tasklist
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -369,8 +369,8 @@ Future<bool> isPatchAvailable({
   return json['patch_available'] as bool;
 }
 
-/// Prints the process tree under [pid] and every JVM's thread stacks, then
-/// kills the tree.
+/// Prints the process tree under [pid], every JVM's thread stacks and, on
+/// macOS, the stacks of each Dart VM in the tree, then kills the tree.
 ///
 /// JVMs are dumped whether or not they are in the tree: a Gradle daemon is
 /// detached from the build that started it, and is where a hung Android
@@ -427,6 +427,27 @@ Future<void> _dumpAndKillProcessTree(int pid, Logger logger) async {
         logger.info('${dump.stdout}${dump.stderr}');
       } on Exception catch (error) {
         logger.info('could not dump: $error');
+      }
+    }
+
+    // On macOS arm64 the host Dart VM can deadlock at a safepoint, so sample
+    // the stacks of every Dart VM in the tree.
+    if (Platform.isMacOS) {
+      for (final row in rows) {
+        if (!tree.contains(int.parse(row[0]))) continue;
+        if (!const {'dart', 'dartvm'}.contains(p.basename(row[3]))) continue;
+        logger.info(
+          'Stacks of Dart VM ${row[0]} (${row.sublist(3).join(' ')}):',
+        );
+        try {
+          final sample = await Process.run('sample', [
+            row[0],
+            '3',
+          ]).timeout(dumpTimeout);
+          logger.info('${sample.stdout}${sample.stderr}');
+        } on Exception catch (error) {
+          logger.info('could not sample: $error');
+        }
       }
     }
   } finally {
