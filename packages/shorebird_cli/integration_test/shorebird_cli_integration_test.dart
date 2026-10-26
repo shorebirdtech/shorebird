@@ -56,10 +56,10 @@ void main() {
   /// shell, and return the result.
   ///
   /// Output is printed as it arrives, so a command that hangs shows where.
-  /// A command still running after [timeout] has its process tree (and the
-  /// thread stacks of any JVM in it, such as a Gradle daemon) printed, is
-  /// killed, and fails the test, rather than running into the job's timeout
-  /// with nothing in the log.
+  /// A command still running after [timeout] has its process tree, the
+  /// thread stacks of every JVM (such as a Gradle daemon) and, on macOS, a
+  /// sample of every Dart VM printed, is killed, and fails the test, rather
+  /// than running into the job's timeout with nothing in the log.
   Future<ProcessResult> runCommand(
     String command, {
     required String workingDirectory,
@@ -434,6 +434,7 @@ Future<void> _dumpAndKillProcessTree(int root, Logger logger) async {
     // the stacks of every Dart VM but this test's own.
     if (Platform.isMacOS) {
       for (final row in rows) {
+        // dart:io's pid: skip this test's own VM.
         if (int.parse(row[0]) == pid) continue;
         if (!const {
           'dart',
