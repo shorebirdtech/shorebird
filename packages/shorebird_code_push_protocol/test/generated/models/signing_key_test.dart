@@ -6,7 +6,7 @@ void main() {
   group('SigningKey', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = SigningKey(id: 0, publicKeyPem: 'example');
-      final parsed = SigningKey.maybeFromJson(instance.toJson());
+      final parsed = SigningKey.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

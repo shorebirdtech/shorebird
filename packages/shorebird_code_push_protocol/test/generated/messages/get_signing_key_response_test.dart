@@ -8,7 +8,7 @@ void main() {
       const instance = GetSigningKeyResponse(
         signingKey: SigningKey(id: 0, publicKeyPem: 'example'),
       );
-      final parsed = GetSigningKeyResponse.maybeFromJson(instance.toJson());
+      final parsed = GetSigningKeyResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

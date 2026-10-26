@@ -6,7 +6,7 @@ void main() {
   group('ReleaseSigningMode', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = ReleaseSigningMode.managed;
-      final parsed = ReleaseSigningMode.maybeFromJson(instance.toJson());
+      final parsed = ReleaseSigningMode.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

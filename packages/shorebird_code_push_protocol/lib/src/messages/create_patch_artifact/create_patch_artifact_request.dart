@@ -53,9 +53,10 @@ class CreatePatchArtifactRequest {
   /// The hash of the artifact.
   final String hash;
 
-  /// The signature of the [hash].  Patch code signing is an opt in feature,
-  /// introduced later in the life of the product, so when this field is null,
-  /// the patch does not uses code signing.
+  /// The signature of the [hash], for a release whose binary embeds the
+  /// customer's own key. Null for an unsigned patch. Refused (400) for a
+  /// release whose binary embeds a managed key: the server signs those
+  /// patches itself, and fails the request rather than store an unsigned one.
   final String? hashSignature;
 
   /// The sha256 hash of the Podfile.lock file, if a Podfile.lock file was
