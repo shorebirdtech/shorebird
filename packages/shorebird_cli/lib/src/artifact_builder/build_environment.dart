@@ -168,6 +168,10 @@ class BuildEnvironment {
     ('TRAVIS', 'travis'),
     // https://www.appveyor.com/docs/environment-variables/
     ('APPVEYOR', 'appveyor'),
+    // https://docs.codemagic.io/yaml-basic-configuration/environment-variables/
+    ('CM_BUILD_ID', 'codemagic'),
+    // https://developer.apple.com/documentation/xcode/environment-variable-reference
+    ('CI_XCODE_CLOUD', 'xcode_cloud'),
     // Generic CI indicator set by GitHub Actions, GitLab, CircleCI,
     // Travis, Bitbucket, Buildkite, Drone, and others — catches the
     // long tail without enumerating every vendor.

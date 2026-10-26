@@ -168,6 +168,27 @@ org.gradle.configuration-cache=true
       );
     });
 
+    test('classifies Codemagic and Xcode Cloud ahead of generic CI', () {
+      expect(
+        BuildEnvironment.detect(
+          environment: const <String, String>{
+            'CI': 'true',
+            'CM_BUILD_ID': '00000000-0000-0000-0000-000000000000',
+          },
+        ).ciProvider,
+        'codemagic',
+      );
+      expect(
+        BuildEnvironment.detect(
+          environment: const <String, String>{
+            'CI': 'TRUE',
+            'CI_XCODE_CLOUD': 'TRUE',
+          },
+        ).ciProvider,
+        'xcode_cloud',
+      );
+    });
+
     test('toJson is privacy-safe (only bool/int/enum-string)', () {
       final env = BuildEnvironment.detect(
         environment: const <String, String>{'GITHUB_ACTIONS': 'true'},
