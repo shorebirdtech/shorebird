@@ -127,6 +127,7 @@ words:
   - resends # "server resends the same patch on rollforward"
   - reusables
   - rollforward # POST /.../patches/<id>/rollforward — un-rolls-back a patch
+  - rollouts # percentage rollouts of a patch on its track
   - spawnee
   - Retryable
   - RSAPKCS

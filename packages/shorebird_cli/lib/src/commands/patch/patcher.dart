@@ -156,13 +156,15 @@ More info: ${troubleshootingUrl.toLink()}.
     return metadata;
   }
 
-  /// Uploads the patch artifacts to the CodePush server.
+  /// Uploads the patch artifacts to the CodePush server and publishes the
+  /// patch to [track], at [rolloutPercentage] of its devices when given.
   Future<Patch> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
+    double? rolloutPercentage,
   }) {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -171,6 +173,7 @@ More info: ${troubleshootingUrl.toLink()}.
       platform: releaseType.releasePlatform,
       track: track,
       patchArtifactBundles: artifacts,
+      rolloutPercentage: rolloutPercentage,
     );
   }
 

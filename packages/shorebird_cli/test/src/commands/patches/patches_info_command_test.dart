@@ -367,6 +367,35 @@ void main() {
         expect(patchData['number'], patchNumber);
       });
 
+      test('includes the rollout percentage', () async {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            const ReleasePatch(
+              id: 10,
+              number: patchNumber,
+              channel: 'stable',
+              isRolledBack: false,
+              artifacts: [],
+              rolloutPercentage: 10,
+            ),
+          ],
+        );
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJsonMode(command.run),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        final patchData = data['patch'] as Map<String, dynamic>;
+        expect(patchData['rollout_percentage'], 10);
+      });
+
       group('when --patch-number is not an integer', () {
         setUp(() {
           when(() => argResults['patch-number']).thenReturn('one');

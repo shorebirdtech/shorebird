@@ -3444,6 +3444,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
             ),
           ).thenThrow(error);
 
@@ -3466,6 +3467,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
             ),
           ).thenAnswer((_) async => patch);
 
@@ -3478,6 +3480,96 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           );
 
           verify(() => progress.complete()).called(1);
+        });
+
+        test('promotes at the rollout percentage given', () async {
+          when(
+            () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              channelId: any(named: 'channelId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channel: channel,
+              rolloutPercentage: 12.5,
+            ),
+          );
+
+          verify(
+            () => logger.progress('Promoting patch to ${channel.name} (12.5%)'),
+          ).called(1);
+          verify(
+            () => codePushClient.promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channel.id,
+              rolloutPercentage: 12.5,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('setPatchRollout', () {
+        const releaseId = 7;
+        const patchNumber = 1;
+
+        Future<void> setPatchRollout() => runWithOverrides(
+          () => codePushClientWrapper.setPatchRollout(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+            patchNumber: patchNumber,
+            rolloutPercentage: 50,
+          ),
+        );
+
+        test('exits with code 70 when the request fails', () async {
+          const error = CodePushConflictException(
+            message: 'The rollout percentage can only go up.',
+          );
+          when(
+            () => codePushClient.setPatchRollout(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(setPatchRollout, throwsA(isA<ApiErrorExit>()));
+          verify(() => progress.fail('$error')).called(1);
+        });
+
+        test('completes progress when the rollout is set', () async {
+          when(
+            () => codePushClient.setPatchRollout(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await setPatchRollout();
+
+          verify(
+            () => logger.progress('Rolling out patch $patchNumber to 50%'),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+          verify(
+            () => codePushClient.setPatchRollout(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              rolloutPercentage: 50,
+            ),
+          ).called(1);
         });
       });
 
@@ -3772,6 +3864,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
             ),
           ).thenAnswer((_) async => patch);
         });
@@ -3873,6 +3966,29 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               patchId: patchId,
               channelId: channel.id,
+            ),
+          ).called(1);
+        });
+
+        test('promotes at the rollout percentage given', () async {
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              track: track,
+              patchArtifactBundles: patchArtifactBundles,
+              metadata: {'foo': 'bar'},
+              rolloutPercentage: 10,
+            ),
+          );
+
+          verify(
+            () => codePushClient.promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channel.id,
+              rolloutPercentage: 10,
             ),
           ).called(1);
         });

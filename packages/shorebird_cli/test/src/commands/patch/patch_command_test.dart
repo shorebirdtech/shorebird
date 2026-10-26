@@ -27,6 +27,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/rollout_percentage.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -283,6 +284,7 @@ void main() {
           track: any(named: 'track'),
           artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
+          rolloutPercentage: any(named: 'rolloutPercentage'),
         ),
       ).thenAnswer((_) async => const Patch(id: 3, number: 2));
 
@@ -2291,6 +2293,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
           equals({
             'app_id': appId,
             'track': 'stable',
+            'rollout_percentage': 100,
             'patches': [
               {
                 'platform': 'android',
@@ -2303,6 +2306,19 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
             ],
           }),
         );
+      });
+
+      test('emits the rollout percentage given', () async {
+        when(() => argResults['rollout']).thenReturn('12.5');
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJson(() => runWithOverrides(command.run)),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['rollout_percentage'], equals(12.5));
+        verifyNever(() => logger.info(rolloutOlderDevicesNote));
       });
 
       group('with --dry-run', () {
@@ -2550,6 +2566,124 @@ Please re-run the release command for this version or create a new release.'''),
             track: DeploymentTrack.staging,
           ),
         ).called(1);
+      });
+    });
+
+    group('--rollout', () {
+      void setRollout(String value) {
+        when(() => argResults['rollout']).thenReturn(value);
+      }
+
+      for (final value in ['0', '100.01', '101', '-5', 'ten', '10.555', '']) {
+        test('rejects "$value" before building', () async {
+          setRollout(value);
+
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                '--rollout must be a percentage greater than 0 and at most '
+                    '100, with at most two decimal places, such as 10 or 0.5 '
+                    '(got "$value").',
+              ),
+            ),
+          );
+          verifyNever(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          );
+        });
+      }
+
+      group('below 100', () {
+        setUp(() => setRollout('10'));
+
+        test('publishes the patch at that percentage', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+
+          verify(
+            () => patcher.uploadPatchArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              metadata: any(named: 'metadata'),
+              artifacts: any(named: 'artifacts'),
+              track: DeploymentTrack.stable,
+              rolloutPercentage: 10,
+            ),
+          ).called(1);
+        });
+
+        test('shows the percentage in the summary', () async {
+          await runWithOverrides(command.run);
+
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  '🟢 Track: ${lightCyan.wrap('Stable')} '
+                  '${lightCyan.wrap('(10%)')}',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('says how to raise it and which devices count', () async {
+          await runWithOverrides(command.run);
+
+          final raiseCommand =
+              'shorebird patches rollout --release-version ${release.version} '
+              '--patch-number 2 --percentage <percentage>';
+          verifyInOrder([
+            () => logger.info(
+              'Patch 2 on release ${release.version} is rolling out to 10% '
+              'of devices on stable. To raise it, run:\n'
+              '  ${lightCyan.wrap(raiseCommand)}',
+            ),
+            () => logger.info(rolloutOlderDevicesNote),
+          ]);
+        });
+
+        test('passes --flavor through to the raise command', () async {
+          when(() => argResults['flavor']).thenReturn('development');
+
+          await runWithOverrides(command.run);
+
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  '--patch-number 2 --flavor development --percentage',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('at 100', () {
+        setUp(() => setRollout('100'));
+
+        test('publishes at 100 and says nothing more', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+
+          verify(
+            () => patcher.uploadPatchArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              metadata: any(named: 'metadata'),
+              artifacts: any(named: 'artifacts'),
+              track: DeploymentTrack.stable,
+              rolloutPercentage: 100,
+            ),
+          ).called(1);
+          verifyNever(() => logger.info(rolloutOlderDevicesNote));
+        });
       });
     });
 
