@@ -182,7 +182,7 @@ void main() {
                 (e) => e.hint,
                 'hint',
                 allOf(
-                  contains('ACTIONS_ID_TOKEN_REQUEST_TOKEN has expired'),
+                  contains("didn't accept ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
                   isNot(contains('permissions')),
                 ),
               ),
