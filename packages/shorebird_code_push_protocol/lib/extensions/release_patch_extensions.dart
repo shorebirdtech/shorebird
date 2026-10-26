@@ -12,6 +12,7 @@ extension ReleasePatchExtensions on ReleasePatch {
     String? channel,
     List<PatchArtifact>? artifacts,
     bool? isRolledBack,
+    DateTime? createdAt,
     String? notes,
   }) => ReleasePatch(
     id: id ?? this.id,
@@ -19,6 +20,7 @@ extension ReleasePatchExtensions on ReleasePatch {
     channel: channel ?? this.channel,
     artifacts: artifacts ?? this.artifacts,
     isRolledBack: isRolledBack ?? this.isRolledBack,
+    createdAt: createdAt ?? this.createdAt,
     notes: notes ?? this.notes,
   );
 }
