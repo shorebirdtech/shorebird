@@ -33,11 +33,6 @@ export 'package:shorebird_code_push_protocol/src/messages/create_service_account
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_key/create_service_account_key_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_trust_rule/create_service_account_trust_rule_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_user/create_user_request.dart';
-export 'package:shorebird_code_push_protocol/src/messages/create_zap_preview/create_zap_preview_request.dart';
-export 'package:shorebird_code_push_protocol/src/messages/create_zap_preview_build/create_zap_preview_build_request.dart';
-export 'package:shorebird_code_push_protocol/src/messages/create_zap_preview_build/create_zap_preview_build_response.dart';
-export 'package:shorebird_code_push_protocol/src/messages/create_zap_preview_note/create_zap_preview_note_request.dart';
-export 'package:shorebird_code_push_protocol/src/messages/create_zap_preview_note/create_zap_preview_note_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/delete_user_in_progress_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/error_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_active_hours/get_active_hours_response.dart';
@@ -72,13 +67,9 @@ export 'package:shorebird_code_push_protocol/src/messages/get_signing_key_respon
 export 'package:shorebird_code_push_protocol/src/messages/get_unique_users/get_unique_users_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_usage/get_usage_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_version_distribution/get_version_distribution_response.dart';
-export 'package:shorebird_code_push_protocol/src/messages/get_zap_preview_notes/get_zap_preview_notes_response.dart';
-export 'package:shorebird_code_push_protocol/src/messages/get_zap_previews/get_zap_previews_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/promote_patch/promote_patch_request.dart';
-export 'package:shorebird_code_push_protocol/src/messages/publish_zap_preview_build/publish_zap_preview_build_request.dart';
-export 'package:shorebird_code_push_protocol/src/messages/publish_zap_preview_build/publish_zap_preview_build_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/put_app_store_connect_credential/put_app_store_connect_credential_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/transfer_organization_app/transfer_organization_app_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/update_app/update_app_request.dart';
@@ -177,16 +168,6 @@ export 'package:shorebird_code_push_protocol/src/models/unique_users_current_win
 export 'package:shorebird_code_push_protocol/src/models/unique_users_time_series_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_window.dart';
 export 'package:shorebird_code_push_protocol/src/models/version_distribution_entry.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_payload_format.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_preview.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_preview_note.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_preview_note_content.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_preview_note_list_entry.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_preview_note_orientation.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_preview_note_status.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_preview_summary.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_screenshot_content_type.dart';
-export 'package:shorebird_code_push_protocol/src/models/zap_screenshot_upload.dart';
 
 /// Parsed JSON data.
 typedef Json = Map<String, dynamic>;
