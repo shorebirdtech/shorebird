@@ -78,6 +78,7 @@ void main() {
         when(() => shorebirdFlutter.pruneUnusedRevisions()).thenReturn([]);
         when(() => cache.pruneUnusedArtifacts()).thenReturn([]);
         when(() => cache.pruneUnusedPreviews()).thenReturn([]);
+        when(() => cache.pruneUnusedReleaseArtifacts()).thenReturn([]);
       });
 
       test('removes only unused cached files', () async {
@@ -86,6 +87,7 @@ void main() {
         ).thenReturn(['a', 'b']);
         when(() => cache.pruneUnusedArtifacts()).thenReturn(['c']);
         when(() => cache.pruneUnusedPreviews()).thenReturn(['d', 'e', 'f']);
+        when(() => cache.pruneUnusedReleaseArtifacts()).thenReturn(['g']);
 
         final result = await runWithOverrides(command.run);
 
@@ -93,7 +95,7 @@ void main() {
         verify(
           () => progress.complete(
             'Removed 2 unused Flutter versions, 1 unused engine artifact, '
-            '3 unused previews',
+            '3 unused previews, 1 unused release artifact',
           ),
         ).called(1);
         verifyNever(cache.clear);

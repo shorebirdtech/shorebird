@@ -506,7 +506,7 @@ void main() {
       setUp(() {
         releaseArtifactFile = File('');
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),
@@ -553,7 +553,7 @@ void main() {
       group('when release artifact download fails', () {
         setUp(() {
           when(
-            () => artifactManager.downloadWithProgressUpdates(
+            () => artifactManager.downloadReleaseArtifact(
               any(),
               message: any(named: 'message'),
             ),

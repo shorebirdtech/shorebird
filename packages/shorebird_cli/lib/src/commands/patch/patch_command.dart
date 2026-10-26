@@ -1084,8 +1084,8 @@ ${summary.join('\n')}
   }) async {
     final File artifactFile;
     try {
-      artifactFile = await artifactManager.downloadWithProgressUpdates(
-        Uri.parse(releaseArtifact.url),
+      artifactFile = await artifactManager.downloadReleaseArtifact(
+        releaseArtifact,
         message: 'Downloading ${releaseArtifact.arch}',
       );
     } on Exception {
