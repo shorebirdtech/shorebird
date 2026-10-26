@@ -329,6 +329,12 @@ void main() {
 
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
+      when(
+        () => patcher.prepareForRelease(
+          appId: any(named: 'appId'),
+          release: any(named: 'release'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => patcher.requiresReleaseVersionArg).thenReturn(false);
       when(
         () => patcher.extractReleaseVersionFromArtifact(any()),
