@@ -47,11 +47,9 @@ export 'package:shorebird_code_push_protocol/src/messages/get_new_devices/get_ne
 export 'package:shorebird_code_push_protocol/src/messages/get_notification_preferences/get_notification_preferences_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_organization_apps/get_organization_apps_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_organization_audit_logs/get_organization_audit_logs_response.dart';
-export 'package:shorebird_code_push_protocol/src/messages/get_organization_nav_apps/get_organization_nav_apps_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_organization_users/get_organization_users_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_organizations_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_patch_adoption/get_patch_adoption_response.dart';
-export 'package:shorebird_code_push_protocol/src/messages/get_patch_limit_exceeded/get_patch_limit_exceeded_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_patch_metric_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_public_stats/get_public_stats200_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_received_invitations/get_received_invitations_response.dart';
@@ -124,7 +122,6 @@ export 'package:shorebird_code_push_protocol/src/models/invitation_summary.dart'
 export 'package:shorebird_code_push_protocol/src/models/invitation_target_type.dart';
 export 'package:shorebird_code_push_protocol/src/models/latest_release.dart';
 export 'package:shorebird_code_push_protocol/src/models/metrics_range.dart';
-export 'package:shorebird_code_push_protocol/src/models/nav_app.dart';
 export 'package:shorebird_code_push_protocol/src/models/notification_preferences.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization_membership.dart';
