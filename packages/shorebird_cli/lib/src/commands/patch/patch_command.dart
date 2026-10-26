@@ -366,6 +366,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
     );
 
+    await patcher.prepareForRelease(appId: appId, release: release);
     final downloaded = await _downloadReleaseArtifacts(
       patcher: patcher,
       release: release,
@@ -1084,8 +1085,8 @@ ${summary.join('\n')}
   }) async {
     final File artifactFile;
     try {
-      artifactFile = await artifactManager.downloadWithProgressUpdates(
-        Uri.parse(releaseArtifact.url),
+      artifactFile = await artifactManager.downloadReleaseArtifact(
+        releaseArtifact,
         message: 'Downloading ${releaseArtifact.arch}',
       );
     } on Exception {

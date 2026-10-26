@@ -26,13 +26,40 @@ void main() {
       );
     });
 
+    group('created_at', () {
+      test('round-trips through JSON', () {
+        final patch = ReleasePatch(
+          id: 0,
+          number: 1,
+          isRolledBack: false,
+          artifacts: const [],
+          createdAt: DateTime.utc(2026, 10, 25, 12, 30),
+        );
+        final json = patch.toJson();
+        expect(json['created_at'], equals('2026-10-25T12:30:00.000Z'));
+        expect(ReleasePatch.fromJson(json), equals(patch));
+      });
+
+      test('is null when a server does not send it', () {
+        final patch = ReleasePatch.fromJson(const {
+          'id': 0,
+          'number': 1,
+          'artifacts': <Object>[],
+          'is_rolled_back': false,
+        });
+        expect(patch.createdAt, isNull);
+        expect(patch.toJson(), isNot(contains('created_at')));
+      });
+    });
+
     group('copyWith', () {
-      const patch = ReleasePatch(
+      final patch = ReleasePatch(
         id: 0,
         number: 1,
         channel: 'channel',
         isRolledBack: false,
-        artifacts: [],
+        artifacts: const [],
+        createdAt: DateTime.utc(2026),
         notes: 'notes',
       );
 
@@ -47,6 +74,7 @@ void main() {
         expect(copy.number, equals(patch.number));
         expect(copy.channel, equals(patch.channel));
         expect(copy.artifacts, equals(patch.artifacts));
+        expect(copy.createdAt, equals(patch.createdAt));
         expect(copy.notes, equals(patch.notes));
       });
 
@@ -66,6 +94,7 @@ void main() {
           channel: 'other-channel',
           artifacts: [artifact],
           isRolledBack: true,
+          createdAt: DateTime.utc(2027),
           notes: 'other-notes',
         );
         expect(
@@ -77,6 +106,7 @@ void main() {
               channel: 'other-channel',
               artifacts: [artifact],
               isRolledBack: true,
+              createdAt: DateTime.utc(2027),
               notes: 'other-notes',
             ),
           ),

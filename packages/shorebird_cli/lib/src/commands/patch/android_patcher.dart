@@ -95,6 +95,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     final aabFile = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
+      targetPlatforms: releaseTargetPlatforms,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );

@@ -1,3 +1,5 @@
+// cspell:words dartvm etime jcmd ppid safepoint taskkill tasklist
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -52,33 +54,84 @@ void main() {
   ///
   /// It will take a command string, like `shorebird --version`, run it in the
   /// shell, and return the result.
-  ProcessResult runCommand(
+  ///
+  /// Output is printed as it arrives, so a command that hangs shows where.
+  /// A command still running after [timeout] has its process tree, the
+  /// thread stacks of every JVM (such as a Gradle daemon) and, on macOS, a
+  /// sample of every Dart VM printed, is killed, and fails the test, rather
+  /// than running into the job's timeout with nothing in the log.
+  Future<ProcessResult> runCommand(
     String command, {
     required String workingDirectory,
-    Logger? logger,
-  }) {
-    logger ??= Logger();
+    Duration timeout = const Duration(minutes: 8),
+  }) async {
     final parts = command.split(' ');
     final executable = parts.first;
     final arguments = parts.skip(1).toList();
     logger.info('Running $command in $workingDirectory');
-    final result = Process.runSync(
+    final process = await Process.start(
       executable,
       arguments,
       runInShell: true,
       workingDirectory: workingDirectory,
     );
-    logger
-      ..info('Exited with code: ${result.exitCode}')
-      ..info(result.stdout.toString());
-    if (result.exitCode != ExitCode.success.code) {
-      logger.err(result.stderr.toString());
+    final stdoutBuffer = StringBuffer();
+    final stderrBuffer = StringBuffer();
+    final stdoutDone = process.stdout
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .transform(const LineSplitter())
+        .forEach((line) {
+          stdoutBuffer.writeln(line);
+          logger.info(line);
+        });
+    final stderrDone = process.stderr
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .transform(const LineSplitter())
+        .forEach((line) {
+          stderrBuffer.writeln(line);
+          logger.info('stderr: $line');
+        });
+    int? exitedWith;
+    unawaited(process.exitCode.then((code) => exitedWith = code));
+    // The deadline covers the pipes too: a child that outlives the command
+    // (such as a Gradle client) can hold them open after it exits.
+    final exitCode =
+        await Future.wait([
+              process.exitCode,
+              stdoutDone,
+              stderrDone,
+            ])
+            .then<int?>((_) => exitedWith)
+            .timeout(
+              timeout,
+              onTimeout: () async {
+                logger.err(
+                  exitedWith == null
+                      ? '$command still running after $timeout.'
+                      : '$command exited with $exitedWith, but a process it '
+                            'started still held its output after $timeout.',
+                );
+                await _dumpAndKillProcessTree(process.pid, logger);
+                return null;
+              },
+            );
+    if (exitCode == null) {
+      fail('$command timed out after $timeout');
     }
-    return result;
+    logger.info('Exited with code: $exitCode');
+    return ProcessResult(
+      process.pid,
+      exitCode,
+      stdoutBuffer.toString(),
+      stderrBuffer.toString(),
+    );
   }
 
-  test('--version', () {
-    final result = runCommand('shorebird --version', workingDirectory: '.');
+  test('--version', () async {
+    final result = await runCommand(
+      'shorebird --version',
+      workingDirectory: '.',
+    );
     expect(result.exitCode, equals(0));
     expect(result.stdout, stringContainsInOrder(['Engine', 'revision']));
   });
@@ -86,8 +139,8 @@ void main() {
   // A launcher that drops the exit code turns every failure into a success,
   // which is what the Windows one did: each step below would then pass its
   // exit code check and fail later on a missing file.
-  test('a failing command exits with its error code', () {
-    final result = runCommand(
+  test('a failing command exits with its error code', () async {
+    final result = await runCommand(
       'shorebird not-a-command',
       workingDirectory: '.',
     );
@@ -96,8 +149,8 @@ void main() {
 
   // Options after `--` go to Flutter, so shorebird must not parse them, and
   // the launcher must not drop the `--`.
-  test('options after -- are not parsed as shorebird options', () {
-    final result = runCommand(
+  test('options after -- are not parsed as shorebird options', () async {
+    final result = await runCommand(
       'shorebird --version -- --not-a-shorebird-option',
       workingDirectory: '.',
     );
@@ -122,7 +175,7 @@ void main() {
 
       // Create the default flutter counter app
       logger.info('running `shorebird create $testAppName` in $cwd');
-      final createAppResult = runCommand(
+      final createAppResult = await runCommand(
         'shorebird create $testAppName',
         workingDirectory: cwd,
       );
@@ -172,7 +225,7 @@ void main() {
       );
 
       // Create an Android release.
-      final shorebirdReleaseResult = runCommand(
+      final shorebirdReleaseResult = await runCommand(
         'shorebird release android --verbose',
         workingDirectory: cwd,
       );
@@ -212,7 +265,7 @@ void main() {
       );
 
       // Create an Android patch.
-      final shorebirdPatchResult = runCommand(
+      final shorebirdPatchResult = await runCommand(
         'shorebird patch android --verbose',
         workingDirectory: cwd,
       );
@@ -284,7 +337,9 @@ void main() {
         completion(isFalse),
       );
     },
-    timeout: const Timeout(Duration(minutes: 15)),
+    // Longer than runCommand's timeout, which says more than this one would,
+    // plus the other commands' usual time. The job allows 30 minutes.
+    timeout: const Timeout(Duration(minutes: 25)),
   );
 }
 
@@ -312,4 +367,99 @@ Future<bool> isPatchAvailable({
   }
   final json = jsonDecode(response.body) as Map<String, dynamic>;
   return json['patch_available'] as bool;
+}
+
+/// Prints the process tree under [root], every JVM's thread stacks and, on
+/// macOS, every Dart VM's stacks, then kills the tree.
+///
+/// JVMs and Dart VMs are dumped whether or not they are in the tree: a Gradle
+/// daemon is detached from the build that started it, and is where a hung
+/// Android build usually waits, with `flutter assemble` running under it.
+Future<void> _dumpAndKillProcessTree(int root, Logger logger) async {
+  const dumpTimeout = Duration(seconds: 30);
+  if (Platform.isWindows) {
+    try {
+      final tasks = await Process.run('tasklist', ['/v']).timeout(dumpTimeout);
+      logger.info('Processes:\n${tasks.stdout}');
+    } finally {
+      await Process.run('taskkill', ['/T', '/F', '/PID', '$root']);
+    }
+    return;
+  }
+
+  final tree = {root};
+  try {
+    final ps = await Process.run('ps', [
+      '-A',
+      '-o',
+      'pid=,ppid=,etime=,command=',
+    ]).timeout(dumpTimeout);
+    final rows = [
+      for (final line in LineSplitter.split(ps.stdout as String))
+        line.trim().split(RegExp(r'\s+')),
+    ].where((row) => row.length >= 4 && int.tryParse(row[0]) != null).toList();
+    var grew = true;
+    while (grew) {
+      grew = false;
+      for (final row in rows) {
+        if (tree.contains(int.tryParse(row[1])) &&
+            tree.add(int.parse(row[0]))) {
+          grew = true;
+        }
+      }
+    }
+    logger.info('Process tree:');
+    for (final row in rows) {
+      if (tree.contains(int.parse(row[0]))) logger.info(row.join(' '));
+    }
+
+    final javaHome = Platform.environment['JAVA_HOME'];
+    final jcmd = javaHome == null ? 'jcmd' : p.join(javaHome, 'bin', 'jcmd');
+    for (final row in rows) {
+      final commandLine = row.sublist(3).join(' ');
+      if (p.basename(row[3]) != 'java') continue;
+      logger.info('Threads of JVM ${row[0]} ($commandLine):');
+      try {
+        final dump = await Process.run(jcmd, [
+          row[0],
+          'Thread.print',
+        ]).timeout(dumpTimeout);
+        logger.info('${dump.stdout}${dump.stderr}');
+      } on Exception catch (error) {
+        logger.info('could not dump: $error');
+      }
+    }
+
+    // On macOS arm64 the host Dart VM can deadlock at a safepoint, so sample
+    // the stacks of every Dart VM but this test's own.
+    if (Platform.isMacOS) {
+      for (final row in rows) {
+        // dart:io's pid: skip this test's own VM.
+        if (int.parse(row[0]) == pid) continue;
+        if (!const {
+          'dart',
+          'dartvm',
+          'dartaotruntime',
+        }.contains(p.basename(row[3]))) {
+          continue;
+        }
+        logger.info(
+          'Stacks of Dart VM ${row[0]} (${row.sublist(3).join(' ')}):',
+        );
+        try {
+          final sample = await Process.run('sample', [
+            row[0],
+            '3',
+          ]).timeout(dumpTimeout);
+          logger.info('${sample.stdout}${sample.stderr}');
+        } on Exception catch (error) {
+          logger.info('could not sample: $error');
+        }
+      }
+    }
+  } finally {
+    for (final id in tree) {
+      Process.killPid(id, ProcessSignal.sigkill);
+    }
+  }
 }

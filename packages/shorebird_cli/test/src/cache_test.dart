@@ -218,6 +218,49 @@ void main() {
       });
     });
 
+    group('pruneUnusedReleaseArtifacts', () {
+      final now = DateTime(2026, 10, 9);
+
+      FileSystemEntity entry(String name, {required Duration age}) {
+        final path = runWithOverrides(
+          () => p.join(Cache.shorebirdReleaseArtifactsDirectory.path, name),
+        );
+        return (File(path)..createSync(recursive: true))
+          ..setLastModifiedSync(now.subtract(age));
+      }
+
+      List<String> prune() => withClock(
+        Clock.fixed(now),
+        () => runWithOverrides(() => cache.pruneUnusedReleaseArtifacts()),
+      );
+
+      test('does nothing when there is no release artifact cache', () {
+        expect(prune(), isEmpty);
+      });
+
+      test('removes release artifacts unused for longer than the max age', () {
+        final stale = entry('1-a', age: const Duration(days: 31));
+        final recent = entry('2-b', age: const Duration(days: 29));
+
+        expect(prune(), equals([stale.path]));
+        expect(recent.existsSync(), isTrue);
+      });
+
+      test('removes downloads left behind for over a day', () {
+        final abandoned = entry(
+          '${Cache.releaseArtifactDownloadPrefix}abc',
+          age: const Duration(days: 2),
+        );
+        final inProgress = entry(
+          '${Cache.releaseArtifactDownloadPrefix}def',
+          age: const Duration(hours: 1),
+        );
+
+        expect(prune(), equals([abandoned.path]));
+        expect(inProgress.existsSync(), isTrue);
+      });
+    });
+
     group('pruneUnusedPreviews', () {
       final now = DateTime(2026, 10, 9);
 

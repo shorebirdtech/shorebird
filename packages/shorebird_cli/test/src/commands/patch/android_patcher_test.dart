@@ -368,6 +368,155 @@ void main() {
         });
       });
 
+      group("the release's architectures", () {
+        late Release release;
+
+        setUp(() {
+          setUpProjectRootArtifacts();
+          release = MockRelease();
+          when(() => release.id).thenReturn(42);
+          when(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => {Arch.arm64: FakeReleaseArtifact()});
+        });
+
+        Iterable<Arch>? builtTargetPlatforms() =>
+            verify(
+                  () => artifactBuilder.buildAppBundle(
+                    flavor: any(named: 'flavor'),
+                    target: any(named: 'target'),
+                    targetPlatforms: captureAny(named: 'targetPlatforms'),
+                    args: any(named: 'args'),
+                    base64PublicKey: any(named: 'base64PublicKey'),
+                    ddMaxBytes: any(named: 'ddMaxBytes'),
+                  ),
+                ).captured.single
+                as Iterable<Arch>?;
+
+        test('builds only the architectures the release has', () async {
+          await runWithOverrides(() async {
+            await patcher.prepareForRelease(appId: 'app-id', release: release);
+            await patcher.buildPatchArtifact();
+          });
+
+          expect(builtTargetPlatforms(), equals([Arch.arm64]));
+        });
+
+        test('builds the default architectures before the release is '
+            'known', () async {
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          expect(builtTargetPlatforms(), isNull);
+        });
+
+        for (final rest in [
+          ['--target-platform=android-arm,android-arm64'],
+          ['--target-platform', 'android-arm'],
+        ]) {
+          test('leaves ${rest.join(' ')} passed after -- alone', () async {
+            when(() => argResults.rest).thenReturn(rest);
+
+            await runWithOverrides(() async {
+              await patcher.prepareForRelease(
+                appId: 'app-id',
+                release: release,
+              );
+              await patcher.buildPatchArtifact();
+            });
+
+            expect(builtTargetPlatforms(), isNull);
+          });
+        }
+
+        test('builds the default architectures when the release has no '
+            'per-architecture artifacts', () async {
+          when(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => {});
+
+          await runWithOverrides(() async {
+            await patcher.prepareForRelease(appId: 'app-id', release: release);
+            await patcher.buildPatchArtifact();
+          });
+
+          expect(builtTargetPlatforms(), isNull);
+        });
+
+        test('downloads the release artifacts without fetching them '
+            'again', () async {
+          const artifact = ReleaseArtifact(
+            id: 1,
+            releaseId: 42,
+            arch: 'aarch64',
+            platform: ReleasePlatform.android,
+            hash: '#',
+            size: 1,
+            url: 'https://example.com/libapp.so',
+            canSideload: true,
+          );
+          when(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => {Arch.arm64: artifact});
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+            ),
+          ).thenAnswer((_) async => File('libapp.so'));
+
+          final paths = await runWithOverrides(() async {
+            await patcher.prepareForRelease(appId: 'app-id', release: release);
+            return patcher.downloadAndroidReleaseArtifacts(
+              appId: 'app-id',
+              releaseId: 42,
+              downloadMessageTimeout: const Duration(minutes: 1),
+            );
+          });
+
+          expect(paths.keys, equals([Arch.arm64]));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).called(1);
+
+          // Another release's artifacts are fetched, not reused.
+          await runWithOverrides(
+            () => patcher.downloadAndroidReleaseArtifacts(
+              appId: 'app-id',
+              releaseId: 43,
+              downloadMessageTimeout: const Duration(minutes: 1),
+            ),
+          );
+          verify(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: 'app-id',
+              releaseId: 43,
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when build fails', () {
         final exception = ArtifactBuildException('error');
 
@@ -560,7 +709,7 @@ void main() {
           },
         );
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),
@@ -570,7 +719,7 @@ void main() {
       group('when release artifact fails to download', () {
         setUp(() {
           when(
-            () => artifactManager.downloadWithProgressUpdates(
+            () => artifactManager.downloadReleaseArtifact(
               any(),
               message: any(named: 'message'),
             ),
@@ -957,7 +1106,7 @@ Looked in:
         group('when artifacts download takes longer than provided timeout', () {
           setUp(() {
             when(
-              () => artifactManager.downloadWithProgressUpdates(
+              () => artifactManager.downloadReleaseArtifact(
                 any(),
                 message: any(named: 'message'),
               ),

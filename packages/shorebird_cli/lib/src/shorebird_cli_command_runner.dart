@@ -504,6 +504,7 @@ ${currentRunLogFile.absolute.path}
       'Flutter installs': shorebirdFlutter.pruneUnusedRevisions,
       'artifacts': cache.pruneUnusedArtifacts,
       'previews': cache.pruneUnusedPreviews,
+      'release artifacts': cache.pruneUnusedReleaseArtifacts,
     };
     for (final MapEntry(key: name, value: prune) in pruners.entries) {
       try {

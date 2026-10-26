@@ -250,7 +250,7 @@ void main() {
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
       when(
-        () => artifactManager.downloadWithProgressUpdates(
+        () => artifactManager.downloadReleaseArtifact(
           any(),
           message: any(named: 'message'),
         ),
@@ -329,6 +329,12 @@ void main() {
 
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
+      when(
+        () => patcher.prepareForRelease(
+          appId: any(named: 'appId'),
+          release: any(named: 'release'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => patcher.requiresReleaseVersionArg).thenReturn(false);
       when(
         () => patcher.extractReleaseVersionFromArtifact(any()),
@@ -1744,6 +1750,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
             appId: appId,
             releaseVersion: releaseVersion,
           ),
+          () => patcher.prepareForRelease(appId: appId, release: release),
           () => codePushClientWrapper.getReleaseArtifact(
             appId: appId,
             releaseId: release.id,
@@ -2472,7 +2479,7 @@ Please re-run the release command for this version or create a new release.'''),
 
       setUp(() {
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),

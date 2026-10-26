@@ -395,6 +395,43 @@ void main() {
           });
         });
 
+        test('builds only the architectures the release has', () async {
+          final release = MockRelease();
+          when(() => release.id).thenReturn(42);
+          when(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => {Arch.arm64: FakeReleaseArtifact()});
+          when(
+            () => artifactBuilder.buildAar(
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(() async {
+            await patcher.prepareForRelease(appId: 'app-id', release: release);
+            await patcher.buildPatchArtifact();
+          });
+
+          verify(
+            () => artifactBuilder.buildAar(
+              buildNumber: buildNumber,
+              targetPlatforms: [Arch.arm64],
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).called(1);
+        });
+
         group('when the key pair is provided', () {
           setUp(() {
             when(
@@ -506,7 +543,7 @@ void main() {
       setUp(() {
         releaseArtifactFile = File('');
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),
@@ -553,7 +590,7 @@ void main() {
       group('when release artifact download fails', () {
         setUp(() {
           when(
-            () => artifactManager.downloadWithProgressUpdates(
+            () => artifactManager.downloadReleaseArtifact(
               any(),
               message: any(named: 'message'),
             ),

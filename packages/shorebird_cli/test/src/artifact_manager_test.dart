@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -14,6 +15,7 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
@@ -421,6 +423,126 @@ void main() {
         );
         expect(file.path, equals(outputPath));
         expect(file.lengthSync(), equals(1));
+      });
+    });
+
+    group('downloadReleaseArtifact', () {
+      const content = [1, 2, 3];
+      final contentHash = sha256.convert(content).toString();
+      late Directory shorebirdRoot;
+      late Progress progress;
+      late int requests;
+
+      ReleaseArtifact artifactWithHash(String hash) => ReleaseArtifact(
+        id: 7,
+        releaseId: 1,
+        arch: 'aarch64',
+        platform: ReleasePlatform.android,
+        hash: hash,
+        size: content.length,
+        url: 'https://example.com/artifact',
+        canSideload: true,
+      );
+
+      Directory releaseArtifactsDirectory() =>
+          runWithOverrides(() => Cache.shorebirdReleaseArtifactsDirectory);
+
+      Future<File> download(ReleaseArtifact artifact) => runWithOverrides(
+        () => artifactManager.downloadReleaseArtifact(
+          artifact,
+          message: 'Downloading',
+        ),
+      );
+
+      setUp(() {
+        shorebirdRoot = Directory.systemTemp.createTempSync();
+        when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+        progress = MockProgress();
+        when(() => logger.progress(any())).thenReturn(progress);
+        requests = 0;
+        when(() => httpClient.send(any())).thenAnswer((_) async {
+          requests++;
+          return http.StreamedResponse(
+            Stream.value(content),
+            HttpStatus.ok,
+            contentLength: content.length,
+          );
+        });
+      });
+
+      test('downloads once and reuses the cached copy', () async {
+        final artifact = artifactWithHash(contentHash);
+        final first = await download(artifact);
+        final second = await download(artifact);
+
+        expect(requests, equals(1));
+        expect(second.path, equals(first.path));
+        expect(second.readAsBytesSync(), equals(content));
+        expect(
+          releaseArtifactsDirectory().listSync().map((e) => e.path),
+          equals([first.path]),
+        );
+        verify(() => progress.complete('Downloading (cached)')).called(1);
+      });
+
+      test('downloads again when the cached copy is corrupt', () async {
+        final artifact = artifactWithHash(contentHash);
+        final first = await download(artifact);
+        first.writeAsBytesSync([9]);
+
+        final second = await download(artifact);
+
+        expect(requests, equals(2));
+        expect(second.readAsBytesSync(), equals(content));
+      });
+
+      test('warns about, uses, and does not cache a download whose hash '
+          'differs', () async {
+        final artifact = artifactWithHash('not-the-hash');
+        final first = await download(artifact);
+        final second = await download(artifact);
+
+        expect(requests, equals(2));
+        expect(first.readAsBytesSync(), equals(content));
+        expect(second.path, isNot(equals(first.path)));
+        verify(
+          () => logger.warn(any(that: contains('does not match the hash'))),
+        ).called(2);
+        expect(
+          File(
+            p.join(releaseArtifactsDirectory().path, '7-not-the-hash'),
+          ).existsSync(),
+          isFalse,
+        );
+      });
+
+      test('uses the download when it cannot be moved into place', () async {
+        final artifact = artifactWithHash(contentHash);
+        // A directory in the way makes the rename fail on every OS, as a
+        // copy held open by another run does on Windows.
+        Directory(
+          p.join(releaseArtifactsDirectory().path, '7-$contentHash', 'x'),
+        ).createSync(recursive: true);
+
+        final file = await download(artifact);
+
+        expect(file.readAsBytesSync(), equals(content));
+        expect(p.dirname(file.path), isNot(releaseArtifactsDirectory().path));
+      });
+
+      test('deletes a failed download', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream<List<int>>.error(Exception('connection reset')),
+            HttpStatus.ok,
+          ),
+        );
+
+        await expectLater(
+          download(artifactWithHash(contentHash)),
+          throwsA(isA<Exception>()),
+        );
+        expect(releaseArtifactsDirectory().listSync(), isEmpty);
       });
     });
 
