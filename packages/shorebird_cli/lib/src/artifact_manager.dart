@@ -5,15 +5,19 @@ import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 /// A reference to a [ArtifactManager] instance.
@@ -172,6 +176,75 @@ class ArtifactManager {
 
     return artifactFile;
   }
+
+  /// Downloads [artifact], or reuses the copy an earlier run downloaded, so
+  /// patching the same release again does not fetch it again
+  /// (shorebirdtech/shorebird#3874).
+  ///
+  /// Cached copies live in [Cache.shorebirdReleaseArtifactsDirectory], named
+  /// by artifact id and hash, and are reused only while their sha256 still
+  /// matches the hash the server recorded at release. Each download goes to
+  /// its own temporary directory there, so concurrent runs never write the
+  /// same file, and a failed download is deleted. A download whose hash does
+  /// not match is used for this run but not cached, as before this cache.
+  /// [Cache.pruneUnusedReleaseArtifacts] removes copies that go unused.
+  Future<File> downloadReleaseArtifact(
+    ReleaseArtifact artifact, {
+    required String message,
+  }) async {
+    final directory = Cache.shorebirdReleaseArtifactsDirectory;
+    final cached = File(
+      p.join(directory.path, '${artifact.id}-${artifact.hash}'),
+    );
+    if (cached.existsSync()) {
+      final progress = logger.progress(message);
+      if (await _sha256Of(cached) == artifact.hash) {
+        touchStamp(cached);
+        progress.complete('$message (cached)');
+        return cached;
+      }
+      progress.cancel();
+      logger.detail('Cached ${cached.path} does not match its hash');
+      deleteIgnoringErrors(cached);
+    }
+
+    directory.createSync(recursive: true);
+    final downloadDirectory = directory.createTempSync(
+      Cache.releaseArtifactDownloadPrefix,
+    );
+    final File downloaded;
+    try {
+      downloaded = await downloadWithProgressUpdates(
+        Uri.parse(artifact.url),
+        message: message,
+        outputPath: p.join(downloadDirectory.path, p.basename(cached.path)),
+      );
+    } catch (_) {
+      downloadDirectory.deleteTemporarySync();
+      rethrow;
+    }
+
+    if (await _sha256Of(downloaded) != artifact.hash) {
+      logger.detail(
+        '${artifact.url} does not match its hash ${artifact.hash}; '
+        'not caching it',
+      );
+      return downloaded;
+    }
+    try {
+      final file = downloaded.renameSync(cached.path);
+      downloadDirectory.deleteTemporarySync();
+      return file;
+    } on FileSystemException catch (error) {
+      // Another run may hold the cached copy open (Windows). This run's
+      // download is just as good, and pruning removes its directory later.
+      logger.detail('Unable to cache ${cached.path}: $error');
+      return downloaded;
+    }
+  }
+
+  static Future<String> _sha256Of(File file) async =>
+      (await sha256.bind(file.openRead()).first).toString();
 
   /// Extracts the [zipFile] to the [outputDirectory] directory in a separate
   /// isolate.

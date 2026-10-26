@@ -1,6 +1,7 @@
 import 'dart:ffi' show Abi;
 import 'dart:io' hide Platform;
 
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -286,6 +287,40 @@ class Cache {
   /// The Shorebird cached artifacts directory.
   static Directory get shorebirdArtifactsDirectory {
     return Directory(p.join(shorebirdCacheDirectory.path, 'artifacts'));
+  }
+
+  /// Where release artifacts downloaded by `shorebird patch` are kept between
+  /// runs (see [ArtifactManager.downloadReleaseArtifact]).
+  static Directory get shorebirdReleaseArtifactsDirectory {
+    return Directory(p.join(shorebirdCacheDirectory.path, 'release_artifacts'));
+  }
+
+  /// Prefix of the temporary directory each release artifact download is
+  /// written to before it moves into place.
+  static const releaseArtifactDownloadPrefix = 'download-';
+
+  /// How long a release artifact download's temporary directory is kept. One
+  /// older than this was left by a run that stopped mid-download.
+  static const releaseArtifactDownloadMaxAge = Duration(days: 1);
+
+  /// Removes cached release artifacts not used within [unusedCacheMaxAge],
+  /// and downloads left behind by runs that stopped, and returns the paths
+  /// removed. A pruned release artifact is downloaded again by the next patch
+  /// that needs it.
+  List<String> pruneUnusedReleaseArtifacts() {
+    final directory = shorebirdReleaseArtifactsDirectory;
+    if (!directory.existsSync()) return const [];
+    final downloadCutoff = clock.now().subtract(releaseArtifactDownloadMaxAge);
+    final removed = <String>[];
+    for (final entry in directory.listSync()) {
+      final modified = entry.statSync().modified;
+      final isStale =
+          p.basename(entry.path).startsWith(releaseArtifactDownloadPrefix)
+          ? !modified.isAfter(downloadCutoff)
+          : isUnusedSince(modified);
+      if (isStale && deleteIgnoringErrors(entry)) removed.add(entry.path);
+    }
+    return removed;
   }
 
   final List<CachedArtifact> _artifacts = [];

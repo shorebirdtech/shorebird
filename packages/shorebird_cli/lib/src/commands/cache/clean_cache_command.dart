@@ -20,10 +20,11 @@ class CleanCacheCommand extends ShorebirdCommand {
       unusedFlag,
       negatable: false,
       help:
-          'Only remove Flutter versions, engine artifacts and previews not '
-          'used in the last ${unusedCacheMaxAge.inDays} days, and previews '
-          'beyond the ${Cache.maxCachedPreviews} most recent. Shorebird also '
-          'does this automatically on every run.',
+          'Only remove Flutter versions, engine artifacts, previews and '
+          'release artifacts not used in the last '
+          '${unusedCacheMaxAge.inDays} days, and previews beyond the '
+          '${Cache.maxCachedPreviews} most recent. Shorebird also does this '
+          'automatically on every run.',
     );
   }
 
@@ -77,6 +78,7 @@ This could be because a program is using a file in the cache directory. To find 
       'Flutter version': shorebirdFlutter.pruneUnusedRevisions().length,
       'engine artifact': cache.pruneUnusedArtifacts().length,
       'preview': cache.pruneUnusedPreviews().length,
+      'release artifact': cache.pruneUnusedReleaseArtifacts().length,
     };
     final removed = [
       for (final MapEntry(key: noun, value: n) in counts.entries)
