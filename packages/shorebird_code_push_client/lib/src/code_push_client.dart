@@ -853,14 +853,51 @@ class CodePushClient {
   }
 
   /// Promote the [patchId] to the [channelId].
+  ///
+  /// Promoting starts a new rollout on the channel at [rolloutPercentage], a
+  /// multiple of 0.01 from 0.01 to 100. When it is omitted the server rolls
+  /// the patch out to every device on the channel.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
     required int channelId,
+    double? rolloutPercentage,
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches/promote'),
-      body: json.encode({'patch_id': patchId, 'channel_id': channelId}),
+      body: json.encode(
+        PromotePatchRequest(
+          patchId: patchId,
+          channelId: channelId,
+          rolloutPercentage: rolloutPercentage,
+        ).toJson(),
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Raises the share of its channel's devices that the patch with [patchId]
+  /// under [releaseId] for [appId] is offered to, to [rolloutPercentage].
+  ///
+  /// Rollouts only go up: the server answers 409 when [rolloutPercentage] is
+  /// lower than the current one, and when the patch is on no channel.
+  /// Setting the current percentage again succeeds and changes nothing.
+  Future<void> setPatchRollout({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    required double rolloutPercentage,
+  }) async {
+    final response = await _httpClient.put(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollout',
+      ),
+      body: json.encode(
+        SetPatchRolloutRequest(rolloutPercentage: rolloutPercentage).toJson(),
+      ),
     );
 
     if (!response.isSuccess) {

@@ -70,4 +70,46 @@ void main() {
       );
     });
   });
+
+  group('formatPatchTrack', () {
+    ReleasePatch patchOn(String? channel, {double? rolloutPercentage}) =>
+        ReleasePatch(
+          id: 42,
+          number: 1,
+          channel: channel,
+          isRolledBack: false,
+          artifacts: const [],
+          rolloutPercentage: rolloutPercentage,
+        );
+
+    test('is null for a patch on no track', () {
+      expect(formatPatchTrack(patchOn(null)), isNull);
+    });
+
+    test('is the track alone without a rollout below 100', () {
+      expect(formatPatchTrack(patchOn('stable')), equals('stable'));
+      expect(
+        formatPatchTrack(patchOn('stable', rolloutPercentage: 100)),
+        equals('stable'),
+      );
+    });
+
+    test('adds a rollout below 100', () {
+      expect(
+        formatPatchTrack(patchOn('beta', rolloutPercentage: 10)),
+        equals('beta (10%)'),
+      );
+      expect(
+        formatPatchTrack(patchOn('beta', rolloutPercentage: 0.25)),
+        equals('beta (0.25%)'),
+      );
+    });
+
+    test('is what patch details show as the track', () {
+      expect(
+        formatPatchDetails(patchOn('stable', rolloutPercentage: 5)),
+        contains('Track:       stable (5%)'),
+      );
+    });
+  });
 }

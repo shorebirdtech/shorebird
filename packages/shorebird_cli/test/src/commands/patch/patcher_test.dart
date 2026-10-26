@@ -298,6 +298,7 @@ void main() {
             platform: any(named: 'platform'),
             track: any(named: 'track'),
             patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
           ),
         ).thenAnswer((_) async => const Patch(id: 1, number: 1));
         await runScoped(
@@ -308,6 +309,7 @@ void main() {
               metadata: metadata,
               artifacts: artifacts,
               track: track,
+              rolloutPercentage: 10,
             );
           },
           values: {
@@ -322,6 +324,7 @@ void main() {
             platform: ReleaseType.android.releasePlatform,
             track: track,
             patchArtifactBundles: artifacts,
+            rolloutPercentage: 10,
           ),
         ).called(1);
       });

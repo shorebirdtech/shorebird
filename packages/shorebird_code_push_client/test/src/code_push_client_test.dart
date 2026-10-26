@@ -3006,10 +3006,36 @@ void main() {
             .ignore();
         final request =
             verify(() => httpClient.send(captureAny())).captured.single
-                as http.BaseRequest;
+                as http.Request;
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('apps/$appId/patches/promote')));
         expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(
+          json.decode(request.body),
+          equals({'patch_id': patchId, 'channel_id': channelId}),
+        );
+      });
+
+      test('sends rollout_percentage when given', () async {
+        codePushClient
+            .promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channelId,
+              rolloutPercentage: 12.5,
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'patch_id': patchId,
+            'channel_id': channelId,
+            'rollout_percentage': 12.5,
+          }),
+        );
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -3083,6 +3109,85 @@ void main() {
           request.url,
           codePushClient.hostedUri.replace(
             path: '/api/v1/apps/$appId/patches/promote',
+          ),
+        );
+      });
+    });
+
+    group('setPatchRollout', () {
+      const releaseId = 7;
+      const patchId = 11;
+
+      Future<void> setPatchRollout() => codePushClient.setPatchRollout(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+        rolloutPercentage: 50,
+      );
+
+      test('makes the correct request', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await setPatchRollout();
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('PUT'));
+        expect(
+          request.url,
+          equals(
+            v1('apps/$appId/releases/$releaseId/patches/$patchId/rollout'),
+          ),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(
+          json.decode(request.body),
+          equals({'rollout_percentage': 50}),
+        );
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          setPatchRollout(),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
+            ),
+          ),
+        );
+      });
+
+      test('throws a conflict exception on 409', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.conflict,
+          ),
+        );
+
+        expect(
+          setPatchRollout(),
+          throwsA(
+            isA<CodePushConflictException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
           ),
         );
       });

@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/rollout_percentage.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
@@ -1120,18 +1121,47 @@ $name artifact already exists, continuing...''');
     createArtifactProgress.complete();
   }
 
-  /// Promotes a patch to a specific [channel].
+  /// Promotes a patch to a specific [channel], starting a rollout there at
+  /// [rolloutPercentage], or to every device on it when that is null.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
     required Channel channel,
+    double? rolloutPercentage,
   }) {
+    final share = rolloutPercentage == null
+        ? ''
+        : ' (${formatRolloutPercentage(rolloutPercentage)})';
     return _withProgress(
-      'Promoting patch to ${channel.name}',
+      'Promoting patch to ${channel.name}$share',
       () => codePushClient.promotePatch(
         appId: appId,
         patchId: patchId,
         channelId: channel.id,
+        rolloutPercentage: rolloutPercentage,
+      ),
+    );
+  }
+
+  /// Raises the rollout of the patch identified by [patchId] under
+  /// [releaseId] to [rolloutPercentage] of the devices on its track.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message.
+  Future<void> setPatchRollout({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    required int patchNumber,
+    required double rolloutPercentage,
+  }) {
+    return _withProgress(
+      'Rolling out patch $patchNumber to '
+      '${formatRolloutPercentage(rolloutPercentage)}',
+      () => codePushClient.setPatchRollout(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+        rolloutPercentage: rolloutPercentage,
       ),
     );
   }
@@ -1202,7 +1232,8 @@ $name artifact already exists, continuing...''');
 
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
-  /// channel based on the provided [track].
+  /// channel based on the provided [track], at [rolloutPercentage] of its
+  /// devices when given.
   Future<Patch> publishPatch({
     required String appId,
     required int releaseId,
@@ -1210,6 +1241,7 @@ $name artifact already exists, continuing...''');
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
+    double? rolloutPercentage,
   }) async {
     final patch = await createPatch(
       appId: appId,
@@ -1228,7 +1260,12 @@ $name artifact already exists, continuing...''');
         await maybeGetChannel(appId: appId, name: track.channel) ??
         await createChannel(appId: appId, name: track.channel);
 
-    await promotePatch(appId: appId, patchId: patch.id, channel: channel);
+    await promotePatch(
+      appId: appId,
+      patchId: patch.id,
+      channel: channel,
+      rolloutPercentage: rolloutPercentage,
+    );
 
     logger.success('\n✅ Published Patch ${patch.number}!');
     return patch;
