@@ -141,8 +141,9 @@ class BuildEnvironment {
   ///
   /// Specific providers come first; the generic `CI` marker is last
   /// so it only matches when no vendor-specific var is set. Order
-  /// among the specific providers doesn't matter — they're mutually
-  /// exclusive in practice.
+  /// among the specific providers mostly doesn't matter, since they're
+  /// mutually exclusive in practice. The exception is Harness, whose
+  /// Drone-based runner also sets Drone's variables, so it comes first.
   static const _ciProviders = <(String envVar, String provider)>[
     // https://docs.github.com/actions/learn-github-actions/variables#default-environment-variables
     ('GITHUB_ACTIONS', 'github'),
@@ -172,6 +173,15 @@ class BuildEnvironment {
     ('CM_BUILD_ID', 'codemagic'),
     // https://developer.apple.com/documentation/xcode/environment-variable-reference
     ('CI_XCODE_CLOUD', 'xcode_cloud'),
+    // https://docs.appcircle.io/environment-variables/appcircle-specific-environment-variables
+    ('AC_APPCIRCLE', 'appcircle'),
+    // https://docs.semaphore.io/reference/env-vars
+    ('SEMAPHORE', 'semaphore'),
+    // https://developer.harness.io/docs/continuous-integration/use-ci/optimize-and-more/ci-env-var
+    // Before Drone: Harness CI also sets `DRONE=true`.
+    ('HARNESS_ACCOUNT_ID', 'harness'),
+    // https://docs.drone.io/pipeline/environment/reference/drone/
+    ('DRONE', 'drone'),
     // Generic CI indicator set by GitHub Actions, GitLab, CircleCI,
     // Travis, Bitbucket, Buildkite, Drone, and others — catches the
     // long tail without enumerating every vendor.
@@ -179,6 +189,10 @@ class BuildEnvironment {
   ];
 
   static String? _detectCiProvider(Map<String, String> env) {
+    // Woodpecker sets no variable of its own, only generic names with
+    // its name as the value, so it is matched by value.
+    // https://woodpecker-ci.org/docs/usage/environment
+    if (env['CI_SYSTEM_NAME'] == 'woodpecker') return 'woodpecker';
     for (final (envVar, provider) in _ciProviders) {
       if (env[envVar] != null) return provider;
     }

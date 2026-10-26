@@ -168,25 +168,51 @@ org.gradle.configuration-cache=true
       );
     });
 
-    test('classifies Codemagic and Xcode Cloud ahead of generic CI', () {
-      expect(
-        BuildEnvironment.detect(
-          environment: const <String, String>{
-            'CI': 'true',
-            'CM_BUILD_ID': '00000000-0000-0000-0000-000000000000',
-          },
-        ).ciProvider,
-        'codemagic',
-      );
-      expect(
-        BuildEnvironment.detect(
-          environment: const <String, String>{
-            'CI': 'TRUE',
-            'CI_XCODE_CLOUD': 'TRUE',
-          },
-        ).ciProvider,
-        'xcode_cloud',
-      );
+    group('classifies second-tier providers ahead of generic CI', () {
+      String? providerFor(Map<String, String> vars) => BuildEnvironment.detect(
+        environment: <String, String>{'CI': 'true', ...vars},
+      ).ciProvider;
+
+      test('codemagic', () {
+        expect(
+          providerFor({'CM_BUILD_ID': '00000000-0000-0000-0000-000000000000'}),
+          'codemagic',
+        );
+      });
+
+      test('xcode_cloud', () {
+        expect(providerFor({'CI_XCODE_CLOUD': 'TRUE'}), 'xcode_cloud');
+      });
+
+      test('appcircle', () {
+        expect(providerFor({'AC_APPCIRCLE': 'true'}), 'appcircle');
+      });
+
+      test('semaphore', () {
+        expect(providerFor({'SEMAPHORE': 'true'}), 'semaphore');
+      });
+
+      test('drone', () {
+        expect(providerFor({'DRONE': 'true'}), 'drone');
+      });
+
+      test('harness, which also sets Drone variables', () {
+        expect(
+          providerFor({'DRONE': 'true', 'HARNESS_ACCOUNT_ID': 'abc123'}),
+          'harness',
+        );
+      });
+
+      test('woodpecker', () {
+        expect(
+          providerFor({'CI': 'woodpecker', 'CI_SYSTEM_NAME': 'woodpecker'}),
+          'woodpecker',
+        );
+      });
+
+      test('other CI_SYSTEM_NAME values stay generic', () {
+        expect(providerFor({'CI_SYSTEM_NAME': 'something-else'}), 'other');
+      });
     });
 
     test('toJson is privacy-safe (only bool/int/enum-string)', () {
