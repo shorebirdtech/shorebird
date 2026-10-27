@@ -291,21 +291,6 @@ ${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}'''),
       verify(() => logger.info('exception usage')).called(1);
     });
 
-    test('points apps delete --yes at --confirm-name', () async {
-      final result = await runWithOverrides(
-        () => commandRunner.run(['apps', 'delete', '--yes']),
-      );
-      expect(result, equals(ExitCode.usage.code));
-      verify(
-        () => logger.err(
-          '''
-shorebird apps delete has no --yes flag, so an app is never deleted without naming it.
-Pass the app's display name instead: ${lightCyan.wrap('--confirm-name "<display name>"')}''',
-        ),
-      ).called(1);
-      verifyNever(() => logger.err(any(that: contains('To proxy an option'))));
-    });
-
     group('unknown option on patch', () {
       const overrideHint = '''
 shorebird patch has no --force flag. The patch safety checks are bypassed per check:

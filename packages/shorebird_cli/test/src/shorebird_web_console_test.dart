@@ -33,6 +33,32 @@ void main() {
       );
     });
 
+    group('appSettingsUri', () {
+      test("returns the app's settings page under its organization", () {
+        expect(
+          runWithOverrides(
+            () => ShorebirdWebConsole.appSettingsUri(
+              organizationId: 7,
+              appId: 'appId',
+            ),
+          ),
+          Uri.parse('https://console.shorebird.dev/orgs/7/apps/appId/settings'),
+        );
+      });
+
+      test('returns the home page when the organization is unknown', () {
+        expect(
+          runWithOverrides(
+            () => ShorebirdWebConsole.appSettingsUri(
+              organizationId: null,
+              appId: 'appId',
+            ),
+          ),
+          Uri.parse('https://console.shorebird.dev'),
+        );
+      });
+    });
+
     test('appReleaseUri returns the correct uri to an app release', () {
       expect(
         runWithOverrides(() => ShorebirdWebConsole.appReleaseUri('appId', 123)),
