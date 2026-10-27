@@ -65,7 +65,7 @@ class GetInvitationResponse {
   /// The email address the invitation was sent to.
   final String email;
 
-  /// A role that a user can have relative to an Organization or App.
+  /// The role accepting the invitation grants.
   final Role role;
 
   /// When the invitation stops being valid.

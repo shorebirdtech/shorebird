@@ -46,11 +46,7 @@ class GetUsageResponse {
   /// organization the account's owner owns.
   final List<AppUsage> apps;
 
-  /// Where the account stands against its plan right now, worked out by
-  /// the server so every client shows the same figures. Counts are per
-  /// allotment period (the base subscription's billing period) unless
-  /// said otherwise. Overage is per overage period, which for an annual
-  /// plan is the month its overage subscription bills on.
+  /// Where the account stands against its plan.
   final AccountPosition position;
 
   /// Overage installs already reported to Stripe for billing this

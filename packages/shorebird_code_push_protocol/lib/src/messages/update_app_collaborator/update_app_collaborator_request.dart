@@ -34,7 +34,7 @@ class UpdateAppCollaboratorRequest {
     return UpdateAppCollaboratorRequest.fromJson(json);
   }
 
-  /// A role a user can have on a specific app.
+  /// The new role for the collaborator.
   final AppCollaboratorRole role;
 
   /// Converts a [UpdateAppCollaboratorRequest] to a `Map<String, dynamic>`.

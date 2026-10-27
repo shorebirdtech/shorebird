@@ -52,7 +52,7 @@ class ServiceAccountTrustRule {
   /// The trust rule's ID.
   final int id;
 
-  /// The identity provider whose tokens an OIDC trust rule accepts.
+  /// The identity provider the rule accepts tokens from.
   final TrustRuleProvider provider;
 
   /// When the rule was added.
@@ -65,10 +65,7 @@ class ServiceAccountTrustRule {
   /// When a token was last exchanged under the rule, or null if never.
   final DateTime? lastUsedAt;
 
-  /// The GitHub Actions workflow an OIDC trust rule lets in. A token
-  /// matches when its repository (ignoring case), owner id and workflow
-  /// file match, and its environment and ref match when the rule names
-  /// them.
+  /// The rule's GitHub fields, for the `github` provider.
   final GithubTrustRule github;
 
   /// Converts a [ServiceAccountTrustRule] to a `Map<String, dynamic>`.

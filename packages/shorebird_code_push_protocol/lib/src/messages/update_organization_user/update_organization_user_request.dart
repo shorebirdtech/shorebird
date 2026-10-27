@@ -35,7 +35,8 @@ class UpdateOrganizationUserRequest {
     return UpdateOrganizationUserRequest.fromJson(json);
   }
 
-  /// A role that a user can have relative to an Organization or App.
+  /// The member's new role. `owner` transfers ownership of the
+  /// organization to the member.
   final Role role;
 
   /// Converts a [UpdateOrganizationUserRequest] to a `Map<String, dynamic>`.

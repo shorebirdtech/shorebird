@@ -46,7 +46,7 @@ class InvitationSummary {
   /// The email the invitation was sent to.
   final String email;
 
-  /// A role that a user can have relative to an Organization or App.
+  /// The role the invitee gets on accepting.
   final Role role;
 
   /// When the invitation was sent.

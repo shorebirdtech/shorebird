@@ -1,27 +1,25 @@
-enum GetAppPatchInstallsParameter2 {
-  hour._('hour'),
-  day._('day'),
-  week._('week');
+enum GetReleasePatchDownloadsGroupBy {
+  patch._('patch');
 
-  const GetAppPatchInstallsParameter2._(this.value);
+  const GetReleasePatchDownloadsGroupBy._(this.value);
 
-  /// Creates a GetAppPatchInstallsParameter2 from a json value.
-  factory GetAppPatchInstallsParameter2.fromJson(String json) {
-    return GetAppPatchInstallsParameter2.values.firstWhere(
+  /// Creates a GetReleasePatchDownloadsGroupBy from a json value.
+  factory GetReleasePatchDownloadsGroupBy.fromJson(String json) {
+    return GetReleasePatchDownloadsGroupBy.values.firstWhere(
       (value) => value.value == json,
       orElse: () => throw FormatException(
-        'Unknown GetAppPatchInstallsParameter2 value: $json',
+        'Unknown GetReleasePatchDownloadsGroupBy value: $json',
       ),
     );
   }
 
   /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
-  static GetAppPatchInstallsParameter2? maybeFromJson(String? json) {
+  static GetReleasePatchDownloadsGroupBy? maybeFromJson(String? json) {
     if (json == null) {
       return null;
     }
-    return GetAppPatchInstallsParameter2.fromJson(json);
+    return GetReleasePatchDownloadsGroupBy.fromJson(json);
   }
 
   /// The value of the enum.  This is the exact value

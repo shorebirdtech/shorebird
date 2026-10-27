@@ -4,10 +4,10 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The `--group-by` value that breaks app-wide counts down by release.
-final _appGroupBy = GetAppPatchInstallsParameter3.release.value;
+final _appGroupBy = GetAppPatchInstallsGroupBy.release.value;
 
 /// The `--group-by` value that breaks a release's counts down by patch.
-final _releaseGroupBy = GetReleasePatchInstallsParameter3.patch.value;
+final _releaseGroupBy = GetReleasePatchInstallsGroupBy.patch.value;
 
 /// {@template metrics_patch_count_command}
 /// Base class for `shorebird metrics installs` and

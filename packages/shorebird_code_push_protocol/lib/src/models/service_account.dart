@@ -69,9 +69,7 @@ class ServiceAccount {
   /// The name the service account is shown by, `name[bot]`.
   final String label;
 
-  /// A role a service account can hold in its organization: a subset of
-  /// `Role`. Never `admin` or `owner`, so a leaked key cannot manage the
-  /// organization's members or its other service accounts.
+  /// The service account's role in its organization.
   final ServiceAccountRole role;
 
   /// When the service account was created.

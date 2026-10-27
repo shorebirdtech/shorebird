@@ -51,7 +51,7 @@ class ReleaseSizeSummary {
     return ReleaseSizeSummary.fromJson(json);
   }
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform the analyzed artifact is for.
   final ReleasePlatform platform;
 
   /// The verdict of a release artifact's size analysis.

@@ -57,7 +57,7 @@ class CreateReleaseArtifactRequest {
   /// The arch of the artifact.
   final String arch;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the artifact.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -76,9 +76,9 @@ class CreateReleaseArtifactRequest {
   /// only).
   final String? podfileLockHash;
 
-  /// How the CLI signed a release artifact's binary. A managed binary
-  /// names the key GET /apps/{appId}/signing-key returned (key_id). A
-  /// customer-signed or unsigned binary sends only its mode.
+  /// How the CLI signed the artifact's binary. Older CLIs omit it.
+  /// In a multipart/form-data body it is one field holding the
+  /// JSON-encoded object.
   final ArtifactSigningRequest? signing;
 
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.

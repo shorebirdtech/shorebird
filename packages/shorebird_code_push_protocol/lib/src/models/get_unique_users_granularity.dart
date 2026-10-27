@@ -1,25 +1,27 @@
-enum GetReleasePatchInstallsParameter3 {
-  patch._('patch');
+enum GetUniqueUsersGranularity {
+  hour._('hour'),
+  day._('day'),
+  week._('week');
 
-  const GetReleasePatchInstallsParameter3._(this.value);
+  const GetUniqueUsersGranularity._(this.value);
 
-  /// Creates a GetReleasePatchInstallsParameter3 from a json value.
-  factory GetReleasePatchInstallsParameter3.fromJson(String json) {
-    return GetReleasePatchInstallsParameter3.values.firstWhere(
+  /// Creates a GetUniqueUsersGranularity from a json value.
+  factory GetUniqueUsersGranularity.fromJson(String json) {
+    return GetUniqueUsersGranularity.values.firstWhere(
       (value) => value.value == json,
       orElse: () => throw FormatException(
-        'Unknown GetReleasePatchInstallsParameter3 value: $json',
+        'Unknown GetUniqueUsersGranularity value: $json',
       ),
     );
   }
 
   /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
-  static GetReleasePatchInstallsParameter3? maybeFromJson(String? json) {
+  static GetUniqueUsersGranularity? maybeFromJson(String? json) {
     if (json == null) {
       return null;
     }
-    return GetReleasePatchInstallsParameter3.fromJson(json);
+    return GetUniqueUsersGranularity.fromJson(json);
   }
 
   /// The value of the enum.  This is the exact value
