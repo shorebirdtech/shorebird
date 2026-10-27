@@ -15,6 +15,10 @@ void main() {
     late MembersHarness h;
     late MembersSetRoleCommand command;
 
+    setUpAll(() {
+      registerFallbackValue(Role.developer);
+    });
+
     setUp(() {
       h = MembersHarness();
       command = h.run(MembersSetRoleCommand.new)..testArgResults = h.argResults;
@@ -38,9 +42,47 @@ void main() {
       ).called(1);
     });
 
-    test('finds a member by user id', () async {
-      when(() => h.argResults.rest).thenReturn(['7']);
+    test('finds a member by user id, trimmed', () async {
+      when(() => h.argResults.rest).thenReturn([' 7 ']);
       expect(await h.run(command.run), ExitCode.success.code);
+    });
+
+    test('fetches invitations only when no member matches', () async {
+      await h.run(command.run);
+      verifyNever(
+        () => h.codePushClientWrapper.maybeGetOrganizationInvitations(
+          organizationId: any(named: 'organizationId'),
+        ),
+      );
+    });
+
+    test('finds a pending invitation by its id', () async {
+      when(() => h.argResults.rest).thenReturn(['inv-1']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err(
+          'carol@acme.com has not accepted their invitation yet, so their '
+          'role cannot be changed.',
+        ),
+      ).called(1);
+    });
+
+    test("refuses to change the owner's role", () async {
+      when(() => h.argResults.rest).thenReturn(['alice@acme.com']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err(
+          'alice@acme.com owns "Acme Corp", so their role cannot be changed '
+          'here.',
+        ),
+      ).called(1);
+      verifyNever(
+        () => h.codePushClientWrapper.updateOrganizationUser(
+          organizationId: any(named: 'organizationId'),
+          userId: any(named: 'userId'),
+          role: any(named: 'role'),
+        ),
+      );
     });
 
     test('says how to change a pending invitation', () async {
@@ -69,12 +111,30 @@ void main() {
       ).called(1);
     });
 
-    test('rejects the role they already have', () async {
+    test('succeeds without a request for the role they already have', () async {
       when(() => h.argResults['role']).thenReturn('developer');
-      expect(await h.run(command.run), ExitCode.usage.code);
+      expect(await h.run(command.run), ExitCode.success.code);
       verify(
-        () => h.logger.err('bob@acme.com is already developer in "Acme Corp".'),
+        () => h.logger.info(
+          'bob@acme.com is already developer in "Acme Corp"; nothing changed.',
+        ),
       ).called(1);
+      verifyNever(
+        () => h.codePushClientWrapper.updateOrganizationUser(
+          organizationId: any(named: 'organizationId'),
+          userId: any(named: 'userId'),
+          role: any(named: 'role'),
+        ),
+      );
+    });
+
+    test('--json says when nothing changed', () async {
+      when(() => h.argResults['role']).thenReturn('developer');
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      expect((json['data'] as Map)['changed'], isFalse);
     });
 
     test('needs exactly one member', () async {
@@ -132,6 +192,7 @@ void main() {
         'email': 'bob@acme.com',
         'from_role': 'developer',
         'to_role': 'admin',
+        'changed': true,
       });
     });
   });

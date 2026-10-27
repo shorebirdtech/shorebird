@@ -1005,6 +1005,9 @@ void main() {
             () => codePushClient.getOrganizationInvitations(organizationId: 42),
           ).thenAnswer((_) async => [invite]);
           when(
+            () => codePushClient.getOrganizationInvitations(organizationId: 9),
+          ).thenThrow(CodePushForbiddenException(message: 'no'));
+          when(
             () => codePushClient.createOrganizationInvitation(
               organizationId: 42,
               email: 'dan@acme.com',
@@ -1039,10 +1042,16 @@ void main() {
               [member],
             );
             expect(
-              await codePushClientWrapper.getOrganizationInvitations(
+              await codePushClientWrapper.maybeGetOrganizationInvitations(
                 organizationId: 42,
               ),
               [invite],
+            );
+            expect(
+              await codePushClientWrapper.maybeGetOrganizationInvitations(
+                organizationId: 9,
+              ),
+              isNull,
             );
             expect(
               await codePushClientWrapper.createOrganizationInvitation(
@@ -1066,7 +1075,7 @@ void main() {
               userId: 7,
             );
           });
-          verify(() => progress.complete()).called(6);
+          verify(() => progress.complete()).called(7);
         });
 
         test('updateCurrentUser sends the display name', () async {

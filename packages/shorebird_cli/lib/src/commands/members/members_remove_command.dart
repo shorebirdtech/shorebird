@@ -13,7 +13,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Remove a member from an organization, or cancel a pending invitation.
 /// {@endtemplate}
 class MembersRemoveCommand extends ShorebirdCommand
-    with OrganizationScopedCommand, ConfirmDelete {
+    with OrganizationScopedCommand, ConfirmDelete, MemberLookup {
   /// {@macro members_remove_command}
   MembersRemoveCommand() {
     addConfirmDeleteOptions();
@@ -27,12 +27,13 @@ class MembersRemoveCommand extends ShorebirdCommand
   List<String> get aliases => const ['delete'];
 
   @override
-  String get invocation => 'shorebird members remove <email or user id>';
+  String get invocation =>
+      'shorebird members remove <email, user id or invitation id>';
 
   @override
   String get description =>
-      'Removes a member from an organization, or cancels the pending '
-      'invitation sent to an email.\n\n'
+      'Removes a member from an organization, or cancels a pending '
+      'invitation (named by email or invitation id).\n\n'
       'In a terminal, asks for confirmation. Pass --$yesArgName to skip the '
       'prompt; it is required when not running interactively (no terminal, '
       'CI, or --json).\n\n'
@@ -45,46 +46,37 @@ class MembersRemoveCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     final rest = results.rest;
-    if (rest.length != 1) {
+    if (rest.length != 1 || rest.single.trim().isEmpty) {
       return reportError(
         message:
             'Name one member by email or user id: '
             'shorebird members remove bob@acme.com.',
       );
     }
-    final user = rest.single;
+    final user = rest.single.trim();
 
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return errorCode;
     final organization = membership!.organization;
 
-    late final List<OrganizationUser> members;
-    late final List<InvitationSummary> invitations;
-    final fetchError = await guardApiCall(
-      () async {
-        members = await codePushClientWrapper.getOrganizationUsers(
-          organizationId: organization.id,
-        );
-        invitations = await codePushClientWrapper.getOrganizationInvitations(
-          organizationId: organization.id,
-        );
-      },
-      code: JsonErrorCode.fetchFailed,
-      message:
-          'Failed to fetch the members of organization ${organization.id}.',
-    );
-    if (fetchError != null) return fetchError;
-
-    final (:member, :invite) = findMemberTarget(
+    final (:target, errorCode: lookupError) = await findMemberTarget(
       user,
-      members: members,
-      invitations: invitations,
+      organization: organization,
     );
+    if (lookupError != null) return lookupError;
+    final (:member, :invite, :invitationsHidden) = target!;
 
     if (member != null) {
       final email = member.user.email;
+      if (member.role == Role.owner) {
+        return reportError(
+          message: '$email owns "${organization.name}" and cannot be removed.',
+          hint: ownershipInConsoleMessage,
+        );
+      }
       final confirmError = confirmDelete(
         name: email,
+        verb: 'Remove',
         description: '$email from "${organization.name}"',
         consequence:
             '$email will lose access to "${organization.name}" and its '
@@ -114,6 +106,7 @@ class MembersRemoveCommand extends ShorebirdCommand
       final email = invite.email;
       final confirmError = confirmDelete(
         name: email,
+        verb: 'Cancel',
         description: 'the invitation for $email',
         consequence:
             'The invitation $email was sent to join "${organization.name}" '
@@ -139,12 +132,14 @@ class MembersRemoveCommand extends ShorebirdCommand
     }
 
     return reportError(
-      message:
-          '"$user" is not a member of "${organization.name}" and has no '
-          'pending invitation.',
-      hint:
-          'Run `shorebird members list --org-id ${organization.id}` to see '
-          'its members.',
+      message: invitationsHidden
+          ? '"$user" is not a member of "${organization.name}".'
+          : '"$user" is not a member of "${organization.name}" and has no '
+                'pending invitation.',
+      hint: invitationsHidden
+          ? "Your role can't see pending invitations, so none was looked for."
+          : 'Run `shorebird members list --org-id ${organization.id}` to see '
+                'its members.',
     );
   }
 
@@ -158,7 +153,7 @@ class MembersRemoveCommand extends ShorebirdCommand
       emitJsonSuccess({
         'organization_id': organization.id,
         'email': email,
-        'removed': status,
+        'status': status,
       });
     } else {
       logger.success(text);

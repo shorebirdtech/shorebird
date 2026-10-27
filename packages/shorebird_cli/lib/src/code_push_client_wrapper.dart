@@ -201,16 +201,24 @@ class CodePushClientWrapper {
     );
   }
 
-  /// Fetches the pending invitations to organization [organizationId].
-  Future<List<InvitationSummary>> getOrganizationInvitations({
+  /// Fetches the pending invitations to organization [organizationId], or
+  /// null if the user's role can't see them (the `auditor` role can't).
+  Future<List<InvitationSummary>?> maybeGetOrganizationInvitations({
     required int organizationId,
-  }) {
-    return _withProgress(
-      'Fetching invitations',
-      () => codePushClient.getOrganizationInvitations(
+  }) async {
+    final progress = logger.progress('Fetching invitations');
+    try {
+      final invitations = await codePushClient.getOrganizationInvitations(
         organizationId: organizationId,
-      ),
-    );
+      );
+      progress.complete();
+      return invitations;
+    } on CodePushForbiddenException {
+      progress.complete();
+      return null;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
   }
 
   /// Invites [email] to organization [organizationId] with [role].

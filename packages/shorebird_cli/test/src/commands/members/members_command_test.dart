@@ -38,7 +38,6 @@ void main() {
       expect(parseMemberRole('admin').role, Role.admin);
       expect(parseMemberRole('App-Manager').role, Role.appManager);
       expect(parseMemberRole('app_manager').role, Role.appManager);
-      expect(parseMemberRole('auditor').role, Role.auditor);
     });
 
     test('sends ownership to the console', () {
@@ -58,41 +57,11 @@ void main() {
       expect(
         parseMemberRole('none').error,
         '"none" is not a role you can grant. Choose one of: admin, '
-        'appManager, developer, viewer, auditor.',
+        'appManager, developer, viewer.',
       );
+      // No plan offers auditor to members; the server refuses it.
+      expect(parseMemberRole('auditor').error, startsWith('"auditor" is not'));
       expect(parseMemberRole('boss').error, startsWith('"boss" is not'));
-    });
-  });
-
-  group('findMemberTarget', () {
-    const member = OrganizationUser(
-      user: PublicUser(id: 7, email: 'Bob@acme.com'),
-      role: Role.developer,
-    );
-    final invite = InvitationSummary(
-      id: 'inv-1',
-      email: 'carol@acme.com',
-      role: Role.viewer,
-      createdAt: DateTime.utc(2026),
-      expiresAt: DateTime.utc(2026, 2),
-    );
-
-    MemberTarget find(String arg) =>
-        findMemberTarget(arg, members: [member], invitations: [invite]);
-
-    test('finds a member by id or email, ignoring case', () {
-      expect(find('7').member, member);
-      expect(find('bob@ACME.com').member, member);
-    });
-
-    test('finds a pending invitation by email', () {
-      expect(find('Carol@acme.com').invite, invite);
-    });
-
-    test('finds nothing for anyone else', () {
-      final target = find('dan@acme.com');
-      expect(target.member, isNull);
-      expect(target.invite, isNull);
     });
   });
 }

@@ -17,7 +17,7 @@ class MembersAddCommand extends ShorebirdCommand
   MembersAddCommand() {
     argParser.addOption(
       'role',
-      help: '$memberRoleHelp Defaults to developer.',
+      help: memberRoleHelp,
       defaultsTo: Role.developer.value,
     );
     addOrganizationScopeOption();

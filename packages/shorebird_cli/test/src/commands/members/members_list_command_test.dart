@@ -40,13 +40,44 @@ void main() {
           ),
         ),
         allOf(
-          startsWith('-  '),
+          startsWith('inv-1  '),
           contains('carol@acme.com'),
           endsWith(
             'viewer  invited (expires 2026-11-10)',
           ),
         ),
       ]);
+    });
+
+    group("when the user's role can't see invitations", () {
+      setUp(() {
+        when(
+          () => h.codePushClientWrapper.maybeGetOrganizationInvitations(
+            organizationId: 42,
+          ),
+        ).thenAnswer((_) async => null);
+      });
+
+      test('lists the members and says invitations are hidden', () async {
+        expect(await h.run(command.run), ExitCode.success.code);
+        verify(() => h.logger.info(any())).called(2);
+        verify(
+          () => h.logger.warn(
+            'Pending invitations are not shown: your role in this '
+            "organization can't see them.",
+          ),
+        ).called(1);
+      });
+
+      test('--json says invitations are not shown', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => h.run(command.run, json: true),
+        );
+        expect(exitCode, ExitCode.success.code);
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['invitations_shown'], isFalse);
+        expect(data['members'], hasLength(2));
+      });
     });
 
     test('stops when the organization cannot be picked', () async {
@@ -61,7 +92,7 @@ void main() {
 
     test('reports a failed fetch', () async {
       when(
-        () => h.codePushClientWrapper.getOrganizationInvitations(
+        () => h.codePushClientWrapper.maybeGetOrganizationInvitations(
           organizationId: 42,
         ),
       ).thenThrow(ProcessExit(ExitCode.software.code));
@@ -82,6 +113,7 @@ void main() {
       expect(exitCode, ExitCode.success.code);
       expect(json['data'], {
         'organization_id': 42,
+        'invitations_shown': true,
         'members': [
           {
             'status': 'member',

@@ -29,7 +29,7 @@ class MembersHarness {
       () => codePushClientWrapper.getOrganizationUsers(organizationId: 42),
     ).thenAnswer((_) async => [owner, bob]);
     when(
-      () => codePushClientWrapper.getOrganizationInvitations(
+      () => codePushClientWrapper.maybeGetOrganizationInvitations(
         organizationId: 42,
       ),
     ).thenAnswer((_) async => [carolInvite]);

@@ -41,7 +41,7 @@ void main() {
       expect(await h.run(command.run), ExitCode.success.code);
       verify(
         () => h.logger.confirm(
-          'Delete bob@acme.com from "Acme Corp"?',
+          'Remove bob@acme.com from "Acme Corp"?',
           hint: any(named: 'hint'),
         ),
       ).called(1);
@@ -73,6 +73,58 @@ void main() {
         ),
       );
     });
+
+    test('needs --yes under --json', () async {
+      when(() => h.shorebirdEnv.canAcceptUserInput).thenReturn(false);
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.usage.code);
+      expect(json['error'], {
+        'code': 'usage_error',
+        'message': '--yes required when not running interactively',
+        'hint': 'Re-run with --yes to remove bob@acme.com from "Acme Corp".',
+      });
+    });
+
+    test('refuses to remove the owner', () async {
+      when(() => h.argResults.rest).thenReturn(['alice@acme.com']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err(
+          'alice@acme.com owns "Acme Corp" and cannot be removed.',
+        ),
+      ).called(1);
+      verifyNever(() => h.logger.confirm(any(), hint: any(named: 'hint')));
+    });
+
+    test('cancels an invitation named by its id, once confirmed', () async {
+      when(() => h.argResults.rest).thenReturn(['inv-1']);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(
+        () => h.logger.confirm(
+          'Cancel the invitation for carol@acme.com?',
+          hint: any(named: 'hint'),
+        ),
+      ).called(1);
+    });
+
+    test(
+      "says invitations weren't searched when the role can't see them",
+      () async {
+        when(
+          () => h.codePushClientWrapper.maybeGetOrganizationInvitations(
+            organizationId: 42,
+          ),
+        ).thenAnswer((_) async => null);
+        when(() => h.argResults.rest).thenReturn(['carol@acme.com']);
+        expect(await h.run(command.run), ExitCode.usage.code);
+        verify(
+          () =>
+              h.logger.err('"carol@acme.com" is not a member of "Acme Corp".'),
+        ).called(1);
+      },
+    );
 
     test('cancels a pending invitation', () async {
       when(() => h.argResults.rest).thenReturn(['carol@acme.com']);
@@ -168,7 +220,7 @@ void main() {
       expect(json['data'], {
         'organization_id': 42,
         'email': 'bob@acme.com',
-        'removed': 'member',
+        'status': 'member',
       });
     });
   });

@@ -23,9 +23,12 @@ class MembersListCommand extends ShorebirdCommand
   @override
   String get description =>
       "Lists an organization's members and pending invitations.\n\n"
-      'Example output (space-separated: user id  email  role  status):\n'
+      'Example output (space-separated: id  email  role  status):\n'
       '  12  alice@acme.com  owner  member\n'
-      '  -  bob@acme.com  developer  invited (expires 2026-11-10)\n\n'
+      '  0b6c...  bob@acme.com  developer  invited (expires 2026-11-10)\n\n'
+      'The id is the user id of a member and the invitation id of a pending '
+      'invitation; `members set-role` and `members remove` take either, or '
+      'the email.\n\n'
       'Invite someone with `shorebird members add <email>`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members list --org-id 42 --json',
@@ -38,15 +41,14 @@ class MembersListCommand extends ShorebirdCommand
     final organization = membership!.organization;
 
     late final List<OrganizationUser> members;
-    late final List<InvitationSummary> invitations;
+    late final List<InvitationSummary>? invitations;
     final fetchError = await guardApiCall(
       () async {
         members = await codePushClientWrapper.getOrganizationUsers(
           organizationId: organization.id,
         );
-        invitations = await codePushClientWrapper.getOrganizationInvitations(
-          organizationId: organization.id,
-        );
+        invitations = await codePushClientWrapper
+            .maybeGetOrganizationInvitations(organizationId: organization.id);
       },
       code: JsonErrorCode.fetchFailed,
       message:
@@ -54,9 +56,15 @@ class MembersListCommand extends ShorebirdCommand
     );
     if (fetchError != null) return fetchError;
 
+    // The auditor role can't see invitations; list the members anyway.
+    const invitationsHiddenMessage =
+        'Pending invitations are not shown: your role in this organization '
+        "can't see them.";
+
     if (isJsonMode) {
       emitJsonSuccess({
         'organization_id': organization.id,
+        'invitations_shown': invitations != null,
         'members': [
           for (final member in members)
             {
@@ -66,7 +74,7 @@ class MembersListCommand extends ShorebirdCommand
               'name': member.user.displayName,
               'role': member.role.value,
             },
-          for (final invite in invitations)
+          for (final invite in invitations ?? <InvitationSummary>[])
             {
               'status': 'invited',
               'invitation_id': invite.id,
@@ -86,9 +94,14 @@ class MembersListCommand extends ShorebirdCommand
         '${member.role.value}  member',
       );
     }
-    for (final invite in invitations) {
+    final shownInvitations = invitations;
+    if (shownInvitations == null) {
+      logger.warn(invitationsHiddenMessage);
+      return ExitCode.success.code;
+    }
+    for (final invite in shownInvitations) {
       logger.info(
-        '-  ${lightCyan.wrap(invite.email)}  ${invite.role.value}  '
+        '${invite.id}  ${lightCyan.wrap(invite.email)}  ${invite.role.value}  '
         'invited (expires ${_date(invite.expiresAt)})',
       );
     }

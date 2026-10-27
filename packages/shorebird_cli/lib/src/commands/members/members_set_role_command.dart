@@ -12,7 +12,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Change a member's role in an organization.
 /// {@endtemplate}
 class MembersSetRoleCommand extends ShorebirdCommand
-    with OrganizationScopedCommand {
+    with OrganizationScopedCommand, MemberLookup {
   /// {@macro members_set_role_command}
   MembersSetRoleCommand() {
     argParser.addOption('role', help: memberRoleHelp, mandatory: true);
@@ -42,14 +42,14 @@ class MembersSetRoleCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     final rest = results.rest;
-    if (rest.length != 1) {
+    if (rest.length != 1 || rest.single.trim().isEmpty) {
       return reportError(
         message:
             'Name one member by email or user id: '
             'shorebird members set-role bob@acme.com --role admin.',
       );
     }
-    final user = rest.single;
+    final user = rest.single.trim();
     final (:role, error: roleError) = parseMemberRole(
       results['role'] as String,
     );
@@ -59,28 +59,13 @@ class MembersSetRoleCommand extends ShorebirdCommand
     if (errorCode != null) return errorCode;
     final organization = membership!.organization;
 
-    late final List<OrganizationUser> members;
-    late final List<InvitationSummary> invitations;
-    final fetchError = await guardApiCall(
-      () async {
-        members = await codePushClientWrapper.getOrganizationUsers(
-          organizationId: organization.id,
-        );
-        invitations = await codePushClientWrapper.getOrganizationInvitations(
-          organizationId: organization.id,
-        );
-      },
-      code: JsonErrorCode.fetchFailed,
-      message:
-          'Failed to fetch the members of organization ${organization.id}.',
-    );
-    if (fetchError != null) return fetchError;
-
-    final (:member, :invite) = findMemberTarget(
+    final (:target, errorCode: lookupError) = await findMemberTarget(
       user,
-      members: members,
-      invitations: invitations,
+      organization: organization,
     );
+    if (lookupError != null) return lookupError;
+    final (:member, :invite, :invitationsHidden) = target!;
+
     if (invite != null) {
       // The API can't change a pending invitation's role.
       return reportError(
@@ -102,24 +87,28 @@ class MembersSetRoleCommand extends ShorebirdCommand
             'its members.',
       );
     }
-    if (member.role == role) {
+    if (member.role == Role.owner) {
       return reportError(
         message:
-            '${member.user.email} is already ${role!.value} in '
-            '"${organization.name}".',
+            '${member.user.email} owns "${organization.name}", so their role '
+            'cannot be changed here.',
+        hint: ownershipInConsoleMessage,
       );
     }
 
-    final updateError = await guardApiCall(
-      () => codePushClientWrapper.updateOrganizationUser(
-        organizationId: organization.id,
-        userId: member.user.id,
-        role: role!,
-      ),
-      code: JsonErrorCode.softwareError,
-      message: "Failed to change ${member.user.email}'s role.",
-    );
-    if (updateError != null) return updateError;
+    final changed = member.role != role;
+    if (changed) {
+      final updateError = await guardApiCall(
+        () => codePushClientWrapper.updateOrganizationUser(
+          organizationId: organization.id,
+          userId: member.user.id,
+          role: role!,
+        ),
+        code: JsonErrorCode.softwareError,
+        message: "Failed to change ${member.user.email}'s role.",
+      );
+      if (updateError != null) return updateError;
+    }
 
     if (isJsonMode) {
       emitJsonSuccess({
@@ -128,10 +117,18 @@ class MembersSetRoleCommand extends ShorebirdCommand
         'email': member.user.email,
         'from_role': member.role.value,
         'to_role': role!.value,
+        'changed': changed,
       });
       return ExitCode.success.code;
     }
 
+    if (!changed) {
+      logger.info(
+        '${member.user.email} is already ${role!.value} in '
+        '"${organization.name}"; nothing changed.',
+      );
+      return ExitCode.success.code;
+    }
     logger.success(
       'Changed ${member.user.email} from ${member.role.value} to '
       '${role!.value} in "${organization.name}".',
