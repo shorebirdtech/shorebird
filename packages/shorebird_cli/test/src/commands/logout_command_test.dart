@@ -6,6 +6,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/commands/logout_command.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
@@ -30,6 +31,7 @@ void main() {
         values: {
           authRef.overrideWith(() => auth),
           browserRef.overrideWith(() => browser),
+          isJsonModeRef.overrideWith(() => false),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -140,7 +142,10 @@ void main() {
         verify(() => auth.logout()).called(1);
         verifyNever(() => browser.open(any()));
         verify(
-          () => logger.err(any(that: contains('$accountUrl'))),
+          () => logger.info(
+            'Open $accountUrl in a browser to sign out of '
+            'every other session.',
+          ),
         ).called(1);
       });
     });
