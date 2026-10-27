@@ -55,6 +55,9 @@ jobs:
         # fills the runner's disk ("Disk quota exceeded"). Running the files
         # 50 at a time frees that dir between runs, as the dart_package
         # action does (#4262). Each suite writes its own coverage file.
+        # shorebird_ci's generator still emits a single `dart test`; keep
+        # this batching if the file is regenerated.
+        shell: bash
         run: |
           dart pub global activate coverage 1.15.1
           find test -name '*_test.dart' | sort | xargs -r -n 50 dart test --coverage=coverage
