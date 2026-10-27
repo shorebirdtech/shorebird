@@ -31,7 +31,7 @@ class AppsTransferCommand extends ShorebirdCommand with AppScopedCommand {
       'Moves an app into a different organization.\n\n'
       "You must be able to transfer apps out of the app's current "
       'organization as well as into the target one. Run '
-      '"shorebird account orgs" to list the organizations you belong to.\n\n'
+      '"shorebird orgs list" to list the organizations you belong to.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird apps transfer --app-id <id> --org-id 42 --json',
       )}';

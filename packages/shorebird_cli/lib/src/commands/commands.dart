@@ -16,6 +16,7 @@ export 'login_ci_command.dart';
 export 'login_command.dart';
 export 'logout_command.dart';
 export 'metrics/metrics.dart';
+export 'orgs/orgs.dart';
 export 'patch/patch.dart';
 export 'patches/patches.dart';
 export 'preview_command.dart';

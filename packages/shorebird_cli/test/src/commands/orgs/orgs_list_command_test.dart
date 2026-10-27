@@ -3,7 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/account/orgs_command.dart';
+import 'package:shorebird_cli/src/commands/orgs/orgs_list_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -16,7 +16,7 @@ import '../../mocks.dart';
 
 void main() {
   useTempWorkingDirectory();
-  group(OrgsCommand, () {
+  group(OrgsListCommand, () {
     final teamMembership = OrganizationMembership(
       organization: Organization(
         id: 1,
@@ -42,7 +42,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
-    late OrgsCommand command;
+    late OrgsListCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -61,7 +61,8 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       shorebirdValidator = MockShorebirdValidator();
-      command = runWithOverrides(OrgsCommand.new)..testArgResults = argResults;
+      command = runWithOverrides(OrgsListCommand.new)
+        ..testArgResults = argResults;
 
       when(() => argResults.rest).thenReturn([]);
       when(

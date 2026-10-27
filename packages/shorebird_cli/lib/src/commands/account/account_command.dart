@@ -2,6 +2,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
 import 'package:shorebird_cli/src/commands/account_list_command.dart';
 import 'package:shorebird_cli/src/commands/console_page_command.dart';
+import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template account_command}
@@ -23,7 +24,7 @@ class AccountCommand extends ShorebirdCommand {
     );
     addSubcommand(AccountNotificationsCommand());
     addSubcommand(AccountUpdateCommand());
-    addSubcommand(OrgsCommand());
+    addSubcommand(AccountOrgsCommand());
     addSubcommand(
       AccountListCommand(
         name: 'sessions',
