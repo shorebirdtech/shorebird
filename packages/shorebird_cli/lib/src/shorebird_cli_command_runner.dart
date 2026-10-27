@@ -318,7 +318,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       // it wrote one, otherwise the runner's.
       final envelope = JsonEnvelopeTracker();
       final aliasNotice = _aliasNotice(topLevelResults);
-      if (aliasNotice != null && !isJsonMode) {
+      // Under --json, human lines already go to stderr, so the notice
+      // never reaches the envelope.
+      if (aliasNotice != null) {
         if (_reservesStdout(topLevelResults)) {
           await runWithStdoutOnStderr(() async => logger.info(aliasNotice));
         } else {

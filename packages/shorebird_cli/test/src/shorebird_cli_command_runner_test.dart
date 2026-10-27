@@ -503,7 +503,7 @@ Engine • revision $shorebirdEngineRevision'''),
         );
       });
 
-      test('says nothing in --json mode', () async {
+      test('keeps the --json envelope alone on stdout', () async {
         commandRunner.addCommand(_ParentCommand());
         final stdoutLines = <String>[];
 
@@ -514,9 +514,11 @@ Engine • revision $shorebirdEngineRevision'''),
           captured: stdoutLines,
         );
 
-        verifyNever(
-          () => logger.info(any(that: contains('is an alias of'))),
-        );
+        verify(
+          () => logger.info(
+            '`shorebird mom kid` is an alias of `shorebird parent child`.',
+          ),
+        ).called(1);
         expect(stdoutLines, hasLength(1));
         expect(
           jsonDecode(stdoutLines.single),
@@ -529,7 +531,8 @@ Engine • revision $shorebirdEngineRevision'''),
         final stdoutLines = <String>[];
         final stderrLines = <String>[];
         final realStderr = stderr;
-        // The real logger, so the notice reaches the overridden streams.
+        // A real logger, so a notice logged outside runWithStdoutOnStderr
+        // would show up on the captured stdout and fail the test.
         logger = ShorebirdLogger();
 
         await helpers.captureStdout(
