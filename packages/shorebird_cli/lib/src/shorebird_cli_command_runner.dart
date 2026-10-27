@@ -144,6 +144,36 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     return results;
   }
 
+  /// [args], with the default subcommand added when they name a command
+  /// with a [ShorebirdCommand.defaultSubcommand] and pass it options only
+  /// that subcommand defines, so that `shorebird audit-log --org-id 42` runs
+  /// `shorebird audit-log list --org-id 42`. Otherwise [args] as they are, to
+  /// fail to parse with the usual message.
+  List<String> _withDefaultSubcommandForOptions(List<String> args) {
+    try {
+      argParser.parse(args);
+      return args;
+    } on ArgParserException catch (error) {
+      var commands = this.commands;
+      Command<int>? command;
+      var index = -1;
+      for (final name in error.commands) {
+        command = commands[name];
+        index = args.indexOf(name, index + 1);
+        if (command == null || index < 0) return args;
+        commands = command.subcommands;
+      }
+      if (command is! ShorebirdCommand) return args;
+      final subcommand = command.defaultSubcommand;
+      if (subcommand == null) return args;
+      return [
+        ...args.sublist(0, index + 1),
+        subcommand,
+        ...args.sublist(index + 1),
+      ];
+    }
+  }
+
   @override
   Future<int> run(Iterable<String> args) async {
     final argsList = args.toList();
@@ -153,9 +183,10 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     final jsonModeFromArgs = argsList.contains('--json');
 
     try {
+      final parsedArgs = _withDefaultSubcommandForOptions(argsList);
       final topLevelResults = _withDefaultSubcommand(
-        argsList,
-        parse(argsList),
+        parsedArgs,
+        parse(parsedArgs),
       );
 
       final localEngineSrcPath =

@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -33,6 +34,7 @@ void main() {
       int? remainingInstalls = 37655,
       bool atCeiling = false,
       bool nearingLimit = false,
+      String? accruedOverageAmount,
     }) => AccountPosition(
       includedInstalls: 50000,
       installs: 12345,
@@ -44,7 +46,7 @@ void main() {
       atCeiling: atCeiling,
       nearingLimit: nearingLimit,
       consumingOverage: false,
-      accruedOverageAmount: null,
+      accruedOverageAmount: accruedOverageAmount,
     );
     GetUsageResponse usage({
       AccountPosition? accountPosition,
@@ -59,6 +61,7 @@ void main() {
 
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdLogger logger;
     late ShorebirdValidator shorebirdValidator;
     late UsageCommand command;
@@ -70,6 +73,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           isJsonModeRef.overrideWith(() => json),
           loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
@@ -85,6 +89,8 @@ void main() {
       argResults = MockArgResults();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
+      shorebirdEnv = MockShorebirdEnv();
+      when(() => shorebirdEnv.hostedEnvironment).thenReturn(null);
       shorebirdValidator = MockShorebirdValidator();
       command = runWithOverrides(UsageCommand.new)..testArgResults = argResults;
 
@@ -126,6 +132,7 @@ void main() {
           accountPosition: position(
             overageInstalls: 200,
             remainingInstalls: null,
+            accruedOverageAmount: '1234.5',
           ),
           apps: const [],
         ),
@@ -136,29 +143,66 @@ void main() {
       ).captured.cast<String>();
       expect(lines, [
         'Patch installs: 12,345 of 50,000 included',
-        'Billed as overage: 200',
+        "Billed as overage: 200 (12.35 so far, in your plan's currency)",
       ]);
     });
 
-    test('warns when patches have stopped', () async {
+    test(
+      'says to upgrade when patches stop on a plan without overage',
+      () async {
+        returnUsage(
+          usage(
+            accountPosition: position(remainingInstalls: 0, atCeiling: true),
+          ),
+        );
+        await runWithOverrides(command.run);
+        verify(
+          () => logger.warn(
+            'Patches have stopped: the account reached its install limit. '
+            'Upgrade your plan at https://console.shorebird.dev.',
+          ),
+        ).called(1);
+      },
+    );
+
+    test('says to raise the overage limit on a plan with overage', () async {
       returnUsage(
-        usage(accountPosition: position(remainingInstalls: 0, atCeiling: true)),
+        usage(
+          accountPosition: position(
+            remainingInstalls: 0,
+            atCeiling: true,
+            accruedOverageAmount: '0',
+          ),
+        ),
       );
       await runWithOverrides(command.run);
       verify(
         () => logger.warn(
           'Patches have stopped: the account reached its install limit. '
-          'Raise your overage limit or upgrade your plan at '
-          'https://console.shorebird.dev.',
+          'Raise your overage limit at https://console.shorebird.dev.',
         ),
       ).called(1);
     });
 
-    test('warns when nearing the limit', () async {
+    test('links the console of the environment the CLI talks to', () async {
+      when(() => shorebirdEnv.hostedEnvironment).thenReturn(devEnvironment);
+      returnUsage(
+        usage(accountPosition: position(remainingInstalls: 0, atCeiling: true)),
+      );
+      await runWithOverrides(command.run);
+      final warning =
+          verify(() => logger.warn(captureAny())).captured.single as String;
+      expect(warning, endsWith('Upgrade your plan at $devConsoleUrl.'));
+    });
+
+    test('warns, with a next step, when nearing the limit', () async {
       returnUsage(usage(accountPosition: position(nearingLimit: true)));
       await runWithOverrides(command.run);
       verify(
-        () => logger.warn('The account is nearing its install limit.'),
+        () => logger.warn(
+          'The account is nearing its install limit, after which patches '
+          'stop. Upgrade your plan at https://console.shorebird.dev.',
+        ),
       ).called(1);
     });
 

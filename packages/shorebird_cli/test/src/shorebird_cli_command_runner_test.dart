@@ -427,6 +427,32 @@ Engine • revision $shorebirdEngineRevision'''),
         expect(parent.child.ran, isTrue);
       });
 
+      test('is added when given options only it takes', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', '--only-child']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('is added under a nested command too', () async {
+        final grandparent = _GrandparentCommand();
+        commandRunner.addCommand(grandparent);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['grandparent', 'parent', '--only-child']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(grandparent.nested.child.ran, isTrue);
+      });
+
+      test('still rejects an option no subcommand takes', () async {
+        await expectLater(
+          runWithOverrides(() => commandRunner.run(['parent', '--bogus'])),
+          completion(equals(ExitCode.usage.code)),
+        );
+        expect(parent.child.ran, isFalse);
+      });
+
       test('is not added after --', () async {
         await runWithOverrides(() => commandRunner.run(['parent', '--']));
         expect(parent.child.ran, isFalse);
@@ -1540,6 +1566,10 @@ class _RecordsDevModeCommand extends ShorebirdCommand {
 
 /// A command with no subcommands of its own that records whether it ran.
 class _ChildCommand extends ShorebirdCommand {
+  _ChildCommand() {
+    argParser.addFlag('only-child', help: 'An option only the child takes');
+  }
+
   bool ran = false;
 
   @override
