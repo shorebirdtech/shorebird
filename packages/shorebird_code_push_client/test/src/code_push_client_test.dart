@@ -3521,7 +3521,7 @@ void main() {
       group('getOrganizationUsers', () {
         test('returns the members', () async {
           respond(
-            GetOrganizationUsersResponse(users: [member]).toJson(),
+            const GetOrganizationUsersResponse(users: [member]).toJson(),
             HttpStatus.ok,
           );
           await expectLater(
