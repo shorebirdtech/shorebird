@@ -40,6 +40,7 @@ words:
   - deflavored
   - develocity
   - devicectl
+  - DLRT # Prefix on the Dart VM's runtime entry points, as in DLRT_ExitSafepoint
   - dorny # From .github dir, doesn't show up in "**" check?
   - dyld
   - dylib
@@ -133,6 +134,7 @@ words:
   - spawnee
   - Retryable
   - RSAPKCS
+  - Safepoint # Dart VM thread state, as in DLRT_ExitSafepoint
   - sdcard # From .github/workflows/e2e.yaml
   - sgit # From .github/license_check/action.yaml
   - shorebirdtech
