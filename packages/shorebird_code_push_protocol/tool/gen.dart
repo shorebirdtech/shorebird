@@ -69,7 +69,9 @@ class ShorebirdFileRenderer extends FileRenderer {
   // Everything below is a no-op override: this package hand-maintains
   // its pubspec, analysis config, HTTP client, auth, and top-level
   // barrel. space_gen is only on the hook for models/messages/tests
-  // and the `model_helpers.dart` runtime library.
+  // and the `model_helpers.dart` and `api_exception.dart` runtime
+  // libraries (the latter holds the `validate` extensions that models
+  // with `pattern`/`maxLength` constraints call).
 
   @override
   void renderPubspec() {}
@@ -79,9 +81,6 @@ class ShorebirdFileRenderer extends FileRenderer {
 
   @override
   void renderGitignore() {}
-
-  @override
-  void renderApiException() {}
 
   @override
   void renderAuth() {}

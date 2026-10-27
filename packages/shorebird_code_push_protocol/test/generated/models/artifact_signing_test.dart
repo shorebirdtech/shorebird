@@ -6,7 +6,7 @@ void main() {
   group('ArtifactSigning', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = ArtifactSigning(mode: 'example');
-      final parsed = ArtifactSigning.maybeFromJson(instance.toJson());
+      final parsed = ArtifactSigning.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

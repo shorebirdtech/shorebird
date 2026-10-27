@@ -13,7 +13,7 @@ void main() {
         createdAt: DateTime.utc(2024),
         expiresAt: DateTime.utc(2024),
       );
-      final parsed = ReceivedInvitation.maybeFromJson(instance.toJson());
+      final parsed = ReceivedInvitation.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
