@@ -29,17 +29,14 @@ void main() {
     });
   });
 
-  test('lives under orgs', () {
-    expect(
-      OrgsCommand().subcommands['service-accounts'],
-      isA<ServiceAccountsCommand>(),
-    );
+  test('is visible at the top level', () {
+    expect(ServiceAccountsCommand().hidden, isFalse);
   });
 
-  test('stays at the top level, hidden, for the spelling agents guess', () {
-    final command = TopLevelServiceAccountsCommand();
-    expect(command.hidden, isTrue);
-    expect(command.name, 'service-accounts');
+  test('is also under orgs, hidden', () {
+    final command = OrgsCommand().subcommands['service-accounts'];
+    expect(command, isA<OrgsServiceAccountsCommand>());
+    expect(command!.hidden, isTrue);
     expect(command.subcommands.keys, contains('keys'));
   });
 }

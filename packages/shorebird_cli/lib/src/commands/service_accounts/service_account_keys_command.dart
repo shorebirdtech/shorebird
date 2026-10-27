@@ -2,7 +2,7 @@ import 'package:shorebird_cli/src/commands/service_accounts/service_accounts.dar
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template service_account_keys_command}
-/// `shorebird orgs service-accounts keys`
+/// `shorebird service-accounts keys`
 /// Commands for a service account's API keys.
 /// {@endtemplate}
 class ServiceAccountKeysCommand extends ShorebirdCommand {

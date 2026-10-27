@@ -2,7 +2,7 @@ import 'package:shorebird_cli/src/commands/service_accounts/service_accounts.dar
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template service_accounts_command}
-/// `shorebird orgs service-accounts`
+/// `shorebird service-accounts`
 /// Commands for an organization's service accounts.
 /// {@endtemplate}
 class ServiceAccountsCommand extends ShorebirdCommand {
@@ -26,21 +26,22 @@ class ServiceAccountsCommand extends ShorebirdCommand {
   String get description =>
       "Manage an organization's service accounts: credentials for CI that "
       'belong to the organization rather than to a person. With no '
-      'subcommand, lists them (the same as `shorebird orgs service-accounts '
+      'subcommand, lists them (the same as `shorebird service-accounts '
       'list`).';
 
   @override
   String get defaultSubcommand => 'list';
 }
 
-/// {@template top_level_service_accounts_command}
-/// `shorebird service-accounts`
-/// The spelling agents guess first, kept working but hidden so help shows
-/// one place for service accounts: `shorebird orgs service-accounts`.
+/// {@template orgs_service_accounts_command}
+/// `shorebird orgs service-accounts`
+/// The same commands as `shorebird service-accounts`, hidden under `orgs` for
+/// those who look for them there. Like `gh secret`, org-scoped nouns are
+/// top-level and take `--org-id`.
 /// {@endtemplate}
-class TopLevelServiceAccountsCommand extends ServiceAccountsCommand {
-  /// {@macro top_level_service_accounts_command}
-  TopLevelServiceAccountsCommand();
+class OrgsServiceAccountsCommand extends ServiceAccountsCommand {
+  /// {@macro orgs_service_accounts_command}
+  OrgsServiceAccountsCommand();
 
   @override
   bool get hidden => true;

@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_accounts_create_command}
-/// `shorebird orgs service-accounts create <name>`
+/// `shorebird service-accounts create <name>`
 /// Create a service account in an organization.
 /// {@endtemplate}
 class ServiceAccountsCreateCommand extends ShorebirdCommand
@@ -28,7 +28,7 @@ class ServiceAccountsCreateCommand extends ShorebirdCommand
   String get name => 'create';
 
   @override
-  String get invocation => 'shorebird orgs service-accounts create <name>';
+  String get invocation => 'shorebird service-accounts create <name>';
 
   @override
   String get description =>
@@ -37,7 +37,7 @@ class ServiceAccountsCreateCommand extends ShorebirdCommand
       '  Created service account "release-bot" (id: 383) with role '
       'developer.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs service-accounts create release-bot --org-id 42 --json',
+        'shorebird service-accounts create release-bot --org-id 42 --json',
       )}';
 
   @override
@@ -47,7 +47,7 @@ class ServiceAccountsCreateCommand extends ShorebirdCommand
       return reportError(
         message:
             'Name the service account once: '
-            'shorebird orgs service-accounts create release-bot.',
+            'shorebird service-accounts create release-bot.',
       );
     }
     final accountName = rest.single.trim();

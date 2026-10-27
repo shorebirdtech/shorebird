@@ -40,7 +40,7 @@ void main() {
       ]);
       const message =
           '"Acme Corp" has no service accounts. Create one with shorebird '
-          'orgs service-accounts create <name>.';
+          'service-accounts create <name>.';
       expect(context.infoLines, [message]);
     });
 

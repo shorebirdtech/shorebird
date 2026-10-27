@@ -5,7 +5,7 @@ import 'package:shorebird_cli/src/commands/service_accounts/service_accounts_cre
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template service_account_keys_create_command}
-/// `shorebird orgs service-accounts keys create <name or id>`
+/// `shorebird service-accounts keys create <name or id>`
 /// Open the console page where a service account's keys are made.
 /// {@endtemplate}
 class ServiceAccountKeysCreateCommand extends ShorebirdCommand
@@ -23,11 +23,11 @@ class ServiceAccountKeysCreateCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird orgs service-accounts keys create '
+      'shorebird service-accounts keys create '
       '<service account name or id>';
 
   @override
-  String get commandLine => 'shorebird orgs service-accounts keys create';
+  String get commandLine => 'shorebird service-accounts keys create';
 
   @override
   String get description =>

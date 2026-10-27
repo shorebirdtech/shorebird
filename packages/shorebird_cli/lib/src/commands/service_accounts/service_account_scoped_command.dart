@@ -35,7 +35,7 @@ const serviceAccountIdPrefix = 'id:';
 mixin ServiceAccountScopedCommand
     on ShorebirdCommand, OrganizationScopedCommand {
   /// The command line that runs this command on a service account, for
-  /// error messages, e.g. `shorebird orgs service-accounts get`.
+  /// error messages, e.g. `shorebird service-accounts get`.
   String get commandLine;
 
   /// How many arguments the command takes, the service account included.
@@ -85,7 +85,7 @@ mixin ServiceAccountScopedCommand
 
     final hint = accounts.isEmpty
         ? '"${organization.name}" has no service accounts. Create one with '
-              'shorebird orgs service-accounts create <name>.'
+              'shorebird service-accounts create <name>.'
         : 'Service accounts in "${organization.name}": '
               '${accounts.map(_describe).join(', ')}.';
 

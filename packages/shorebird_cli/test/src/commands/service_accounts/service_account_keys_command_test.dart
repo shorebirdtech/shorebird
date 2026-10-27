@@ -96,7 +96,7 @@ void main() {
       );
       verify(
         () => context.logger.err(
-          'Name the key to revoke: shorebird orgs service-accounts keys revoke '
+          'Name the key to revoke: shorebird service-accounts keys revoke '
           'release-bot <key id>.',
         ),
       ).called(1);

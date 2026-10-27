@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_accounts_list_command}
-/// `shorebird orgs service-accounts list`
+/// `shorebird service-accounts list`
 /// List an organization's service accounts.
 /// {@endtemplate}
 class ServiceAccountsListCommand extends ShorebirdCommand
@@ -27,7 +27,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
       'Example output (space-separated: id  name  role  last signed in):\n'
       '  383  release-bot  developer  2026-10-20\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs service-accounts list --org-id 42 --json',
+        'shorebird service-accounts list --org-id 42 --json',
       )}';
 
   @override
@@ -58,7 +58,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
     if (accounts.isEmpty) {
       logger.info(
         '"${organization.name}" has no service accounts. Create one with '
-        'shorebird orgs service-accounts create <name>.',
+        'shorebird service-accounts create <name>.',
       );
       return ExitCode.success.code;
     }

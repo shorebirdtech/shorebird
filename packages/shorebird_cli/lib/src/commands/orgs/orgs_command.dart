@@ -13,7 +13,7 @@ class OrgsCommand extends ShorebirdCommand {
     addSubcommand(OrgsCreateCommand());
     addSubcommand(OrgsGetCommand());
     addSubcommand(OrgsListCommand());
-    addSubcommand(ServiceAccountsCommand());
+    addSubcommand(OrgsServiceAccountsCommand());
     addSubcommand(OrgsUpdateCommand());
   }
 
@@ -27,8 +27,7 @@ class OrgsCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'List, create, inspect and rename your organizations, and manage '
-      'their service accounts. With no '
+      'List, create, inspect and rename your organizations. With no '
       'subcommand, lists them (the same as `shorebird orgs list`).';
 
   @override
