@@ -67,8 +67,6 @@ tags:
     description: Infrastructure diagnostics endpoints.
   - name: metrics
     description: Customer-facing analytics charts (MAU v2).
-  - name: stats
-    description: Public figures about Shorebird as a whole.
   - name: app-store-connect
     description: |
       The App Store Connect team API key an organization gives Shorebird, so
@@ -81,10 +79,6 @@ tags:
       either with API keys issued to it or, under an OIDC trust rule, with a
       token from its CI provider's own identity provider. It never signs in
       interactively.
-  - name: admin
-    description: |
-      Endpoints for Shorebird staff. Each requires a Shorebird sign-in session
-      whose token carries the `admin` scope; API keys never qualify.
 paths:
   /users/me:
     get:
@@ -322,59 +316,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
-  /users/me/personal-organization:
-    get:
-      tags:
-        - users
-      summary: Get the signed-in user's personal organization.
-      description: |
-        Returns the single-user organization every account owns, creating
-        it first (and answering `201`) if the user does not have one yet.
-        Service accounts are refused with a `403`
-        (`service_account_forbidden`).
-      operationId: getPersonalOrganization
-      responses:
-        '200':
-          description: The user's personal organization.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Organization'
-        '201':
-          description: The user had no personal organization; this one was just created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Organization'
-        default:
-          $ref: '#/components/responses/Error'
-  /users/me/terms:
-    post:
-      tags:
-        - users
-      summary: Record that the signed-in user accepted the terms of service.
-      description: |
-        Records the current time as when the user accepted Shorebird's
-        terms of service. Takes no body.
-      operationId: acceptTermsOfService
-      responses:
-        '204':
-          description: The acceptance was recorded.
-        '404':
-          description: |
-            No user is signed in (`user_post_terms_user_not_found`).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '424':
-          description: The acceptance could not be saved (`user_post_terms_error`).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        default:
-          $ref: '#/components/responses/Error'
   /invitations:
     get:
       tags:
@@ -432,43 +373,6 @@ paths:
           description: |
             No pending invitation with this id was sent to the signed-in
             user (`invitation_not_found`).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '424':
-          description: The invitation could not be looked up (`invitation_lookup_error`).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        default:
-          $ref: '#/components/responses/Error'
-  /invitations/{invitationId}/preview:
-    parameters:
-      - $ref: '#/components/parameters/InvitationId'
-    get:
-      tags:
-        - invitations
-      summary: Preview a pending invitation without signing in.
-      description: |
-        What a sign-in screen needs to welcome someone who followed an
-        invitation link: the name of the organization or app and which
-        of the two it is. Carries no email address or role. Needs no
-        authentication. An unknown id, an id that is not a UUID, and an
-        invitation that is no longer pending are all answered with the
-        same `404`.
-      operationId: getInvitationPreview
-      security: []
-      responses:
-        '200':
-          description: The invitation preview.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetInvitationPreviewResponse'
-        '404':
-          description: No pending invitation has this id (`invitation_not_found`).
           content:
             application/json:
               schema:
@@ -688,47 +592,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        default:
-          $ref: '#/components/responses/Error'
-  /apps/{appId}/icon:
-    parameters:
-      - $ref: '#/components/parameters/AppId'
-      - name: v
-        in: query
-        required: false
-        description: |
-          Cache-bust token (a digest of the icon), set by
-          `AppMetadata.iconUrl`. Ignored by the server, which always
-          serves the currently-picked icon; clients re-fetch when the
-          URL changes.
-        schema:
-          type: string
-    get:
-      tags:
-        - apps
-      summary: Get the app's launcher icon as a PNG.
-      description: |
-        Returns the launcher icon for the most recent analyzed iOS
-        release (or Android, when iOS has no analyzed release with an
-        icon). The response is labeled `immutable` because the URL
-        embedded in `AppMetadata.iconUrl` changes whenever the icon
-        does. Returns 404 when no analyzed release has an icon.
-      operationId: getAppIcon
-      responses:
-        '200':
-          description: The icon bytes.
-          headers:
-            Cache-Control:
-              schema:
-                type: string
-              description: '`private, max-age=31536000, immutable`.'
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-        '404':
-          description: No analyzed release has an icon.
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/signing-key:
@@ -1463,89 +1326,6 @@ paths:
             The app does not exist (`app_not_found`), or the channel does
             not exist or belongs to another app
             (`channels_delete_channel_not_found`).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        default:
-          $ref: '#/components/responses/Error'
-  /apps/{appId}/releases/{releaseId}/size-analysis:
-    parameters:
-      - $ref: '#/components/parameters/AppId'
-      - $ref: '#/components/parameters/ReleaseId'
-    get:
-      tags:
-        - releases
-      summary: Get the release's install-size analysis.
-      description: |
-        By default, returns a summary for each platform whose size analysis
-        reached a verdict: the install size broken down into Dart, native
-        and asset bytes when it succeeded, or why it did not. A release
-        whose artifacts were never analyzed returns an empty `platforms`
-        list, not a `404`.
-
-        With `include=tree` (which requires `platform`), returns that
-        platform's full size tree instead: a JSON document, possibly sent
-        with `Content-Encoding: gzip`, whose shape is not part of this
-        contract. It is available only when the platform's summary
-        `status` is `succeeded`.
-
-        Requires the `releases.view` permission.
-      operationId: getReleaseSizeAnalysis
-      parameters:
-        - name: platform
-          in: query
-          required: false
-          description: |
-            Return only this platform's entry. Required with
-            `include=tree`.
-          schema:
-            $ref: '#/components/schemas/ReleasePlatform'
-        - name: include
-          in: query
-          required: false
-          description: |
-            `tree` returns the full size tree for `platform` instead of the
-            summary. Any other value is ignored.
-          schema:
-            $ref: '#/components/schemas/ReleaseSizeAnalysisInclude'
-      responses:
-        '200':
-          description: |
-            The size summary, or with `include=tree` the size tree.
-          headers:
-            Cache-Control:
-              schema:
-                type: string
-              description: '`private, max-age=300`, on the tree response only.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetReleaseSizeAnalysisResponse'
-        '400':
-          description: |
-            The release id is not an integer (`release_id_malformed`), the
-            release does not belong to the app (`release_app_mismatch`),
-            `platform` is not a known platform, or `include=tree` was sent
-            without `platform` (`size_analysis_bad_request`).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: |
-            The caller lacks the `releases.view` permission, or the app's
-            plan does not include size analysis
-            (`shorebird_plan_insufficient_tier`).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: |
-            The app (`app_not_found`) or release (`release_not_found`) does
-            not exist, or, with `include=tree`, the platform has no
-            succeeded analysis (`size_analysis_not_found`).
           content:
             application/json:
               schema:
@@ -4044,35 +3824,6 @@ paths:
                     description: The GCP-signed download URL.
         default:
           $ref: '#/components/responses/Error'
-  /stats:
-    get:
-      tags:
-        - stats
-      summary: Get Shorebird's public stats.
-      description: |
-        Figures Shorebird publishes, keyed by stat name. Needs no
-        authentication and may be read from any origin.
-
-        Each stat is recomputed hourly. `value` is exact as of `as_of`,
-        which trails the present by one to two hours. A live counter shows
-        `value + per_second * (now - as_of)`, and on refresh eases toward
-        the new value rather than counting backwards.
-
-        A stat that has not been recorded yet is absent.
-      operationId: getPublicStats
-      security: []
-      responses:
-        '200':
-          description: The public stats.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  patch_installs:
-                    $ref: '#/components/schemas/PublicStat'
-        default:
-          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     apiKey:
@@ -4226,27 +3977,6 @@ components:
         `invalid_page`). A value that is not a positive integer reads the
         first page.
   schemas:
-    PublicStat:
-      type: object
-      description: The latest value of one public stat.
-      required:
-        - value
-        - per_second
-        - as_of
-      properties:
-        value:
-          type: integer
-          format: int64
-          description: The stat's value as of `as_of`.
-        per_second:
-          type:
-            - number
-            - 'null'
-          description: How fast the value was rising over the last three hours, per second. Null for a stat that does not tick.
-        as_of:
-          type: string
-          format: date-time
-          description: When `value` is current to.
     App:
       type: object
       description: The application downloaded and run on various devices/platforms.
@@ -6361,15 +6091,6 @@ components:
             - boolean
             - 'null'
           description: Whether the user should receive email notifications.
-    InvitationTargetType:
-      type: string
-      description: Whether an invitation is to an organization or to an app.
-      enum:
-        - organization
-        - app
-      x-enum-descriptions:
-        - The invitation grants membership in an organization.
-        - The invitation grants collaborator access to one app.
     GetInvitationResponse:
       type: object
       description: |
@@ -6416,21 +6137,6 @@ components:
           type: string
           format: date-time
           description: When the invitation stops being valid.
-    GetInvitationPreviewResponse:
-      type: object
-      description: |
-        The response body for GET /invitations/{invitationId}/preview: only
-        what a sign-in screen needs, and no personal information.
-      required:
-        - target_name
-        - type
-      properties:
-        target_name:
-          type: string
-          description: The organization's name or the app's display name.
-        type:
-          $ref: '#/components/schemas/InvitationTargetType'
-          description: Whether the invitation is to an organization or an app.
     Plan:
       type: object
       description: |
@@ -7725,98 +7431,3 @@ components:
         role:
           $ref: '#/components/schemas/Role'
           description: The user's role on the app.
-    ReleaseSizeAnalysisInclude:
-      type: string
-      description: |
-        What GET /apps/{appId}/releases/{releaseId}/size-analysis returns
-        in place of the summary.
-      enum:
-        - tree
-      x-enum-descriptions:
-        - The platform's full size tree.
-    SizeAnalysisStatus:
-      type: string
-      description: The verdict of a release artifact's size analysis.
-      enum:
-        - succeeded
-        - analyze_snapshot_unpublished
-        - failed_permanent
-      x-enum-descriptions:
-        - The analysis ran, and the size fields hold its result.
-        - The analysis could not run because no analyzer has been published for the release's snapshot format. It may run once one is.
-        - The analysis failed in a way retrying will not fix.
-    ReleaseSizeSummary:
-      type: object
-      description: |
-        One platform's size-analysis verdict for a release. The size fields
-        and `engine_version` are non-null exactly when `status` is
-        `succeeded`.
-      required:
-        - platform
-        - status
-        - engine_version
-        - analyzed_at
-        - total_size_in_bytes
-        - dart_size_in_bytes
-        - native_size_in_bytes
-        - asset_size_in_bytes
-      properties:
-        platform:
-          $ref: '#/components/schemas/ReleasePlatform'
-          description: The platform the analyzed artifact is for.
-        status:
-          $ref: '#/components/schemas/SizeAnalysisStatus'
-        engine_version:
-          type:
-            - string
-            - 'null'
-          description: |
-            The version of the size analyzer that produced the result.
-            Null unless `status` is `succeeded`.
-        analyzed_at:
-          type:
-            - string
-            - 'null'
-          format: date-time
-          description: When the analysis reached its verdict, in UTC.
-        total_size_in_bytes:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: The artifact's total size in bytes.
-        dart_size_in_bytes:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: Bytes attributed to Dart code.
-        native_size_in_bytes:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: Bytes attributed to native code.
-        asset_size_in_bytes:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: Bytes attributed to assets.
-    GetReleaseSizeAnalysisResponse:
-      type: object
-      description: |
-        The response body for
-        GET /apps/{appId}/releases/{releaseId}/size-analysis without
-        `include=tree`.
-      required:
-        - platforms
-      properties:
-        platforms:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReleaseSizeSummary'
-          description: |
-            One entry per platform whose analysis reached a verdict (only
-            `platform`'s, when that parameter is sent). Platforms never
-            analyzed are left out, so the list may be empty.
