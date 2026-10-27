@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
@@ -23,6 +25,49 @@ export 'link_result.dart';
 export 'macho.dart';
 export 'missing_xcode_project_exception.dart';
 export 'plist.dart';
+
+/// A short reason `aot_tools link_metadata` failed, for the patch metadata
+/// and the warning: the exception line aot_tools printed, or what it printed
+/// instead of JSON. Paths are replaced with `<path>`, since patch metadata
+/// holds no paths.
+@visibleForTesting
+String linkMetadataFailureReason(Exception error) {
+  String firstLine(String text) => LineSplitter.split(text)
+      .map((l) => l.trim())
+      .firstWhere(
+        (l) => l.isNotEmpty,
+        orElse: () => '',
+      );
+  String clean(String text, {int maxLength = 200}) {
+    final redacted = text.replaceAll(
+      RegExp(r'(?:[A-Za-z]:)?[\\/][^\s:,)]*'),
+      '<path>',
+    );
+    return redacted.length > maxLength
+        ? redacted.substring(0, maxLength)
+        : redacted;
+  }
+
+  switch (error) {
+    case FormatException(:final String source):
+      return 'invalid JSON: "${clean(firstLine(source), maxLength: 60)}"';
+    case FormatException():
+      return 'invalid JSON';
+    case AotToolsExecutionFailure(:final stderr, :final exitCode):
+      // An uncaught exception prints "Unhandled exception:", then the
+      // exception's own line, then the stack.
+      final lines = LineSplitter.split(
+        stderr,
+      ).map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      final unhandled = lines.indexOf('Unhandled exception:');
+      final line = unhandled != -1 && unhandled + 1 < lines.length
+          ? lines[unhandled + 1]
+          : lines.firstOrNull;
+      return line == null ? 'exit code $exitCode' : clean(line);
+    default:
+      return clean(firstLine('$error'));
+  }
+}
 
 /// A reference to a [Apple] instance.
 final appleRef = create(Apple.new);
@@ -288,7 +333,17 @@ $error''');
           );
         }
       } on Exception catch (error) {
-        logger.detail('[aot_tools] Failed to get link metadata: $error');
+        final reason = linkMetadataFailureReason(error);
+        logger
+          ..detail('[aot_tools] Failed to get link metadata: $error')
+          ..warn(
+            'Could not read link details for this patch ($reason). The '
+            'patch is not affected; the reason is sent to Shorebird with the '
+            'patch so it can be fixed.',
+          );
+        // Recorded in the patch metadata in place of the link details, so the
+        // failure is visible to Shorebird rather than a bare null.
+        linkMetadata = {'error': reason};
       }
 
       linkProgress.complete();

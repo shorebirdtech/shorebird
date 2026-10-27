@@ -255,9 +255,14 @@ class AotTools {
         workingDirectory: workingDirectory,
       );
     } else {
-      // local engine versions use .dart and we distribute aot-tools as a .dill
+      // Local engine versions use .dart and we distribute aot-tools as a .dill.
+      // The .dill runs directly rather than through `dart run`: `dart run`
+      // runs the build hooks of the package that holds the working directory
+      // (the app's), and Dart 3.10 prints "Running build hooks..." to stdout
+      // while doing so, which corrupts the JSON `link_metadata` prints.
+      // https://github.com/dart-lang/sdk/issues/61996
       result = await execute(shorebirdEnv.dartBinaryFile.path, [
-        'run',
+        if (extension == '.dart') 'run',
         artifactPath,
         ...tracedCommand,
       ], workingDirectory: workingDirectory);
@@ -294,7 +299,7 @@ class AotTools {
     final version = result.stdout
         .toString()
         // Hack to work around https://github.com/dart-lang/sdk/issues/61996
-        // Which manifests in 3.38.0, 3.38.1, and 3.38.2
+        // for local engine builds, which still run aot_tools via `dart run`.
         // It typically ends in a newline, but trim() will remove it.
         .replaceAll('Running build hooks...', '')
         .trim();
