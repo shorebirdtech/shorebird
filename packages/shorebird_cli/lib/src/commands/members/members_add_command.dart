@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template members_add_command}
-/// `shorebird members add <email>`
+/// `shorebird orgs members add <email>`
 /// Invite someone to an organization.
 /// {@endtemplate}
 class MembersAddCommand extends ShorebirdCommand
@@ -30,7 +30,7 @@ class MembersAddCommand extends ShorebirdCommand
   List<String> get aliases => const ['invite'];
 
   @override
-  String get invocation => 'shorebird members add <email>';
+  String get invocation => 'shorebird orgs members add <email>';
 
   @override
   String get description =>
@@ -40,7 +40,8 @@ class MembersAddCommand extends ShorebirdCommand
       'Example output:\n'
       '  Invited bob@acme.com to "Acme Corp" as developer.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird members add bob@acme.com --role admin --org-id 42 --json',
+        'shorebird orgs members add bob@acme.com --role admin --org-id 42 '
+        '--json',
       )}';
 
   @override
@@ -49,7 +50,8 @@ class MembersAddCommand extends ShorebirdCommand
     if (rest.length != 1) {
       return reportError(
         message:
-            'Name one email to invite: shorebird members add bob@acme.com.',
+            'Name one email to invite: '
+            'shorebird orgs members add bob@acme.com.',
       );
     }
     final email = rest.single.trim();

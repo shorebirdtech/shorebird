@@ -1,3 +1,4 @@
+import 'package:shorebird_cli/src/commands/members/members.dart';
 import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -12,6 +13,7 @@ class OrgsCommand extends ShorebirdCommand {
     addSubcommand(OrgsCreateCommand());
     addSubcommand(OrgsGetCommand());
     addSubcommand(OrgsListCommand());
+    addSubcommand(MembersCommand());
     addSubcommand(OrgsUpdateCommand());
   }
 
@@ -25,8 +27,9 @@ class OrgsCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'List, create, inspect and rename your organizations. With no '
-      'subcommand, lists them (the same as `shorebird orgs list`).';
+      'List, create, inspect and rename your organizations, and manage their '
+      'members. With no subcommand, lists them (the same as '
+      '`shorebird orgs list`).';
 
   @override
   String get defaultSubcommand => 'list';

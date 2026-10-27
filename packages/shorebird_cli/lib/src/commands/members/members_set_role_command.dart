@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template members_set_role_command}
-/// `shorebird members set-role <user> --role <role>`
+/// `shorebird orgs members set-role <user> --role <role>`
 /// Change a member's role in an organization.
 /// {@endtemplate}
 class MembersSetRoleCommand extends ShorebirdCommand
@@ -27,7 +27,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird members set-role <email or user id> --role <role>';
+      'shorebird orgs members set-role <email or user id> --role <role>';
 
   @override
   String get description =>
@@ -35,7 +35,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
       'Example output:\n'
       '  Changed bob@acme.com from developer to admin in "Acme Corp".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird members set-role bob@acme.com --role admin --org-id 42 '
+        'shorebird orgs members set-role bob@acme.com --role admin --org-id 42 '
         '--json',
       )}';
 
@@ -46,7 +46,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
       return reportError(
         message:
             'Name one member by email or user id: '
-            'shorebird members set-role bob@acme.com --role admin.',
+            'shorebird orgs members set-role bob@acme.com --role admin.',
       );
     }
     final user = rest.single.trim();
@@ -73,9 +73,9 @@ class MembersSetRoleCommand extends ShorebirdCommand
             '${invite.email} has not accepted their invitation yet, so their '
             'role cannot be changed.',
         hint:
-            'Cancel it and invite them again: shorebird members remove '
+            'Cancel it and invite them again: shorebird orgs members remove '
             '${invite.email} --org-id ${organization.id}, then shorebird '
-            'members add ${invite.email} --role ${role!.value} --org-id '
+            'orgs members add ${invite.email} --role ${role!.value} --org-id '
             '${organization.id}.',
       );
     }
@@ -83,7 +83,8 @@ class MembersSetRoleCommand extends ShorebirdCommand
       return reportError(
         message: '"$user" is not a member of "${organization.name}".',
         hint:
-            'Run `shorebird members list --org-id ${organization.id}` to see '
+            'Run `shorebird orgs members list --org-id ${organization.id}` '
+            'to see '
             'its members.',
       );
     }

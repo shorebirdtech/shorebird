@@ -1,6 +1,7 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/members/members.dart';
+import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -22,7 +23,7 @@ void main() {
     });
 
     test('accepts the spellings agents guess', () {
-      expect(command.aliases, containsAll(['collaborators', 'member']));
+      expect(command.aliases, ['users', 'collaborators']);
       expect(command.subcommands['invite'], isA<MembersAddCommand>());
       expect(command.subcommands['update'], isA<MembersSetRoleCommand>());
       expect(command.subcommands['delete'], isA<MembersRemoveCommand>());
@@ -30,6 +31,16 @@ void main() {
 
     test('lists members with no subcommand', () {
       expect(command.defaultSubcommand, 'list');
+    });
+  });
+
+  group(TopLevelMembersCommand, () {
+    test('is under orgs, and hidden at the top level for blind guesses', () {
+      expect(OrgsCommand().subcommands['members'], isA<MembersCommand>());
+      final topLevel = TopLevelMembersCommand();
+      expect(topLevel.hidden, isTrue);
+      expect(topLevel.name, 'members');
+      expect(topLevel.aliases, ['collaborators']);
     });
   });
 
