@@ -1375,6 +1375,20 @@ Run "aot_tools help <command>" for more information about a command.
             );
           },
         );
+
+        test(
+          'throws FormatException when aot_tools outputs json that is not '
+          'an object',
+          () async {
+            stdout = 'null';
+            await expectLater(
+              () => runWithOverrides(
+                () => aotTools.getLinkMetadata(debugDir: '/debug'),
+              ),
+              throwsFormatException,
+            );
+          },
+        );
       });
     });
 

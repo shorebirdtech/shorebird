@@ -876,12 +876,25 @@ Bad state: A node should not be linked if it makes a direct call into an unlinke
       const error = AotToolsExecutionFailure(
         exitCode: 1,
         stdout: '',
-        stderr: 'PathNotFound: /Users/someone/app/build/App.dt.link\n',
+        stderr: 'PathNotFound: /Users/someone/Acme App/build/App.dt.link\n',
         command: 'aot_tools link_metadata /tmp/debug',
       );
       expect(
         linkMetadataFailureReason(error),
         equals('PathNotFound: <path>'),
+      );
+    });
+
+    test('replaces a Windows path that starts near the length limit', () {
+      final error = AotToolsExecutionFailure(
+        exitCode: 1,
+        stdout: '',
+        stderr: 'Error: ${'x' * 190} C:\\Users\\someone\\app',
+        command: 'aot_tools link_metadata /tmp/debug',
+      );
+      expect(
+        linkMetadataFailureReason(error),
+        equals('Error: ${'x' * 190} <path>'),
       );
     });
 

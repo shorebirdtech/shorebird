@@ -28,8 +28,8 @@ export 'plist.dart';
 
 /// A short reason `aot_tools link_metadata` failed, for the patch metadata
 /// and the warning: the exception line aot_tools printed, or what it printed
-/// instead of JSON. Paths are replaced with `<path>`, since patch metadata
-/// holds no paths.
+/// instead of JSON. The text from the first path on becomes `<path>`, since
+/// patch metadata holds no paths.
 @visibleForTesting
 String linkMetadataFailureReason(Exception error) {
   String firstLine(String text) => LineSplitter.split(text)
@@ -38,14 +38,15 @@ String linkMetadataFailureReason(Exception error) {
         (l) => l.isNotEmpty,
         orElse: () => '',
       );
+  // Everything from the first path on is dropped, since a path can hold
+  // spaces and so has no reliable end.
   String clean(String text, {int maxLength = 200}) {
-    final redacted = text.replaceAll(
-      RegExp(r'(?:[A-Za-z]:)?[\\/][^\s:,)]*'),
-      '<path>',
-    );
-    return redacted.length > maxLength
-        ? redacted.substring(0, maxLength)
-        : redacted;
+    final path = RegExp(r'(?:[A-Za-z]:)?[\\/]').firstMatch(text);
+    final kept = path == null ? text : text.substring(0, path.start);
+    final truncated = kept.length > maxLength
+        ? kept.substring(0, maxLength)
+        : kept;
+    return path == null ? truncated : '$truncated<path>';
   }
 
   switch (error) {
@@ -333,20 +334,20 @@ $error''');
           );
         }
       } on Exception catch (error) {
-        final reason = linkMetadataFailureReason(error);
-        logger
-          ..detail('[aot_tools] Failed to get link metadata: $error')
-          ..warn(
-            'Could not read link details for this patch ($reason). The '
-            'patch is not affected; the reason is sent to Shorebird with the '
-            'patch so it can be fixed.',
-          );
+        logger.detail('[aot_tools] Failed to get link metadata: $error');
         // Recorded in the patch metadata in place of the link details, so the
         // failure is visible to Shorebird rather than a bare null.
-        linkMetadata = {'error': reason};
+        linkMetadata = {'error': linkMetadataFailureReason(error)};
       }
 
       linkProgress.complete();
+      if (linkMetadata?['error'] case final String reason) {
+        logger.warn(
+          'Could not read link details for this patch ($reason). The patch '
+          'is not affected; the reason is sent to Shorebird with the patch so '
+          'it can be fixed.',
+        );
+      }
       return LinkResult.success(
         linkPercentage: linkPercentage,
         linkMetadata: linkMetadata,

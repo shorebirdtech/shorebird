@@ -323,7 +323,12 @@ class AotTools {
       'link_metadata',
       debugDir,
     ], workingDirectory: workingDirectory);
-    return jsonDecode(result.stdout.toString()) as Map<String, dynamic>;
+    final stdout = result.stdout.toString();
+    final metadata = jsonDecode(stdout);
+    if (metadata is! Map<String, dynamic>) {
+      throw FormatException('Expected a JSON object', stdout);
+    }
+    return metadata;
   }
 
   /// Generate a link vmcode file from two AOT snapshots.
