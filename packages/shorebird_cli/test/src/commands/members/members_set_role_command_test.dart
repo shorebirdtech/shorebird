@@ -96,8 +96,8 @@ void main() {
       ).called(1);
       verify(
         () => h.logger.info(
-          'Cancel it and invite them again: shorebird orgs members remove '
-          'carol@acme.com --org-id 42, then shorebird orgs members add '
+          'Cancel it and invite them again: shorebird members remove '
+          'carol@acme.com --org-id 42, then shorebird members add '
           'carol@acme.com --role admin --org-id 42.',
         ),
       ).called(1);

@@ -23,7 +23,7 @@ void main() {
     });
 
     test('accepts the spellings agents guess', () {
-      expect(command.aliases, ['users', 'collaborators']);
+      expect(command.aliases, ['collaborators', 'member']);
       expect(command.subcommands['invite'], isA<MembersAddCommand>());
       expect(command.subcommands['update'], isA<MembersSetRoleCommand>());
       expect(command.subcommands['delete'], isA<MembersRemoveCommand>());
@@ -34,13 +34,13 @@ void main() {
     });
   });
 
-  group(TopLevelMembersCommand, () {
-    test('is under orgs, and hidden at the top level for blind guesses', () {
-      expect(OrgsCommand().subcommands['members'], isA<MembersCommand>());
-      final topLevel = TopLevelMembersCommand();
-      expect(topLevel.hidden, isTrue);
-      expect(topLevel.name, 'members');
-      expect(topLevel.aliases, ['collaborators']);
+  group(OrgsMembersCommand, () {
+    test('is top level, and hidden under orgs for blind guesses', () {
+      expect(MembersCommand().hidden, isFalse);
+      final underOrgs = OrgsCommand().subcommands['members'];
+      expect(underOrgs, isA<OrgsMembersCommand>());
+      expect(underOrgs!.hidden, isTrue);
+      expect(underOrgs.aliases, ['users', 'collaborators']);
     });
   });
 

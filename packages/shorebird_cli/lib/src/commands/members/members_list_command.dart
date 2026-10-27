@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template members_list_command}
-/// `shorebird orgs members list`
+/// `shorebird members list`
 /// List an organization's members and pending invitations.
 /// {@endtemplate}
 class MembersListCommand extends ShorebirdCommand
@@ -29,9 +29,9 @@ class MembersListCommand extends ShorebirdCommand
       'The id is the user id of a member and the invitation id of a pending '
       'invitation; `members set-role` and `members remove` take either, or '
       'the email.\n\n'
-      'Invite someone with `shorebird orgs members add <email>`.\n\n'
+      'Invite someone with `shorebird members add <email>`.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs members list --org-id 42 --json',
+        'shorebird members list --org-id 42 --json',
       )}';
 
   @override

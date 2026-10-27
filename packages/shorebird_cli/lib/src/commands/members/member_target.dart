@@ -5,7 +5,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// The roles `shorebird orgs members add` and `set-role` can grant, in the
+/// The roles `shorebird members add` and `set-role` can grant, in the
 /// order help text lists them: the roles some plan offers members. `owner`
 /// is left out: ownership moves in the console (ADR-0026), and invitations
 /// can't grant it. `appManager` needs the enterprise plan; the server says

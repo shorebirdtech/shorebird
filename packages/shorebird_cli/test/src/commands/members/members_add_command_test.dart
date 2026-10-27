@@ -68,7 +68,7 @@ void main() {
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
         () => h.logger.err(
-          'Name one email to invite: shorebird orgs members add bob@acme.com.',
+          'Name one email to invite: shorebird members add bob@acme.com.',
         ),
       ).called(2);
     });

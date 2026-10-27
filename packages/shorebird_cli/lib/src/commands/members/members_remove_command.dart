@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template members_remove_command}
-/// `shorebird orgs members remove <user>`
+/// `shorebird members remove <user>`
 /// Remove a member from an organization, or cancel a pending invitation.
 /// {@endtemplate}
 class MembersRemoveCommand extends ShorebirdCommand
@@ -28,7 +28,7 @@ class MembersRemoveCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird orgs members remove <email, user id or invitation id>';
+      'shorebird members remove <email, user id or invitation id>';
 
   @override
   String get description =>
@@ -40,7 +40,7 @@ class MembersRemoveCommand extends ShorebirdCommand
       'Example output:\n'
       '  Removed bob@acme.com from "Acme Corp".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs members remove bob@acme.com --org-id 42 --yes --json',
+        'shorebird members remove bob@acme.com --org-id 42 --yes --json',
       )}';
 
   @override
@@ -50,7 +50,7 @@ class MembersRemoveCommand extends ShorebirdCommand
       return reportError(
         message:
             'Name one member by email or user id: '
-            'shorebird orgs members remove bob@acme.com.',
+            'shorebird members remove bob@acme.com.',
       );
     }
     final user = rest.single.trim();
@@ -138,7 +138,7 @@ class MembersRemoveCommand extends ShorebirdCommand
                 'pending invitation.',
       hint: invitationsHidden
           ? "Your role can't see pending invitations, so none was looked for."
-          : 'Run `shorebird orgs members list --org-id ${organization.id}` '
+          : 'Run `shorebird members list --org-id ${organization.id}` '
                 'to see '
                 'its members.',
     );

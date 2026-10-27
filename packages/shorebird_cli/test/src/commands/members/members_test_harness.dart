@@ -10,7 +10,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 import '../../mocks.dart';
 
-/// Shared fixtures and mocks for the `shorebird orgs members` command tests.
+/// Shared fixtures and mocks for the `shorebird members` command tests.
 class MembersHarness {
   MembersHarness() {
     when(() => argResults['org-id']).thenReturn('42');
