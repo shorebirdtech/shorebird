@@ -3481,6 +3481,130 @@ void main() {
       });
     });
 
+    group('getOrganizationAuditLogs', () {
+      const page = GetOrganizationAuditLogsResponse(
+        data: [],
+        nextCursor: 'next',
+      );
+
+      setUp(() {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(page.toJson()))),
+            HttpStatus.ok,
+          ),
+        );
+      });
+
+      test('sends only the filters given', () async {
+        await codePushClient.getOrganizationAuditLogs(organizationId: 42);
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('organizations/42/audit-logs')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('sends every filter as a query parameter', () async {
+        await codePushClient.getOrganizationAuditLogs(
+          organizationId: 42,
+          perPage: 100,
+          cursor: 'abc',
+          order: AuditLogOrder.asc,
+          startDate: DateTime.utc(2026, 10),
+          endDate: DateTime.utc(2026, 10, 2),
+          appId: 'app',
+          actorId: 12,
+          operation: 'organization.rename',
+        );
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.url.queryParameters, {
+          'per_page': '100',
+          'cursor': 'abc',
+          'order': 'asc',
+          'startDate': '2026-10-01T00:00:00.000Z',
+          'endDate': '2026-10-02T00:00:00.000Z',
+          'appId': 'app',
+          'actorId': '12',
+          'operation': 'organization.rename',
+        });
+      });
+
+      test('returns the page', () async {
+        await expectLater(
+          codePushClient.getOrganizationAuditLogs(organizationId: 42),
+          completion(equals(page)),
+        );
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+        expect(
+          codePushClient.getOrganizationAuditLogs(organizationId: 42),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+    });
+
+    group('getOrganizationUsage', () {
+      const usage = GetUsageResponse(
+        apps: [AppUsage(id: 'app', name: 'Acme', patchInstallCount: 5)],
+        position: AccountPosition(
+          includedInstalls: 100,
+          installs: 5,
+          includedInstallsUsed: 5,
+          includedExhausted: false,
+          overageInstalls: 0,
+          installCeiling: 100,
+          remainingInstalls: 95,
+          atCeiling: false,
+          nearingLimit: false,
+          consumingOverage: false,
+          accruedOverageAmount: null,
+        ),
+        reportedOverage: null,
+      );
+
+      test('makes the correct request and returns the usage', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(usage.toJson()))),
+            HttpStatus.ok,
+          ),
+        );
+        await expectLater(
+          codePushClient.getOrganizationUsage(organizationId: 42),
+          completion(equals(usage)),
+        );
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('organizations/42/usage')));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.forbidden,
+          ),
+        );
+        expect(
+          codePushClient.getOrganizationUsage(organizationId: 42),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+    });
+
     group('getOrganizationApps', () {
       const organizationId = 42;
 

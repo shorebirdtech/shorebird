@@ -985,6 +985,68 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
 
+        test('getOrganizationAuditLogs passes the filters through', () async {
+          const page = GetOrganizationAuditLogsResponse(data: []);
+          when(
+            () => codePushClient.getOrganizationAuditLogs(
+              organizationId: 42,
+              perPage: 10,
+              cursor: 'c',
+              order: AuditLogOrder.asc,
+              appId: 'app',
+              actorId: 12,
+              operation: 'organization.rename',
+            ),
+          ).thenAnswer((_) async => page);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.getOrganizationAuditLogs(
+                organizationId: 42,
+                perPage: 10,
+                cursor: 'c',
+                order: AuditLogOrder.asc,
+                appId: 'app',
+                actorId: 12,
+                operation: 'organization.rename',
+              ),
+            ),
+            completion(equals(page)),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('getOrganizationUsage returns the usage', () async {
+          const usage = GetUsageResponse(
+            apps: [],
+            position: AccountPosition(
+              includedInstalls: 100,
+              installs: 5,
+              includedInstallsUsed: 5,
+              includedExhausted: false,
+              overageInstalls: 0,
+              installCeiling: null,
+              remainingInstalls: null,
+              atCeiling: false,
+              nearingLimit: false,
+              consumingOverage: false,
+              accruedOverageAmount: null,
+            ),
+            reportedOverage: null,
+          );
+          when(
+            () => codePushClient.getOrganizationUsage(organizationId: 42),
+          ).thenAnswer((_) async => usage);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.getOrganizationUsage(
+                organizationId: 42,
+              ),
+            ),
+            completion(equals(usage)),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
         test('updateCurrentUser sends the display name', () async {
           when(
             () => codePushClient.updateCurrentUser(

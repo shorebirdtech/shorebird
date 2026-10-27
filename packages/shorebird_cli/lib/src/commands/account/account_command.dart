@@ -24,6 +24,7 @@ class AccountCommand extends ShorebirdCommand {
     );
     addSubcommand(AccountNotificationsCommand());
     addSubcommand(AccountUpdateCommand());
+    addSubcommand(UsageCommand());
     addSubcommand(AccountOrgsCommand());
     addSubcommand(
       AccountListCommand(

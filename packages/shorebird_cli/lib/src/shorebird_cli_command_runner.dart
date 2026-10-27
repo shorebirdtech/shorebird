@@ -88,6 +88,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(AccountCommand());
     addCommand(ApiCommand());
     addCommand(AppsCommand());
+    addCommand(AuditLogCommand());
     addCommand(AuthCommand());
     addCommand(CacheCommand());
     addCommand(ChannelsCommand());
@@ -108,6 +109,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(ReleasesCommand());
     addCommand(TokensCommand());
     addCommand(UpgradeCommand());
+    addCommand(TopLevelUsageCommand());
     addCommand(TopLevelWhoamiCommand());
   }
 
