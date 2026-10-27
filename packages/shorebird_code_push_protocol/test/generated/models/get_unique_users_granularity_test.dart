@@ -8,7 +8,7 @@ void main() {
       const instance = GetUniqueUsersGranularity.hour;
       final parsed = GetUniqueUsersGranularity.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -8,7 +8,7 @@ void main() {
       const instance = GetReleasePatchInstallsGroupBy.patch;
       final parsed = GetReleasePatchInstallsGroupBy.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

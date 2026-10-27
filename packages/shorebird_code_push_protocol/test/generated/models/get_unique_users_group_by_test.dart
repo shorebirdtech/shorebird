@@ -6,7 +6,7 @@ void main() {
   group('GetUniqueUsersGroupBy', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = GetUniqueUsersGroupBy.platform;
-      final parsed = GetUniqueUsersGroupBy.maybeFromJson(instance.toJson());
+      final parsed = GetUniqueUsersGroupBy.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

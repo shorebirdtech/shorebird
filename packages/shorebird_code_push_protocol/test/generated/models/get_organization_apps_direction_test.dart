@@ -8,7 +8,7 @@ void main() {
       const instance = GetOrganizationAppsDirection.asc;
       final parsed = GetOrganizationAppsDirection.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -8,7 +8,7 @@ void main() {
       const instance = GetReleasePatchInstallsGranularity.hour;
       final parsed = GetReleasePatchInstallsGranularity.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
