@@ -22,5 +22,6 @@ export 'patches/patches.dart';
 export 'preview_command.dart';
 export 'release/release.dart';
 export 'releases/releases.dart';
+export 'service_accounts/service_accounts.dart';
 export 'tokens/tokens.dart';
 export 'upgrade_command.dart';

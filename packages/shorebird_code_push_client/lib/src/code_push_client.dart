@@ -970,6 +970,130 @@ class CodePushClient {
     }
   }
 
+  /// Gets every service account organization [organizationId] owns, oldest
+  /// first.
+  Future<List<ServiceAccount>> getServiceAccounts({
+    required int organizationId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/organizations/$organizationId/service-accounts'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetServiceAccountsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).serviceAccounts;
+  }
+
+  /// Creates a service account named [name] in organization
+  /// [organizationId], with [role] (the server's default when null).
+  Future<ServiceAccount> createServiceAccount({
+    required int organizationId,
+    required String name,
+    ServiceAccountRole? role,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/organizations/$organizationId/service-accounts'),
+      body: json.encode(
+        CreateServiceAccountRequest(name: name, role: role).toJson(),
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return ServiceAccount.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Sets the role of service account [serviceAccountId] in organization
+  /// [organizationId] to [role].
+  Future<ServiceAccount> updateServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+    required ServiceAccountRole role,
+  }) async {
+    final response = await _httpClient.patch(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/service-accounts/'
+        '$serviceAccountId',
+      ),
+      body: json.encode(UpdateServiceAccountRequest(role: role).toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return ServiceAccount.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Deletes service account [serviceAccountId] from organization
+  /// [organizationId], with its keys and trust rules.
+  Future<void> deleteServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/service-accounts/'
+        '$serviceAccountId',
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Gets the unrevoked keys of service account [serviceAccountId] in
+  /// organization [organizationId], newest first.
+  Future<List<ServiceAccountKey>> getServiceAccountKeys({
+    required int organizationId,
+    required int serviceAccountId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/service-accounts/'
+        '$serviceAccountId/keys',
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetServiceAccountKeysResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).keys;
+  }
+
+  /// Revokes key [keyId] of service account [serviceAccountId] in
+  /// organization [organizationId].
+  Future<void> revokeServiceAccountKey({
+    required int organizationId,
+    required int serviceAccountId,
+    required int keyId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/service-accounts/'
+        '$serviceAccountId/keys/$keyId',
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Gets the apps in organization [organizationId] that the user can see.
   Future<List<AppMetadata>> getOrganizationApps({
     required int organizationId,
