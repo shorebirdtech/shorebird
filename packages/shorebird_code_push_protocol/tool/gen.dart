@@ -21,7 +21,7 @@
 // Those directories hold only generated output; hand-written code must
 // never go in them. (Before this override, gen.dart ran with
 // `--no-clear`, because space_gen's default [generatedDirs] don't match
-// this layout. Stale files then survived a regen, and the run's own
+// this layout. Stale files then survived a regeneration, and the run's own
 // `dart fix` saw them and wrote different output than a clean run.)
 
 import 'package:space_gen/space_gen.dart';
