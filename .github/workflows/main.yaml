@@ -28,15 +28,13 @@ jobs:
         with:
           working_directory: ${{ github.workspace }}
 
-  semantic_pull_request:
-    name: ✅ Semantic Pull Request
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
-
   cspell:
     name: 🔤 Check Spelling
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/spell_check.yml@v1
     with:
       config: cspell.config.yaml
+      # pr_title.yaml checks the title, rerunning when it's edited.
+      check_pr_title: false
 
   changes:
     runs-on: ubuntu-latest
@@ -193,7 +191,6 @@ jobs:
       [
         changes,
         license_check,
-        semantic_pull_request,
         build_cross_platform_dart_packages,
         build_redis,
         verify_packages,
