@@ -112,7 +112,15 @@ class ShorebirdFlutter {
           await git.clone(
             url: shorebirdEnv.flutterGitUrl,
             outputDirectory: stagingDirectory.path,
-            args: ['--filter=tree:0', '--no-checkout'],
+            // Flutter has paths over Windows' 260-character limit. Setting
+            // core.longpaths in the clone's own config lets the checkout
+            // write them without a machine-wide (admin) git setting.
+            args: [
+              '--filter=tree:0',
+              '--no-checkout',
+              '--config',
+              'core.longpaths=true',
+            ],
           );
 
           // Checkout the correct revision.

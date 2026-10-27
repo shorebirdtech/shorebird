@@ -40,13 +40,6 @@ function Invoke-SilentlyIfNeeded($command) {
     }
 }
 
-function Test-GitConfigLongpaths {
-    $longpathsEnabled = git config --system core.longpaths
-    if ($longpathsEnabled -ne "true") {
-        Write-Output "Git is not configured to allow long paths. This can cause issues with Shorebird's Flutter checkout. Please run 'git config --system core.longpaths true' to enable long paths."
-    }
-}
-
 function Test-GitInstalled {
     if (Get-Command git -ErrorAction SilentlyContinue) {
         Write-Debug "Git is installed."
@@ -115,8 +108,11 @@ function Update-Flutter {
         if ($env:SHOREBIRD_FLUTTER_GIT_URL) {
             $flutterGitUrl = $env:SHOREBIRD_FLUTTER_GIT_URL
         }
+        # Flutter has paths over Windows' 260-character limit. Setting
+        # core.longpaths in the clone's own config lets the checkout write
+        # them without a machine-wide (admin) git setting.
         Invoke-SilentlyIfNeeded {
-            git clone --filter=tree:0 "$flutterGitUrl" --no-checkout "$flutterPath"
+            git clone --filter=tree:0 --config core.longpaths=true "$flutterGitUrl" --no-checkout "$flutterPath"
         }
     }
     else {
@@ -242,8 +238,6 @@ function Restore-EndOfOptions($arguments, $invocation) {
 }
 
 Test-GitInstalled
-
-Test-GitConfigLongpaths
 
 $shorebirdArgs = @(Restore-EndOfOptions $args $MyInvocation)
 

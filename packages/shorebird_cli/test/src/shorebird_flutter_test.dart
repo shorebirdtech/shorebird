@@ -1754,7 +1754,12 @@ origin/flutter_release/3.10.6''';
           () => git.clone(
             url: flutterGitUrl,
             outputDirectory: any(named: 'outputDirectory'),
-            args: ['--filter=tree:0', '--no-checkout'],
+            args: [
+              '--filter=tree:0',
+              '--no-checkout',
+              '--config',
+              'core.longpaths=true',
+            ],
           ),
         ).called(1);
         verifyNever(
@@ -1785,7 +1790,12 @@ origin/flutter_release/3.10.6''';
           () => git.clone(
             url: flutterGitUrl,
             outputDirectory: any(named: 'outputDirectory'),
-            args: ['--filter=tree:0', '--no-checkout'],
+            args: [
+              '--filter=tree:0',
+              '--no-checkout',
+              '--config',
+              'core.longpaths=true',
+            ],
           ),
         ).called(1);
         verify(

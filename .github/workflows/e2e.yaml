@@ -300,10 +300,6 @@ jobs:
         with:
           ref: ${{ inputs.cli_ref }}
 
-      # Shorebird's Flutter checkout has paths over 260 characters.
-      - name: 🪟 Allow long paths in git
-        run: git config --system core.longpaths true
-
       - name: 🖥️ Add Shorebird to PATH
         shell: pwsh
         run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
@@ -593,11 +589,6 @@ jobs:
         shell: bash
         if: runner.os != 'Windows'
         run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
-
-      # Shorebird's Flutter checkout has paths over 260 characters.
-      - name: 🪟 Allow long paths in git
-        if: runner.os == 'Windows'
-        run: git config --system core.longpaths true
 
       - name: 🖥️ Add Shorebird to Windows PATH
         shell: pwsh
