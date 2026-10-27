@@ -15,7 +15,7 @@ const _workflowsDir = '.github/workflows/';
 const anyRefFlag = 'any-ref';
 
 /// {@template service_account_trust_add_command}
-/// `shorebird orgs service-accounts trust add <name or id> --github-repo ...`
+/// `shorebird service-accounts trust add <name or id> --github-repo ...`
 /// Let a GitHub Actions workflow sign in as a service account.
 /// {@endtemplate}
 class ServiceAccountTrustAddCommand extends ShorebirdCommand
@@ -69,11 +69,11 @@ class ServiceAccountTrustAddCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird orgs service-accounts trust add <service account name or id> '
+      'shorebird service-accounts trust add <service account name or id> '
       '--github-repo <owner>/<repo> --workflow <file> --ref <ref>';
 
   @override
-  String get commandLine => 'shorebird orgs service-accounts trust add';
+  String get commandLine => 'shorebird service-accounts trust add';
 
   @override
   String get description =>
@@ -86,7 +86,7 @@ class ServiceAccountTrustAddCommand extends ShorebirdCommand
       '  Added trust rule 7: acme/app .github/workflows/release.yml (ref '
       'refs/heads/main, any environment) may sign in as "release-bot".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs service-accounts trust add release-bot --github-repo '
+        'shorebird service-accounts trust add release-bot --github-repo '
         'acme/app --workflow release.yml --ref main --org-id 42 --json',
       )}';
 

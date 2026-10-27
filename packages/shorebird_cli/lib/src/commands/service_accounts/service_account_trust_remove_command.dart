@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_account_trust_remove_command}
-/// `shorebird orgs service-accounts trust remove <name or id> <rule id>`
+/// `shorebird service-accounts trust remove <name or id> <rule id>`
 /// Stop a workflow from signing in as a service account.
 /// {@endtemplate}
 class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
@@ -29,11 +29,11 @@ class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird orgs service-accounts trust remove '
+      'shorebird service-accounts trust remove '
       '<service account name or id> <rule id>';
 
   @override
-  String get commandLine => 'shorebird orgs service-accounts trust remove';
+  String get commandLine => 'shorebird service-accounts trust remove';
 
   @override
   int get maxArguments => 2;
@@ -46,7 +46,7 @@ class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
       '  Removed trust rule 7 (acme/app .github/workflows/release.yml) from '
       '"release-bot".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs service-accounts trust remove release-bot 7 '
+        'shorebird service-accounts trust remove release-bot 7 '
         '--org-id 42 --yes --json',
       )}';
 

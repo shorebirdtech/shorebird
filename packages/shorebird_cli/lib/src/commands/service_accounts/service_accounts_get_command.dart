@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_accounts_get_command}
-/// `shorebird orgs service-accounts get <name or id>`
+/// `shorebird service-accounts get <name or id>`
 /// Show a service account, its keys and its trust rules.
 /// {@endtemplate}
 class ServiceAccountsGetCommand extends ShorebirdCommand
@@ -25,10 +25,10 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
   List<String> get aliases => const ['describe'];
 
   @override
-  String get invocation => 'shorebird orgs service-accounts get <name or id>';
+  String get invocation => 'shorebird service-accounts get <name or id>';
 
   @override
-  String get commandLine => 'shorebird orgs service-accounts get';
+  String get commandLine => 'shorebird service-accounts get';
 
   @override
   String get description =>
@@ -46,7 +46,7 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
       '    7  acme/app  .github/workflows/release.yml  ref refs/heads/main  '
       'environment any  last used 2026-10-20\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs service-accounts get release-bot --org-id 42 --json',
+        'shorebird service-accounts get release-bot --org-id 42 --json',
       )}';
 
   @override
