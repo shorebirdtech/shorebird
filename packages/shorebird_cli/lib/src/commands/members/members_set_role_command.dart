@@ -1,0 +1,141 @@
+import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/members/member_target.dart';
+import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
+import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+
+/// {@template members_set_role_command}
+/// `shorebird members set-role <user> --role <role>`
+/// Change a member's role in an organization.
+/// {@endtemplate}
+class MembersSetRoleCommand extends ShorebirdCommand
+    with OrganizationScopedCommand {
+  /// {@macro members_set_role_command}
+  MembersSetRoleCommand() {
+    argParser.addOption('role', help: memberRoleHelp, mandatory: true);
+    addOrganizationScopeOption();
+  }
+
+  @override
+  String get name => 'set-role';
+
+  @override
+  List<String> get aliases => const ['update'];
+
+  @override
+  String get invocation =>
+      'shorebird members set-role <email or user id> --role <role>';
+
+  @override
+  String get description =>
+      "Changes a member's role in an organization.\n\n"
+      'Example output:\n'
+      '  Changed bob@acme.com from developer to admin in "Acme Corp".\n\n'
+      '${ShorebirdCommand.jsonHint(
+        'shorebird members set-role bob@acme.com --role admin --org-id 42 '
+        '--json',
+      )}';
+
+  @override
+  Future<int> run() async {
+    final rest = results.rest;
+    if (rest.length != 1) {
+      return reportError(
+        message:
+            'Name one member by email or user id: '
+            'shorebird members set-role bob@acme.com --role admin.',
+      );
+    }
+    final user = rest.single;
+    final (:role, error: roleError) = parseMemberRole(
+      results['role'] as String,
+    );
+    if (roleError != null) return reportError(message: roleError);
+
+    final (:membership, :errorCode) = await resolveOrganization();
+    if (errorCode != null) return errorCode;
+    final organization = membership!.organization;
+
+    late final List<OrganizationUser> members;
+    late final List<InvitationSummary> invitations;
+    final fetchError = await guardApiCall(
+      () async {
+        members = await codePushClientWrapper.getOrganizationUsers(
+          organizationId: organization.id,
+        );
+        invitations = await codePushClientWrapper.getOrganizationInvitations(
+          organizationId: organization.id,
+        );
+      },
+      code: JsonErrorCode.fetchFailed,
+      message:
+          'Failed to fetch the members of organization ${organization.id}.',
+    );
+    if (fetchError != null) return fetchError;
+
+    final (:member, :invite) = findMemberTarget(
+      user,
+      members: members,
+      invitations: invitations,
+    );
+    if (invite != null) {
+      // The API can't change a pending invitation's role.
+      return reportError(
+        message:
+            '${invite.email} has not accepted their invitation yet, so their '
+            'role cannot be changed.',
+        hint:
+            'Cancel it and invite them again: shorebird members remove '
+            '${invite.email} --org-id ${organization.id}, then shorebird '
+            'members add ${invite.email} --role ${role!.value} --org-id '
+            '${organization.id}.',
+      );
+    }
+    if (member == null) {
+      return reportError(
+        message: '"$user" is not a member of "${organization.name}".',
+        hint:
+            'Run `shorebird members list --org-id ${organization.id}` to see '
+            'its members.',
+      );
+    }
+    if (member.role == role) {
+      return reportError(
+        message:
+            '${member.user.email} is already ${role!.value} in '
+            '"${organization.name}".',
+      );
+    }
+
+    final updateError = await guardApiCall(
+      () => codePushClientWrapper.updateOrganizationUser(
+        organizationId: organization.id,
+        userId: member.user.id,
+        role: role!,
+      ),
+      code: JsonErrorCode.softwareError,
+      message: "Failed to change ${member.user.email}'s role.",
+    );
+    if (updateError != null) return updateError;
+
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'organization_id': organization.id,
+        'user_id': member.user.id,
+        'email': member.user.email,
+        'from_role': member.role.value,
+        'to_role': role!.value,
+      });
+      return ExitCode.success.code;
+    }
+
+    logger.success(
+      'Changed ${member.user.email} from ${member.role.value} to '
+      '${role!.value} in "${organization.name}".',
+    );
+    return ExitCode.success.code;
+  }
+}

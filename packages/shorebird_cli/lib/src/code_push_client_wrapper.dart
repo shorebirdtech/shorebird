@@ -191,6 +191,89 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the members of organization [organizationId].
+  Future<List<OrganizationUser>> getOrganizationUsers({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching members',
+      () => codePushClient.getOrganizationUsers(organizationId: organizationId),
+    );
+  }
+
+  /// Fetches the pending invitations to organization [organizationId].
+  Future<List<InvitationSummary>> getOrganizationInvitations({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching invitations',
+      () => codePushClient.getOrganizationInvitations(
+        organizationId: organizationId,
+      ),
+    );
+  }
+
+  /// Invites [email] to organization [organizationId] with [role].
+  Future<CreateOrganizationInvitation201Response> createOrganizationInvitation({
+    required int organizationId,
+    required String email,
+    required Role role,
+  }) {
+    return _withProgress(
+      'Inviting $email',
+      () => codePushClient.createOrganizationInvitation(
+        organizationId: organizationId,
+        email: email,
+        role: role,
+      ),
+    );
+  }
+
+  /// Cancels the pending invitation [invitationId] to organization
+  /// [organizationId].
+  Future<void> revokeOrganizationInvitation({
+    required int organizationId,
+    required String invitationId,
+  }) {
+    return _withProgress(
+      'Cancelling invitation',
+      () => codePushClient.revokeOrganizationInvitation(
+        organizationId: organizationId,
+        invitationId: invitationId,
+      ),
+    );
+  }
+
+  /// Sets member [userId]'s role in organization [organizationId] to [role].
+  Future<void> updateOrganizationUser({
+    required int organizationId,
+    required int userId,
+    required Role role,
+  }) {
+    return _withProgress(
+      'Updating role',
+      () => codePushClient.updateOrganizationUser(
+        organizationId: organizationId,
+        userId: userId,
+        role: role,
+      ),
+    );
+  }
+
+  /// Removes member [userId] from organization [organizationId].
+  Future<void> removeOrganizationUser({
+    required int organizationId,
+    required int userId,
+  }) {
+    return _withProgress(
+      'Removing member',
+      () => codePushClient.removeOrganizationUser(
+        organizationId: organizationId,
+        userId: userId,
+      ),
+    );
+  }
+
   /// Finds which of [memberships]' organizations app [appId] is in, or null
   /// if none of them lists it.
   ///

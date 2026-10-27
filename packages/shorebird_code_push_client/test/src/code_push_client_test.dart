@@ -3481,6 +3481,236 @@ void main() {
       });
     });
 
+    group('organization members', () {
+      const organizationId = 42;
+      final member = OrganizationUser(
+        user: const PublicUser(id: 7, email: 'bob@acme.com'),
+        role: Role.developer,
+      );
+      final invite = InvitationSummary(
+        id: 'inv-1',
+        email: 'carol@acme.com',
+        role: Role.viewer,
+        createdAt: DateTime.utc(2026, 10),
+        expiresAt: DateTime.utc(2026, 10, 15),
+      );
+
+      void respond(Object? body, int status) {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            body == null
+                ? const Stream.empty()
+                : Stream.value(utf8.encode(json.encode(body))),
+            status,
+          ),
+        );
+      }
+
+      http.Request lastRequest() =>
+          verify(() => httpClient.send(captureAny())).captured.last
+              as http.Request;
+
+      final failsWithServerMessage = throwsA(
+        isA<CodePushException>().having(
+          (e) => e.message,
+          'message',
+          errorResponse.message,
+        ),
+      );
+
+      group('getOrganizationUsers', () {
+        test('returns the members', () async {
+          respond(
+            GetOrganizationUsersResponse(users: [member]).toJson(),
+            HttpStatus.ok,
+          );
+          await expectLater(
+            codePushClient.getOrganizationUsers(organizationId: organizationId),
+            completion(equals([member])),
+          );
+          final request = lastRequest();
+          expect(request.method, 'GET');
+          expect(request.url, v1('organizations/42/users'));
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.forbidden);
+          expect(
+            codePushClient.getOrganizationUsers(organizationId: organizationId),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      group('getOrganizationInvitations', () {
+        test('follows every page', () async {
+          final pages = [
+            GetInvitationsResponse(invitations: [invite], nextCursor: 'c2'),
+            GetInvitationsResponse(invitations: [invite]),
+          ];
+          var call = 0;
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(pages[call++].toJson()))),
+              HttpStatus.ok,
+            ),
+          );
+          await expectLater(
+            codePushClient.getOrganizationInvitations(
+              organizationId: organizationId,
+            ),
+            completion(equals([invite, invite])),
+          );
+          final urls = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.map((r) => (r as http.Request).url).toList();
+          expect(urls[0].path, endsWith('organizations/42/invitations'));
+          expect(urls[0].queryParameters, {'per_page': '100'});
+          expect(urls[1].queryParameters, {'per_page': '100', 'cursor': 'c2'});
+        });
+
+        test('stops on an empty page that carries a cursor', () async {
+          respond(
+            const GetInvitationsResponse(
+              invitations: [],
+              nextCursor: 'again',
+            ).toJson(),
+            HttpStatus.ok,
+          );
+          await expectLater(
+            codePushClient.getOrganizationInvitations(
+              organizationId: organizationId,
+            ),
+            completion(isEmpty),
+          );
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.forbidden);
+          expect(
+            codePushClient.getOrganizationInvitations(
+              organizationId: organizationId,
+            ),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      group('createOrganizationInvitation', () {
+        test('sends the email and role, and returns the outcome', () async {
+          respond(
+            const AddedMemberResponse(
+              email: 'bob@acme.com',
+              role: Role.admin,
+            ).toJson(),
+            HttpStatus.created,
+          );
+          await expectLater(
+            codePushClient.createOrganizationInvitation(
+              organizationId: organizationId,
+              email: 'bob@acme.com',
+              role: Role.admin,
+            ),
+            completion(isA<AddedMemberResponse>()),
+          );
+          final request = lastRequest();
+          expect(request.method, 'POST');
+          expect(request.url, v1('organizations/42/invitations'));
+          expect(json.decode(request.body), {
+            'email': 'bob@acme.com',
+            'role': 'admin',
+          });
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.badRequest);
+          expect(
+            codePushClient.createOrganizationInvitation(
+              organizationId: organizationId,
+              email: 'bob@acme.com',
+              role: Role.admin,
+            ),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      group('revokeOrganizationInvitation', () {
+        test('deletes the invitation', () async {
+          respond(null, HttpStatus.noContent);
+          await codePushClient.revokeOrganizationInvitation(
+            organizationId: organizationId,
+            invitationId: 'inv-1',
+          );
+          final request = lastRequest();
+          expect(request.method, 'DELETE');
+          expect(request.url, v1('organizations/42/invitations/inv-1'));
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.notFound);
+          expect(
+            codePushClient.revokeOrganizationInvitation(
+              organizationId: organizationId,
+              invitationId: 'inv-1',
+            ),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      group('updateOrganizationUser', () {
+        test('sends the role', () async {
+          respond(null, HttpStatus.noContent);
+          await codePushClient.updateOrganizationUser(
+            organizationId: organizationId,
+            userId: 7,
+            role: Role.appManager,
+          );
+          final request = lastRequest();
+          expect(request.method, 'PATCH');
+          expect(request.url, v1('organizations/42/users/7'));
+          expect(json.decode(request.body), {'role': 'appManager'});
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.forbidden);
+          expect(
+            codePushClient.updateOrganizationUser(
+              organizationId: organizationId,
+              userId: 7,
+              role: Role.admin,
+            ),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      group('removeOrganizationUser', () {
+        test('deletes the member', () async {
+          respond(null, HttpStatus.noContent);
+          await codePushClient.removeOrganizationUser(
+            organizationId: organizationId,
+            userId: 7,
+          );
+          final request = lastRequest();
+          expect(request.method, 'DELETE');
+          expect(request.url, v1('organizations/42/users/7'));
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.forbidden);
+          expect(
+            codePushClient.removeOrganizationUser(
+              organizationId: organizationId,
+              userId: 7,
+            ),
+            failsWithServerMessage,
+          );
+        });
+      });
+    });
+
     group('getOrganizationApps', () {
       const organizationId = 42;
 
