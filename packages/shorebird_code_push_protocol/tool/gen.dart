@@ -19,10 +19,14 @@
 // Each run deletes the directories named in [generatedDirs] before it
 // writes, so a renamed or removed schema leaves no stale file behind.
 // Those directories hold only generated output; hand-written code must
-// never go in them. (Before this override, gen.dart ran with
-// `--no-clear`, because space_gen's default [generatedDirs] don't match
-// this layout. Stale files then survived a regeneration, and the run's own
-// `dart fix` saw them and wrote different output than a clean run.)
+// never go in them. (gen.dart used to pass `--no-clear`, because
+// space_gen's default [generatedDirs] don't match this layout, and
+// stale files survived regeneration.)
+//
+// The barrel is not regenerated: add an export there for each new
+// generated file before running, so the run's `dart fix` resolves the
+// new types. Without it, fix strips the `!` from their round-trip
+// tests and only a second run puts it back.
 
 import 'package:space_gen/space_gen.dart';
 
