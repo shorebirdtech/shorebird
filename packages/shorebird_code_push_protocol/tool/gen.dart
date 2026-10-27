@@ -12,18 +12,17 @@
 //     -i https://api.shorebird.dev/openapi.json \
 //     -o packages/shorebird_code_push_protocol
 //
-// The generator does not touch `lib/extensions/` or
+// The generator does not touch `lib/extensions/`, `test/src/` or
 // `lib/shorebird_code_push_protocol.dart`; those are hand-written and
 // re-export the generated types.
 //
-// That safety comes from `--no-clear`, injected below. From space_gen
-// 1.4.0 the generator otherwise empties the `-o` directory before each
-// run — which here, where generated and hand-written code share the
-// package, would delete `lib/extensions/`, the barrel, `test/src/`,
-// this pubspec and the README. `--no-clear` disables that; removing
-// stale generated output (a renamed schema's old file) is then this
-// package's own responsibility.
-// See https://github.com/eseidel/space_gen/pull/310.
+// Each run deletes the directories named in [generatedDirs] before it
+// writes, so a renamed or removed schema leaves no stale file behind.
+// Those directories hold only generated output; hand-written code must
+// never go in them. (Before this override, gen.dart ran with
+// `--no-clear`, because space_gen's default [generatedDirs] don't match
+// this layout. Stale files then survived a regen, and the run's own
+// `dart fix` saw them and wrote different output than a clean run.)
 
 import 'package:space_gen/space_gen.dart';
 
@@ -60,6 +59,15 @@ class ShorebirdFileRenderer extends FileRenderer {
     );
     return 'test/generated/$withSuffix';
   }
+
+  /// The directories [modelPath] and [testPath] write into, emptied
+  /// before each run. Only generated output lives here.
+  @override
+  Set<String> get generatedDirs => {
+    'lib/src/models',
+    'lib/src/messages',
+    'test/generated',
+  };
 
   /// Tests import the hand-maintained top-level barrel, not the
   /// generator's `api.dart` (which we don't emit — see below).
@@ -119,11 +127,4 @@ class ShorebirdFileRenderer extends FileRenderer {
 }
 
 Future<int> main(List<String> arguments) =>
-    // `--no-clear` is appended, not left to the caller: this package must
-    // never have its output directory emptied (see the file header), and
-    // a forgotten flag would delete the hand-written half of it. Appended
-    // last so it wins over anything passed on the command line.
-    runCli([
-      ...arguments,
-      '--no-clear',
-    ], fileRendererBuilder: ShorebirdFileRenderer.new);
+    runCli(arguments, fileRendererBuilder: ShorebirdFileRenderer.new);
