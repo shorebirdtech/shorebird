@@ -415,8 +415,9 @@ class AndroidInstall extends Install {
   /// 14 ms on a Linux runner. On a real phone with SHA-2 instructions (an
   /// Oppo A79 5G on Android 14, in Device Run, 2026-10-26) the same app's
   /// release booted in 222 ms and its signed patch in 239 ms, third-fastest
-  /// of 15 (1.08x). So the hash cost is the emulator's, not a phone's, and
-  /// this bound is loose only so the emulator passes.
+  /// of 15 (1.08x, with the release timed offline and the patch online). So
+  /// the large hash cost is the emulator's, not a phone's, and this bound is
+  /// loose mainly so the emulator passes.
   @override
   double get maxSignedBootRatio => 2;
 
