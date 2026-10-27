@@ -473,7 +473,7 @@ void main() {
             ),
           ).thenAnswer((_) async => {Arch.arm64: artifact});
           when(
-            () => artifactManager.downloadWithProgressUpdates(
+            () => artifactManager.downloadReleaseArtifact(
               any(),
               message: any(named: 'message'),
             ),
