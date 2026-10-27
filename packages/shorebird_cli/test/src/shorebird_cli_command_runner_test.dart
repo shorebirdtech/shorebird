@@ -465,7 +465,7 @@ Engine • revision $shorebirdEngineRevision'''),
 
       test('is not added before a word it does not take', () async {
         final result = await runWithOverrides(
-          () => commandRunner.run(['parent', 'kid']),
+          () => commandRunner.run(['parent', 'sibling']),
         );
         expect(result, equals(ExitCode.usage.code));
         expect(parent.child.ran, isFalse);
