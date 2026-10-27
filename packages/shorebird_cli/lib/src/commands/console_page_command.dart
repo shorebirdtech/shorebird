@@ -13,7 +13,11 @@ class ConsolePageCommand extends ShorebirdCommand with FinishInConsole {
     required this.action,
     required this.path,
     required this.why,
+    this.aliases = const [],
   });
+
+  @override
+  final List<String> aliases;
 
   @override
   final String name;
