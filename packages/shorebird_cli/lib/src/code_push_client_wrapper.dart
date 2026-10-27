@@ -327,15 +327,6 @@ This app may not exist or you may not have permission to view it.''');
     );
   }
 
-  /// Deletes the app with the provided [appId], along with every release and
-  /// patch belonging to it.
-  Future<void> deleteApp({required String appId}) {
-    return _withProgress(
-      'Deleting app',
-      () => codePushClient.deleteApp(appId: appId),
-    );
-  }
-
   /// Deletes the release with the provided [releaseId], along with every
   /// platform's artifacts and every patch belonging to it.
   Future<void> deleteRelease({required String appId, required int releaseId}) {

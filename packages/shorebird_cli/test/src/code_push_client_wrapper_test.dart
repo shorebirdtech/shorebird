@@ -1028,35 +1028,6 @@ void main() {
         });
       });
 
-      group('deleteApp', () {
-        test('exits with code 70 when deleting app fails', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.deleteApp(appId: any(named: 'appId')),
-          ).thenThrow(error);
-
-          await expectLater(
-            () async => runWithOverrides(
-              () => codePushClientWrapper.deleteApp(appId: appId),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => progress.fail(error)).called(1);
-        });
-
-        test('completes when app is successfully deleted', () async {
-          when(
-            () => codePushClient.deleteApp(appId: appId),
-          ).thenAnswer((_) async {});
-
-          await runWithOverrides(
-            () => codePushClientWrapper.deleteApp(appId: appId),
-          );
-
-          verify(() => progress.complete()).called(1);
-        });
-      });
-
       group('deleteRelease', () {
         const releaseId = 42;
 

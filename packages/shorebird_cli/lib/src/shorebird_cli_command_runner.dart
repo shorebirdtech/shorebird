@@ -538,13 +538,7 @@ ${currentRunLogFile.absolute.path}
   /// flags that actually bypass the patch safety checks; everything else
   /// gets the `--` pass-through explanation.
   String _unknownOptionHint(String option, List<String> args) {
-    final commandNames = args.where((a) => !a.startsWith('-')).take(2);
-    final commandName = commandNames.firstOrNull;
-    if (option == 'yes' && commandNames.join(' ') == 'apps delete') {
-      return '''
-shorebird apps delete has no --yes flag, so an app is never deleted without naming it.
-Pass the app's display name instead: ${lightCyan.wrap('--confirm-name "<display name>"')}''';
-    }
+    final commandName = args.where((a) => !a.startsWith('-')).firstOrNull;
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
 shorebird patch has no --$option flag. The patch safety checks are bypassed per check:
