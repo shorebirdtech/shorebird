@@ -111,8 +111,8 @@ void main() {
         verifyNever(() => browser.open(any()));
         verify(
           () => logger.err(
-            'The Shorebird CLI does not delete your account. A person '
-            'finishes it in the Shorebird console: $_url',
+            'The Shorebird CLI does not delete your account; you do it in '
+            'the Shorebird console.',
           ),
         ).called(1);
         verify(
@@ -129,7 +129,6 @@ void main() {
         final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], JsonErrorCode.consoleRequired.code);
         expect(error['code'], 'console_required');
-        expect(error['message'], contains('$_url'));
         expect(
           error['hint'],
           'Open $_url in a browser to delete your account.',

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -23,14 +21,17 @@ mixin FinishInConsole on ShorebirdCommand {
   /// [JsonErrorCode.consoleRequired] error naming the URL and returns
   /// [ExitCode.unavailable], so a script that relied on the command fails
   /// loudly rather than silently doing nothing.
-  int finishInConsole({required String action, required Uri url}) {
+  Future<int> finishInConsole({
+    required String action,
+    required Uri url,
+  }) async {
     final link = '$url';
     if (!shorebirdEnv.canAcceptUserInput) {
       return reportError(
         code: JsonErrorCode.consoleRequired,
         message:
-            'The Shorebird CLI does not $action. A person finishes it in '
-            'the Shorebird console: $link',
+            'The Shorebird CLI does not $action; you do it in the '
+            'Shorebird console.',
         hint: 'Open $link in a browser to $action.',
         exitCode: ExitCode.unavailable.code,
       );
@@ -41,7 +42,8 @@ mixin FinishInConsole on ShorebirdCommand {
       '${openBrowser ? 'Opening' : 'Visit'} the Shorebird console to $action:'
       '\n\n${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(link)))}',
     );
-    if (openBrowser) unawaited(browser.open(url));
+    // Wait for the opener, or the CLI can exit before it starts.
+    if (openBrowser) await browser.open(url);
     return ExitCode.success.code;
   }
 }

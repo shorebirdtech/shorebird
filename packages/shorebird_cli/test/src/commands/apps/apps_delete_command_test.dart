@@ -145,8 +145,8 @@ void main() {
         verifyNever(() => browser.open(any()));
         verify(
           () => logger.err(
-            'The Shorebird CLI does not delete app "$displayName" ($appId). '
-            'A person finishes it in the Shorebird console: $settingsUrl',
+            'The Shorebird CLI does not delete app "$displayName" ($appId); '
+            'you do it in the Shorebird console.',
           ),
         ).called(1);
         verifyOnlyReadTheApp();
@@ -159,7 +159,7 @@ void main() {
         expect(exitCode, equals(ExitCode.unavailable.code));
         final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], 'console_required');
-        expect(error['message'], contains('$settingsUrl'));
+        expect(error['hint'], contains('$settingsUrl'));
         verifyOnlyReadTheApp();
       });
     });
