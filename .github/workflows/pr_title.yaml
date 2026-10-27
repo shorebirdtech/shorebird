@@ -1,9 +1,9 @@
 name: pr_title
 
 # Checks the PR title on its own, so editing the title reruns just these
-# checks. A rerun of a run started by an earlier event replays that
-# event's payload, title included, so these can't live in main.yaml,
-# whose default pull_request types don't include edited.
+# checks. main.yaml's default pull_request types don't include edited,
+# and a rerun there replays the old event's payload, so the spell check
+# saw the old title until the next push.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -12,6 +12,10 @@ on:
   # on it forever.
   merge_group:
     types: [checks_requested]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -33,7 +37,7 @@ jobs:
       - name: 🪄 Spell Check PR Title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: echo "$PR_TITLE" | npx --yes cspell@9 stdin --config cspell.config.yaml --no-progress --no-summary
+        run: printf '%s\n' "$PR_TITLE" | npx --yes cspell@9 stdin --config cspell.config.yaml --no-progress --no-summary
 
   pr_title:
     needs: [semantic_pull_request, spell_check_title]
