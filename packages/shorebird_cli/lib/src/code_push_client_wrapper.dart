@@ -349,15 +349,6 @@ This app may not exist or you may not have permission to view it.''');
     );
   }
 
-  /// Deletes the app with the provided [appId], along with every release and
-  /// patch belonging to it.
-  Future<void> deleteApp({required String appId}) {
-    return _withProgress(
-      'Deleting app',
-      () => codePushClient.deleteApp(appId: appId),
-    );
-  }
-
   /// Deletes the release with the provided [releaseId], along with every
   /// platform's artifacts and every patch belonging to it.
   Future<void> deleteRelease({required String appId, required int releaseId}) {
@@ -1099,7 +1090,7 @@ $name artifact already exists, continuing...''');
 
   /// Creates a patch for the given [appId], [releaseId], and [metadata].
   @visibleForTesting
-  Future<Patch> createPatch({
+  Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1118,7 +1109,7 @@ $name artifact already exists, continuing...''');
   @visibleForTesting
   Future<void> createPatchArtifacts({
     required String appId,
-    required Patch patch,
+    required CreatePatchResponse patch,
     required ReleasePlatform platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
@@ -1225,7 +1216,7 @@ $name artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].
-  Future<Patch> publishPatch({
+  Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,

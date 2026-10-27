@@ -166,7 +166,7 @@ More info: ${troubleshootingUrl.toLink()}.
   }
 
   /// Uploads the patch artifacts to the CodePush server.
-  Future<Patch> uploadPatchArtifacts({
+  Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,

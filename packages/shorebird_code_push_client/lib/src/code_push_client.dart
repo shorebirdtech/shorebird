@@ -557,7 +557,7 @@ class CodePushClient {
   }
 
   /// Create a new patch for the given [releaseId].
-  Future<Patch> createPatch({
+  Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -576,7 +576,7 @@ class CodePushClient {
     }
 
     final body = json.decode(response.body) as Map<String, dynamic>;
-    return Patch.fromJson(body);
+    return CreatePatchResponse.fromJson(body);
   }
 
   /// Create a new release for the app with the provided [appId].

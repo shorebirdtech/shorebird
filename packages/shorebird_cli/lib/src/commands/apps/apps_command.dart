@@ -25,5 +25,5 @@ class AppsCommand extends ShorebirdCommand {
       'Examples:\n'
       '  shorebird apps list\n'
       '  shorebird apps rename --app-id <id> --name "Acme Consumer"\n'
-      '  shorebird apps delete --app-id <id> --confirm-name "<name>"';
+      '  shorebird apps delete --app-id <id>';
 }

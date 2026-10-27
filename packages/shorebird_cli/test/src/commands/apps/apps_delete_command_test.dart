@@ -2,6 +2,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/apps/apps.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -14,54 +15,39 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
-import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
   useTempWorkingDirectory();
   group(AppsDeleteCommand, () {
     const appId = 'app-id';
+    const organizationId = 42;
     const displayName = 'Acme Mobile';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
+    final settingsUrl = Uri.parse(
+      'https://console.shorebird.dev/orgs/$organizationId/apps/$appId/settings',
+    );
     final app = AppMetadata(
       appId: appId,
       displayName: displayName,
-      createdAt: DateTime(2026),
-      updatedAt: DateTime(2026),
-    );
-    final release = Release(
-      id: 0,
-      appId: appId,
-      version: '1.0.0+1',
-      flutterRevision: 'flutter-revision',
-      flutterVersion: 'flutter-version',
-      displayName: '1.0.0+1',
-      platforms: const {
-        ReleasePlatform.android: ReleasePlatformDetails(
-          status: ReleaseStatus.active,
-        ),
-        ReleasePlatform.ios: ReleasePlatformDetails(
-          status: ReleaseStatus.active,
-        ),
-      },
+      organizationId: organizationId,
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
 
     late ArgResults argResults;
+    late Browser browser;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
     late AppsDeleteCommand command;
 
-    R runWithOverrides<R>(
-      R Function() body, {
-      bool jsonMode = false,
-    }) {
+    R runWithOverrides<R>(R Function() body, {bool jsonMode = false}) {
       return runScoped(
         body,
         values: {
+          browserRef.overrideWith(() => browser),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           isJsonModeRef.overrideWith(() => jsonMode),
           loggerRef.overrideWith(() => logger),
@@ -71,14 +57,17 @@ void main() {
       );
     }
 
-    void verifyNeverDeleted() {
-      verifyNever(
-        () => codePushClientWrapper.deleteApp(appId: any(named: 'appId')),
-      );
+    /// The only API request is reading the app: nothing is deleted.
+    void verifyOnlyReadTheApp() {
+      verify(() => codePushClientWrapper.getApp(appId: appId)).called(1);
+      verifyNoMoreInteractions(codePushClientWrapper);
     }
+
+    setUpAll(() => registerFallbackValue(Uri()));
 
     setUp(() {
       argResults = MockArgResults();
+      browser = MockBrowser();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
@@ -88,8 +77,12 @@ void main() {
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['app-id']).thenReturn(null);
       when(() => argResults['flavor']).thenReturn(null);
-      when(() => argResults['confirm-name']).thenReturn(displayName);
-      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+      when(() => browser.canOpen).thenReturn(true);
+      when(() => browser.open(any())).thenAnswer((_) async => true);
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      when(
+        () => shorebirdEnv.hostedEnvironment,
+      ).thenReturn(productionEnvironment);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -102,15 +95,6 @@ void main() {
       when(
         () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
       ).thenAnswer((_) async => app);
-      when(
-        () => codePushClientWrapper.getReleases(
-          appId: any(named: 'appId'),
-          sideloadableOnly: any(named: 'sideloadableOnly'),
-        ),
-      ).thenAnswer((_) async => [release]);
-      when(
-        () => codePushClientWrapper.deleteApp(appId: any(named: 'appId')),
-      ).thenAnswer((_) async => {});
 
       command = runWithOverrides(AppsDeleteCommand.new)
         ..testArgResults = argResults;
@@ -118,232 +102,81 @@ void main() {
 
     test('name and description are correct', () {
       expect(command.name, 'delete');
-      expect(command.description, startsWith('Permanently deletes an app.'));
+      expect(
+        command.description,
+        startsWith("Opens the app's settings in the Shorebird console"),
+      );
     });
 
-    test('has --confirm-name and no --yes', () {
-      final option = command.argParser.options['confirm-name']!;
-      expect(option.hide, isFalse);
-      expect(option.help, contains("The app's display name"));
-      expect(command.argParser.options.containsKey('yes'), isFalse);
+    test('accepts the old --confirm-name and --yes, hidden', () {
+      final parsed = command.argParser.parse(['--confirm-name', 'x', '-y']);
+      expect(parsed['confirm-name'], 'x');
+      expect(parsed['yes'], isTrue);
+      expect(command.argParser.options['confirm-name']!.hide, isTrue);
+      expect(command.argParser.options['yes']!.hide, isTrue);
     });
 
-    test('deletes the app with a matching --confirm-name', () async {
+    test("opens the app's settings page in the console", () async {
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
+      verify(() => browser.open(settingsUrl)).called(1);
       verify(
-        () => logger.info(any(that: startsWith('This permanently deletes'))),
+        () => logger.info(
+          any(
+            that: allOf(
+              contains('to delete app "$displayName" ($appId):'),
+              contains('$settingsUrl'),
+            ),
+          ),
+        ),
       ).called(1);
-      verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
-      verify(
-        () => logger.success('Deleted "$displayName" ($appId).'),
-      ).called(1);
+      verifyOnlyReadTheApp();
     });
 
-    group('confirmation', () {
-      setUp(() => when(() => argResults['confirm-name']).thenReturn(null));
-
-      test('requires --confirm-name when not interactive', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
-        verifyNeverDeleted();
-        verify(
-          () => logger.err(
-            '--confirm-name required when not running interactively',
-          ),
-        ).called(1);
+    group('when not running interactively', () {
+      setUp(() {
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        when(() => argResults['confirm-name']).thenReturn(displayName);
       });
 
-      test('emits a usage_error envelope under --json', () async {
+      test('fails with the console URL and deletes nothing', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.unavailable.code));
+        verifyNever(() => browser.open(any()));
+        verify(
+          () => logger.err(
+            'The Shorebird CLI does not delete app "$displayName" ($appId); '
+            'you do it in the Shorebird console.',
+          ),
+        ).called(1);
+        verifyOnlyReadTheApp();
+      });
+
+      test('emits a console_required envelope under --json', () async {
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
         );
-        expect(exitCode, equals(ExitCode.usage.code));
-        verifyNeverDeleted();
+        expect(exitCode, equals(ExitCode.unavailable.code));
         final error = json['error'] as Map<String, dynamic>;
-        expect(error['code'], 'usage_error');
-        expect(
-          error['message'],
-          '--confirm-name required when not running interactively',
-        );
-        expect(error['hint'], contains('--confirm-name "$displayName"'));
-      });
-
-      group('in a terminal', () {
-        Future<int> runInTerminal() => captureStdout(
-          () => runWithOverrides(command.run),
-          captured: [],
-          hasTerminal: true,
-        );
-
-        setUp(
-          () => when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true),
-        );
-
-        test('deletes when the typed name matches', () async {
-          when(
-            () => logger.prompt(any(), hint: any(named: 'hint')),
-          ).thenReturn(displayName);
-          final result = await runInTerminal();
-          expect(result, equals(ExitCode.success.code));
-          verify(
-            () => logger.info(
-              'This permanently deletes app "$displayName" ($appId): its 1 '
-              'release and its patches, its channels and its collaborators. '
-              'Devices running it stop getting patches.',
-            ),
-          ).called(1);
-          verify(
-            () => logger.prompt(
-              'Type $displayName to confirm deletion:',
-              hint: any(named: 'hint'),
-            ),
-          ).called(1);
-          verify(() => codePushClientWrapper.deleteApp(appId: appId)).called(1);
-        });
-
-        test('states the consequence, then asks, then deletes', () async {
-          when(
-            () => logger.prompt(any(), hint: any(named: 'hint')),
-          ).thenReturn(displayName);
-          await runInTerminal();
-          verifyInOrder([
-            () => logger.info(any(that: startsWith('This permanently'))),
-            () => logger.prompt(any(), hint: any(named: 'hint')),
-            () => codePushClientWrapper.deleteApp(appId: appId),
-          ]);
-        });
-
-        test('exits 1 when the typed name does not match', () async {
-          when(
-            () => logger.prompt(any(), hint: any(named: 'hint')),
-          ).thenReturn('Wrong Name');
-          await expectLater(runInTerminal(), exitsDeclined);
-          verifyNeverDeleted();
-          verify(
-            () => logger.err(
-              '"Wrong Name" does not match "$displayName". Nothing was '
-              'deleted.',
-            ),
-          ).called(1);
-        });
-      });
-
-      test('rejects a --confirm-name that does not match', () async {
-        when(() => argResults['confirm-name']).thenReturn('Wrong Name');
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
-        verifyNeverDeleted();
-        verify(
-          () => logger.err(
-            '--confirm-name "Wrong Name" does not match "$displayName".',
-          ),
-        ).called(1);
-        verifyNever(() => logger.warn(any()));
+        expect(error['code'], 'console_required');
+        expect(error['hint'], contains('$settingsUrl'));
+        verifyOnlyReadTheApp();
       });
     });
 
-    group('describes how many releases are deleted', () {
-      Future<void> expectConsequence(int count, String phrase) async {
-        when(
-          () => codePushClientWrapper.getReleases(
-            appId: any(named: 'appId'),
-            sideloadableOnly: any(named: 'sideloadableOnly'),
-          ),
-        ).thenAnswer((_) async => List.filled(count, release));
-        when(() => argResults['confirm-name']).thenReturn(null);
-        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
-        when(
-          () => logger.prompt(any(), hint: any(named: 'hint')),
-        ).thenReturn(displayName);
-        await captureStdout(
-          () => runWithOverrides(command.run),
-          captured: [],
-          hasTerminal: true,
-        );
-        verify(() => logger.info(any(that: contains(phrase)))).called(1);
-      }
-
-      test('with no releases', () async {
-        await expectConsequence(0, '($appId): it has no releases, its');
-      });
-
-      test('with several releases', () async {
-        await expectConsequence(
-          3,
-          '($appId): all 3 of its releases and their patches,',
-        );
-      });
-    });
-
-    group('when the delete fails', () {
-      setUp(() {
-        when(
-          () => codePushClientWrapper.deleteApp(appId: any(named: 'appId')),
-        ).thenThrow(ProcessExit(ExitCode.software.code));
-      });
-
-      test('emits a JSON error envelope in --json mode', () async {
-        final (:exitCode, :json) = await captureJson(
-          () => runWithOverrides(command.run, jsonMode: true),
-        );
-        expect(exitCode, equals(ExitCode.software.code));
-        expect(
-          (json['error'] as Map<String, dynamic>)['code'],
-          'software_error',
-        );
-      });
-    });
-
-    group('when the fetch fails', () {
-      setUp(() {
-        when(
-          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
-        ).thenThrow(ProcessExit(ExitCode.software.code));
-      });
-
-      test('emits a JSON error envelope in --json mode', () async {
-        final (:exitCode, :json) = await captureJson(
-          () => runWithOverrides(command.run, jsonMode: true),
-        );
-        expect(exitCode, equals(ExitCode.software.code));
-        verifyNeverDeleted();
-        expect(
-          (json['error'] as Map<String, dynamic>)['code'],
-          'fetch_failed',
-        );
-      });
-    });
-
-    group('--json', () {
-      test('reports what was destroyed', () async {
-        final (:exitCode, :json) = await captureJson(
-          () => runWithOverrides(command.run, jsonMode: true),
-        );
-        expect(exitCode, equals(ExitCode.success.code));
-        final data = json['data'] as Map<String, dynamic>;
-        expect(data['app_id'], appId);
-        expect(data['display_name'], displayName);
-        expect(data['release_count'], 1);
-        expect(data['platforms'], equals(['android', 'ios']));
-        expect(data['deleted'], isTrue);
-        verifyNever(() => logger.info(any()));
-      });
-
-      test('handles an app with no releases', () async {
-        when(
-          () => codePushClientWrapper.getReleases(
-            appId: any(named: 'appId'),
-            sideloadableOnly: any(named: 'sideloadableOnly'),
-          ),
-        ).thenAnswer((_) async => []);
-        final json = (await captureJson(
-          () => runWithOverrides(command.run, jsonMode: true),
-        )).json;
-        final data = json['data'] as Map<String, dynamic>;
-        expect(data['release_count'], 0);
-        expect(data['platforms'], isEmpty);
-      });
+    test('emits a fetch_failed envelope when the fetch fails', () async {
+      when(
+        () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => runWithOverrides(command.run, jsonMode: true),
+      );
+      expect(exitCode, equals(ExitCode.software.code));
+      verifyNever(() => browser.open(any()));
+      expect(
+        (json['error'] as Map<String, dynamic>)['code'],
+        'fetch_failed',
+      );
     });
   });
 }

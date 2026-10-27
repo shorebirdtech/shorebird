@@ -88,7 +88,11 @@ enum JsonErrorCode {
 
   /// The CLI required interactive input but no terminal/stdin was available
   /// (or the user passed `--json`).
-  interactivePromptRequired('interactive_prompt_required');
+  interactivePromptRequired('interactive_prompt_required'),
+
+  /// The operation finishes in the Shorebird console, not the CLI (see
+  /// ADR-0026). The error's message and hint give the console URL.
+  consoleRequired('console_required');
 
   const JsonErrorCode(this.code);
 
