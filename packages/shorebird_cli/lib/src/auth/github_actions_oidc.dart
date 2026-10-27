@@ -100,12 +100,16 @@ class GitHubActionsSubjectTokenSupplier implements SubjectTokenSupplier {
       );
     }
 
+    // A job without `permissions: id-token: write` never gets here: GitHub
+    // doesn't set the request URL, so no request is made. A refusal means
+    // GitHub didn't accept the request token.
     if (response.statusCode != HttpStatus.ok) {
       throw CredentialSourceException(
         'GitHub Actions refused to issue an OIDC token '
         '(${response.statusCode}).',
         hint:
-            'Check that the job has `permissions: id-token: write`, or set '
+            "GitHub didn't accept $actionsIdTokenRequestTokenEnvVar; it may "
+            'have expired or come from another job. Re-run the job, or set '
             '$shorebirdTokenEnvVar to a Shorebird API key.',
       );
     }

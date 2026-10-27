@@ -181,7 +181,10 @@ void main() {
               .having(
                 (e) => e.hint,
                 'hint',
-                contains('permissions: id-token: write'),
+                allOf(
+                  contains("didn't accept ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
+                  isNot(contains('permissions')),
+                ),
               ),
         ),
       );
