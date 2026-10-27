@@ -1,4 +1,4 @@
-// cspell:words xfail XPASS dynsym logcat pidof
+// cspell:words xfail XPASS dynsym logcat pidof oppo
 // ignore_for_file: avoid_print
 
 // End-to-end test of what the updater does when a patch crashes the app at
@@ -412,9 +412,12 @@ class AndroidInstall extends Install {
 
   /// On the CI emulator the hash of a 16 MiB patch at launch added 41 and 80
   /// ms (1.29x, then 1.61x; e2e runs 40148536352, 40150677616), against 0 to
-  /// 14 ms on a Linux runner. The emulator likely lacks SHA hardware
-  /// acceleration, so this isn't a phone's cost. Revisit once a real phone's
-  /// signed boot time has been measured.
+  /// 14 ms on a Linux runner. On a real phone with SHA-2 instructions (an
+  /// Oppo A79 5G on Android 14, in Device Run, 2026-10-26) the same app's
+  /// release booted in 222 ms and its signed patch in 239 ms, third-fastest
+  /// of 15 (1.08x, with the release timed offline and the patch online). So
+  /// the large hash cost is the emulator's, not a phone's, and this bound is
+  /// loose mainly so the emulator passes.
   @override
   double get maxSignedBootRatio => 2;
 
