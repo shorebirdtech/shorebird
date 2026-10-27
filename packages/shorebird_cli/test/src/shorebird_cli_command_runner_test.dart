@@ -1,3 +1,4 @@
+// cspell:words wohami
 import 'dart:convert';
 import 'dart:io';
 
@@ -464,7 +465,7 @@ Engine • revision $shorebirdEngineRevision'''),
 
       test('is not added before a word it does not take', () async {
         final result = await runWithOverrides(
-          () => commandRunner.run(['parent', 'chld']),
+          () => commandRunner.run(['parent', 'kid']),
         );
         expect(result, equals(ExitCode.usage.code));
         expect(parent.child.ran, isFalse);
