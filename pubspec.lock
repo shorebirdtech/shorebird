@@ -597,10 +597,10 @@ packages:
     dependency: transitive
     description:
       name: space_gen
-      sha256: "7f4f9d751b1821343733320e339d7b2751082c4035a567700ec35b80168e1902"
+      sha256: a6b48632bac7f9d475d0bd23f734fc26d52014831409a4c4f3fac0d2e9f9ba01
       url: "https://pub.dev"
     source: hosted
-    version: "1.5.0"
+    version: "1.6.0"
   stack_trace:
     dependency: transitive
     description:

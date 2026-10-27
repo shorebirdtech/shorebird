@@ -1,26 +1,25 @@
-enum GetOrganizationAppsParameter6 {
-  asc._('asc'),
-  desc._('desc');
+enum GetAppPatchInstallsGroupBy {
+  release._('release');
 
-  const GetOrganizationAppsParameter6._(this.value);
+  const GetAppPatchInstallsGroupBy._(this.value);
 
-  /// Creates a GetOrganizationAppsParameter6 from a json value.
-  factory GetOrganizationAppsParameter6.fromJson(String json) {
-    return GetOrganizationAppsParameter6.values.firstWhere(
+  /// Creates a GetAppPatchInstallsGroupBy from a json value.
+  factory GetAppPatchInstallsGroupBy.fromJson(String json) {
+    return GetAppPatchInstallsGroupBy.values.firstWhere(
       (value) => value.value == json,
       orElse: () => throw FormatException(
-        'Unknown GetOrganizationAppsParameter6 value: $json',
+        'Unknown GetAppPatchInstallsGroupBy value: $json',
       ),
     );
   }
 
   /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
-  static GetOrganizationAppsParameter6? maybeFromJson(String? json) {
+  static GetAppPatchInstallsGroupBy? maybeFromJson(String? json) {
     if (json == null) {
       return null;
     }
-    return GetOrganizationAppsParameter6.fromJson(json);
+    return GetAppPatchInstallsGroupBy.fromJson(json);
   }
 
   /// The value of the enum.  This is the exact value

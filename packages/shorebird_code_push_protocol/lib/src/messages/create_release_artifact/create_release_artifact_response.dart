@@ -60,7 +60,7 @@ class CreateReleaseArtifactResponse {
   /// The arch of the artifact.
   final String arch;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the artifact.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -72,7 +72,9 @@ class CreateReleaseArtifactResponse {
   /// The upload URL for the artifact.
   final String url;
 
-  /// How a client should upload an artifact's bytes to storage.
+  /// How to upload the artifact bytes to `url`: a single multipart POST
+  /// (legacy), or a PUT (chunked, resumable) to a resumable session URI.
+  /// Absent on responses from older servers, which implied multipart.
   final ArtifactUploadMethod? uploadMethod;
 
   /// Converts a [CreateReleaseArtifactResponse] to a `Map<String, dynamic>`.

@@ -44,7 +44,7 @@ class AppCollaborator {
   /// The user's email address.
   final String email;
 
-  /// A role that a user can have relative to an Organization or App.
+  /// The user's role on the app.
   final Role role;
 
   /// Converts an [AppCollaborator] to a `Map<String, dynamic>`.

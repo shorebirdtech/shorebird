@@ -53,7 +53,7 @@ class CreateServiceAccountTrustRuleRequest {
     return CreateServiceAccountTrustRuleRequest.fromJson(json);
   }
 
-  /// The identity provider whose tokens an OIDC trust rule accepts.
+  /// The identity provider; must be `github`.
   final TrustRuleProvider provider;
 
   /// The login of the GitHub user or organization that owns the

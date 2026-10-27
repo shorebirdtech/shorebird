@@ -40,7 +40,7 @@ class GetInvitationPreviewResponse {
   /// The organization's name or the app's display name.
   final String targetName;
 
-  /// Whether an invitation is to an organization or to an app.
+  /// Whether the invitation is to an organization or an app.
   final InvitationTargetType type;
 
   /// Converts a [GetInvitationPreviewResponse] to a `Map<String, dynamic>`.

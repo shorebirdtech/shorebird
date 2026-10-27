@@ -42,7 +42,7 @@ class CreateOrganizationInvitationRequest {
   /// The email address to send the invitation to.
   final String email;
 
-  /// A role that a user can have relative to an Organization or App.
+  /// The role the invitee gets on accepting. `owner` is refused.
   final Role role;
 
   /// Converts a [CreateOrganizationInvitationRequest]

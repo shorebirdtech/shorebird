@@ -35,9 +35,7 @@ class UpdateServiceAccountRequest {
     return UpdateServiceAccountRequest.fromJson(json);
   }
 
-  /// A role a service account can hold in its organization: a subset of
-  /// `Role`. Never `admin` or `owner`, so a leaked key cannot manage the
-  /// organization's members or its other service accounts.
+  /// The service account's new role.
   final ServiceAccountRole role;
 
   /// Converts a [UpdateServiceAccountRequest] to a `Map<String, dynamic>`.
