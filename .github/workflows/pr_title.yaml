@@ -1,0 +1,45 @@
+name: pr_title
+
+# Checks the PR title on its own, so editing the title reruns just these
+# checks. A rerun of a run started by an earlier event replays that
+# event's payload, title included, so these can't live in main.yaml,
+# whose default pull_request types don't include edited.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  # Reports pr_title on the merge queue's temp branch (both checks skip
+  # there), so the context can be required without the queue waiting
+  # on it forever.
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semantic_pull_request:
+    name: ✅ Semantic Pull Request
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
+
+  spell_check_title:
+    name: 🔤 Check PR Title Spelling
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+
+      - name: 🪄 Spell Check PR Title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | npx --yes cspell@9 stdin --config cspell.config.yaml --no-progress --no-summary
+
+  pr_title:
+    needs: [semantic_pull_request, spell_check_title]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⛔️ exit(1) on failure or cancellation
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
