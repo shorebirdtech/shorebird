@@ -15,10 +15,10 @@ const _why =
 class TokensCommand extends ShorebirdCommand {
   /// {@macro tokens_command}
   TokensCommand() {
-    for (final (name, action) in [
-      ('create', 'create an API key'),
-      ('delete', 'delete an API key'),
-      ('list', 'see your API keys'),
+    for (final (name, action, aliases) in [
+      ('create', 'create an API key', const <String>[]),
+      ('delete', 'delete an API key', const ['revoke']),
+      ('list', 'see your API keys', const <String>[]),
     ]) {
       addSubcommand(
         ConsolePageCommand(
@@ -26,6 +26,7 @@ class TokensCommand extends ShorebirdCommand {
           action: action,
           path: 'account/api-keys',
           why: _why,
+          aliases: aliases,
         ),
       );
     }
@@ -35,7 +36,7 @@ class TokensCommand extends ShorebirdCommand {
   String get name => 'tokens';
 
   @override
-  List<String> get aliases => const ['api-keys'];
+  List<String> get aliases => const ['api-keys', 'token'];
 
   @override
   String get description =>

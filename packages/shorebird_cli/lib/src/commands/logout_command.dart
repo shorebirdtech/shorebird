@@ -19,7 +19,8 @@ class LogoutCommand extends ShorebirdCommand with FinishInConsole {
       help:
           'Also sign out every other session (other machines, the console), '
           'which is done in the Shorebird console: this logs out here, then '
-          'opens it.',
+          'opens it. API keys stay valid; revoke them with '
+          '`shorebird tokens delete`.',
     );
   }
 
@@ -31,15 +32,21 @@ class LogoutCommand extends ShorebirdCommand with FinishInConsole {
 
   @override
   Future<int> run() async {
-    final exitCode = await _logOutHere();
-    if (results['all'] != true) return exitCode;
+    final all = results['all'] == true;
+    final exitCode = await _logOutHere(warnUnconfirmed: !all);
+    if (!all) return exitCode;
+    // This machine is logged out either way; say so in the action, since a
+    // non-interactive run reports only the hand-off.
     return finishInConsole(
-      action: 'sign out of every other session',
+      action: 'sign out your other sessions (this one is logged out)',
       url: ShorebirdWebConsole.uri('account'),
     );
   }
 
-  Future<int> _logOutHere() async {
+  /// Logs out on this machine. [warnUnconfirmed] says where to check when
+  /// the server did not confirm the session ended; `--all` sends the user
+  /// there anyway.
+  Future<int> _logOutHere({required bool warnUnconfirmed}) async {
     if (!auth.isAuthenticated) {
       logger.info('You are already logged out.');
       return ExitCode.success.code;
@@ -50,7 +57,7 @@ class LogoutCommand extends ShorebirdCommand with FinishInConsole {
     logoutProgress.complete();
 
     logger.info('${lightGreen.wrap('You are now logged out.')}');
-    if (!revoked) {
+    if (!revoked && warnUnconfirmed) {
       logger.warn(
         '''Unable to confirm with the auth server that the session was terminated. Credentials were deleted locally. If you would like to confirm, you can see and manage your sessions at ${link(uri: ShorebirdWebConsole.uri('account'))}.''',
       );

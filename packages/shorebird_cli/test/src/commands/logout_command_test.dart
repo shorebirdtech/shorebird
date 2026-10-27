@@ -128,6 +128,13 @@ void main() {
         ]);
       });
 
+      test('does not repeat the URL when the server did not confirm', () async {
+        when(() => auth.logout()).thenAnswer((_) async => false);
+        await runWithOverrides(command.run);
+        verifyNever(() => logger.warn(any()));
+        verify(() => browser.open(accountUrl)).called(1);
+      });
+
       test('still opens the sessions page when already logged out', () async {
         when(() => auth.isAuthenticated).thenReturn(false);
         final result = await runWithOverrides(command.run);
@@ -142,9 +149,9 @@ void main() {
         verify(() => auth.logout()).called(1);
         verifyNever(() => browser.open(any()));
         verify(
-          () => logger.info(
-            'Open $accountUrl in a browser to sign out of '
-            'every other session.',
+          () => logger.err(
+            'The Shorebird CLI does not sign out your other sessions (this '
+            'one is logged out); you do it in the Shorebird console.',
           ),
         ).called(1);
       });

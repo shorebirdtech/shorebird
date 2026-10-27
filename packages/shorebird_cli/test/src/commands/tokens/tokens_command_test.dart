@@ -13,7 +13,14 @@ void main() {
 
     test('is also reachable as api-keys', () {
       expect(command.name, 'tokens');
-      expect(command.aliases, contains('api-keys'));
+      expect(command.aliases, containsAll(['api-keys', 'token']));
+    });
+
+    test('delete is also reachable as revoke', () {
+      expect(
+        command.subcommands['revoke'],
+        same(command.subcommands['delete']),
+      );
     });
 
     test('lists API keys when given no subcommand', () {
@@ -25,7 +32,7 @@ void main() {
         command.subcommands.keys,
         containsAll(['create', 'delete', 'list']),
       );
-      for (final subcommand in command.subcommands.values) {
+      for (final subcommand in command.subcommands.values.toSet()) {
         expect(
           subcommand,
           isA<ConsolePageCommand>().having(
