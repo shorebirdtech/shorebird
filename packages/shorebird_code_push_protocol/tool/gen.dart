@@ -7,10 +7,9 @@
 // per-operation directory, domain models land in `lib/src/models/`,
 // shared messages stay flat in `lib/src/messages/`.
 //
-// Usage (from the repo root):
-//   dart run packages/shorebird_code_push_protocol/tool/gen.dart \
-//     -i https://api.shorebird.dev/openapi.json \
-//     -o packages/shorebird_code_push_protocol
+// Generates from this package's copy of the public API spec,
+// `openapi.yaml`. Usage (from the repo root, no arguments):
+//   dart run packages/shorebird_code_push_protocol/tool/gen.dart
 //
 // The generator does not touch `lib/extensions/`, `test/src/` or
 // `lib/shorebird_code_push_protocol.dart`; those are hand-written and
@@ -130,5 +129,13 @@ class ShorebirdFileRenderer extends FileRenderer {
   }
 }
 
-Future<int> main(List<String> arguments) =>
-    runCli(arguments, fileRendererBuilder: ShorebirdFileRenderer.new);
+/// This package, relative to the repo root.
+const _package = 'packages/shorebird_code_push_protocol';
+
+Future<int> main(List<String> arguments) => runCli([
+  '-i',
+  '$_package/openapi.yaml',
+  '-o',
+  _package,
+  ...arguments,
+], fileRendererBuilder: ShorebirdFileRenderer.new);
