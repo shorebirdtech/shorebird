@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/commands/finish_in_console.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
@@ -9,7 +10,19 @@ import 'package:shorebird_cli/src/shorebird_web_console.dart';
 /// `shorebird logout`
 /// Logout of the current Shorebird user.
 /// {@endtemplate}
-class LogoutCommand extends ShorebirdCommand {
+class LogoutCommand extends ShorebirdCommand with FinishInConsole {
+  /// {@macro logout_command}
+  LogoutCommand() {
+    argParser.addFlag(
+      'all',
+      negatable: false,
+      help:
+          'Also sign out every other session (other machines, the console), '
+          'which is done in the Shorebird console: this logs out here, then '
+          'opens it.',
+    );
+  }
+
   @override
   String get description => 'Logout of the current Shorebird user.';
 
@@ -18,6 +31,15 @@ class LogoutCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    final exitCode = await _logOutHere();
+    if (results['all'] != true) return exitCode;
+    return finishInConsole(
+      action: 'sign out of every other session',
+      url: ShorebirdWebConsole.uri('account'),
+    );
+  }
+
+  Future<int> _logOutHere() async {
     if (!auth.isAuthenticated) {
       logger.info('You are already logged out.');
       return ExitCode.success.code;
