@@ -1,11 +1,8 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
+import 'package:shorebird_cli/src/commands/account_list_command.dart';
 import 'package:shorebird_cli/src/commands/console_page_command.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-
-/// Why sessions are managed in the console.
-const _accountApiWhy =
-    'Sessions are listed and signed out in the console, which the account '
-    'API allows only for a signed-in person, not a CLI token.';
 
 /// {@template account_command}
 /// Commands for inspecting the current Shorebird account.
@@ -28,11 +25,27 @@ class AccountCommand extends ShorebirdCommand {
     addSubcommand(AccountUpdateCommand());
     addSubcommand(OrgsCommand());
     addSubcommand(
-      ConsolePageCommand(
+      AccountListCommand(
         name: 'sessions',
+        commandLine: 'shorebird account sessions',
+        lead:
+            'List the sessions signed in to your account: id, name, IP '
+            'address, user agent and last used (UTC date). The session this '
+            'CLI is signed in with is marked "(current)".',
+        apiPath: 'api/sessions',
+        listKey: 'sessions',
+        consolePath: 'account',
         action: 'see and sign out your sessions',
-        path: 'account',
-        why: _accountApiWhy,
+        manage: 'Sign out a session',
+        none: 'No sessions.',
+        describe: (session) => [
+          '${session['id']}',
+          lightCyan.wrap('${session['name'] ?? 'Unnamed session'}')!,
+          ?session['ip_address'] as String?,
+          ?session['user_agent'] as String?,
+          'last used ${accountListDate(session['last_used_at'])}',
+          if (session['is_current'] == true) '(current)',
+        ].join('  '),
       ),
     );
     addSubcommand(WhoamiCommand());
