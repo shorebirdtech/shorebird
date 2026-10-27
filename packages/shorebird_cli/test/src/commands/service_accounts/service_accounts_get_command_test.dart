@@ -14,6 +14,9 @@ void main() {
     setUp(() => context = ServiceAccountTestContext());
 
     test('shows the account and its keys', () async {
+      const ruleLine =
+          '  7  acme/app  .github/workflows/release.yml  ref refs/heads/main  '
+          'environment any  last used 2026-10-20';
       expect(
         await context.runCommand(ServiceAccountsGetCommand(), [
           'release-bot',
@@ -30,12 +33,20 @@ void main() {
         'last signed in: 2026-10-20',
         'keys:',
         '  12  ci  created 2026-10-01  expires 2027-10-01  last used never',
+        'trust rules:',
+        ruleLine,
       ]);
     });
 
-    test('says when it has no keys', () async {
+    test('says when it has no keys or trust rules', () async {
       when(
         () => context.wrapper.getServiceAccountKeys(
+          organizationId: 42,
+          serviceAccountId: 383,
+        ),
+      ).thenAnswer((_) async => []);
+      when(
+        () => context.wrapper.getServiceAccountTrustRules(
           organizationId: 42,
           serviceAccountId: 383,
         ),
@@ -45,7 +56,10 @@ void main() {
         '--org-id',
         '42',
       ]);
-      expect(context.infoLines.last, 'keys: none');
+      expect(
+        context.infoLines.skip(5),
+        ['keys: none', 'trust rules: none'],
+      );
     });
 
     test('is also spelled describe', () {
@@ -70,6 +84,18 @@ void main() {
           'created_at': '2026-10-01T00:00:00.000Z',
           'expires_at': '2027-10-01T00:00:00.000Z',
           'last_used_at': null,
+        },
+      ]);
+      expect(data['trust_rules'], [
+        {
+          'id': 7,
+          'provider': 'github',
+          'repository': 'acme/app',
+          'workflow_path': '.github/workflows/release.yml',
+          'environment': null,
+          'ref_pattern': 'refs/heads/main',
+          'created_at': '2026-10-01T00:00:00.000Z',
+          'last_used_at': '2026-10-20T00:00:00.000Z',
         },
       ]);
     });

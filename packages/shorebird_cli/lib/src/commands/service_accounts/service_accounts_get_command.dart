@@ -8,8 +8,8 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_accounts_get_command}
-/// `shorebird service-accounts get <name or id>`
-/// Show a service account and its keys.
+/// `shorebird orgs service-accounts get <name or id>`
+/// Show a service account, its keys and its trust rules.
 /// {@endtemplate}
 class ServiceAccountsGetCommand extends ShorebirdCommand
     with OrganizationScopedCommand, ServiceAccountScopedCommand {
@@ -25,14 +25,14 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
   List<String> get aliases => const ['describe'];
 
   @override
-  String get invocation => 'shorebird service-accounts get <name or id>';
+  String get invocation => 'shorebird orgs service-accounts get <name or id>';
 
   @override
-  String get commandLine => 'shorebird service-accounts get';
+  String get commandLine => 'shorebird orgs service-accounts get';
 
   @override
   String get description =>
-      'Shows a service account and its keys.\n\n'
+      'Shows a service account, its keys and its trust rules.\n\n'
       'Example output:\n'
       '  release-bot[bot]\n'
       '  id: 383\n'
@@ -41,9 +41,12 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
       '  last signed in: 2026-10-20\n'
       '  keys:\n'
       '    12  ci  created 2026-10-01  expires 2027-10-01  '
-      'last used 2026-10-20\n\n'
+      'last used 2026-10-20\n'
+      '  trust rules:\n'
+      '    7  acme/app  .github/workflows/release.yml  ref refs/heads/main  '
+      'environment any  last used 2026-10-20\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird service-accounts get release-bot --org-id 42 --json',
+        'shorebird orgs service-accounts get release-bot --org-id 42 --json',
       )}';
 
   @override
@@ -53,13 +56,20 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
     final account = resolved!.account;
 
     late final List<ServiceAccountKey> keys;
+    late final List<ServiceAccountTrustRule> rules;
     final fetchError = await guardApiCall(
-      () async => keys = await codePushClientWrapper.getServiceAccountKeys(
-        organizationId: account.organizationId,
-        serviceAccountId: account.id,
-      ),
+      () async {
+        keys = await codePushClientWrapper.getServiceAccountKeys(
+          organizationId: account.organizationId,
+          serviceAccountId: account.id,
+        );
+        rules = await codePushClientWrapper.getServiceAccountTrustRules(
+          organizationId: account.organizationId,
+          serviceAccountId: account.id,
+        );
+      },
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch the keys of "${account.name}".',
+      message: 'Failed to fetch the keys and trust rules of "${account.name}".',
     );
     if (fetchError != null) return fetchError;
 
@@ -67,6 +77,7 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
       emitJsonSuccess({
         ...serviceAccountJson(account),
         'keys': keys.map(serviceAccountKeyJson).toList(),
+        'trust_rules': rules.map(trustRuleJson).toList(),
       });
       return ExitCode.success.code;
     }
@@ -86,6 +97,14 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
       logger.info('keys:');
       for (final key in keys) {
         logger.info('  ${serviceAccountKeyLine(key)}');
+      }
+    }
+    if (rules.isEmpty) {
+      logger.info('trust rules: none');
+    } else {
+      logger.info('trust rules:');
+      for (final rule in rules) {
+        logger.info('  ${trustRuleLine(rule)}');
       }
     }
     return ExitCode.success.code;

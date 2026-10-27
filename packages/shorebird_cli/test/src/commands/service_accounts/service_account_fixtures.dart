@@ -46,8 +46,25 @@ final ciKey = ServiceAccountKey(
   scopes: const [],
 );
 
+/// A trust rule of [releaseBot].
+final releaseRule = ServiceAccountTrustRule(
+  id: 7,
+  provider: TrustRuleProvider.github,
+  createdAt: DateTime.utc(2026, 10),
+  createdByUserId: 1,
+  lastUsedAt: DateTime.utc(2026, 10, 20),
+  github: const GithubTrustRule(
+    repositoryOwner: 'acme',
+    repositoryOwnerId: 1,
+    repositoryName: 'app',
+    workflowPath: '.github/workflows/release.yml',
+    environment: null,
+    refPattern: 'refs/heads/main',
+  ),
+);
+
 /// Mocks and a scope for running a service account command against [acme],
-/// which owns [releaseBot], which has [ciKey].
+/// which owns [releaseBot], which has [ciKey] and [releaseRule].
 class ServiceAccountTestContext {
   ServiceAccountTestContext() {
     when(
@@ -65,6 +82,12 @@ class ServiceAccountTestContext {
         serviceAccountId: 383,
       ),
     ).thenAnswer((_) async => [ciKey]);
+    when(
+      () => wrapper.getServiceAccountTrustRules(
+        organizationId: 42,
+        serviceAccountId: 383,
+      ),
+    ).thenAnswer((_) async => [releaseRule]);
     when(env.getShorebirdYaml).thenReturn(null);
     when(() => env.canAcceptUserInput).thenReturn(false);
     when(() => env.hostedEnvironment).thenReturn(null);
