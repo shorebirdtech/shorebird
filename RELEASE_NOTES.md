@@ -4,6 +4,36 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl
  -->
 
+## 1.6.134 (October 27, 2026)
+
+- ✨ Warn when patching an install_only release whose Flutter skips signature
+  checks
+- ✨ Detect more CI providers (Codemagic, Xcode Cloud, Appcircle, Semaphore,
+  Harness, Drone, Woodpecker)
+- ✨ Reuse release artifacts downloaded by earlier patches
+- ✨ Build Android patches only for the release's architectures
+- ✨ Report boot-time patch validation failures, signature refusals as
+  invalid_signature
+- ✨ Reserve a trailing cid window on popular rows
+- ✨ Count base dispatch table offsets kept on a patch
+- 🐛 Clone Flutter with core.longpaths on Windows
+- 🐛 Don't say the build succeeded when the post-build pub get fails
+- 🐛 Say a GitHub OIDC 5xx is GitHub's error, not a permissions problem
+- 🐛 Say a GitHub OIDC refusal is a rejected request token, not missing
+  permissions
+- 🐛 Look up the ios-framework codesign identity after regenerating .ios/
+- 🐛 Put ccache in front of the Android C/C++ compiler
+- 🐛 Activate DD only where the base already did
+- 🐛 Skip PcOffsetOf's bound for discarded code in every build
+- 🐛 Match test names exactly; 'Prefix*' selects a group
+- 🐛 Restore the native snapshot loader; attribute the arm64 AOT status skips
+- 🐛 Call DLRT_ExitSafepoint on the clang stack
+- 🐛 Read the simulator's registers only while the thread simulates
+- 🐛 Keep future-listener frames whose closure Code was discarded
+- 🐛 Drop the fork's disassembler_mutex_
+
+Flutter 3.47.8 and Dart 3.13.7 are unchanged from 1.6.133.
+
 ## 1.6.133 (October 25, 2026)
 
 - 🐦 Flutter 3.47.8 / Dart 3.13.7 support
