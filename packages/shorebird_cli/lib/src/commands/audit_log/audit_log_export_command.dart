@@ -3,7 +3,7 @@ import 'dart:io' as io;
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/commands/orgs/audit_log/audit_log_filters.dart';
+import 'package:shorebird_cli/src/commands/audit_log/audit_log_filters.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template audit_log_export_command}
-/// `shorebird orgs audit-log export`
+/// `shorebird audit-log export`
 /// Write every page of an organization's audit log to stdout.
 /// {@endtemplate}
 class AuditLogExportCommand extends ShorebirdCommand
@@ -39,20 +39,20 @@ class AuditLogExportCommand extends ShorebirdCommand
   String get name => 'export';
 
   @override
-  String get invocation => 'shorebird orgs audit-log export [<org-id>]';
+  String get invocation => 'shorebird audit-log export [<org-id>]';
 
   @override
   String get description =>
       "Writes every page of an organization's audit log to stdout, as OCSF "
       'API Activity events for a security log tool.\n\n'
       'Examples:\n'
-      '  shorebird orgs audit-log export --start 2026-10-01 > audit.json\n'
-      '  shorebird orgs audit-log export --order asc --format jsonl '
+      '  shorebird audit-log export --start 2026-10-01 > audit.json\n'
+      '  shorebird audit-log export --order asc --format jsonl '
       '>> audit.jsonl\n\n'
       'Oldest first, it prints the cursor to export newer entries from '
       'later.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs audit-log export 42 --json',
+        'shorebird audit-log export 42 --json',
       )}';
 
   // Entries go to stdout, so everything else goes to stderr.
@@ -74,7 +74,7 @@ class AuditLogExportCommand extends ShorebirdCommand
     if (error != null) return reportError(message: error);
 
     final (:membership, :errorCode) = await resolveOrganizationFromArguments(
-      example: 'shorebird orgs audit-log export <org-id>',
+      example: 'shorebird audit-log export <org-id>',
     );
     if (errorCode != null) return errorCode;
     final organizationId = membership!.organization.id;

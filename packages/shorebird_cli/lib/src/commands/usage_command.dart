@@ -8,13 +8,13 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// {@template orgs_usage_command}
-/// `shorebird orgs usage`
+/// {@template usage_command}
+/// `shorebird usage`
 /// Show patch-install usage this allotment period.
 /// {@endtemplate}
-class OrgsUsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
-  /// {@macro orgs_usage_command}
-  OrgsUsageCommand() {
+class UsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
+  /// {@macro usage_command}
+  UsageCommand() {
     addOrganizationScopeOption();
   }
 
@@ -22,7 +22,7 @@ class OrgsUsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
   String get name => 'usage';
 
   @override
-  String get invocation => 'shorebird orgs usage [<org-id>]';
+  String get invocation => 'shorebird usage [<org-id>]';
 
   @override
   String get description =>
@@ -35,13 +35,13 @@ class OrgsUsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
       '  Apps (id  name  installs):\n'
       '    0b6c...  Acme Mobile  12,345\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs usage 42 --json',
+        'shorebird usage 42 --json',
       )}';
 
   @override
   Future<int> run() async {
     final (:membership, :errorCode) = await resolveOrganizationFromArguments(
-      example: 'shorebird orgs usage <org-id>',
+      example: 'shorebird usage <org-id>',
     );
     if (errorCode != null) return errorCode;
     final organizationId = membership!.organization.id;
@@ -118,23 +118,23 @@ String? _majorUnits(String? minorUnits) {
   return value == null ? null : (value / 100).toStringAsFixed(2);
 }
 
-/// {@template top_level_usage_command}
-/// `shorebird usage`, a hidden alias of `shorebird orgs usage`, which 3 of 9
-/// agents typed first.
+/// {@template orgs_usage_command}
+/// `shorebird orgs usage`, a hidden alias of `shorebird usage`, for agents
+/// that look under the organization noun.
 /// {@endtemplate}
-class TopLevelUsageCommand extends OrgsUsageCommand {
-  /// {@macro top_level_usage_command}
-  TopLevelUsageCommand();
+class OrgsUsageCommand extends UsageCommand {
+  /// {@macro orgs_usage_command}
+  OrgsUsageCommand();
 
   @override
   bool get hidden => true;
 }
 
 /// {@template account_usage_command}
-/// `shorebird account usage`, a hidden alias of `shorebird orgs usage`,
-/// which 6 of 9 agents typed first.
+/// `shorebird account usage`, a hidden alias of `shorebird usage`, which 6 of
+/// 9 agents typed first.
 /// {@endtemplate}
-class AccountUsageCommand extends OrgsUsageCommand {
+class AccountUsageCommand extends UsageCommand {
   /// {@macro account_usage_command}
   AccountUsageCommand();
 

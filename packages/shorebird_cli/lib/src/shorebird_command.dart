@@ -70,7 +70,7 @@ abstract class ShorebirdCommand extends Command<int> {
   String? get defaultSubcommand => null;
 
   /// Whether this command reads positional arguments, such as the org id
-  /// of `shorebird orgs audit-log list 42`. The runner adds a default
+  /// of `shorebird audit-log list 42`. The runner adds a default
   /// subcommand before a positional argument only when the subcommand takes
   /// one, so a mistyped subcommand name stays an error.
   bool get takesPositionalArguments => false;

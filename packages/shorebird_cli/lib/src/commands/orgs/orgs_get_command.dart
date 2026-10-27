@@ -34,7 +34,7 @@ class OrgsGetCommand extends ShorebirdCommand with OrganizationScopedCommand {
       '  created: 2026-01-15\n'
       '  patch installs: 12,345 of 50,000 included\n\n'
       'Patch installs are left out for roles that may not see usage (auditor); '
-      '`shorebird orgs usage` shows the details.\n\n'
+      '`shorebird usage` shows the details.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird orgs get 42 --json')}';
 
   @override

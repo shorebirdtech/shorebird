@@ -487,21 +487,20 @@ Engine • revision $shorebirdEngineRevision'''),
           commandRunner.withDefaultSubcommand(['org', 'audit', '42']),
           ['org', 'audit', 'list', '42'],
         );
+        expect(
+          commandRunner.withDefaultSubcommand(['audit-logs', '42']),
+          ['audit-logs', 'list', '42'],
+        );
       });
 
-      test('reaches orgs audit-log list with options or an org id', () {
+      test('reaches audit-log list with options or an org id', () {
         expect(
-          commandRunner.withDefaultSubcommand([
-            'orgs',
-            'audit-log',
-            '--org-id',
-            '42',
-          ]),
-          ['orgs', 'audit-log', 'list', '--org-id', '42'],
+          commandRunner.withDefaultSubcommand(['audit-log', '--org-id', '42']),
+          ['audit-log', 'list', '--org-id', '42'],
         );
         expect(
-          commandRunner.withDefaultSubcommand(['orgs', 'audit-log', '42']),
-          ['orgs', 'audit-log', 'list', '42'],
+          commandRunner.withDefaultSubcommand(['audit-log', '42']),
+          ['audit-log', 'list', '42'],
         );
         expect(
           commandRunner.withDefaultSubcommand(['audit-log', '--start', 'x']),
@@ -510,7 +509,7 @@ Engine • revision $shorebirdEngineRevision'''),
       });
 
       test('leaves a named subcommand alone', () {
-        final args = ['orgs', 'audit-log', 'export', '42'];
+        final args = ['audit-log', 'export', '42'];
         expect(commandRunner.withDefaultSubcommand(args), args);
       });
 

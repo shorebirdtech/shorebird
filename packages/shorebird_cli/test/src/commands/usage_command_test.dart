@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
 import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
+import 'package:shorebird_cli/src/commands/usage_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -13,13 +14,13 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-import '../../helpers.dart';
-import '../../mocks.dart';
+import '../helpers.dart';
+import '../mocks.dart';
 
 void main() {
   useTempWorkingDirectory();
 
-  group(OrgsUsageCommand, () {
+  group(UsageCommand, () {
     final membership = OrganizationMembership(
       organization: Organization(
         id: 42,
@@ -65,7 +66,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdLogger logger;
     late ShorebirdValidator shorebirdValidator;
-    late OrgsUsageCommand command;
+    late UsageCommand command;
 
     R runWithOverrides<R>(R Function() body, {bool json = false}) {
       return runScoped(
@@ -93,8 +94,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       when(() => shorebirdEnv.hostedEnvironment).thenReturn(null);
       shorebirdValidator = MockShorebirdValidator();
-      command = runWithOverrides(OrgsUsageCommand.new)
-        ..testArgResults = argResults;
+      command = runWithOverrides(UsageCommand.new)..testArgResults = argResults;
 
       when(() => argResults['org-id']).thenReturn('42');
       when(() => argResults.rest).thenReturn([]);
@@ -109,12 +109,14 @@ void main() {
       returnUsage(usage());
     });
 
-    test('is under orgs, and hidden under account and the top level', () {
-      expect(OrgsCommand().subcommands['usage'], isA<OrgsUsageCommand>());
+    test('is visible at the top level, and hidden under orgs and account', () {
+      expect(command.hidden, isFalse);
+      final orgsUsage = OrgsCommand().subcommands['usage'];
+      expect(orgsUsage, isA<OrgsUsageCommand>());
+      expect(orgsUsage!.hidden, isTrue);
       final accountUsage = AccountCommand().subcommands['usage'];
       expect(accountUsage, isA<AccountUsageCommand>());
       expect(accountUsage!.hidden, isTrue);
-      expect(TopLevelUsageCommand().hidden, isTrue);
     });
 
     test('takes the org id as an argument', () async {

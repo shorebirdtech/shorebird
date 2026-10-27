@@ -89,7 +89,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(AccountCommand());
     addCommand(ApiCommand());
     addCommand(AppsCommand());
-    addCommand(TopLevelAuditLogCommand());
+    addCommand(AuditLogCommand());
     addCommand(AuthCommand());
     addCommand(CacheCommand());
     addCommand(ChannelsCommand());
@@ -110,7 +110,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(ReleasesCommand());
     addCommand(TokensCommand());
     addCommand(UpgradeCommand());
-    addCommand(TopLevelUsageCommand());
+    addCommand(UsageCommand());
     addCommand(TopLevelWhoamiCommand());
   }
 
@@ -120,11 +120,10 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// [args], with a command's [ShorebirdCommand.defaultSubcommand] added
   /// right after the command when they name it without a subcommand: bare
   /// (`shorebird account` runs `shorebird account whoami`), with options
-  /// only the subcommand takes (`shorebird orgs audit-log --org-id 42`), or
-  /// with a positional argument the subcommand takes (`shorebird orgs
-  /// audit-log 42`). Otherwise
-  /// [args] as they are, including after `--` and with `--help`, which asks
-  /// for the command's own usage.
+  /// only the subcommand takes (`shorebird audit-log --org-id 42`), or
+  /// with a positional argument the subcommand takes (`shorebird audit-log
+  /// 42`). Otherwise [args] as they are, including after `--` and with
+  /// `--help`, which asks for the command's own usage.
   @visibleForTesting
   List<String> withDefaultSubcommand(List<String> args) {
     if (args.contains('--')) return args;

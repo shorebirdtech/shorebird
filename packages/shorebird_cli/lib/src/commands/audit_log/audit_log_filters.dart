@@ -52,7 +52,7 @@ class AuditLogFilters {
   final DateTime? end;
 }
 
-/// The filter options `shorebird orgs audit-log list` and `export` share,
+/// The filter options `shorebird audit-log list` and `export` share,
 /// and the fetch and error reporting around them.
 mixin AuditLogFilterOptions on OrganizationScopedCommand {
   /// The filter options, in the order a resume hint repeats them.
@@ -187,7 +187,7 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
       ...extra,
       '--cursor ${_quote(cursor)}',
     ];
-    return 'shorebird orgs audit-log $subcommand ${options.join(' ')}';
+    return 'shorebird audit-log $subcommand ${options.join(' ')}';
   }
 
   /// Fetches one page of [organizationId]'s audit log matching [filters].
