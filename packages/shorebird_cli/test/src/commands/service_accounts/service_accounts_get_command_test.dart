@@ -90,7 +90,9 @@ void main() {
         {
           'id': 7,
           'provider': 'github',
-          'repository': 'acme/app',
+          'repository_owner': 'acme',
+          'repository_owner_id': 1,
+          'repository_name': 'app',
           'workflow_path': '.github/workflows/release.yml',
           'environment': null,
           'ref_pattern': 'refs/heads/main',

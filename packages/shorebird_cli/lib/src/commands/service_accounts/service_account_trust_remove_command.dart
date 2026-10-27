@@ -17,7 +17,7 @@ class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
     with ConfirmDelete, OrganizationScopedCommand, ServiceAccountScopedCommand {
   /// {@macro service_account_trust_remove_command}
   ServiceAccountTrustRemoveCommand() {
-    addConfirmDeleteOptions();
+    addConfirmDeleteOptions(deprecatedConfirmName: false);
     addOrganizationScopeOption();
   }
 
@@ -36,6 +36,9 @@ class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
   String get commandLine => 'shorebird service-accounts trust remove';
 
   @override
+  int get maxArguments => 2;
+
+  @override
   String get description =>
       'Removes a trust rule, so its workflow can no longer sign in as the '
       'service account.\n\n'
@@ -43,15 +46,14 @@ class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
       '  Removed trust rule 7 (acme/app .github/workflows/release.yml) from '
       '"release-bot".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird service-accounts trust remove release-bot 7 --yes --json',
+        'shorebird service-accounts trust remove release-bot 7 --org-id 42 '
+        '--yes --json',
       )}';
 
   @override
   Future<int> run() async {
     final rest = results.rest;
-    final (:resolved, :errorCode) = await resolveServiceAccount(
-      rest.firstOrNull,
-    );
+    final (:resolved, :errorCode) = await resolveServiceAccount();
     if (errorCode != null) return errorCode;
     final account = resolved!.account;
 
@@ -77,8 +79,8 @@ class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
                 '${rules.map((r) => '${r.id} (${_describe(r)})').join(', ')}.';
       return reportError(
         message: ruleIdArg == null
-            ? 'Name the rule to remove: $commandLine ${account.name} '
-                  '<rule id>.'
+            ? 'Name the rule to remove: $commandLine '
+                  '${shellQuote(account.name)} <rule id>.'
             : '"${account.name}" has no trust rule $ruleIdArg.',
         hint: hint,
       );
@@ -99,7 +101,7 @@ class ServiceAccountTrustRemoveCommand extends ShorebirdCommand
         ruleId: rule.id,
       ),
       code: JsonErrorCode.softwareError,
-      message: 'Failed to remove trust rule ${rule.id}.',
+      message: 'Failed to remove trust rule ${rule.id} from "${account.name}".',
     );
     if (removeError != null) return removeError;
 

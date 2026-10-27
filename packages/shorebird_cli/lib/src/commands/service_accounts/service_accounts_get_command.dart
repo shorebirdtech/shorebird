@@ -57,21 +57,25 @@ class ServiceAccountsGetCommand extends ShorebirdCommand
 
     late final List<ServiceAccountKey> keys;
     late final List<ServiceAccountTrustRule> rules;
-    final fetchError = await guardApiCall(
-      () async {
-        keys = await codePushClientWrapper.getServiceAccountKeys(
-          organizationId: account.organizationId,
-          serviceAccountId: account.id,
-        );
-        rules = await codePushClientWrapper.getServiceAccountTrustRules(
-          organizationId: account.organizationId,
-          serviceAccountId: account.id,
-        );
-      },
+    final keysError = await guardApiCall(
+      () async => keys = await codePushClientWrapper.getServiceAccountKeys(
+        organizationId: account.organizationId,
+        serviceAccountId: account.id,
+      ),
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch the keys and trust rules of "${account.name}".',
+      message: 'Failed to fetch the keys of "${account.name}".',
     );
-    if (fetchError != null) return fetchError;
+    if (keysError != null) return keysError;
+    final rulesError = await guardApiCall(
+      () async =>
+          rules = await codePushClientWrapper.getServiceAccountTrustRules(
+            organizationId: account.organizationId,
+            serviceAccountId: account.id,
+          ),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch the trust rules of "${account.name}".',
+    );
+    if (rulesError != null) return rulesError;
 
     if (isJsonMode) {
       emitJsonSuccess({

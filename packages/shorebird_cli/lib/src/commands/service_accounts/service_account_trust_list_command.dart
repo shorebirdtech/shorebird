@@ -43,9 +43,7 @@ class ServiceAccountTrustListCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    final (:resolved, :errorCode) = await resolveServiceAccount(
-      results.rest.firstOrNull,
-    );
+    final (:resolved, :errorCode) = await resolveServiceAccount();
     if (errorCode != null) return errorCode;
     final account = resolved!.account;
 

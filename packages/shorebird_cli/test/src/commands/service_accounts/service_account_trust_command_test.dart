@@ -148,6 +148,183 @@ void main() {
       ).called(1);
     });
 
+    Future<int> add(List<String> args) => context.runCommand(
+      ServiceAccountTrustAddCommand(),
+      [
+        'release-bot',
+        '--github-repo',
+        'acme/app',
+        '--workflow',
+        'release.yml',
+        ...args,
+        '--org-id',
+        '42',
+      ],
+    );
+
+    CreateServiceAccountTrustRuleRequest sentRule() =>
+        verify(
+              () => context.wrapper.createServiceAccountTrustRule(
+                organizationId: 42,
+                serviceAccountId: 383,
+                rule: captureAny(named: 'rule'),
+              ),
+            ).captured.single
+            as CreateServiceAccountTrustRuleRequest;
+
+    test('says what the workflow needs to sign in', () async {
+      await add(['--ref', 'refs/heads/main']);
+      verify(
+        () => context.logger.info(
+          'For the job to sign in, give it these in '
+          '.github/workflows/release.yml:\n'
+          '  permissions:\n'
+          '    id-token: write\n'
+          '  env:\n'
+          '    SHOREBIRD_PROJECT_ID: 42',
+        ),
+      ).called(1);
+    });
+
+    test('requires --ref or --environment before any request', () async {
+      expect(await add([]), ExitCode.usage.code);
+      verify(
+        () => context.logger.err(
+          'Limit the rule with --ref (e.g. --ref main) or --environment '
+          '(e.g. --environment production).',
+        ),
+      ).called(1);
+      verifyNever(() => context.wrapper.getOrganizationMemberships());
+    });
+
+    test('--any-ref sends no ref and warns what it allows', () async {
+      expect(await add(['--any-ref']), context.ok);
+      expect(sentRule().refPattern, isNull);
+      verify(
+        () => context.logger.warn(
+          'Any branch of acme/app whose .github/workflows/release.yml runs, '
+          'including one pushed with an edited workflow, will sign in as '
+          '"release-bot".',
+        ),
+      ).called(1);
+    });
+
+    test('a bare branch becomes refs/heads/<branch>', () async {
+      await add(['--ref', 'main']);
+      expect(sentRule().refPattern, 'refs/heads/main');
+    });
+
+    test('a ref for every ref needs --any-ref', () async {
+      expect(await add(['--ref', '*']), ExitCode.usage.code);
+      expect(await add(['--ref', 'refs/*']), ExitCode.usage.code);
+      verify(
+        () => context.logger.err(
+          '--ref refs/* matches every ref. Pass --any-ref instead if that is '
+          'what you mean.',
+        ),
+      ).called(1);
+      expect(await add(['--ref', 'refs/*', '--any-ref']), context.ok);
+      expect(sentRule().refPattern, isNull);
+    });
+
+    test('rejects --ref with --any-ref', () async {
+      expect(await add(['--ref', 'main', '--any-ref']), ExitCode.usage.code);
+      verify(
+        () => context.logger.err('Pass --ref or --any-ref, not both.'),
+      ).called(1);
+    });
+
+    test('rejects a wildcard that is not a full ref', () async {
+      expect(await add(['--ref', 'v*']), ExitCode.usage.code);
+    });
+
+    test('warns when a wildcard over-matches', () async {
+      await add(['--ref', 'refs/heads/main*']);
+      verify(
+        () => context.logger.warn(
+          '--ref refs/heads/main* matches every ref that starts with '
+          'refs/heads/main, not only one branch or tag.',
+        ),
+      ).called(1);
+    });
+
+    test('takes a pasted GitHub URL or .git suffix', () async {
+      for (final repo in [
+        ' https://github.com/acme/app/ ',
+        'github.com/acme/app.git',
+        'acme/app.git',
+      ]) {
+        await context.runCommand(ServiceAccountTrustAddCommand(), [
+          'release-bot',
+          '--github-repo',
+          repo,
+          '--workflow',
+          'release.yml',
+          '--ref',
+          'main',
+          '--org-id',
+          '42',
+        ]);
+        final rule = sentRule();
+        expect((rule.repositoryOwner, rule.repositoryName), ('acme', 'app'));
+      }
+    });
+
+    test('rejects a second service account before any request', () async {
+      expect(
+        await context.runCommand(ServiceAccountTrustAddCommand(), [
+          'release-bot',
+          'deploy-bot',
+          '--github-repo',
+          'acme/app',
+          '--workflow',
+          'release.yml',
+          '--ref',
+          'main',
+        ]),
+        ExitCode.usage.code,
+      );
+      verifyNever(() => context.wrapper.getOrganizationMemberships());
+    });
+
+    test('adds nothing when the name matches two accounts', () async {
+      final shadow = ServiceAccount(
+        id: 9,
+        organizationId: 42,
+        name: '383',
+        label: '383[bot]',
+        role: ServiceAccountRole.developer,
+        createdAt: DateTime.utc(2026),
+        createdByUserId: null,
+        createdByEmail: null,
+        lastAuthAt: null,
+      );
+      when(
+        () => context.wrapper.getServiceAccounts(organizationId: 42),
+      ).thenAnswer((_) async => [releaseBot, shadow]);
+      expect(
+        await context.runCommand(ServiceAccountTrustAddCommand(), [
+          '383',
+          '--github-repo',
+          'acme/app',
+          '--workflow',
+          'release.yml',
+          '--ref',
+          'main',
+          '--org-id',
+          '42',
+        ]),
+        ExitCode.usage.code,
+      );
+      verifyNever(
+        () => context.wrapper.createServiceAccountTrustRule(
+          organizationId: any(named: 'organizationId'),
+          serviceAccountId: any(named: 'serviceAccountId'),
+          rule: any(named: 'rule'),
+        ),
+      );
+    });
+
     test('rejects a repo that is not owner/repo', () async {
       for (final repo in ['acme', 'acme/', 'acme/app/x']) {
         expect(
@@ -183,6 +360,8 @@ void main() {
           'acme/app',
           '--workflow',
           'release.yml',
+          '--ref',
+          'main',
           '--org-id',
           '42',
         ], json: true),
@@ -202,6 +381,8 @@ void main() {
           'acme/app',
           '--workflow',
           'release.yml',
+          '--ref',
+          'main',
           '--org-id',
           '42',
         ], json: true),
@@ -210,6 +391,8 @@ void main() {
       final data = json['data'] as Map<String, dynamic>;
       expect(data['service_account_id'], 383);
       expect(data['id'], 7);
+      expect(data['repository_owner_id'], 1);
+      expect(data['shorebird_project_id'], 42);
     });
   });
 
@@ -222,6 +405,19 @@ void main() {
           ruleId: 7,
         ),
       ).thenAnswer((_) async {});
+    });
+
+    test('rejects a third argument before any request', () async {
+      expect(
+        await context.runCommand(ServiceAccountTrustRemoveCommand(), [
+          'release-bot',
+          '7',
+          '8',
+          '--yes',
+        ]),
+        ExitCode.usage.code,
+      );
+      verifyNever(() => context.wrapper.getOrganizationMemberships());
     });
 
     test('removes the rule with --yes', () async {

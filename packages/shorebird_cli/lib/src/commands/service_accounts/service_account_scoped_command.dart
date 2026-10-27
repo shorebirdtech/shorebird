@@ -192,7 +192,9 @@ String serviceAccountKeyLine(ServiceAccountKey key) =>
 Map<String, Object?> trustRuleJson(ServiceAccountTrustRule rule) => {
   'id': rule.id,
   'provider': rule.provider.value,
-  'repository': '${rule.github.repositoryOwner}/${rule.github.repositoryName}',
+  'repository_owner': rule.github.repositoryOwner,
+  'repository_owner_id': rule.github.repositoryOwnerId,
+  'repository_name': rule.github.repositoryName,
   'workflow_path': rule.github.workflowPath,
   'environment': rule.github.environment,
   'ref_pattern': rule.github.refPattern,
