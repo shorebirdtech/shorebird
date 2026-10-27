@@ -7,10 +7,12 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 class AppsCommand extends ShorebirdCommand {
   /// {@macro apps_command}
   AppsCommand() {
+    addSubcommand(AppsArchiveCommand());
     addSubcommand(AppsDeleteCommand());
     addSubcommand(AppsListCommand());
     addSubcommand(AppsRenameCommand());
     addSubcommand(AppsTransferCommand());
+    addSubcommand(AppsUnarchiveCommand());
   }
 
   @override
