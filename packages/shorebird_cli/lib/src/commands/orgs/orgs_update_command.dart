@@ -16,7 +16,6 @@ class OrgsUpdateCommand extends ShorebirdCommand
     argParser.addOption(
       'name',
       help: 'The new name of the organization (e.g. "Acme Corp").',
-      mandatory: true,
     );
     addOrganizationScopeOption();
   }
@@ -36,13 +35,25 @@ class OrgsUpdateCommand extends ShorebirdCommand
       'Example output:\n'
       '  Renamed "Acme" to "Acme Corp".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird orgs update --org-id 42 --name "Acme Corp" --json',
+        'shorebird orgs update 42 --name "Acme Corp" --json',
       )}';
 
   @override
   Future<int> run() async {
-    final newName = results['name'] as String;
-    if (newName.trim().isEmpty) {
+    final nameOption = results['name'] as String?;
+    if (nameOption == null) {
+      final orgId =
+          results.rest.firstOrNull ??
+          results['org-id'] as String? ??
+          '<org-id>';
+      return reportError(
+        message:
+            'Pass the new name: shorebird orgs update $orgId '
+            '--name "Acme Corp".',
+      );
+    }
+    final newName = nameOption.trim();
+    if (newName.isEmpty) {
       return reportError(message: 'Organization name must not be blank.');
     }
 

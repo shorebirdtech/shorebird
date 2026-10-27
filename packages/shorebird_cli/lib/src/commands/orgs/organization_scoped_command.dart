@@ -140,7 +140,10 @@ mixin OrganizationScopedCommand on ShorebirdCommand {
       return (
         membership: null,
         errorCode: reportError(
-          message: 'Pass one organization id: $example.',
+          message:
+              'Pass one organization id, not '
+              '${[?option, ...rest].map((id) => '"$id"').join(' and ')}: '
+              '$example.',
         ),
       );
     }

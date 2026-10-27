@@ -180,7 +180,8 @@ void main() {
         );
         verify(
           () => logger.err(
-            'Pass one organization id: shorebird orgs get <org-id>.',
+            'Pass one organization id, not "7" and "42": '
+            'shorebird orgs get <org-id>.',
           ),
         ).called(1);
         verifyNever(() => codePushClientWrapper.getOrganizationMemberships());

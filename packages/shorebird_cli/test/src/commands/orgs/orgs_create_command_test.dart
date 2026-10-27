@@ -71,8 +71,8 @@ void main() {
       ).called(1);
     });
 
-    test('takes the name from --name', () async {
-      when(() => argResults['name']).thenReturn('Acme Corp');
+    test('takes the name from --name, trimmed', () async {
+      when(() => argResults['name']).thenReturn(' Acme Corp ');
       when(() => argResults.rest).thenReturn([]);
       expect(await runWithOverrides(command.run), ExitCode.success.code);
       verify(

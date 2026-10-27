@@ -109,6 +109,27 @@ void main() {
       ).called(1);
     });
 
+    test('asks for --name, naming the id it was given', () async {
+      when(() => argResults['name']).thenReturn(null);
+      when(() => argResults['org-id']).thenReturn(null);
+      when(() => argResults.rest).thenReturn(['42']);
+      expect(await runWithOverrides(command.run), ExitCode.usage.code);
+      verify(
+        () => logger.err(
+          'Pass the new name: shorebird orgs update 42 --name "Acme Corp".',
+        ),
+      ).called(1);
+      verifyNever(() => codePushClientWrapper.getOrganizationMemberships());
+    });
+
+    test('trims the new name', () async {
+      when(() => argResults['name']).thenReturn(' Acme ');
+      expect(await runWithOverrides(command.run), ExitCode.usage.code);
+      verify(
+        () => logger.err('Organization 42 is already named "Acme".'),
+      ).called(1);
+    });
+
     test('rejects a blank name before any request', () async {
       when(() => argResults['name']).thenReturn(' ');
       expect(await runWithOverrides(command.run), ExitCode.usage.code);

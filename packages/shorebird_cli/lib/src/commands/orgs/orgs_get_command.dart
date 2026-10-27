@@ -29,7 +29,7 @@ class OrgsGetCommand extends ShorebirdCommand with OrganizationScopedCommand {
       '  type: team\n'
       '  your role: admin\n'
       '  created: 2026-01-15\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird orgs get --org-id 42 --json')}';
+      '${ShorebirdCommand.jsonHint('shorebird orgs get 42 --json')}';
 
   @override
   Future<int> run() async {

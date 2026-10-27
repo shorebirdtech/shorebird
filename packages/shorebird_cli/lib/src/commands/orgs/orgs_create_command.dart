@@ -47,13 +47,13 @@ class OrgsCreateCommand extends ShorebirdCommand {
             'shorebird orgs create "Acme Corp".',
       );
     }
-    final organizationName = nameOption ?? rest.firstOrNull;
+    final organizationName = (nameOption ?? rest.firstOrNull)?.trim();
     if (organizationName == null) {
       return reportError(
         message: 'Name the organization: shorebird orgs create "Acme Corp".',
       );
     }
-    if (organizationName.trim().isEmpty) {
+    if (organizationName.isEmpty) {
       return reportError(message: 'Organization name must not be blank.');
     }
 
