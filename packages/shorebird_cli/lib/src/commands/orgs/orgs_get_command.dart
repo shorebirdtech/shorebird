@@ -18,6 +18,9 @@ class OrgsGetCommand extends ShorebirdCommand with OrganizationScopedCommand {
   String get name => 'get';
 
   @override
+  String get invocation => 'shorebird orgs get [<org-id>]';
+
+  @override
   String get description =>
       'Shows an organization and your role in it.\n\n'
       'Example output:\n'
@@ -30,7 +33,9 @@ class OrgsGetCommand extends ShorebirdCommand with OrganizationScopedCommand {
 
   @override
   Future<int> run() async {
-    final (:membership, :errorCode) = await resolveOrganization();
+    final (:membership, :errorCode) = await resolveOrganizationFromArguments(
+      example: 'shorebird orgs get <org-id>',
+    );
     if (errorCode != null) return errorCode;
 
     final org = membership!.organization;

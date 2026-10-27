@@ -25,6 +25,9 @@ class OrgsUpdateCommand extends ShorebirdCommand
   String get name => 'update';
 
   @override
+  String get invocation => 'shorebird orgs update [<org-id>] --name <name>';
+
+  @override
   List<String> get aliases => const ['rename'];
 
   @override
@@ -43,7 +46,9 @@ class OrgsUpdateCommand extends ShorebirdCommand
       return reportError(message: 'Organization name must not be blank.');
     }
 
-    final (:membership, :errorCode) = await resolveOrganization();
+    final (:membership, :errorCode) = await resolveOrganizationFromArguments(
+      example: 'shorebird orgs update <org-id> --name <name>',
+    );
     if (errorCode != null) return errorCode;
     final organization = membership!.organization;
 

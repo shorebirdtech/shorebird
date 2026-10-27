@@ -147,7 +147,12 @@ void main() {
         () => runWithOverrides(command.run, json: true),
       );
       expect(exitCode, ExitCode.success.code);
-      expect(json['data'], {'id': 42, 'name': 'Acme Corp', 'type': 'team'});
+      expect(json['data'], {
+        'id': 42,
+        'name': 'Acme Corp',
+        'type': 'team',
+        'role': 'owner',
+      });
     });
   });
 }

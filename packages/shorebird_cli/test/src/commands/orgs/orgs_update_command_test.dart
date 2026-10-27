@@ -93,6 +93,22 @@ void main() {
       verify(() => logger.success('Renamed "Acme" to "Acme Corp".')).called(1);
     });
 
+    test('takes the organization id as an argument', () async {
+      when(() => argResults['org-id']).thenReturn(null);
+      when(() => argResults.rest).thenReturn(['42']);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
+      when(
+        () => codePushClientWrapper.getOrganizationMemberships(),
+      ).thenAnswer((_) async => [membership, membership]);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
+      verify(
+        () => codePushClientWrapper.updateOrganization(
+          organizationId: 42,
+          name: 'Acme Corp',
+        ),
+      ).called(1);
+    });
+
     test('rejects a blank name before any request', () async {
       when(() => argResults['name']).thenReturn(' ');
       expect(await runWithOverrides(command.run), ExitCode.usage.code);

@@ -80,6 +80,7 @@ class OrgsCreateCommand extends ShorebirdCommand {
         'id': organization.id,
         'name': organization.name,
         'type': organization.organizationType.name,
+        'role': Role.owner.name,
       });
       return ExitCode.success.code;
     }

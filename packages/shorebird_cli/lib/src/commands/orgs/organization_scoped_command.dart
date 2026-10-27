@@ -2,6 +2,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/organization_id.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -31,14 +32,16 @@ mixin OrganizationScopedCommand on ShorebirdCommand {
   /// Picks the organization to act on, validating that the user is signed
   /// in, and returns the user's membership in it.
   ///
-  /// The organization is, in order: the one `--org-id` names; the one that
-  /// owns the app in the current directory's shorebird.yaml; the user's only
-  /// organization. Otherwise this fails, listing the user's organizations.
+  /// The organization is, in order: the one [orgId] names (by default the
+  /// `--org-id` value); the one that owns the app in the current directory's
+  /// shorebird.yaml; the user's only organization. Otherwise this fails,
+  /// listing the user's organizations. A default is announced, so the user
+  /// sees which organization the command acts on.
   ///
   /// Returns `(membership: <membership>, errorCode: null)` on success, or
   /// `(membership: null, errorCode: <code>)` once the failure is reported.
   Future<({OrganizationMembership? membership, int? errorCode})>
-  resolveOrganization() async {
+  resolveOrganization({String? orgId}) async {
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
@@ -56,7 +59,7 @@ mixin OrganizationScopedCommand on ShorebirdCommand {
     );
     if (fetchError != null) return (membership: null, errorCode: fetchError);
 
-    final orgIdArg = results[CommonArguments.orgIdArg.name] as String?;
+    final orgIdArg = orgId ?? results[CommonArguments.orgIdArg.name] as String?;
     if (orgIdArg != null) {
       final (:id, error: parseError) = parseOrganizationId(
         orgIdArg,
@@ -79,7 +82,8 @@ mixin OrganizationScopedCommand on ShorebirdCommand {
       OrganizationMembership? appMembership;
       final appError = await guardApiCall(
         () async {
-          final app = await codePushClientWrapper.getApp(appId: appId);
+          final app = await codePushClientWrapper.maybeGetApp(appId: appId);
+          if (app == null) return;
           appMembership = await codePushClientWrapper.findAppOrganization(
             appId: appId,
             memberships: memberships,
@@ -90,14 +94,26 @@ mixin OrganizationScopedCommand on ShorebirdCommand {
         message: 'Failed to find the organization of app "$appId".',
       );
       if (appError != null) return (membership: null, errorCode: appError);
-      // A user who only collaborates on the app isn't in its organization;
-      // fall through to the other defaults.
-      if (appMembership != null) {
-        return (membership: appMembership, errorCode: null);
+      // Falling back to another organization here could act on one the
+      // user doesn't mean, so make them pick.
+      if (appMembership == null) {
+        return (
+          membership: null,
+          errorCode: reportError(
+            message:
+                'App "$appId" in shorebird.yaml is not in any of your '
+                'organizations. Pass --${CommonArguments.orgIdArg.name} to '
+                'choose one.',
+            hint: availableOrganizations(memberships),
+          ),
+        );
       }
+      _announceDefault(appMembership!, 'which owns the app in shorebird.yaml');
+      return (membership: appMembership, errorCode: null);
     }
 
     if (memberships.length == 1) {
+      _announceDefault(memberships.single, 'your only organization');
       return (membership: memberships.single, errorCode: null);
     }
 
@@ -109,6 +125,34 @@ mixin OrganizationScopedCommand on ShorebirdCommand {
             'organization.',
         hint: availableOrganizations(memberships),
       ),
+    );
+  }
+
+  /// [resolveOrganization] for a command whose only argument is the
+  /// organization id, as in `shorebird orgs get 42`, so that a positional id
+  /// is never dropped in favor of a default. [example] is the command with
+  /// `<org-id>` where the id goes, for the error when it is given twice.
+  Future<({OrganizationMembership? membership, int? errorCode})>
+  resolveOrganizationFromArguments({required String example}) async {
+    final option = results[CommonArguments.orgIdArg.name] as String?;
+    final rest = results.rest;
+    if (rest.length > 1 || (rest.isNotEmpty && option != null)) {
+      return (
+        membership: null,
+        errorCode: reportError(
+          message: 'Pass one organization id: $example.',
+        ),
+      );
+    }
+    return resolveOrganization(orgId: option ?? rest.firstOrNull);
+  }
+
+  void _announceDefault(OrganizationMembership membership, String reason) {
+    if (isJsonMode) return;
+    final org = membership.organization;
+    logger.info(
+      'Using organization "${org.name}" (id: ${org.id}), $reason. Pass '
+      '--${CommonArguments.orgIdArg.name} to choose another.',
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template orgs_command}
@@ -45,4 +46,12 @@ class AccountOrgsCommand extends OrgsListCommand {
 
   @override
   bool get hidden => true;
+
+  @override
+  Future<int> run() {
+    if (!isJsonMode) {
+      logger.info('`shorebird account orgs` is now `shorebird orgs list`.');
+    }
+    return super.run();
+  }
 }

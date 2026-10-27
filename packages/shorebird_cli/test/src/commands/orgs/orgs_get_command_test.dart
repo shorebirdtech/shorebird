@@ -88,7 +88,7 @@ void main() {
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
       when(() => app.organizationId).thenReturn(team.organization.id);
       when(
-        () => codePushClientWrapper.getApp(appId: appId),
+        () => codePushClientWrapper.maybeGetApp(appId: appId),
       ).thenAnswer((_) async => app);
       when(
         () => codePushClientWrapper.findAppOrganization(
@@ -161,6 +161,32 @@ void main() {
       });
     });
 
+    group('with a positional id', () {
+      test('shows the organization it names', () async {
+        when(() => argResults.rest).thenReturn(['42']);
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.success.code),
+        );
+        verify(() => logger.info('id: 42')).called(1);
+      });
+
+      test('rejects an id given twice', () async {
+        when(() => argResults.rest).thenReturn(['42']);
+        when(() => argResults['org-id']).thenReturn('7');
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.usage.code),
+        );
+        verify(
+          () => logger.err(
+            'Pass one organization id: shorebird orgs get <org-id>.',
+          ),
+        ).called(1);
+        verifyNever(() => codePushClientWrapper.getOrganizationMemberships());
+      });
+    });
+
     group('without --org-id', () {
       test("uses the organization of shorebird.yaml's app", () async {
         when(
@@ -178,6 +204,12 @@ void main() {
           ),
         ).called(1);
         verify(() => logger.info('id: 42')).called(1);
+        verify(
+          () => logger.info(
+            'Using organization "Acme Corp" (id: 42), which owns the app in '
+            'shorebird.yaml. Pass --org-id to choose another.',
+          ),
+        ).called(1);
       });
 
       test('reports a failure to look up the app', () async {
@@ -185,7 +217,7 @@ void main() {
           () => shorebirdEnv.getShorebirdYaml(),
         ).thenReturn(const ShorebirdYaml(appId: appId));
         when(
-          () => codePushClientWrapper.getApp(appId: appId),
+          () => codePushClientWrapper.maybeGetApp(appId: appId),
         ).thenThrow(ProcessExit(ExitCode.software.code));
         final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, json: true),
@@ -198,8 +230,7 @@ void main() {
       });
 
       test(
-        "falls back to the only organization when the user isn't in the "
-        "app's",
+        "won't guess when the app isn't in the user's organizations",
         () async {
           when(
             () => shorebirdEnv.getShorebirdYaml(),
@@ -216,11 +247,36 @@ void main() {
           ).thenAnswer((_) async => [personal]);
           expect(
             await runWithOverrides(command.run),
-            equals(ExitCode.success.code),
+            equals(ExitCode.usage.code),
           );
-          verify(() => logger.info('id: 7')).called(1);
+          verify(
+            () => logger.err(
+              'App "$appId" in shorebird.yaml is not in any of your '
+              'organizations. Pass --org-id to choose one.',
+            ),
+          ).called(1);
         },
       );
+
+      test("won't guess when the user can't see the app", () async {
+        when(
+          () => shorebirdEnv.getShorebirdYaml(),
+        ).thenReturn(const ShorebirdYaml(appId: appId));
+        when(
+          () => codePushClientWrapper.maybeGetApp(appId: appId),
+        ).thenAnswer((_) async => null);
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.usage.code),
+        );
+        verifyNever(
+          () => codePushClientWrapper.findAppOrganization(
+            appId: any(named: 'appId'),
+            memberships: any(named: 'memberships'),
+            organizationId: any(named: 'organizationId'),
+          ),
+        );
+      });
 
       test('uses the only organization', () async {
         when(
@@ -231,6 +287,12 @@ void main() {
           equals(ExitCode.success.code),
         );
         verify(() => logger.info('id: 42')).called(1);
+        verify(
+          () => logger.info(
+            'Using organization "Acme Corp" (id: 42), your only '
+            'organization. Pass --org-id to choose another.',
+          ),
+        ).called(1);
       });
 
       test('asks for --org-id and lists the choices', () async {
