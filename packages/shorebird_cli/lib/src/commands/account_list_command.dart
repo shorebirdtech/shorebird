@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/finish_in_console.dart';
@@ -11,6 +12,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
 /// {@template account_list_command}
 /// A command that prints one of the signed-in person's account lists (API
@@ -100,7 +102,8 @@ class AccountListCommand extends ShorebirdCommand with FinishInConsole {
       return finishInConsole(action: action, url: _consoleUri);
     }
 
-    final uri = shorebirdEnv.authServiceUri.resolve(apiPath);
+    final base = shorebirdEnv.authServiceUri;
+    final uri = base.replace(path: p.url.join(base.path, apiPath));
     final http.Response response;
     try {
       response = await http.Response.fromStream(
@@ -108,6 +111,9 @@ class AccountListCommand extends ShorebirdCommand with FinishInConsole {
           http.Request('GET', uri),
         ),
       );
+    } on ProcessExit {
+      // The credential already said why it failed and what to do.
+      rethrow;
     } on Exception catch (error) {
       return reportError(
         code: JsonErrorCode.fetchFailed,
@@ -126,11 +132,15 @@ class AccountListCommand extends ShorebirdCommand with FinishInConsole {
     try {
       if (response.statusCode != 200) throw const FormatException();
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      items = (body[listKey] as List).cast<Map<String, dynamic>>();
+      items = [
+        for (final item in body[listKey] as List) item as Map<String, dynamic>,
+      ];
     } on Object {
       return reportError(
         code: JsonErrorCode.fetchFailed,
-        message: 'Failed to fetch $uri: HTTP ${response.statusCode}.',
+        message: response.statusCode == 200
+            ? 'Could not read the response from $uri.'
+            : 'Failed to fetch $uri: HTTP ${response.statusCode}.',
         hint: 'Try again, or open $_consoleUri in a browser.',
       );
     }

@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -207,6 +208,50 @@ void main() {
       );
       expect(exitCode, isNot(ExitCode.success.code));
       expect((json['error'] as Map)['code'], 'fetch_failed');
+    });
+
+    test('keeps a base path in the auth service URL', () async {
+      when(
+        () => shorebirdEnv.authServiceUri,
+      ).thenReturn(Uri.parse('http://localhost:3000/auth'));
+      respond(200, {'api_keys': <Object>[]});
+      await runWithOverrides(command.run);
+      final request =
+          verify(() => codePushClient.send(captureAny())).captured.single
+              as http.Request;
+      expect(request.url, Uri.parse('http://localhost:3000/auth/api/api-keys'));
+    });
+
+    test('says console_required when refused without a terminal', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+      respond(401, {'error': 'unauthorized'});
+      final (:exitCode, :json) = await captureJson(
+        () => runWithOverrides(command.run, jsonMode: true),
+      );
+      expect(exitCode, ExitCode.unavailable.code);
+      expect((json['error'] as Map)['code'], 'console_required');
+      verifyNever(() => browser.open(any()));
+    });
+
+    test('lets a failed credential end the command as it reported', () {
+      when(
+        () => codePushClient.send(any()),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      expect(() => runWithOverrides(command.run), throwsA(isA<ProcessExit>()));
+    });
+
+    test('fails on a list entry that is not an object', () async {
+      respond(200, {
+        'api_keys': ['nope'],
+      });
+      final (:exitCode, :json) = await captureJson(
+        () => runWithOverrides(command.run, jsonMode: true),
+      );
+      expect(exitCode, isNot(ExitCode.success.code));
+      expect(
+        (json['error'] as Map)['message'],
+        contains('Could not read the response'),
+      );
     });
 
     test('stops when not signed in', () async {

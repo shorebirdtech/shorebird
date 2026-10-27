@@ -30,8 +30,8 @@ class AccountCommand extends ShorebirdCommand {
         commandLine: 'shorebird account sessions',
         lead:
             'List the sessions signed in to your account: id, name, IP '
-            'address, user agent and last used (UTC date). This one is '
-            'marked "(current)".',
+            'address, user agent and last used (UTC date). The session this '
+            'CLI is signed in with is marked "(current)".',
         apiPath: 'api/sessions',
         listKey: 'sessions',
         consolePath: 'account',

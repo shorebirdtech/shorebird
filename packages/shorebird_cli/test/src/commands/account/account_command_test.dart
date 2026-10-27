@@ -52,6 +52,20 @@ void main() {
           contains('203.0.113.9  Dart/3.9  last used 2026-10-27  (current)'),
         ),
       );
+      expect(
+        sessions.describe({
+          'id': '8',
+          'name': null,
+          'ip_address': null,
+          'user_agent': null,
+          'last_used_at': '2026-10-27T14:00:00.000Z',
+          'is_current': false,
+        }),
+        allOf(
+          contains('Unnamed session'),
+          endsWith('  last used 2026-10-27'),
+        ),
+      );
     });
 
     test('says what a bare account shows', () {
