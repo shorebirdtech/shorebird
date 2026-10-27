@@ -3483,8 +3483,8 @@ void main() {
 
     group('organization members', () {
       const organizationId = 42;
-      final member = OrganizationUser(
-        user: const PublicUser(id: 7, email: 'bob@acme.com'),
+      const member = OrganizationUser(
+        user: PublicUser(id: 7, email: 'bob@acme.com'),
         role: Role.developer,
       );
       final invite = InvitationSummary(
