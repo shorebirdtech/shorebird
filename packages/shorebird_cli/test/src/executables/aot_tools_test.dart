@@ -506,7 +506,6 @@ stderr: error'''),
           );
           verify(
             () => process.start(dartBinaryFile.path, [
-              'run',
               aotToolsPath,
               'link',
               '--base=$base',
@@ -1376,6 +1375,20 @@ Run "aot_tools help <command>" for more information about a command.
             );
           },
         );
+
+        test(
+          'throws FormatException when aot_tools outputs json that is not '
+          'an object',
+          () async {
+            stdout = 'null';
+            await expectLater(
+              () => runWithOverrides(
+                () => aotTools.getLinkMetadata(debugDir: '/debug'),
+              ),
+              throwsFormatException,
+            );
+          },
+        );
       });
     });
 
@@ -1487,12 +1500,12 @@ Run "aot_tools help <command>" for more information about a command.
                     ),
                   ).captured.single
                   as List<String>;
-          // Expect: dart run <aotTools> --trace=<path> --version
-          expect(captured.length, 4);
-          expect(captured[0], 'run');
-          expect(captured[1], 'aot-tools.dill');
-          expect(captured[2], '--trace=${traceFile.path}');
-          expect(captured[3], '--version');
+          // Expect: dart <aotTools> --trace=<path> --version
+          expect(captured, [
+            'aot-tools.dill',
+            '--trace=${traceFile.path}',
+            '--version',
+          ]);
         },
       );
 
