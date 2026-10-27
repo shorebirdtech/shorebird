@@ -22,10 +22,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  semantic_pull_request:
-    name: ✅ Semantic Pull Request
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
-
   spell_check_title:
     name: 🔤 Check PR Title Spelling
     if: github.event_name == 'pull_request'
@@ -40,7 +36,7 @@ jobs:
         run: printf '%s\n' "$PR_TITLE" | npx --yes cspell@9 stdin --config cspell.config.yaml --no-progress --no-summary
 
   pr_title:
-    needs: [semantic_pull_request, spell_check_title]
+    needs: [spell_check_title]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:

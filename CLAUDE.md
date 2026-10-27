@@ -46,7 +46,6 @@ Dart monorepo. Main package is `shorebird_cli`.
 
 ## Code Style
 
-- PR titles must follow semantic commit format (enforced in CI)
 - CSpell: use inline `// cspell:words` for 1-2 files; add to global config for more. For an invalid-input test fixture, prefer a real word that's wrong in context (such as `web` for an unsupported platform) over a misspelling.
 - Prefer new commits over amending in PRs - history gets squashed anyway
 - Dart style rules beyond the lints are in `style_guides/dart.md`
