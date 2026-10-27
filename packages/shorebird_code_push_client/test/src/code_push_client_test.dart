@@ -1612,7 +1612,9 @@ void main() {
           (_) async => http.StreamedResponse(
             Stream.value(
               utf8.encode(
-                json.encode(const Patch(id: patchId, number: patchNumber)),
+                json.encode(
+                  const CreatePatchResponse(id: patchId, number: patchNumber),
+                ),
               ),
             ),
             HttpStatus.ok,
@@ -1627,7 +1629,7 @@ void main() {
           ),
           completion(
             equals(
-              isA<Patch>()
+              isA<CreatePatchResponse>()
                   .having((c) => c.id, 'id', patchId)
                   .having((c) => c.number, 'number', patchNumber),
             ),

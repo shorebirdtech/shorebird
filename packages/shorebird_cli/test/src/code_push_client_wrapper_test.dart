@@ -116,7 +116,7 @@ void main() {
     final channel = Channel(id: 0, appId: appId, name: track.channel);
     const patchId = 1;
     const patchNumber = 2;
-    const patch = Patch(id: patchId, number: patchNumber);
+    const patch = CreatePatchResponse(id: patchId, number: patchNumber);
     const releasePlatform = ReleasePlatform.ios;
     const releaseId = 123;
     const arch = Arch.arm64;
