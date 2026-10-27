@@ -412,8 +412,8 @@ class AndroidInstall extends Install {
 
   /// On the CI emulator the hash of a 16 MiB patch at launch added 41 and 80
   /// ms (1.29x, then 1.61x; e2e runs 40148536352, 40150677616), against 0 to
-  /// 14 ms on a Linux runner. On a real phone (OPPO A79 5G, Android 14, a
-  /// CPU with SHA-2 instructions; Device Run, 2026-10-26) the same app's
+  /// 14 ms on a Linux runner. On a real phone with SHA-2 instructions (an
+  /// Oppo A79 5G on Android 14, in Device Run, 2026-10-26) the same app's
   /// release booted in 222 ms and its signed patch in 239 ms, third-fastest
   /// of 15 (1.08x). So the hash cost is the emulator's, not a phone's, and
   /// this bound is loose only so the emulator passes.
