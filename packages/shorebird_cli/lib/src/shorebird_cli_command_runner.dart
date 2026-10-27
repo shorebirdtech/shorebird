@@ -318,6 +318,16 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       // --json command always leaves exactly one on stdout: the command's if
       // it wrote one, otherwise the runner's.
       final envelope = JsonEnvelopeTracker();
+      final aliasNotice = _aliasNotice(topLevelResults);
+      // Under --json, human lines already go to stderr, so the notice
+      // never reaches the envelope.
+      if (aliasNotice != null) {
+        if (_reservesStdout(topLevelResults)) {
+          await runWithStdoutOnStderr(() async => logger.info(aliasNotice));
+        } else {
+          logger.info(aliasNotice);
+        }
+      }
       try {
         exitCode = await runScoped(
           () => super.runCommand(topLevelResults),
@@ -474,6 +484,31 @@ ${currentRunLogFile.absolute.path}
     }
 
     return exitCode;
+  }
+
+  /// Names the canonical command when [topLevelResults] reached its command
+  /// through an alias (`shorebird cache clear` for `shorebird cache clean`),
+  /// so that whoever guessed the alias learns the name the docs use. Null
+  /// when every name typed was the command's own.
+  String? _aliasNotice(ArgResults topLevelResults) {
+    final typed = <String>[];
+    final canonical = <String>[];
+    var available = commands;
+    for (
+      var results = topLevelResults.command;
+      results != null;
+      results = results.command
+    ) {
+      final name = results.name!;
+      final command = available[name];
+      if (command == null) return null;
+      typed.add(name);
+      canonical.add(command.name);
+      available = command.subcommands;
+    }
+    if (const ListEquality<String>().equals(typed, canonical)) return null;
+    return '`$executableName ${typed.join(' ')}` is an alias of '
+        '`$executableName ${canonical.join(' ')}`.';
   }
 
   /// Whether the command [topLevelResults] ran is a [ShorebirdCommand] whose

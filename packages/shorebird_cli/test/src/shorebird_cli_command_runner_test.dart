@@ -448,6 +448,102 @@ Engine • revision $shorebirdEngineRevision'''),
       });
     });
 
+    group('when run through an alias', () {
+      test('names the canonical command once', () async {
+        final parent = _ParentCommand();
+        commandRunner.addCommand(parent);
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['mom', 'kid']),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+        verify(
+          () => logger.info(
+            '`shorebird mom kid` is an alias of `shorebird parent child`.',
+          ),
+        ).called(1);
+      });
+
+      test('names it when only the subcommand is an alias', () async {
+        commandRunner.addCommand(_ParentCommand());
+
+        await runWithOverrides(() => commandRunner.run(['parent', 'kid']));
+
+        verify(
+          () => logger.info(
+            '`shorebird parent kid` is an alias of `shorebird parent child`.',
+          ),
+        ).called(1);
+      });
+
+      test('says nothing for the canonical name', () async {
+        commandRunner.addCommand(_ParentCommand());
+
+        await runWithOverrides(() => commandRunner.run(['parent', 'child']));
+
+        verifyNever(
+          () => logger.info(any(that: contains('is an alias of'))),
+        );
+      });
+
+      test('keeps the --json envelope alone on stdout', () async {
+        commandRunner.addCommand(_ParentCommand());
+        final stdoutLines = <String>[];
+
+        await helpers.captureStdout(
+          () => runWithOverrides(
+            () => commandRunner.run(['--json', 'mom', 'kid']),
+          ),
+          captured: stdoutLines,
+        );
+
+        verify(
+          () => logger.info(
+            '`shorebird mom kid` is an alias of `shorebird parent child`.',
+          ),
+        ).called(1);
+        expect(stdoutLines, hasLength(1));
+        expect(
+          jsonDecode(stdoutLines.single),
+          containsPair('status', 'success'),
+        );
+      });
+
+      test('writes to stderr when the command reserves stdout', () async {
+        commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 0));
+        final stdoutLines = <String>[];
+        final stderrLines = <String>[];
+        final realStderr = stderr;
+        // A real logger, so a notice logged outside runWithStdoutOnStderr
+        // would show up on the captured stdout and fail the test.
+        logger = ShorebirdLogger();
+
+        await helpers.captureStdout(
+          () => IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => commandRunner.run(['owns-stdout']),
+            ),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrLines,
+            ),
+          ),
+          captured: stdoutLines,
+        );
+
+        expect(stdoutLines, isEmpty);
+        expect(
+          stderrLines,
+          contains(
+            '`shorebird owns-stdout` is an alias of '
+            '`shorebird reserves-stdout`.',
+          ),
+        );
+      });
+    });
+
     group('--dev', () {
       test('selects the dev environment for the command', () async {
         final command = _RecordsDevModeCommand();
@@ -1450,6 +1546,9 @@ class _ChildCommand extends ShorebirdCommand {
   String get name => 'child';
 
   @override
+  List<String> get aliases => const ['kid'];
+
+  @override
   String get description => 'Records that it ran';
 
   @override
@@ -1469,6 +1568,9 @@ class _ParentCommand extends ShorebirdCommand {
 
   @override
   String get name => 'parent';
+
+  @override
+  List<String> get aliases => const ['mom'];
 
   @override
   String get description => 'Runs child by default';
@@ -1530,6 +1632,9 @@ class _ReservesStdoutCommand extends ShorebirdCommand {
 
   @override
   String get name => 'reserves-stdout';
+
+  @override
+  List<String> get aliases => const ['owns-stdout'];
 
   @override
   String get description => 'Reserves stdout command';
