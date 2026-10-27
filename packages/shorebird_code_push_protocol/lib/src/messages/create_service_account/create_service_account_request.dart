@@ -40,9 +40,7 @@ class CreateServiceAccountRequest {
   /// what remains must be 1 to 64 characters.
   final String name;
 
-  /// A role a service account can hold in its organization: a subset of
-  /// `Role`. Never `admin` or `owner`, so a leaked key cannot manage the
-  /// organization's members or its other service accounts.
+  /// The service account's role. Defaults to `developer`.
   final ServiceAccountRole? role;
 
   /// Converts a [CreateServiceAccountRequest] to a `Map<String, dynamic>`.

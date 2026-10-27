@@ -1,26 +1,25 @@
-enum GetUniqueUsersParameter3 {
+enum GetUniqueUsersGroupBy {
   platform._('platform'),
   releaseVersion._('release_version');
 
-  const GetUniqueUsersParameter3._(this.value);
+  const GetUniqueUsersGroupBy._(this.value);
 
-  /// Creates a GetUniqueUsersParameter3 from a json value.
-  factory GetUniqueUsersParameter3.fromJson(String json) {
-    return GetUniqueUsersParameter3.values.firstWhere(
+  /// Creates a GetUniqueUsersGroupBy from a json value.
+  factory GetUniqueUsersGroupBy.fromJson(String json) {
+    return GetUniqueUsersGroupBy.values.firstWhere(
       (value) => value.value == json,
-      orElse: () => throw FormatException(
-        'Unknown GetUniqueUsersParameter3 value: $json',
-      ),
+      orElse: () =>
+          throw FormatException('Unknown GetUniqueUsersGroupBy value: $json'),
     );
   }
 
   /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
-  static GetUniqueUsersParameter3? maybeFromJson(String? json) {
+  static GetUniqueUsersGroupBy? maybeFromJson(String? json) {
     if (json == null) {
       return null;
     }
-    return GetUniqueUsersParameter3.fromJson(json);
+    return GetUniqueUsersGroupBy.fromJson(json);
   }
 
   /// The value of the enum.  This is the exact value

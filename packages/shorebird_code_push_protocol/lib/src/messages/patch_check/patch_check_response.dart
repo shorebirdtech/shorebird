@@ -42,8 +42,7 @@ class PatchCheckResponse {
   /// Whether a patch is available.
   final bool patchAvailable;
 
-  /// Patch metadata representing the contents of a patch for a
-  /// specific platform and architecture.
+  /// The patch metadata.
   final PatchCheckMetadata? patch;
 
   /// The numbers of all patches that have been rolled back for the current

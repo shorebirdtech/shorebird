@@ -3,10 +3,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('GetOrganizationAppsParameter6', () {
+  group('GetReleasePatchInstallsGranularity', () {
     test('round-trips via maybeFromJson/toJson', () {
-      const instance = GetOrganizationAppsParameter6.asc;
-      final parsed = GetOrganizationAppsParameter6.maybeFromJson(
+      const instance = GetReleasePatchInstallsGranularity.hour;
+      final parsed = GetReleasePatchInstallsGranularity.maybeFromJson(
         instance.toJson(),
       )!;
       expect(parsed, equals(instance));
@@ -14,12 +14,12 @@ void main() {
     });
 
     test('maybeFromJson returns null on null input', () {
-      expect(GetOrganizationAppsParameter6.maybeFromJson(null), isNull);
+      expect(GetReleasePatchInstallsGranularity.maybeFromJson(null), isNull);
     });
 
     test('maybeFromJson throws FormatException on invalid input', () {
       expect(
-        () => GetOrganizationAppsParameter6.maybeFromJson(
+        () => GetReleasePatchInstallsGranularity.maybeFromJson(
           '__invalid_enum_value__',
         ),
         throwsFormatException,
@@ -27,15 +27,15 @@ void main() {
     });
 
     test('toString matches toJson for every value', () {
-      for (final value in GetOrganizationAppsParameter6.values) {
+      for (final value in GetReleasePatchInstallsGranularity.values) {
         expect(value.toString(), equals(value.toJson()));
       }
     });
 
     test('fromJson round-trips every value', () {
-      for (final value in GetOrganizationAppsParameter6.values) {
+      for (final value in GetReleasePatchInstallsGranularity.values) {
         expect(
-          GetOrganizationAppsParameter6.fromJson(value.toJson()),
+          GetReleasePatchInstallsGranularity.fromJson(value.toJson()),
           equals(value),
         );
       }

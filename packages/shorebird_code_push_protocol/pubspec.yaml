@@ -24,5 +24,5 @@ dev_dependencies:
   # `test/src/`, this pubspec and the README — everything here that is
   # not generated. `tool/gen.dart` passes `--no-clear` to opt out; that
   # flag first exists in 1.4.0.
-  space_gen: ^1.5.0
+  space_gen: ^1.6.0
   test: ^1.32.0

@@ -63,7 +63,7 @@ class ReleaseArtifact {
   /// The arch of the artifact.
   final String arch;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the artifact.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -81,9 +81,9 @@ class ReleaseArtifact {
   /// Whether the artifact can be sideloaded onto a device.
   final bool canSideload;
 
-  /// How a release artifact's binary is signed for patch signing: which
-  /// public key the binary embeds. Patches to that release, platform and
-  /// arch are verified with it.
+  /// How the artifact's binary is signed. Absent for an artifact
+  /// uploaded before the CLI reported it, which is unsigned or signed
+  /// with a key the server never saw.
   final ArtifactSigning? signing;
 
   /// Converts a [ReleaseArtifact] to a `Map<String, dynamic>`.

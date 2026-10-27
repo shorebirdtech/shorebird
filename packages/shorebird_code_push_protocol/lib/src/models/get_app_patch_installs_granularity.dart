@@ -1,25 +1,27 @@
-enum GetAppPatchDownloadsParameter3 {
-  release._('release');
+enum GetAppPatchInstallsGranularity {
+  hour._('hour'),
+  day._('day'),
+  week._('week');
 
-  const GetAppPatchDownloadsParameter3._(this.value);
+  const GetAppPatchInstallsGranularity._(this.value);
 
-  /// Creates a GetAppPatchDownloadsParameter3 from a json value.
-  factory GetAppPatchDownloadsParameter3.fromJson(String json) {
-    return GetAppPatchDownloadsParameter3.values.firstWhere(
+  /// Creates a GetAppPatchInstallsGranularity from a json value.
+  factory GetAppPatchInstallsGranularity.fromJson(String json) {
+    return GetAppPatchInstallsGranularity.values.firstWhere(
       (value) => value.value == json,
       orElse: () => throw FormatException(
-        'Unknown GetAppPatchDownloadsParameter3 value: $json',
+        'Unknown GetAppPatchInstallsGranularity value: $json',
       ),
     );
   }
 
   /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
-  static GetAppPatchDownloadsParameter3? maybeFromJson(String? json) {
+  static GetAppPatchInstallsGranularity? maybeFromJson(String? json) {
     if (json == null) {
       return null;
     }
-    return GetAppPatchDownloadsParameter3.fromJson(json);
+    return GetAppPatchInstallsGranularity.fromJson(json);
   }
 
   /// The value of the enum.  This is the exact value
