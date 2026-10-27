@@ -7,7 +7,7 @@ name: pr_title
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
-  # Reports pr_title on the merge queue's temp branch (both checks skip
+  # Reports pr_title on the merge queue's temp branch (the check skips
   # there), so the context can be required without the queue waiting
   # on it forever.
   merge_group:
@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
