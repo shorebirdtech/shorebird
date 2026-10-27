@@ -121,7 +121,8 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// right after the command when they name it without a subcommand: bare
   /// (`shorebird account` runs `shorebird account whoami`), with options
   /// only the subcommand takes (`shorebird orgs audit-log --org-id 42`), or
-  /// with a positional argument (`shorebird orgs audit-log 42`). Otherwise
+  /// with a positional argument the subcommand takes (`shorebird orgs
+  /// audit-log 42`). Otherwise
   /// [args] as they are, including after `--` and with `--help`, which asks
   /// for the command's own usage.
   @visibleForTesting
@@ -157,11 +158,32 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     if (command is! ShorebirdCommand) return args;
     final subcommand = command.defaultSubcommand;
     if (subcommand == null) return args;
-    return [
+    final withSubcommand = [
       ...args.sublist(0, index + 1),
       subcommand,
       ...args.sublist(index + 1),
     ];
+
+    // A word left over is a positional argument for the subcommand, or a
+    // mistyped subcommand name (`shorebird orgs lst`); keep that an error
+    // unless the subcommand reads positional arguments.
+    final ArgResults results;
+    try {
+      results = argParser.parse(withSubcommand);
+    } on ArgParserException {
+      // The subcommand doesn't take them either; report them as given.
+      return args;
+    }
+    var deepest = results;
+    while (deepest.command != null) {
+      deepest = deepest.command!;
+    }
+    final target = command.subcommands[subcommand];
+    if (deepest.rest.isNotEmpty &&
+        !(target is ShorebirdCommand && target.takesPositionalArguments)) {
+      return args;
+    }
+    return withSubcommand;
   }
 
   @override

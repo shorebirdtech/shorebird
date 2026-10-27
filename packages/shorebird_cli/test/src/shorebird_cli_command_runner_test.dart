@@ -453,12 +453,39 @@ Engine • revision $shorebirdEngineRevision'''),
         expect(parent.child.ran, isFalse);
       });
 
-      test('is added before a positional argument', () async {
+      test('is added before a positional argument it takes', () async {
+        parent.child.takesPositional = true;
         final result = await runWithOverrides(
           () => commandRunner.run(['parent', 'extra']),
         );
         expect(result, equals(ExitCode.success.code));
         expect(parent.child.ran, isTrue);
+      });
+
+      test('is not added before a word it does not take', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', 'chld']),
+        );
+        expect(result, equals(ExitCode.usage.code));
+        expect(parent.child.ran, isFalse);
+      });
+
+      test('leaves a mistyped subcommand an error', () {
+        for (final args in [
+          ['orgs', 'lst'],
+          ['teams', 'lst'],
+          ['account', 'wohami'],
+          ['orgs', 'lst', '--org-id', '42'],
+        ]) {
+          expect(commandRunner.withDefaultSubcommand(args), args);
+        }
+      });
+
+      test('follows aliases typed at each level', () {
+        expect(
+          commandRunner.withDefaultSubcommand(['org', 'audit', '42']),
+          ['org', 'audit', 'list', '42'],
+        );
       });
 
       test('reaches orgs audit-log list with options or an org id', () {
@@ -1604,6 +1631,11 @@ class _ChildCommand extends ShorebirdCommand {
   }
 
   bool ran = false;
+
+  bool takesPositional = false;
+
+  @override
+  bool get takesPositionalArguments => takesPositional;
 
   @override
   String get name => 'child';

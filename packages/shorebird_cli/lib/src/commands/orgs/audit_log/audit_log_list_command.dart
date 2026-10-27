@@ -26,6 +26,10 @@ class AuditLogListCommand extends ShorebirdCommand
   @override
   String get name => 'list';
 
+  // The org id, as in `shorebird orgs audit-log 42`.
+  @override
+  bool get takesPositionalArguments => true;
+
   @override
   String get invocation => 'shorebird orgs audit-log list [<org-id>]';
 
