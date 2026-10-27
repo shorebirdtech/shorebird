@@ -939,6 +939,37 @@ class CodePushClient {
     ).organizations;
   }
 
+  /// Creates an organization named [name], owned by the current user.
+  Future<Organization> createOrganization({required String name}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/organizations'),
+      body: json.encode(CreateOrganizationRequest(name: name).toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return Organization.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Renames organization [organizationId] to [name].
+  Future<void> updateOrganization({
+    required int organizationId,
+    required String name,
+  }) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/organizations/$organizationId'),
+      body: json.encode(UpdateOrganizationRequest(name: name).toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Gets the apps in organization [organizationId] that the user can see.
   Future<List<AppMetadata>> getOrganizationApps({
     required int organizationId,

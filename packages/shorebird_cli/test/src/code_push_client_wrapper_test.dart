@@ -941,6 +941,50 @@ void main() {
       });
 
       group('account', () {
+        test('createOrganization returns the new organization', () async {
+          final organization = Organization(
+            id: 42,
+            name: 'Acme Corp',
+            organizationType: OrganizationType.team,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          );
+          when(
+            () => codePushClient.createOrganization(name: 'Acme Corp'),
+          ).thenAnswer((_) async => organization);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.createOrganization(
+                name: 'Acme Corp',
+              ),
+            ),
+            completion(equals(organization)),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('updateOrganization sends the name', () async {
+          when(
+            () => codePushClient.updateOrganization(
+              organizationId: 42,
+              name: 'Acme Corp',
+            ),
+          ).thenAnswer((_) async {});
+          await runWithOverrides(
+            () => codePushClientWrapper.updateOrganization(
+              organizationId: 42,
+              name: 'Acme Corp',
+            ),
+          );
+          verify(
+            () => codePushClient.updateOrganization(
+              organizationId: 42,
+              name: 'Acme Corp',
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+        });
+
         test('updateCurrentUser sends the display name', () async {
           when(
             () => codePushClient.updateCurrentUser(

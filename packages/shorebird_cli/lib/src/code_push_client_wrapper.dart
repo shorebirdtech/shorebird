@@ -169,6 +169,28 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Creates an organization named [name].
+  Future<Organization> createOrganization({required String name}) {
+    return _withProgress(
+      'Creating organization',
+      () => codePushClient.createOrganization(name: name),
+    );
+  }
+
+  /// Renames organization [organizationId] to [name].
+  Future<void> updateOrganization({
+    required int organizationId,
+    required String name,
+  }) {
+    return _withProgress(
+      'Updating organization',
+      () => codePushClient.updateOrganization(
+        organizationId: organizationId,
+        name: name,
+      ),
+    );
+  }
+
   /// Finds which of [memberships]' organizations app [appId] is in, or null
   /// if none of them lists it.
   ///

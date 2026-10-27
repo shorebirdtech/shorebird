@@ -1,4 +1,5 @@
 import 'package:shorebird_cli/src/commands/account/account.dart';
+import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template account_command}
@@ -10,7 +11,7 @@ class AccountCommand extends ShorebirdCommand {
     addSubcommand(AccountAppsCommand());
     addSubcommand(AccountNotificationsCommand());
     addSubcommand(AccountUpdateCommand());
-    addSubcommand(OrgsCommand());
+    addSubcommand(AccountOrgsCommand());
     addSubcommand(WhoamiCommand());
   }
 

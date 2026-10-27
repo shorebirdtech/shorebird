@@ -3378,6 +3378,107 @@ void main() {
       });
     });
 
+    group('createOrganization', () {
+      test('makes the correct request', () async {
+        codePushClient.createOrganization(name: 'Acme Corp').ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('organizations')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(request.body), equals({'name': 'Acme Corp'}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.createOrganization(name: 'Acme Corp'),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('returns the created organization', () async {
+        final organization = organizationForTest();
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(organization.toJson()))),
+            HttpStatus.created,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.createOrganization(name: organization.name),
+          completion(equals(organization)),
+        );
+      });
+    });
+
+    group('updateOrganization', () {
+      test('makes the correct request', () async {
+        codePushClient
+            .updateOrganization(organizationId: 42, name: 'Acme Corp')
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('organizations/42')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(request.body), equals({'name': 'Acme Corp'}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.updateOrganization(
+            organizationId: 42,
+            name: 'Acme Corp',
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when the request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.updateOrganization(
+            organizationId: 42,
+            name: 'Acme Corp',
+          ),
+          completes,
+        );
+      });
+    });
+
     group('getOrganizationApps', () {
       const organizationId = 42;
 

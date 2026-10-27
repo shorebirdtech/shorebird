@@ -6,16 +6,16 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template orgs_command}
-/// `shorebird account orgs`
+/// {@template orgs_list_command}
+/// `shorebird orgs list`
 /// List the organizations the current user can access.
 /// {@endtemplate}
-class OrgsCommand extends ShorebirdCommand {
-  /// {@macro orgs_command}
-  OrgsCommand();
+class OrgsListCommand extends ShorebirdCommand {
+  /// {@macro orgs_list_command}
+  OrgsListCommand();
 
   @override
-  String get name => 'orgs';
+  String get name => 'list';
 
   @override
   String get description =>
@@ -28,7 +28,7 @@ class OrgsCommand extends ShorebirdCommand {
       '"none".\n'
       'A "none" role means you only collaborate on apps in that organization.'
       '\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird account orgs --json')}';
+      '${ShorebirdCommand.jsonHint('shorebird orgs list --json')}';
 
   @override
   Future<int> run() async {
