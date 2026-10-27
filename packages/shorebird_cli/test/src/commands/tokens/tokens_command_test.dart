@@ -1,3 +1,4 @@
+import 'package:shorebird_cli/src/commands/account_list_command.dart';
 import 'package:shorebird_cli/src/commands/console_page_command.dart';
 import 'package:shorebird_cli/src/commands/tokens/tokens.dart';
 import 'package:test/test.dart';
@@ -27,12 +28,35 @@ void main() {
       expect(command.defaultSubcommand, 'list');
     });
 
-    test('each subcommand opens the API keys page', () {
+    test('list lists keys, falling back to the API keys page', () {
+      final list = command.subcommands['list'];
       expect(
-        command.subcommands.keys,
-        containsAll(['create', 'delete', 'list']),
+        list,
+        isA<AccountListCommand>()
+            .having((c) => c.apiPath, 'apiPath', 'api/api-keys')
+            .having((c) => c.consolePath, 'consolePath', 'account/api-keys'),
       );
-      for (final subcommand in command.subcommands.values.toSet()) {
+      expect(
+        (list! as AccountListCommand).describe({
+          'id': '5',
+          'name': 'ci',
+          'created_at': '2026-10-01T00:00:00.000Z',
+          'last_used_at': null,
+          'expires_at': '2027-01-01T00:00:00.000Z',
+        }),
+        allOf(
+          startsWith('5  '),
+          contains('ci'),
+          contains('created 2026-10-01  last used never  expires 2027-01-01'),
+        ),
+      );
+    });
+
+    test('create and delete open the API keys page', () {
+      for (final subcommand in [
+        command.subcommands['create'],
+        command.subcommands['delete'],
+      ]) {
         expect(
           subcommand,
           isA<ConsolePageCommand>().having(
