@@ -111,7 +111,7 @@ void main() {
       ).called(1);
       verify(
         () => context.logger.info(
-          'Usage: shorebird service-accounts delete <name or id>',
+          'Usage: shorebird orgs service-accounts delete <name or id>',
         ),
       ).called(1);
       verifyNever(() => context.wrapper.getOrganizationMemberships());

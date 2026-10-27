@@ -83,8 +83,8 @@ void main() {
       }
       verify(
         () => context.logger.err(
-          'Name the service account once: shorebird service-accounts create '
-          'release-bot.',
+          'Name the service account once: shorebird orgs service-accounts '
+          'create release-bot.',
         ),
       ).called(2);
     });

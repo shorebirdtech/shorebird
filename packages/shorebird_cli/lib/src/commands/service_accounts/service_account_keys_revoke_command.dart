@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_account_keys_revoke_command}
-/// `shorebird service-accounts keys revoke <name or id> <key id>`
+/// `shorebird orgs service-accounts keys revoke <name or id> <key id>`
 /// Revoke one of a service account's keys.
 /// {@endtemplate}
 class ServiceAccountKeysRevokeCommand extends ShorebirdCommand
@@ -29,11 +29,11 @@ class ServiceAccountKeysRevokeCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird service-accounts keys revoke <service account name or id> '
-      '<key id>';
+      'shorebird orgs service-accounts keys revoke '
+      '<service account name or id> <key id>';
 
   @override
-  String get commandLine => 'shorebird service-accounts keys revoke';
+  String get commandLine => 'shorebird orgs service-accounts keys revoke';
 
   @override
   int get maxArguments => 2;
@@ -45,8 +45,8 @@ class ServiceAccountKeysRevokeCommand extends ShorebirdCommand
       'Example output:\n'
       '  Revoked key 12 ("ci") of "release-bot".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird service-accounts keys revoke release-bot 12 --org-id 42 '
-        '--yes --json',
+        'shorebird orgs service-accounts keys revoke release-bot 12 '
+        '--org-id 42 --yes --json',
       )}';
 
   @override

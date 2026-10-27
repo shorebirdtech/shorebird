@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_accounts_set_role_command}
-/// `shorebird service-accounts set-role <name or id> --role <role>`
+/// `shorebird orgs service-accounts set-role <name or id> --role <role>`
 /// Change a service account's role.
 /// {@endtemplate}
 class ServiceAccountsSetRoleCommand extends ShorebirdCommand
@@ -29,10 +29,10 @@ class ServiceAccountsSetRoleCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird service-accounts set-role <name or id> --role <role>';
+      'shorebird orgs service-accounts set-role <name or id> --role <role>';
 
   @override
-  String get commandLine => 'shorebird service-accounts set-role';
+  String get commandLine => 'shorebird orgs service-accounts set-role';
 
   @override
   String get description =>
@@ -41,7 +41,7 @@ class ServiceAccountsSetRoleCommand extends ShorebirdCommand
       'Example output:\n'
       '  Changed the role of "release-bot" from developer to appManager.\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird service-accounts set-role release-bot --role viewer '
+        'shorebird orgs service-accounts set-role release-bot --role viewer '
         '--org-id 42 --json',
       )}';
 

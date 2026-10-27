@@ -1,14 +1,18 @@
+import 'package:shorebird_cli/src/commands/finish_in_console.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/service_accounts/service_account_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/service_accounts/service_accounts_create_command.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template service_account_keys_create_command}
-/// `shorebird service-accounts keys create <name or id>`
-/// Point at the console page where a service account's keys are made.
+/// `shorebird orgs service-accounts keys create <name or id>`
+/// Open the console page where a service account's keys are made.
 /// {@endtemplate}
 class ServiceAccountKeysCreateCommand extends ShorebirdCommand
-    with OrganizationScopedCommand, ServiceAccountScopedCommand {
+    with
+        FinishInConsole,
+        OrganizationScopedCommand,
+        ServiceAccountScopedCommand {
   /// {@macro service_account_keys_create_command}
   ServiceAccountKeysCreateCommand() {
     addOrganizationScopeOption();
@@ -19,18 +23,19 @@ class ServiceAccountKeysCreateCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird service-accounts keys create <service account name or id>';
+      'shorebird orgs service-accounts keys create '
+      '<service account name or id>';
 
   @override
-  String get commandLine => 'shorebird service-accounts keys create';
+  String get commandLine => 'shorebird orgs service-accounts keys create';
 
   @override
   String get description =>
-      "Prints the console page where a service account's keys are made, and "
-      "exits 64. The key's secret is shown once, there. The CLI does not make "
-      'keys, so that a person, not a script or agent, mints each long-lived '
-      'credential. To let GitHub Actions sign in without a key, add a trust '
-      'rule instead.';
+      "Opens the console page where a service account's keys are made; the "
+      "key's secret is shown once, there. The CLI does not make keys, so that "
+      'a person, not a script or agent, mints each long-lived credential. '
+      'Without a terminal (or with --json) it fails with the page URL. To let '
+      'GitHub Actions sign in without a key, add a trust rule instead.';
 
   @override
   Future<int> run() async {
@@ -38,11 +43,9 @@ class ServiceAccountKeysCreateCommand extends ShorebirdCommand
     if (errorCode != null) return errorCode;
     final account = resolved!.account;
 
-    return reportError(
-      message:
-          'Make keys for "${account.name}" in the console, which shows each '
-          "key's secret once; the CLI does not make them.",
-      hint: 'Open ${serviceAccountConsoleUri(account)}',
+    return finishInConsole(
+      action: 'make keys for service account "${account.name}"',
+      url: serviceAccountConsoleUri(account),
     );
   }
 }

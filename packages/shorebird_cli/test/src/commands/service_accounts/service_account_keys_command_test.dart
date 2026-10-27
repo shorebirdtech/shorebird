@@ -96,7 +96,7 @@ void main() {
       );
       verify(
         () => context.logger.err(
-          'Name the key to revoke: shorebird service-accounts keys revoke '
+          'Name the key to revoke: shorebird orgs service-accounts keys revoke '
           'release-bot <key id>.',
         ),
       ).called(1);
@@ -225,7 +225,7 @@ void main() {
   });
 
   group(ServiceAccountKeysCreateCommand, () {
-    test('points at the console and exits 64 without a request', () async {
+    test('without a terminal, fails with the console page', () async {
       const consoleUrl =
           'https://console.shorebird.dev/orgs/42/settings/service-accounts/383';
       final (:exitCode, :json) = await captureJson(
@@ -235,13 +235,15 @@ void main() {
           '42',
         ], json: true),
       );
-      expect(exitCode, ExitCode.usage.code);
+      expect(exitCode, ExitCode.unavailable.code);
       expect(json['error'], {
-        'code': 'usage_error',
+        'code': 'console_required',
         'message':
-            'Make keys for "release-bot" in the console, which shows each '
-            "key's secret once; the CLI does not make them.",
-        'hint': 'Open $consoleUrl',
+            'The Shorebird CLI does not make keys for service account '
+            '"release-bot"; you do it in the Shorebird console.',
+        'hint':
+            'Open $consoleUrl in a browser to make keys for service account '
+            '"release-bot".',
       });
       verifyNever(
         () => context.wrapper.getServiceAccountKeys(

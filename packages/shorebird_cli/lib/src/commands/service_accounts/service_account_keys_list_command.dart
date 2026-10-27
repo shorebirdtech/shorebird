@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template service_account_keys_list_command}
-/// `shorebird service-accounts keys list <name or id>`
+/// `shorebird orgs service-accounts keys list <name or id>`
 /// List a service account's unrevoked keys.
 /// {@endtemplate}
 class ServiceAccountKeysListCommand extends ShorebirdCommand
@@ -23,10 +23,10 @@ class ServiceAccountKeysListCommand extends ShorebirdCommand
 
   @override
   String get invocation =>
-      'shorebird service-accounts keys list <service account name or id>';
+      'shorebird orgs service-accounts keys list <service account name or id>';
 
   @override
-  String get commandLine => 'shorebird service-accounts keys list';
+  String get commandLine => 'shorebird orgs service-accounts keys list';
 
   @override
   String get description =>
@@ -36,7 +36,8 @@ class ServiceAccountKeysListCommand extends ShorebirdCommand
       '  12  ci  created 2026-10-01  expires 2027-10-01  '
       'last used 2026-10-20\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird service-accounts keys list release-bot --org-id 42 --json',
+        'shorebird orgs service-accounts keys list release-bot --org-id 42 '
+        '--json',
       )}';
 
   @override

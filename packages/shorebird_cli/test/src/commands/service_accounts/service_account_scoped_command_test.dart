@@ -84,7 +84,8 @@ void main() {
         );
         verify(
           () => context.logger.info(
-            'Pick one by id, e.g. shorebird service-accounts delete id:383',
+            'Pick one by id, e.g. shorebird orgs service-accounts delete '
+            'id:383',
           ),
         ).called(1);
       });
@@ -151,7 +152,7 @@ void main() {
       );
       verify(
         () => context.logger.err(
-          'Name the service account: shorebird service-accounts get '
+          'Name the service account: shorebird orgs service-accounts get '
           '<name or id>.',
         ),
       ).called(1);
@@ -190,7 +191,7 @@ void main() {
       verify(
         () => context.logger.info(
           '"Acme Corp" has no service accounts. Create one with shorebird '
-          'service-accounts create <name>.',
+          'orgs service-accounts create <name>.',
         ),
       ).called(1);
     });

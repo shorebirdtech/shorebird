@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template service_accounts_delete_command}
-/// `shorebird service-accounts delete <name or id>`
+/// `shorebird orgs service-accounts delete <name or id>`
 /// Delete a service account, with its keys and trust rules.
 /// {@endtemplate}
 class ServiceAccountsDeleteCommand extends ShorebirdCommand
@@ -23,10 +23,11 @@ class ServiceAccountsDeleteCommand extends ShorebirdCommand
   String get name => 'delete';
 
   @override
-  String get invocation => 'shorebird service-accounts delete <name or id>';
+  String get invocation =>
+      'shorebird orgs service-accounts delete <name or id>';
 
   @override
-  String get commandLine => 'shorebird service-accounts delete';
+  String get commandLine => 'shorebird orgs service-accounts delete';
 
   @override
   String get description =>
@@ -35,7 +36,7 @@ class ServiceAccountsDeleteCommand extends ShorebirdCommand
       'Example output:\n'
       '  Deleted service account "release-bot".\n\n'
       '${ShorebirdCommand.jsonHint(
-        'shorebird service-accounts delete release-bot --org-id 42 --yes '
+        'shorebird orgs service-accounts delete release-bot --org-id 42 --yes '
         '--json',
       )}';
 
