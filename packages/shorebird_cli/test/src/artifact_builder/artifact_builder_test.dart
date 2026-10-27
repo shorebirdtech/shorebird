@@ -172,7 +172,7 @@ void main() {
 
           verify(
             () => logger.warn('''
-Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
+After the build, `flutter pub get` with the Flutter on your PATH failed. You may see unexpected behavior in VS Code.
 
 Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCodeUrl.toLink()}.
 '''),
