@@ -62,14 +62,18 @@ class AuthTokenCommand extends ShorebirdCommand {
     // print a short-lived session token for those: it would fail in CI later.
     if (results.rest.isNotEmpty) {
       final verb = results.rest.first;
+      final tokensCommand =
+          const {'create', 'delete', 'list', 'revoke'}.contains(verb)
+          ? 'shorebird tokens $verb'
+          : 'shorebird tokens';
       return reportError(
         message:
-            'shorebird auth token takes no arguments; it prints the access '
-            'token for this session, which expires soon.',
-        hint: const {'create', 'delete', 'list', 'revoke'}.contains(verb)
-            ? 'API keys (for SHOREBIRD_TOKEN in CI) are managed with '
-                  '`shorebird tokens $verb`.'
-            : 'Run `shorebird auth token` with no arguments.',
+            'shorebird auth token takes no arguments; it prints the token '
+            'this session sends, which is short-lived unless it is an API '
+            'key.',
+        hint:
+            'API keys (for $shorebirdTokenEnvVar in CI) are managed with '
+            '`$tokensCommand`.',
       );
     }
 

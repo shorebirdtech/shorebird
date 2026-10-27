@@ -87,9 +87,13 @@ void main() {
         );
       });
 
-      test('says it takes no arguments for anything else', () async {
-        final error = await runWithRest(['print']);
-        expect(error['hint'], 'Run `shorebird auth token` with no arguments.');
+      test('points anything else at shorebird tokens', () async {
+        final error = await runWithRest(['generate']);
+        expect(
+          error['hint'],
+          'API keys (for SHOREBIRD_TOKEN in CI) are managed with '
+          '`shorebird tokens`.',
+        );
       });
     });
 
