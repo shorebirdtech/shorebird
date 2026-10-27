@@ -21,8 +21,6 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 Say a GitHub OIDC 5xx is GitHub's error, not a permissions problem
 - 🐛 Say a GitHub OIDC refusal is a rejected request token, not missing
   permissions
-- 🐛 Look up the ios-framework codesign identity after regenerating .ios/
-- 🐛 Put ccache in front of the Android C/C++ compiler
 - 🐛 Activate DD only where the base already did
 - 🐛 Skip PcOffsetOf's bound for discarded code in every build
 - 🐛 Match test names exactly; 'Prefix*' selects a group
