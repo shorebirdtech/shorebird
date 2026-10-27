@@ -76,13 +76,14 @@ void main() {
     });
 
     test('fails with the URL under --json and sends no request', () async {
+      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       final (:exitCode, :json) = await captureJson(
         () => runWithOverrides(command.run, jsonMode: true),
       );
       expect(exitCode, equals(ExitCode.unavailable.code));
       final error = json['error'] as Map<String, dynamic>;
       expect(error['code'], 'console_required');
-      expect(error['message'], contains('$url'));
+      expect(error['hint'], contains('$url'));
       verifyNever(() => browser.open(any()));
       verifyZeroInteractions(codePushClientWrapper);
     });
