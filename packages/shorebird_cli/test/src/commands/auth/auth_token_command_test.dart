@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -20,6 +21,7 @@ void main() {
   group(AuthTokenCommand, () {
     final expiresAt = DateTime.utc(2026, 10, 17, 1);
 
+    late ArgResults argResults;
     late Auth auth;
     late ShorebirdLogger logger;
     late ShorebirdValidator shorebirdValidator;
@@ -41,7 +43,9 @@ void main() {
       auth = MockAuth();
       logger = MockShorebirdLogger();
       shorebirdValidator = MockShorebirdValidator();
-      command = AuthTokenCommand();
+      argResults = MockArgResults();
+      when(() => argResults.rest).thenReturn([]);
+      command = AuthTokenCommand()..testArgResults = argResults;
 
       when(() => logger.level).thenReturn(Level.info);
       when(
@@ -59,6 +63,34 @@ void main() {
       expect(command.aliases, equals(['print-access-token']));
       expect(command.reservesStdout, isTrue);
       expect(command.description, contains('secret'));
+    });
+
+    group('with arguments', () {
+      Future<Map<String, dynamic>> runWithRest(List<String> rest) async {
+        when(() => argResults.rest).thenReturn(rest);
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, json: true),
+        );
+        expect(exitCode, equals(ExitCode.usage.code));
+        verifyNever(() => auth.accessToken());
+        expect(json, isNot(contains('data')));
+        return json['error'] as Map<String, dynamic>;
+      }
+
+      test('points API key verbs at shorebird tokens', () async {
+        final error = await runWithRest(['create']);
+        expect(error['message'], contains('takes no arguments'));
+        expect(
+          error['hint'],
+          'API keys (for SHOREBIRD_TOKEN in CI) are managed with '
+          '`shorebird tokens create`.',
+        );
+      });
+
+      test('says it takes no arguments for anything else', () async {
+        final error = await runWithRest(['print']);
+        expect(error['hint'], 'Run `shorebird auth token` with no arguments.');
+      });
     });
 
     test('returns the precondition exit code when not authenticated', () async {
