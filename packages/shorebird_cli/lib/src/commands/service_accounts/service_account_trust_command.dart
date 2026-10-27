@@ -2,7 +2,7 @@ import 'package:shorebird_cli/src/commands/service_accounts/service_accounts.dar
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// {@template service_account_trust_command}
-/// `shorebird service-accounts trust`
+/// `shorebird orgs service-accounts trust`
 /// Commands for the GitHub Actions workflows a service account trusts.
 /// {@endtemplate}
 class ServiceAccountTrustCommand extends ShorebirdCommand {

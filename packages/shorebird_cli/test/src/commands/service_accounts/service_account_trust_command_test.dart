@@ -55,7 +55,7 @@ void main() {
         '42',
       ]);
       const message =
-          '"release-bot" trusts no workflows. Add one with shorebird '
+          '"release-bot" trusts no workflows. Add one with shorebird orgs '
           'service-accounts trust add release-bot --github-repo '
           '<owner>/<repo> --workflow <file>.';
       expect(context.infoLines, [message]);
