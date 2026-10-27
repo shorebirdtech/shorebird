@@ -1,9 +1,11 @@
-# A copy of the public Shorebird CodePush API spec, the one served at
-# https://api.shorebird.dev/openapi.yaml. This package is generated from
-# it by tool/gen.dart. A CLI change that needs a new field or operation
-# adds it here and regenerates, in the same PR. The server's spec is the
-# source of truth: CI on the server side fails if this copy says anything
-# the server's spec doesn't, so add only what the server already serves.
+# A copy of the public Shorebird CodePush API spec (the one served at
+# https://api.shorebird.dev/openapi.yaml), or a subset of it. This package
+# is generated from it by tool/gen.dart. The server's spec is the source
+# of truth: the server's CI fails when this copy says anything the
+# server's public spec doesn't. So a CLI change that needs a field or
+# operation the server already serves adds it here and regenerates in the
+# same PR, and when the server stops publishing something, it is removed
+# here first.
 #
 # cspell:words httpapi rollfoward SIEM undercount
 openapi: 3.1.0

@@ -8,8 +8,10 @@
 // shared messages stay flat in `lib/src/messages/`.
 //
 // Generates from this package's copy of the public API spec,
-// `openapi.yaml`. Usage (from the repo root, no arguments):
+// `openapi.yaml`. Usage (from anywhere, no arguments):
 //   dart run packages/shorebird_code_push_protocol/tool/gen.dart
+// Extra arguments are passed through to space_gen and win over the
+// defaults, so `-i <spec>` generates from another spec instead.
 //
 // The generator does not touch `lib/extensions/`, `test/src/` or
 // `lib/shorebird_code_push_protocol.dart`; those are hand-written and
@@ -26,6 +28,8 @@
 // generated file before running, so the run's `dart fix` resolves the
 // new types. Without it, fix strips the `!` from their round-trip
 // tests and only a second run puts it back.
+
+import 'dart:io';
 
 import 'package:space_gen/space_gen.dart';
 
@@ -129,8 +133,8 @@ class ShorebirdFileRenderer extends FileRenderer {
   }
 }
 
-/// This package, relative to the repo root.
-const _package = 'packages/shorebird_code_push_protocol';
+/// This package's directory, found from this script's location.
+final _package = File.fromUri(Platform.script).parent.parent.path;
 
 Future<int> main(List<String> arguments) => runCli([
   '-i',
