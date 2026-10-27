@@ -1015,6 +1015,37 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
 
+        group('maybeGetOrganizationUsage', () {
+          test('returns null when the role may not see usage', () async {
+            when(
+              () => codePushClient.getOrganizationUsage(organizationId: 42),
+            ).thenThrow(CodePushForbiddenException(message: 'no'));
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.maybeGetOrganizationUsage(
+                  organizationId: 42,
+                ),
+              ),
+              completion(isNull),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('exits on any other failure', () async {
+            when(
+              () => codePushClient.getOrganizationUsage(organizationId: 42),
+            ).thenThrow(const CodePushException(message: 'boom'));
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.maybeGetOrganizationUsage(
+                  organizationId: 42,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
         test('getOrganizationUsage returns the usage', () async {
           const usage = GetUsageResponse(
             apps: [],

@@ -1,5 +1,5 @@
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/commands/audit_log/audit_log_filters.dart';
+import 'package:shorebird_cli/src/commands/orgs/audit_log/audit_log_filters.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template audit_log_list_command}
-/// `shorebird audit-log list`
+/// `shorebird orgs audit-log list`
 /// Show one page of an organization's audit log.
 /// {@endtemplate}
 class AuditLogListCommand extends ShorebirdCommand
@@ -27,13 +27,17 @@ class AuditLogListCommand extends ShorebirdCommand
   String get name => 'list';
 
   @override
+  String get invocation => 'shorebird orgs audit-log list [<org-id>]';
+
+  @override
   String get description =>
       "Shows one page of an organization's audit log, newest first.\n\n"
       'Example output (time  event  actor  resources):\n'
       '  2026-10-20 14:03:22Z  organization.rename  alice@acme.com (id: 12)  '
       'organization:42\n\n'
-      'For every page, as OCSF events, run `shorebird audit-log export`.\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird audit-log --org-id 42 --json')}';
+      'For every page, as OCSF events, run '
+      '`shorebird orgs audit-log export`.\n\n'
+      '${ShorebirdCommand.jsonHint('shorebird orgs audit-log 42 --json')}';
 
   @override
   Future<int> run() async {
@@ -47,7 +51,9 @@ class AuditLogListCommand extends ShorebirdCommand
     final (:filters, :error) = parseFilters();
     if (error != null) return reportError(message: error);
 
-    final (:membership, :errorCode) = await resolveOrganization();
+    final (:membership, :errorCode) = await resolveOrganizationFromArguments(
+      example: 'shorebird orgs audit-log list <org-id>',
+    );
     if (errorCode != null) return errorCode;
     final organizationId = membership!.organization.id;
 

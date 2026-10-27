@@ -453,6 +453,39 @@ Engine • revision $shorebirdEngineRevision'''),
         expect(parent.child.ran, isFalse);
       });
 
+      test('is added before a positional argument', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', 'extra']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('reaches orgs audit-log list with options or an org id', () {
+        expect(
+          commandRunner.withDefaultSubcommand([
+            'orgs',
+            'audit-log',
+            '--org-id',
+            '42',
+          ]),
+          ['orgs', 'audit-log', 'list', '--org-id', '42'],
+        );
+        expect(
+          commandRunner.withDefaultSubcommand(['orgs', 'audit-log', '42']),
+          ['orgs', 'audit-log', 'list', '42'],
+        );
+        expect(
+          commandRunner.withDefaultSubcommand(['audit-log', '--start', 'x']),
+          ['audit-log', 'list', '--start', 'x'],
+        );
+      });
+
+      test('leaves a named subcommand alone', () {
+        final args = ['orgs', 'audit-log', 'export', '42'];
+        expect(commandRunner.withDefaultSubcommand(args), args);
+      });
+
       test('is not added after --', () async {
         await runWithOverrides(() => commandRunner.run(['parent', '--']));
         expect(parent.child.ran, isFalse);

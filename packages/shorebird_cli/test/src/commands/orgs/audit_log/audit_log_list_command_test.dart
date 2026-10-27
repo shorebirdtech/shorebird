@@ -6,7 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/audit_log/audit_log.dart';
+import 'package:shorebird_cli/src/commands/orgs/audit_log/audit_log.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -14,8 +14,8 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-import '../../helpers.dart';
-import '../../mocks.dart';
+import '../../../helpers.dart';
+import '../../../mocks.dart';
 import 'audit_log_test_helpers.dart';
 
 void main() {
@@ -96,6 +96,18 @@ void main() {
       ).called(1);
     });
 
+    test('takes the org id as an argument', () async {
+      stubOption('org-id', null);
+      when(() => argResults.rest).thenReturn(['42']);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
+      verify(
+        () => codePushClientWrapper.getOrganizationAuditLogs(
+          organizationId: 42,
+          order: AuditLogOrder.desc,
+        ),
+      ).called(1);
+    });
+
     test('names Shorebird staff without an id', () async {
       stubAuditLogPages(codePushClientWrapper, {
         null: GetOrganizationAuditLogsResponse(
@@ -137,7 +149,7 @@ void main() {
       await runWithOverrides(command.run);
       verify(
         () => logger.info(
-          'Next page: shorebird audit-log list --org-id 42 '
+          'Next page: shorebird orgs audit-log list --org-id 42 '
           '--event organization.rename --start 2026-10-01 --limit 5 '
           '--cursor abc',
         ),

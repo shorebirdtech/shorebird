@@ -6,7 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/audit_log/audit_log.dart';
+import 'package:shorebird_cli/src/commands/orgs/audit_log/audit_log.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -14,8 +14,8 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-import '../../helpers.dart';
-import '../../mocks.dart';
+import '../../../helpers.dart';
+import '../../../mocks.dart';
 import 'audit_log_test_helpers.dart';
 
 void main() {
@@ -164,7 +164,7 @@ void main() {
         expect(
           stderr,
           contains(
-            'To export newer entries later: shorebird audit-log export '
+            'To export newer entries later: shorebird orgs audit-log export '
             '--org-id 42 --start 2026-10-01 --order asc --cursor p2',
           ),
         );
@@ -205,7 +205,7 @@ void main() {
           stderr,
           contains(
             'The 1 entries before the failure were written. To continue '
-            'after them: shorebird audit-log export --org-id 42 '
+            'after them: shorebird orgs audit-log export --org-id 42 '
             '--format jsonl --cursor p2',
           ),
         );

@@ -231,6 +231,22 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches usage as [getOrganizationUsage] does, or null when the user's
+  /// role may not see it (the auditor role).
+  Future<GetUsageResponse?> maybeGetOrganizationUsage({
+    required int organizationId,
+  }) {
+    return _withProgress('Fetching usage', () async {
+      try {
+        return await codePushClient.getOrganizationUsage(
+          organizationId: organizationId,
+        );
+      } on CodePushForbiddenException {
+        return null;
+      }
+    });
+  }
+
   /// Finds which of [memberships]' organizations app [appId] is in, or null
   /// if none of them lists it.
   ///

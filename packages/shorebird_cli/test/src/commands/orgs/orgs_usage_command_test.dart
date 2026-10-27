@@ -4,6 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/account/account.dart';
+import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -18,7 +19,7 @@ import '../../mocks.dart';
 void main() {
   useTempWorkingDirectory();
 
-  group(UsageCommand, () {
+  group(OrgsUsageCommand, () {
     final membership = OrganizationMembership(
       organization: Organization(
         id: 42,
@@ -64,7 +65,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdLogger logger;
     late ShorebirdValidator shorebirdValidator;
-    late UsageCommand command;
+    late OrgsUsageCommand command;
 
     R runWithOverrides<R>(R Function() body, {bool json = false}) {
       return runScoped(
@@ -92,7 +93,8 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       when(() => shorebirdEnv.hostedEnvironment).thenReturn(null);
       shorebirdValidator = MockShorebirdValidator();
-      command = runWithOverrides(UsageCommand.new)..testArgResults = argResults;
+      command = runWithOverrides(OrgsUsageCommand.new)
+        ..testArgResults = argResults;
 
       when(() => argResults['org-id']).thenReturn('42');
       when(() => argResults.rest).thenReturn([]);
@@ -107,9 +109,21 @@ void main() {
       returnUsage(usage());
     });
 
-    test('is under account, and hidden at the top level', () {
-      expect(AccountCommand().subcommands['usage'], isA<UsageCommand>());
+    test('is under orgs, and hidden under account and the top level', () {
+      expect(OrgsCommand().subcommands['usage'], isA<OrgsUsageCommand>());
+      final accountUsage = AccountCommand().subcommands['usage'];
+      expect(accountUsage, isA<AccountUsageCommand>());
+      expect(accountUsage!.hidden, isTrue);
       expect(TopLevelUsageCommand().hidden, isTrue);
+    });
+
+    test('takes the org id as an argument', () async {
+      when(() => argResults['org-id']).thenReturn(null);
+      when(() => argResults.rest).thenReturn(['42']);
+      expect(await runWithOverrides(command.run), ExitCode.success.code);
+      verify(
+        () => codePushClientWrapper.getOrganizationUsage(organizationId: 42),
+      ).called(1);
     });
 
     test('shows installs against the plan and each app', () async {

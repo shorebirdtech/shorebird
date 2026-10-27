@@ -1,16 +1,16 @@
-import 'package:shorebird_cli/src/commands/audit_log/audit_log.dart';
+import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
 import 'package:test/test.dart';
 
-import '../../helpers.dart';
+import '../../../helpers.dart';
 
 void main() {
   useTempWorkingDirectory();
 
-  group(AuditLogCommand, () {
-    late AuditLogCommand command;
+  group(OrgsAuditLogCommand, () {
+    late OrgsAuditLogCommand command;
 
     setUp(() {
-      command = AuditLogCommand();
+      command = OrgsAuditLogCommand();
     });
 
     test('lists and exports', () {
@@ -23,6 +23,14 @@ void main() {
 
     test('accepts the spellings agents guess', () {
       expect(command.aliases, ['audit-logs', 'audit']);
+    });
+
+    test('is under orgs, and hidden at the top level', () {
+      expect(
+        OrgsCommand().subcommands['audit-log'],
+        isA<OrgsAuditLogCommand>(),
+      );
+      expect(TopLevelAuditLogCommand().hidden, isTrue);
     });
 
     test("doesn't name a plan", () {

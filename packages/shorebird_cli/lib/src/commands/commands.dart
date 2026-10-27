@@ -2,7 +2,6 @@ export 'account/account.dart';
 export 'api_command.dart';
 export 'app_scoped_command.dart';
 export 'apps/apps.dart';
-export 'audit_log/audit_log.dart';
 export 'auth/auth.dart';
 export 'cache/cache.dart';
 export 'channels/channels.dart';
