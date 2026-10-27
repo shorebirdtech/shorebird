@@ -1141,7 +1141,7 @@ class PublishedPatch {
   final Release release;
 
   /// The patch as the server created it.
-  final Patch patch;
+  final CreatePatchResponse patch;
 
   /// The share of Dart code linked against the release, as a percentage,
   /// where the platform reports one.

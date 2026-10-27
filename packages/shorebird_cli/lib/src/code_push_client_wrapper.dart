@@ -1077,7 +1077,7 @@ $name artifact already exists, continuing...''');
 
   /// Creates a patch for the given [appId], [releaseId], and [metadata].
   @visibleForTesting
-  Future<Patch> createPatch({
+  Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1096,7 +1096,7 @@ $name artifact already exists, continuing...''');
   @visibleForTesting
   Future<void> createPatchArtifacts({
     required String appId,
-    required Patch patch,
+    required CreatePatchResponse patch,
     required ReleasePlatform platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
@@ -1203,7 +1203,7 @@ $name artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].
-  Future<Patch> publishPatch({
+  Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,

@@ -32,7 +32,6 @@ export 'package:shorebird_code_push_protocol/src/messages/create_service_account
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_key/create_service_account_key_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_key/create_service_account_key_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_trust_rule/create_service_account_trust_rule_request.dart';
-export 'package:shorebird_code_push_protocol/src/messages/create_user/create_user_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/delete_user_in_progress_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/error_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_active_hours/get_active_hours_response.dart';
@@ -127,7 +126,6 @@ export 'package:shorebird_code_push_protocol/src/models/organization.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization_membership.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization_type.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization_user.dart';
-export 'package:shorebird_code_push_protocol/src/models/patch.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_adoption_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_adoption_point.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';

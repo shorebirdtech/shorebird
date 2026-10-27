@@ -284,7 +284,7 @@ void main() {
           artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
         ),
-      ).thenAnswer((_) async => const Patch(id: 3, number: 2));
+      ).thenAnswer((_) async => const CreatePatchResponse(id: 3, number: 2));
 
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
