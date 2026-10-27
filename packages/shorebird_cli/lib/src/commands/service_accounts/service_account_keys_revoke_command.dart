@@ -17,7 +17,7 @@ class ServiceAccountKeysRevokeCommand extends ShorebirdCommand
     with ConfirmDelete, OrganizationScopedCommand, ServiceAccountScopedCommand {
   /// {@macro service_account_keys_revoke_command}
   ServiceAccountKeysRevokeCommand() {
-    addConfirmDeleteOptions();
+    addConfirmDeleteOptions(deprecatedConfirmName: false);
     addOrganizationScopeOption();
   }
 
@@ -36,6 +36,9 @@ class ServiceAccountKeysRevokeCommand extends ShorebirdCommand
   String get commandLine => 'shorebird service-accounts keys revoke';
 
   @override
+  int get maxArguments => 2;
+
+  @override
   String get description =>
       "Revokes one of a service account's API keys. It stops signing in at "
       'once.\n\n'
@@ -49,9 +52,7 @@ class ServiceAccountKeysRevokeCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     final rest = results.rest;
-    final (:resolved, :errorCode) = await resolveServiceAccount(
-      rest.firstOrNull,
-    );
+    final (:resolved, :errorCode) = await resolveServiceAccount();
     if (errorCode != null) return errorCode;
     final account = resolved!.account;
 
@@ -76,7 +77,8 @@ class ServiceAccountKeysRevokeCommand extends ShorebirdCommand
                 '${keys.map((k) => '${k.id} ("${k.name}")').join(', ')}.';
       return reportError(
         message: keyIdArg == null
-            ? 'Name the key to revoke: $commandLine ${account.name} <key id>.'
+            ? 'Name the key to revoke: $commandLine '
+                  '${shellQuote(account.name)} <key id>.'
             : '"${account.name}" has no key $keyIdArg.',
         hint: hint,
       );

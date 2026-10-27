@@ -89,6 +89,20 @@ void main() {
       ).called(2);
     });
 
+    test('trims the name', () async {
+      await context.runCommand(ServiceAccountsCreateCommand(), [
+        ' release-bot ',
+        '--org-id',
+        '42',
+      ]);
+      verify(
+        () => context.wrapper.createServiceAccount(
+          organizationId: 42,
+          name: 'release-bot',
+        ),
+      ).called(1);
+    });
+
     test('rejects a blank name', () async {
       expect(
         await context.runCommand(ServiceAccountsCreateCommand(), [' ']),

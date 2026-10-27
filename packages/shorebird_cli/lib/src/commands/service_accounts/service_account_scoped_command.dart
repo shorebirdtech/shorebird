@@ -23,8 +23,12 @@ typedef ResolvedServiceAccount = ({
   ServiceAccount account,
 });
 
-/// Finds a service account, named by its name or id, in the organization an
-/// [OrganizationScopedCommand] picks.
+/// The prefix that names a service account by id alone, as in `id:383`, for
+/// when a number is also another account's name.
+const serviceAccountIdPrefix = 'id:';
+
+/// Finds a service account, named by its name or id as the first argument,
+/// in the organization an [OrganizationScopedCommand] picks.
 ///
 /// Call [addOrganizationScopeOption] from the command's constructor, then
 /// [resolveServiceAccount] from `run`.
@@ -34,15 +38,36 @@ mixin ServiceAccountScopedCommand
   /// error messages, e.g. `shorebird service-accounts get`.
   String get commandLine;
 
-  /// Picks the organization, then finds service account [nameOrId] in it.
+  /// How many arguments the command takes, the service account included.
+  int get maxArguments => 1;
+
+  /// Picks the organization, then finds the service account the first
+  /// argument names: by name or id, or by id alone with `id:<id>`.
   ///
-  /// When [nameOrId] is null, or names no service account, reports that with
-  /// the organization's service accounts as the hint.
+  /// Fails before any request when there are more than [maxArguments]
+  /// arguments. Fails, listing the organization's service accounts, when the
+  /// argument is missing, matches none, or matches more than one (an id and
+  /// another account's name, or a name two accounts share), so a command
+  /// never acts on an account the user didn't mean.
   ///
   /// Returns `(resolved: <account>, errorCode: null)` on success, or
   /// `(resolved: null, errorCode: <code>)` once the failure is reported.
   Future<({ResolvedServiceAccount? resolved, int? errorCode})>
-  resolveServiceAccount(String? nameOrId) async {
+  resolveServiceAccount() async {
+    final rest = results.rest;
+    if (rest.length > maxArguments) {
+      return (
+        resolved: null,
+        errorCode: reportError(
+          message:
+              'Too many arguments: '
+              '${rest.map(shellQuote).join(' ')}.',
+          hint: 'Usage: $invocation',
+        ),
+      );
+    }
+    final nameOrId = rest.firstOrNull;
+
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return (resolved: null, errorCode: errorCode);
     final organization = membership!.organization;
@@ -62,7 +87,7 @@ mixin ServiceAccountScopedCommand
         ? '"${organization.name}" has no service accounts. Create one with '
               'shorebird service-accounts create <name>.'
         : 'Service accounts in "${organization.name}": '
-              '${accounts.map((a) => '${a.name} (id: ${a.id})').join(', ')}.';
+              '${accounts.map(_describe).join(', ')}.';
 
     if (nameOrId == null) {
       return (
@@ -74,11 +99,33 @@ mixin ServiceAccountScopedCommand
       );
     }
 
-    final id = int.tryParse(nameOrId);
-    final account =
-        accounts.firstWhereOrNull((a) => a.name == nameOrId) ??
-        accounts.firstWhereOrNull((a) => a.id == id);
-    if (account == null) {
+    final List<ServiceAccount> matches;
+    if (nameOrId.startsWith(serviceAccountIdPrefix)) {
+      final id = int.tryParse(
+        nameOrId.substring(serviceAccountIdPrefix.length),
+      );
+      matches = accounts.where((a) => a.id == id).toList();
+    } else {
+      final id = int.tryParse(nameOrId);
+      matches = accounts
+          .where((a) => a.name == nameOrId || a.id == id)
+          .toList();
+    }
+
+    if (matches.length > 1) {
+      return (
+        resolved: null,
+        errorCode: reportError(
+          message:
+              '"$nameOrId" matches ${matches.length} service accounts in '
+              '"${organization.name}": ${matches.map(_describe).join(', ')}.',
+          hint:
+              'Pick one by id, e.g. $commandLine '
+              '$serviceAccountIdPrefix${matches.first.id}',
+        ),
+      );
+    }
+    if (matches.isEmpty) {
       return (
         resolved: null,
         errorCode: reportError(
@@ -90,10 +137,21 @@ mixin ServiceAccountScopedCommand
       );
     }
     return (
-      resolved: (membership: membership, account: account),
+      resolved: (membership: membership, account: matches.single),
       errorCode: null,
     );
   }
+
+  /// [account]'s name (quoted for a shell when needed) and id.
+  String _describe(ServiceAccount account) =>
+      '${shellQuote(account.name)} (id: ${account.id})';
+}
+
+/// [value], single-quoted when a shell would split or expand it, so a
+/// command built from it runs when pasted.
+String shellQuote(String value) {
+  if (RegExp(r'^[A-Za-z0-9_@%+=:,./-]+$').hasMatch(value)) return value;
+  return "'${value.replaceAll("'", r"'\''")}'";
 }
 
 /// [time]'s UTC calendar date, as YYYY-MM-DD, or [none] when null.

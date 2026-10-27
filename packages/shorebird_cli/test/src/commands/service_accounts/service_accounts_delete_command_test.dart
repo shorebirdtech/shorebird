@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart';
 import 'package:shorebird_cli/src/commands/service_accounts/service_accounts.dart';
 import 'package:test/test.dart';
 
@@ -73,6 +74,47 @@ void main() {
           hint: any(named: 'hint'),
         ),
       ).called(1);
+    });
+
+    test(
+      '--json without --yes reports one error and deletes nothing',
+      () async {
+        final (:exitCode, :json) = await captureJson(
+          () => context.runCommand(ServiceAccountsDeleteCommand(), [
+            'release-bot',
+            '--org-id',
+            '42',
+          ], json: true),
+        );
+        expect(exitCode, ExitCode.usage.code);
+        expect((json['error'] as Map)['message'], yesRequiredMessage);
+        verifyNever(
+          () => context.wrapper.deleteServiceAccount(
+            organizationId: any(named: 'organizationId'),
+            serviceAccountId: any(named: 'serviceAccountId'),
+          ),
+        );
+      },
+    );
+
+    test('rejects a second service account before any request', () async {
+      expect(
+        await context.runCommand(ServiceAccountsDeleteCommand(), [
+          'old-bot',
+          'other bot',
+          '--yes',
+        ]),
+        ExitCode.usage.code,
+      );
+      verify(
+        () => context.logger.err("Too many arguments: old-bot 'other bot'."),
+      ).called(1);
+      verify(
+        () => context.logger.info(
+          'Usage: shorebird service-accounts delete <name or id>',
+        ),
+      ).called(1);
+      verifyNever(() => context.wrapper.getOrganizationMemberships());
     });
 
     test('--json emits what it deleted', () async {

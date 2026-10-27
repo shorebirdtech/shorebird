@@ -50,8 +50,8 @@ class ServiceAccountsCreateCommand extends ShorebirdCommand
             'shorebird service-accounts create release-bot.',
       );
     }
-    final accountName = rest.single;
-    if (accountName.trim().isEmpty) {
+    final accountName = rest.single.trim();
+    if (accountName.isEmpty) {
       return reportError(message: 'Service account name must not be blank.');
     }
     final roleArg = results['role'] as String?;

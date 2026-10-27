@@ -26,25 +26,23 @@ class ServiceAccountKeysCreateCommand extends ShorebirdCommand
 
   @override
   String get description =>
-      "Prints the console page where a service account's keys are made. "
-      'The CLI does not make keys, so that a person, not a script or agent, '
-      'mints each long-lived credential. To let GitHub Actions sign in '
-      'without a key, add a trust rule instead.';
+      "Prints the console page where a service account's keys are made, and "
+      "exits 64. The key's secret is shown once, there. The CLI does not make "
+      'keys, so that a person, not a script or agent, mints each long-lived '
+      'credential. To let GitHub Actions sign in without a key, add a trust '
+      'rule instead.';
 
   @override
   Future<int> run() async {
-    final (:resolved, :errorCode) = await resolveServiceAccount(
-      results.rest.firstOrNull,
-    );
+    final (:resolved, :errorCode) = await resolveServiceAccount();
     if (errorCode != null) return errorCode;
     final account = resolved!.account;
 
     return reportError(
       message:
-          'Make keys for "${account.name}" in the console; the CLI does not '
-          'make them.',
+          'Make keys for "${account.name}" in the console, which shows each '
+          "key's secret once; the CLI does not make them.",
       hint: 'Open ${serviceAccountConsoleUri(account)}',
-      exitCode: 1,
     );
   }
 }

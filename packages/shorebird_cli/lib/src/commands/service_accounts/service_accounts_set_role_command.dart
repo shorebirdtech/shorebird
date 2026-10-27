@@ -48,9 +48,7 @@ class ServiceAccountsSetRoleCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     final role = ServiceAccountRole.fromJson(results['role'] as String);
-    final (:resolved, :errorCode) = await resolveServiceAccount(
-      results.rest.firstOrNull,
-    );
+    final (:resolved, :errorCode) = await resolveServiceAccount();
     if (errorCode != null) return errorCode;
     final account = resolved!.account;
 

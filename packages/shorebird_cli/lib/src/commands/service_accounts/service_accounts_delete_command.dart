@@ -15,7 +15,7 @@ class ServiceAccountsDeleteCommand extends ShorebirdCommand
     with ConfirmDelete, OrganizationScopedCommand, ServiceAccountScopedCommand {
   /// {@macro service_accounts_delete_command}
   ServiceAccountsDeleteCommand() {
-    addConfirmDeleteOptions();
+    addConfirmDeleteOptions(deprecatedConfirmName: false);
     addOrganizationScopeOption();
   }
 
@@ -41,9 +41,7 @@ class ServiceAccountsDeleteCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    final (:resolved, :errorCode) = await resolveServiceAccount(
-      results.rest.firstOrNull,
-    );
+    final (:resolved, :errorCode) = await resolveServiceAccount();
     if (errorCode != null) return errorCode;
     final account = resolved!.account;
 

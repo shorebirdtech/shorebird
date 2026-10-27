@@ -1,6 +1,8 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart';
 import 'package:shorebird_cli/src/commands/service_accounts/service_accounts.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
@@ -138,6 +140,75 @@ void main() {
       );
     });
 
+    test('revokes nothing when the user declines', () async {
+      when(() => context.env.canAcceptUserInput).thenReturn(true);
+      when(
+        () => context.logger.confirm(any(), hint: any(named: 'hint')),
+      ).thenReturn(false);
+      await expectLater(
+        context.runCommand(ServiceAccountKeysRevokeCommand(), [
+          'release-bot',
+          '12',
+          '--org-id',
+          '42',
+        ]),
+        throwsA(isA<PromptDeclinedExit>()),
+      );
+      verifyNever(
+        () => context.wrapper.revokeServiceAccountKey(
+          organizationId: any(named: 'organizationId'),
+          serviceAccountId: any(named: 'serviceAccountId'),
+          keyId: any(named: 'keyId'),
+        ),
+      );
+    });
+
+    test(
+      '--json without --yes reports one error and revokes nothing',
+      () async {
+        final (:exitCode, :json) = await captureJson(
+          () => context.runCommand(ServiceAccountKeysRevokeCommand(), [
+            'release-bot',
+            '12',
+            '--org-id',
+            '42',
+          ], json: true),
+        );
+        expect(exitCode, ExitCode.usage.code);
+        expect((json['error'] as Map)['message'], yesRequiredMessage);
+        verifyNever(
+          () => context.wrapper.revokeServiceAccountKey(
+            organizationId: any(named: 'organizationId'),
+            serviceAccountId: any(named: 'serviceAccountId'),
+            keyId: any(named: 'keyId'),
+          ),
+        );
+      },
+    );
+
+    test('rejects a third argument before any request', () async {
+      expect(
+        await context.runCommand(ServiceAccountKeysRevokeCommand(), [
+          'release-bot',
+          '12',
+          '13',
+          '--yes',
+        ]),
+        ExitCode.usage.code,
+      );
+      verify(
+        () => context.logger.err('Too many arguments: release-bot 12 13.'),
+      ).called(1);
+      verifyNever(() => context.wrapper.getOrganizationMemberships());
+    });
+
+    test('does not take --confirm-name', () {
+      expect(
+        ServiceAccountKeysRevokeCommand().argParser.options,
+        isNot(contains('confirm-name')),
+      );
+    });
+
     test('--json emits what it revoked', () async {
       final (:exitCode, :json) = await captureJson(
         () => context.runCommand(ServiceAccountKeysRevokeCommand(), [
@@ -154,7 +225,7 @@ void main() {
   });
 
   group(ServiceAccountKeysCreateCommand, () {
-    test('points at the console and exits 1 without a request', () async {
+    test('points at the console and exits 64 without a request', () async {
       const consoleUrl =
           'https://console.shorebird.dev/orgs/42/settings/service-accounts/383';
       final (:exitCode, :json) = await captureJson(
@@ -164,12 +235,12 @@ void main() {
           '42',
         ], json: true),
       );
-      expect(exitCode, 1);
+      expect(exitCode, ExitCode.usage.code);
       expect(json['error'], {
         'code': 'usage_error',
         'message':
-            'Make keys for "release-bot" in the console; the CLI does not '
-            'make them.',
+            'Make keys for "release-bot" in the console, which shows each '
+            "key's secret once; the CLI does not make them.",
         'hint': 'Open $consoleUrl',
       });
       verifyNever(
