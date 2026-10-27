@@ -1,4 +1,4 @@
-// cspell:words xfail XPASS dynsym logcat pidof
+// cspell:words xfail XPASS dynsym logcat pidof oppo
 // ignore_for_file: avoid_print
 
 // End-to-end test of what the updater does when a patch crashes the app at
