@@ -4015,44 +4015,6 @@ void main() {
         });
       });
 
-      group('removeEnterpriseMember', () {
-        test('returns the access removed', () async {
-          respond({
-            'organizations': [
-              {
-                'organization_id': 42,
-                'organization_name': 'Mobile',
-                'role': 'developer',
-              },
-            ],
-            'app_grants': <Object>[],
-            'invitations_revoked': 0,
-            'sessions_revoked': 2,
-            'api_keys_revoked': 1,
-          }, HttpStatus.ok);
-          final removed = await codePushClient.removeEnterpriseMember(
-            enterpriseId: enterpriseId,
-            userId: 9,
-          );
-          expect(removed.organizations.single.organizationName, 'Mobile');
-          expect(removed.sessionsRevoked, 2);
-          final request = requests().single;
-          expect(request.method, 'DELETE');
-          expect(request.url, v1('enterprises/7/members/9'));
-        });
-
-        test('throws on failure', () {
-          respond(errorResponse.toJson(), HttpStatus.conflict);
-          expect(
-            codePushClient.removeEnterpriseMember(
-              enterpriseId: enterpriseId,
-              userId: 9,
-            ),
-            failsWithServerMessage,
-          );
-        });
-      });
-
       test('getEnterpriseServiceAccounts returns every account', () async {
         respond({
           'service_accounts': [

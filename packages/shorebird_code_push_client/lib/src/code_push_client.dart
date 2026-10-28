@@ -1192,25 +1192,6 @@ class CodePushClient {
     }
   }
 
-  /// Removes member [userId] from enterprise [enterpriseId] and every
-  /// organization in it, returning the access removed.
-  Future<RemoveEnterpriseMember200Response> removeEnterpriseMember({
-    required int enterpriseId,
-    required int userId,
-  }) async {
-    final response = await _httpClient.delete(
-      Uri.parse('$_v1/enterprises/$enterpriseId/members/$userId'),
-    );
-
-    if (!response.isSuccess) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-
-    return RemoveEnterpriseMember200Response.fromJson(
-      json.decode(response.body) as Map<String, dynamic>,
-    );
-  }
-
   /// Gets the service accounts of every organization in enterprise
   /// [enterpriseId].
   Future<List<EnterpriseServiceAccount>> getEnterpriseServiceAccounts({
