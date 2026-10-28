@@ -3835,6 +3835,192 @@ void main() {
       });
     });
 
+    group('service accounts', () {
+      const organizationId = 42;
+      const serviceAccountId = 383;
+      final account = ServiceAccount(
+        id: serviceAccountId,
+        organizationId: organizationId,
+        name: 'release-bot',
+        label: 'release-bot[bot]',
+        role: ServiceAccountRole.developer,
+        createdAt: DateTime.utc(2026, 10),
+        createdByUserId: 1,
+        createdByEmail: 'admin@acme.com',
+        lastAuthAt: null,
+      );
+      final key = ServiceAccountKey(
+        id: 12,
+        name: 'ci',
+        createdAt: DateTime.utc(2026, 10),
+        lastUsedAt: null,
+        expiresAt: DateTime.utc(2027, 10),
+        scopes: const [],
+      );
+      const accountPath =
+          'organizations/$organizationId/service-accounts/$serviceAccountId';
+
+      void respondWith(Object? body, int status) {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            body == null
+                ? const Stream.empty()
+                : Stream.value(utf8.encode(json.encode(body))),
+            status,
+          ),
+        );
+      }
+
+      Future<http.Request> sentRequest(Future<Object?> Function() call) async {
+        await call();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        return request;
+      }
+
+      final failingCalls = <String, Future<Object?> Function()>{
+        'getServiceAccounts': () => codePushClient.getServiceAccounts(
+          organizationId: organizationId,
+        ),
+        'createServiceAccount': () => codePushClient.createServiceAccount(
+          organizationId: organizationId,
+          name: 'release-bot',
+        ),
+        'updateServiceAccount': () => codePushClient.updateServiceAccount(
+          organizationId: organizationId,
+          serviceAccountId: serviceAccountId,
+          role: ServiceAccountRole.viewer,
+        ),
+        'deleteServiceAccount': () => codePushClient.deleteServiceAccount(
+          organizationId: organizationId,
+          serviceAccountId: serviceAccountId,
+        ),
+        'getServiceAccountKeys': () => codePushClient.getServiceAccountKeys(
+          organizationId: organizationId,
+          serviceAccountId: serviceAccountId,
+        ),
+        'revokeServiceAccountKey': () => codePushClient.revokeServiceAccountKey(
+          organizationId: organizationId,
+          serviceAccountId: serviceAccountId,
+          keyId: 12,
+        ),
+      };
+      for (final MapEntry(key: name, value: call) in failingCalls.entries) {
+        test('$name throws the server error when the request fails', () {
+          respondWith(errorResponse.toJson(), HttpStatus.failedDependency);
+          expect(
+            call(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                errorResponse.message,
+              ),
+            ),
+          );
+        });
+      }
+
+      test('getServiceAccounts lists the accounts', () async {
+        respondWith(
+          GetServiceAccountsResponse(serviceAccounts: [account]).toJson(),
+          HttpStatus.ok,
+        );
+        late List<ServiceAccount> accounts;
+        final request = await sentRequest(
+          () async => accounts = await codePushClient.getServiceAccounts(
+            organizationId: organizationId,
+          ),
+        );
+        expect(request.method, 'GET');
+        expect(
+          request.url,
+          v1('organizations/$organizationId/service-accounts'),
+        );
+        expect(accounts, [account]);
+      });
+
+      test('createServiceAccount sends the name and role', () async {
+        respondWith(account.toJson(), HttpStatus.created);
+        late ServiceAccount created;
+        final request = await sentRequest(
+          () async => created = await codePushClient.createServiceAccount(
+            organizationId: organizationId,
+            name: 'release-bot',
+            role: ServiceAccountRole.appManager,
+          ),
+        );
+        expect(request.method, 'POST');
+        expect(
+          request.url,
+          v1('organizations/$organizationId/service-accounts'),
+        );
+        expect(json.decode(request.body), {
+          'name': 'release-bot',
+          'role': 'appManager',
+        });
+        expect(created, account);
+      });
+
+      test('updateServiceAccount sends the role', () async {
+        respondWith(account.toJson(), HttpStatus.ok);
+        final request = await sentRequest(
+          () => codePushClient.updateServiceAccount(
+            organizationId: organizationId,
+            serviceAccountId: serviceAccountId,
+            role: ServiceAccountRole.viewer,
+          ),
+        );
+        expect(request.method, 'PATCH');
+        expect(request.url, v1(accountPath));
+        expect(json.decode(request.body), {'role': 'viewer'});
+      });
+
+      test('deleteServiceAccount deletes the account', () async {
+        respondWith(null, HttpStatus.noContent);
+        final request = await sentRequest(
+          () => codePushClient.deleteServiceAccount(
+            organizationId: organizationId,
+            serviceAccountId: serviceAccountId,
+          ),
+        );
+        expect(request.method, 'DELETE');
+        expect(request.url, v1(accountPath));
+      });
+
+      test('getServiceAccountKeys lists the keys', () async {
+        respondWith(
+          GetServiceAccountKeysResponse(keys: [key]).toJson(),
+          HttpStatus.ok,
+        );
+        late List<ServiceAccountKey> keys;
+        final request = await sentRequest(
+          () async => keys = await codePushClient.getServiceAccountKeys(
+            organizationId: organizationId,
+            serviceAccountId: serviceAccountId,
+          ),
+        );
+        expect(request.method, 'GET');
+        expect(request.url, v1('$accountPath/keys'));
+        expect(keys, [key]);
+      });
+
+      test('revokeServiceAccountKey deletes the key', () async {
+        respondWith(null, HttpStatus.noContent);
+        final request = await sentRequest(
+          () => codePushClient.revokeServiceAccountKey(
+            organizationId: organizationId,
+            serviceAccountId: serviceAccountId,
+            keyId: 12,
+          ),
+        );
+        expect(request.method, 'DELETE');
+        expect(request.url, v1('$accountPath/keys/12'));
+      });
+    });
+
     group('getOrganizationApps', () {
       const organizationId = 42;
 
