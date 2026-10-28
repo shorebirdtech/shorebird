@@ -173,6 +173,23 @@ Map<String, Object?> serviceAccountJson(ServiceAccount account) => {
   'last_auth_at': jsonTime(account.lastAuthAt),
 };
 
+/// [account], listed across an enterprise, for `--json` output: the fields
+/// of [serviceAccountJson] the enterprise listing has (no `label`), and its
+/// organization's [organizationName].
+Map<String, Object?> enterpriseServiceAccountJson(
+  EnterpriseServiceAccount account, {
+  required String? organizationName,
+}) => {
+  'id': account.userId,
+  'name': account.name,
+  'role': account.role.value,
+  'organization_id': account.teamId,
+  'organization_name': organizationName,
+  'created_at': jsonTime(account.createdAt),
+  'created_by_email': account.createdByEmail,
+  'last_auth_at': jsonTime(account.lastAuthAt),
+};
+
 /// [key] for `--json` output.
 Map<String, Object?> serviceAccountKeyJson(ServiceAccountKey key) => {
   'id': key.id,

@@ -6,6 +6,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../enterprises/enterprise_fixtures.dart';
 import '../enterprises/enterprise_test_harness.dart';
 import 'service_account_fixtures.dart';
 
@@ -95,6 +96,11 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenAnswer((_) async => [account]);
+      when(
+        () => h.codePushClientWrapper.getEnterpriseOrganizations(
+          enterpriseId: 7,
+        ),
+      ).thenAnswer((_) async => [EnterpriseFixtures.mobile]);
       command = h.run(ServiceAccountsListCommand.new);
     });
 
@@ -111,9 +117,14 @@ void main() {
         allOf(
           startsWith('383  '),
           contains('release-bot'),
-          endsWith('42  developer  2026-10-20'),
+          endsWith('42  Mobile  developer  2026-10-20'),
         ),
       ]);
+      verifyNever(
+        () => h.codePushClientWrapper.getServiceAccounts(
+          organizationId: any(named: 'organizationId'),
+        ),
+      );
     });
 
     test('says when there are none', () async {
@@ -143,6 +154,7 @@ void main() {
             'name': 'release-bot',
             'role': 'developer',
             'organization_id': 42,
+            'organization_name': 'Mobile',
             'created_at': '2026-10-01T00:00:00.000Z',
             'created_by_email': 'alice@acme.com',
             'last_auth_at': '2026-10-20T09:00:00.000Z',

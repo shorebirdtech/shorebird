@@ -34,7 +34,8 @@ class ServiceAccountsListCommand extends ShorebirdCommand
       'Example output (space-separated: id  name  role  last signed in):\n'
       '  383  release-bot  developer  2026-10-20\n\n'
       "With --enterprise-id, lists every organization's service accounts "
-      '(space-separated: id  name  organization_id  role  last signed in). '
+      '(space-separated: id  name  organization_id  organization_name  role  '
+      'last signed in). '
       'They stay owned by their organization; manage one with --org-id.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird service-accounts list --org-id 42 --json',
@@ -92,9 +93,16 @@ class ServiceAccountsListCommand extends ShorebirdCommand
     final enterprise = membership!;
 
     late final List<EnterpriseServiceAccount> accounts;
+    late final Map<int, String> organizationNames;
     final fetchError = await guardApiCall(
-      () async => accounts = await codePushClientWrapper
-          .getEnterpriseServiceAccounts(enterpriseId: enterprise.id),
+      () async {
+        accounts = await codePushClientWrapper.getEnterpriseServiceAccounts(
+          enterpriseId: enterprise.id,
+        );
+        final organizations = await codePushClientWrapper
+            .getEnterpriseOrganizations(enterpriseId: enterprise.id);
+        organizationNames = {for (final o in organizations) o.id: o.name};
+      },
       code: JsonErrorCode.fetchFailed,
       message: 'Failed to fetch the service accounts of "${enterprise.name}".',
     );
@@ -105,15 +113,10 @@ class ServiceAccountsListCommand extends ShorebirdCommand
         'enterprise_id': enterprise.id,
         'service_accounts': [
           for (final account in accounts)
-            {
-              'id': account.userId,
-              'name': account.name,
-              'role': account.role.value,
-              'organization_id': account.teamId,
-              'created_at': jsonTime(account.createdAt),
-              'created_by_email': account.createdByEmail,
-              'last_auth_at': jsonTime(account.lastAuthAt),
-            },
+            enterpriseServiceAccountJson(
+              account,
+              organizationName: organizationNames[account.teamId],
+            ),
         ],
       });
       return ExitCode.success.code;
@@ -124,9 +127,10 @@ class ServiceAccountsListCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
     for (final account in accounts) {
+      final organization = organizationNames[account.teamId] ?? '-';
       logger.info(
         '${account.userId}  ${lightCyan.wrap(account.name)}  '
-        '${account.teamId}  ${account.role.value}  '
+        '${account.teamId}  $organization  ${account.role.value}  '
         '${formatDate(account.lastAuthAt)}',
       );
     }
