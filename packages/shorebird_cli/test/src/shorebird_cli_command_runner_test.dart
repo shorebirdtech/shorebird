@@ -1,3 +1,4 @@
+// cspell:words wohami
 import 'dart:convert';
 import 'dart:io';
 
@@ -425,6 +426,91 @@ Engine • revision $shorebirdEngineRevision'''),
         );
         expect(result, equals(ExitCode.success.code));
         expect(parent.child.ran, isTrue);
+      });
+
+      test('is added when given options only it takes', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', '--only-child']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('is added under a nested command too', () async {
+        final grandparent = _GrandparentCommand();
+        commandRunner.addCommand(grandparent);
+        final result = await runWithOverrides(
+          () => commandRunner.run(['grandparent', 'parent', '--only-child']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(grandparent.nested.child.ran, isTrue);
+      });
+
+      test('still rejects an option no subcommand takes', () async {
+        await expectLater(
+          runWithOverrides(() => commandRunner.run(['parent', '--bogus'])),
+          completion(equals(ExitCode.usage.code)),
+        );
+        expect(parent.child.ran, isFalse);
+      });
+
+      test('is added before a positional argument it takes', () async {
+        parent.child.takesPositional = true;
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', 'extra']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        expect(parent.child.ran, isTrue);
+      });
+
+      test('is not added before a word it does not take', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['parent', 'sibling']),
+        );
+        expect(result, equals(ExitCode.usage.code));
+        expect(parent.child.ran, isFalse);
+      });
+
+      test('leaves a mistyped subcommand an error', () {
+        for (final args in [
+          ['orgs', 'lst'],
+          ['teams', 'lst'],
+          ['account', 'wohami'],
+          ['orgs', 'lst', '--org-id', '42'],
+        ]) {
+          expect(commandRunner.withDefaultSubcommand(args), args);
+        }
+      });
+
+      test('follows aliases typed at each level', () {
+        expect(
+          commandRunner.withDefaultSubcommand(['org', 'audit', '42']),
+          ['org', 'audit', 'list', '42'],
+        );
+        expect(
+          commandRunner.withDefaultSubcommand(['audit-logs', '42']),
+          ['audit-logs', 'list', '42'],
+        );
+      });
+
+      test('reaches audit-log list with options or an org id', () {
+        expect(
+          commandRunner.withDefaultSubcommand(['audit-log', '--org-id', '42']),
+          ['audit-log', 'list', '--org-id', '42'],
+        );
+        expect(
+          commandRunner.withDefaultSubcommand(['audit-log', '42']),
+          ['audit-log', 'list', '42'],
+        );
+        expect(
+          commandRunner.withDefaultSubcommand(['audit-log', '--start', 'x']),
+          ['audit-log', 'list', '--start', 'x'],
+        );
+      });
+
+      test('leaves a named subcommand alone', () {
+        final args = ['audit-log', 'export', '42'];
+        expect(commandRunner.withDefaultSubcommand(args), args);
       });
 
       test('is not added after --', () async {
@@ -1540,7 +1626,16 @@ class _RecordsDevModeCommand extends ShorebirdCommand {
 
 /// A command with no subcommands of its own that records whether it ran.
 class _ChildCommand extends ShorebirdCommand {
+  _ChildCommand() {
+    argParser.addFlag('only-child', help: 'An option only the child takes');
+  }
+
   bool ran = false;
+
+  bool takesPositional = false;
+
+  @override
+  bool get takesPositionalArguments => takesPositional;
 
   @override
   String get name => 'child';
