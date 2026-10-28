@@ -26,9 +26,9 @@ class MembersSetRoleCommand extends ShorebirdCommand
       mandatory: true,
     );
     addOrganizationScopeOption();
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          'Change their role in this enterprise (e.g. "7") instead. Needs '
+          'Change their role in your enterprise instead. Needs '
           'an owner of the enterprise.',
     );
   }
@@ -48,7 +48,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
       "Changes a member's role in an organization.\n\n"
       'Example output:\n'
       '  Changed bob@acme.com from developer to admin in "Acme Corp".\n\n'
-      'With --enterprise-id, changes their enterprise role (owner, admin, '
+      'With --enterprise, changes their enterprise role (owner, admin, '
       'member or billingManager). Needs an owner of the enterprise.'
       '\n\n'
       '${ShorebirdCommand.jsonHint(
@@ -69,7 +69,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
     final user = rest.single.trim();
     final scopeError = rejectOrganizationAndEnterprise();
     if (scopeError != null) return scopeError;
-    if (enterpriseIdOption != null) return _setEnterpriseRole(user);
+    if (enterpriseScope) return _setEnterpriseRole(user);
 
     final (:role, error: roleError) = parseMemberRole(
       results['role'] as String,

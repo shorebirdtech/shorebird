@@ -15,10 +15,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   /// {@macro apps_list_command}
   AppsListCommand() {
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          'List every app in every organization of this enterprise (e.g. '
-          '"7"). Needs an owner or admin of the enterprise.',
+          'List every app in every organization of your enterprise. Needs '
+          'an owner or admin of the enterprise.',
     );
   }
 
@@ -33,7 +33,7 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
       '  01H...  Acme Mobile  1.2.3  4\n'
       '  01J...  Acme Internal  -  -\n\n'
       '"-" indicates no release or patch has been published yet.\n\n'
-      'With --enterprise-id, lists every app in the enterprise '
+      'With --enterprise, lists every app in the enterprise '
       '(space-separated: app_id  display_name  organization_id  '
       'organization_name):\n'
       '  01H...  Acme Mobile  42  Mobile\n\n'
@@ -41,7 +41,7 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
 
   @override
   Future<int> run() async {
-    if (enterpriseIdOption != null) return _listEnterpriseApps();
+    if (enterpriseScope) return _listEnterpriseApps();
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,

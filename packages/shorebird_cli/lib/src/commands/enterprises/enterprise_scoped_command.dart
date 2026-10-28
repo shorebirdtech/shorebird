@@ -6,50 +6,50 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// The shared `--enterprise-id` option, which widens a command to every
-/// organization in an enterprise, and the logic that finds the enterprise.
+/// The shared `--enterprise` flag, which widens a command to every
+/// organization in the user's enterprise, and the logic that finds it.
 ///
-/// The enterprise is never inferred: widening the scope has to be asked
-/// for. Call [addEnterpriseScopeOption] from the command's constructor,
-/// then check [enterpriseIdOption] in `run` and call [resolveEnterprise]
-/// when it is set.
+/// An account is in at most one enterprise, so the flag takes no id, but
+/// widening the scope still has to be asked for. Call
+/// [addEnterpriseScopeFlag] from the command's constructor, then check
+/// [enterpriseScope] in `run` and call [resolveEnterprise] when it is set.
 mixin EnterpriseScopedCommand on ShorebirdCommand {
-  /// Adds the `--enterprise-id` option that [resolveEnterprise] reads.
-  void addEnterpriseScopeOption({required String help}) {
-    argParser.addOption(CommonArguments.enterpriseIdArg.name, help: help);
+  /// Adds the `--enterprise` flag that [enterpriseScope] reads.
+  void addEnterpriseScopeFlag({required String help}) {
+    argParser.addFlag(
+      CommonArguments.enterpriseArg.name,
+      negatable: false,
+      help: help,
+    );
   }
 
-  /// The `--enterprise-id` value, or null when the command acts on one
-  /// organization.
-  String? get enterpriseIdOption =>
-      results[CommonArguments.enterpriseIdArg.name] as String?;
+  /// Whether `--enterprise` was passed, widening the command from one
+  /// organization to the user's enterprise.
+  bool get enterpriseScope =>
+      results[CommonArguments.enterpriseArg.name] == true;
 
-  /// Reports `--org-id` and `--enterprise-id` passed together, which name
-  /// two scopes, and returns the exit code; null when at most one is set.
+  /// Reports `--org-id` and `--enterprise` passed together, which name two
+  /// scopes, and returns the exit code; null when at most one is set.
   int? rejectOrganizationAndEnterprise() {
-    if (enterpriseIdOption == null ||
-        results[CommonArguments.orgIdArg.name] == null) {
+    if (!enterpriseScope || results[CommonArguments.orgIdArg.name] == null) {
       return null;
     }
     return reportError(
       message:
           'Pass --${CommonArguments.orgIdArg.name} or '
-          '--${CommonArguments.enterpriseIdArg.name}, not both: '
-          '--${CommonArguments.enterpriseIdArg.name} already covers every '
+          '--${CommonArguments.enterpriseArg.name}, not both: '
+          '--${CommonArguments.enterpriseArg.name} already covers every '
           'organization in the enterprise.',
     );
   }
 
-  /// Finds the user's membership in the enterprise [enterpriseId] names (by
-  /// default the `--enterprise-id` value), validating that the user is
-  /// signed in. An id that isn't one of the user's enterprises fails,
-  /// listing them. With no id, [defaultToOnly] picks the user's only
-  /// enterprise, for commands that read one and widen nothing.
+  /// Finds the user's membership in their enterprise, validating that the
+  /// user is signed in. A user who isn't in an enterprise fails.
   ///
   /// Returns `(membership: <membership>, errorCode: null)` on success, or
   /// `(membership: null, errorCode: <code>)` once the failure is reported.
   Future<({EnterpriseMembership? membership, int? errorCode})>
-  resolveEnterprise({String? enterpriseId, bool defaultToOnly = false}) async {
+  resolveEnterprise() async {
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
@@ -62,47 +62,25 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
     final fetchError = await guardApiCall(
       () async => enterprises = await codePushClientWrapper.getEnterprises(),
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch enterprises.',
+      message: 'Failed to fetch your enterprise.',
     );
     if (fetchError != null) return (membership: null, errorCode: fetchError);
 
-    final arg = enterpriseId ?? enterpriseIdOption;
-    if (arg == null && defaultToOnly && enterprises.length == 1) {
-      return (membership: enterprises.single, errorCode: null);
-    }
-    final id = arg == null ? null : int.tryParse(arg);
-    if (id == null) {
-      return (
-        membership: null,
-        errorCode: reportError(
-          message: arg == null
-              ? 'Pass an enterprise id.'
-              : '"$arg" is not a valid enterprise id.',
-          hint:
-              'Enterprise ids are integers, e.g. '
-              '--${CommonArguments.enterpriseIdArg.name} 7. '
-              '${availableEnterprises(enterprises)}',
-        ),
-      );
-    }
-    final membership = enterprises.firstWhereOrNull((e) => e.id == id);
+    // The server holds each account to one enterprise, so the list has at
+    // most one entry.
+    final membership = enterprises.firstOrNull;
     if (membership == null) {
       return (
         membership: null,
         errorCode: reportError(
-          message: 'You are not a member of enterprise $id.',
-          hint: availableEnterprises(enterprises),
+          message: "You aren't a member of an enterprise.",
+          hint:
+              '--${CommonArguments.enterpriseArg.name} widens a command to '
+              'every organization in your enterprise. Without it, commands '
+              'act on one organization (--${CommonArguments.orgIdArg.name}).',
         ),
       );
     }
     return (membership: membership, errorCode: null);
   }
-}
-
-/// Lists [enterprises] with their ids on one line, for a hint that reads the
-/// same in human and JSON output.
-String availableEnterprises(List<EnterpriseMembership> enterprises) {
-  if (enterprises.isEmpty) return 'You are not a member of any enterprise.';
-  final named = enterprises.map((e) => '${e.name} (id: ${e.id})');
-  return 'Your enterprises: ${named.join(', ')}.';
 }

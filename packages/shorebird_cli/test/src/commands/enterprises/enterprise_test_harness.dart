@@ -10,11 +10,11 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import '../../mocks.dart';
 import 'enterprise_fixtures.dart';
 
-/// Mocks for commands run with `--enterprise-id 7`, where the user is an
-/// admin of Acme (7) and a member of Beacon (8).
+/// Mocks for commands run with `--enterprise`, where the user is an admin
+/// of Acme (7).
 class EnterpriseHarness {
   EnterpriseHarness() {
-    when(() => argResults['enterprise-id']).thenReturn('7');
+    when(() => argResults['enterprise']).thenReturn(true);
     when(() => argResults.rest).thenReturn([]);
     when(
       () => shorebirdValidator.validatePreconditions(
@@ -24,7 +24,7 @@ class EnterpriseHarness {
     when(shorebirdEnv.getShorebirdYaml).thenReturn(null);
     when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
     when(codePushClientWrapper.getEnterprises).thenAnswer(
-      (_) async => [EnterpriseFixtures.acme, EnterpriseFixtures.beacon],
+      (_) async => [EnterpriseFixtures.acme],
     );
   }
 

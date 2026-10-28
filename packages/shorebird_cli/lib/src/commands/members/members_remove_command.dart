@@ -27,10 +27,10 @@ class MembersRemoveCommand extends ShorebirdCommand
   MembersRemoveCommand() {
     addConfirmDeleteOptions();
     addOrganizationScopeOption();
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          'Remove them from this enterprise (e.g. "7") and every '
-          'organization in it instead, in the console. Needs an owner or '
+          'Remove them from your enterprise and every organization in it '
+          'instead, in the console. Needs an owner or '
           'admin of the enterprise.',
     );
   }
@@ -54,7 +54,7 @@ class MembersRemoveCommand extends ShorebirdCommand
       'CI, or --json).\n\n'
       'Example output:\n'
       '  Removed bob@acme.com from "Acme Corp".\n\n'
-      'With --enterprise-id, opens the console to remove them from the '
+      'With --enterprise, opens the console to remove them from the '
       'enterprise and every organization in it. That is permanent and signs '
       'them out everywhere, so it is confirmed there.\n\n'
       '${ShorebirdCommand.jsonHint(
@@ -74,7 +74,7 @@ class MembersRemoveCommand extends ShorebirdCommand
     final user = rest.single.trim();
     final scopeError = rejectOrganizationAndEnterprise();
     if (scopeError != null) return scopeError;
-    if (enterpriseIdOption != null) return _removeFromEnterprise(user);
+    if (enterpriseScope) return _removeFromEnterprise(user);
 
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return errorCode;

@@ -16,12 +16,6 @@ abstract final class EnterpriseFixtures {
     'role': 'owner',
   });
 
-  static final beacon = EnterpriseMembership.fromJson(const {
-    'id': 8,
-    'name': 'Beacon',
-    'role': 'member',
-  });
-
   static final acmeEnterprise = Enterprise.fromJson(const {
     'id': 7,
     'name': 'Acme',

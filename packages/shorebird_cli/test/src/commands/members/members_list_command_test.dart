@@ -143,14 +143,14 @@ void main() {
     });
   });
 
-  group('MembersListCommand --enterprise-id', () {
+  group('MembersListCommand --enterprise', () {
     late MembersHarness h;
     late MembersListCommand command;
 
     setUp(() {
       h = MembersHarness();
       when(() => h.argResults['org-id']).thenReturn(null);
-      when(() => h.argResults['enterprise-id']).thenReturn('7');
+      when(() => h.argResults['enterprise']).thenReturn(true);
       when(
         h.codePushClientWrapper.getEnterprises,
       ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
@@ -255,13 +255,13 @@ void main() {
         });
       });
 
-      test('needs --enterprise-id', () async {
-        when(() => h.argResults['enterprise-id']).thenReturn(null);
+      test('needs --enterprise', () async {
+        when(() => h.argResults['enterprise']).thenReturn(false);
         when(() => h.argResults['org-id']).thenReturn('42');
         expect(await h.run(command.run), ExitCode.usage.code);
         verify(
           () => h.logger.err(
-            "--guests lists an enterprise's guests; pass --enterprise-id too.",
+            "--guests lists an enterprise's guests; pass --enterprise too.",
           ),
         ).called(1);
       });
@@ -281,7 +281,7 @@ void main() {
       });
     });
 
-    test('rejects --org-id with --enterprise-id', () async {
+    test('rejects --org-id with --enterprise', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);
