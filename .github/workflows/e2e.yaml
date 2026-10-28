@@ -1,9 +1,11 @@
-# cspell:words cmdline sdkmanager
+# cspell:words cmdline sdkmanager LASTEXITCODE
 
 name: e2e
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-e2e
+  # A cli_ref dispatch tests one CLI ref and skips the patch matrix, so it
+  # gets its own group: sharing main's would cancel a full run in progress.
+  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}
   cancel-in-progress: true
 
 on:
@@ -14,7 +16,8 @@ on:
           Ref the cli job checks out, for verifying a fix before it lands.
           Defaults to each matrix branch. Setting it skips the patch matrix
           and pins the cli job to the dev API, so a dispatch never writes to
-          production.
+          production. Dispatch from main (`--ref main`): the GitHub Actions
+          trust rule on the dev Shorebird E2E project (437) admits only main.
         required: false
         type: string
   schedule:
@@ -22,10 +25,13 @@ on:
     - cron: "0 0 * * *"
 
 env:
-  # SHOREBIRD_TOKEN is set per job, next to the SHOREBIRD_HOSTED_URL it has to
-  # match. An API key is a row in one environment's database, so unlike the
-  # Google-refresh-token format it replaced it does not authenticate against
-  # both. A single workflow-level token would silently 401 half the matrix.
+  # Credentials are set per job, next to the SHOREBIRD_HOSTED_URL they have to
+  # match. Every job signs in with GitHub Actions OIDC as the `e2e` service
+  # account of a "Shorebird E2E" project (SHOREBIRD_PROJECT_ID), whose trust
+  # rule admits this workflow on main: project 437 on dev, 60197 on prod. A
+  # project id is a row in one environment's database, and AUTH_SERVICE_URL
+  # has to name that environment's auth service, so none of these can be set
+  # once for the whole workflow.
   #
   # Host toolchain for `flutter create` in the patch job's "default" leg, not
   # the version under test.
@@ -77,9 +83,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    permissions:
+      contents: read
+      # Lets the CLI request the OIDC token it exchanges for Shorebird
+      # credentials.
+      id-token: write
+
     env:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
-      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN_DEV }}
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
 
     steps:
       - name: 📚 Git Checkout
@@ -130,60 +143,441 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: 🤖 AVD Cache
+      # The Gradle distribution and the Maven dependencies (Android Gradle
+      # plugin, Kotlin, Flutter's engine jars) a Flutter version's app
+      # template uses. For a pinned leg they depend only on its Flutter
+      # version; for the default leg also on the host Flutter (the template)
+      # and the pinned revision (the engine jars). No restore-keys: Gradle's
+      # cache cleanup runs when its daemon stops, which never happens before
+      # the save, so an old entry carried forward would only grow. A new key
+      # starts cold once instead. caches/<gradle version> (transforms,
+      # compiled scripts) would save about another minute a leg, but at
+      # ~1.3 GB a leg it puts the matrix over the repo's 10 GB cache limit.
+      # The wrapper's zip is left out: it's already unpacked beside it. The
+      # glob names each dist's entries so the negation has the zip to drop.
+      - name: 🐘 Gradle Cache
         uses: actions/cache@v6
-        id: avd-cache
         with:
           path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ matrix.flutter-version == 'default' && format('{0}-{1}', env.FLUTTER_VERSION, hashFiles('bin/internal/flutter.version')) || 'pinned' }}
 
-      - name: 🤖 Cache AVD Snapshot
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+      # android-emulator-runner installs the API 30 system image on every run.
+      # A bad download of it has failed a nightly ("Error on ZipFile unknown
+      # archive"); restored here, its sdkmanager finds it installed. The env
+      # context only holds what a workflow sets, so ANDROID_HOME is copied
+      # into it for the cache path.
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@v6
         with:
-          api-level: 29
-          arch: x86_64
-          target: default
-          force-avd-creation: false
-          sdcard-path-or-size: 512M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          disable-animations: false
-          channel: canary
-          script: echo "Generated AVD Snapshot"
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
 
+      # Not the API 29 x86_64 `default` image: on it 3-6% of launches of a
+      # Flutter release app die at startup with a corrupted jemalloc heap,
+      # which failed nightly legs. Stock Flutter 3.32.8 crashes there as often
+      # as a Shorebird release or one with the updater off, with either the
+      # swiftshader_indirect or the guest GPU. Launched 400 times, stock 3.32.8
+      # crashed 0 times on API 29 `google_apis` (also Android 10 and jemalloc)
+      # and API 28 `default`, so the fault is in that one image, not Android
+      # 10. A Shorebird 3.41.9 release crashed 0 of 400 on API 30 `default`.
+      # Runs 40137610416, 40139836081 and 40142248861 hold the counts. The
+      # Android signing job below uses this image for the same reason.
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 30
           arch: x86_64
           target: default
-          script: ./scripts/no_android_sdk_downloads.sh ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
+          # The action's default options plus -feature -Vulkan, which turns off
+          # the emulator's host-side Vulkan. Under Flutter 3.32 and 3.35 on API
+          # 30, Impeller made the emulator create a Vulkan device on the runner,
+          # and the runner died within half a minute (runs 40142077237 and
+          # 40148213340). Without it 3.32 falls back to GLES, and 3.35 still
+          # uses Vulkan inside the device but no longer takes the runner down.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
+          # Run with the Dart of the Flutter the CLI pins, which `shorebird`
+          # installed above: the repo's package config needs a newer language
+          # version than the Dart of older Flutter versions this matrix sets up.
+          script: ./scripts/no_android_sdk_downloads.sh bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
+
+  # Patch signing end to end on Linux, macOS, Windows and Android: release and
+  # patch with the real CLI against dev, then run the app and check which code
+  # it runs. One leg per platform, on the Flutter the CLI pins; pass a version to
+  # the script to run another (scripts/patch_signing_e2e.dart). Runs nightly,
+  # and unlike the patch job also on a cli_ref dispatch, testing that ref.
+  linux_signing:
+    name: linux signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐧 Install Linux Build Dependencies
+        uses: ./.github/actions/linux_build_deps
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: 🧪 Run Linux Signing E2E Tests
+        run: dart scripts/patch_signing_e2e.dart linux
+
+  macos_signing:
+    name: macos signing
+    # The release gate waits on this workflow's slowest job, and this one's
+    # six serial builds took 9 minutes on macos-latest's 3 vCPUs.
+    runs-on: macos-latest-xlarge
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: 🧪 Run macOS Signing E2E Tests
+        run: dart scripts/patch_signing_e2e.dart macos
+
+  windows_signing:
+    name: windows signing
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin"
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: 🧪 Run Windows Signing E2E Tests
+        run: dart scripts/patch_signing_e2e.dart windows
+
+  android_signing:
+    name: android signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      # The packages the pinned Flutter's build downloads otherwise; see the
+      # patch job's android-packages.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.2.13676358"
+
+      - name: 🚀 Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # As in the patch job. The app's template and engine jars come from the
+      # Flutter the CLI pins.
+      - name: 🐘 Gradle Cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
+
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
+
+      - name: 🧪 Run Android Signing E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: default
+          # -feature -Vulkan as in the patch job.
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -feature -Vulkan
+          disable-animations: true
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_signing_e2e.dart android
+
+  # Rollback end to end on Linux: publish two patches, roll them back and
+  # forward with the real CLI against dev, and check which code the app runs
+  # after each (scripts/patch_rollback_e2e.dart). Runs nightly and on a cli_ref
+  # dispatch, like linux_signing.
+  linux_rollback:
+    name: linux rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐧 Install Linux Build Dependencies
+        uses: ./.github/actions/linux_build_deps
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: 🧪 Run Linux Rollback E2E Tests
+        run: dart scripts/patch_rollback_e2e.dart
+
+  # What the updater does when a patch can't boot, and how long a patch takes
+  # to boot next to its release, on Linux against dev
+  # (scripts/boot_recovery_e2e.dart). Runs when linux_signing does.
+  linux_boot:
+    name: linux boot
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐧 Install Linux Build Dependencies
+        uses: ./.github/actions/linux_build_deps
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: 🧪 Run Linux Boot E2E Tests
+        run: dart scripts/boot_recovery_e2e.dart linux
+
+  # The same checks on an Android emulator, set up as in android_signing.
+  android_boot:
+    name: android boot
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 🎯 Set up Dart
+        uses: dart-lang/setup-dart@v1
+
+      # The packages the pinned Flutter's build downloads otherwise; see the
+      # patch job's android-packages.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.2.13676358"
+
+      - name: 🚀 Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # android_signing's cache: the same app template and pinned Flutter.
+      - name: 🐘 Gradle Cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
+
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
+
+      - name: 🧪 Run Android Boot E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: default
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          disable-animations: true
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
   cli:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        # macos-latest-xlarge: the release gate waits on this workflow's
+        # slowest job, and on macos-latest's 3 vCPUs this one took 9.5 minutes.
+        # nscloud-windows-2022-amd64-8x16 (Namespace, 8 vCPU): on
+        # windows-latest's 4 vCPUs its Gradle builds made this job 8-11 minutes.
+        os: [macos-latest-xlarge, nscloud-windows-2022-amd64-8x16, ubuntu-latest]
         # branch selects the API host as well as the ref, so a cli_ref dispatch
         # drops the stable leg rather than pointing unreleased code at prod.
         branch: ${{ inputs.cli_ref && fromJSON('["main"]') || fromJSON('["stable", "main"]') }}
         # The stable leg runs the released, unchanging CLI against prod, so it
         # checks the server. One OS answers that.
         exclude:
-          - os: macos-latest
+          - os: macos-latest-xlarge
             branch: stable
-          - os: windows-latest
+          - os: nscloud-windows-2022-amd64-8x16
             branch: stable
 
     runs-on: ${{ matrix.os }}
-    # Windows takes ~12 minutes.
     timeout-minutes: 30
+
+    permissions:
+      contents: read
+      # Lets the CLI request the OIDC token it exchanges for Shorebird
+      # credentials.
+      id-token: write
 
     env:
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
-      SHOREBIRD_TOKEN: ${{ matrix.branch == 'stable' && secrets.SHOREBIRD_TOKEN_PROD || secrets.SHOREBIRD_TOKEN_DEV }}
+      AUTH_SERVICE_URL: ${{ matrix.branch == 'stable' && 'https://auth.shorebird.dev' || 'https://auth-dev.shorebird.dev' }}
+      SHOREBIRD_PROJECT_ID: ${{ matrix.branch == 'stable' && '60197' || '437' }}
 
     steps:
       - name: 📚 Git Checkout
@@ -223,6 +617,28 @@ jobs:
             exit 1
           }
         shell: pwsh
+
+      # PowerShell runs shorebird.ps1 itself (not shorebird.bat), and drops
+      # `--` from a script's arguments unless the script puts it back.
+      - name: 🐦 Keep -- through PowerShell 7
+        if: runner.os == 'Windows'
+        run: |
+          # The test only means something if PowerShell runs the script.
+          $source = (Get-Command shorebird).Source
+          if (-not $source.EndsWith('shorebird.ps1')) { throw "shorebird resolved to $source, not shorebird.ps1" }
+          shorebird --version -- --not-a-shorebird-option
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: pwsh
+
+      - name: 🐦 Keep -- through Windows PowerShell
+        if: runner.os == 'Windows'
+        run: |
+          # The test only means something if PowerShell runs the script.
+          $source = (Get-Command shorebird).Source
+          if (-not $source.EndsWith('shorebird.ps1')) { throw "shorebird resolved to $source, not shorebird.ps1" }
+          shorebird --version -- --not-a-shorebird-option
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        shell: powershell
 
       - name: ☕ Set up Java
         uses: actions/setup-java@v6

@@ -28,5 +28,8 @@ runs:
 
     - name: 🔎 Verify version
       shell: ${{ inputs.shell }}
-      run: dart run test --run-skipped -t version-verify
+      # Only the file with the version-verify test: naming no files makes
+      # `dart test` compile every suite (to read its tags), each to its own
+      # kernel file kept until exit, which can fill the runner's disk.
+      run: dart run test --run-skipped -t version-verify test/ensure_build_test.dart
       working-directory: ${{ inputs.working_directory }}

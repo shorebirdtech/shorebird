@@ -107,6 +107,106 @@ void main() {
       });
     });
 
+    group('confirm', () {
+      late Stdin stdin;
+      late Stdout stdout;
+      late List<String> written;
+
+      /// Answers the prompt with [answers] in turn. An answer that is a
+      /// [FormatException] is thrown, as stdin does for input that isn't text.
+      bool confirm(List<Object?> answers, {bool defaultValue = false}) {
+        final remaining = [...answers];
+        when(() => stdin.readLineSync()).thenAnswer((_) {
+          final answer = remaining.removeAt(0);
+          if (answer is FormatException) throw answer;
+          return answer as String?;
+        });
+        // A Logger keeps the stdout it was created with, so create one inside
+        // the overrides.
+        return IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => ShorebirdLogger().confirm(
+              'Continue?',
+              defaultValue: defaultValue,
+            ),
+          ),
+          stdin: () => stdin,
+          stdout: () => stdout,
+        );
+      }
+
+      setUp(() {
+        stdin = MockStdin();
+        stdout = MockStdout();
+        written = [];
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        when(() => stdout.supportsAnsiEscapes).thenReturn(false);
+        when(() => stdout.write(any())).thenAnswer((invocation) {
+          written.add(invocation.positionalArguments.single.toString());
+        });
+        when(() => stdout.writeln(any())).thenAnswer((invocation) {
+          written.add(invocation.positionalArguments.single.toString());
+        });
+      });
+
+      test('returns true for a yes answer, in any case', () {
+        expect(confirm(['y']), isTrue);
+        expect(confirm(['YES']), isTrue);
+        expect(confirm([' Yep ']), isTrue);
+      });
+
+      test('returns false for a no answer, in any case', () {
+        expect(confirm(['n'], defaultValue: true), isFalse);
+        expect(confirm(['No'], defaultValue: true), isFalse);
+      });
+
+      test('returns the default for an empty answer', () {
+        expect(confirm(['']), isFalse);
+        expect(confirm([''], defaultValue: true), isTrue);
+      });
+
+      test('returns the default at the end of input', () {
+        expect(confirm([null]), isFalse);
+        expect(confirm([null], defaultValue: true), isTrue);
+      });
+
+      test('asks again after an answer it does not recognize', () {
+        expect(confirm(['nop', 'yeah']), isTrue);
+        expect(
+          written.where((line) => line.startsWith('Continue?')),
+          hasLength(2),
+        );
+        expect(written, contains(contains('Please answer y or n.')));
+      });
+
+      test('asks again after an answer that is not text', () {
+        expect(confirm([const FormatException(), 'y']), isTrue);
+        expect(written, contains(contains('Please answer y or n.')));
+      });
+
+      test('ends the line at the end of input', () {
+        confirm([null]);
+        expect(written[written.length - 2], equals('\n'));
+      });
+
+      test('shows the answer taken on the prompt line', () {
+        confirm(['yes']);
+        expect(written.last, endsWith('Continue? (y/N) Yes\n'));
+        confirm(['']);
+        expect(written.last, endsWith('Continue? (y/N) No\n'));
+        confirm([null], defaultValue: true);
+        expect(written.last, endsWith('Continue? (Y/n) Yes\n'));
+      });
+
+      test('shows the default in the prompt', () {
+        confirm(['y']);
+        expect(written.first, contains('y/N'));
+        written.clear();
+        confirm(['y'], defaultValue: true);
+        expect(written.first, contains('Y/n'));
+      });
+    });
+
     group('non-interactive prompt failure', () {
       late List<String> stdoutOutput;
 
@@ -216,19 +316,6 @@ void main() {
               hasTerminal: true,
             ),
             throwsPromptRequired(withHint: 'Pass --tags=<csv>.'),
-          );
-        });
-      });
-
-      group('when stdout has no terminal', () {
-        test('confirm throws even though canAcceptUserInput is true', () {
-          expect(
-            () => runUnderScope(
-              () => logger.confirm('Continue?', hint: 'Pass --force.'),
-              canAcceptUserInput: true,
-              hasTerminal: false,
-            ),
-            throwsPromptRequired(withHint: 'Pass --force.'),
           );
         });
       });

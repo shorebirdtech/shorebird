@@ -54,7 +54,7 @@ class PatchArtifact {
   /// The arch of the artifact.
   final String arch;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the artifact.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -75,7 +75,7 @@ class PatchArtifact {
       'platform': platform.toJson(),
       'hash': hash,
       'size': size,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
     };
   }
 

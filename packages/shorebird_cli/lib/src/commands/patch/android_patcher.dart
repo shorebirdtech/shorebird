@@ -44,13 +44,10 @@ This issue was fixed in Flutter 3.24.2. Please upgrade to a newer version of Flu
 See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebirdtech/updater/issues/211'), message: 'on Github')}
 ''';
 
-  /// The `<arch>/libapp.so` directory resolved by [buildPatchArtifact] —
-  /// a temporary directory extracted from the built patch AAB or, when the
-  /// AAB is unreadable, AGP's stripped output. Cached so
-  /// [createPatchArtifacts] reuses it instead of decoding the AAB a second
-  /// time.
+  /// The patch AAB built by [buildPatchArtifact], which
+  /// [createPatchArtifacts] extracts each `libapp.so` from.
   /// See https://github.com/shorebirdtech/shorebird/issues/3388.
-  Directory? _patchArchsBuildDir;
+  File? _patchAab;
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
@@ -72,6 +69,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     archiveDiffer: const AndroidArchiveDiffer(),
     allowAssetChanges: allowAssetDiffs,
     allowNativeChanges: allowNativeDiffs,
+    showDexDiff: showDexDiff,
   );
 
   @override
@@ -97,6 +95,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     final aabFile = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
+      targetPlatforms: releaseTargetPlatforms,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );
@@ -112,27 +111,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final patchArchsBuildDir = _patchArchsBuildDir =
-        await ArtifactManager.androidArchsDirectoryFromAab(
-          projectRoot: projectRoot,
-          flavor: flavor,
-          aab: aabFile,
-        );
-
-    if (patchArchsBuildDir == null) {
-      logger
-        ..err('Cannot find patch build artifacts.')
-        ..info('''
-Please run `shorebird cache clean` and try again. If the issue persists, please
-file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
-
-Looked in:
-  - the libapp.so entries inside the built .aab
-  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
-  - build/app/intermediates/stripped_native_libs/{variant}/out/lib''');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
+    _patchAab = aabFile;
     return aabFile;
   }
 
@@ -150,23 +129,32 @@ Looked in:
       downloadMessageTimeout: downloadMessageTimeout,
     );
 
-    // [buildPatchArtifact] runs before this and caches the resolved
-    // directory; the fallback only covers a direct call without it, in which
-    // case no patch AAB exists to extract from.
-    final patchArchsBuildDir =
-        _patchArchsBuildDir ??
-        ArtifactManager.androidArchsDirectory(
-          projectRoot: projectRoot,
-          flavor: flavor,
-        );
-    if (patchArchsBuildDir == null) {
-      logger.err('Could not find patch artifacts');
-      throw ProcessExit(ExitCode.software.code);
-    }
+    // [buildPatchArtifact] runs before this and records the patch AAB; with
+    // no AAB (a direct call without it) this reads AGP's stripped output.
+    return ArtifactManager.withAndroidArchsDirectoryFromAab(
+      projectRoot: projectRoot,
+      flavor: flavor,
+      aab: _patchAab,
+      action: (patchArchsBuildDir) async {
+        if (patchArchsBuildDir == null) {
+          logger
+            ..err('Cannot find patch build artifacts.')
+            ..info('''
+Please run `shorebird cache clean` and try again. If the issue persists, please
+file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
-    return createAndroidPatchArtifactBundles(
-      releaseArtifactPaths: releaseArtifactPaths,
-      patchArchsDir: patchArchsBuildDir,
+Looked in:
+  - the libapp.so entries inside the built .aab
+  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib''');
+          throw ProcessExit(ExitCode.software.code);
+        }
+
+        return createAndroidPatchArtifactBundles(
+          releaseArtifactPaths: releaseArtifactPaths,
+          patchArchsDir: patchArchsBuildDir,
+        );
+      },
     );
   }
 

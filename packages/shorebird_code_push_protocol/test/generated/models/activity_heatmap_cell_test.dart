@@ -5,12 +5,12 @@ import 'package:test/test.dart';
 void main() {
   group('ActivityHeatmapCell', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = ActivityHeatmapCell(
+      const instance = ActivityHeatmapCell(
         dayOfWeekUtc: 0,
         hourUtc: 0,
         averageActiveDevices: 0,
       );
-      final parsed = ActivityHeatmapCell.maybeFromJson(instance.toJson());
+      final parsed = ActivityHeatmapCell.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

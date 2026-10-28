@@ -1,0 +1,44 @@
+name: pr_title
+
+# Checks the PR title on its own, so editing the title reruns just these
+# checks. main.yaml's default pull_request types don't include edited,
+# and a rerun there replays the old event's payload, so the spell check
+# saw the old title until the next push.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  # Reports pr_title on the merge queue's temp branch (the check skips
+  # there), so the context can be required without the queue waiting
+  # on it forever.
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spell_check_title:
+    name: 🔤 Check PR Title Spelling
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+
+      - name: 🪄 Spell Check PR Title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | npx --yes cspell@9 stdin --config cspell.config.yaml --no-progress --no-summary
+
+  pr_title:
+    needs: [spell_check_title]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⛔️ exit(1) on failure or cancellation
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1

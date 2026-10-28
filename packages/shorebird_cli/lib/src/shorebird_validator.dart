@@ -2,9 +2,12 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
+import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -163,6 +166,40 @@ class ShorebirdValidator {
           '''This command is only supported on ${supportedOperatingSystems.join(', ')} (this machine is running ${platform.operatingSystem}).''';
       logger.err(message);
       throw UnsupportedOperatingSystemException(message: message);
+    }
+
+    if (checkUserIsAuthenticated && !auth.isAuthenticated) {
+      // Such as a GitHub Actions job granted an OIDC token without
+      // SHOREBIRD_PROJECT_ID.
+      if (auth.unavailableCredentialsReason case final reason?) {
+        logger.err(reason.message);
+        if (reason.hint case final hint?) logger.info(hint);
+        throw UserNotAuthorizedException(
+          message: reason.message,
+          hint: reason.hint,
+        );
+      }
+    }
+
+    if (checkUserIsAuthenticated &&
+        !auth.isAuthenticated &&
+        platform.environment[githubActionsEnvVar] == 'true') {
+      // Neither SHOREBIRD_TOKEN nor the ID token request variables GitHub
+      // sets for a job granted `permissions: id-token: write`.
+      final console = ShorebirdWebConsole.baseUri;
+      final oidcHint =
+          'To sign in from GitHub Actions without a stored secret, grant the '
+          'job `permissions: id-token: write`, set $shorebirdProjectIdEnvVar '
+          'to the id of your project, and add a GitHub Actions trust rule for '
+          'this workflow at $console.';
+      final apiKeyHint =
+          'Or set $shorebirdTokenEnvVar to a Shorebird API key from '
+          '$console.';
+      logger
+        ..err('You must be logged in to run this command.')
+        ..info(oidcHint)
+        ..info(apiKeyHint);
+      throw UserNotAuthorizedException(hint: '$oidcHint $apiKeyHint');
     }
 
     if (checkUserIsAuthenticated && !auth.isAuthenticated) {

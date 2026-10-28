@@ -6,7 +6,9 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -15,6 +17,8 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -53,6 +57,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         abbr: 'v',
         help: 'Noisy logging, including all shell commands executed.',
       )
+      ..addFlag(
+        'dev',
+        negatable: false,
+        hide: true,
+        help:
+            'Use the Shorebird dev environment ($devHostedUrl and '
+            '$devAuthServiceUrl). SHOREBIRD_HOSTED_URL and AUTH_SERVICE_URL '
+            'still win.',
+      )
       ..addOption(
         'local-engine-src-path',
         hide: true,
@@ -74,26 +87,105 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       );
 
     addCommand(AccountCommand());
+    addCommand(ApiCommand());
     addCommand(AppsCommand());
+    addCommand(AuditLogCommand());
+    addCommand(AuthCommand());
     addCommand(CacheCommand());
     addCommand(ChannelsCommand());
     addCommand(CreateCommand());
     addCommand(DoctorCommand());
     addCommand(FlutterCommand());
     addCommand(InitCommand());
+    addCommand(InvitationsCommand());
     addCommand(LoginCommand());
     addCommand(LoginCiCommand());
     addCommand(LogoutCommand());
+    addCommand(MembersCommand());
+    addCommand(MetricsCommand());
+    addCommand(OrgsCommand());
     addCommand(PatchCommand());
     addCommand(PatchesCommand());
     addCommand(PreviewCommand());
     addCommand(ReleaseCommand());
     addCommand(ReleasesCommand());
+    addCommand(ServiceAccountsCommand());
+    addCommand(TokensCommand());
     addCommand(UpgradeCommand());
+    addCommand(UsageCommand());
+    addCommand(TopLevelWhoamiCommand());
   }
 
   @override
   void printUsage() => logger.info(usage);
+
+  /// [args], with a command's [ShorebirdCommand.defaultSubcommand] added
+  /// right after the command when they name it without a subcommand: bare
+  /// (`shorebird account` runs `shorebird account whoami`), with options
+  /// only the subcommand takes (`shorebird audit-log --org-id 42`), or
+  /// with a positional argument the subcommand takes (`shorebird audit-log
+  /// 42`). Otherwise [args] as they are, including after `--` and with
+  /// `--help`, which asks for the command's own usage.
+  @visibleForTesting
+  List<String> withDefaultSubcommand(List<String> args) {
+    if (args.contains('--')) return args;
+    List<String> path;
+    try {
+      final results = argParser.parse(args);
+      path = [];
+      var next = results.command;
+      while (next != null) {
+        path.add(next.name!);
+        if (next.command == null &&
+            next.options.contains('help') &&
+            next.flag('help')) {
+          return args;
+        }
+        next = next.command;
+      }
+    } on ArgParserException catch (error) {
+      path = error.commands;
+    }
+
+    var commands = this.commands;
+    Command<int>? command;
+    var index = -1;
+    for (final name in path) {
+      command = commands[name];
+      index = args.indexOf(name, index + 1);
+      if (command == null || index < 0) return args;
+      commands = command.subcommands;
+    }
+    if (command is! ShorebirdCommand) return args;
+    final subcommand = command.defaultSubcommand;
+    if (subcommand == null) return args;
+    final withSubcommand = [
+      ...args.sublist(0, index + 1),
+      subcommand,
+      ...args.sublist(index + 1),
+    ];
+
+    // A word left over is a positional argument for the subcommand, or a
+    // mistyped subcommand name (`shorebird orgs lst`); keep that an error
+    // unless the subcommand reads positional arguments.
+    final ArgResults results;
+    try {
+      results = argParser.parse(withSubcommand);
+    } on ArgParserException {
+      // The subcommand doesn't take them either; report them as given.
+      return args;
+    }
+    var deepest = results;
+    while (deepest.command != null) {
+      deepest = deepest.command!;
+    }
+    final target = command.subcommands[subcommand];
+    if (deepest.rest.isNotEmpty &&
+        !(target is ShorebirdCommand && target.takesPositionalArguments)) {
+      return args;
+    }
+    return withSubcommand;
+  }
 
   @override
   Future<int> run(Iterable<String> args) async {
@@ -104,7 +196,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     final jsonModeFromArgs = argsList.contains('--json');
 
     try {
-      final topLevelResults = parse(argsList);
+      final topLevelResults = parse(withDefaultSubcommand(argsList));
 
       final localEngineSrcPath =
           topLevelResults['local-engine-src-path'] as String?;
@@ -139,6 +231,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final jsonMode = topLevelResults['json'] == true;
+      final devMode = topLevelResults['dev'] == true;
 
       // In JSON mode, suppress verbose logging — it writes to stdout and
       // would corrupt the JSON output. Verbose output still goes to the
@@ -169,6 +262,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         () => runCommand(topLevelResults),
         values: {
           engineConfigRef.overrideWith(() => engineConfig),
+          isDevModeRef.overrideWith(() => devMode),
           isJsonModeRef.overrideWith(() => jsonMode),
           jsonSinkRef.overrideWith(() => jsonSink),
           processRef.overrideWith(() => process),
@@ -248,6 +342,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
 
     // Run the command or show version
     int? exitCode;
+    // A declined prompt already said what was not done, so it gets no
+    // "re-run with --verbose" footer.
+    var declined = false;
     if (topLevelResults['version'] == true) {
       final flutterVersion = await tryGetFlutterVersion();
       if (isJsonMode) {
@@ -264,6 +361,16 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       // --json command always leaves exactly one on stdout: the command's if
       // it wrote one, otherwise the runner's.
       final envelope = JsonEnvelopeTracker();
+      final aliasNotice = _aliasNotice(topLevelResults);
+      // Under --json, human lines already go to stderr, so the notice
+      // never reaches the envelope.
+      if (aliasNotice != null) {
+        if (_reservesStdout(topLevelResults)) {
+          await runWithStdoutOnStderr(() async => logger.info(aliasNotice));
+        } else {
+          logger.info(aliasNotice);
+        }
+      }
       try {
         exitCode = await runScoped(
           () => super.runCommand(topLevelResults),
@@ -286,21 +393,28 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         }
       } on ProcessExit catch (error) {
         exitCode = error.exitCode;
+        declined = error is PromptDeclinedExit;
         if (isJsonMode &&
             !envelope.written &&
             error.exitCode != ExitCode.success.code) {
-          // A failed precondition says why, not just that the process exited.
+          // A failed precondition says why, not just that the process exited,
+          // and so does a failed API call.
           final failure = error is PreconditionFailedExit
               ? error.failure
               : null;
+          final apiError = error is ApiErrorExit ? error.error : null;
           JsonResult.error(
             code: failure == null
                 ? JsonErrorCode.processExit
                 : JsonErrorCode.preconditionFailed,
             message:
                 failure?.message ??
+                apiError?.message ??
                 'Process exited with code ${error.exitCode}.',
             hint: failure?.hint,
+            apiCode: apiError?.code,
+            details: apiError?.details,
+            documentationUrl: apiError?.documentationUrl,
             command: commandName,
           ).write();
         }
@@ -373,8 +487,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
     }
 
+    final reservesStdout = _reservesStdout(topLevelResults);
+
     // `runCommand` returns null in when the --help flag is passed.
     if (!isJsonMode &&
+        !reservesStdout &&
+        !declined &&
         exitCode != null &&
         exitCode != ExitCode.success.code &&
         logger.level != Level.verbose) {
@@ -393,14 +511,64 @@ ${currentRunLogFile.absolute.path}
 ''');
     }
 
-    _pruneUnusedCaches();
+    if (reservesStdout) {
+      await runWithStdoutOnStderr(() async => _pruneUnusedCaches());
+    } else {
+      _pruneUnusedCaches();
+    }
 
     if (!isJsonMode &&
         topLevelResults.command?.name != UpgradeCommand.commandName) {
-      await _checkForUpdates();
+      if (reservesStdout) {
+        await runWithStdoutOnStderr(_checkForUpdates);
+      } else {
+        await _checkForUpdates();
+      }
     }
 
     return exitCode;
+  }
+
+  /// Names the canonical command when [topLevelResults] reached its command
+  /// through an alias (`shorebird cache clear` for `shorebird cache clean`),
+  /// so that whoever guessed the alias learns the name the docs use. Null
+  /// when every name typed was the command's own.
+  String? _aliasNotice(ArgResults topLevelResults) {
+    final typed = <String>[];
+    final canonical = <String>[];
+    var available = commands;
+    for (
+      var results = topLevelResults.command;
+      results != null;
+      results = results.command
+    ) {
+      final name = results.name!;
+      final command = available[name];
+      if (command == null) return null;
+      typed.add(name);
+      canonical.add(command.name);
+      available = command.subcommands;
+    }
+    if (const ListEquality<String>().equals(typed, canonical)) return null;
+    return '`$executableName ${typed.join(' ')}` is an alias of '
+        '`$executableName ${canonical.join(' ')}`.';
+  }
+
+  /// Whether the command [topLevelResults] ran is a [ShorebirdCommand] whose
+  /// output owns stdout (see [ShorebirdCommand.reservesStdout]).
+  bool _reservesStdout(ArgResults topLevelResults) {
+    Command<int>? command;
+    var available = commands;
+    for (
+      var results = topLevelResults.command;
+      results != null;
+      results = results.command
+    ) {
+      command = available[results.name];
+      if (command == null) return false;
+      available = command.subcommands;
+    }
+    return command is ShorebirdCommand && command.reservesStdout;
   }
 
   /// Removes Flutter installs, engine artifacts and previews that have gone
@@ -415,6 +583,7 @@ ${currentRunLogFile.absolute.path}
       'Flutter installs': shorebirdFlutter.pruneUnusedRevisions,
       'artifacts': cache.pruneUnusedArtifacts,
       'previews': cache.pruneUnusedPreviews,
+      'release artifacts': cache.pruneUnusedReleaseArtifacts,
     };
     for (final MapEntry(key: name, value: prune) in pruners.entries) {
       try {
@@ -439,7 +608,7 @@ ${currentRunLogFile.absolute.path}
 
   /// Option names people reach for to bypass a safety check.
   static final _safetyOverridePattern = RegExp(
-    r'^(?:f|y|force|yes|no-confirm)$|allow|skip|ignore',
+    r'^(?:f|y|force|yes)$|allow|skip|ignore',
   );
 
   /// The hint to print under an unknown-option error.
@@ -448,7 +617,7 @@ ${currentRunLogFile.absolute.path}
   /// flags that actually bypass the patch safety checks; everything else
   /// gets the `--` pass-through explanation.
   String _unknownOptionHint(String option, List<String> args) {
-    final commandName = args.firstWhereOrNull((a) => !a.startsWith('-'));
+    final commandName = args.where((a) => !a.startsWith('-')).firstOrNull;
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
 shorebird patch has no --$option flag. The patch safety checks are bypassed per check:

@@ -109,6 +109,11 @@ void main() {
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       doctor = MockDoctor();
       engineConfig = MockEngineConfig();
       flavorValidator = MockFlavorValidator();
@@ -128,6 +133,7 @@ void main() {
 
       when(() => argResults['build-number']).thenReturn('1.0');
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.wasParsed(any())).thenReturn(false);
 
       when(() => logger.progress(any())).thenReturn(progress);
@@ -172,10 +178,10 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is minimumSupportedIosFlutterVersion', () {
+      test('is minimumPatchableIosFlutterVersion', () {
         expect(
           patcher.minimumFlutterVersion,
-          minimumSupportedIosFlutterVersion,
+          minimumPatchableIosFlutterVersion,
         );
       });
     });
@@ -458,6 +464,19 @@ void main() {
           );
         });
 
+        group('when --no-codesign is passed', () {
+          setUp(() {
+            when(() => argResults['codesign']).thenReturn(false);
+          });
+
+          test('forwards --no-codesign to flutter', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+            verify(
+              () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+            ).called(1);
+          });
+        });
+
         group('when platform was specified via arg results rest', () {
           setUp(() {
             when(() => argResults.rest).thenReturn(['ios', '--verbose']);
@@ -468,6 +487,33 @@ void main() {
             expect(p.basename(artifact.path), equals('App.xcframework.zip'));
             verify(
               () => artifactBuilder.buildIosFramework(args: ['--verbose']),
+            ).called(1);
+          });
+        });
+
+        group('when a target is provided', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildIosFramework(
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+              ),
+            ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
+            patcher = IosFrameworkPatcher(
+              argParser: argParser,
+              argResults: argResults,
+              flavor: null,
+              target: 'lib/main_prod.dart',
+            );
+          });
+
+          test('forwards the target to buildIosFramework', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                target: 'lib/main_prod.dart',
+                args: any(named: 'args'),
+              ),
             ).called(1);
           });
         });

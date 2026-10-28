@@ -88,10 +88,17 @@ void main() {
     setUp(() {
       apple = MockApple();
       argResults = MockArgResults();
+      // Managed signing, the default, is covered in releaser_test.dart.
+      when(() => argResults['patch-signing']).thenReturn(false);
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -124,8 +131,8 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is 3.22.2', () {
-        expect(iosReleaser.minimumFlutterVersion, Version(3, 22, 2));
+      test('is 3.24.0', () {
+        expect(iosReleaser.minimumFlutterVersion, Version(3, 24, 0));
       });
     });
 
@@ -732,7 +739,7 @@ $body
         flutterRevision: flutterRevision,
         flutterVersion: flutterVersion,
         displayName: '1.2.3+1',
-        platformStatuses: const {},
+        platforms: const {},
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
       );

@@ -79,29 +79,37 @@ final _publicKeyPemCache = Expando<Future<String?>>('publicKeyPem');
 
 /// Extension on [ArgResults] to provide code signing related extensions.
 extension CodeSign on ArgResults {
-  /// Resolves the public key PEM string from the configured source.
+  /// Resolves the public key PEM string from the configured source, as
+  /// [CodeSigner.canonicalPublicKeyPem] re-encodes it.
   ///
   /// The result is resolved once per parse and reused by later calls.
   ///
   /// Returns null if no public key is configured. Throws
-  /// [ProcessException] or [FormatException] if a command-based key
-  /// fails.
+  /// [ProcessException] if a command-based key fails, and
+  /// [FormatException] if the key is not exactly one PEM public key, which
+  /// a private key never is.
   Future<String?> resolvePublicKeyPem() =>
       _publicKeyPemCache[this] ??= _readPublicKeyPem();
 
   Future<String?> _readPublicKeyPem() async {
     final publicKeyFile = file(CommonArguments.publicKeyArg.name);
-    if (publicKeyFile != null) {
-      return publicKeyFile.readAsStringSync();
-    }
-
     final publicKeyCmd = this[CommonArguments.publicKeyCmd.name] as String?;
-    if (publicKeyCmd != null && wasParsed(CommonArguments.publicKeyCmd.name)) {
-      return codeSigner.runPublicKeyCmd(publicKeyCmd);
+    final String pem;
+    if (publicKeyFile != null) {
+      pem = publicKeyFile.readAsStringSync();
+    } else if (publicKeyCmd != null &&
+        wasParsed(CommonArguments.publicKeyCmd.name)) {
+      pem = await codeSigner.runPublicKeyCmd(publicKeyCmd);
+    } else {
+      return null;
     }
-
-    return null;
+    return codeSigner.canonicalPublicKeyPem(pem);
   }
+
+  /// Whether a release signs its patches (`--patch-signing`, on by default):
+  /// with the customer's key if one is passed, else a Shorebird-managed key.
+  bool get patchSigningEnabled =>
+      this[CommonArguments.patchSigningArg.name] == true;
 
   /// Get base64-encoded public key from either file or command.
   ///
@@ -121,6 +129,9 @@ extension CodeSign on ArgResults {
           'Run the command in your shell to see why it fails; it must print '
           'a PEM-encoded public key to stdout and exit 0.',
         );
+      throw ProcessExit(ExitCode.software.code);
+    } on InvalidPublicKeyException catch (e) {
+      _logInvalidPublicKey(e.message);
       throw ProcessExit(ExitCode.software.code);
     } on FormatException catch (e) {
       _logInvalidPublicKey('is not a valid public key: ${e.message}');
@@ -226,7 +237,9 @@ extension ForwardedArgs on ArgResults {
   List<String> get forwardedArgs {
     final List<String> forwarded;
     if (rest.isNotEmpty && _isPositionalArgPlatform(rest.first)) {
-      forwarded = rest.skip(1).toList();
+      // A `.dart` positional after the platform is passed as `--target` by
+      // the command, so it must not also be forwarded.
+      forwarded = rest.skip(positionalTarget == null ? 1 : 2).toList();
     } else {
       forwarded = rest.toList();
     }

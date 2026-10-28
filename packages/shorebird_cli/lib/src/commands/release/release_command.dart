@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/patch_verification.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -69,7 +70,7 @@ class ReleaseCommand extends ShorebirdCommand {
       )
       ..addFlag(
         'codesign',
-        help: 'Codesign the application bundle (iOS only).',
+        help: 'Codesign the app bundle or XCFrameworks (iOS and macOS only).',
         defaultsTo: true,
       )
       ..addFlag(
@@ -127,10 +128,10 @@ Also accepts the following special values:
         hide: true,
         negatable: false,
       )
-      // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
-      // Can be removed fall 2026 or later.
       ..addFlag(
-        'confirm',
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
         hide: true,
       )
       ..addOption(
@@ -152,6 +153,11 @@ The version of the Android or iOS host app that embeds this module
       ..addOption(
         CommonArguments.publicKeyCmd.name,
         help: CommonArguments.publicKeyCmd.description,
+      )
+      ..addFlag(
+        CommonArguments.patchSigningArg.name,
+        defaultsTo: true,
+        help: CommonArguments.patchSigningArg.description,
       )
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
@@ -181,18 +187,16 @@ The version of the Android or iOS host app that embeds this module
 
   @override
   Future<int> run() async {
-    if (results.releaseTypes.isEmpty) {
-      logger.err(
-        '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
-      );
-      return ExitCode.usage.code;
-    }
+    final releaseTypes = releaseTypesOrUsageError(
+      siblingCommand: 'releases',
+      versionHint: _versionHint,
+    );
 
     // One Release can carry several platforms, so releases are collected by
     // id: each platform's pass re-fetches the release, and the last fetch is
     // the one whose platform statuses are complete.
     final releases = <int, Release>{};
-    for (final releaseType in results.releaseTypes) {
+    for (final releaseType in releaseTypes) {
       final release = await createRelease(_resolveReleaser(releaseType));
       releases[release.id] = release;
     }
@@ -201,7 +205,7 @@ The version of the Android or iOS host app that embeds this module
       emitJsonSuccess({
         'app_id': appId,
         'platforms': [
-          for (final type in results.releaseTypes) type.releasePlatform.name,
+          for (final type in releaseTypes) type.releasePlatform.name,
         ],
         'releases': [for (final release in releases.values) release.toJson()],
       });
@@ -251,17 +255,29 @@ The version of the Android or iOS host app that embeds this module
     }
   }
 
-  /// Whether to prompt for confirmation before creating the release.
-  bool get confirm => results['confirm'] == true;
-
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
   /// The build flavor, if provided.
   String? get flavor => results.findOption('flavor', argParser: argParser);
 
+  /// `--release-version` is only valid for aar and ios-framework releases;
+  /// other platforms take their version from `--build-name` and
+  /// `--build-number` (or the pubspec).
+  String? _versionHint(String version) {
+    final platform = results.rest.first;
+    if (platform == ReleaseType.aar.cliName ||
+        platform == ReleaseType.iosFramework.cliName) {
+      return null;
+    }
+    final plus = version.indexOf('+');
+    if (plus == -1) return 'Did you mean --build-name=$version?';
+    return 'Did you mean --build-name=${version.substring(0, plus)} '
+        '--build-number=${version.substring(plus + 1)}?';
+  }
+
   /// The target script, if provided.
-  String? get target => results.findOption('target', argParser: argParser);
+  late final String? target = resolveTarget();
 
   /// The flutter version specified.
   String get flutterVersionArg => results['flutter-version'] as String;
@@ -414,6 +430,7 @@ $error''');
     required String flutterRevision,
   }) async {
     await cache.updateAll();
+    await _assertPatchVerificationChecksSignatures();
 
     // Set up build tracing for this platform before any flutter build /
     // aot_tools / gen_snapshot call runs. Version-gated inside
@@ -449,6 +466,7 @@ $error''');
       releaseVersion: releaseVersion,
       flutterVersion: flutterRevision,
       releasePlatform: releaser.releaseType.releasePlatform,
+      signing: releaser.signing,
     );
 
     final release = await _publishRelease(
@@ -456,6 +474,36 @@ $error''');
       releaseVersion: releaseVersion,
     );
     return _refreshReleaseForJson(release);
+  }
+
+  /// Exits with [ExitCode.config] if shorebird.yaml asks for
+  /// `patch_verification: install_only` on a Flutter build whose updater
+  /// never checks patch signatures in that mode (since updater#352).
+  /// Runs with [shorebirdEnv] scoped to the release's Flutter revision.
+  Future<void> _assertPatchVerificationChecksSignatures() async {
+    final patchVerification = shorebirdEnv
+        .getShorebirdYaml()
+        ?.patchVerification;
+    if (patchVerification != PatchVerification.installOnly) return;
+    if (!installOnlySkipsSignatureCheck(shorebirdEnv.shorebirdEngineRevision)) {
+      return;
+    }
+    final flutterVersion = await shorebirdFlutter.getVersionAndRevision();
+    final failure = ValidationFailedException(
+      message:
+          '`patch_verification: install_only` in shorebird.yaml does not '
+          'check patch signatures with Flutter $flutterVersion.',
+      hint:
+          'Remove `patch_verification` from shorebird.yaml (or set it to '
+          '`strict`), so patches are verified each time the app launches, or '
+          'release with a Flutter '
+          'version that checks signatures in install_only mode, such as '
+          '--flutter-version=3.41.8.',
+    );
+    logger
+      ..err(failure.message)
+      ..info(failure.hint);
+    throw PreconditionFailedExit(failure);
   }
 
   /// Builds the release artifacts, exiting with [ExitCode.software] if the
@@ -473,6 +521,11 @@ $error''');
         logger.info(e.fixRecommendation);
       }
       throw ProcessExit(ExitCode.software.code);
+    } on ProcessExit {
+      // A step before the build (such as fetching the patch signing key)
+      // already reported why it stopped, and an ApiErrorExit carries the
+      // server's error for --json.
+      rethrow;
     } on Exception catch (e) {
       logger.err('Failed to build release artifacts: $e');
       throw ProcessExit(ExitCode.software.code);
@@ -569,12 +622,20 @@ $error''');
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
-    if (shorebirdYaml?.patchVerification != null && !hasPublicKey) {
+    if (hasPublicKey && !results.patchSigningEnabled) {
+      usageException(
+        '--no-${CommonArguments.patchSigningArg.name} builds a release whose '
+        'patches are unsigned, so it cannot be combined with '
+        '--${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+    }
+    if (shorebirdYaml?.patchVerification != null &&
+        !results.patchSigningEnabled) {
       logger.warn(
         'patch_verification is set in shorebird.yaml but '
-        'no public key was provided '
-        '(--${CommonArguments.publicKeyArg.name} '
-        'or --${CommonArguments.publicKeyCmd.name}).\n'
+        '--no-${CommonArguments.patchSigningArg.name} builds a release whose '
+        'patches are unsigned.\n'
         'patch_verification configuration will have no effect.',
       );
     }
@@ -587,9 +648,7 @@ $error''');
           : await resolveFlutterVersionArg(),
     );
     final minimumFlutterVersion = releaser.minimumFlutterVersion;
-    if (minimumFlutterVersion != null &&
-        version != null &&
-        version < minimumFlutterVersion) {
+    if (version != null && version < minimumFlutterVersion) {
       logger.err('''
 At least Flutter $minimumFlutterVersion is required to release with `${releaser.releaseType.cliName}`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
@@ -719,6 +778,7 @@ To resolve this issue, you can:
     required String releaseVersion,
     required String flutterVersion,
     required ReleasePlatform releasePlatform,
+    ArtifactSigningRequest? signing,
   }) async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     // TODO(bryanoltman): include archs in the summary for android
@@ -729,6 +789,12 @@ To resolve this issue, you can:
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '🕹️  Platform: ${lightCyan.wrap(releasePlatform.name)}',
       '🐦 Flutter Version: ${lightCyan.wrap(flutterVersionString)}',
+      if (signing?.mode == ReleaseSigningMode.managed)
+        '🔏 Patch Signing: ${lightCyan.wrap('Shorebird-managed key')}'
+      else if (signing?.mode == ReleaseSigningMode.customer)
+        '🔏 Patch Signing: ${lightCyan.wrap('your key')}'
+      else if (signing?.mode == ReleaseSigningMode.unsigned)
+        '🔏 Patch Signing: ${yellow.wrap('off')}',
     ];
 
     logger.info('''
@@ -737,13 +803,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
-
-    if (confirm && shorebirdEnv.canAcceptUserInput) {
-      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
-        logger.info('Aborting.');
-        throw ProcessExit(ExitCode.success.code);
-      }
-    }
   }
 
   /// Fetches the release with version [version] from the server or creates a

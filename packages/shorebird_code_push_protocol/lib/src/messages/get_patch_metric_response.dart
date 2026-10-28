@@ -68,19 +68,22 @@ class GetPatchMetricResponse {
   /// field.
   final PatchMetricCurrentWindow current;
 
-  /// One window of the patch-metric envelope: the summed count over the
-  /// window's effective range, with a per-bucket series when a `granularity`
-  /// was requested. This base atom is the full shape of `previous`;
-  /// `current` extends it (see PatchMetricCurrentWindow).
+  /// The equal-length window immediately preceding `current`. Omitted
+  /// only when that prior window predates the data floor — there is no
+  /// comparison data, so reporting a fabricated count is worse than
+  /// omitting it. When the prior window instead reaches past the plan's
+  /// metrics-history horizon, this is present with its `count` total
+  /// (the delta) but no `time_series` (the overlay is the granular
+  /// resolution the horizon gates).
   final PatchMetricWindow? previous;
 
   /// Converts a [GetPatchMetricResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'as_of': asOf.toIso8601String(),
+      'as_of': asOf.toUtc().toIso8601String(),
       'granularity': granularity,
       'current': current.toJson(),
-      'previous': previous?.toJson(),
+      'previous': ?previous?.toJson(),
     };
   }
 

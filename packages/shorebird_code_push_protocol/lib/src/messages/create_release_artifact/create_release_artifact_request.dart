@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/messages/artifact_signing_request.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template create_release_artifact_request}
@@ -19,6 +20,7 @@ class CreateReleaseArtifactRequest {
     required this.size,
     this.canSideload,
     this.podfileLockHash,
+    this.signing,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactRequest].
@@ -34,6 +36,9 @@ class CreateReleaseArtifactRequest {
         canSideload: json['can_sideload'] as bool?,
         size: json['size'] as int,
         podfileLockHash: json['podfile_lock_hash'] as String?,
+        signing: ArtifactSigningRequest.maybeFromJson(
+          json['signing'] as Map<String, dynamic>?,
+        ),
       ),
     );
   }
@@ -52,7 +57,7 @@ class CreateReleaseArtifactRequest {
   /// The arch of the artifact.
   final String arch;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the artifact.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -71,6 +76,11 @@ class CreateReleaseArtifactRequest {
   /// only).
   final String? podfileLockHash;
 
+  /// How the CLI signed the artifact's binary. Older CLIs omit it.
+  /// In a multipart/form-data body it is one field holding the
+  /// JSON-encoded object.
+  final ArtifactSigningRequest? signing;
+
   /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -78,9 +88,10 @@ class CreateReleaseArtifactRequest {
       'platform': platform.toJson(),
       'hash': hash,
       'filename': filename,
-      'can_sideload': canSideload,
+      'can_sideload': ?canSideload,
       'size': size,
-      'podfile_lock_hash': podfileLockHash,
+      'podfile_lock_hash': ?podfileLockHash,
+      'signing': ?signing?.toJson(),
     };
   }
 
@@ -93,6 +104,7 @@ class CreateReleaseArtifactRequest {
     canSideload,
     size,
     podfileLockHash,
+    signing,
   ]);
 
   @override
@@ -105,6 +117,7 @@ class CreateReleaseArtifactRequest {
         filename == other.filename &&
         canSideload == other.canSideload &&
         size == other.size &&
-        podfileLockHash == other.podfileLockHash;
+        podfileLockHash == other.podfileLockHash &&
+        signing == other.signing;
   }
 }

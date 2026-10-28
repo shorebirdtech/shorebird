@@ -9,6 +9,7 @@ class PatchesCommand extends ShorebirdCommand {
   PatchesCommand() {
     addSubcommand(PatchesInfoCommand());
     addSubcommand(PatchesListCommand());
+    addSubcommand(PatchesStatsCommand());
     addSubcommand(PromoteCommand());
     addSubcommand(RollbackCommand());
     addSubcommand(RollforwardCommand());
@@ -19,5 +20,13 @@ class PatchesCommand extends ShorebirdCommand {
   String get name => 'patches';
 
   @override
-  String get description => 'Manage Shorebird patches.';
+  String get description =>
+      'Manage Shorebird patches.\n\n'
+      'A patch replaces the Dart code of a release that is already shipped, so '
+      'every subcommand here identifies its patch by the release version it '
+      'belongs to and the patch number within that release.\n\n'
+      'Examples:\n'
+      '  shorebird patches list --release-version 1.0.0+1\n'
+      '  shorebird patches info --release-version 1.0.0+1 --patch-number 1\n'
+      '  shorebird patches promote --release-version 1.0.0+1 --patch-number 1';
 }

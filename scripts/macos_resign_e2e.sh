@@ -120,8 +120,8 @@ cleanup() {
     local status=$?
     if [[ -n "$APP_ID" ]]; then
         echo "Deleting app $APP_ID"
-        "$SHOREBIRD" apps delete --app-id "$APP_ID" \
-            --confirm-name "$PROJECT_NAME" ||
+        # `apps delete` only opens the console (ADR-0026); the API deletes.
+        "$SHOREBIRD" api -X DELETE "apps/$APP_ID" >/dev/null ||
             echo "⚠️  Failed to delete app $APP_ID; delete it by hand."
     fi
     # macOS does not let us delete a sandbox container itself, only its

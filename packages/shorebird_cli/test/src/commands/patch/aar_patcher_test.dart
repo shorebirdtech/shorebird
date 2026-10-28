@@ -107,6 +107,11 @@ void main() {
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       patchDiffChecker = MockPatchDiffChecker();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -148,6 +153,13 @@ void main() {
     group('releaseType', () {
       test('is aar', () {
         expect(patcher.releaseType, ReleaseType.aar);
+      });
+    });
+
+    group('minimumFlutterVersion', () {
+      test('is null', () {
+        // Patches of existing releases on any Flutter version are allowed.
+        expect(patcher.minimumFlutterVersion, isNull);
       });
     });
 
@@ -256,8 +268,32 @@ void main() {
             archiveDiffer: any(named: 'archiveDiffer'),
             allowAssetChanges: any(named: 'allowAssetChanges'),
             allowNativeChanges: any(named: 'allowNativeChanges'),
+            showDexDiff: any(named: 'showDexDiff'),
           ),
         ).thenAnswer((_) async => diffStatus);
+      });
+
+      test('passes --show-dex-diff through to the checker', () async {
+        when(() => argResults['show-dex-diff']).thenReturn(true);
+
+        await runWithOverrides(
+          () => patcher.assertUnpatchableDiffs(
+            releaseArtifact: FakeReleaseArtifact(),
+            releaseArchive: File(''),
+            patchArchive: File(''),
+          ),
+        );
+
+        verify(
+          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+            localArchive: any(named: 'localArchive'),
+            releaseArchive: any(named: 'releaseArchive'),
+            archiveDiffer: any(named: 'archiveDiffer'),
+            allowAssetChanges: any(named: 'allowAssetChanges'),
+            allowNativeChanges: any(named: 'allowNativeChanges'),
+            showDexDiff: true,
+          ),
+        ).called(1);
       });
 
       test('forwards result from patchDiffChecker', () async {
@@ -276,6 +312,7 @@ void main() {
             archiveDiffer: any(named: 'archiveDiffer'),
             allowAssetChanges: any(named: 'allowAssetChanges'),
             allowNativeChanges: any(named: 'allowNativeChanges'),
+            showDexDiff: any(named: 'showDexDiff'),
           ),
         ).called(1);
       });
@@ -356,6 +393,43 @@ void main() {
               ),
             ).called(1);
           });
+        });
+
+        test('builds only the architectures the release has', () async {
+          final release = MockRelease();
+          when(() => release.id).thenReturn(42);
+          when(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => {Arch.arm64: FakeReleaseArtifact()});
+          when(
+            () => artifactBuilder.buildAar(
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(() async {
+            await patcher.prepareForRelease(appId: 'app-id', release: release);
+            await patcher.buildPatchArtifact();
+          });
+
+          verify(
+            () => artifactBuilder.buildAar(
+              buildNumber: buildNumber,
+              targetPlatforms: [Arch.arm64],
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).called(1);
         });
 
         group('when the key pair is provided', () {
@@ -469,7 +543,7 @@ void main() {
       setUp(() {
         releaseArtifactFile = File('');
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),
@@ -516,7 +590,7 @@ void main() {
       group('when release artifact download fails', () {
         setUp(() {
           when(
-            () => artifactManager.downloadWithProgressUpdates(
+            () => artifactManager.downloadReleaseArtifact(
               any(),
               message: any(named: 'message'),
             ),

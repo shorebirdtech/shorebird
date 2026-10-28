@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
@@ -115,7 +116,7 @@ void main() {
     final channel = Channel(id: 0, appId: appId, name: track.channel);
     const patchId = 1;
     const patchNumber = 2;
-    const patch = Patch(id: patchId, number: patchNumber);
+    const patch = CreatePatchResponse(id: patchId, number: patchNumber);
     const releasePlatform = ReleasePlatform.ios;
     const releaseId = 123;
     const arch = Arch.arm64;
@@ -130,7 +131,7 @@ void main() {
       flutterRevision: flutterRevision,
       flutterVersion: flutterVersion,
       displayName: displayName,
-      platformStatuses: const {},
+      platforms: const {},
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
@@ -180,6 +181,9 @@ void main() {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(
+        const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
+      );
     });
 
     setUp(() {
@@ -393,6 +397,147 @@ void main() {
         });
       });
 
+      group('findAppOrganization', () {
+        final first = OrganizationMembership(
+          organization: organizationForTest(id: 1),
+          role: Role.owner,
+        );
+        final second = OrganizationMembership(
+          organization: organizationForTest(id: 2),
+          role: Role.admin,
+        );
+        AppMetadata appWithId(String id) => AppMetadata(
+          appId: id,
+          displayName: id,
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
+        );
+
+        setUp(() {
+          when(
+            () => codePushClient.getOrganizationApps(organizationId: 1),
+          ).thenAnswer((_) async => [appWithId('other')]);
+          when(
+            () => codePushClient.getOrganizationApps(organizationId: 2),
+          ).thenAnswer((_) async => [appWithId('target')]);
+        });
+
+        test(
+          'returns the membership whose organization lists the app',
+          () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, equals(second));
+            verify(() => progress.complete()).called(1);
+          },
+        );
+
+        group('when the app names its organization', () {
+          test('returns that membership without listing apps', () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                organizationId: 2,
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, equals(second));
+            verifyNever(
+              () => codePushClient.getOrganizationApps(
+                organizationId: any(named: 'organizationId'),
+              ),
+            );
+          });
+
+          test('returns null when the user is not a member of it', () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                organizationId: 3,
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, isNull);
+          });
+        });
+
+        test('stops at the first organization that lists the app', () async {
+          final membership = await runWithOverrides(
+            () => codePushClientWrapper.findAppOrganization(
+              appId: 'other',
+              memberships: [first, second],
+            ),
+          );
+          expect(membership, equals(first));
+          verifyNever(
+            () => codePushClient.getOrganizationApps(organizationId: 2),
+          );
+        });
+
+        test('returns null when no organization lists the app', () async {
+          final membership = await runWithOverrides(
+            () => codePushClientWrapper.findAppOrganization(
+              appId: 'missing',
+              memberships: [first, second],
+            ),
+          );
+          expect(membership, isNull);
+        });
+
+        group('when listing one organization fails', () {
+          const error = CodePushException(message: 'listing failed');
+
+          setUp(() {
+            when(
+              () => codePushClient.getOrganizationApps(organizationId: 1),
+            ).thenThrow(error);
+          });
+
+          test('still finds the app in another organization', () async {
+            final membership = await runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                memberships: [first, second],
+              ),
+            );
+            expect(membership, equals(second));
+          });
+
+          test('fails when no other organization has the app', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.findAppOrganization(
+                  appId: 'missing',
+                  memberships: [first, second],
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
+        test('exits with code 70 when listing apps fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getOrganizationApps(organizationId: 1),
+          ).thenThrow(error);
+          await expectLater(
+            () => runWithOverrides(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: 'target',
+                memberships: [first, second],
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+      });
+
       group('getApps', () {
         test('exits with code 70 when getting apps fails', () async {
           const error = 'something went wrong';
@@ -405,8 +550,109 @@ void main() {
           verify(() => progress.fail(error)).called(1);
         });
 
+        test('reports the server error code and exits with an '
+            'ApiErrorExit when the API call fails', () async {
+          const error = CodePushException(
+            message: 'Plan lacks this feature.',
+            response: ErrorResponse(
+              code: 'shorebird_plan_insufficient_tier',
+              message: 'Plan lacks this feature.',
+            ),
+          );
+          when(() => codePushClient.getApps()).thenThrow(error);
+
+          await expectLater(
+            () => runWithOverrides(codePushClientWrapper.getApps),
+            throwsA(
+              isA<ApiErrorExit>()
+                  .having((e) => e.error, 'error', same(error))
+                  .having(
+                    (e) => e.exitCode,
+                    'exitCode',
+                    ExitCode.software.code,
+                  ),
+            ),
+          );
+          verify(() => progress.fail('$error')).called(1);
+          verify(
+            () => logger.info('Error code: shorebird_plan_insufficient_tier'),
+          ).called(1);
+        });
+
         test(
-          '''prints upgrade message when client throws CodePushUpgradeRequiredException''',
+          'prints the server message, details and documentation on a 426',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              CodePushUpgradeRequiredException(
+                message: 'shorebird CLI 1.6.0 or newer is required.',
+                details: 'You are on 1.5.0.',
+                response: ErrorResponse(
+                  code: 'upgrade_required',
+                  message: 'shorebird CLI 1.6.0 or newer is required.',
+                  documentationUrl: Uri.parse(
+                    'https://docs.shorebird.dev/deprecations',
+                  ),
+                ),
+              ),
+            );
+            await expectLater(
+              () async =>
+                  runWithOverrides(() => codePushClientWrapper.getApps()),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err('shorebird CLI 1.6.0 or newer is required.'),
+            ).called(1);
+            verify(() => logger.info('You are on 1.5.0.')).called(1);
+            verify(
+              () => logger.info('See: https://docs.shorebird.dev/deprecations'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            ).called(1);
+            verifyNever(
+              () => logger.err('Your version of shorebird is out of date.'),
+            );
+          },
+        );
+
+        test(
+          '''doesn't repeat the upgrade command when the server names it''',
+          () async {
+            when(codePushClient.getApps).thenThrow(
+              const CodePushUpgradeRequiredException(
+                message: 'Flutter 3.41.9 requires a newer CLI.',
+                details: 'Run `shorebird upgrade` and retry.',
+                response: ErrorResponse(
+                  code: 'cli_flutter_incompatible',
+                  message: 'Flutter 3.41.9 requires a newer CLI.',
+                ),
+              ),
+            );
+            await expectLater(
+              () async =>
+                  runWithOverrides(() => codePushClientWrapper.getApps()),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err('Flutter 3.41.9 requires a newer CLI.'),
+            ).called(1);
+            verify(
+              () => logger.info('Run `shorebird upgrade` and retry.'),
+            ).called(1);
+            verifyNever(
+              () => logger.info(
+                '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
+              ),
+            );
+          },
+        );
+
+        test(
+          '''prints the generic upgrade message on a 426 without an error body''',
           () async {
             when(codePushClient.getApps).thenThrow(
               const CodePushUpgradeRequiredException(
@@ -439,6 +685,38 @@ void main() {
 
           expect(apps, equals([app]));
           verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('getSigningKey', () {
+        const signingKey = SigningKey(id: 7, publicKeyPem: 'pem');
+
+        test('returns the key', () async {
+          when(
+            () => codePushClient.getSigningKey(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => signingKey);
+
+          final key = await runWithOverrides(
+            () => codePushClientWrapper.getSigningKey(appId: appId),
+          );
+
+          expect(key, equals(signingKey));
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('exits with code 70 when the fetch fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getSigningKey(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getSigningKey(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
         });
       });
 
@@ -563,6 +841,526 @@ void main() {
         });
       });
 
+      group('getReceivedInvitations', () {
+        test('exits with code 70 when fetching invitations fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getReceivedInvitations()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              codePushClientWrapper.getReceivedInvitations,
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns the invitations', () async {
+          final invitation = ReceivedInvitation(
+            id: 'id',
+            organizationId: 1,
+            targetName: 'Acme',
+            inviterEmail: 'admin@shorebird.dev',
+            role: Role.developer,
+            createdAt: DateTime.utc(2026, 4, 20),
+            expiresAt: DateTime.utc(2026, 5, 4),
+          );
+          when(
+            () => codePushClient.getReceivedInvitations(),
+          ).thenAnswer((_) async => [invitation]);
+
+          final invitations = await runWithOverrides(
+            codePushClientWrapper.getReceivedInvitations,
+          );
+
+          expect(invitations, equals([invitation]));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('acceptInvitation', () {
+        test('exits with code 70 when accepting fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.acceptInvitation(
+              invitationId: any(named: 'invitationId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.acceptInvitation(invitationId: 'id'),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when the invitation is accepted', () async {
+          when(
+            () => codePushClient.acceptInvitation(invitationId: 'id'),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.acceptInvitation(invitationId: 'id'),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('declineInvitation', () {
+        test('exits with code 70 when declining fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.declineInvitation(
+              invitationId: any(named: 'invitationId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.declineInvitation(invitationId: 'id'),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when the invitation is declined', () async {
+          when(
+            () => codePushClient.declineInvitation(invitationId: 'id'),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.declineInvitation(invitationId: 'id'),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('account', () {
+        group('service accounts', () {
+          final account = ServiceAccount(
+            id: 383,
+            organizationId: 42,
+            name: 'release-bot',
+            label: 'release-bot[bot]',
+            role: ServiceAccountRole.developer,
+            createdAt: DateTime(2026),
+            createdByUserId: null,
+            createdByEmail: null,
+            lastAuthAt: null,
+          );
+          final key = ServiceAccountKey(
+            id: 12,
+            name: 'ci',
+            createdAt: DateTime(2026),
+            lastUsedAt: null,
+            expiresAt: null,
+            scopes: const [],
+          );
+
+          test('getServiceAccounts returns the accounts', () async {
+            when(
+              () => codePushClient.getServiceAccounts(organizationId: 42),
+            ).thenAnswer((_) async => [account]);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.getServiceAccounts(
+                  organizationId: 42,
+                ),
+              ),
+              completion([account]),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('createServiceAccount returns the new account', () async {
+            when(
+              () => codePushClient.createServiceAccount(
+                organizationId: 42,
+                name: 'release-bot',
+                role: ServiceAccountRole.viewer,
+              ),
+            ).thenAnswer((_) async => account);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.createServiceAccount(
+                  organizationId: 42,
+                  name: 'release-bot',
+                  role: ServiceAccountRole.viewer,
+                ),
+              ),
+              completion(account),
+            );
+          });
+
+          test('updateServiceAccount returns the updated account', () async {
+            when(
+              () => codePushClient.updateServiceAccount(
+                organizationId: 42,
+                serviceAccountId: 383,
+                role: ServiceAccountRole.viewer,
+              ),
+            ).thenAnswer((_) async => account);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.updateServiceAccount(
+                  organizationId: 42,
+                  serviceAccountId: 383,
+                  role: ServiceAccountRole.viewer,
+                ),
+              ),
+              completion(account),
+            );
+          });
+
+          test('deleteServiceAccount deletes the account', () async {
+            when(
+              () => codePushClient.deleteServiceAccount(
+                organizationId: 42,
+                serviceAccountId: 383,
+              ),
+            ).thenAnswer((_) async {});
+            await runWithOverrides(
+              () => codePushClientWrapper.deleteServiceAccount(
+                organizationId: 42,
+                serviceAccountId: 383,
+              ),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('getServiceAccountKeys returns the keys', () async {
+            when(
+              () => codePushClient.getServiceAccountKeys(
+                organizationId: 42,
+                serviceAccountId: 383,
+              ),
+            ).thenAnswer((_) async => [key]);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.getServiceAccountKeys(
+                  organizationId: 42,
+                  serviceAccountId: 383,
+                ),
+              ),
+              completion([key]),
+            );
+          });
+
+          test('revokeServiceAccountKey revokes the key', () async {
+            when(
+              () => codePushClient.revokeServiceAccountKey(
+                organizationId: 42,
+                serviceAccountId: 383,
+                keyId: 12,
+              ),
+            ).thenAnswer((_) async {});
+            await runWithOverrides(
+              () => codePushClientWrapper.revokeServiceAccountKey(
+                organizationId: 42,
+                serviceAccountId: 383,
+                keyId: 12,
+              ),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('exits with code 70 when a call fails', () async {
+            when(
+              () => codePushClient.getServiceAccounts(organizationId: 42),
+            ).thenThrow('boom');
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.getServiceAccounts(
+                  organizationId: 42,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail('boom')).called(1);
+          });
+        });
+
+        test('createOrganization returns the new organization', () async {
+          final organization = Organization(
+            id: 42,
+            name: 'Acme Corp',
+            organizationType: OrganizationType.team,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          );
+          when(
+            () => codePushClient.createOrganization(name: 'Acme Corp'),
+          ).thenAnswer((_) async => organization);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.createOrganization(
+                name: 'Acme Corp',
+              ),
+            ),
+            completion(equals(organization)),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('updateOrganization sends the name', () async {
+          when(
+            () => codePushClient.updateOrganization(
+              organizationId: 42,
+              name: 'Acme Corp',
+            ),
+          ).thenAnswer((_) async {});
+          await runWithOverrides(
+            () => codePushClientWrapper.updateOrganization(
+              organizationId: 42,
+              name: 'Acme Corp',
+            ),
+          );
+          verify(
+            () => codePushClient.updateOrganization(
+              organizationId: 42,
+              name: 'Acme Corp',
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('member calls pass through and complete progress', () async {
+          const member = OrganizationUser(
+            user: PublicUser(id: 7, email: 'bob@acme.com'),
+            role: Role.developer,
+          );
+          final invite = InvitationSummary(
+            id: 'inv-1',
+            email: 'carol@acme.com',
+            role: Role.viewer,
+            createdAt: DateTime.utc(2026),
+            expiresAt: DateTime.utc(2026, 2),
+          );
+          const added = CreateInvitationResponse(email: 'dan@acme.com');
+          when(
+            () => codePushClient.getOrganizationUsers(organizationId: 42),
+          ).thenAnswer((_) async => [member]);
+          when(
+            () => codePushClient.getOrganizationInvitations(organizationId: 42),
+          ).thenAnswer((_) async => [invite]);
+          when(
+            () => codePushClient.getOrganizationInvitations(organizationId: 9),
+          ).thenThrow(CodePushForbiddenException(message: 'no'));
+          when(
+            () => codePushClient.createOrganizationInvitation(
+              organizationId: 42,
+              email: 'dan@acme.com',
+              role: Role.admin,
+            ),
+          ).thenAnswer((_) async => added);
+          when(
+            () => codePushClient.revokeOrganizationInvitation(
+              organizationId: 42,
+              invitationId: 'inv-1',
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => codePushClient.updateOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+              role: Role.admin,
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => codePushClient.removeOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(() async {
+            expect(
+              await codePushClientWrapper.getOrganizationUsers(
+                organizationId: 42,
+              ),
+              [member],
+            );
+            expect(
+              await codePushClientWrapper.maybeGetOrganizationInvitations(
+                organizationId: 42,
+              ),
+              [invite],
+            );
+            expect(
+              await codePushClientWrapper.maybeGetOrganizationInvitations(
+                organizationId: 9,
+              ),
+              isNull,
+            );
+            expect(
+              await codePushClientWrapper.createOrganizationInvitation(
+                organizationId: 42,
+                email: 'dan@acme.com',
+                role: Role.admin,
+              ),
+              added,
+            );
+            await codePushClientWrapper.revokeOrganizationInvitation(
+              organizationId: 42,
+              invitationId: 'inv-1',
+            );
+            await codePushClientWrapper.updateOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+              role: Role.admin,
+            );
+            await codePushClientWrapper.removeOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+            );
+          });
+          verify(() => progress.complete()).called(7);
+        });
+
+        test('getOrganizationAuditLogs passes the filters through', () async {
+          const page = GetOrganizationAuditLogsResponse(data: []);
+          when(
+            () => codePushClient.getOrganizationAuditLogs(
+              organizationId: 42,
+              perPage: 10,
+              cursor: 'c',
+              order: AuditLogOrder.asc,
+              appId: 'app',
+              actorId: 12,
+              operation: 'organization.rename',
+            ),
+          ).thenAnswer((_) async => page);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.getOrganizationAuditLogs(
+                organizationId: 42,
+                perPage: 10,
+                cursor: 'c',
+                order: AuditLogOrder.asc,
+                appId: 'app',
+                actorId: 12,
+                operation: 'organization.rename',
+              ),
+            ),
+            completion(equals(page)),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        group('maybeGetOrganizationUsage', () {
+          test('returns null when the role may not see usage', () async {
+            when(
+              () => codePushClient.getOrganizationUsage(organizationId: 42),
+            ).thenThrow(CodePushForbiddenException(message: 'no'));
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.maybeGetOrganizationUsage(
+                  organizationId: 42,
+                ),
+              ),
+              completion(isNull),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('exits on any other failure', () async {
+            when(
+              () => codePushClient.getOrganizationUsage(organizationId: 42),
+            ).thenThrow(const CodePushException(message: 'boom'));
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.maybeGetOrganizationUsage(
+                  organizationId: 42,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
+        test('getOrganizationUsage returns the usage', () async {
+          const usage = GetUsageResponse(
+            apps: [],
+            position: AccountPosition(
+              includedInstalls: 100,
+              installs: 5,
+              includedInstallsUsed: 5,
+              includedExhausted: false,
+              overageInstalls: 0,
+              installCeiling: null,
+              remainingInstalls: null,
+              atCeiling: false,
+              nearingLimit: false,
+              consumingOverage: false,
+              accruedOverageAmount: null,
+            ),
+            reportedOverage: null,
+          );
+          when(
+            () => codePushClient.getOrganizationUsage(organizationId: 42),
+          ).thenAnswer((_) async => usage);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.getOrganizationUsage(
+                organizationId: 42,
+              ),
+            ),
+            completion(equals(usage)),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('updateCurrentUser sends the display name', () async {
+          when(
+            () => codePushClient.updateCurrentUser(
+              displayName: any(named: 'displayName'),
+            ),
+          ).thenAnswer((_) async {});
+          await runWithOverrides(
+            () => codePushClientWrapper.updateCurrentUser(
+              displayName: 'Jane Doe',
+            ),
+          );
+          verify(
+            () => codePushClient.updateCurrentUser(displayName: 'Jane Doe'),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('getEmailNotificationsEnabled returns the setting', () async {
+          when(
+            () => codePushClient.getEmailNotificationsEnabled(),
+          ).thenAnswer((_) async => true);
+          await expectLater(
+            runWithOverrides(
+              codePushClientWrapper.getEmailNotificationsEnabled,
+            ),
+            completion(isTrue),
+          );
+        });
+
+        test('setEmailNotificationsEnabled sends the setting', () async {
+          when(
+            () => codePushClient.setEmailNotificationsEnabled(
+              enabled: any(named: 'enabled'),
+            ),
+          ).thenAnswer((_) async {});
+          await runWithOverrides(
+            () => codePushClientWrapper.setEmailNotificationsEnabled(
+              enabled: false,
+            ),
+          );
+          verify(
+            () => codePushClient.setEmailNotificationsEnabled(enabled: false),
+          ).called(1);
+        });
+      });
+
       group('updateApp', () {
         test('exits with code 70 when renaming app fails', () async {
           const error = 'something went wrong';
@@ -604,31 +1402,95 @@ void main() {
         });
       });
 
-      group('deleteApp', () {
-        test('exits with code 70 when deleting app fails', () async {
-          const error = 'something went wrong';
+      group('deleteRelease', () {
+        const releaseId = 42;
+
+        test('exits with code 70 when deleting the release fails', () async {
+          final error = CodePushForbiddenException(message: 'Forbidden');
           when(
-            () => codePushClient.deleteApp(appId: any(named: 'appId')),
+            () => codePushClient.deleteRelease(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
           ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
-              () => codePushClientWrapper.deleteApp(appId: appId),
+              () => codePushClientWrapper.deleteRelease(
+                appId: appId,
+                releaseId: releaseId,
+              ),
             ),
             exitsWithCode(ExitCode.software),
           );
-          verify(() => progress.fail(error)).called(1);
+          verify(() => progress.fail('$error')).called(1);
         });
 
-        test('completes when app is successfully deleted', () async {
+        test('completes when the release is successfully deleted', () async {
           when(
-            () => codePushClient.deleteApp(appId: appId),
+            () => codePushClient.deleteRelease(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           ).thenAnswer((_) async {});
 
           await runWithOverrides(
-            () => codePushClientWrapper.deleteApp(appId: appId),
+            () => codePushClientWrapper.deleteRelease(
+              appId: appId,
+              releaseId: releaseId,
+            ),
           );
 
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteReleaseArtifacts', () {
+        const releaseId = 42;
+
+        test('exits with code 70 when deleting artifacts fails', () async {
+          final error = CodePushForbiddenException(message: 'Forbidden');
+          when(
+            () => codePushClient.deleteReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteReleaseArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                platform: ReleasePlatform.ios,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail('$error')).called(1);
+        });
+
+        test('completes when the artifacts are successfully deleted', () async {
+          when(
+            () => codePushClient.deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.ios,
+            ),
+          );
+
+          verify(
+            () => logger.progress('Deleting ios release artifacts'),
+          ).called(1);
           verify(() => progress.complete()).called(1);
         });
       });
@@ -857,8 +1719,10 @@ void main() {
                     flutterRevision: flutterRevision,
                     flutterVersion: flutterVersion,
                     displayName: displayName,
-                    platformStatuses: const {
-                      releasePlatform: ReleaseStatus.active,
+                    platforms: const {
+                      releasePlatform: ReleasePlatformDetails(
+                        status: ReleaseStatus.active,
+                      ),
                     },
                     createdAt: DateTime(2023),
                     updatedAt: DateTime(2023),
@@ -868,7 +1732,9 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
-            final uri = ShorebirdWebConsole.appReleaseUri(appId, releaseId);
+            final uri = runWithOverrides(
+              () => ShorebirdWebConsole.appReleaseUri(appId, releaseId),
+            );
 
             verify(
               () => logger.err(
@@ -895,7 +1761,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                     flutterRevision: flutterRevision,
                     flutterVersion: flutterVersion,
                     displayName: displayName,
-                    platformStatuses: const {},
+                    platforms: const {},
                     createdAt: DateTime(2023),
                     updatedAt: DateTime(2023),
                   ),
@@ -920,8 +1786,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                     flutterRevision: flutterRevision,
                     flutterVersion: flutterVersion,
                     displayName: displayName,
-                    platformStatuses: const {
-                      releasePlatform: ReleaseStatus.draft,
+                    platforms: const {
+                      releasePlatform: ReleasePlatformDetails(
+                        status: ReleaseStatus.draft,
+                      ),
                     },
                     createdAt: DateTime(2023),
                     updatedAt: DateTime(2023),
@@ -1561,6 +2429,47 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           },
         );
 
+        test(
+          'exits with code 70 when storage rejects an upload with a 409',
+          () async {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(
+              const CodePushUploadException(
+                message: 'Failed to upload artifact (Conflict 409)',
+                statusCode: HttpStatus.conflict,
+              ),
+            );
+            setUpProjectRoot();
+
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: p.join(projectRoot.path, aabPath),
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verifyNever(
+              () => logger.info(any(that: contains('already exists'))),
+            );
+          },
+        );
+
         test('completes successfully when all artifacts are created', () async {
           when(
             () => codePushClient.createReleaseArtifact(
@@ -1817,17 +2726,23 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               p.join(fixturesDirectory, 'aabs', 'changed_asset.aab'),
             );
 
-            await runWithOverrides(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: aab.path,
-                architectures: Arch.values,
+            final systemTemp = createSystemTemp();
+            await runWithSystemTemp(
+              systemTemp,
+              () => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: aab.path,
+                  architectures: Arch.values,
+                ),
               ),
             );
 
+            // The directory the aab was extracted into is deleted afterwards.
+            expect(systemTemp.listSync(), isEmpty);
             // Each per-arch artifact was uploaded from the directory the aab
             // was extracted into, not from the empty strip output.
             verify(
@@ -2172,7 +3087,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           'exits with code 70 when every requested arch is missing',
           () async {
             File(p.join(projectRoot.path, aarPath)).createSync(recursive: true);
-            final jniDir = p.join(projectRoot.path, extractedAarPath, 'jni');
 
             await expectLater(
               () async => runWithOverrides(
@@ -2197,7 +3111,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 any(
                   that: allOf(
                     contains('No architecture artifacts found to upload'),
-                    contains('under $jniDir '),
+                    // ABI names, not paths: the directory searched may be
+                    // a temporary one deleted before the command exits.
+                    contains('  - ${Arch.arm64.androidBuildPath}\n'),
                   ),
                 ),
               ),
@@ -2385,6 +3301,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
               podfileLockHash: any(named: 'podfileLockHash'),
+              signing: any(named: 'signing'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -2410,6 +3327,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               hash: any(named: 'hash'),
               canSideload: true,
               podfileLockHash: null,
+            ),
+          ).called(1);
+        });
+
+        test('records how the build is signed', () async {
+          const signing = ArtifactSigningRequest(
+            mode: ReleaseSigningMode.managed,
+            keyId: 7,
+          );
+          await runWithOverrides(
+            () async => codePushClientWrapper.createLinuxReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              bundle: releaseBundle,
+              signing: signing,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: appId,
+              releaseId: releaseId,
+              arch: primaryLinuxReleaseArtifactArch,
+              platform: ReleasePlatform.linux,
+              hash: any(named: 'hash'),
+              canSideload: true,
+              podfileLockHash: null,
+              signing: signing,
             ),
           ).called(1);
         });

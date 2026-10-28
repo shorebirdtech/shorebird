@@ -95,20 +95,29 @@ void main() {
     });
 
     group('configDirectory', () {
-      test('returns correct directory', () {
-        expect(
-          runWithOverrides(() => shorebirdEnv.configDirectory.path),
-          endsWith(executableName),
+      late String home;
+
+      setUp(() {
+        home = Directory.systemTemp.createTempSync().path;
+        platform = platform.copyWith(
+          environment: {
+            'HOME': home,
+            'APPDATA': home,
+            'XDG_CONFIG_HOME': p.join(home, '.config'),
+          },
         );
       });
-    });
 
-    group('logsDirectory', () {
-      test('returns correct directory', () {
-        expect(
-          runWithOverrides(() => shorebirdEnv.logsDirectory.path),
-          endsWith(p.join(executableName, 'logs')),
-        );
+      test("is found from the scoped platform's environment", () {
+        final path = runWithOverrides(() => shorebirdEnv.configDirectory.path);
+        expect(path, endsWith(executableName));
+        expect(p.isWithin(home, path), isTrue);
+      });
+
+      test('holds logsDirectory', () {
+        final path = runWithOverrides(() => shorebirdEnv.logsDirectory.path);
+        expect(path, endsWith(p.join(executableName, 'logs')));
+        expect(p.isWithin(home, path), isTrue);
       });
     });
 
@@ -806,6 +815,123 @@ dependencies:
       });
     });
 
+    group('downloadUrl', () {
+      test('defaults to download.shorebird.dev', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://download.shorebird.dev'),
+        );
+      });
+
+      test('returns SHOREBIRD_DOWNLOAD_URL when set', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_DOWNLOAD_URL': 'http://localhost:8080',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('http://localhost:8080'),
+        );
+      });
+
+      test('strips a trailing slash', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_DOWNLOAD_URL': 'https://mirror.example.com/sb/',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://mirror.example.com/sb'),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_DOWNLOAD_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_DOWNLOAD_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://download.shorebird.dev'),
+        );
+      });
+
+      test('ignores FLUTTER_STORAGE_BASE_URL', () {
+        platform = platform.copyWith(
+          environment: {
+            'FLUTTER_STORAGE_BASE_URL': 'https://storage.flutter-io.cn',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.downloadUrl),
+          equals('https://download.shorebird.dev'),
+        );
+      });
+    });
+
+    group('flutterGitUrl', () {
+      test('defaults to the Shorebird Flutter fork on GitHub', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterGitUrl),
+          equals('https://github.com/shorebirdtech/flutter.git'),
+        );
+      });
+
+      test('returns SHOREBIRD_FLUTTER_GIT_URL when set', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_FLUTTER_GIT_URL': 'https://git.example.com/flutter.git',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterGitUrl),
+          equals('https://git.example.com/flutter.git'),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_FLUTTER_GIT_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_FLUTTER_GIT_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterGitUrl),
+          equals(defaultFlutterGitUrl),
+        );
+      });
+    });
+
+    group('bundletoolUrl', () {
+      test('defaults to the bundletool GitHub release', () {
+        expect(
+          runWithOverrides(() => shorebirdEnv.bundletoolUrl),
+          equals(defaultBundletoolUrl),
+        );
+      });
+
+      test('returns SHOREBIRD_BUNDLETOOL_URL when set', () {
+        platform = platform.copyWith(
+          environment: {
+            'SHOREBIRD_BUNDLETOOL_URL': 'https://mirror.example.com/bt.jar',
+          },
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.bundletoolUrl),
+          equals('https://mirror.example.com/bt.jar'),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_BUNDLETOOL_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_BUNDLETOOL_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.bundletoolUrl),
+          equals(defaultBundletoolUrl),
+        );
+      });
+    });
+
     group('hostedUrl', () {
       test('returns hosted url from env if available', () {
         platform = platform.copyWith(
@@ -831,6 +957,37 @@ base_url: https://example.com''');
         );
       });
 
+      group('with --dev', () {
+        R runInDevMode<R>(R Function() body) => runScoped(
+          () => runWithOverrides(body),
+          values: {isDevModeRef.overrideWith(() => true)},
+        );
+
+        test('returns the dev server over shorebird.yaml', () {
+          final directory = Directory.systemTemp.createTempSync();
+          File(p.join(directory.path, 'shorebird.yaml')).writeAsStringSync('''
+app_id: test-id
+base_url: https://example.com''');
+          expect(
+            IOOverrides.runZoned(
+              () => runInDevMode(() => shorebirdEnv.hostedUri),
+              getCurrentDirectory: () => directory,
+            ),
+            equals(Uri.parse('https://api-dev.shorebird.dev')),
+          );
+        });
+
+        test('returns hosted url from env if available', () {
+          platform = platform.copyWith(
+            environment: {'SHOREBIRD_HOSTED_URL': 'https://example.com'},
+          );
+          expect(
+            runInDevMode(() => shorebirdEnv.hostedUri),
+            equals(Uri.parse('https://example.com')),
+          );
+        });
+      });
+
       test('returns null when there is no env override or shorebird.yaml', () {
         expect(runWithOverrides(() => shorebirdEnv.hostedUri), isNull);
       });
@@ -854,10 +1011,19 @@ base_url: https://example.com''');
 
     group('canAcceptUserInput', () {
       late Stdin stdin;
+      late Stdout stdout;
 
       setUp(() {
         stdin = MockStdin();
+        stdout = MockStdout();
+        when(() => stdout.hasTerminal).thenReturn(true);
       });
+
+      bool canAcceptUserInput() => IOOverrides.runZoned(
+        () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
+        stdin: () => stdin,
+        stdout: () => stdout,
+      );
 
       group('when stdin has terminal', () {
         setUp(() {
@@ -870,13 +1036,7 @@ base_url: https://example.com''');
           });
 
           test('returns true', () {
-            expect(
-              IOOverrides.runZoned(
-                () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
-                stdin: () => stdin,
-              ),
-              isTrue,
-            );
+            expect(canAcceptUserInput(), isTrue);
           });
         });
 
@@ -886,30 +1046,31 @@ base_url: https://example.com''');
           });
 
           test('returns false', () {
-            expect(
-              IOOverrides.runZoned(
-                () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
-                stdin: () => stdin,
-              ),
-              isFalse,
-            );
+            expect(canAcceptUserInput(), isFalse);
+          });
+        });
+
+        // e.g. stdout redirected to /dev/null, or a PTY with no window size.
+        // mason_logger's prompts require stdout.hasTerminal.
+        group('when stdout has no terminal', () {
+          setUp(() {
+            platform = platform.copyWith(environment: {});
+            when(() => stdout.hasTerminal).thenReturn(false);
+          });
+
+          test('returns false', () {
+            expect(canAcceptUserInput(), isFalse);
           });
         });
       });
 
-      group('when stdin has terminal', () {
+      group('when stdin has no terminal', () {
         setUp(() {
           when(() => stdin.hasTerminal).thenReturn(false);
         });
 
-        test('returns true', () {
-          expect(
-            IOOverrides.runZoned(
-              () => runWithOverrides(() => shorebirdEnv.canAcceptUserInput),
-              stdin: () => stdin,
-            ),
-            isFalse,
-          );
+        test('returns false', () {
+          expect(canAcceptUserInput(), isFalse);
         });
       });
     });
@@ -934,26 +1095,194 @@ base_url: https://example.com''');
           equals(Uri.parse('https://custom-auth.example.com')),
         );
       });
-    });
 
-    group('jwtIssuer', () {
-      test('returns default issuer when env var is not set', () {
-        platform = platform.copyWith(environment: {});
+      test('follows SHOREBIRD_HOSTED_URL to its auth service', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': devHostedUrl},
+        );
         expect(
-          runWithOverrides(() => shorebirdEnv.jwtIssuer),
-          equals('https://auth.shorebird.dev'),
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse(devAuthServiceUrl)),
         );
       });
 
-      test('returns issuer from env var when set', () {
+      test('follows base_url in shorebird.yaml to its auth service', () {
+        platform = platform.copyWith(environment: {});
+        final directory = Directory.systemTemp.createTempSync();
+        File(p.join(directory.path, 'shorebird.yaml')).writeAsStringSync('''
+app_id: test-id
+base_url: $devHostedUrl''');
+        expect(
+          IOOverrides.runZoned(
+            () => runWithOverrides(() => shorebirdEnv.authServiceUri),
+            getCurrentDirectory: () => directory,
+          ),
+          equals(Uri.parse(devAuthServiceUrl)),
+        );
+      });
+
+      test('ignores an empty AUTH_SERVICE_URL', () {
         platform = platform.copyWith(
           environment: {
-            'SHOREBIRD_JWT_ISSUER': 'https://custom-issuer.example.com',
+            'SHOREBIRD_HOSTED_URL': devHostedUrl,
+            'AUTH_SERVICE_URL': '',
           },
         );
         expect(
-          runWithOverrides(() => shorebirdEnv.jwtIssuer),
-          equals('https://custom-issuer.example.com'),
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse(devAuthServiceUrl)),
+        );
+      });
+
+      test('is the default for a server Shorebird does not host', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': 'http://localhost:8080'},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse(defaultAuthServiceUrl)),
+        );
+      });
+
+      group('with --dev', () {
+        R runInDevMode<R>(R Function() body) => runScoped(
+          () => runWithOverrides(body),
+          values: {isDevModeRef.overrideWith(() => true)},
+        );
+
+        test('follows SHOREBIRD_HOSTED_URL over --dev', () {
+          platform = platform.copyWith(
+            environment: {'SHOREBIRD_HOSTED_URL': 'https://api.shorebird.dev'},
+          );
+          expect(
+            runInDevMode(() => shorebirdEnv.authServiceUri),
+            equals(Uri.parse(defaultAuthServiceUrl)),
+          );
+        });
+
+        test('returns the dev auth service', () {
+          platform = platform.copyWith(environment: {});
+          expect(
+            runInDevMode(() => shorebirdEnv.authServiceUri),
+            equals(Uri.parse('https://auth-dev.shorebird.dev')),
+          );
+        });
+
+        test('returns URI from env var when set', () {
+          platform = platform.copyWith(
+            environment: {
+              'AUTH_SERVICE_URL': 'https://custom-auth.example.com',
+            },
+          );
+          expect(
+            runInDevMode(() => shorebirdEnv.authServiceUri),
+            equals(Uri.parse('https://custom-auth.example.com')),
+          );
+        });
+      });
+    });
+
+    group('hostedEnvironment', () {
+      test('is production by default', () {
+        platform = platform.copyWith(environment: {});
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          equals(productionEnvironment),
+        );
+      });
+
+      test('matches SHOREBIRD_HOSTED_URL by host', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': '$devHostedUrl/'},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          equals(devEnvironment),
+        );
+      });
+
+      test('ignores an empty SHOREBIRD_HOSTED_URL', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': ''},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          equals(productionEnvironment),
+        );
+      });
+
+      test('is null for a server Shorebird does not host', () {
+        platform = platform.copyWith(
+          environment: {'SHOREBIRD_HOSTED_URL': 'http://localhost:8080'},
+        );
+        expect(
+          runWithOverrides(() => shorebirdEnv.hostedEnvironment),
+          isNull,
+        );
+      });
+    });
+
+    group('authServiceMismatch', () {
+      String? mismatchWith(Map<String, String> environment) {
+        platform = platform.copyWith(environment: environment);
+        return runWithOverrides(() => shorebirdEnv.authServiceMismatch);
+      }
+
+      test('is null by default', () {
+        expect(mismatchWith({}), isNull);
+      });
+
+      test('is null when the auth service follows the server', () {
+        expect(mismatchWith({'SHOREBIRD_HOSTED_URL': devHostedUrl}), isNull);
+      });
+
+      test('is null when AUTH_SERVICE_URL matches the server', () {
+        expect(
+          mismatchWith({
+            'SHOREBIRD_HOSTED_URL': devHostedUrl,
+            'AUTH_SERVICE_URL': devAuthServiceUrl,
+          }),
+          isNull,
+        );
+      });
+
+      test('names the auth service a Shorebird server accepts', () {
+        expect(
+          mismatchWith({
+            'SHOREBIRD_HOSTED_URL': devHostedUrl,
+            'AUTH_SERVICE_URL': defaultAuthServiceUrl,
+          }),
+          equals(
+            'api-dev.shorebird.dev accepts tokens from '
+            'https://auth-dev.shorebird.dev, but AUTH_SERVICE_URL is '
+            'https://auth.shorebird.dev. Unset AUTH_SERVICE_URL (or set it '
+            'to https://auth-dev.shorebird.dev), then run shorebird login.',
+          ),
+        );
+      });
+
+      test(
+        'asks for AUTH_SERVICE_URL for a server Shorebird does not host',
+        () {
+          expect(
+            mismatchWith({'SHOREBIRD_HOSTED_URL': 'http://localhost:8080'}),
+            equals(
+              'localhost is not a Shorebird-hosted server, so the CLI signed '
+              'in with https://auth.shorebird.dev. If localhost uses another '
+              'auth service, set AUTH_SERVICE_URL to it, then run shorebird '
+              'login.',
+            ),
+          );
+        },
+      );
+
+      test('is null for another server when AUTH_SERVICE_URL is set', () {
+        expect(
+          mismatchWith({
+            'SHOREBIRD_HOSTED_URL': 'http://localhost:8080',
+            'AUTH_SERVICE_URL': 'http://localhost:3002',
+          }),
+          isNull,
         );
       });
     });

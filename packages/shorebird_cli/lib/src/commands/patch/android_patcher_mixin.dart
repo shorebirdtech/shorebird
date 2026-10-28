@@ -6,13 +6,67 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Shared logic for patchers whose release artifacts are per-architecture
 /// libapp.so files (Android app bundles and Android archives).
 mixin AndroidPatcherMixin on Patcher {
+  /// The release's per-architecture artifacts, fetched by
+  /// [prepareForRelease], with the id of the release they belong to.
+  ({int releaseId, Map<Arch, ReleaseArtifact> artifacts})? _releaseArtifacts;
+
+  @override
+  Future<void> prepareForRelease({
+    required String appId,
+    required Release release,
+  }) async {
+    _releaseArtifacts = (
+      releaseId: release.id,
+      artifacts: await _fetchReleaseArtifacts(
+        appId: appId,
+        releaseId: release.id,
+      ),
+    );
+  }
+
+  Future<Map<Arch, ReleaseArtifact>> _fetchReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+  }) => codePushClientWrapper.getReleaseArtifacts(
+    appId: appId,
+    releaseId: releaseId,
+    architectures: AndroidArch.availableAndroidArchs,
+    platform: releaseType.releasePlatform,
+  );
+
+  /// The architectures to build the patch for: those the release has, so a
+  /// release built for one architecture doesn't pay for building three.
+  ///
+  /// Null, which builds Flutter's default architectures, when the release is
+  /// not known yet (the build that reads the release version from the
+  /// patch), when the release has no per-architecture artifacts, or when the
+  /// user passed their own `--target-platform` after `--`. Architectures the
+  /// patch builds beyond the release's are never diffed, so building them
+  /// only costs time.
+  Iterable<Arch>? get releaseTargetPlatforms {
+    final archs = _releaseArtifacts?.artifacts.keys;
+    if (archs == null || archs.isEmpty) return null;
+    final userTargetPlatform = argResults.forwardedArgs.any(
+      (arg) =>
+          arg == '--target-platform' || arg.startsWith('--target-platform='),
+    );
+    if (userTargetPlatform) return null;
+    logger.detail(
+      "Building the patch for the release's architectures: "
+      '${archs.map((arch) => arch.targetPlatformCliArg).join(', ')}',
+    );
+    return archs;
+  }
+
   /// Downloads the per-architecture release artifacts for [releaseId] and
   /// returns the local path of each, keyed by architecture.
   ///
@@ -23,12 +77,10 @@ mixin AndroidPatcherMixin on Patcher {
     required int releaseId,
     required Duration downloadMessageTimeout,
   }) async {
-    final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
-      appId: appId,
-      releaseId: releaseId,
-      architectures: AndroidArch.availableAndroidArchs,
-      platform: releaseType.releasePlatform,
-    );
+    final releaseArtifacts = switch (_releaseArtifacts) {
+      (releaseId: final id, :final artifacts) when id == releaseId => artifacts,
+      _ => await _fetchReleaseArtifacts(appId: appId, releaseId: releaseId),
+    };
     final releaseArtifactPaths = <Arch, String>{};
     final numArtifacts = releaseArtifacts.length;
 
@@ -51,8 +103,8 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
     for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
       try {
         final releaseArtifactFile = await artifactManager
-            .downloadWithProgressUpdates(
-              Uri.parse(releaseArtifact.value.url),
+            .downloadReleaseArtifact(
+              releaseArtifact.value,
               message: 'Downloading release artifact ${i + 1}/$numArtifacts',
             );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
@@ -107,8 +159,10 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
     }
     if (patchArtifactBundles.isEmpty) {
       createDiffProgress.fail(
-        'No patch artifacts produced: no libapp.so found for any architecture '
-        'under ${patchArchsDir.path}.',
+        // No path here: patchArchsDir may be a temporary directory that is
+        // deleted before the command exits.
+        'No patch artifacts produced: the patch build has no libapp.so for '
+        'any architecture in the release.',
       );
       throw ProcessExit(ExitCode.software.code);
     }

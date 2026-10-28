@@ -30,6 +30,10 @@ const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 ///     slug is `<parent_dir>_<name>`. Missing packages are reported with
 ///     the dorny entry that should be added (including transitive deps).
 ///
+/// A dynamic workflow must also run `bloc lint` if any package has a
+/// `bloc_lint` dev dependency, since `generate` leaves the bloc steps
+/// out of repos where no package uses it.
+///
 /// In addition, if any workflow file has a top-level job keyed
 /// `required`, every other top-level job in that file must appear in
 /// its `needs:`, and every entry in `needs:` must match a real
@@ -83,6 +87,7 @@ class VerifyCommand extends Command<int> with RepoRootOption {
           ..sort((a, b) => a.path.compareTo(b.path));
 
     final dynamicWorkflows = <String>[];
+    var dynamicRunsBlocLint = false;
 
     for (final file in workflowFiles) {
       final content = file.readAsStringSync();
@@ -90,6 +95,7 @@ class VerifyCommand extends Command<int> with RepoRootOption {
 
       if (_usesDynamicCoverage(content)) {
         dynamicWorkflows.add(fileName);
+        dynamicRunsBlocLint |= content.contains('bloc lint');
         continue;
       }
 
@@ -113,11 +119,26 @@ class VerifyCommand extends Command<int> with RepoRootOption {
         'Using dynamic coverage via ${dynamicWorkflows.join(', ')} — '
         'all ${allPackages.length} packages covered at runtime.',
       );
+      // `generate` emits the bloc steps only when some package uses
+      // bloc_lint, so a package that adds it later would pass CI
+      // without ever being linted.
+      final blocPackages = [
+        for (final pkg in allPackages)
+          if (RepositoryAnalyzer.dependsOnBlocLint(root: pkg.root)) pkg.name,
+      ];
+      final missingBlocLint = blocPackages.isNotEmpty && !dynamicRunsBlocLint;
+      if (missingBlocLint) {
+        stderr.writeln(
+          'MISSING bloc lint: ${blocPackages.join(', ')} depend on '
+          'bloc_lint, but ${dynamicWorkflows.join(', ')} never runs '
+          '`bloc lint`. Re-run `shorebird_ci generate` to regenerate.',
+        );
+      }
       if (requiredJobErrors.isNotEmpty) {
         _printRequiredJobErrors(requiredJobErrors);
         return 1;
       }
-      return 0;
+      return missingBlocLint ? 1 : 0;
     }
 
     final slugs = computePackageSlugs(

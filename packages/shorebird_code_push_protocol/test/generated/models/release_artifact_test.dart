@@ -5,11 +5,11 @@ import 'package:test/test.dart';
 void main() {
   group('ReleaseArtifact', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = ReleaseArtifact(
+      const instance = ReleaseArtifact(
         id: 0,
         releaseId: 0,
         arch: 'example',
-        platform: ReleasePlatform.values.first,
+        platform: ReleasePlatform.android,
         hash: 'example',
         size: 0,
         url: 'example',

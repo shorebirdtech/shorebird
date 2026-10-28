@@ -1,3 +1,4 @@
+# cspell:words LASTEXITCODE
 # This is the windows equivalent of the `third_party/flutter/bin/internal/shared.sh` script
 # compiles `shorebird_cli/bin/shorebird_cli.dart` to `bin/cache/shorebird.snapshot`
 
@@ -9,6 +10,7 @@ $shorebirdRootDir = (Get-Item $shorebirdBinDir\..\).FullName
 $flutterVersion = Get-Content "$shorebirdBinDir\internal\flutter.version"
 $shorebirdCacheDir = [IO.Path]::Combine($shorebirdRootDir, "bin", "cache")
 $shorebirdCliDir = [IO.Path]::Combine($shorebirdRootDir, "packages", "shorebird_cli")
+# shorebird.bat builds the same dart and snapshot paths; keep them in sync.
 $snapshotPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.snapshot")
 $stampPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.stamp")
 $flutterPath = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion)
@@ -35,13 +37,6 @@ function Invoke-SilentlyIfNeeded($command) {
         # https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_output_streams?view=powershell-7.3#long-description
         # for a description of these streams.
         & $command  1> $null 3> $null 4> $null 5> $null 6> $null
-    }
-}
-
-function Test-GitConfigLongpaths {
-    $longpathsEnabled = git config --system core.longpaths
-    if ($longpathsEnabled -ne "true") {
-        Write-Output "Git is not configured to allow long paths. This can cause issues with Shorebird's Flutter checkout. Please run 'git config --system core.longpaths true' to enable long paths."
     }
 }
 
@@ -107,8 +102,17 @@ function Update-Flutter {
     Write-Output "Updating Flutter..."
 
     if (!(Test-Path $flutterPath)) {
+        # Keep the default in sync with defaultFlutterGitUrl in
+        # shorebird_env.dart.
+        $flutterGitUrl = 'https://github.com/shorebirdtech/flutter.git'
+        if ($env:SHOREBIRD_FLUTTER_GIT_URL) {
+            $flutterGitUrl = $env:SHOREBIRD_FLUTTER_GIT_URL
+        }
+        # Flutter has paths over Windows' 260-character limit. Setting
+        # core.longpaths in the clone's own config lets the checkout write
+        # them without a machine-wide (admin) git setting.
         Invoke-SilentlyIfNeeded {
-            git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$flutterPath" 
+            git clone --filter=tree:0 --config core.longpaths=true "$flutterGitUrl" --no-checkout "$flutterPath"
         }
     }
     else {
@@ -122,9 +126,15 @@ function Update-Flutter {
         git -C "$flutterPath" -c advice.detachedHead=false checkout "$flutterVersion"
     }
 
-    # Set FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev and execute
-    # a `flutter` command to trigger a download of Dart, etc.
-    $env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';
+    # Set FLUTTER_STORAGE_BASE_URL to Shorebird's download host and execute a
+    # `flutter` command to trigger a download of Dart, etc. Keep the default and
+    # the trailing slash handling in sync with ShorebirdEnv.downloadUrl.
+    if ($env:SHOREBIRD_DOWNLOAD_URL) {
+        $env:FLUTTER_STORAGE_BASE_URL = $env:SHOREBIRD_DOWNLOAD_URL.TrimEnd('/');
+    }
+    else {
+        $env:FLUTTER_STORAGE_BASE_URL = 'https://download.shorebird.dev';
+    }
     & $flutter --version
     Remove-Item Env:\FLUTTER_STORAGE_BASE_URL
 }
@@ -161,12 +171,85 @@ function Update-Shorebird {
     Set-Content -Path $stampPath -Value $compileKey
 }
 
+# PowerShell drops the first `--` from a script's arguments: in
+# `shorebird release android -- --dart-define=FOO=bar`, $args holds `release`,
+# `android` and `--dart-define=FOO=bar`. shorebird needs the `--` to tell its
+# own options from the ones it passes to Flutter, so put it back, at the place
+# the command's source text shows. Arguments after `--` are all positional, so
+# each element of the source after it is one argument, counted from the end.
+#
+# `powershell -File` keeps `--` and has no source text (shorebird.bat runs dart
+# itself and doesn't come through here); anything this can't match to its
+# source (a splat, a line continued onto the next line in Windows PowerShell)
+# is passed on as it came.
+function Restore-EndOfOptions($arguments, $invocation) {
+    # Statement holds the whole statement (PowerShell 7.4+); Line, only the
+    # first line of it. Read Statement through PSObject: older versions don't
+    # have it, and under Set-StrictMode reading a missing property throws.
+    $source = $null
+    $statement = $invocation.PSObject.Properties['Statement']
+    if ($statement) { $source = $statement.Value }
+    if (!$source) { $source = $invocation.Line }
+    if (!$source -or $source.TrimEnd().EndsWith('`')) { return $arguments }
+
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($source, [ref]$null, [ref]$errors)
+    if ($errors.Count -gt 0) { return $arguments }
+
+    # Find this command in the statement: by name, or by the call operator
+    # (`& $path`) when that's how it was run.
+    $commands = @($ast.FindAll({
+                param($node)
+                if ($node -isnot [System.Management.Automation.Language.CommandAst]) { return $false }
+                if ($invocation.InvocationName -in '&', '.') {
+                    return $node.InvocationOperator -ne [System.Management.Automation.Language.TokenKind]::Unknown
+                }
+                return $node.CommandElements[0].Extent.Text -eq $invocation.InvocationName
+            }, $true))
+    if ($commands.Count -ne 1) { return $arguments }
+
+    $elements = $commands[0].CommandElements
+    $separator = -1
+    for ($i = 1; $i -lt $elements.Count; $i++) {
+        if ($elements[$i] -is [System.Management.Automation.Language.CommandParameterAst] -and $elements[$i].Extent.Text -eq '--') {
+            $separator = $i
+            break
+        }
+    }
+    if ($separator -lt 0) { return $arguments }
+
+    $after = @($elements | Select-Object -Skip ($separator + 1))
+    if ($after.Count -gt $arguments.Count) { return $arguments }
+    $at = $arguments.Count - $after.Count
+    for ($i = 0; $i -lt $after.Count; $i++) {
+        $element = $after[$i]
+        if ($element -is [System.Management.Automation.Language.VariableExpressionAst] -and $element.Splatted) {
+            return $arguments
+        }
+        if ($element -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $element.Value -cne $arguments[$at + $i]) {
+            return $arguments
+        }
+    }
+    # Insert by index: the pipeline (Select-Object) would drop $null arguments
+    # and shift where `--` goes.
+    $restored = [System.Collections.ArrayList]::new($arguments)
+    $restored.Insert($at, '--')
+    return $restored.ToArray()
+}
+
 Test-GitInstalled
 
-Test-GitConfigLongpaths
+$shorebirdArgs = @(Restore-EndOfOptions $args $MyInvocation)
 
 if (Test-ShorebirdNeedsUpdate) {
     Update-Shorebird
 }
 
-& $dart --disable-dart-dev --packages="$shorebirdRootDir\.dart_tool\package_config.json" "$snapshotPath" $args
+# shorebird.bat runs the snapshot itself, so cmd's arguments reach dart as typed.
+if ($env:SHOREBIRD_SETUP_ONLY) {
+    exit 0
+}
+
+& $dart --disable-dart-dev --packages="$shorebirdRootDir\.dart_tool\package_config.json" "$snapshotPath" $shorebirdArgs
+# Exit with the CLI's exit code; otherwise powershell -File exits 0.
+exit $LASTEXITCODE

@@ -14,6 +14,22 @@ final loggerRef = create(ShorebirdLogger.new);
 /// The [Logger] instance available in the current zone.
 ShorebirdLogger get logger => read(loggerRef);
 
+/// Runs [body] with everything it prints to stdout, directly or through
+/// [logger], sent to stderr instead.
+///
+/// A logger keeps the stdout it was created with, so [body] gets a logger of
+/// its own, created inside the redirect at the current logger's level.
+Future<T> runWithStdoutOnStderr<T>(Future<T> Function() body) {
+  final level = logger.level;
+  return io.IOOverrides.runZoned(
+    () => runScoped(
+      body,
+      values: {loggerRef.overrideWith(() => ShorebirdLogger(level: level))},
+    ),
+    stdout: () => io.stderr,
+  );
+}
+
 const _logFileName = 'shorebird.log';
 
 /// Where logs are written for the current Shorebird CLI run. A new file will
@@ -52,13 +68,57 @@ class ShorebirdLogger extends Logger {
     }
   }
 
+  /// Asks [message] as a yes/no question and returns the answer.
+  ///
+  /// Unlike [Logger.confirm], which treats any answer it doesn't recognize as
+  /// [defaultValue], an unrecognized answer asks again: a typo at the end of a
+  /// long build must not throw the build away
+  /// (https://github.com/shorebirdtech/shorebird/issues/1572). An empty
+  /// answer, or the end of input, takes [defaultValue].
   @override
   bool confirm(String? message, {bool defaultValue = false, String? hint}) {
     _failIfNonInteractive(promptText: message, hint: hint);
-    // The interactive branch reads from real stdin; not unit-testable.
-    // coverage:ignore-start
-    return super.confirm(message, defaultValue: defaultValue);
-    // coverage:ignore-end
+    final prompt =
+        '$message ${darkGray.wrap('(${defaultValue ? 'Y/n' : 'y/N'})')} ';
+    while (true) {
+      // Written regardless of log level, like Logger.confirm, so the
+      // question and its follow-ups never disappear under --quiet.
+      write(prompt);
+      final String? input;
+      try {
+        input = stdin.readLineSync()?.trim();
+      } on FormatException {
+        // The answer wasn't valid text (e.g. a stray byte). Its line was
+        // consumed, so ask again on the next one.
+        write('Please answer y or n.\n');
+        continue;
+      }
+      // At the end of input, nothing ended the prompt's line.
+      if (input == null) write('\n');
+      final answer = (input == null || input.isEmpty)
+          ? defaultValue
+          : _parseYesNo(input);
+      if (answer == null) {
+        write('Please answer y or n.\n');
+        continue;
+      }
+      // As Logger.confirm does, rewrite the prompt's line to show the answer
+      // taken, so a default taken on Enter is visible and the answer reaches
+      // the log file (which records stdout, not what was typed).
+      final shown = styleDim.wrap(lightCyan.wrap(answer ? 'Yes' : 'No'));
+      write('\x1b[A\u001B[2K$prompt$shown\n');
+      return answer;
+    }
+  }
+
+  /// The answer [input] gives to a yes/no question, or null if it is neither.
+  /// Accepts the same words as [Logger.confirm].
+  static bool? _parseYesNo(String input) {
+    return switch (input.toLowerCase()) {
+      'y' || 'yes' || 'yea' || 'yeah' || 'yep' || 'yup' => true,
+      'n' || 'no' || 'nope' => false,
+      _ => null,
+    };
   }
 
   @override
@@ -127,13 +187,13 @@ class ShorebirdLogger extends Logger {
     );
   }
 
-  /// Throws [InteractivePromptRequiredException] when the CLI is running in
-  /// a non-interactive context (no TTY on stdout/stdin, on CI, or `--json`).
+  /// Throws [InteractivePromptRequiredException] when the CLI cannot prompt
+  /// (see [ShorebirdEnv.canAcceptUserInput]).
   ///
   /// Used by all interactive prompt methods to fail fast with an actionable
   /// error rather than blocking on stdin or producing garbled output.
   void _failIfNonInteractive({String? promptText, String? hint}) {
-    if (isInteractive && shorebirdEnv.canAcceptUserInput) return;
+    if (shorebirdEnv.canAcceptUserInput) return;
     throw InteractivePromptRequiredException(
       promptText: promptText ?? '(no prompt text)',
       hint: hint ?? defaultInteractivePromptHint,
@@ -186,8 +246,8 @@ class _StaticProgress implements Progress {
     _writeln('$_message...');
   }
 
-  // No shorebird code path calls cancel(); required by the Progress
-  // interface for compatibility with mason_logger.
+  // A terminal spinner erases its line on cancel; with no line to erase,
+  // say it stopped. For work that stopped short, not for success.
   // coverage:ignore-start
   @override
   void cancel() {

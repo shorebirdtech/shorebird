@@ -17,8 +17,8 @@ Organization organizationForTest({
   id: id,
   name: name,
   organizationType: organizationType,
-  createdAt: createdAt ?? DateTime.now(),
-  updatedAt: updatedAt ?? DateTime.now(),
+  createdAt: createdAt ?? DateTime.now().toUtc(),
+  updatedAt: updatedAt ?? DateTime.now().toUtc(),
 );
 
 /// Constructs a [PrivateUser] with arbitrary default values for testing.

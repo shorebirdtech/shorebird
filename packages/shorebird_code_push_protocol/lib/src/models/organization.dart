@@ -49,8 +49,7 @@ class Organization {
   /// The name of the organization.
   final String name;
 
-  /// Distinguishes personal organizations (single-user) from team
-  /// organizations (multi-user).
+  /// The type of organization.
   final OrganizationType organizationType;
 
   /// When this organization was created.
@@ -65,8 +64,8 @@ class Organization {
       'id': id,
       'name': name,
       'organization_type': organizationType.toJson(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
     };
   }
 

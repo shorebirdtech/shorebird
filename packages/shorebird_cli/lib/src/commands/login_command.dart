@@ -41,37 +41,13 @@ class LoginCommand extends ShorebirdCommand {
       try {
         hasValidCredentials = await auth.hasValidCredentials();
       } on Exception catch (error) {
-        // An answer that is not an OAuth error response says nothing about
-        // the stored credentials either, so keep them; but don't blame the
-        // network for an answer that arrived.
-        if (error is ShorebirdAuthException && error.isRateLimited) {
-          progress.fail('Too many requests, try again shortly.');
-          logger.detail('$error');
-          return ExitCode.tempFail.code;
-        }
-        if (error is ShorebirdAuthException && _isClientError(error)) {
-          progress.fail(
-            'The Shorebird auth service refused to check your credentials '
-            '(${error.statusCode}).',
-          );
-          logger
-            ..detail('$error')
-            ..info(
-              'If this keeps happening, run '
-              '${lightCyan.wrap('shorebird logout')} and then '
-              '${lightCyan.wrap('shorebird login')}.',
-            );
-          // Something answered a 4xx that is not an OAuth error response, as
-          // a proxy or a wrongly routed request does. Retrying unchanged won't
-          // help: not a temporary failure. Rate limiting and no answer stay
-          // tempFail. An OAuth error response never reaches this branch:
-          // `hasValidCredentials` returns false for it.
-          return ExitCode.software.code;
-        }
-        // The auth service could not answer, which says nothing about the
-        // stored credentials. Discarding them here would log a user out for
-        // running this off wifi.
-        progress.fail('Could not reach the Shorebird auth service.');
+        // No answer, or one that is not an OAuth error response, says
+        // nothing about the stored credentials. Discarding them here would
+        // log a user out for running this off wifi.
+        progress.fail(
+          'Could not check your credentials with the Shorebird '
+          'auth service.',
+        );
         logger
           ..err('$error')
           ..info('Check your network connection and try again.');
@@ -79,14 +55,7 @@ class LoginCommand extends ShorebirdCommand {
       }
       if (hasValidCredentials) {
         progress.complete();
-        final emailDisplay = auth.email;
-        if (emailDisplay != null) {
-          logger
-            ..info('You are already logged in as <$emailDisplay>.')
-            ..info(
-              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
-            );
-        } else {
+        if (auth.isUsingApiKey) {
           // Env-var auth wins over stored credentials, so `shorebird logout`
           // would not change who this machine is authenticated as.
           logger
@@ -95,6 +64,19 @@ class LoginCommand extends ShorebirdCommand {
             )
             ..info(
               '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
+            );
+        } else if (auth.isUsingGitHubActionsOidc) {
+          logger.info('You are already authenticated via GitHub Actions OIDC.');
+        } else {
+          final email = await auth.fetchEmail();
+          logger
+            ..info(
+              email != null
+                  ? 'You are already logged in as <$email>.'
+                  : 'You are already logged in.',
+            )
+            ..info(
+              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
             );
         }
         return ExitCode.success.code;
@@ -114,11 +96,10 @@ class LoginCommand extends ShorebirdCommand {
       } else {
         await auth.login(prompt: prompt);
       }
-    } on UserNotFoundException catch (error) {
+    } on UserNotFoundException {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger
-        ..err('''
-We could not find a Shorebird account for ${error.email}.''')
+        ..err('We could not find a Shorebird account for this login.')
         ..info(
           """If you have not yet created an account, you can do so at "${link(uri: consoleUri)}". If you believe this is an error, please reach out to us via Discord, we're happy to help!""",
         );
@@ -180,10 +161,4 @@ and enter this code:
 Waiting for your authorization (the code expires in $minutes ${minutes == 1 ? 'minute' : 'minutes'})...''',
     );
   }
-}
-
-/// Whether the auth service answered [error]'s request with a 4xx.
-bool _isClientError(ShorebirdAuthException error) {
-  final status = error.statusCode;
-  return status != null && status >= 400 && status < 500;
 }

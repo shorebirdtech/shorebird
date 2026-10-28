@@ -1,0 +1,62 @@
+name: windows_wrapper
+
+# bin/shorebird.bat is what cmd.exe users and `shell: cmd` CI steps run.
+# Nothing else exercises it: `shell: pwsh` picks bin/shorebird.ps1 instead.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - bin/**
+      - .github/workflows/windows_wrapper.yaml
+  push:
+    branches:
+      - main
+    paths:
+      - bin/**
+      - .github/workflows/windows_wrapper.yaml
+
+jobs:
+  shorebird_bat:
+    name: 🪟 shorebird.bat
+    runs-on: windows-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+
+      - name: 🧪 Run shorebird through cmd.exe
+        shell: cmd
+        run: |
+          call bin\shorebird.bat --version || exit /b 1
+
+          call bin\shorebird.bat no-such-command
+          if not errorlevel 1 (
+            echo Expected a non-zero exit code from an unknown command.
+            exit /b 1
+          )
+
+          REM The 12th argument, after --, has = , ; and a colon, which the
+          REM old wrapper dropped, split or (with powershell -File) cut.
+          call bin\shorebird.bat -v -v -v -v -v -v -v -v flutter versions -- --k=C:/x,y;z > out.txt 2>&1
+          type out.txt
+          findstr /L /C:"named \"--k=C:/x,y;z\"" out.txt || exit /b 1
+
+      # Dart's Process.run(runInShell: true), and so the e2e tests, start
+      # `cmd /c shorebird ...` with no CALL. That path exits 0 on a bare
+      # `EXIT /B` even when dart failed, which the step above can't see.
+      - name: 🧪 Run shorebird through cmd /c, without CALL
+        shell: pwsh
+        run: |
+          cmd /c "bin\shorebird.bat no-such-command"
+          if ($LASTEXITCODE -ne 64) {
+            Write-Error "Expected exit code 64 (usage) from an unknown command, got $LASTEXITCODE."
+            exit 1
+          }
+          cmd /c "bin\shorebird.bat --version"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Expected exit code 0 from --version, got $LASTEXITCODE."
+            exit 1
+          }

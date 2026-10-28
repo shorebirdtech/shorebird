@@ -3,11 +3,7 @@ publish_to: none
 environment:
   sdk: ^3.9.0
 workspace:
-  - packages/artifact_proxy
   - packages/dex
-  - packages/discord_gcp_alerts
-  - packages/flutter_version_resolver
-  - packages/jwt
   - packages/redis_client
   - packages/scoped_deps
   - packages/shorebird_build_trace
@@ -15,7 +11,6 @@ workspace:
   - packages/shorebird_cli
   - packages/shorebird_code_push_client
   - packages/shorebird_code_push_protocol
-  - packages/stripe_api
 
 dev_dependencies:
   very_good_analysis: ^11.0.0

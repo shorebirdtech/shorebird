@@ -14,7 +14,7 @@ class PrivateUser {
     required this.email,
     required this.jwtIssuer,
     this.displayName,
-    this.hasActiveSubscription = false,
+    @deprecated this.hasActiveSubscription = false,
     this.stripeCustomerId,
     this.patchOverageLimit,
   });
@@ -29,7 +29,7 @@ class PrivateUser {
         email: json['email'] as String,
         displayName: json['display_name'] as String?,
         hasActiveSubscription:
-            json['has_active_subscription'] as bool? ?? false,
+            (json['has_active_subscription'] as bool?) ?? false,
         stripeCustomerId: json['stripe_customer_id'] as String?,
         jwtIssuer: json['jwt_issuer'] as String,
         patchOverageLimit: json['patch_overage_limit'] as int?,
@@ -55,13 +55,17 @@ class PrivateUser {
   /// The user's name, as provided by the user during signup.
   final String? displayName;
 
-  /// Whether the user is currently a paying customer.
-  final bool? hasActiveSubscription;
+  /// Whether the user is currently a paying customer. Still sent so
+  /// older CLIs that read it keep working; new clients should not use
+  /// it.
+  @deprecated
+  final bool hasActiveSubscription;
 
   /// The user's Stripe customer ID, if they have one.
   final String? stripeCustomerId;
 
-  /// The JWT issuer used to create the user.
+  /// The issuer of the user's most recently used sign-in identity, or
+  /// empty when the user has none.
   final String jwtIssuer;
 
   /// The maximum number of patch installs the user has agreed to
@@ -73,11 +77,11 @@ class PrivateUser {
     return {
       'id': id,
       'email': email,
-      'display_name': displayName,
+      'display_name': ?displayName,
       'has_active_subscription': hasActiveSubscription,
-      'stripe_customer_id': stripeCustomerId,
+      'stripe_customer_id': ?stripeCustomerId,
       'jwt_issuer': jwtIssuer,
-      'patch_overage_limit': patchOverageLimit,
+      'patch_overage_limit': ?patchOverageLimit,
     };
   }
 

@@ -113,6 +113,17 @@ The path for a public key .pem file that will be used to validate patch signatur
 ''',
   );
 
+  /// Whether a release signs its patches. On by default: with no key of the
+  /// customer's, the build embeds a key Shorebird manages.
+  static const patchSigningArg = ArgumentDescriber(
+    name: 'patch-signing',
+    description: '''
+Sign every patch to this release, so apps install only patches signed with its key.
+On by default: the build embeds a key Shorebird manages for your organization.
+To sign patches with your own key, pass --public-key-path or --public-key-cmd.
+--no-patch-signing builds a release whose patches are unsigned.''',
+  );
+
   /// An argument that allows the user to specify a private key file that will
   /// be used to sign the patch artifact.
   static const privateKeyArg = ArgumentDescriber(
@@ -228,6 +239,15 @@ symbolize" command with the right program symbol file is required to obtain a hu
         'Functions whose transitive caller tree exceeds this many bytes '
         'are routed through the indirect dispatch table. '
         'Set to 0 to disable.',
+  );
+
+  /// Accepted and ignored on `release` and `patch`. `--no-confirm` was a
+  /// documented flag from 1.5.4 to 1.6.83, and the docs told CI scripts to
+  /// pass it. Neither command asks for confirmation any more. `--confirm`,
+  /// which asked for a prompt, stays an error.
+  static const noConfirmArg = ArgumentDescriber(
+    name: 'no-confirm',
+    description: 'Does nothing. Kept so existing scripts keep working.',
   );
 
   /// Minimum valid value for [minLinkPercentage].

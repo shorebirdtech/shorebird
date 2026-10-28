@@ -15,6 +15,7 @@ import 'package:test/test.dart';
 
 import '../../fakes.dart';
 import '../../helpers.dart';
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -31,7 +32,11 @@ void main() {
       flutterRevision: 'flutter-revision',
       flutterVersion: 'flutter-version',
       displayName: releaseVersion,
-      platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+      platforms: const {
+        ReleasePlatform.android: ReleasePlatformDetails(
+          status: ReleaseStatus.active,
+        ),
+      },
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -135,6 +140,22 @@ void main() {
 
     test('name is correct', () {
       expect(command.name, 'set-track');
+    });
+
+    test('accepts --channel as an alias of --track', () {
+      final results = command.argParser.parse([
+        '--release-version',
+        releaseVersion,
+        '--patch-number',
+        '$patchNumber',
+        '--channel',
+        'beta',
+      ]);
+      expect(results['track'], equals('beta'));
+    });
+
+    test('requires --track', () {
+      expect(command.argParser.options['track']!.mandatory, isTrue);
     });
 
     test('has correct description', () {
@@ -380,6 +401,9 @@ void main() {
       });
 
       test('prompts to create the channel', () async {
+        when(
+          () => logger.confirm(any(), hint: any(named: 'hint')),
+        ).thenReturn(true);
         await runWithOverrides(command.run);
         verify(
           () => logger.confirm(
@@ -409,9 +433,9 @@ void main() {
       });
 
       group('when user declines channel creation', () {
-        test('exits with success without promoting', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.success.code));
+        test('exits 1 without promoting', () async {
+          await expectLater(runWithOverrides(command.run), exitsDeclined);
+          verify(() => logger.err('Aborting.')).called(1);
           verifyNever(
             () => codePushClientWrapper.createChannel(
               appId: any(named: 'appId'),

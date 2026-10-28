@@ -9,11 +9,11 @@ void main() {
         organization: Organization(
           id: 0,
           name: 'example',
-          organizationType: OrganizationType.values.first,
+          organizationType: OrganizationType.personal,
           createdAt: DateTime.utc(2024),
           updatedAt: DateTime.utc(2024),
         ),
-        role: Role.values.first,
+        role: Role.owner,
       );
       final parsed = OrganizationMembership.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));

@@ -82,10 +82,17 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      // Managed signing, the default, is covered in releaser_test.dart.
+      when(() => argResults['patch-signing']).thenReturn(false);
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       operatingSystemInterface = MockOperatingSystemInterface();
@@ -99,6 +106,7 @@ void main() {
       xcodeBuild = MockXcodeBuild();
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => argResults['flutter-version']).thenReturn('latest');
 
@@ -122,8 +130,8 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is 3.22.2', () {
-        expect(iosFrameworkReleaser.minimumFlutterVersion, Version(3, 22, 2));
+      test('is 3.24.0', () {
+        expect(iosFrameworkReleaser.minimumFlutterVersion, Version(3, 24, 0));
       });
     });
 
@@ -328,6 +336,19 @@ void main() {
         );
       });
 
+      group('when --no-codesign is passed', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(false);
+        });
+
+        test('forwards --no-codesign to flutter', () async {
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+          verify(
+            () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+          ).called(1);
+        });
+      });
+
       group('when platform was specified via arg results rest', () {
         setUp(() {
           when(() => argResults.rest).thenReturn(['ios', '--verbose']);
@@ -352,6 +373,65 @@ void main() {
 
         expect(xcframework.path, p.join(projectRoot.path, 'release'));
         verify(() => artifactBuilder.buildIosFramework(args: [])).called(1);
+      });
+
+      test(
+        'replaces each .xcframework from a previous release but keeps other '
+        'files in the release directory',
+        () async {
+          final releaseDir = p.join(projectRoot.path, 'release');
+          // Not empty, so renaming Flutter.xcframework onto it would fail if
+          // it were left in place.
+          final staleShorebirdFlutterMarker = File(
+            p.join(releaseDir, 'ShorebirdFlutter.xcframework', 'stale'),
+          )..createSync(recursive: true);
+          final stalePlugin = Directory(
+            p.join(releaseDir, 'RemovedPlugin.xcframework'),
+          )..createSync(recursive: true);
+          // What `shorebird release aar` writes to the same directory.
+          final aarFile = File(
+            p.join(releaseDir, 'com', 'example', 'flutter_release-1.0.aar'),
+          )..createSync(recursive: true);
+
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+          expect(aarFile.existsSync(), isTrue);
+          expect(stalePlugin.existsSync(), isFalse);
+          expect(staleShorebirdFlutterMarker.existsSync(), isFalse);
+          expect(
+            Directory(
+              p.join(releaseDir, 'ShorebirdFlutter.xcframework'),
+            ).existsSync(),
+            isTrue,
+          );
+          expect(
+            Directory(p.join(releaseDir, 'Flutter.xcframework')).existsSync(),
+            isFalse,
+          );
+        },
+      );
+
+      test('forwards the target to buildIosFramework', () async {
+        when(
+          () => artifactBuilder.buildIosFramework(
+            target: any(named: 'target'),
+            args: any(named: 'args'),
+          ),
+        ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+        iosFrameworkReleaser = IosFrameworkReleaser(
+          argResults: argResults,
+          flavor: null,
+          target: 'lib/main_prod.dart',
+        );
+
+        await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+        verify(
+          () => artifactBuilder.buildIosFramework(
+            target: 'lib/main_prod.dart',
+            args: [],
+          ),
+        ).called(1);
       });
 
       group('when --obfuscate is passed', () {
@@ -446,7 +526,7 @@ void main() {
         flutterRevision: flutterRevision,
         flutterVersion: flutterVersion,
         displayName: '1.2.3+1',
-        platformStatuses: const {},
+        platforms: const {},
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
       );
@@ -544,9 +624,9 @@ Your next step is to add the .xcframework files found in the ${lightCyan.wrap(re
 
 To do this:
     1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
-    2. Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project.
+    2. Embed the App.xcframework and ShorebirdFlutter.xcframework in your Xcode project.
 
-Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
+Instructions for these steps can be found at https://docs.shorebird.dev/code-push/guides/add-to-app/ios/#embed-the-flutter-module-in-your-ios-app.
 '''),
         );
       });

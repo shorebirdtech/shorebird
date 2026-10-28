@@ -24,9 +24,7 @@ class UpdateReleaseRequest {
       () => UpdateReleaseRequest(
         status: ReleaseStatus.maybeFromJson(json['status'] as String?),
         platform: ReleasePlatform.maybeFromJson(json['platform'] as String?),
-        metadata: (json['metadata'] as Map<String, dynamic>?)?.map(
-          MapEntry.new,
-        ),
+        metadata: json['metadata'] as Map<String, dynamic>?,
         notes: json['notes'] as String?,
       ),
     );
@@ -41,10 +39,12 @@ class UpdateReleaseRequest {
     return UpdateReleaseRequest.fromJson(json);
   }
 
-  /// The status of a release.
+  /// The desired status of the release. If provided, [platform] must also be
+  /// provided If null, the status will not be updated.
   final ReleaseStatus? status;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the release. If provided, [status] must also be
+  /// provided.
   final ReleasePlatform? platform;
 
   /// Additional information about the command that was run to
@@ -59,10 +59,10 @@ class UpdateReleaseRequest {
   /// Converts a [UpdateReleaseRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'status': status?.toJson(),
-      'platform': platform?.toJson(),
-      'metadata': metadata,
-      'notes': notes,
+      'status': ?status?.toJson(),
+      'platform': ?platform?.toJson(),
+      'metadata': ?metadata,
+      'notes': ?notes,
     };
   }
 

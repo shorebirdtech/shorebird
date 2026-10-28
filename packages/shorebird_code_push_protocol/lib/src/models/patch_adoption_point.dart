@@ -59,7 +59,7 @@ class PatchAdoptionPoint {
   /// Converts a [PatchAdoptionPoint] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'period': period?.toIso8601String(),
+      'period': period?.toUtc().toIso8601String(),
       'devices': devices,
       'target': target,
       'adoption_pct': adoptionPct,

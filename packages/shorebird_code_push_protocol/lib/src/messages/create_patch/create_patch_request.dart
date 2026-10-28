@@ -19,9 +19,7 @@ class CreatePatchRequest {
       json,
       () => CreatePatchRequest(
         releaseId: json['release_id'] as int,
-        metadata: (json['metadata'] as Map<String, dynamic>).map(
-          MapEntry.new,
-        ),
+        metadata: json['metadata'] as Map<String, dynamic>,
       ),
     );
   }

@@ -88,7 +88,11 @@ enum JsonErrorCode {
 
   /// The CLI required interactive input but no terminal/stdin was available
   /// (or the user passed `--json`).
-  interactivePromptRequired('interactive_prompt_required');
+  interactivePromptRequired('interactive_prompt_required'),
+
+  /// The operation finishes in the Shorebird console, not the CLI (see
+  /// ADR-0026). The error's message and hint give the console URL.
+  consoleRequired('console_required');
 
   const JsonErrorCode(this.code);
 
@@ -121,7 +125,14 @@ class JsonMeta {
 /// {@endtemplate}
 class JsonError {
   /// {@macro json_error}
-  const JsonError({required this.code, required this.message, this.hint});
+  const JsonError({
+    required this.code,
+    required this.message,
+    this.hint,
+    this.apiCode,
+    this.details,
+    this.documentationUrl,
+  });
 
   /// A machine-readable error code.
   final JsonErrorCode code;
@@ -133,11 +144,25 @@ class JsonError {
   /// (e.g. "Run: shorebird login").
   final String? hint;
 
+  /// The error code the Shorebird API returned, when the error came from an
+  /// API response (e.g. "shorebird_plan_insufficient_tier").
+  final String? apiCode;
+
+  /// Additional details about the error, such as those the Shorebird API
+  /// returned alongside its error code.
+  final String? details;
+
+  /// A page documenting the error, when the Shorebird API returned one.
+  final Uri? documentationUrl;
+
   /// Serializes this error to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
     'code': code.code,
     'message': message,
     if (hint != null) 'hint': hint,
+    if (apiCode != null) 'api_code': apiCode,
+    if (details != null) 'details': details,
+    if (documentationUrl != null) 'documentation_url': '$documentationUrl',
   };
 }
 
@@ -180,14 +205,26 @@ class JsonResult {
   /// [code] is a machine-readable [JsonErrorCode].
   /// `message` is a human-readable description.
   /// `hint` is an optional actionable recovery step.
+  /// `apiCode`, `details` and `documentationUrl` describe an error the
+  /// Shorebird API returned.
   /// `command` is injected into the `meta` block automatically.
   factory JsonResult.error({
     required JsonErrorCode code,
     required String message,
     required String command,
     String? hint,
+    String? apiCode,
+    String? details,
+    Uri? documentationUrl,
   }) {
-    final error = JsonError(code: code, message: message, hint: hint);
+    final error = JsonError(
+      code: code,
+      message: message,
+      hint: hint,
+      apiCode: apiCode,
+      details: details,
+      documentationUrl: documentationUrl,
+    );
     final meta = JsonMeta(version: packageVersion, command: command);
     return JsonResult._(
       toJson: () => {

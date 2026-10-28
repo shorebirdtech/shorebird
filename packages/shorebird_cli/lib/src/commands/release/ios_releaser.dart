@@ -10,7 +10,6 @@ import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -50,9 +49,6 @@ class IosReleaser extends Releaser with AppleReleaserMixin {
     assertReleaseVersionFlagNotProvided();
     argResults.assertValidExportOptionsPlistArg();
   }
-
-  @override
-  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -149,6 +145,7 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
           .path,
       isCodesigned: argResults.appleCodesign,
       podfileLockHash: shorebirdEnv.iosPodfileLockHash,
+      signing: signing,
     );
   }
 

@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
-import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -48,9 +47,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   Future<void> assertArgsAreValid() async {
     assertReleaseVersionFlagNotProvided();
   }
-
-  @override
-  Version? get minimumFlutterVersion => minimumSupportedMacosFlutterVersion;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -107,6 +103,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
       releaseId: release.id,
       appPath: appDirectory.path,
       podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+      signing: signing,
     );
   }
 

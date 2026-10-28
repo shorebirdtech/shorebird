@@ -176,6 +176,88 @@ void main() {
       });
     });
 
+    group('latestLogTimestamp', () {
+      test('throws when unable to locate adb', () async {
+        when(() => androidSdk.adbPath).thenReturn(null);
+        await expectLater(
+          () => runWithOverrides(() => adb.latestLogTimestamp()),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception()',
+              contains('Unable to locate adb'),
+            ),
+          ),
+        );
+      });
+
+      test('returns null when the log cannot be read', () async {
+        when(() => process.run(any(), any())).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 1,
+            stdout: '',
+            stderr: 'oops',
+          ),
+        );
+        await expectLater(
+          runWithOverrides(() => adb.latestLogTimestamp()),
+          completion(isNull),
+        );
+      });
+
+      test('returns the timestamp of the newest entry', () async {
+        when(() => process.run(any(), any())).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout:
+                '--------- beginning of main\n'
+                '10-24 12:56:32.517 I/flutter ( 5830): hello\n',
+            stderr: '',
+          ),
+        );
+        await expectLater(
+          runWithOverrides(() => adb.latestLogTimestamp()),
+          completion(equals('10-24 12:56:32.517')),
+        );
+        verify(
+          () => process.run(adbPath, [
+            'logcat',
+            '-d',
+            '-t',
+            '1',
+            '-v',
+            'time',
+          ]),
+        ).called(1);
+      });
+
+      test('returns null when the log is empty', () async {
+        await expectLater(
+          runWithOverrides(() => adb.latestLogTimestamp()),
+          completion(isNull),
+        );
+      });
+
+      test('forwards deviceId when provided', () async {
+        const deviceId = '1234';
+        await runWithOverrides(
+          () => adb.latestLogTimestamp(deviceId: deviceId),
+        );
+        verify(
+          () => process.run(adbPath, [
+            '-s',
+            deviceId,
+            'logcat',
+            '-d',
+            '-t',
+            '1',
+            '-v',
+            'time',
+          ]),
+        ).called(1);
+      });
+    });
+
     group('logcat', () {
       test('throws when unable to locate adb', () async {
         when(() => androidSdk.adbPath).thenReturn(null);
@@ -218,6 +300,26 @@ void main() {
         expect(result, equals(logcatProcess));
         verify(
           () => process.start(adbPath, ['logcat', '-T', '1', '-s', filter]),
+        ).called(1);
+      });
+
+      test('starts from the given timestamp', () async {
+        const since = '10-24 12:56:32.517';
+        final Process logcatProcess = MockProcess();
+        when(
+          () => process.start(any(), any()),
+        ).thenAnswer((_) async => logcatProcess);
+        await runWithOverrides(
+          () => adb.logcat(filter: 'flutter', since: since),
+        );
+        verify(
+          () => process.start(adbPath, [
+            'logcat',
+            '-T',
+            since,
+            '-s',
+            'flutter',
+          ]),
         ).called(1);
       });
 

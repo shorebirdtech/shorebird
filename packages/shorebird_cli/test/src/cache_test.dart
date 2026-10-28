@@ -34,6 +34,8 @@ void main() {
   useTempWorkingDirectory();
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
+    const bundletoolUrl =
+        'https://github.com/google/bundletool/releases/download/${BundleToolArtifact.version}/bundletool-all-${BundleToolArtifact.version}.jar';
 
     late LocalAbi mockAbi;
     late ArtifactManager artifactManager;
@@ -121,6 +123,8 @@ void main() {
         () => shorebirdEnv.flutterRevision,
       ).thenReturn('test-flutter-revision');
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(() => shorebirdEnv.downloadUrl).thenReturn(defaultDownloadUrl);
+      when(() => shorebirdEnv.bundletoolUrl).thenReturn(defaultBundletoolUrl);
 
       when(
         () => shorebirdProcess.start(any(), any()),
@@ -184,6 +188,26 @@ void main() {
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
       });
 
+      // Regression test for https://github.com/shorebirdtech/shorebird/issues/2233:
+      // clear used to delete the logs directory too, and the logger writes
+      // there while the command runs, so the delete failed.
+      test('does not delete the logs directory', () async {
+        final logsDirectory = Directory.systemTemp.createTempSync(
+          'shorebird_logs',
+        );
+        addTearDown(() => logsDirectory.deleteSync(recursive: true));
+        final logFile = File(p.join(logsDirectory.path, 'shorebird.log'))
+          ..createSync(recursive: true);
+        when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
+        runWithOverrides(
+          () => Cache.shorebirdCacheDirectory,
+        ).createSync(recursive: true);
+
+        await runWithOverrides(cache.clear);
+
+        expect(logFile.existsSync(), isTrue);
+      });
+
       test('does nothing if directory does not exist', () {
         final shorebirdCacheDirectory = runWithOverrides(
           () => Cache.shorebirdCacheDirectory,
@@ -191,6 +215,49 @@ void main() {
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
         unawaited(runWithOverrides(cache.clear));
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
+      });
+    });
+
+    group('pruneUnusedReleaseArtifacts', () {
+      final now = DateTime(2026, 10, 9);
+
+      FileSystemEntity entry(String name, {required Duration age}) {
+        final path = runWithOverrides(
+          () => p.join(Cache.shorebirdReleaseArtifactsDirectory.path, name),
+        );
+        return (File(path)..createSync(recursive: true))
+          ..setLastModifiedSync(now.subtract(age));
+      }
+
+      List<String> prune() => withClock(
+        Clock.fixed(now),
+        () => runWithOverrides(() => cache.pruneUnusedReleaseArtifacts()),
+      );
+
+      test('does nothing when there is no release artifact cache', () {
+        expect(prune(), isEmpty);
+      });
+
+      test('removes release artifacts unused for longer than the max age', () {
+        final stale = entry('1-a', age: const Duration(days: 31));
+        final recent = entry('2-b', age: const Duration(days: 29));
+
+        expect(prune(), equals([stale.path]));
+        expect(recent.existsSync(), isTrue);
+      });
+
+      test('removes downloads left behind for over a day', () {
+        final abandoned = entry(
+          '${Cache.releaseArtifactDownloadPrefix}abc',
+          age: const Duration(days: 2),
+        );
+        final inProgress = entry(
+          '${Cache.releaseArtifactDownloadPrefix}def',
+          age: const Duration(hours: 1),
+        );
+
+        expect(prune(), equals([abandoned.path]));
+        expect(inProgress.existsSync(), isTrue);
       });
     });
 
@@ -667,7 +734,10 @@ void main() {
               isA<CacheUpdateFailure>().having(
                 (e) => e.message,
                 'message',
-                contains('Failed to download patch: 404 Not Found'),
+                allOf(
+                  contains('Failed to download patch from https://'),
+                  contains(': 404 Not Found'),
+                ),
               ),
             ),
           );
@@ -810,7 +880,8 @@ void main() {
                   (e) => e.message,
                   'message',
                   contains(
-                    'Failed to download bundletool.jar: checksum mismatch',
+                    'Failed to download bundletool.jar from '
+                    '$defaultBundletoolUrl: checksum mismatch',
                   ),
                 ),
               ),
@@ -872,17 +943,49 @@ void main() {
           ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+              'https://download.shorebird.dev/shorebird/$shorebirdEngineRevision/$name';
 
           final expected = [
             perEngine('patch-darwin-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
+            bundletoolUrl,
             perEngine('aot-tools.dill'),
             perEngine('analyze-snapshot-macos-arm64'),
             perEngine('analyze-snapshot-macos-x64'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
+        });
+
+        test('pulls every artifact from the mirror when set', () async {
+          setOperatingSystem(NativePlatform.linux);
+          when(
+            () => shorebirdEnv.downloadUrl,
+          ).thenReturn('https://mirror.example.com/shorebird');
+          when(
+            () => shorebirdEnv.bundletoolUrl,
+          ).thenReturn('https://mirror.example.com/bundletool.jar');
+
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
+
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
+
+          const perEngine =
+              'https://mirror.example.com/shorebird/shorebird/$shorebirdEngineRevision';
+          expect(
+            requests,
+            equals(
+              [
+                '$perEngine/patch-linux-x64.zip',
+                'https://mirror.example.com/bundletool.jar',
+                '$perEngine/aot-tools.dill',
+              ].map(Uri.parse).toList(),
+            ),
+          );
         });
 
         test('pulls correct artifact for Windows', () async {
@@ -898,11 +1001,11 @@ void main() {
           ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+              'https://download.shorebird.dev/shorebird/$shorebirdEngineRevision/$name';
 
           final expected = [
             perEngine('patch-windows-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
+            bundletoolUrl,
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
@@ -922,11 +1025,11 @@ void main() {
           ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+              'https://download.shorebird.dev/shorebird/$shorebirdEngineRevision/$name';
 
           final expected = [
             perEngine('patch-linux-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
+            bundletoolUrl,
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 

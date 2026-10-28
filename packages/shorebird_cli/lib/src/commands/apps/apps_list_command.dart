@@ -1,16 +1,16 @@
-import 'package:shorebird_cli/src/commands/account/apps_command.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template apps_list_command}
 /// `shorebird apps list`
 /// List the apps the current user has access to.
 /// {@endtemplate}
-///
-/// The same listing as `shorebird account apps`, reachable from the group that
-/// holds the rest of the app verbs. `apps delete` needs a display name to echo
-/// back, and requiring a different top-level group to find it makes the delete
-/// undiscoverable.
-class AppsListCommand extends AccountAppsCommand {
+class AppsListCommand extends ShorebirdCommand {
   /// {@macro apps_list_command}
   AppsListCommand();
 
@@ -26,4 +26,53 @@ class AppsListCommand extends AccountAppsCommand {
       '  01J...  Acme Internal  -  -\n\n'
       '"-" indicates no release or patch has been published yet.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird apps list --json')}';
+
+  @override
+  Future<int> run() async {
+    try {
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
+    } on PreconditionFailedException catch (error) {
+      return reportPreconditionFailure(error);
+    }
+
+    late final List<AppMetadata> apps;
+    final fetchError = await guardApiCall(
+      () async => apps = await codePushClientWrapper.getApps(),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch apps.',
+    );
+    if (fetchError != null) return fetchError;
+
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'apps': [
+          for (final app in apps)
+            {
+              'app_id': app.appId,
+              'display_name': app.displayName,
+              'latest_release_version': app.latestReleaseVersion,
+              'latest_patch_number': app.latestPatchNumber,
+            },
+        ],
+      });
+      return ExitCode.success.code;
+    }
+
+    if (apps.isEmpty) {
+      logger.info('No apps found.');
+      return ExitCode.success.code;
+    }
+
+    for (final app in apps) {
+      logger.info(
+        '${app.appId}  ${lightCyan.wrap(app.displayName)}  '
+        '${app.latestReleaseVersion ?? '-'}  '
+        '${app.latestPatchNumber ?? '-'}',
+      );
+    }
+
+    return ExitCode.success.code;
+  }
 }

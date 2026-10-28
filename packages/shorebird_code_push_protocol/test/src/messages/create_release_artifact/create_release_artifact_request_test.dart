@@ -17,5 +17,36 @@ void main() {
         equals(request.toJson()),
       );
     });
+
+    test('carries the managed key the binary embeds', () {
+      const request = CreateReleaseArtifactRequest(
+        arch: 'arm64',
+        platform: ReleasePlatform.android,
+        hash: '1234',
+        size: 9876,
+        filename: 'test.apk',
+        signing: ArtifactSigningRequest(
+          mode: ReleaseSigningMode.managed,
+          keyId: 7,
+        ),
+      );
+      final json = request.toJson();
+      expect(json['signing'], {'mode': 'managed', 'key_id': 7});
+      expect(CreateReleaseArtifactRequest.fromJson(json), equals(request));
+    });
+
+    test('carries only the mode for a customer-signed binary', () {
+      const request = CreateReleaseArtifactRequest(
+        arch: 'arm64',
+        platform: ReleasePlatform.android,
+        hash: '1234',
+        size: 9876,
+        filename: 'test.apk',
+        signing: ArtifactSigningRequest(mode: ReleaseSigningMode.customer),
+      );
+      final json = request.toJson();
+      expect(json['signing'], {'mode': 'customer'});
+      expect(CreateReleaseArtifactRequest.fromJson(json), equals(request));
+    });
   });
 }

@@ -5,11 +5,11 @@ import 'package:test/test.dart';
 void main() {
   group('GetOrganizationUsersResponse', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = GetOrganizationUsersResponse(
+      const instance = GetOrganizationUsersResponse(
         users: <OrganizationUser>[
           OrganizationUser(
-            user: const PublicUser(id: 0, email: 'user@example.com'),
-            role: Role.values.first,
+            user: PublicUser(id: 0, email: 'user@example.com'),
+            role: Role.owner,
           ),
         ],
       );

@@ -75,14 +75,15 @@ class LatestRelease {
   /// The date and time the release was last updated.
   final DateTime updatedAt;
 
-  /// The status of a release.
+  /// The release's status on the keying platform.
   final ReleaseStatus status;
 
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
-  /// Analyzer-extracted metadata for a release artifact on a single
-  /// platform.
+  /// Analyzer-extracted metadata for this release on the keying
+  /// platform. Always present (entries without analysis are
+  /// omitted from `latest_releases`).
   final ReleaseAnalysis analysis;
 
   /// Converts a [LatestRelease] to a `Map<String, dynamic>`.
@@ -91,11 +92,11 @@ class LatestRelease {
       'id': id,
       'version': version,
       'flutter_revision': flutterRevision,
-      'flutter_version': flutterVersion,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'flutter_version': ?flutterVersion,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
       'status': status.toJson(),
-      'notes': notes,
+      'notes': ?notes,
       'analysis': analysis.toJson(),
     };
   }

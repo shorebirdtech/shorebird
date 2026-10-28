@@ -7,12 +7,15 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -65,9 +68,15 @@ class _TestReleaser extends Releaser {
 void main() {
   useTempWorkingDirectory();
   group(Releaser, () {
+    const appId = 'test-app-id';
+    const managedPem = 'managed-public-key-pem';
+    const managedKeyBase64 = 'bWFuYWdlZA==';
+    const signingKey = SigningKey(id: 7, publicKeyPem: managedPem);
+
     late ArgResults argResults;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -80,6 +89,7 @@ void main() {
         values: {
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -103,6 +113,7 @@ void main() {
       argResults = MockArgResults();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -115,6 +126,15 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+      when(
+        () => shorebirdEnv.getShorebirdYaml(),
+      ).thenReturn(const ShorebirdYaml(appId: appId));
+      when(
+        () => codePushClientWrapper.getSigningKey(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => signingKey);
+      when(
+        () => codeSigner.base64PublicKeyFromPem(managedPem),
+      ).thenReturn(managedKeyBase64);
 
       releaser = _TestReleaser(argResults: argResults);
     });
@@ -324,6 +344,96 @@ To change the version of this release, change your app's version in your pubspec
         await runWithOverrides(() => releaser.addObfuscationMapArgs(buildArgs));
 
         expect(buildArgs, equals([saveMapArg()]));
+      });
+    });
+
+    group('resolvePatchSigningKey', () {
+      test('embeds the managed key by default', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(true);
+
+        final key = await runWithOverrides(releaser.resolvePatchSigningKey);
+
+        expect(key, equals(managedKeyBase64));
+        expect(
+          releaser.signing,
+          equals(
+            const ArtifactSigningRequest(
+              mode: ReleaseSigningMode.managed,
+              keyId: 7,
+            ),
+          ),
+        );
+        verify(
+          () => codePushClientWrapper.getSigningKey(appId: appId),
+        ).called(1);
+      });
+
+      test('says how to release without a key when the fetch fails', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(true);
+        when(
+          () => codePushClientWrapper.getSigningKey(appId: appId),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+
+        await expectLater(
+          runWithOverrides(releaser.resolvePatchSigningKey),
+          throwsA(isA<ProcessExit>()),
+        );
+        verify(
+          () => logger.info(
+            'Releases embed a Shorebird-managed patch signing key by '
+            'default. To release without one (patches will be unsigned), '
+            'pass --no-patch-signing.',
+          ),
+        ).called(1);
+      });
+
+      test('embeds no key with --no-patch-signing', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(false);
+        final key = await runWithOverrides(releaser.resolvePatchSigningKey);
+
+        expect(key, isNull);
+        expect(
+          releaser.signing,
+          equals(
+            const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
+          ),
+        );
+        verifyNever(
+          () => codePushClientWrapper.getSigningKey(appId: any(named: 'appId')),
+        );
+      });
+
+      test('embeds the customer key from --public-key-path', () async {
+        final publicKeyFile = File(p.join(projectRoot.path, 'public.pem'))
+          ..writeAsStringSync('customer-pem');
+        when(
+          () => argResults[CommonArguments.publicKeyArg.name],
+        ).thenReturn(publicKeyFile.path);
+        when(
+          () => codeSigner.canonicalPublicKeyPem('customer-pem'),
+        ).thenReturn('customer-pem');
+        when(
+          () => codeSigner.base64PublicKeyFromPem('customer-pem'),
+        ).thenReturn('Y3VzdG9tZXI=');
+
+        final key = await runWithOverrides(releaser.resolvePatchSigningKey);
+
+        expect(key, equals('Y3VzdG9tZXI='));
+        expect(
+          releaser.signing,
+          equals(
+            const ArtifactSigningRequest(mode: ReleaseSigningMode.customer),
+          ),
+        );
+        verifyNever(
+          () => codePushClientWrapper.getSigningKey(appId: any(named: 'appId')),
+        );
       });
     });
 
@@ -561,6 +671,7 @@ To change the version of this release, change your app's version in your pubspec
             platform: any(named: 'platform'),
             supplementDirectoryPath: any(named: 'supplementDirectoryPath'),
             arch: any(named: 'arch'),
+            signing: any(named: 'signing'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -600,6 +711,11 @@ To change the version of this release, change your app's version in your pubspec
             create: any(named: 'create'),
           ),
         ).thenReturn(supplementDir);
+        const signing = ArtifactSigningRequest(
+          mode: ReleaseSigningMode.managed,
+          keyId: 7,
+        );
+        releaser.signing = signing;
 
         await runWithOverrides(
           () => releaser.uploadSupplementArtifact(appId: 'app', releaseId: 1),
@@ -612,6 +728,7 @@ To change the version of this release, change your app's version in your pubspec
             platform: ReleasePlatform.linux,
             supplementDirectoryPath: supplementDir.path,
             arch: 'test_supplement',
+            signing: signing,
           ),
         ).called(1);
       });

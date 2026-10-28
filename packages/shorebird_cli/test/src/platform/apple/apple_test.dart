@@ -820,8 +820,8 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           ).thenThrow(Exception('oops'));
         });
 
-        test('logs error and exits with code 70', () async {
-          await runWithOverrides(
+        test('warns and records the reason as the link metadata', () async {
+          final result = await runWithOverrides(
             () => apple.runLinker(
               aotOutputFile: aotOutputFile,
               kernelFile: File('missing'),
@@ -836,9 +836,97 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
               '[aot_tools] Failed to get link metadata: Exception: oops',
             ),
           ).called(1);
+          verify(
+            () => logger.warn(
+              'Could not read link details for this patch (Exception: oops). '
+              'The patch is not affected; the reason is sent to Shorebird '
+              'with the patch so it can be fixed.',
+            ),
+          ).called(1);
           verify(() => progress.complete()).called(1);
+          expect(result.exitCode, equals(0));
+          expect(result.linkMetadata, equals({'error': 'Exception: oops'}));
         });
       });
+    });
+  });
+
+  group(linkMetadataFailureReason, () {
+    test('names the exception aot_tools left unhandled', () {
+      const error = AotToolsExecutionFailure(
+        exitCode: 255,
+        stdout: '',
+        stderr: '''
+Unhandled exception:
+Bad state: A node should not be linked if it makes a direct call into an unlinked node.
+#0      accumulateUnlinkedCallers (package:aot_tools/src/linker/link_stats.dart:235)
+''',
+        command: 'aot_tools link_metadata /tmp/debug',
+      );
+      expect(
+        linkMetadataFailureReason(error),
+        equals(
+          'Bad state: A node should not be linked if it makes a direct call '
+          'into an unlinked node.',
+        ),
+      );
+    });
+
+    test('replaces paths', () {
+      const error = AotToolsExecutionFailure(
+        exitCode: 1,
+        stdout: '',
+        stderr: 'PathNotFound: /Users/someone/Acme App/build/App.dt.link\n',
+        command: 'aot_tools link_metadata /tmp/debug',
+      );
+      expect(
+        linkMetadataFailureReason(error),
+        equals('PathNotFound: <path>'),
+      );
+    });
+
+    test('replaces a Windows path that starts near the length limit', () {
+      final error = AotToolsExecutionFailure(
+        exitCode: 1,
+        stdout: '',
+        stderr: 'Error: ${'x' * 190} C:\\Users\\someone\\app',
+        command: 'aot_tools link_metadata /tmp/debug',
+      );
+      expect(
+        linkMetadataFailureReason(error),
+        equals('Error: ${'x' * 190} <path>'),
+      );
+    });
+
+    test('falls back to the exit code when stderr is empty', () {
+      const error = AotToolsExecutionFailure(
+        exitCode: 3,
+        stdout: '',
+        stderr: '',
+        command: 'aot_tools link_metadata /tmp/debug',
+      );
+      expect(linkMetadataFailureReason(error), equals('exit code 3'));
+    });
+
+    test('quotes the start of output that is not JSON', () {
+      const error = FormatException(
+        'Unexpected character',
+        'Running build hooks...Running build hooks...{"a":1,"b":2,"c":3,"d":4}',
+      );
+      expect(
+        linkMetadataFailureReason(error),
+        equals(
+          'invalid JSON: '
+          '"Running build hooks...Running build hooks...{"a":1,"b":2,"c""',
+        ),
+      );
+    });
+
+    test('says invalid JSON when the output is unknown', () {
+      expect(
+        linkMetadataFailureReason(const FormatException('bad')),
+        equals('invalid JSON'),
+      );
     });
   });
 }

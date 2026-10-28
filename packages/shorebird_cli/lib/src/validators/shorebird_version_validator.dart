@@ -16,6 +16,15 @@ class ShorebirdVersionValidator extends Validator {
     final bool isShorebirdUpToDate;
 
     try {
+      if (!await shorebirdVersion.hasUpstream()) {
+        return [
+          ValidationIssue(
+            severity: ValidationIssueSeverity.warning,
+            message: shorebirdVersion.noUpstreamMessage,
+          ),
+        ];
+      }
+
       isShorebirdUpToDate = await shorebirdVersion.isLatest();
     } on ProcessException catch (e) {
       return [

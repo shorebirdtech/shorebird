@@ -70,10 +70,23 @@ runs:
 
     - name: 🧪 Test
       working-directory: ${{ inputs.working_directory }}
-      shell: ${{ inputs.shell }}
+      # bash on every OS, for find and xargs.
+      shell: bash
+      # Through env and quoted, so bash keeps a Windows path's backslashes.
+      env:
+        WORKSPACE_ROOT: ${{ inputs.workspace_root }}
       run: |
-        dart pub global activate coverage
-        dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=${{inputs.workspace_root}}/.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
+        # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
+        dart pub global activate coverage 1.15.1
+        # `dart test` keeps every suite's compiled kernel file in the temp
+        # dir until it exits, so one run over shorebird_cli's ~200 test files
+        # fills an ubuntu runner's disk ("Disk quota exceeded"). Running the
+        # files 50 at a time frees that dir between runs (--total-shards
+        # doesn't: every shard still compiles every suite). Each suite writes
+        # its own coverage file, merged below. xargs exits non-zero if any
+        # run fails.
+        find test -name '*_test.dart' | sort | xargs -r -n 50 dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}}
+        dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="$WORKSPACE_ROOT/.dart_tool/package_config.json" --report-on=${{inputs.report_on}} --check-ignore
 
     # Per https://stackoverflow.com/questions/73402042/github-action-expressions-split-string
     - name: 🔗 Split package name

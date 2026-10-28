@@ -11,6 +11,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -136,11 +137,351 @@ class CodePushClientWrapper {
     return _withProgress('Fetching plan', codePushClient.getPlanLevel);
   }
 
+  /// Sets the current user's display name to [displayName].
+  Future<void> updateCurrentUser({required String displayName}) {
+    return _withProgress(
+      'Updating account',
+      () => codePushClient.updateCurrentUser(displayName: displayName),
+    );
+  }
+
+  /// Whether the current user receives email notifications.
+  Future<bool> getEmailNotificationsEnabled() {
+    return _withProgress(
+      'Fetching notification settings',
+      codePushClient.getEmailNotificationsEnabled,
+    );
+  }
+
+  /// Turns the current user's email notifications on or off.
+  Future<void> setEmailNotificationsEnabled({required bool enabled}) {
+    return _withProgress(
+      'Updating notification settings',
+      () => codePushClient.setEmailNotificationsEnabled(enabled: enabled),
+    );
+  }
+
   /// Fetches the organization memberships for the current user.
   Future<List<OrganizationMembership>> getOrganizationMemberships() {
     return _withProgress(
       'Fetching organizations',
       codePushClient.getOrganizationMemberships,
+    );
+  }
+
+  /// Creates an organization named [name].
+  Future<Organization> createOrganization({required String name}) {
+    return _withProgress(
+      'Creating organization',
+      () => codePushClient.createOrganization(name: name),
+    );
+  }
+
+  /// Renames organization [organizationId] to [name].
+  Future<void> updateOrganization({
+    required int organizationId,
+    required String name,
+  }) {
+    return _withProgress(
+      'Updating organization',
+      () => codePushClient.updateOrganization(
+        organizationId: organizationId,
+        name: name,
+      ),
+    );
+  }
+
+  /// Fetches the members of organization [organizationId].
+  Future<List<OrganizationUser>> getOrganizationUsers({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching members',
+      () => codePushClient.getOrganizationUsers(organizationId: organizationId),
+    );
+  }
+
+  /// Fetches the pending invitations to organization [organizationId], or
+  /// null if the user's role can't see them (the `auditor` role can't).
+  Future<List<InvitationSummary>?> maybeGetOrganizationInvitations({
+    required int organizationId,
+  }) async {
+    final progress = logger.progress('Fetching invitations');
+    try {
+      final invitations = await codePushClient.getOrganizationInvitations(
+        organizationId: organizationId,
+      );
+      progress.complete();
+      return invitations;
+    } on CodePushForbiddenException {
+      progress.complete();
+      return null;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
+  /// Invites [email] to organization [organizationId] with [role].
+  Future<CreateOrganizationInvitation201Response> createOrganizationInvitation({
+    required int organizationId,
+    required String email,
+    required Role role,
+  }) {
+    return _withProgress(
+      'Inviting $email',
+      () => codePushClient.createOrganizationInvitation(
+        organizationId: organizationId,
+        email: email,
+        role: role,
+      ),
+    );
+  }
+
+  /// Cancels the pending invitation [invitationId] to organization
+  /// [organizationId].
+  Future<void> revokeOrganizationInvitation({
+    required int organizationId,
+    required String invitationId,
+  }) {
+    return _withProgress(
+      'Cancelling invitation',
+      () => codePushClient.revokeOrganizationInvitation(
+        organizationId: organizationId,
+        invitationId: invitationId,
+      ),
+    );
+  }
+
+  /// Sets member [userId]'s role in organization [organizationId] to [role].
+  Future<void> updateOrganizationUser({
+    required int organizationId,
+    required int userId,
+    required Role role,
+  }) {
+    return _withProgress(
+      'Updating role',
+      () => codePushClient.updateOrganizationUser(
+        organizationId: organizationId,
+        userId: userId,
+        role: role,
+      ),
+    );
+  }
+
+  /// Removes member [userId] from organization [organizationId].
+  Future<void> removeOrganizationUser({
+    required int organizationId,
+    required int userId,
+  }) {
+    return _withProgress(
+      'Removing member',
+      () => codePushClient.removeOrganizationUser(
+        organizationId: organizationId,
+        userId: userId,
+      ),
+    );
+  }
+
+  /// Fetches one page of organization [organizationId]'s audit log. See
+  /// [CodePushClient.getOrganizationAuditLogs] for the arguments.
+  Future<GetOrganizationAuditLogsResponse> getOrganizationAuditLogs({
+    required int organizationId,
+    int? perPage,
+    String? cursor,
+    AuditLogOrder? order,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? appId,
+    int? actorId,
+    String? operation,
+  }) {
+    return _withProgress(
+      'Fetching audit log',
+      () => codePushClient.getOrganizationAuditLogs(
+        organizationId: organizationId,
+        perPage: perPage,
+        cursor: cursor,
+        order: order,
+        startDate: startDate,
+        endDate: endDate,
+        appId: appId,
+        actorId: actorId,
+        operation: operation,
+      ),
+    );
+  }
+
+  /// Fetches patch-install usage for the account that owns organization
+  /// [organizationId].
+  Future<GetUsageResponse> getOrganizationUsage({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching usage',
+      () => codePushClient.getOrganizationUsage(organizationId: organizationId),
+    );
+  }
+
+  /// Fetches usage as [getOrganizationUsage] does, or null when the user's
+  /// role may not see it (the auditor role).
+  Future<GetUsageResponse?> maybeGetOrganizationUsage({
+    required int organizationId,
+  }) {
+    return _withProgress('Fetching usage', () async {
+      try {
+        return await codePushClient.getOrganizationUsage(
+          organizationId: organizationId,
+        );
+      } on CodePushForbiddenException {
+        return null;
+      }
+    });
+  }
+
+  /// Fetches the service accounts organization [organizationId] owns.
+  Future<List<ServiceAccount>> getServiceAccounts({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching service accounts',
+      () => codePushClient.getServiceAccounts(organizationId: organizationId),
+    );
+  }
+
+  /// Creates service account [name] in organization [organizationId].
+  Future<ServiceAccount> createServiceAccount({
+    required int organizationId,
+    required String name,
+    ServiceAccountRole? role,
+  }) {
+    return _withProgress(
+      'Creating service account',
+      () => codePushClient.createServiceAccount(
+        organizationId: organizationId,
+        name: name,
+        role: role,
+      ),
+    );
+  }
+
+  /// Sets the role of service account [serviceAccountId] to [role].
+  Future<ServiceAccount> updateServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+    required ServiceAccountRole role,
+  }) {
+    return _withProgress(
+      'Updating service account',
+      () => codePushClient.updateServiceAccount(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        role: role,
+      ),
+    );
+  }
+
+  /// Deletes service account [serviceAccountId].
+  Future<void> deleteServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Deleting service account',
+      () => codePushClient.deleteServiceAccount(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Fetches the unrevoked keys of service account [serviceAccountId].
+  Future<List<ServiceAccountKey>> getServiceAccountKeys({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Fetching service account keys',
+      () => codePushClient.getServiceAccountKeys(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Revokes key [keyId] of service account [serviceAccountId].
+  Future<void> revokeServiceAccountKey({
+    required int organizationId,
+    required int serviceAccountId,
+    required int keyId,
+  }) {
+    return _withProgress(
+      'Revoking service account key',
+      () => codePushClient.revokeServiceAccountKey(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        keyId: keyId,
+      ),
+    );
+  }
+
+  /// Finds which of [memberships]' organizations app [appId] is in, or null
+  /// if none of them lists it.
+  ///
+  /// Pass the app metadata's [organizationId] when it has one: that names
+  /// the organization outright. Servers that predate the field leave it out,
+  /// so without it this lists each organization's apps in turn, stopping at
+  /// the first that has it. An organization whose listing fails is skipped;
+  /// the failure is reported only if no other organization has the app.
+  Future<OrganizationMembership?> findAppOrganization({
+    required String appId,
+    required List<OrganizationMembership> memberships,
+    int? organizationId,
+  }) async {
+    if (organizationId != null) {
+      return memberships.firstWhereOrNull(
+        (m) => m.organization.id == organizationId,
+      );
+    }
+    return _withProgress("Finding the app's organization", () async {
+      CodePushException? failure;
+      for (final membership in memberships) {
+        final List<AppMetadata> apps;
+        try {
+          apps = await codePushClient.getOrganizationApps(
+            organizationId: membership.organization.id,
+          );
+        } on CodePushException catch (error) {
+          failure = error;
+          continue;
+        }
+        if (apps.any((app) => app.appId == appId)) return membership;
+      }
+      if (failure != null) throw failure;
+      return null;
+    });
+  }
+
+  /// Fetches the pending invitations sent to the current user.
+  Future<List<ReceivedInvitation>> getReceivedInvitations() {
+    return _withProgress(
+      'Fetching invitations',
+      codePushClient.getReceivedInvitations,
+    );
+  }
+
+  /// Accepts the invitation with [invitationId].
+  Future<void> acceptInvitation({required String invitationId}) {
+    return _withProgress(
+      'Accepting invitation',
+      () => codePushClient.acceptInvitation(invitationId: invitationId),
+    );
+  }
+
+  /// Declines the invitation with [invitationId].
+  Future<void> declineInvitation({required String invitationId}) {
+    return _withProgress(
+      'Declining invitation',
+      () => codePushClient.declineInvitation(invitationId: invitationId),
     );
   }
 
@@ -241,12 +582,29 @@ This app may not exist or you may not have permission to view it.''');
     );
   }
 
-  /// Deletes the app with the provided [appId], along with every release and
-  /// patch belonging to it.
-  Future<void> deleteApp({required String appId}) {
+  /// Deletes the release with the provided [releaseId], along with every
+  /// platform's artifacts and every patch belonging to it.
+  Future<void> deleteRelease({required String appId, required int releaseId}) {
     return _withProgress(
-      'Deleting app',
-      () => codePushClient.deleteApp(appId: appId),
+      'Deleting release',
+      () => codePushClient.deleteRelease(appId: appId, releaseId: releaseId),
+    );
+  }
+
+  /// Deletes the [platform] artifacts of the release with the provided
+  /// [releaseId], leaving the release and its other platforms in place.
+  Future<void> deleteReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+  }) {
+    return _withProgress(
+      'Deleting ${platform.value} release artifacts',
+      () => codePushClient.deleteReleaseArtifacts(
+        appId: appId,
+        releaseId: releaseId,
+        platform: platform,
+      ),
     );
   }
 
@@ -270,7 +628,7 @@ This app may not exist or you may not have permission to view it.''');
     required Release release,
     required ReleasePlatform platform,
   }) {
-    if (release.platformStatuses[platform] == ReleaseStatus.active) {
+    if (release.isActiveOn(platform)) {
       final uri = ShorebirdWebConsole.appReleaseUri(release.appId, release.id);
       logger.err(
         '''
@@ -394,6 +752,13 @@ Please create a release using "shorebird release" and try again.
     );
   }
 
+  /// Fetches the managed patch-signing key a new build of [appId] embeds,
+  /// exiting if the server can't provide one.
+  Future<SigningKey> getSigningKey({required String appId}) => _withProgress(
+    'Fetching patch signing key',
+    () => codePushClient.getSigningKey(appId: appId),
+  );
+
   /// Returns release artifacts for the given [appId], [releaseId],
   /// [architectures], and [platform]. Not all architectures may have artifacts,
   /// so the returned map may not contain all the requested architectures.
@@ -499,6 +864,7 @@ Please create a release using "shorebird release" and try again.
     required String aabPath,
     required Iterable<Arch> architectures,
     String? flavor,
+    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
@@ -516,17 +882,16 @@ Please create a release using "shorebird release" and try again.
       );
     }
 
-    final archsDir = await ArtifactManager.androidArchsDirectoryFromAab(
+    await ArtifactManager.withAndroidArchsDirectoryFromAab(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
       aab: File(aabPath),
-    );
-
-    if (archsDir == null) {
-      _handleErrorAndExit(
-        Exception('Cannot find patch build artifacts.'),
-        progress: createArtifactProgress,
-        message: '''
+      action: (archsDir) async {
+        if (archsDir == null) {
+          _handleErrorAndExit(
+            Exception('Cannot find patch build artifacts.'),
+            progress: createArtifactProgress,
+            message: '''
 Cannot find release build artifacts.
 
 Please run `shorebird cache clean` and try again. If the issue persists, please
@@ -536,19 +901,23 @@ Looked in:
   - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib''',
-      );
-    }
+          );
+        }
 
-    await _uploadAndroidArchArtifacts(
-      appId: appId,
-      releaseId: releaseId,
-      platform: platform,
-      archsDir: archsDir.path,
-      architectures: architectures,
-      progress: createArtifactProgress,
+        await _uploadAndroidArchArtifacts(
+          signing: signing,
+          appId: appId,
+          releaseId: releaseId,
+          platform: platform,
+          archsDir: archsDir.path,
+          architectures: architectures,
+          progress: createArtifactProgress,
+        );
+      },
     );
 
     await _uploadReleaseArtifact(
+      signing: signing,
       appId: appId,
       releaseId: releaseId,
       file: File(aabPath),
@@ -567,11 +936,13 @@ Looked in:
     required String appId,
     required int releaseId,
     required Directory releaseDirectory,
+    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final zippedRelease = await releaseDirectory.zipToTempFile();
     try {
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedRelease,
@@ -595,10 +966,12 @@ Looked in:
     required String aarPath,
     required String extractedAarDir,
     required Iterable<Arch> architectures,
+    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
     await _uploadAndroidArchArtifacts(
+      signing: signing,
       appId: appId,
       releaseId: releaseId,
       platform: platform,
@@ -608,6 +981,7 @@ Looked in:
     );
 
     await _uploadReleaseArtifact(
+      signing: signing,
       appId: appId,
       releaseId: releaseId,
       file: File(aarPath),
@@ -633,6 +1007,7 @@ Looked in:
     required String archsDir,
     required Iterable<Arch> architectures,
     required Progress progress,
+    ArtifactSigningRequest? signing,
   }) async {
     // Track which arch paths AGP didn't produce, so we can surface them at
     // the end if zero archs uploaded. AGP omits an arch directory whenever
@@ -640,7 +1015,7 @@ Looked in:
     // `jniLibs.excludes`. Iterating only over present files lets a filtered
     // release succeed instead of crashing on the first missing arch
     // (https://github.com/shorebirdtech/shorebird/issues/3388).
-    final missingArchPaths = <String>[];
+    final missingArchs = <Arch>[];
     var uploadedArchCount = 0;
     for (final arch in architectures) {
       final artifactPath = p.join(
@@ -655,10 +1030,11 @@ Looked in:
           'This is expected if the project filters this ABI via '
           'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
         );
-        missingArchPaths.add(artifactPath);
+        missingArchs.add(arch);
         continue;
       }
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: artifact,
@@ -679,9 +1055,8 @@ Looked in:
             '''
 No architecture artifacts found to upload.
 
-Shorebird looked for libapp.so under $archsDir but every requested
-architecture was missing:
-${missingArchPaths.map((p) => '  - $p').join('\n')}
+The build has no libapp.so for any requested architecture:
+${missingArchs.map((arch) => '  - ${arch.androidBuildPath}').join('\n')}
 
 This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
 configuration excludes every architecture Shorebird was asked to build. Either
@@ -709,6 +1084,7 @@ to the architectures your project actually builds.''',
     required bool canSideload,
     required Progress progress,
     String? podfileLockHash,
+    ArtifactSigningRequest? signing,
   }) async {
     logger.detail('Uploading $name artifact from ${file.path}');
     try {
@@ -721,6 +1097,7 @@ to the architectures your project actually builds.''',
         hash: sha256.convert(await file.readAsBytes()).toString(),
         canSideload: canSideload,
         podfileLockHash: podfileLockHash,
+        signing: signing,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -758,11 +1135,13 @@ $name artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required Directory bundle,
+    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final zippedBundle = await Directory(bundle.path).zipToTempFile();
     try {
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedBundle,
@@ -785,6 +1164,7 @@ $name artifact already exists, continuing...''');
     required int releaseId,
     required String appPath,
     required String? podfileLockHash,
+    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
@@ -795,6 +1175,7 @@ $name artifact already exists, continuing...''');
       await ditto.archive(source: appPath, destination: zippedApp.path);
 
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedApp,
@@ -821,6 +1202,7 @@ $name artifact already exists, continuing...''');
     required String runnerPath,
     required bool isCodesigned,
     required String? podfileLockHash,
+    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory = await _thinXcarchive(
@@ -834,6 +1216,7 @@ $name artifact already exists, continuing...''');
     }
     try {
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedArchive,
@@ -852,6 +1235,7 @@ $name artifact already exists, continuing...''');
     logger.detail('[archive] zipped runner.app');
     try {
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedRunner,
@@ -875,12 +1259,14 @@ $name artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required String appFrameworkPath,
+    ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     final zippedAppFrameworkFile = await appFrameworkDirectory.zipToTempFile();
     try {
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedAppFrameworkFile,
@@ -904,6 +1290,7 @@ $name artifact already exists, continuing...''');
     required ReleasePlatform platform,
     required String supplementDirectoryPath,
     required String arch,
+    ArtifactSigningRequest? signing,
   }) async {
     final createSupplementProgress = logger.progress(
       'Uploading supplement artifacts',
@@ -913,6 +1300,7 @@ $name artifact already exists, continuing...''');
     ).zipToTempFile(name: arch);
     try {
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         file: zippedSupplement,
@@ -935,7 +1323,7 @@ $name artifact already exists, continuing...''');
 
   /// Creates a patch for the given [appId], [releaseId], and [metadata].
   @visibleForTesting
-  Future<Patch> createPatch({
+  Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -954,7 +1342,7 @@ $name artifact already exists, continuing...''');
   @visibleForTesting
   Future<void> createPatchArtifacts({
     required String appId,
-    required Patch patch,
+    required CreatePatchResponse patch,
     required ReleasePlatform platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
@@ -1061,7 +1449,7 @@ $name artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].
-  Future<Patch> publishPatch({
+  Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1119,6 +1507,10 @@ $name artifact already exists, continuing...''');
   /// Prints an appropriate error message for the given error and exits with
   /// code 70. If [progress] is provided, it will be failed with the given
   /// [message] or [error.toString()] if [message] is null.
+  ///
+  /// A failed API call ([CodePushException]) also logs the server's error
+  /// code and exits with an [ApiErrorExit], so `--json` output can report
+  /// that code and the server's details.
   Never _handleErrorAndExit(
     Object error, {
     Progress? progress,
@@ -1126,15 +1518,28 @@ $name artifact already exists, continuing...''');
   }) {
     if (error is CodePushUpgradeRequiredException) {
       progress?.fail();
-      logger
-        ..err('Your version of shorebird is out of date.')
-        ..info(
+      // The server says which version it requires and why; a 426 without a
+      // parseable error body gets the generic line.
+      if (error.response == null) {
+        logger.err('Your version of shorebird is out of date.');
+      } else {
+        logger.err(error.message);
+        if (error.details case final details?) logger.info(details);
+        if (error.documentationUrl case final url?) logger.info('See: $url');
+      }
+      if (!'${error.message} ${error.details}'.contains('shorebird upgrade')) {
+        logger.info(
           '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
         );
+      }
     } else if (progress != null) {
       progress.fail(message ?? '$error');
     }
 
+    if (error is CodePushException) {
+      if (error.code case final apiCode?) logger.info('Error code: $apiCode');
+      throw ApiErrorExit(error, ExitCode.software.code);
+    }
     throw ProcessExit(ExitCode.software.code);
   }
 }

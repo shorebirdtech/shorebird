@@ -44,7 +44,7 @@ class IosFrameworkPatcher extends Patcher
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
+  Version? get minimumFlutterVersion => minimumPatchableIosFlutterVersion;
 
   @override
   List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
@@ -67,8 +67,15 @@ class IosFrameworkPatcher extends Patcher
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...extraBuildArgs,
+      // `patch` parses `--no-codesign` itself (for ipa builds), so it isn't
+      // forwarded with the rest.
+      if (!argResults.appleCodesign) '--no-codesign',
+    ];
     final buildResult = await artifactBuilder.buildIosFramework(
+      target: target,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );

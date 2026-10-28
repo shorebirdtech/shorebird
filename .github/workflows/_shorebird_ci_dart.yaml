@@ -9,10 +9,6 @@ on:
       package_path:
         required: true
         type: string
-      has_bloc_lint:
-        required: false
-        default: false
-        type: boolean
       has_unit_tests:
         required: false
         default: true
@@ -39,9 +35,6 @@ jobs:
           docker pull redis/redis-stack-server:latest
           docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
       - uses: dart-lang/setup-dart@v1
-      - name: Setup Bloc Tools
-        if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
       - name: Install Dependencies
         working-directory: ${{ inputs.package_path }}
         run: |
@@ -53,16 +46,21 @@ jobs:
         run: dart format --set-exit-if-changed .
       - working-directory: ${{ inputs.package_path }}
         run: dart analyze --fatal-warnings .
-      - name: Bloc Lint
-        if: inputs.has_bloc_lint
-        working-directory: ${{ inputs.package_path }}
-        run: bloc lint .
       - name: Run Tests
         if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
+        # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
+        # `dart test` keeps every suite's compiled kernel file in the temp
+        # dir until it exits, so one run over a package with ~200 test files
+        # fills the runner's disk ("Disk quota exceeded"). Running the files
+        # 50 at a time frees that dir between runs, as the dart_package
+        # action does (#4262). Each suite writes its own coverage file.
+        # shorebird_ci's generator still emits a single `dart test`; keep
+        # this batching if the file is regenerated.
+        shell: bash
         run: |
-          dart pub global activate coverage && \
-          dart test --coverage=coverage && \
+          dart pub global activate coverage 1.15.1
+          find test -name '*_test.dart' | sort | xargs -r -n 50 dart test --coverage=coverage
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
         uses: codecov/codecov-action@v7

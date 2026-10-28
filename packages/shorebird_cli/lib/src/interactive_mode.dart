@@ -1,12 +1,13 @@
 import 'dart:io' as io;
 
 import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
 /// Whether the CLI is running in an interactive context.
 ///
-/// This is the canonical predicate for behaviors that require a TTY:
-/// progress spinners, ANSI color output, and interactive prompts
-/// (`chooseOne`/`confirm`/`prompt`).
+/// This is the predicate for output that wants a TTY: progress spinners and
+/// ANSI color. Whether the CLI can prompt is a stricter question, answered by
+/// `ShorebirdEnv.canAcceptUserInput`.
 ///
 /// Returns `false` when any of the following is true:
 ///   * stdout is not connected to a terminal.
@@ -14,11 +15,31 @@ import 'package:shorebird_cli/src/json_output.dart';
 ///
 /// `Stdout.hasTerminal` is winsize-based, not isatty-based, so PTYs with
 /// default 0x0 winsize fail it. `stdioType(stdout) == StdioType.terminal`
-/// uses isatty semantics and catches them.
+/// catches them. It is broader than isatty: it reports any character device
+/// as a terminal, including `/dev/null`.
 bool get isInteractive {
   if (isJsonMode) return false;
   if (io.stdout.hasTerminal) return true;
   return io.stdioType(io.stdout) == io.StdioType.terminal;
+}
+
+/// The exit code when the user declines a confirmation prompt.
+///
+/// A declined prompt means the command did not do what was asked, so it must
+/// not report success to scripts and agents. 1 is the common convention for an
+/// aborted command (terraform, apt-get and gcloud all exit 1).
+const int declinedExitCode = 1;
+
+/// {@template prompt_declined_exit}
+/// A [ProcessExit] thrown when the user declines a confirmation prompt.
+///
+/// The command has already said what it did not do (e.g. "Aborting."), so the
+/// runner exits with [declinedExitCode] without the "re-run with --verbose"
+/// footer it prints after unexplained failures.
+/// {@endtemplate}
+class PromptDeclinedExit extends ProcessExit {
+  /// {@macro prompt_declined_exit}
+  PromptDeclinedExit() : super(declinedExitCode);
 }
 
 /// The default hint emitted when an interactive prompt is reached in a

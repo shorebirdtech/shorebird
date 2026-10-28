@@ -134,6 +134,15 @@ More info: ${troubleshootingUrl.toLink()}.
     required File patchArchive,
   });
 
+  /// Called by the patch command once it knows which [release] it is
+  /// patching, before it builds the patch for that release. (When the
+  /// release version must be read from a build, that first build runs before
+  /// this.)
+  Future<void> prepareForRelease({
+    required String appId,
+    required Release release,
+  }) async {}
+
   /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
   Future<File> buildPatchArtifact({String? releaseVersion});
@@ -157,7 +166,7 @@ More info: ${troubleshootingUrl.toLink()}.
   }
 
   /// Uploads the patch artifacts to the CodePush server.
-  Future<Patch> uploadPatchArtifacts({
+  Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,
@@ -179,6 +188,9 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
+
+  /// Whether to print every differing instruction (--show-dex-diff).
+  bool get showDexDiff => argResults['show-dex-diff'] == true;
 
   /// Returns a function that signs data, or null if no signing is configured.
   Future<String> Function(String)? _resolveSigner() {
@@ -211,11 +223,24 @@ More info: ${troubleshootingUrl.toLink()}.
     return null;
   }
 
-  /// Gets the base64-encoded public key from either --public-key-path or
-  /// --public-key-cmd, the same way releases do.
+  /// The managed public key (PEM) the release being patched embeds, which
+  /// the patch builds against. Null unless the release is managed-signed.
+  String? releaseManagedPublicKeyPem;
+
+  /// Gets the base64-encoded public key the patch build embeds.
+  ///
+  /// A patch builds against the key its release embeds, so its build matches
+  /// the release's. For a managed release that is the release's managed key;
+  /// otherwise the key from --public-key-path or --public-key-cmd, the same
+  /// way releases do.
   ///
   /// Returns null if no public key is configured.
-  Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
+  Future<String?> getEncodedPublicKey() async {
+    if (releaseManagedPublicKeyPem case final pem?) {
+      return codeSigner.base64PublicKeyFromPem(pem);
+    }
+    return argResults.getEncodedPublicKey();
+  }
 
   /// Returns the public key PEM from the configured source, or null.
   Future<String?> _resolvePublicKeyPem() async {
@@ -228,10 +253,10 @@ More info: ${troubleshootingUrl.toLink()}.
       );
       throw ProcessExit(ExitCode.software.code);
     } on FormatException catch (e) {
-      logger.err(
-        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
-        '${e.message}',
-      );
+      final source = argResults.wasParsed(CommonArguments.publicKeyArg.name)
+          ? '--${CommonArguments.publicKeyArg.name} file'
+          : '--${CommonArguments.publicKeyCmd.name} output';
+      logger.err('The $source ${e.message}');
       throw ProcessExit(ExitCode.software.code);
     }
   }

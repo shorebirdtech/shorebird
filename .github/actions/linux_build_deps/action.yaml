@@ -1,0 +1,29 @@
+name: Linux Build Dependencies
+description: Install what a Flutter Linux desktop build needs, with the .deb files cached
+
+runs:
+  using: "composite"
+
+  steps:
+    # A new runner image starts a new cache. Within one image, apt downloads
+    # only the debs Ubuntu has updated since the cache was saved.
+    - name: 🔑 Cache Key
+      id: key
+      shell: bash
+      run: echo "image=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+
+    # The Azure Ubuntu mirror sometimes serves debs at ~40 kB/s, which made
+    # the 30 MB download take 12 minutes (run 40231350021).
+    - name: 📦 Restore Debs
+      uses: actions/cache@v6
+      with:
+        path: ~/apt-archives
+        key: apt-${{ steps.key.outputs.image }}-${{ hashFiles('.github/actions/linux_build_deps/action.yaml') }}
+
+    - name: 🐧 Install Linux Build Dependencies
+      shell: bash
+      run: |
+        mkdir -p ~/apt-archives
+        sudo apt-get update
+        sudo apt-get install -y -o Dir::Cache::Archives="$HOME/apt-archives" -o APT::Sandbox::User=root clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev xvfb
+        sudo chown -R "$USER" ~/apt-archives

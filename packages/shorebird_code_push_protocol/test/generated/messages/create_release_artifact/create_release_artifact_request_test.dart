@@ -5,9 +5,9 @@ import 'package:test/test.dart';
 void main() {
   group('CreateReleaseArtifactRequest', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = CreateReleaseArtifactRequest(
+      const instance = CreateReleaseArtifactRequest(
         arch: 'example',
-        platform: ReleasePlatform.values.first,
+        platform: ReleasePlatform.android,
         hash: 'example',
         filename: 'example',
         size: 0,

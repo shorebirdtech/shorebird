@@ -1,4 +1,3 @@
-import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -22,23 +21,19 @@ void main() {
   group(PromoteCommand, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0';
-    const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
-    const flutterVersion = '3.22.0';
-    const releasePlatform = ReleasePlatform.android;
     const shorebirdYaml = ShorebirdYaml(appId: appId);
-    final stableChannel = Channel(
-      id: 0,
-      appId: appId,
-      name: DeploymentTrack.stable.channel,
-    );
     final release = Release(
       id: 0,
       appId: appId,
       version: releaseVersion,
-      flutterRevision: flutterRevision,
-      flutterVersion: flutterVersion,
-      displayName: '1.2.3+1',
-      platformStatuses: const {releasePlatform: ReleaseStatus.active},
+      flutterRevision: 'flutter-revision',
+      flutterVersion: 'flutter-version',
+      displayName: releaseVersion,
+      platforms: const {
+        ReleasePlatform.android: ReleasePlatformDetails(
+          status: ReleaseStatus.active,
+        ),
+      },
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
@@ -49,13 +44,17 @@ void main() {
       isRolledBack: false,
       artifacts: const [],
     );
+    final stableChannel = Channel(
+      id: 0,
+      appId: appId,
+      name: DeploymentTrack.stable.channel,
+    );
+    const betaChannel = Channel(id: 1, appId: appId, name: 'beta');
 
-    late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
-
     late PromoteCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -71,22 +70,33 @@ void main() {
       );
     }
 
+    void parse(List<String> args) {
+      command.testArgResults = command.argParser.parse([
+        '--release-version',
+        releaseVersion,
+        '--patch-number',
+        '1',
+        ...args,
+      ]);
+    }
+
     setUpAll(() {
       registerFallbackValue(FakeChannel());
     });
 
     setUp(() {
-      argResults = MockArgResults();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
 
-      when(() => argResults.wasParsed(any())).thenReturn(false);
-      when(() => argResults.rest).thenReturn([]);
-      when(() => argResults['release-version']).thenReturn('1.0.0');
-      when(() => argResults['patch-number']).thenReturn('1');
-
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async => {});
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(
         () => codePushClientWrapper.getRelease(
           appId: any(named: 'appId'),
@@ -102,9 +112,15 @@ void main() {
       when(
         () => codePushClientWrapper.maybeGetChannel(
           appId: any(named: 'appId'),
-          name: any(named: 'name'),
+          name: DeploymentTrack.stable.channel,
         ),
       ).thenAnswer((_) async => stableChannel);
+      when(
+        () => codePushClientWrapper.maybeGetChannel(
+          appId: any(named: 'appId'),
+          name: betaChannel.name,
+        ),
+      ).thenAnswer((_) async => betaChannel);
       when(
         () => codePushClientWrapper.promotePatch(
           appId: any(named: 'appId'),
@@ -113,214 +129,114 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
 
-      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      command = runWithOverrides(PromoteCommand.new);
+    });
 
-      when(
-        () => shorebirdValidator.validatePreconditions(
-          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+    test('is named promote and shown in help', () {
+      expect(command.name, equals('promote'));
+      expect(command.hidden, isFalse);
+    });
+
+    test('description points at set-track', () {
+      expect(
+        command.description,
+        contains('shorebird patches set-track --track stable'),
+      );
+    });
+
+    test('--track defaults to stable', () {
+      parse([]);
+      expect(command.results['track'], equals('stable'));
+    });
+
+    test('accepts --channel as an alias of --track', () {
+      parse(['--channel', 'beta']);
+      expect(command.results['track'], equals('beta'));
+    });
+
+    test('promotes the patch to stable by default', () async {
+      parse([]);
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => codePushClientWrapper.promotePatch(
+          appId: appId,
+          patchId: patch.id,
+          channel: stableChannel,
         ),
-      ).thenAnswer((_) async {});
-
-      command = PromoteCommand()..testArgResults = argResults;
+      ).called(1);
+      verify(
+        () => logger.success(
+          'Patch 1 on release $releaseVersion is now in channel stable!',
+        ),
+      ).called(1);
     });
 
-    test('has a description', () {
-      expect(command.description, isNotEmpty);
+    test('promotes the patch to the track given by --channel', () async {
+      parse(['--channel', 'beta']);
+
+      final exitCode = await runWithOverrides(command.run);
+
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => codePushClientWrapper.promotePatch(
+          appId: appId,
+          patchId: patch.id,
+          channel: betaChannel,
+        ),
+      ).called(1);
     });
 
-    test('is hidden and marked deprecated', () {
-      expect(command.hidden, isTrue);
-      expect(command.description, startsWith('(deprecated)'));
-    });
+    test('succeeds without changes when already on stable', () async {
+      when(
+        () => codePushClientWrapper.getReleasePatches(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenAnswer(
+        (_) async => [patch.copyWith(channel: DeploymentTrack.stable.channel)],
+      );
+      parse([]);
 
-    test('logs warning about deprecation', () async {
-      await runWithOverrides(() async {
-        final result = await command.run();
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.warn(
-            '''This command is deprecated and will be removed in a future release. Use `shorebird patches set-track --track=stable` instead.''',
-          ),
-        ).called(1);
-      });
-    });
+      final exitCode = await runWithOverrides(command.run);
 
-    group('when validation fails', () {
-      final exception = ShorebirdNotInitializedException();
-      setUp(() {
-        when(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-            checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
-          ),
-        ).thenThrow(exception);
-      });
-      test('exits with exit code from validation error', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(exception.exitCode.code));
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-            checkShorebirdInitialized: true,
-          ),
-        ).called(1);
-      });
-    });
-
-    group('when --patch-number is not an integer', () {
-      setUp(() {
-        when(() => argResults['patch-number']).thenReturn('one');
-      });
-
-      test('exits with usage error and does not fetch', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
-        verify(
-          () => logger.err('"one" is not a valid patch number.'),
-        ).called(1);
-        verifyNever(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        );
-      });
-    });
-
-    group('when --flavor is not defined in shorebird.yaml', () {
-      setUp(() {
-        when(() => argResults.wasParsed('flavor')).thenReturn(true);
-        when(() => argResults['flavor']).thenReturn('missing');
-      });
-
-      test('exits with usage error and does not fetch', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
-        verify(
-          () => logger.err(any(that: contains('does not have any flavors'))),
-        ).called(1);
-        verifyNever(
-          () => codePushClientWrapper.getRelease(
-            appId: any(named: 'appId'),
-            releaseVersion: any(named: 'releaseVersion'),
-          ),
-        );
-      });
-    });
-
-    group('when an invalid patch number is provided', () {
-      setUp(() {
-        when(() => argResults['patch-number']).thenReturn('5');
-      });
-
-      test('should log an error', () async {
-        await runWithOverrides(() async {
-          final result = await command.run();
-
-          expect(result, equals(ExitCode.usage.code));
-          verify(
-            () => logger.err(
-              'No patch found with number 5 for release "$releaseVersion".',
-            ),
-          ).called(1);
-          verify(() => logger.info('Available patches: 1.')).called(1);
-        });
-      });
-    });
-
-    group('when patch is already in production', () {
-      setUp(() {
-        final prodPatch = ReleasePatch(
-          id: 0,
-          number: 1,
-          channel: DeploymentTrack.stable.channel,
-          isRolledBack: false,
-          artifacts: const [],
-        );
-        when(
-          () => codePushClientWrapper.getReleasePatches(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-          ),
-        ).thenAnswer((_) async => [prodPatch]);
-      });
-
-      test(
-        'tells user patch is already in prod, exits with usage code',
-        () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.usage.code));
-          verify(() => logger.err('Patch 1 is already live')).called(1);
-        },
+      expect(exitCode, equals(ExitCode.success.code));
+      verify(
+        () => logger.info(
+          'Patch 1 on release $releaseVersion is already in channel stable.',
+        ),
+      ).called(1);
+      verifyNever(
+        () => codePushClientWrapper.promotePatch(
+          appId: any(named: 'appId'),
+          patchId: any(named: 'patchId'),
+          channel: any(named: 'channel'),
+        ),
       );
     });
 
-    group('when app has no stable channel', () {
-      setUp(() {
-        when(
-          () => codePushClientWrapper.maybeGetChannel(
-            appId: any(named: 'appId'),
-            name: DeploymentTrack.stable.channel,
-          ),
-        ).thenAnswer((_) async => null);
-      });
+    test('--json emits the set-track success envelope', () async {
+      parse([]);
 
-      test('exits with software error code', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-      });
-    });
-
-    group('when patch is successfully promoted', () {
-      test('exits with success code', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => codePushClientWrapper.promotePatch(
-            appId: appId,
-            patchId: patch.id,
-            channel: stableChannel,
-          ),
-        );
-        verify(
-          () => logger.success('Patch 1 is now live for release 1.0.0!'),
-        ).called(1);
-      });
-    });
-
-    group('--json', () {
-      test(
-        'refuses with structured envelope and points to set-track',
-        () async {
-          final (:exitCode, :json) = await captureJson(
-            () => runScoped(
-              command.run,
-              values: {
-                codePushClientWrapperRef.overrideWith(
-                  () => codePushClientWrapper,
-                ),
-                isJsonModeRef.overrideWith(() => true),
-                loggerRef.overrideWith(() => logger),
-                shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-                shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-              },
-            ),
-          );
-          expect(exitCode, equals(ExitCode.usage.code));
-          expect(json['status'], 'error');
-          final error = json['error'] as Map<String, dynamic>;
-          expect(error['code'], 'usage_error');
-          expect(error['hint'], contains('set-track'));
-          verifyNever(
-            () => codePushClientWrapper.promotePatch(
-              appId: any(named: 'appId'),
-              patchId: any(named: 'patchId'),
-              channel: any(named: 'channel'),
-            ),
-          );
-        },
+      final (:exitCode, :json) = await captureJson(
+        () => runScoped(
+          command.run,
+          values: {
+            codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+            isJsonModeRef.overrideWith(() => true),
+            loggerRef.overrideWith(() => logger),
+            shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+            shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          },
+        ),
       );
+
+      expect(exitCode, equals(ExitCode.success.code));
+      final data = json['data'] as Map<String, dynamic>;
+      expect(data['track'], equals('stable'));
+      expect(data['changed'], isTrue);
     });
   });
 }

@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/flutter_version_constraints.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -52,13 +52,13 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
   }
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
-
-  @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIosFramework(
-        args: buildArgs,
+        target: target,
+        // `release` parses `--no-codesign` itself (for ipa builds), so it
+        // isn't forwarded with the rest.
+        args: [...buildArgs, if (!argResults.appleCodesign) '--no-codesign'],
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
       ),
@@ -70,8 +70,15 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     final targetLibraryDirectory = Directory(
       p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
     );
+    // Remove only each .xcframework from a previous release: `release aar`
+    // writes its maven repo to this same directory, and deleting the whole
+    // directory would lose it (shorebird#2061).
     if (targetLibraryDirectory.existsSync()) {
-      targetLibraryDirectory.deleteSync(recursive: true);
+      for (final entity in targetLibraryDirectory.listSync()) {
+        if (p.extension(entity.path) == '.xcframework') {
+          entity.deleteSync(recursive: true);
+        }
+      }
     }
     await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
 
@@ -102,6 +109,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
       appId: appId,
       releaseId: release.id,
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
+      signing: signing,
     );
   }
 
@@ -114,9 +122,9 @@ Your next step is to add the .xcframework files found in the ${lightCyan.wrap(re
 
 To do this:
     1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
-    2. Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project.
+    2. Embed the App.xcframework and ShorebirdFlutter.xcframework in your Xcode project.
 
-Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
+Instructions for these steps can be found at https://docs.shorebird.dev/code-push/guides/add-to-app/ios/#embed-the-flutter-module-in-your-ios-app.
 ''';
   }
 }

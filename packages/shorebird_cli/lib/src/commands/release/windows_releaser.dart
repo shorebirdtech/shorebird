@@ -44,9 +44,6 @@ class WindowsReleaser extends Releaser {
       assertReleaseVersionFlagNotProvided();
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedWindowsFlutterVersion;
-
-  @override
   Future<void> assertPreconditions() => assertBuildPreconditions(
     validators: doctor.windowsCommandValidators,
     supportedOperatingSystems: {NativePlatform.windows},
@@ -90,6 +87,7 @@ class WindowsReleaser extends Releaser {
       appId: appId,
       releaseId: release.id,
       releaseDirectory: releaseDir,
+      signing: signing,
     );
   }
 

@@ -19,11 +19,7 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      artifact_proxy: ${{ steps.filter.outputs.artifact_proxy }}
       dex: ${{ steps.filter.outputs.dex }}
-      discord_gcp_alerts: ${{ steps.filter.outputs.discord_gcp_alerts }}
-      flutter_version_resolver: ${{ steps.filter.outputs.flutter_version_resolver }}
-      jwt: ${{ steps.filter.outputs.jwt }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
       shorebird_build_trace: ${{ steps.filter.outputs.shorebird_build_trace }}
       shorebird_ci: ${{ steps.filter.outputs.shorebird_ci }}
@@ -31,7 +27,6 @@ jobs:
       shorebird_code_push_client: ${{ steps.filter.outputs.shorebird_code_push_client }}
       shorebird_code_push_protocol: ${{ steps.filter.outputs.shorebird_code_push_protocol }}
       shorebird_redis_client: ${{ steps.filter.outputs.shorebird_redis_client }}
-      stripe_api: ${{ steps.filter.outputs.stripe_api }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,49 +40,35 @@ jobs:
         id: filter
         with:
           filters: |
-            artifact_proxy:
-              - packages/artifact_proxy/**
             dex:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
-            discord_gcp_alerts:
-              - packages/discord_gcp_alerts/**
-            flutter_version_resolver:
-              - packages/flutter_version_resolver/**
-            jwt:
-              - packages/jwt/**
             scoped_deps:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/scoped_deps/**
             shorebird_build_trace:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_build_trace/**
             shorebird_ci:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_ci/**
             shorebird_cli:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
-              - packages/jwt/**
               - packages/shorebird_build_trace/**
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_client:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
             shorebird_code_push_protocol:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_protocol/**
             shorebird_redis_client:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/redis_client/**
-            stripe_api:
-              - packages/stripe_api/**
-
-  artifact_proxy:
-    needs: changes
-    if: needs.changes.outputs.artifact_proxy == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: artifact_proxy
-      package_path: packages/artifact_proxy
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
 
   dex:
     needs: changes
@@ -96,40 +77,6 @@ jobs:
     with:
       package_name: dex
       package_path: packages/dex
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
-
-  discord_gcp_alerts:
-    needs: changes
-    if: needs.changes.outputs.discord_gcp_alerts == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: discord_gcp_alerts
-      package_path: packages/discord_gcp_alerts
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
-
-  flutter_version_resolver:
-    needs: changes
-    if: needs.changes.outputs.flutter_version_resolver == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: flutter_version_resolver
-      package_path: packages/flutter_version_resolver
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
-
-  jwt:
-    needs: changes
-    if: needs.changes.outputs.jwt == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: jwt
-      package_path: packages/jwt
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -140,7 +87,6 @@ jobs:
     with:
       package_name: scoped_deps
       package_path: packages/scoped_deps
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -151,7 +97,6 @@ jobs:
     with:
       package_name: shorebird_build_trace
       package_path: packages/shorebird_build_trace
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -162,7 +107,6 @@ jobs:
     with:
       package_name: shorebird_ci
       package_path: packages/shorebird_ci
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -173,7 +117,6 @@ jobs:
     with:
       package_name: shorebird_cli
       package_path: packages/shorebird_cli
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -184,7 +127,6 @@ jobs:
     with:
       package_name: shorebird_code_push_client
       package_path: packages/shorebird_code_push_client
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -195,7 +137,6 @@ jobs:
     with:
       package_name: shorebird_code_push_protocol
       package_path: packages/shorebird_code_push_protocol
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -206,21 +147,9 @@ jobs:
     with:
       package_name: shorebird_redis_client
       package_path: packages/redis_client
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
       needs_redis: true
-
-  stripe_api:
-    needs: changes
-    if: needs.changes.outputs.stripe_api == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: stripe_api
-      package_path: packages/stripe_api
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
 
   cspell:
     name: CSpell
@@ -239,11 +168,7 @@ jobs:
     if: ${{ always() }}
     needs:
       - changes
-      - artifact_proxy
       - dex
-      - discord_gcp_alerts
-      - flutter_version_resolver
-      - jwt
       - scoped_deps
       - shorebird_build_trace
       - shorebird_ci
@@ -251,7 +176,6 @@ jobs:
       - shorebird_code_push_client
       - shorebird_code_push_protocol
       - shorebird_redis_client
-      - stripe_api
       - cspell
     runs-on: ubuntu-latest
     steps:

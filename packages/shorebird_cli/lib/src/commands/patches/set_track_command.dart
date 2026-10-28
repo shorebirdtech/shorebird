@@ -4,6 +4,7 @@ import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -26,7 +27,9 @@ const _jsonExample =
 class SetTrackCommand extends ShorebirdCommand
     with AppScopedCommand, PatchNumberArgument, PatchLookup {
   /// {@macro set_track_command}
-  SetTrackCommand() {
+  ///
+  /// When [defaultTrack] is set, `--track` is optional and defaults to it.
+  SetTrackCommand({String? defaultTrack}) {
     argParser
       // `--release` and `--patch` were this command's original names; kept as
       // hidden aliases so existing scripts keep working.
@@ -42,13 +45,16 @@ class SetTrackCommand extends ShorebirdCommand
         help: 'The patch number to set the track for (e.g. "1").',
         mandatory: true,
       )
+      // Agents and older docs call tracks channels, so --channel works too.
       ..addOption(
         'track',
+        aliases: const ['channel'],
         help:
             'The deployment track to move the patch to '
             '("stable", "beta", "staging", or any custom track name '
             'up to ${CommonArguments.trackNameMaxLength} characters).',
-        mandatory: true,
+        mandatory: defaultTrack == null,
+        defaultsTo: defaultTrack,
       );
     addAppScopeOptions();
   }
@@ -142,7 +148,8 @@ class SetTrackCommand extends ShorebirdCommand
             'confirmation.',
       );
       if (!shouldCreate) {
-        return ExitCode.success.code;
+        logger.err('Aborting.');
+        throw PromptDeclinedExit();
       }
 
       channel = await codePushClientWrapper.createChannel(

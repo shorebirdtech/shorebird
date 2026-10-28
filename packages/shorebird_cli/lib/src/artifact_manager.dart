@@ -4,15 +4,21 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
+import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 /// A reference to a [ArtifactManager] instance.
@@ -172,6 +178,91 @@ class ArtifactManager {
     return artifactFile;
   }
 
+  /// Downloads [artifact], or reuses the copy an earlier run downloaded, so
+  /// patching the same release again does not fetch it again
+  /// (shorebirdtech/shorebird#3874).
+  ///
+  /// Cached copies live in [Cache.shorebirdReleaseArtifactsDirectory], named
+  /// by artifact id and hash, and are reused only while their sha256 still
+  /// matches the hash the server recorded at release. Each download goes to
+  /// its own temporary directory there, so concurrent runs never write the
+  /// same file, and a failed download is deleted. A download whose hash does
+  /// not match is used for this run but not cached, as before this cache.
+  /// [Cache.pruneUnusedReleaseArtifacts] removes copies that go unused.
+  Future<File> downloadReleaseArtifact(
+    ReleaseArtifact artifact, {
+    required String message,
+  }) async {
+    final directory = Cache.shorebirdReleaseArtifactsDirectory;
+    final cached = File(
+      p.join(directory.path, '${artifact.id}-${artifact.hash}'),
+    );
+    // Recording the use before hashing keeps another run's prune from
+    // deleting the copy while it is hashed.
+    if (_markUsedIfExists(cached)) {
+      final progress = logger.progress(message);
+      if (await _sha256Of(cached) == artifact.hash) {
+        progress.complete('$message (cached)');
+        return cached;
+      }
+      progress.cancel();
+      logger.detail('Cached ${cached.path} does not match its hash');
+      deleteIgnoringErrors(cached);
+    }
+
+    directory.createSync(recursive: true);
+    final downloadDirectory = directory.createTempSync(
+      Cache.releaseArtifactDownloadPrefix,
+    );
+    final File downloaded;
+    try {
+      downloaded = await downloadWithProgressUpdates(
+        Uri.parse(artifact.url),
+        message: message,
+        outputPath: p.join(downloadDirectory.path, p.basename(cached.path)),
+      );
+    } catch (_) {
+      downloadDirectory.deleteTemporarySync();
+      rethrow;
+    }
+
+    if (await _sha256Of(downloaded) != artifact.hash) {
+      logger.warn(
+        'The downloaded release artifact does not match the hash recorded '
+        'for it, so it was not cached. If the patch fails, run the command '
+        'again to download it again.',
+      );
+      return downloaded;
+    }
+    try {
+      final file = downloaded.renameSync(cached.path);
+      downloadDirectory.deleteTemporarySync();
+      return file;
+    } on FileSystemException catch (error) {
+      // Another run may hold the cached copy open (Windows). This run's
+      // download is just as good, and pruning removes its directory later.
+      logger.detail('Unable to cache ${cached.path}: $error');
+      return downloaded;
+    }
+  }
+
+  /// Sets [file]'s modification time to now, returning false if it does not
+  /// exist (or can't be touched), so a missing copy is downloaded rather
+  /// than recreated empty.
+  static bool _markUsedIfExists(File file) {
+    if (!file.existsSync()) return false;
+    try {
+      file.setLastModifiedSync(clock.now());
+      return true;
+    } on FileSystemException catch (error) {
+      logger.detail('Unable to reuse ${file.path}: $error');
+      return false;
+    }
+  }
+
+  static Future<String> _sha256Of(File file) async =>
+      (await sha256.bind(file.openRead()).first).toString();
+
   /// Extracts the [zipFile] to the [outputDirectory] directory in a separate
   /// isolate.
   Future<void> extractZip({
@@ -238,9 +329,14 @@ class ArtifactManager {
     return archsDirectory.existsSync() ? archsDirectory : null;
   }
 
-  /// Returns a directory laid out as `<arch>/libapp.so`, extracting each
-  /// library from [aab] and falling back to AGP's stripped output when [aab]
-  /// is unavailable or unreadable.
+  /// Runs [action] with a directory laid out as `<arch>/libapp.so`,
+  /// extracting each library from [aab] and falling back to AGP's stripped
+  /// output when [aab] is unavailable or unreadable. [action] receives null
+  /// when neither has a library.
+  ///
+  /// Libraries extracted from [aab] land in a temporary directory that is
+  /// deleted once [action] completes, so [action] must not hold onto any path
+  /// inside it.
   ///
   /// The AAB is the exact artifact installed on devices, so libraries
   /// extracted from it always match what ships and a patch diffed against
@@ -256,27 +352,50 @@ class ArtifactManager {
   /// fallback: in a normal stripping build those bytes differ from the
   /// library in the AAB, so a patch built against them would fail to link on
   /// device.
-  static Future<Directory?> androidArchsDirectoryFromAab({
+  static Future<T> withAndroidArchsDirectoryFromAab<T>({
     required Directory projectRoot,
+    required Future<T> Function(Directory? archsDir) action,
     String? flavor,
     File? aab,
   }) async {
     if (aab != null && aab.existsSync()) {
+      final extracted = Directory.systemTemp.createTempSync(
+        'shorebird_aab_libapps',
+      );
       try {
-        final extracted = await extractAndroidLibappsFromAab(aab);
-        if (_containsLibapp(extracted)) return extracted;
-        logger.detail(
-          'No libapp.so entries found in ${aab.path}; falling back to the '
-          'stripped native libs.',
-        );
-      } on Exception catch (error) {
-        logger.detail(
-          'Failed to extract libapp.so from ${aab.path} ($error); falling '
-          'back to the stripped native libs.',
-        );
+        if (await _tryExtractAndroidLibappsFromAab(aab, into: extracted)) {
+          return await action(extracted);
+        }
+      } finally {
+        extracted.deleteTemporarySync();
       }
     }
-    return androidArchsDirectory(projectRoot: projectRoot, flavor: flavor);
+    return action(
+      androidArchsDirectory(projectRoot: projectRoot, flavor: flavor),
+    );
+  }
+
+  /// Extracts [aab]'s libraries into [into] and returns whether it holds a
+  /// `libapp.so` for at least one architecture, logging why when it does not.
+  static Future<bool> _tryExtractAndroidLibappsFromAab(
+    File aab, {
+    required Directory into,
+  }) async {
+    try {
+      await extractAndroidLibappsFromAab(aab, into: into);
+    } on Exception catch (error) {
+      logger.detail(
+        'Failed to extract libapp.so from ${aab.path} ($error); falling '
+        'back to the stripped native libs.',
+      );
+      return false;
+    }
+    if (_containsLibapp(into)) return true;
+    logger.detail(
+      'No libapp.so entries found in ${aab.path}; falling back to the '
+      'stripped native libs.',
+    );
+    return false;
   }
 
   /// Whether [archsDir] holds a `<arch>/libapp.so` for at least one
@@ -288,17 +407,18 @@ class ArtifactManager {
     );
   }
 
-  /// Extracts every `base/lib/<arch>/libapp.so` entry from [aab] into a fresh
-  /// temporary directory laid out as `<arch>/libapp.so`, and returns it. The
-  /// extracted bytes are exactly those packaged into the AAB and installed on
-  /// the device.
+  /// Extracts every `base/lib/<arch>/libapp.so` entry from [aab] into [into],
+  /// laid out as `<arch>/libapp.so`. The extracted bytes are exactly those
+  /// packaged into the AAB and installed on the device.
   ///
   /// The decode runs in a separate isolate to avoid blocking progress
   /// animations while reading a potentially large bundle.
-  static Future<Directory> extractAndroidLibappsFromAab(File aab) async {
-    final outDir = Directory.systemTemp.createTempSync('shorebird_aab_libapps');
+  static Future<void> extractAndroidLibappsFromAab(
+    File aab, {
+    required Directory into,
+  }) async {
     final aabPath = aab.path;
-    final outPath = outDir.path;
+    final outPath = into.path;
     await Isolate.run(() {
       final libappEntry = RegExp(r'^base/lib/([^/]+)/libapp\.so$');
       final inputStream = InputFileStream(aabPath);
@@ -316,7 +436,6 @@ class ArtifactManager {
       }
       inputStream.closeSync();
     });
-    return outDir;
   }
 
   /// When [aab] is readable but packages no `libapp.so` for any architecture,

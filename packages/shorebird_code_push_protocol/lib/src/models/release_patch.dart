@@ -14,6 +14,7 @@ class ReleasePatch {
     required this.artifacts,
     required this.isRolledBack,
     this.channel,
+    this.createdAt,
     this.notes,
   });
 
@@ -32,6 +33,7 @@ class ReleasePatch {
             )
             .toList(),
         isRolledBack: json['is_rolled_back'] as bool,
+        createdAt: maybeParseDateTime(json['created_at'] as String?),
         notes: json['notes'] as String?,
       ),
     );
@@ -61,36 +63,23 @@ class ReleasePatch {
   /// Whether the patch has been rolled back.
   final bool isRolledBack;
 
+  /// The date and time the patch was created. Optional because it was
+  /// added later; older servers do not send it.
+  final DateTime? createdAt;
+
   /// Freeform notes associated with the patch, if any.
   final String? notes;
-
-  /// Returns a copy of this [ReleasePatch] with the given fields replaced by
-  /// the new values.
-  ReleasePatch copyWith({
-    int? id,
-    int? number,
-    String? channel,
-    List<PatchArtifact>? artifacts,
-    bool? isRolledBack,
-    String? notes,
-  }) => ReleasePatch(
-    id: id ?? this.id,
-    number: number ?? this.number,
-    channel: channel ?? this.channel,
-    artifacts: artifacts ?? this.artifacts,
-    isRolledBack: isRolledBack ?? this.isRolledBack,
-    notes: notes ?? this.notes,
-  );
 
   /// Converts a [ReleasePatch] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'number': number,
-      'channel': channel,
+      'channel': ?channel,
       'artifacts': artifacts.map((e) => e.toJson()).toList(),
       'is_rolled_back': isRolledBack,
-      'notes': notes,
+      'created_at': ?createdAt?.toUtc().toIso8601String(),
+      'notes': ?notes,
     };
   }
 
@@ -101,6 +90,7 @@ class ReleasePatch {
     channel,
     listHash(artifacts),
     isRolledBack,
+    createdAt,
     notes,
   ]);
 
@@ -113,6 +103,7 @@ class ReleasePatch {
         channel == other.channel &&
         listsEqual(artifacts, other.artifacts) &&
         isRolledBack == other.isRolledBack &&
+        createdAt == other.createdAt &&
         notes == other.notes;
   }
 }

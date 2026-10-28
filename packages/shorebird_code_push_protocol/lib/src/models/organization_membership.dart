@@ -37,11 +37,10 @@ class OrganizationMembership {
     return OrganizationMembership.fromJson(json);
   }
 
-  /// An organization groups users and apps together. Organizations
-  /// can be personal (single-user) or team (multi-user).
+  /// The organization.
   final Organization organization;
 
-  /// A role that a user can have relative to an Organization or App.
+  /// The user's role in the organization.
   final Role role;
 
   /// Converts an [OrganizationMembership] to a `Map<String, dynamic>`.

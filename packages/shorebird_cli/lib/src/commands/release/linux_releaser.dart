@@ -39,9 +39,6 @@ class LinuxReleaser extends Releaser {
       assertReleaseVersionFlagNotProvided();
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedLinuxFlutterVersion;
-
-  @override
   Future<void> assertPreconditions() => assertBuildPreconditions(
     validators: doctor.linuxCommandValidators,
     supportedOperatingSystems: {NativePlatform.linux},
@@ -83,6 +80,7 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
       appId: appId,
       releaseId: release.id,
       bundle: artifactManager.linuxBundleDirectory,
+      signing: signing,
     );
   }
 }

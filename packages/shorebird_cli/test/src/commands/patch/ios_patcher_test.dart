@@ -111,6 +111,11 @@ void main() {
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       doctor = MockDoctor();
       engineConfig = MockEngineConfig();
       flavorValidator = MockFlavorValidator();
@@ -174,10 +179,10 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is minimumSupportedIosFlutterVersion', () {
+      test('is minimumPatchableIosFlutterVersion', () {
         expect(
           patcher.minimumFlutterVersion,
-          minimumSupportedIosFlutterVersion,
+          minimumPatchableIosFlutterVersion,
         );
       });
     });

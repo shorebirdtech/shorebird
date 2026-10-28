@@ -10,6 +10,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+import 'package:retry/retry.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -31,6 +32,15 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
+
+/// Signals that the device being waited on has not come back yet, so [retry]
+/// schedules another look.
+class _DeviceStillUnreachable implements Exception {}
+
+/// How many times to look for a paired device to come back before giving up.
+/// With the default delay factor this spends roughly 40 seconds, which covers
+/// walking over and unlocking the phone without stalling a scripted run.
+const _deviceWaitMaxAttempts = 20;
 
 /// {@template preview_command}
 /// `shorebird preview` command.
@@ -100,6 +110,7 @@ This is only applicable when previewing Android releases.''',
       )
       ..addOption(
         'track',
+        aliases: const ['channel'],
         help: 'The track to preview.',
         defaultsTo: DeploymentTrack.stable.channel,
       );
@@ -724,14 +735,23 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.software.code;
     }
 
+    // The app can log everything it logs at startup before `adb logcat`
+    // attaches, so the log is read from the moment before launch rather than
+    // from whenever logcat happens to start.
+    String? logsSince;
     if (!await _runStep('Starting app', () async {
       await adb.clearAppData(package: package, deviceId: deviceId);
+      logsSince = await adb.latestLogTimestamp(deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
     })) {
       return ExitCode.software.code;
     }
 
-    final process = await adb.logcat(filter: 'flutter', deviceId: deviceId);
+    final process = await adb.logcat(
+      filter: 'flutter',
+      deviceId: deviceId,
+      since: logsSince,
+    );
     // adb logcat sometimes lets non-utf8 characters through, so we need to
     // not crash when it does.
     const decoder = Utf8Decoder(allowMalformed: true);
@@ -772,8 +792,8 @@ This is only applicable when previewing Android releases.''',
     }
 
     try {
-      final deviceLocateProgress = logger.progress('Locating device for run');
-      final AppleDevice? deviceForLaunch;
+      var deviceLocateProgress = logger.progress('Locating device for run');
+      AppleDevice? deviceForLaunch;
       // Try to find a device using devicectl first. If that fails, fall back to
       // ios-deploy.
       if (deviceId != null) {
@@ -785,37 +805,49 @@ This is only applicable when previewing Android releases.''',
         deviceForLaunch = await devicectl.deviceForLaunch();
       }
 
-      final shouldUseDeviceCtl = deviceForLaunch != null;
-
       // Before falling back to ios-deploy, check if devicectl knows about a
       // matching iOS 17+ device that is paired but currently unreachable
       // (locked, screen off, or off the local network when wireless debugging
       // is in use). ios-deploy does not work with iOS 17 or later, so the
-      // fallback would just produce an opaque failure. Surface a hint
+      // fallback would just produce an opaque failure. Wait for the device
       // instead.
-      if (!shouldUseDeviceCtl) {
+      if (deviceForLaunch == null) {
         final unreachable = await _findUnreachableIos17OrLaterDevice(
           deviceId: deviceId,
         );
         if (unreachable != null) {
-          deviceLocateProgress.fail(
-            '${unreachable.name} (iOS '
-            '${unreachable.osVersionString ?? 'unknown'}) is paired but '
-            'currently unreachable.',
-          );
+          final description =
+              '${unreachable.name} (iOS '
+              '${unreachable.osVersionString ?? 'unknown'})';
+          // The hint is what tells the user to go unlock the phone, so it has
+          // to survive on screen while they do. A live progress repaints its
+          // line every 80ms and would scribble over it, so close this one
+          // before writing and open the wait's own afterwards.
+          deviceLocateProgress.cancel();
           logger.info(
             '''
 This usually means the device is locked, or that wireless debugging dropped because the screen turned off.
 
-To preview on this device:
-  • Connect it via USB, or
-  • Unlock the device and make sure it is on the same Wi-Fi network as this Mac.
+Unlock the device, or connect it via USB, and the preview will continue on its own.
 
 Skipping the ios-deploy fallback because it does not support iOS 17 or later.''',
           );
-          return ExitCode.software.code;
+          deviceLocateProgress = logger.progress(
+            'Waiting for $description to become reachable',
+          );
+          deviceForLaunch = await _waitForDeviceToBecomeReachable(
+            udid: unreachable.udid,
+          );
+          if (deviceForLaunch == null) {
+            deviceLocateProgress.fail(
+              '$description did not become reachable.',
+            );
+            return ExitCode.software.code;
+          }
         }
       }
+
+      final shouldUseDeviceCtl = deviceForLaunch != null;
 
       final progressCompleteMessage = deviceForLaunch != null
           ? 'Using device ${deviceForLaunch.name}'
@@ -878,6 +910,40 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
       return unreachableModern.firstWhereOrNull((d) => d.udid == deviceId);
     }
     return unreachableModern.firstOrNull;
+  }
+
+  /// The delay between looks while waiting for a paired device to come back,
+  /// doubling after every attempt up to two seconds. Settable for testing.
+  @visibleForTesting
+  Duration deviceWaitDelayFactor = const Duration(seconds: 1);
+
+  /// Polls devicectl until the device with [udid] is reachable, or returns
+  /// `null` once the attempts run out or devicectl fails in a way retrying
+  /// cannot fix.
+  ///
+  /// This waits rather than prompting so a locked phone behaves the same way
+  /// with and without a terminal. Unlocking it is the user's move either way,
+  /// and a prompt would hang a scripted run where this times out.
+  Future<AppleDevice?> _waitForDeviceToBecomeReachable({
+    required String udid,
+  }) async {
+    try {
+      return await retry(
+        () async {
+          final devices = await devicectl.listAvailableIosDevices();
+          final device = devices.firstWhereOrNull((d) => d.udid == udid);
+          if (device == null) throw _DeviceStillUnreachable();
+          return device;
+        },
+        retryIf: (e) => e is _DeviceStillUnreachable || e is DevicectlException,
+        maxAttempts: _deviceWaitMaxAttempts,
+        delayFactor: deviceWaitDelayFactor,
+        maxDelay: const Duration(seconds: 2),
+      );
+    } on Exception catch (error, stackTrace) {
+      logger.detail('waiting for device $udid gave up: $error $stackTrace');
+      return null;
+    }
   }
 
   /// Resolves the artifact path for the given parameters, and records the
@@ -1159,16 +1225,6 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
     proc.stderr.listen((log) => logger.err(decoder.convert(log)));
     return proc.exitCode;
   }
-}
-
-/// Extension on [Release] that exposes the active platforms (e.g. platforms
-/// that can be previewed).
-extension Previewable on Release {
-  /// Returns the platforms that can be previewed.
-  List<ReleasePlatform> get activePlatforms => platformStatuses.entries
-      .where((e) => e.value == ReleaseStatus.active)
-      .map((e) => e.key)
-      .toList();
 }
 
 /// Given two [Release]s, one with all the platforms, previewable or not,

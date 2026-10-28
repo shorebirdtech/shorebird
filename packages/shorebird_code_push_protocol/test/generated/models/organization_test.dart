@@ -8,7 +8,7 @@ void main() {
       final instance = Organization(
         id: 0,
         name: 'example',
-        organizationType: OrganizationType.values.first,
+        organizationType: OrganizationType.personal,
         createdAt: DateTime.utc(2024),
         updatedAt: DateTime.utc(2024),
       );

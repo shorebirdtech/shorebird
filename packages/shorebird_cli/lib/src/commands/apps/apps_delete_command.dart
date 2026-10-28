@@ -1,27 +1,27 @@
-import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
-import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart';
+import 'package:shorebird_cli/src/commands/finish_in_console.dart';
 import 'package:shorebird_cli/src/json_output.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template apps_delete_command}
 /// `shorebird apps delete`
-/// Permanently delete an app and every artifact belonging to it.
+/// Opens the console page where an app is deleted.
 /// {@endtemplate}
 class AppsDeleteCommand extends ShorebirdCommand
-    with AppScopedCommand, ConfirmNameArgument {
+    with AppScopedCommand, FinishInConsole {
   /// {@macro apps_delete_command}
   AppsDeleteCommand() {
-    argParser.addOption(
-      confirmNameArgName,
-      help:
-          "The app's current display name. Must match exactly, which is how "
-          'the delete is confirmed.',
-    );
     addAppScopeOptions();
+    // Earlier versions deleted from the CLI and took these to confirm it.
+    // Accept them so a script that passes one gets the console URL rather
+    // than an unknown-option error.
+    argParser
+      ..addOption(confirmNameArgName, hide: true)
+      ..addFlag(yesArgName, abbr: 'y', negatable: false, hide: true);
   }
 
   @override
@@ -29,16 +29,13 @@ class AppsDeleteCommand extends ShorebirdCommand
 
   @override
   String get description =>
-      'Permanently deletes an app.\n\n'
-      'Every release and patch belonging to the app is permanently removed. '
-      'This cannot be undone.\n\n'
-      'Requires --$confirmNameArgName=<current display name>; there is no '
-      'prompt, so this behaves the same in a terminal and in CI. Run '
-      '"shorebird apps list" to get the exact name.\n\n'
-      '${ShorebirdCommand.jsonHint(
-        'shorebird apps delete --app-id <id> --confirm-name "Acme Mobile" '
-        '--json',
-      )}';
+      "Opens the app's settings in the Shorebird console, where you can "
+      'delete it.\n\n'
+      'Deleting an app permanently removes every release and patch, and '
+      'devices running it stop getting patches, so it is confirmed by a '
+      'person in the console rather than run from the CLI. When not running '
+      'interactively (no terminal, CI, or --json), this prints the console '
+      'URL and exits with an error.';
 
   @override
   Future<int> run() async {
@@ -46,47 +43,19 @@ class AppsDeleteCommand extends ShorebirdCommand
     if (errorCode != null) return errorCode;
 
     late final AppMetadata app;
-    late final List<Release> releases;
     final fetchError = await guardApiCall(
-      () async {
-        app = await codePushClientWrapper.getApp(appId: appId);
-        releases = await codePushClientWrapper.getReleases(appId: appId);
-      },
+      () async => app = await codePushClientWrapper.getApp(appId: appId),
       code: JsonErrorCode.fetchFailed,
       message: 'Failed to fetch app "$appId".',
     );
     if (fetchError != null) return fetchError;
 
-    final platforms = <String>{
-      for (final release in releases)
-        ...release.platformStatuses.keys.map((platform) => platform.name),
-    }.toList()..sort();
-
-    final gateErrorCode = checkConfirmName(
-      expected: app.displayName,
-      resourceDescription: 'app "${app.displayName}" ($appId)',
+    return finishInConsole(
+      action: 'delete app "${app.displayName}" ($appId)',
+      url: ShorebirdWebConsole.appSettingsUri(
+        organizationId: app.organizationId,
+        appId: appId,
+      ),
     );
-    if (gateErrorCode != null) return gateErrorCode;
-
-    final deleteError = await guardApiCall(
-      () => codePushClientWrapper.deleteApp(appId: appId),
-      code: JsonErrorCode.softwareError,
-      message: 'Failed to delete app "$appId".',
-    );
-    if (deleteError != null) return deleteError;
-
-    if (isJsonMode) {
-      emitJsonSuccess({
-        'app_id': appId,
-        'display_name': app.displayName,
-        'release_count': releases.length,
-        'platforms': platforms,
-        'deleted': true,
-      });
-      return ExitCode.success.code;
-    }
-
-    logger.success('Deleted "${app.displayName}" ($appId).');
-    return ExitCode.success.code;
   }
 }

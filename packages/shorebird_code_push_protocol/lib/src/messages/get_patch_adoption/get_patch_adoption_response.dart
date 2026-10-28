@@ -81,7 +81,7 @@ class GetPatchAdoptionResponse {
       'is_latest': isLatest,
       'granularity': granularity,
       'range': range.toJson(),
-      'as_of': asOf.toIso8601String(),
+      'as_of': asOf.toUtc().toIso8601String(),
       'patches': patches.map((e) => e.toJson()).toList(),
     };
   }

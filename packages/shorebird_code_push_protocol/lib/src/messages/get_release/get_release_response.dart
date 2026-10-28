@@ -32,8 +32,7 @@ class GetReleaseResponse {
     return GetReleaseResponse.fromJson(json);
   }
 
-  /// A release build of an application that is distributed to devices.
-  /// A release can have zero or more patches applied to it.
+  /// The requested release.
   final Release release;
 
   /// Converts a [GetReleaseResponse] to a `Map<String, dynamic>`.

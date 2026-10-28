@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/artifact_signing.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template release_artifact}
@@ -19,6 +20,7 @@ class ReleaseArtifact {
     required this.url,
     required this.canSideload,
     this.podfileLockHash,
+    this.signing,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact].
@@ -36,6 +38,9 @@ class ReleaseArtifact {
         url: json['url'] as String,
         podfileLockHash: json['podfile_lock_hash'] as String?,
         canSideload: json['can_sideload'] as bool,
+        signing: ArtifactSigning.maybeFromJson(
+          json['signing'] as Map<String, dynamic>?,
+        ),
       ),
     );
   }
@@ -58,7 +63,7 @@ class ReleaseArtifact {
   /// The arch of the artifact.
   final String arch;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the artifact.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -76,6 +81,11 @@ class ReleaseArtifact {
   /// Whether the artifact can be sideloaded onto a device.
   final bool canSideload;
 
+  /// How the artifact's binary is signed. Absent for an artifact
+  /// uploaded before the CLI reported it, which is unsigned or signed
+  /// with a key the server never saw.
+  final ArtifactSigning? signing;
+
   /// Converts a [ReleaseArtifact] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -86,8 +96,9 @@ class ReleaseArtifact {
       'hash': hash,
       'size': size,
       'url': url,
-      'podfile_lock_hash': podfileLockHash,
+      'podfile_lock_hash': ?podfileLockHash,
       'can_sideload': canSideload,
+      'signing': ?signing?.toJson(),
     };
   }
 
@@ -102,6 +113,7 @@ class ReleaseArtifact {
     url,
     podfileLockHash,
     canSideload,
+    signing,
   ]);
 
   @override
@@ -116,6 +128,7 @@ class ReleaseArtifact {
         size == other.size &&
         url == other.url &&
         podfileLockHash == other.podfileLockHash &&
-        canSideload == other.canSideload;
+        canSideload == other.canSideload &&
+        signing == other.signing;
   }
 }

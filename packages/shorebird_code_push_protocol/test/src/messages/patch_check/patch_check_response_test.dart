@@ -24,8 +24,6 @@ void main() {
       const response = PatchCheckResponse(patchAvailable: true);
       expect(response.toJson(), {
         'patch_available': true,
-        'patch': null,
-        'rolled_back_patch_numbers': null,
       });
     });
 
@@ -69,18 +67,14 @@ void main() {
           hash: '1234',
         ),
       );
-      // Generated code always emits nullable fields as `null` rather than
-      // dropping them. Wire-equivalent for JSON consumers that treat
-      // absent == null.
+      // Unset optional fields are omitted rather than written as `null`.
       expect(response.toJson(), {
         'patch_available': true,
         'patch': {
           'number': 1,
           'download_url': 'https://download.com',
           'hash': '1234',
-          'hash_signature': null,
         },
-        'rolled_back_patch_numbers': null,
       });
     });
 
@@ -103,7 +97,6 @@ void main() {
             'hash': '1234',
             'hash_signature': 'signature',
           },
-          'rolled_back_patch_numbers': null,
         });
       });
     });
@@ -116,7 +109,6 @@ void main() {
         );
         expect(response.toJson(), {
           'patch_available': true,
-          'patch': null,
           'rolled_back_patch_numbers': [1, 2, 3],
         });
       });

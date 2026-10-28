@@ -1,3 +1,4 @@
+// cspell:words undetailed
 import 'package:dex/src/dex_parser.dart';
 
 /// The kind of difference found between two DEX files.
@@ -51,13 +52,121 @@ enum DexDifferenceKind {
 /// {@endtemplate}
 class DexDifference {
   /// {@macro dex_difference}
-  const DexDifference({required this.kind, required this.description});
+  const DexDifference({
+    required this.kind,
+    required this.description,
+    this.codeDiff,
+  });
 
   /// The classification of this difference.
   final DexDifferenceKind kind;
 
   /// A human-readable description of the difference.
   final String description;
+
+  /// Where the two method bodies disagree, set only on
+  /// [DexDifferenceKind.bytecodeChanged].
+  final DexCodeDiff? codeDiff;
+}
+
+/// {@template dex_code_diff}
+/// Where two code items for the same method disagree.
+///
+/// The regions span from the end of the longest common head to the start of
+/// the longest common tail, so two edits separated by unchanged instructions
+/// share one window covering the instructions between them. Both regions are
+/// empty when a method body was added or removed, where [sizeChange] carries
+/// the difference instead.
+/// {@endtemplate}
+class DexCodeDiff {
+  /// {@macro dex_code_diff}
+  const DexCodeDiff({
+    this.oldRegion = const [],
+    this.newRegion = const [],
+    this.sizeChange,
+    this.tryCatchChanged = false,
+  });
+
+  /// Instructions present in the release that the patch does not match.
+  final List<DexCanonicalInstruction> oldRegion;
+
+  /// Instructions present in the patch that the release does not match.
+  final List<DexCanonicalInstruction> newRegion;
+
+  /// Set when a register or argument count changed, which the instruction
+  /// regions cannot express.
+  final String? sizeChange;
+
+  /// Whether the try/catch table changed.
+  final bool tryCatchChanged;
+
+  /// Tokens shown per instruction unless the caller asks for the full diff.
+  ///
+  /// A pseudo-instruction payload is one instruction carrying a whole switch
+  /// table or array initializer, so without this it renders as one unbounded
+  /// line of the app's own constant data. Four is the width of a
+  /// `fill-array-data` header, so a payload shows what it is and none of what
+  /// it holds. A resolved reference is a single token however many parameters
+  /// it carries, so four covers every real instruction but the five-unit
+  /// `const-wide`, whose last unit is a literal anyway.
+  static const defaultTokenLimit = 4;
+
+  /// Whether rendering would hide an instruction or any of its tokens.
+  ///
+  /// [limit] bounds instructions per side. Tokens within an instruction are
+  /// always checked against [defaultTokenLimit].
+  bool exceeds(int limit) =>
+      oldRegion.length > limit ||
+      newRegion.length > limit ||
+      [...oldRegion, ...newRegion].any(
+        (i) => i.exceedsTokens(defaultTokenLimit),
+      );
+
+  /// Whether either region carries a resolved string literal.
+  bool get hasStringLiterals =>
+      oldRegion.any((i) => i.hasStringLiteral) ||
+      newRegion.any((i) => i.hasStringLiteral);
+
+  /// Renders the difference as indented lines, oldest side first.
+  ///
+  /// [limit] caps the instructions shown per side. A null [limit] shows every
+  /// instruction. A string literal is replaced by its length unless
+  /// [showStringLiterals] is set, because the literal is the app's own
+  /// constant and the caller has to ask for it.
+  String describe({int? limit, bool showStringLiterals = false}) {
+    final buffer = StringBuffer();
+
+    if (sizeChange != null) {
+      buffer.writeln('      $sizeChange');
+    }
+
+    void writeSide(String marker, List<DexCanonicalInstruction> region) {
+      final shown = limit == null || region.length <= limit
+          ? region
+          : region.take(limit).toList();
+      for (final instruction in shown) {
+        final address = instruction.address.toRadixString(16).padLeft(4, '0');
+        final tokens = instruction.render(
+          showLiterals: showStringLiterals,
+          limit: showStringLiterals ? null : defaultTokenLimit,
+        );
+        buffer.writeln('      $marker 0x$address  $tokens');
+      }
+      final hidden = region.length - shown.length;
+      if (hidden > 0) {
+        buffer.writeln('      $marker ... $hidden more');
+      }
+    }
+
+    writeSide('-', oldRegion);
+    writeSide('+', newRegion);
+
+    if (tryCatchChanged) {
+      buffer.writeln('      try/catch table changed');
+    }
+
+    return buffer.toString().trimRight();
+  }
 }
 
 /// {@template dex_diff_result}
@@ -84,28 +193,72 @@ class DexDiffResult {
   /// Whether all differences are safe to ignore.
   bool get isSafe => breakingDifferences.isEmpty;
 
+  /// Instructions shown per side for a changed method unless the caller asks
+  /// for the full diff.
+  static const defaultCodeDiffLimit = 4;
+
+  /// Changed methods detailed unless the caller asks for the full diff.
+  ///
+  /// A real native change can touch hundreds of methods, and a wall of output
+  /// is as unreadable as none.
+  static const defaultDetailedMethodLimit = 10;
+
+  /// Whether [describe] hides detail that the full diff would reveal.
+  bool get hasHiddenCodeDiff {
+    final detailed = differences.where((d) => d.codeDiff != null).toList();
+    return detailed.length > defaultDetailedMethodLimit ||
+        detailed.any(
+          (d) =>
+              d.codeDiff!.exceeds(defaultCodeDiffLimit) ||
+              d.codeDiff!.hasStringLiterals,
+        );
+  }
+
   /// A human-readable summary of the differences.
-  String describe() {
+  ///
+  /// A changed method body is followed by the instructions that differ. Set
+  /// [showFullCodeDiff] to detail every changed method, show every differing
+  /// instruction, and print string literals rather than their length.
+  String describe({bool showFullCodeDiff = false}) {
     final buffer = StringBuffer();
     final safe = safeDifferences.toList();
     final breaking = breakingDifferences.toList();
+
+    var detailed = 0;
+    var undetailed = 0;
+
+    void writeDifference(DexDifference diff) {
+      buffer.writeln('  - ${diff.description}');
+      final codeDiff = diff.codeDiff;
+      if (codeDiff == null) return;
+      if (!showFullCodeDiff && detailed >= defaultDetailedMethodLimit) {
+        undetailed++;
+        return;
+      }
+      detailed++;
+      final detail = codeDiff.describe(
+        limit: showFullCodeDiff ? null : defaultCodeDiffLimit,
+        showStringLiterals: showFullCodeDiff,
+      );
+      if (detail.isNotEmpty) buffer.writeln(detail);
+    }
 
     if (safe.isNotEmpty) {
       buffer.writeln(
         'Safe differences (${safe.length}):',
       );
-      for (final diff in safe) {
-        buffer.writeln('  - ${diff.description}');
-      }
+      safe.forEach(writeDifference);
     }
 
     if (breaking.isNotEmpty) {
       buffer.writeln(
         'Breaking differences (${breaking.length}):',
       );
-      for (final diff in breaking) {
-        buffer.writeln('  - ${diff.description}');
-      }
+      breaking.forEach(writeDifference);
+    }
+
+    if (undetailed > 0) {
+      buffer.writeln('  ... $undetailed more changed methods not detailed');
     }
 
     return buffer.toString().trimRight();
@@ -336,16 +489,16 @@ class DexDiffer {
       final newMethod = newMethods[entry.key];
       if (newMethod == null) continue; // caught structurally
 
-      final oldCode = entry.value.code;
-      final newCode = newMethod.code;
+      final codeDiff = _diffCodeItems(entry.value.code, newMethod.code);
 
-      if (!_codeItemsEqual(oldCode, newCode)) {
+      if (codeDiff != null) {
         differences.add(
           DexDifference(
             kind: DexDifferenceKind.bytecodeChanged,
             description:
                 '$className: bytecode changed in '
                 '${entry.key}',
+            codeDiff: codeDiff,
           ),
         );
       }
@@ -365,17 +518,71 @@ class DexDiffer {
     };
   }
 
-  static bool _codeItemsEqual(
+  /// Returns how two code items differ, or null when they are equal.
+  static DexCodeDiff? _diffCodeItems(
     DexCodeItem? oldCode,
     DexCodeItem? newCode,
   ) {
-    if (oldCode == null && newCode == null) return true;
-    if (oldCode == null || newCode == null) return false;
+    if (oldCode == null && newCode == null) return null;
+    if (oldCode == null || newCode == null) {
+      return const DexCodeDiff(sizeChange: 'method body added or removed');
+    }
 
-    return oldCode.registersSize == newCode.registersSize &&
-        oldCode.insSize == newCode.insSize &&
-        oldCode.outsSize == newCode.outsSize &&
-        oldCode.canonicalBytecode == newCode.canonicalBytecode;
+    final sizeChange = _describeSizeChange(oldCode, newCode);
+    final tryCatchChanged =
+        oldCode.canonicalTryCatch != newCode.canonicalTryCatch;
+
+    final oldCount = oldCode.instructionCount;
+    final newCount = newCode.instructionCount;
+    final shortest = oldCount < newCount ? oldCount : newCount;
+
+    var head = 0;
+    while (head < shortest &&
+        oldCode.tokensAt(head) == newCode.tokensAt(head)) {
+      head++;
+    }
+
+    var tail = 0;
+    while (tail < shortest - head &&
+        oldCode.tokensAt(oldCount - 1 - tail) ==
+            newCode.tokensAt(newCount - 1 - tail)) {
+      tail++;
+    }
+
+    // Only the window is materialized, so a matching method allocates
+    // nothing beyond the comparison itself.
+    final oldRegion = [
+      for (var i = head; i < oldCount - tail; i++) oldCode.instructionAt(i),
+    ];
+    final newRegion = [
+      for (var i = head; i < newCount - tail; i++) newCode.instructionAt(i),
+    ];
+
+    if (oldRegion.isEmpty &&
+        newRegion.isEmpty &&
+        sizeChange == null &&
+        !tryCatchChanged) {
+      return null;
+    }
+
+    return DexCodeDiff(
+      oldRegion: oldRegion,
+      newRegion: newRegion,
+      sizeChange: sizeChange,
+      tryCatchChanged: tryCatchChanged,
+    );
+  }
+
+  static String? _describeSizeChange(DexCodeItem oldCode, DexCodeItem newCode) {
+    final changes = <String>[
+      if (oldCode.registersSize != newCode.registersSize)
+        'registers ${oldCode.registersSize} -> ${newCode.registersSize}',
+      if (oldCode.insSize != newCode.insSize)
+        'incoming args ${oldCode.insSize} -> ${newCode.insSize}',
+      if (oldCode.outsSize != newCode.outsSize)
+        'outgoing args ${oldCode.outsSize} -> ${newCode.outsSize}',
+    ];
+    return changes.isEmpty ? null : changes.join(', ');
   }
 
   // -- Member comparison (shared helper) ----------------------------------

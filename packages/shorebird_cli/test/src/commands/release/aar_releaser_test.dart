@@ -82,10 +82,17 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      // Managed signing, the default, is covered in releaser_test.dart.
+      when(() => argResults['patch-signing']).thenReturn(false);
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -109,6 +116,9 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.androidPackageName).thenReturn(packageName);
+      when(
+        () => shorebirdEnv.downloadUrl,
+      ).thenReturn('https://download.shorebird.dev');
 
       aarReleaser = AarReleaser(
         argResults: argResults,
@@ -142,10 +152,8 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is null', () {
-        // Shorebird has always had aar support, so we don't need to
-        // specify a minimum Flutter version.
-        expect(aarReleaser.minimumFlutterVersion, isNull);
+      test('is 3.24.0', () {
+        expect(aarReleaser.minimumFlutterVersion, Version(3, 24, 0));
       });
     });
 
@@ -519,7 +527,7 @@ void main() {
         flutterRevision: flutterRevision,
         flutterVersion: flutterVersion,
         displayName: '1.2.3+1',
-        platformStatuses: const {},
+        platforms: const {},
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
       );
@@ -592,6 +600,18 @@ void main() {
     });
 
     group('postReleaseInstructions', () {
+      test('points the Flutter maven repo at the download url', () {
+        when(
+          () => shorebirdEnv.downloadUrl,
+        ).thenReturn('https://mirror.example.com/shorebird');
+        expect(
+          runWithOverrides(() => aarReleaser.postReleaseInstructions),
+          contains(
+            "url 'https://mirror.example.com/shorebird/download.flutter.io'",
+          ),
+        );
+      });
+
       test('returns expected instructions', () {
         expect(
           runWithOverrides(() => aarReleaser.postReleaseInstructions),

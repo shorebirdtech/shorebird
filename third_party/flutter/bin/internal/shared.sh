@@ -13,14 +13,17 @@ function update_flutter {
   if [[ -d "$FLUTTER_PATH" ]]; then
     git -C "$FLUTTER_PATH" fetch
   else
-    git clone --filter=tree:0 https://github.com/shorebirdtech/flutter.git --no-checkout "$FLUTTER_PATH"
+    # Keep the default in sync with defaultFlutterGitUrl in shorebird_env.dart.
+    git clone --filter=tree:0 "${SHOREBIRD_FLUTTER_GIT_URL:-https://github.com/shorebirdtech/flutter.git}" --no-checkout "$FLUTTER_PATH"
   fi
   # -c to avoid printing a warning about being in a detached head state.
   git -C "$FLUTTER_PATH" -c advice.detachedHead=false checkout "$FLUTTER_VERSION"
   SHOREBIRD_ENGINE_VERSION=`cat "$FLUTTER_PATH/bin/internal/engine.version"`
   echo "Shorebird Engine • revision $SHOREBIRD_ENGINE_VERSION"
-  # Install Shorebird Flutter Artifacts
-  FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev $FLUTTER_PATH/bin/flutter --version
+  # Install Shorebird Flutter Artifacts. Keep the default and the trailing
+  # slash handling in sync with ShorebirdEnv.downloadUrl.
+  local download_url="${SHOREBIRD_DOWNLOAD_URL:-https://download.shorebird.dev}"
+  FLUTTER_STORAGE_BASE_URL="${download_url%/}" $FLUTTER_PATH/bin/flutter --version
 }
 
 function pub_get_with_retry {

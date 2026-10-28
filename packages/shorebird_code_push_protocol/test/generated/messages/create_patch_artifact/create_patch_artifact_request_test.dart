@@ -5,9 +5,9 @@ import 'package:test/test.dart';
 void main() {
   group('CreatePatchArtifactRequest', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = CreatePatchArtifactRequest(
+      const instance = CreatePatchArtifactRequest(
         arch: 'example',
-        platform: ReleasePlatform.values.first,
+        platform: ReleasePlatform.android,
         hash: 'example',
         size: 0,
       );
