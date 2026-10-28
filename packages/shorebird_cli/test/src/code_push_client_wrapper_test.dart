@@ -1381,37 +1381,17 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
 
-        test('enterprise audit log and billing pass through', () async {
-          const page = GetOrganizationAuditLogsResponse(data: []);
-          final billing = EnterpriseBilling.fromJson(const {
-            'has_billing_account': false,
-            'plan': null,
-            'position': null,
-          });
-          when(
-            () => codePushClient.getEnterpriseAuditLogs(
-              enterpriseId: 7,
-              perPage: 100,
-              cursor: 'c2',
-              order: AuditLogOrder.asc,
-              startDate: DateTime.utc(2026, 10),
-              endDate: DateTime.utc(2026, 11),
-              appId: 'app-1',
-              actorId: 9,
-              operation: 'app.create',
-            ),
-          ).thenAnswer((_) async => page);
-          when(
-            () => codePushClient.getEnterpriseBilling(enterpriseId: 7),
-          ).thenAnswer((_) async => billing);
-          when(
-            () => codePushClient.getEnterpriseBillingOrganizations(
-              enterpriseId: 7,
-            ),
-          ).thenAnswer((_) async => []);
-          await runWithOverrides(() async {
-            expect(
-              await codePushClientWrapper.getEnterpriseAuditLogs(
+        test(
+          'enterprise audit log, billing and service accounts pass through',
+          () async {
+            const page = GetOrganizationAuditLogsResponse(data: []);
+            final billing = EnterpriseBilling.fromJson(const {
+              'has_billing_account': false,
+              'plan': null,
+              'position': null,
+            });
+            when(
+              () => codePushClient.getEnterpriseAuditLogs(
                 enterpriseId: 7,
                 perPage: 100,
                 cursor: 'c2',
@@ -1422,21 +1402,56 @@ void main() {
                 actorId: 9,
                 operation: 'app.create',
               ),
-              page,
-            );
-            expect(
-              await codePushClientWrapper.getEnterpriseBilling(enterpriseId: 7),
-              billing,
-            );
-            expect(
-              await codePushClientWrapper.getEnterpriseBillingOrganizations(
+            ).thenAnswer((_) async => page);
+            when(
+              () => codePushClient.getEnterpriseBilling(enterpriseId: 7),
+            ).thenAnswer((_) async => billing);
+            when(
+              () =>
+                  codePushClient.getEnterpriseServiceAccounts(enterpriseId: 7),
+            ).thenAnswer((_) async => []);
+            when(
+              () => codePushClient.getEnterpriseBillingOrganizations(
                 enterpriseId: 7,
               ),
-              isEmpty,
-            );
-          });
-          verify(() => progress.complete()).called(3);
-        });
+            ).thenAnswer((_) async => []);
+            await runWithOverrides(() async {
+              expect(
+                await codePushClientWrapper.getEnterpriseAuditLogs(
+                  enterpriseId: 7,
+                  perPage: 100,
+                  cursor: 'c2',
+                  order: AuditLogOrder.asc,
+                  startDate: DateTime.utc(2026, 10),
+                  endDate: DateTime.utc(2026, 11),
+                  appId: 'app-1',
+                  actorId: 9,
+                  operation: 'app.create',
+                ),
+                page,
+              );
+              expect(
+                await codePushClientWrapper.getEnterpriseBilling(
+                  enterpriseId: 7,
+                ),
+                billing,
+              );
+              expect(
+                await codePushClientWrapper.getEnterpriseServiceAccounts(
+                  enterpriseId: 7,
+                ),
+                isEmpty,
+              );
+              expect(
+                await codePushClientWrapper.getEnterpriseBillingOrganizations(
+                  enterpriseId: 7,
+                ),
+                isEmpty,
+              );
+            });
+            verify(() => progress.complete()).called(4);
+          },
+        );
 
         test('updateCurrentUser sends the display name', () async {
           when(

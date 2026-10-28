@@ -1,8 +1,12 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/commands/service_accounts/service_accounts.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../enterprises/enterprise_test_harness.dart';
 import 'service_account_fixtures.dart';
 
 void main() {
@@ -67,6 +71,107 @@ void main() {
           },
         ],
       });
+    });
+  });
+
+  group('ServiceAccountsListCommand --enterprise-id', () {
+    late EnterpriseHarness h;
+    late ServiceAccountsListCommand command;
+
+    final account = EnterpriseServiceAccount.fromJson(const {
+      'user_id': 383,
+      'name': 'release-bot',
+      'team_id': 42,
+      'role': 'developer',
+      'created_at': '2026-10-01T00:00:00.000Z',
+      'last_auth_at': '2026-10-20T09:00:00.000Z',
+      'created_by_email': 'alice@acme.com',
+    });
+
+    setUp(() {
+      h = EnterpriseHarness();
+      when(
+        () => h.codePushClientWrapper.getEnterpriseServiceAccounts(
+          enterpriseId: 7,
+        ),
+      ).thenAnswer((_) async => [account]);
+      command = h.run(ServiceAccountsListCommand.new);
+    });
+
+    void parse(List<String> args) =>
+        command.testArgResults = command.argParser.parse(args);
+
+    test("lists every organization's accounts", () async {
+      parse(['--enterprise-id', '7']);
+      expect(await h.run(command.run), ExitCode.success.code);
+      final lines = verify(
+        () => h.logger.info(captureAny()),
+      ).captured.cast<String>();
+      expect(lines, [
+        allOf(
+          startsWith('383  '),
+          contains('release-bot'),
+          endsWith('42  developer  2026-10-20'),
+        ),
+      ]);
+    });
+
+    test('says when there are none', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseServiceAccounts(
+          enterpriseId: 7,
+        ),
+      ).thenAnswer((_) async => []);
+      parse(['--enterprise-id', '7']);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(
+        () => h.logger.info('"Acme" has no service accounts.'),
+      ).called(1);
+    });
+
+    test("--json names each account's organization", () async {
+      parse(['--enterprise-id', '7']);
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      expect(json['data'], {
+        'enterprise_id': 7,
+        'service_accounts': [
+          {
+            'id': 383,
+            'name': 'release-bot',
+            'role': 'developer',
+            'organization_id': 42,
+            'created_at': '2026-10-01T00:00:00.000Z',
+            'created_by_email': 'alice@acme.com',
+            'last_auth_at': '2026-10-20T09:00:00.000Z',
+          },
+        ],
+      });
+    });
+
+    test('rejects --org-id with --enterprise-id', () async {
+      parse(['--org-id', '42', '--enterprise-id', '7']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
+    });
+
+    test('reports a failed fetch', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseServiceAccounts(
+          enterpriseId: 7,
+        ),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      parse(['--enterprise-id', '7']);
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch the service accounts of "Acme".',
+      );
     });
   });
 }
