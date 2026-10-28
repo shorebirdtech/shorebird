@@ -1,6 +1,9 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/members/member_target.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -11,11 +14,26 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// List an organization's members and pending invitations.
 /// {@endtemplate}
 class MembersListCommand extends ShorebirdCommand
-    with OrganizationScopedCommand {
+    with OrganizationScopedCommand, EnterpriseScopedCommand {
   /// {@macro members_list_command}
   MembersListCommand() {
     addOrganizationScopeOption();
+    addEnterpriseScopeOption(
+      help:
+          "List this enterprise's directory (e.g. \"7\") instead: everyone "
+          'in it, with their enterprise role. Needs an owner or admin of the '
+          'enterprise.',
+    );
+    argParser.addFlag(
+      _guestsFlag,
+      negatable: false,
+      help:
+          "With --enterprise-id, list the enterprise's guests instead: people "
+          "in its organizations who aren't in its directory.",
+    );
   }
+
+  static const _guestsFlag = 'guests';
 
   @override
   String get name => 'list';
@@ -30,12 +48,32 @@ class MembersListCommand extends ShorebirdCommand
       'invitation; `members set-role` and `members remove` take either, or '
       'the email.\n\n'
       'Invite someone with `shorebird members add <email>`.\n\n'
+      'With --enterprise-id, lists the enterprise directory '
+      '(space-separated: id  email  enterprise_role  organizations):\n'
+      '  12  alice@acme.com  admin  3 organizations\n'
+      'Add --guests for the people in its organizations who are not in its '
+      'directory.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members list --org-id 42 --json',
       )}';
 
   @override
   Future<int> run() async {
+    final scopeError = rejectOrganizationAndEnterprise();
+    if (scopeError != null) return scopeError;
+    final guests = results[_guestsFlag] == true;
+    if (enterpriseIdOption != null) {
+      return guests ? _listEnterpriseGuests() : _listEnterpriseMembers();
+    }
+    if (guests) {
+      return reportError(
+        message:
+            "--$_guestsFlag lists an enterprise's guests; pass "
+            '--enterprise-id too.',
+        hint: 'Run `shorebird enterprises list` for ids.',
+      );
+    }
+
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return errorCode;
     final organization = membership!.organization;
@@ -107,7 +145,111 @@ class MembersListCommand extends ShorebirdCommand
     }
     return ExitCode.success.code;
   }
+
+  Future<int> _listEnterpriseMembers() async {
+    final (:membership, :errorCode) = await resolveEnterprise();
+    if (errorCode != null) return errorCode;
+    final enterprise = membership!;
+
+    late final List<EnterpriseMember> members;
+    final fetchError = await guardApiCall(
+      () async => members = await codePushClientWrapper.getEnterpriseMembers(
+        enterpriseId: enterprise.id,
+      ),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch the members of enterprise ${enterprise.id}.',
+    );
+    if (fetchError != null) return fetchError;
+
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'enterprise_id': enterprise.id,
+        'members': [
+          for (final m in members)
+            {
+              'user_id': m.userId,
+              'email': m.email,
+              'name': m.displayName,
+              'role': m.role.value,
+              'organizations': _organizationsJson(m.teams),
+              'removed_at': m.removedAt?.toUtc().toIso8601String(),
+            },
+        ],
+      });
+      return ExitCode.success.code;
+    }
+
+    for (final m in members) {
+      final removedAt = m.removedAt;
+      final label = _label(m.userId, m.email, m.displayName);
+      logger.info(
+        '${m.userId}  ${lightCyan.wrap(label)}  '
+        '${m.role.value}  ${_organizationCount(m.teams)}'
+        '${removedAt == null ? '' : '  removed ${_date(removedAt)}'}',
+      );
+    }
+    return ExitCode.success.code;
+  }
+
+  Future<int> _listEnterpriseGuests() async {
+    final (:membership, :errorCode) = await resolveEnterprise();
+    if (errorCode != null) return errorCode;
+    final enterprise = membership!;
+
+    late final List<EnterpriseGuest> guests;
+    final fetchError = await guardApiCall(
+      () async => guests = await codePushClientWrapper.getEnterpriseGuests(
+        enterpriseId: enterprise.id,
+      ),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch the guests of enterprise ${enterprise.id}.',
+    );
+    if (fetchError != null) return fetchError;
+
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'enterprise_id': enterprise.id,
+        'guests': [
+          for (final g in guests)
+            {
+              'user_id': g.userId,
+              'email': g.email,
+              'name': g.displayName,
+              'organizations': _organizationsJson(g.teams),
+              'outside_guest_policy': g.outsideGuestPolicy,
+            },
+        ],
+      });
+      return ExitCode.success.code;
+    }
+
+    if (guests.isEmpty) {
+      logger.info('"${enterprise.name}" has no guests.');
+      return ExitCode.success.code;
+    }
+    for (final g in guests) {
+      final label = _label(g.userId, g.email, g.displayName);
+      logger.info(
+        '${g.userId}  ${lightCyan.wrap(label)}  '
+        'guest  ${_organizationCount(g.teams)}'
+        '${g.outsideGuestPolicy ? '  outside guest policy' : ''}',
+      );
+    }
+    return ExitCode.success.code;
+  }
 }
+
+String _label(int userId, String? email, String? displayName) =>
+    enterpriseUserLabel(userId: userId, email: email, displayName: displayName);
+
+List<Map<String, Object>> _organizationsJson(
+  List<EnterpriseTeamAccess> teams,
+) => [
+  for (final t in teams) {'organization_id': t.teamId, 'role': t.role.value},
+];
+
+String _organizationCount(List<EnterpriseTeamAccess> teams) =>
+    formatCount(teams.length, 'organization');
 
 /// [time]'s UTC calendar date, as YYYY-MM-DD.
 String _date(DateTime time) => time.toUtc().toIso8601String().substring(0, 10);

@@ -6,6 +6,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../enterprises/enterprise_fixtures.dart';
 import 'members_test_harness.dart';
 
 void main() {
@@ -194,6 +195,155 @@ void main() {
         'to_role': 'admin',
         'changed': true,
       });
+    });
+  });
+
+  group('MembersSetRoleCommand --enterprise-id', () {
+    late MembersHarness h;
+    late MembersSetRoleCommand command;
+
+    setUpAll(() => registerFallbackValue(EnterpriseRole.member));
+
+    setUp(() {
+      h = MembersHarness();
+      when(() => h.argResults['org-id']).thenReturn(null);
+      when(() => h.argResults['enterprise-id']).thenReturn('7');
+      when(
+        h.codePushClientWrapper.getEnterprises,
+      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+      when(
+        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
+      ).thenAnswer(
+        (_) async => [
+          EnterpriseFixtures.member(),
+          EnterpriseFixtures.member(
+            userId: 11,
+            email: 'old@acme.com',
+            removedAt: '2026-10-01T00:00:00.000Z',
+          ),
+        ],
+      );
+      when(() => h.argResults.rest).thenReturn(['bob@acme.com']);
+      when(() => h.argResults['role']).thenReturn('billing-manager');
+      when(
+        () => h.codePushClientWrapper.setEnterpriseMemberRole(
+          enterpriseId: 7,
+          userId: 9,
+          role: EnterpriseRole.billingManager,
+        ),
+      ).thenAnswer((_) async {});
+      command = h.run(MembersSetRoleCommand.new)..testArgResults = h.argResults;
+    });
+
+    test('changes the enterprise role', () async {
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(
+        () => h.codePushClientWrapper.setEnterpriseMemberRole(
+          enterpriseId: 7,
+          userId: 9,
+          role: EnterpriseRole.billingManager,
+        ),
+      ).called(1);
+      verify(
+        () => h.logger.success(
+          'Changed bob@acme.com from member to billingManager in "Acme".',
+        ),
+      ).called(1);
+    });
+
+    test('changes nothing when the role is already set', () async {
+      when(() => h.argResults['role']).thenReturn('member');
+      when(() => h.argResults.rest).thenReturn(['9']);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(
+        () => h.logger.info(
+          'bob@acme.com is already member in "Acme"; nothing changed.',
+        ),
+      ).called(1);
+      verifyNever(
+        () => h.codePushClientWrapper.setEnterpriseMemberRole(
+          enterpriseId: any(named: 'enterpriseId'),
+          userId: any(named: 'userId'),
+          role: any(named: 'role'),
+        ),
+      );
+    });
+
+    test('--json reports the change', () async {
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      expect(json['data'], {
+        'enterprise_id': 7,
+        'user_id': 9,
+        'email': 'bob@acme.com',
+        'from_role': 'member',
+        'to_role': 'billingManager',
+        'changed': true,
+      });
+    });
+
+    test('rejects an organization role', () async {
+      when(() => h.argResults['role']).thenReturn('developer');
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err(
+          '"developer" is not an enterprise role. Choose one of: owner, '
+          'admin, member, billingManager.',
+        ),
+      ).called(1);
+    });
+
+    test('skips members already removed', () async {
+      when(() => h.argResults.rest).thenReturn(['old@acme.com']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err('"old@acme.com" is not a member of "Acme".'),
+      ).called(1);
+      verify(
+        () => h.logger.info(
+          'Run `shorebird members list --enterprise-id 7` to see its members.',
+        ),
+      ).called(1);
+    });
+
+    test('reports a failed fetch of the directory', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch the members of enterprise 7.',
+      );
+    });
+
+    test('reports a failed change', () async {
+      when(
+        () => h.codePushClientWrapper.setEnterpriseMemberRole(
+          enterpriseId: 7,
+          userId: 9,
+          role: EnterpriseRole.billingManager,
+        ),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        "Failed to change bob@acme.com's enterprise role.",
+      );
+    });
+
+    test('rejects --org-id with --enterprise-id', () async {
+      when(() => h.argResults['org-id']).thenReturn('42');
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
     });
   });
 }

@@ -27,7 +27,9 @@ class MembersCommand extends ShorebirdCommand {
   String get description =>
       "List, invite and remove an organization's members, and change their "
       'roles. With no subcommand, lists them (the same as '
-      '`shorebird members list`).';
+      '`shorebird members list`).\n\n'
+      "Pass --enterprise-id to list, change or remove an enterprise's "
+      'members across all its organizations.';
 
   @override
   String get defaultSubcommand => 'list';

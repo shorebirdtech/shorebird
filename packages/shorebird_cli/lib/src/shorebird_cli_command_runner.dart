@@ -93,6 +93,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(ChannelsCommand());
     addCommand(CreateCommand());
     addCommand(DoctorCommand());
+    addCommand(EnterprisesCommand());
     addCommand(FlutterCommand());
     addCommand(InitCommand());
     addCommand(InvitationsCommand());

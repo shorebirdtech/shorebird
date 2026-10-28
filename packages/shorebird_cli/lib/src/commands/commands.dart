@@ -9,6 +9,7 @@ export 'confirm_delete.dart';
 export 'console_page_command.dart';
 export 'create_command.dart';
 export 'doctor_command.dart';
+export 'enterprises/enterprises.dart';
 export 'flutter/flutter.dart';
 export 'init_command.dart';
 export 'invitations/invitations.dart';

@@ -191,6 +191,90 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the enterprises the user belongs to, with their role in each.
+  Future<List<EnterpriseMembership>> getEnterprises() {
+    return _withProgress('Fetching enterprises', codePushClient.getEnterprises);
+  }
+
+  /// Fetches enterprise [enterpriseId].
+  Future<Enterprise> getEnterprise({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching enterprise',
+      () => codePushClient.getEnterprise(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches every organization in enterprise [enterpriseId].
+  Future<List<EnterpriseTeam>> getEnterpriseOrganizations({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching organizations',
+      () => codePushClient.getEnterpriseOrganizations(
+        enterpriseId: enterpriseId,
+      ),
+    );
+  }
+
+  /// Fetches every app in enterprise [enterpriseId].
+  Future<List<EnterpriseApp>> getEnterpriseApps({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching apps',
+      () => codePushClient.getEnterpriseApps(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches enterprise [enterpriseId]'s directory.
+  Future<List<EnterpriseMember>> getEnterpriseMembers({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching members',
+      () => codePushClient.getEnterpriseMembers(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches enterprise [enterpriseId]'s guests.
+  Future<List<EnterpriseGuest>> getEnterpriseGuests({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching guests',
+      () => codePushClient.getEnterpriseGuests(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Sets member [userId]'s role in enterprise [enterpriseId] to [role].
+  Future<void> setEnterpriseMemberRole({
+    required int enterpriseId,
+    required int userId,
+    required EnterpriseRole role,
+  }) {
+    return _withProgress(
+      'Changing role',
+      () => codePushClient.setEnterpriseMemberRole(
+        enterpriseId: enterpriseId,
+        userId: userId,
+        role: role,
+      ),
+    );
+  }
+
+  /// Removes member [userId] from enterprise [enterpriseId] and all its
+  /// organizations, returning the access removed.
+  Future<RemoveEnterpriseMember200Response> removeEnterpriseMember({
+    required int enterpriseId,
+    required int userId,
+  }) {
+    return _withProgress(
+      'Removing member',
+      () => codePushClient.removeEnterpriseMember(
+        enterpriseId: enterpriseId,
+        userId: userId,
+      ),
+    );
+  }
+
   /// Fetches the members of organization [organizationId].
   Future<List<OrganizationUser>> getOrganizationUsers({
     required int organizationId,
