@@ -1228,6 +1228,10 @@ class CodePushClient {
   ///
   /// [cursor] is the `nextCursor` of the previous page. The other arguments
   /// filter the entries; null leaves a filter off.
+  ///
+  /// With [AuditLogOrder.asc] the server returns a cursor even on an empty
+  /// page, so a caller can poll for new entries; stop on an empty page
+  /// rather than on a null cursor.
   Future<GetOrganizationAuditLogsResponse> getEnterpriseAuditLogs({
     required int enterpriseId,
     int? perPage,
