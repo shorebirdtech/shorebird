@@ -169,11 +169,12 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
     description: 'The id of the organization (e.g. "42").',
   );
 
-  /// Widens a command from one organization to every organization in an
-  /// enterprise.
-  static const enterpriseIdArg = ArgumentDescriber(
-    name: 'enterprise-id',
-    description: 'The id of the enterprise (e.g. "7").',
+  /// Widens a command from one organization to every organization in the
+  /// user's enterprise. An account is in at most one enterprise, so the flag
+  /// takes no id.
+  static const enterpriseArg = ArgumentDescriber(
+    name: 'enterprise',
+    description: 'Act on every organization in your enterprise.',
   );
 
   /// Help text for release version arguments in patch commands, where the

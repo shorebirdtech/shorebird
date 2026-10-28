@@ -117,12 +117,12 @@ mixin MemberLookup on ShorebirdCommand {
   }
 }
 
-/// Help text for `--role` with `--enterprise-id`.
+/// Help text for `--role` with `--enterprise`.
 final enterpriseRoleHelp =
-    'With --enterprise-id, the enterprise role: '
+    'With --enterprise, the enterprise role: '
     '${EnterpriseRole.values.map((r) => r.value).join(', ')}.';
 
-/// Parses a `--role` value given with `--enterprise-id`, returning the
+/// Parses a `--role` value given with `--enterprise`, returning the
 /// enterprise role or why it isn't one. Matching ignores case, dashes and
 /// underscores, so `billing-manager` names [EnterpriseRole.billingManager].
 ({EnterpriseRole? role, String? error}) parseEnterpriseRole(String arg) {
@@ -172,7 +172,7 @@ mixin EnterpriseMemberLookup on ShorebirdCommand {
       errorCode: reportError(
         message: '"$user" is not a member of "${enterprise.name}".',
         hint:
-            'Run `shorebird members list --enterprise-id ${enterprise.id}` '
+            'Run `shorebird members list --enterprise` '
             'to see its members.',
       ),
     );

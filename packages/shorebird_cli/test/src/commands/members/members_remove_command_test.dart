@@ -229,7 +229,7 @@ void main() {
     });
   });
 
-  group('MembersRemoveCommand --enterprise-id', () {
+  group('MembersRemoveCommand --enterprise', () {
     late MembersHarness h;
     late MembersRemoveCommand command;
     late Browser browser;
@@ -239,7 +239,7 @@ void main() {
       browser = MockBrowser();
       when(() => browser.canOpen).thenReturn(false);
       when(() => h.argResults['org-id']).thenReturn(null);
-      when(() => h.argResults['enterprise-id']).thenReturn('7');
+      when(() => h.argResults['enterprise']).thenReturn(true);
       when(() => h.argResults.rest).thenReturn(['bob@acme.com']);
       when(
         h.codePushClientWrapper.getEnterprises,
@@ -284,12 +284,12 @@ void main() {
       ).called(1);
     });
 
-    test('rejects --org-id with --enterprise-id', () async {
+    test('rejects --org-id with --enterprise', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await run(), ExitCode.usage.code);
       verify(
         () => h.logger.err(
-          'Pass --org-id or --enterprise-id, not both: --enterprise-id '
+          'Pass --org-id or --enterprise, not both: --enterprise '
           'already covers every organization in the enterprise.',
         ),
       ).called(1);

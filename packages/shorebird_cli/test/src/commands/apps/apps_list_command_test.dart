@@ -231,7 +231,7 @@ void main() {
     });
   });
 
-  group('AppsListCommand --enterprise-id', () {
+  group('AppsListCommand --enterprise', () {
     late EnterpriseHarness h;
     late AppsListCommand command;
 
@@ -284,8 +284,8 @@ void main() {
       });
     });
 
-    test('rejects an id that is not a number', () async {
-      when(() => h.argResults['enterprise-id']).thenReturn('acme');
+    test('says when you are in no enterprise', () async {
+      when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(
         () => h.codePushClientWrapper.getEnterpriseApps(

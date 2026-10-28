@@ -18,9 +18,9 @@ class UsageCommand extends ShorebirdCommand
   /// {@macro usage_command}
   UsageCommand() {
     addOrganizationScopeOption();
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          "Show this enterprise's plan (e.g. \"7\") instead: its installs "
+          "Show your enterprise's plan instead: its installs "
           'across every organization, then each organization. Needs an owner '
           'or billing manager of the enterprise.',
     );
@@ -42,7 +42,7 @@ class UsageCommand extends ShorebirdCommand
       '  Installs left before patches stop: 37,655\n'
       '  Apps (id  name  installs):\n'
       '    0b6c...  Acme Mobile  12,345\n\n'
-      'With --enterprise-id, shows the enterprise plan and each '
+      'With --enterprise, shows the enterprise plan and each '
       'organization on it (id  name  installs).\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird usage 42 --json',
@@ -50,7 +50,7 @@ class UsageCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (enterpriseIdOption != null) {
+    if (enterpriseScope) {
       final scopeError =
           rejectOrganizationAndEnterprise() ??
           rejectOrganizationArgumentWithEnterprise();

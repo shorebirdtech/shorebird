@@ -198,7 +198,7 @@ void main() {
     });
   });
 
-  group('MembersSetRoleCommand --enterprise-id', () {
+  group('MembersSetRoleCommand --enterprise', () {
     late MembersHarness h;
     late MembersSetRoleCommand command;
 
@@ -207,7 +207,7 @@ void main() {
     setUp(() {
       h = MembersHarness();
       when(() => h.argResults['org-id']).thenReturn(null);
-      when(() => h.argResults['enterprise-id']).thenReturn('7');
+      when(() => h.argResults['enterprise']).thenReturn(true);
       when(
         h.codePushClientWrapper.getEnterprises,
       ).thenAnswer((_) async => [EnterpriseFixtures.acmeOwner]);
@@ -311,7 +311,7 @@ void main() {
       ).called(1);
       verify(
         () => h.logger.info(
-          'Run `shorebird members list --enterprise-id 7` to see its members.',
+          'Run `shorebird members list --enterprise` to see its members.',
         ),
       ).called(1);
     });
@@ -348,7 +348,7 @@ void main() {
       );
     });
 
-    test('rejects --org-id with --enterprise-id', () async {
+    test('rejects --org-id with --enterprise', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);

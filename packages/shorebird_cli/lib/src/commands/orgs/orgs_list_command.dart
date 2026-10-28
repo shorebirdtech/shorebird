@@ -16,10 +16,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   /// {@macro orgs_list_command}
   OrgsListCommand() {
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          'List every organization in this enterprise (e.g. "7"), including '
-          "ones you aren't in. Needs an owner or admin of the enterprise.",
+          'List every organization in your enterprise, including ones you '
+          "aren't in. Needs an owner or admin of the enterprise.",
     );
   }
 
@@ -37,14 +37,14 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
       '"none".\n'
       'A "none" role means you only collaborate on apps in that organization.'
       '\n\n'
-      'With --enterprise-id, lists every organization in the enterprise '
+      'With --enterprise, lists every organization in the enterprise '
       '(space-separated: id  name  members  apps):\n'
       '  42  Mobile  12 members  3 apps\n\n'
       '${ShorebirdCommand.jsonHint('shorebird orgs list --json')}';
 
   @override
   Future<int> run() async {
-    if (enterpriseIdOption != null) return _listEnterpriseOrganizations();
+    if (enterpriseScope) return _listEnterpriseOrganizations();
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,

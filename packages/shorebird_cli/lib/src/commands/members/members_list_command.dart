@@ -18,9 +18,9 @@ class MembersListCommand extends ShorebirdCommand
   /// {@macro members_list_command}
   MembersListCommand() {
     addOrganizationScopeOption();
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          "List this enterprise's directory (e.g. \"7\") instead: everyone "
+          "List your enterprise's directory instead: everyone "
           'in it, with their enterprise role. Needs an owner or admin of the '
           'enterprise.',
     );
@@ -28,7 +28,7 @@ class MembersListCommand extends ShorebirdCommand
       _guestsFlag,
       negatable: false,
       help:
-          "With --enterprise-id, list the enterprise's guests instead: people "
+          "With --enterprise, list the enterprise's guests instead: people "
           "in its organizations who aren't in its directory.",
     );
   }
@@ -48,7 +48,7 @@ class MembersListCommand extends ShorebirdCommand
       'invitation; `members set-role` and `members remove` take either, or '
       'the email.\n\n'
       'Invite someone with `shorebird members add <email>`.\n\n'
-      'With --enterprise-id, lists the enterprise directory '
+      'With --enterprise, lists the enterprise directory '
       '(space-separated: id  email  enterprise_role  organizations):\n'
       '  12  alice@acme.com  admin  3 organizations\n'
       'Add --guests for the people in its organizations who are not in its '
@@ -62,15 +62,14 @@ class MembersListCommand extends ShorebirdCommand
     final scopeError = rejectOrganizationAndEnterprise();
     if (scopeError != null) return scopeError;
     final guests = results[_guestsFlag] == true;
-    if (enterpriseIdOption != null) {
+    if (enterpriseScope) {
       return guests ? _listEnterpriseGuests() : _listEnterpriseMembers();
     }
     if (guests) {
       return reportError(
         message:
             "--$_guestsFlag lists an enterprise's guests; pass "
-            '--enterprise-id too.',
-        hint: 'Run `shorebird enterprises list` for ids.',
+            '--enterprise too.',
       );
     }
 
