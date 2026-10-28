@@ -970,6 +970,126 @@ class CodePushClient {
     }
   }
 
+  /// Gets the members of organization [organizationId] and their roles.
+  Future<List<OrganizationUser>> getOrganizationUsers({
+    required int organizationId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/organizations/$organizationId/users'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetOrganizationUsersResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).users;
+  }
+
+  /// Gets the pending invitations to organization [organizationId], most
+  /// recently sent first, following every page.
+  Future<List<InvitationSummary>> getOrganizationInvitations({
+    required int organizationId,
+  }) async {
+    final invitations = <InvitationSummary>[];
+    String? cursor;
+    do {
+      final response = await _httpClient.get(
+        Uri.parse('$_v1/organizations/$organizationId/invitations').replace(
+          queryParameters: {'per_page': '100', 'cursor': ?cursor},
+        ),
+      );
+
+      if (!response.isSuccess) {
+        throw _parseErrorResponse(response.statusCode, response.body);
+      }
+
+      final page = GetInvitationsResponse.fromJson(
+        json.decode(response.body) as Map<String, dynamic>,
+      );
+      invitations.addAll(page.invitations);
+      // An empty page ends the list even if it carries a cursor, so a
+      // misbehaving server cannot keep this loop going.
+      cursor = page.invitations.isEmpty ? null : page.nextCursor;
+    } while (cursor != null);
+    return invitations;
+  }
+
+  /// Invites [email] to organization [organizationId] with [role].
+  ///
+  /// The server adds an account its enterprise directory already has as a
+  /// member at once, and says so with an [AddedMemberResponse]; anyone else
+  /// gets an emailed invitation ([CreateInvitationResponse]).
+  Future<CreateOrganizationInvitation201Response> createOrganizationInvitation({
+    required int organizationId,
+    required String email,
+    required Role role,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/organizations/$organizationId/invitations'),
+      body: json.encode(
+        CreateOrganizationInvitationRequest(email: email, role: role).toJson(),
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return CreateOrganizationInvitation201Response.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Cancels the pending invitation [invitationId] to organization
+  /// [organizationId].
+  Future<void> revokeOrganizationInvitation({
+    required int organizationId,
+    required String invitationId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/invitations/'
+        '${Uri.encodeComponent(invitationId)}',
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Sets member [userId]'s role in organization [organizationId] to [role].
+  Future<void> updateOrganizationUser({
+    required int organizationId,
+    required int userId,
+    required Role role,
+  }) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/organizations/$organizationId/users/$userId'),
+      body: json.encode(UpdateOrganizationUserRequest(role: role).toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Removes member [userId] from organization [organizationId].
+  Future<void> removeOrganizationUser({
+    required int organizationId,
+    required int userId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$_v1/organizations/$organizationId/users/$userId'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Gets one page of organization [organizationId]'s audit log.
   ///
   /// [cursor] is the `nextCursor` of the previous page. The other arguments

@@ -985,6 +985,99 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
 
+        test('member calls pass through and complete progress', () async {
+          const member = OrganizationUser(
+            user: PublicUser(id: 7, email: 'bob@acme.com'),
+            role: Role.developer,
+          );
+          final invite = InvitationSummary(
+            id: 'inv-1',
+            email: 'carol@acme.com',
+            role: Role.viewer,
+            createdAt: DateTime.utc(2026),
+            expiresAt: DateTime.utc(2026, 2),
+          );
+          const added = CreateInvitationResponse(email: 'dan@acme.com');
+          when(
+            () => codePushClient.getOrganizationUsers(organizationId: 42),
+          ).thenAnswer((_) async => [member]);
+          when(
+            () => codePushClient.getOrganizationInvitations(organizationId: 42),
+          ).thenAnswer((_) async => [invite]);
+          when(
+            () => codePushClient.getOrganizationInvitations(organizationId: 9),
+          ).thenThrow(CodePushForbiddenException(message: 'no'));
+          when(
+            () => codePushClient.createOrganizationInvitation(
+              organizationId: 42,
+              email: 'dan@acme.com',
+              role: Role.admin,
+            ),
+          ).thenAnswer((_) async => added);
+          when(
+            () => codePushClient.revokeOrganizationInvitation(
+              organizationId: 42,
+              invitationId: 'inv-1',
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => codePushClient.updateOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+              role: Role.admin,
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => codePushClient.removeOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(() async {
+            expect(
+              await codePushClientWrapper.getOrganizationUsers(
+                organizationId: 42,
+              ),
+              [member],
+            );
+            expect(
+              await codePushClientWrapper.maybeGetOrganizationInvitations(
+                organizationId: 42,
+              ),
+              [invite],
+            );
+            expect(
+              await codePushClientWrapper.maybeGetOrganizationInvitations(
+                organizationId: 9,
+              ),
+              isNull,
+            );
+            expect(
+              await codePushClientWrapper.createOrganizationInvitation(
+                organizationId: 42,
+                email: 'dan@acme.com',
+                role: Role.admin,
+              ),
+              added,
+            );
+            await codePushClientWrapper.revokeOrganizationInvitation(
+              organizationId: 42,
+              invitationId: 'inv-1',
+            );
+            await codePushClientWrapper.updateOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+              role: Role.admin,
+            );
+            await codePushClientWrapper.removeOrganizationUser(
+              organizationId: 42,
+              userId: 7,
+            );
+          });
+          verify(() => progress.complete()).called(7);
+        });
+
         test('getOrganizationAuditLogs passes the filters through', () async {
           const page = GetOrganizationAuditLogsResponse(data: []);
           when(
