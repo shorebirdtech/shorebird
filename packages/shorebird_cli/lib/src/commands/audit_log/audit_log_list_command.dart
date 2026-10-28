@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/audit_log/audit_log_filters.dart';
+import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -11,7 +12,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Show one page of an organization's audit log.
 /// {@endtemplate}
 class AuditLogListCommand extends ShorebirdCommand
-    with OrganizationScopedCommand, AuditLogFilterOptions {
+    with
+        OrganizationScopedCommand,
+        EnterpriseScopedCommand,
+        AuditLogFilterOptions {
   /// {@macro audit_log_list_command}
   AuditLogListCommand() {
     addFilterOptions();
@@ -41,6 +45,8 @@ class AuditLogListCommand extends ShorebirdCommand
       'organization:42\n\n'
       'For every page, as OCSF events, run '
       '`shorebird audit-log export`.\n\n'
+      'Pass --enterprise-id for the log of every organization in an '
+      'enterprise.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird audit-log 42 --json')}';
 
   @override
@@ -55,27 +61,27 @@ class AuditLogListCommand extends ShorebirdCommand
     final (:filters, :error) = parseFilters();
     if (error != null) return reportError(message: error);
 
-    final (:membership, :errorCode) = await resolveOrganizationFromArguments(
+    final (scope: resolved, :errorCode) = await resolveScope(
       example: 'shorebird audit-log list <org-id>',
     );
     if (errorCode != null) return errorCode;
-    final organizationId = membership!.organization.id;
+    final scope = resolved!;
 
     late final GetOrganizationAuditLogsResponse page;
     final fetchError = await guardFetch(
       () async => page = await fetchPage(
-        organizationId,
+        scope,
         filters!,
         perPage: limit,
         cursor: results['cursor'] as String?,
       ),
-      organizationId: organizationId,
+      scope: scope,
     );
     if (fetchError != null) return fetchError;
 
     if (isJsonMode) {
       emitJsonSuccess({
-        'organization_id': organizationId,
+        scope.jsonKey: scope.id,
         'entries': [for (final entry in page.data) entry.toJson()],
         'next_cursor': page.nextCursor,
       });
@@ -91,7 +97,7 @@ class AuditLogListCommand extends ShorebirdCommand
     if (page.nextCursor case final cursor? when page.data.isNotEmpty) {
       final next = commandFrom(
         'list',
-        organizationId: organizationId,
+        scope: scope,
         cursor: cursor,
         extra: [if (limit != null) '--limit $limit'],
       );

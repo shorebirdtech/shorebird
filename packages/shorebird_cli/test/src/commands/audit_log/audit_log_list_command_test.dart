@@ -16,6 +16,7 @@ import 'package:test/test.dart';
 
 import '../../helpers.dart';
 import '../../mocks.dart';
+import '../enterprises/enterprise_test_harness.dart';
 import 'audit_log_test_helpers.dart';
 
 void main() {
@@ -316,6 +317,95 @@ void main() {
       expect(
         (json['error'] as Map)['message'],
         'Failed to fetch the audit log of organization 42.',
+      );
+    });
+  });
+
+  group('AuditLogListCommand --enterprise-id', () {
+    late EnterpriseHarness h;
+    late AuditLogListCommand command;
+
+    setUpAll(() => registerFallbackValue(AuditLogOrder.desc));
+
+    setUp(() {
+      h = EnterpriseHarness();
+      when(
+        () => anyEnterpriseAuditLogFetch(h.codePushClientWrapper),
+      ).thenAnswer(
+        (_) async => GetOrganizationAuditLogsResponse(
+          data: [auditLogEntry()],
+          nextCursor: 'c2',
+        ),
+      );
+      command = h.run(AuditLogListCommand.new);
+    });
+
+    void parse(List<String> args) =>
+        command.testArgResults = command.argParser.parse(args);
+
+    test("reads the enterprise's log and pages with --enterprise-id", () async {
+      parse(['--enterprise-id', '7', '--event', 'app.create']);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(
+        () => h.codePushClientWrapper.getEnterpriseAuditLogs(
+          enterpriseId: 7,
+          order: AuditLogOrder.desc,
+          operation: 'app.create',
+        ),
+      ).called(1);
+      verify(
+        () => h.logger.info(
+          'Next page: shorebird audit-log list --enterprise-id 7 --event '
+          'app.create --cursor c2',
+        ),
+      ).called(1);
+      verifyNever(h.codePushClientWrapper.getOrganizationMemberships);
+    });
+
+    test('--json keys the page by enterprise', () async {
+      parse(['--enterprise-id', '7']);
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      final data = json['data'] as Map<String, dynamic>;
+      expect(data['enterprise_id'], 7);
+      expect(data.containsKey('organization_id'), isFalse);
+      expect(data['next_cursor'], 'c2');
+    });
+
+    test('rejects an organization id with --enterprise-id', () async {
+      parse(['42', '--enterprise-id', '7']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
+    });
+
+    test('rejects --org-id with --enterprise-id', () async {
+      parse(['--org-id', '42', '--enterprise-id', '7']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
+    });
+
+    test('names your enterprises for one you are not in', () async {
+      parse(['--enterprise-id', '99']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err('You are not a member of enterprise 99.'),
+      ).called(1);
+    });
+
+    test('says which enterprise a failed fetch was for', () async {
+      when(
+        () => anyEnterpriseAuditLogFetch(h.codePushClientWrapper),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      parse(['--enterprise-id', '7']);
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch the audit log of enterprise 7.',
       );
     });
   });

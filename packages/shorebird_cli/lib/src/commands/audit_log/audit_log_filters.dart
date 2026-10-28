@@ -1,6 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -20,6 +21,33 @@ String? auditLogErrorHint(String? apiCode) => switch (apiCode) {
         'https://shorebird.dev/pricing.',
   _ => null,
 };
+
+/// Whose audit log a run reads: one organization's, or an enterprise's,
+/// which covers every organization in it.
+class AuditLogScope {
+  /// Organization [id]'s log.
+  const AuditLogScope.organization(this.id) : isEnterprise = false;
+
+  /// Enterprise [id]'s log.
+  const AuditLogScope.enterprise(this.id) : isEnterprise = true;
+
+  /// The organization or enterprise id.
+  final int id;
+
+  /// Whether [id] names an enterprise.
+  final bool isEnterprise;
+
+  /// The option that names this scope on a command line.
+  String get option => isEnterprise
+      ? '--${CommonArguments.enterpriseIdArg.name} $id'
+      : '--${CommonArguments.orgIdArg.name} $id';
+
+  /// This scope in a sentence, such as "organization 42".
+  String get label => isEnterprise ? 'enterprise $id' : 'organization $id';
+
+  /// The `--json` key that holds [id].
+  String get jsonKey => isEnterprise ? 'enterprise_id' : 'organization_id';
+}
 
 /// The audit log filters a run was given, parsed.
 class AuditLogFilters {
@@ -54,7 +82,8 @@ class AuditLogFilters {
 
 /// The filter options `shorebird audit-log list` and `export` share,
 /// and the fetch and error reporting around them.
-mixin AuditLogFilterOptions on OrganizationScopedCommand {
+mixin AuditLogFilterOptions
+    on OrganizationScopedCommand, EnterpriseScopedCommand {
   /// The filter options, in the order a resume hint repeats them.
   static const _filterOptions = [
     'app-id',
@@ -65,9 +94,15 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     'order',
   ];
 
-  /// Adds `--org-id` and the filter options [parseFilters] reads.
+  /// Adds `--org-id`, `--enterprise-id` and the filter options
+  /// [parseFilters] reads.
   void addFilterOptions() {
     addOrganizationScopeOption();
+    addEnterpriseScopeOption(
+      help:
+          'Read the log of this enterprise (e.g. "7") instead: every '
+          'organization in it. Needs an owner or admin of the enterprise.',
+    );
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')
       ..addOption(
@@ -172,16 +207,52 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     );
   }
 
-  /// The command that runs [subcommand] again with this run's organization
-  /// and filters, starting at [cursor], plus [extra] options.
+  /// Picks whose log to read: the enterprise `--enterprise-id` names, else
+  /// the organization as [resolveOrganizationFromArguments] picks it.
+  /// [example] is the command with `<org-id>` where the id goes.
+  ///
+  /// Returns the scope, or an exit code once the failure is reported.
+  Future<({AuditLogScope? scope, int? errorCode})> resolveScope({
+    required String example,
+  }) async {
+    if (enterpriseIdOption != null) {
+      final scopeError = rejectOrganizationAndEnterprise();
+      if (scopeError != null) return (scope: null, errorCode: scopeError);
+      if (results.rest.isNotEmpty) {
+        return (
+          scope: null,
+          errorCode: reportError(
+            message:
+                'Pass an organization id or --enterprise-id, not both: '
+                '--enterprise-id already covers every organization in the '
+                'enterprise.',
+          ),
+        );
+      }
+      final (:membership, :errorCode) = await resolveEnterprise();
+      if (errorCode != null) return (scope: null, errorCode: errorCode);
+      return (scope: AuditLogScope.enterprise(membership!.id), errorCode: null);
+    }
+    final (:membership, :errorCode) = await resolveOrganizationFromArguments(
+      example: example,
+    );
+    if (errorCode != null) return (scope: null, errorCode: errorCode);
+    return (
+      scope: AuditLogScope.organization(membership!.organization.id),
+      errorCode: null,
+    );
+  }
+
+  /// The command that runs [subcommand] again with this run's scope and
+  /// filters, starting at [cursor], plus [extra] options.
   String commandFrom(
     String subcommand, {
-    required int organizationId,
+    required AuditLogScope scope,
     required String cursor,
     List<String> extra = const [],
   }) {
     final options = [
-      '--${CommonArguments.orgIdArg.name} $organizationId',
+      scope.option,
       for (final option in _filterOptions)
         if (results.wasParsed(option)) '--$option ${_quote(results[option])}',
       ...extra,
@@ -190,15 +261,28 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     return 'shorebird audit-log $subcommand ${options.join(' ')}';
   }
 
-  /// Fetches one page of [organizationId]'s audit log matching [filters].
+  /// Fetches one page of [scope]'s audit log matching [filters].
   Future<GetOrganizationAuditLogsResponse> fetchPage(
-    int organizationId,
+    AuditLogScope scope,
     AuditLogFilters filters, {
     required int? perPage,
     required String? cursor,
   }) {
+    if (scope.isEnterprise) {
+      return codePushClientWrapper.getEnterpriseAuditLogs(
+        enterpriseId: scope.id,
+        perPage: perPage,
+        cursor: cursor,
+        order: filters.order,
+        startDate: filters.start,
+        endDate: filters.end,
+        appId: filters.appId,
+        actorId: filters.actorId,
+        operation: filters.event,
+      );
+    }
     return codePushClientWrapper.getOrganizationAuditLogs(
-      organizationId: organizationId,
+      organizationId: scope.id,
       perPage: perPage,
       cursor: cursor,
       order: filters.order,
@@ -215,11 +299,10 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
   /// partway (a function, since [body] decides where it stopped).
   Future<int?> guardFetch(
     Future<void> Function() body, {
-    required int organizationId,
+    required AuditLogScope scope,
     String? Function()? resumeHint,
   }) async {
-    final message =
-        'Failed to fetch the audit log of organization $organizationId.';
+    final message = 'Failed to fetch the audit log of ${scope.label}.';
     try {
       await body();
       return null;

@@ -16,6 +16,7 @@ import 'package:test/test.dart';
 
 import '../helpers.dart';
 import '../mocks.dart';
+import 'enterprises/enterprise_test_harness.dart';
 
 void main() {
   useTempWorkingDirectory();
@@ -252,6 +253,136 @@ void main() {
       );
       expect(exitCode, ExitCode.success.code);
       expect(json['data'], {'organization_id': 42, ...usage().toJson()});
+    });
+  });
+
+  group('UsageCommand --enterprise-id', () {
+    late EnterpriseHarness h;
+    late UsageCommand command;
+
+    final billing = EnterpriseBilling.fromJson(const {
+      'has_billing_account': true,
+      'plan': {
+        'name': 'Enterprise',
+        'level': 'enterprise',
+        'billing_interval': 'year',
+        'billing_interval_count': 1,
+        'current_period_start': '2026-10-01T00:00:00.000Z',
+        'current_period_end': '2026-11-01T00:00:00.000Z',
+        'cancel_at_period_end': false,
+        'currency': 'usd',
+      },
+      'position': {
+        'included_installs': 1000000,
+        'installs': 950000,
+        'included_installs_used': 950000,
+        'included_exhausted': false,
+        'overage_installs': 0,
+        'install_ceiling': 1000000,
+        'remaining_installs': 50000,
+        'at_ceiling': false,
+        'nearing_limit': true,
+        'consuming_overage': false,
+        'accrued_overage_amount': null,
+      },
+    });
+    final mobile = EnterpriseBillingOrganization.fromJson(const {
+      'id': 42,
+      'name': 'Mobile',
+      'app_count': 1,
+      'patch_installs': 950000,
+    });
+
+    setUp(() {
+      h = EnterpriseHarness();
+      when(
+        () => h.codePushClientWrapper.getEnterpriseBilling(enterpriseId: 7),
+      ).thenAnswer((_) async => billing);
+      when(
+        () => h.codePushClientWrapper.getEnterpriseBillingOrganizations(
+          enterpriseId: 7,
+        ),
+      ).thenAnswer((_) async => [mobile]);
+      command = h.run(UsageCommand.new)..testArgResults = h.argResults;
+    });
+
+    test('shows the plan, then each organization', () async {
+      expect(await h.run(command.run), ExitCode.success.code);
+      final lines = verify(
+        () => h.logger.info(captureAny()),
+      ).captured.cast<String>();
+      expect(lines, [
+        'Plan: Enterprise, this period 2026-10-01 to 2026-11-01',
+        'Patch installs: 950,000 of 1,000,000 included',
+        'Installs left before patches stop: 50,000',
+        'Organizations (id  name  installs):',
+        allOf(startsWith('  42  '), contains('Mobile'), endsWith('950,000')),
+      ]);
+      // A contract sets the limit, so there's no setting to point at.
+      verify(
+        () => h.logger.warn(
+          'The account is nearing its install limit, after which patches '
+          'stop.',
+        ),
+      ).called(1);
+    });
+
+    test('says when the enterprise has no billing account', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseBilling(enterpriseId: 7),
+      ).thenAnswer(
+        (_) async => EnterpriseBilling.fromJson(const {
+          'has_billing_account': false,
+          'plan': null,
+          'position': null,
+        }),
+      );
+      when(
+        () => h.codePushClientWrapper.getEnterpriseBillingOrganizations(
+          enterpriseId: 7,
+        ),
+      ).thenAnswer((_) async => []);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(() => h.logger.info('"Acme" has no billing account.')).called(1);
+    });
+
+    test('--json has the plan, position and organizations', () async {
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      final data = json['data'] as Map<String, dynamic>;
+      expect(data['enterprise_id'], 7);
+      expect((data['plan'] as Map)['name'], 'Enterprise');
+      expect(data['organizations'], [
+        {'id': 42, 'name': 'Mobile', 'app_count': 1, 'patch_installs': 950000},
+      ]);
+    });
+
+    test('rejects an organization id with --enterprise-id', () async {
+      when(() => h.argResults.rest).thenReturn(['42']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
+    });
+
+    test('rejects --org-id with --enterprise-id', () async {
+      when(() => h.argResults['org-id']).thenReturn('42');
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
+    });
+
+    test('reports a failed fetch', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseBilling(enterpriseId: 7),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch usage for enterprise 7.',
+      );
     });
   });
 }

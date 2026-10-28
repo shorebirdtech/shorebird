@@ -83,3 +83,18 @@ List<String> entryIds(List<dynamic> entries) => [
   for (final e in entries.cast<Map<String, dynamic>>())
     (e['metadata'] as Map)['uid'] as String,
 ];
+
+/// The enterprise audit log fetch on [wrapper], with any arguments.
+Future<GetOrganizationAuditLogsResponse> anyEnterpriseAuditLogFetch(
+  CodePushClientWrapper wrapper,
+) => wrapper.getEnterpriseAuditLogs(
+  enterpriseId: any(named: 'enterpriseId'),
+  perPage: any(named: 'perPage'),
+  cursor: any(named: 'cursor'),
+  order: any(named: 'order'),
+  startDate: any(named: 'startDate'),
+  endDate: any(named: 'endDate'),
+  appId: any(named: 'appId'),
+  actorId: any(named: 'actorId'),
+  operation: any(named: 'operation'),
+);
