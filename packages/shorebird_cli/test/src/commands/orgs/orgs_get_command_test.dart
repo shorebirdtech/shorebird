@@ -44,6 +44,25 @@ void main() {
       role: Role.owner,
     );
 
+    const position = AccountPosition(
+      includedInstalls: 50000,
+      installs: 12345,
+      includedInstallsUsed: 12345,
+      includedExhausted: false,
+      overageInstalls: 0,
+      installCeiling: 50000,
+      remainingInstalls: 37655,
+      atCeiling: false,
+      nearingLimit: false,
+      consumingOverage: false,
+      accruedOverageAmount: null,
+    );
+    const usage = GetUsageResponse(
+      apps: [],
+      position: position,
+      reportedOverage: null,
+    );
+
     late ArgResults argResults;
     late AppMetadata app;
     late CodePushClientWrapper codePushClientWrapper;
@@ -97,6 +116,11 @@ void main() {
           organizationId: any(named: 'organizationId'),
         ),
       ).thenAnswer((_) async => team);
+      when(
+        () => codePushClientWrapper.maybeGetOrganizationUsage(
+          organizationId: any(named: 'organizationId'),
+        ),
+      ).thenAnswer((_) async => usage);
     });
 
     test('requires the user to be signed in', () async {
@@ -129,6 +153,7 @@ void main() {
           'type: team',
           'your role: admin',
           'created: 2026-01-15',
+          'patch installs: 12,345 of 50,000 included',
         ]);
       });
 
@@ -340,7 +365,55 @@ void main() {
         'role': 'admin',
         'created_at': '2026-01-15T00:00:00.000Z',
         'updated_at': '2026-01-16T00:00:00.000Z',
+        'usage': position.toJson(),
       });
+    });
+
+    group('when the role may not see usage', () {
+      setUp(() {
+        when(() => argResults['org-id']).thenReturn('42');
+        when(
+          () => codePushClientWrapper.maybeGetOrganizationUsage(
+            organizationId: 42,
+          ),
+        ).thenAnswer((_) async => null);
+      });
+
+      test('leaves the usage line out', () async {
+        expect(
+          await runWithOverrides(command.run),
+          equals(ExitCode.success.code),
+        );
+        final lines = verify(
+          () => logger.info(captureAny()),
+        ).captured.cast<String>();
+        expect(lines.last, 'created: 2026-01-15');
+      });
+
+      test('--json gives null usage', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runWithOverrides(command.run, json: true),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        expect((json['data'] as Map)['usage'], isNull);
+      });
+    });
+
+    test('fails when usage fails any other way', () async {
+      when(() => argResults['org-id']).thenReturn('42');
+      when(
+        () => codePushClientWrapper.maybeGetOrganizationUsage(
+          organizationId: 42,
+        ),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => runWithOverrides(command.run, json: true),
+      );
+      expect(exitCode, equals(ExitCode.software.code));
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch usage for organization 42.',
+      );
     });
   });
 }

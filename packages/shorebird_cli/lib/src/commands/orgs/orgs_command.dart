@@ -1,5 +1,7 @@
+import 'package:shorebird_cli/src/commands/audit_log/audit_log.dart';
 import 'package:shorebird_cli/src/commands/members/members.dart';
 import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
+import 'package:shorebird_cli/src/commands/usage_command.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
@@ -10,11 +12,13 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 class OrgsCommand extends ShorebirdCommand {
   /// {@macro orgs_command}
   OrgsCommand() {
+    addSubcommand(OrgsAuditLogCommand());
     addSubcommand(OrgsCreateCommand());
     addSubcommand(OrgsGetCommand());
     addSubcommand(OrgsListCommand());
     addSubcommand(OrgsMembersCommand());
     addSubcommand(OrgsUpdateCommand());
+    addSubcommand(OrgsUsageCommand());
   }
 
   @override

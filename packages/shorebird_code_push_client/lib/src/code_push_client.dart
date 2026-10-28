@@ -1090,6 +1090,65 @@ class CodePushClient {
     }
   }
 
+  /// Gets one page of organization [organizationId]'s audit log.
+  ///
+  /// [cursor] is the `nextCursor` of the previous page. The other arguments
+  /// filter the entries; null leaves a filter off.
+  Future<GetOrganizationAuditLogsResponse> getOrganizationAuditLogs({
+    required int organizationId,
+    int? perPage,
+    String? cursor,
+    AuditLogOrder? order,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? appId,
+    int? actorId,
+    String? operation,
+  }) async {
+    final queryParameters = {
+      'per_page': ?perPage?.toString(),
+      'cursor': ?cursor,
+      'order': ?order?.value,
+      'startDate': ?startDate?.toUtc().toIso8601String(),
+      'endDate': ?endDate?.toUtc().toIso8601String(),
+      'appId': ?appId,
+      'actorId': ?actorId?.toString(),
+      'operation': ?operation,
+    };
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/organizations/$organizationId/audit-logs').replace(
+        // An empty map would leave a bare "?" on the URL.
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetOrganizationAuditLogsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Gets patch-install usage this allotment period for the account that
+  /// owns organization [organizationId].
+  Future<GetUsageResponse> getOrganizationUsage({
+    required int organizationId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/organizations/$organizationId/usage'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetUsageResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   /// Gets the apps in organization [organizationId] that the user can see.
   Future<List<AppMetadata>> getOrganizationApps({
     required int organizationId,
