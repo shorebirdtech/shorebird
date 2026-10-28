@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
@@ -7,51 +6,39 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// {@template enterprises_get_command}
-/// `shorebird enterprises get <enterprise-id>`
-/// Show an enterprise's name and domains.
+/// {@template enterprise_get_command}
+/// `shorebird enterprise get`
+/// Show your enterprise's name, domains and your role in it.
 /// {@endtemplate}
-class EnterprisesGetCommand extends ShorebirdCommand
+class EnterpriseGetCommand extends ShorebirdCommand
     with EnterpriseScopedCommand {
-  /// {@macro enterprises_get_command}
-  EnterprisesGetCommand() {
-    addEnterpriseScopeOption(
-      help:
-          'The id of the enterprise (e.g. "7"), as an option rather than an '
-          'argument. Defaults to your only enterprise.',
-    );
-  }
+  /// {@macro enterprise_get_command}
+  EnterpriseGetCommand();
 
   @override
   String get name => 'get';
 
   @override
-  String get invocation => 'shorebird enterprises get <enterprise-id>';
-
-  @override
   String get description =>
-      "Shows an enterprise's name and domains. Needs an owner or admin of "
-      'the enterprise.\n\n'
+      "Shows your enterprise's name, its domains and your role in it. Needs "
+      'an owner or admin of the enterprise.\n\n'
       'Example output:\n'
       '  Acme (id: 7)\n'
-      '  Domains: acme.com, acme.dev\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird enterprises get 7 --json')}';
+      '  Domains: acme.com, acme.dev\n'
+      '  Your role: admin\n\n'
+      'Role is "owner", "admin", "billingManager" or "member".\n\n'
+      '${ShorebirdCommand.jsonHint('shorebird enterprise get --json')}';
 
   @override
   Future<int> run() async {
-    final rest = results.rest;
-    final option = enterpriseIdOption;
-    if (rest.length > 1 || (rest.isNotEmpty && option != null)) {
+    if (results.rest.isNotEmpty) {
       return reportError(
-        message: 'Pass one enterprise id: shorebird enterprises get 7.',
+        message:
+            '`shorebird enterprise get` takes no arguments: an account is in '
+            'at most one enterprise.',
       );
     }
-    // Reading one enterprise widens nothing, so your only one is a safe
-    // default, as `orgs get` defaults to your only organization.
-    final (:membership, :errorCode) = await resolveEnterprise(
-      enterpriseId: option ?? rest.firstOrNull,
-      defaultToOnly: true,
-    );
+    final (:membership, :errorCode) = await resolveEnterprise();
     if (errorCode != null) return errorCode;
     final role = membership!.role;
 
@@ -77,7 +64,8 @@ class EnterprisesGetCommand extends ShorebirdCommand
     final domains = enterprise.domains;
     logger
       ..info('${lightCyan.wrap(enterprise.name)} (id: ${enterprise.id})')
-      ..info('Domains: ${domains.isEmpty ? 'none' : domains.join(', ')}');
+      ..info('Domains: ${domains.isEmpty ? 'none' : domains.join(', ')}')
+      ..info('Your role: ${role.value}');
     return ExitCode.success.code;
   }
 }

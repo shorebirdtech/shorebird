@@ -225,7 +225,7 @@ void main() {
     });
   });
 
-  group('OrgsListCommand --enterprise-id', () {
+  group('OrgsListCommand --enterprise', () {
     late EnterpriseHarness h;
     late OrgsListCommand command;
 
@@ -277,11 +277,11 @@ void main() {
       });
     });
 
-    test('names your enterprises for one you are not in', () async {
-      when(() => h.argResults['enterprise-id']).thenReturn('99');
+    test('says when you are in no enterprise', () async {
+      when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
-        () => h.logger.err('You are not a member of enterprise 99.'),
+        () => h.logger.err("You aren't a member of an enterprise."),
       ).called(1);
     });
 

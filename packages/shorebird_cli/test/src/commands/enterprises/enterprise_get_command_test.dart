@@ -13,18 +13,16 @@ import 'enterprise_test_harness.dart';
 void main() {
   useTempWorkingDirectory();
 
-  group(EnterprisesGetCommand, () {
+  group(EnterpriseGetCommand, () {
     late EnterpriseHarness h;
-    late EnterprisesGetCommand command;
+    late EnterpriseGetCommand command;
 
     setUp(() {
       h = EnterpriseHarness();
-      when(() => h.argResults['enterprise-id']).thenReturn(null);
-      when(() => h.argResults.rest).thenReturn(['7']);
       when(
         () => h.codePushClientWrapper.getEnterprise(enterpriseId: 7),
       ).thenAnswer((_) async => EnterpriseFixtures.acmeEnterprise);
-      command = h.run(EnterprisesGetCommand.new)..testArgResults = h.argResults;
+      command = h.run(EnterpriseGetCommand.new)..testArgResults = h.argResults;
     });
 
     test('prints the name and domains', () async {
@@ -35,6 +33,7 @@ void main() {
       expect(lines, [
         allOf(contains('Acme'), endsWith('(id: 7)')),
         'Domains: acme.com, acme.dev',
+        'Your role: admin',
       ]);
     });
 
@@ -65,36 +64,7 @@ void main() {
       });
     });
 
-    test('defaults to your only enterprise', () async {
-      when(
-        h.codePushClientWrapper.getEnterprises,
-      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
-      when(() => h.argResults.rest).thenReturn([]);
-      expect(await h.run(command.run), ExitCode.success.code);
-      verify(
-        () => h.codePushClientWrapper.getEnterprise(enterpriseId: 7),
-      ).called(1);
-    });
-
-    test(
-      'lists your enterprises when you have several and name none',
-      () async {
-        when(() => h.argResults.rest).thenReturn([]);
-        expect(await h.run(command.run), ExitCode.usage.code);
-        verify(() => h.logger.err('Pass an enterprise id.')).called(1);
-        verify(
-          () => h.logger.info(
-            'Enterprise ids are integers, e.g. --enterprise-id 7. Your '
-            'enterprises: Acme (id: 7), Beacon (id: 8).',
-          ),
-        ).called(1);
-      },
-    );
-
-    test('defaults to your only enterprise from real arguments', () async {
-      when(
-        h.codePushClientWrapper.getEnterprises,
-      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+    test('runs from real arguments', () async {
       command.testArgResults = command.argParser.parse([]);
       expect(await h.run(command.run), ExitCode.success.code);
       verify(
@@ -102,59 +72,17 @@ void main() {
       ).called(1);
     });
 
-    test('takes the id as --enterprise-id', () async {
-      command.testArgResults = command.argParser.parse([
-        '--enterprise-id',
-        '7',
-      ]);
-      expect(await h.run(command.run), ExitCode.success.code);
-      verify(
-        () => h.codePushClientWrapper.getEnterprise(enterpriseId: 7),
-      ).called(1);
-    });
-
-    test('rejects an id given both ways', () async {
-      command.testArgResults = command.argParser.parse([
-        '7',
-        '--enterprise-id',
-        '8',
-      ]);
+    test('takes no arguments', () async {
+      when(() => h.argResults.rest).thenReturn(['7']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);
-    });
-
-    test('rejects more than one id', () async {
-      when(() => h.argResults.rest).thenReturn(['7', '8']);
-      expect(await h.run(command.run), ExitCode.usage.code);
-      verifyNever(h.codePushClientWrapper.getEnterprises);
-    });
-
-    test('rejects an id that is not a number', () async {
-      when(() => h.argResults.rest).thenReturn(['acme']);
-      expect(await h.run(command.run), ExitCode.usage.code);
-      verify(
-        () => h.logger.err('"acme" is not a valid enterprise id.'),
-      ).called(1);
-    });
-
-    test('names your enterprises for one you are not in', () async {
-      when(() => h.argResults.rest).thenReturn(['99']);
-      final (:exitCode, :json) = await captureJson(
-        () => h.run(command.run, json: true),
-      );
-      expect(exitCode, ExitCode.usage.code);
-      expect(json['error'], {
-        'code': 'usage_error',
-        'message': 'You are not a member of enterprise 99.',
-        'hint': 'Your enterprises: Acme (id: 7), Beacon (id: 8).',
-      });
     });
 
     test('says when you are in no enterprise', () async {
       when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
-        () => h.logger.info('You are not a member of any enterprise.'),
+        () => h.logger.err("You aren't a member of an enterprise."),
       ).called(1);
     });
 
@@ -168,7 +96,7 @@ void main() {
       expect(exitCode, ExitCode.software.code);
       expect(
         (json['error'] as Map)['message'],
-        'Failed to fetch enterprises.',
+        'Failed to fetch your enterprise.',
       );
     });
 
