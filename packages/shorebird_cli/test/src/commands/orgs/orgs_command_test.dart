@@ -25,7 +25,7 @@ void main() {
     test('lists, creates, shows and renames organizations', () {
       expect(
         command.subcommands.keys,
-        containsAll(['create', 'get', 'list', 'update']),
+        containsAll(['create', 'get', 'list', 'members', 'update']),
       );
     });
 

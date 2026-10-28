@@ -50,9 +50,17 @@ jobs:
         if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
         # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
+        # `dart test` keeps every suite's compiled kernel file in the temp
+        # dir until it exits, so one run over a package with ~200 test files
+        # fills the runner's disk ("Disk quota exceeded"). Running the files
+        # 50 at a time frees that dir between runs, as the dart_package
+        # action does (#4262). Each suite writes its own coverage file.
+        # shorebird_ci's generator still emits a single `dart test`; keep
+        # this batching if the file is regenerated.
+        shell: bash
         run: |
-          dart pub global activate coverage 1.15.1 && \
-          dart test --coverage=coverage && \
+          dart pub global activate coverage 1.15.1
+          find test -name '*_test.dart' | sort | xargs -r -n 50 dart test --coverage=coverage
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
         uses: codecov/codecov-action@v7

@@ -49,6 +49,10 @@ mixin ConfirmDelete on ShorebirdCommand {
   /// so the user always sees it. With `--json` it is not printed, so stdout
   /// stays a single envelope.
   ///
+  /// [verb] starts the y/N question and its hint (e.g. "Remove" asks
+  /// "Remove bob@acme.com from "Acme"?"), for deletes that don't destroy
+  /// anything.
+  ///
   /// Returns `null` when the caller may proceed, or an exit code after
   /// reporting why it may not. Throws [PromptDeclinedExit] when the user
   /// declines the prompt.
@@ -56,8 +60,10 @@ mixin ConfirmDelete on ShorebirdCommand {
     required String name,
     required String description,
     required String consequence,
+    String verb = 'Delete',
   }) {
-    final hint = 'Re-run with --$yesArgName to delete $description.';
+    final hint =
+        'Re-run with --$yesArgName to ${verb.toLowerCase()} $description.';
     final confirmName = argParser.options.containsKey(confirmNameArgName)
         ? results[confirmNameArgName] as String?
         : null;
@@ -80,7 +86,7 @@ mixin ConfirmDelete on ShorebirdCommand {
     }
 
     _announce(consequence);
-    if (logger.confirm('Delete $description?', hint: hint)) return null;
+    if (logger.confirm('$verb $description?', hint: hint)) return null;
     logger.err('Nothing was deleted.');
     throw PromptDeclinedExit();
   }

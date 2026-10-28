@@ -1,3 +1,4 @@
+import 'package:shorebird_cli/src/commands/members/members.dart';
 import 'package:shorebird_cli/src/commands/orgs/orgs.dart';
 import 'package:shorebird_cli/src/commands/service_accounts/service_accounts.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -13,6 +14,7 @@ class OrgsCommand extends ShorebirdCommand {
     addSubcommand(OrgsCreateCommand());
     addSubcommand(OrgsGetCommand());
     addSubcommand(OrgsListCommand());
+    addSubcommand(OrgsMembersCommand());
     addSubcommand(OrgsServiceAccountsCommand());
     addSubcommand(OrgsUpdateCommand());
   }
