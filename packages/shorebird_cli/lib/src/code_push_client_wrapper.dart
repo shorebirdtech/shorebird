@@ -424,6 +424,52 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the trust rules of service account [serviceAccountId].
+  Future<List<ServiceAccountTrustRule>> getServiceAccountTrustRules({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Fetching trust rules',
+      () => codePushClient.getServiceAccountTrustRules(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Adds trust rule [rule] to service account [serviceAccountId].
+  Future<ServiceAccountTrustRule> createServiceAccountTrustRule({
+    required int organizationId,
+    required int serviceAccountId,
+    required CreateServiceAccountTrustRuleRequest rule,
+  }) {
+    return _withProgress(
+      'Adding trust rule',
+      () => codePushClient.createServiceAccountTrustRule(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        rule: rule,
+      ),
+    );
+  }
+
+  /// Deletes trust rule [ruleId] of service account [serviceAccountId].
+  Future<void> deleteServiceAccountTrustRule({
+    required int organizationId,
+    required int serviceAccountId,
+    required int ruleId,
+  }) {
+    return _withProgress(
+      'Removing trust rule',
+      () => codePushClient.deleteServiceAccountTrustRule(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        ruleId: ruleId,
+      ),
+    );
+  }
+
   /// Finds which of [memberships]' organizations app [appId] is in, or null
   /// if none of them lists it.
   ///

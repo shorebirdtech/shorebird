@@ -1069,6 +1069,74 @@ void main() {
             verify(() => progress.complete()).called(1);
           });
 
+          test('trust rule calls pass through', () async {
+            final rule = ServiceAccountTrustRule(
+              id: 7,
+              provider: TrustRuleProvider.github,
+              createdAt: DateTime(2026),
+              createdByUserId: null,
+              lastUsedAt: null,
+              github: const GithubTrustRule(
+                repositoryOwner: 'acme',
+                repositoryOwnerId: 1,
+                repositoryName: 'app',
+                workflowPath: '.github/workflows/release.yml',
+                environment: null,
+                refPattern: null,
+              ),
+            );
+            const request = CreateServiceAccountTrustRuleRequest(
+              provider: TrustRuleProvider.github,
+              repositoryOwner: 'acme',
+              repositoryName: 'app',
+              workflowPath: '.github/workflows/release.yml',
+            );
+            when(
+              () => codePushClient.getServiceAccountTrustRules(
+                organizationId: 42,
+                serviceAccountId: 383,
+              ),
+            ).thenAnswer((_) async => [rule]);
+            when(
+              () => codePushClient.createServiceAccountTrustRule(
+                organizationId: 42,
+                serviceAccountId: 383,
+                rule: request,
+              ),
+            ).thenAnswer((_) async => rule);
+            when(
+              () => codePushClient.deleteServiceAccountTrustRule(
+                organizationId: 42,
+                serviceAccountId: 383,
+                ruleId: 7,
+              ),
+            ).thenAnswer((_) async {});
+
+            await runWithOverrides(() async {
+              expect(
+                await codePushClientWrapper.getServiceAccountTrustRules(
+                  organizationId: 42,
+                  serviceAccountId: 383,
+                ),
+                [rule],
+              );
+              expect(
+                await codePushClientWrapper.createServiceAccountTrustRule(
+                  organizationId: 42,
+                  serviceAccountId: 383,
+                  rule: request,
+                ),
+                rule,
+              );
+              await codePushClientWrapper.deleteServiceAccountTrustRule(
+                organizationId: 42,
+                serviceAccountId: 383,
+                ruleId: 7,
+              );
+            });
+            verify(() => progress.complete()).called(3);
+          });
+
           test('exits with code 70 when a call fails', () async {
             when(
               () => codePushClient.getServiceAccounts(organizationId: 42),
