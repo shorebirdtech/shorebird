@@ -6,6 +6,7 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -88,6 +89,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(AccountCommand());
     addCommand(ApiCommand());
     addCommand(AppsCommand());
+    addCommand(AuditLogCommand());
     addCommand(AuthCommand());
     addCommand(CacheCommand());
     addCommand(ChannelsCommand());
@@ -110,38 +112,79 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(ReleasesCommand());
     addCommand(TokensCommand());
     addCommand(UpgradeCommand());
+    addCommand(UsageCommand());
     addCommand(TopLevelWhoamiCommand());
   }
 
   @override
   void printUsage() => logger.info(usage);
 
-  /// [results], or, when they name a command with a
-  /// [ShorebirdCommand.defaultSubcommand] and no subcommand, arguments, or
-  /// `--help`, [args] parsed again with that subcommand added, so that a bare
-  /// `shorebird account` runs `shorebird account whoami`.
-  ArgResults _withDefaultSubcommand(List<String> args, ArgResults results) {
-    var commands = this.commands;
-    var next = results.command;
-    while (next != null) {
-      final command = commands[next.name];
-      if (command == null) return results;
-      if (next.command == null) {
-        // After `--`, an added subcommand would be read as an argument.
-        if (command is! ShorebirdCommand ||
-            next.rest.isNotEmpty ||
-            args.contains('--') ||
-            (next.options.contains('help') && next.flag('help'))) {
-          return results;
+  /// [args], with a command's [ShorebirdCommand.defaultSubcommand] added
+  /// right after the command when they name it without a subcommand: bare
+  /// (`shorebird account` runs `shorebird account whoami`), with options
+  /// only the subcommand takes (`shorebird audit-log --org-id 42`), or
+  /// with a positional argument the subcommand takes (`shorebird audit-log
+  /// 42`). Otherwise [args] as they are, including after `--` and with
+  /// `--help`, which asks for the command's own usage.
+  @visibleForTesting
+  List<String> withDefaultSubcommand(List<String> args) {
+    if (args.contains('--')) return args;
+    List<String> path;
+    try {
+      final results = argParser.parse(args);
+      path = [];
+      var next = results.command;
+      while (next != null) {
+        path.add(next.name!);
+        if (next.command == null &&
+            next.options.contains('help') &&
+            next.flag('help')) {
+          return args;
         }
-        final subcommand = command.defaultSubcommand;
-        if (subcommand == null) return results;
-        return parse([...args, subcommand]);
+        next = next.command;
       }
-      commands = command.subcommands;
-      next = next.command;
+    } on ArgParserException catch (error) {
+      path = error.commands;
     }
-    return results;
+
+    var commands = this.commands;
+    Command<int>? command;
+    var index = -1;
+    for (final name in path) {
+      command = commands[name];
+      index = args.indexOf(name, index + 1);
+      if (command == null || index < 0) return args;
+      commands = command.subcommands;
+    }
+    if (command is! ShorebirdCommand) return args;
+    final subcommand = command.defaultSubcommand;
+    if (subcommand == null) return args;
+    final withSubcommand = [
+      ...args.sublist(0, index + 1),
+      subcommand,
+      ...args.sublist(index + 1),
+    ];
+
+    // A word left over is a positional argument for the subcommand, or a
+    // mistyped subcommand name (`shorebird orgs lst`); keep that an error
+    // unless the subcommand reads positional arguments.
+    final ArgResults results;
+    try {
+      results = argParser.parse(withSubcommand);
+    } on ArgParserException {
+      // The subcommand doesn't take them either; report them as given.
+      return args;
+    }
+    var deepest = results;
+    while (deepest.command != null) {
+      deepest = deepest.command!;
+    }
+    final target = command.subcommands[subcommand];
+    if (deepest.rest.isNotEmpty &&
+        !(target is ShorebirdCommand && target.takesPositionalArguments)) {
+      return args;
+    }
+    return withSubcommand;
   }
 
   @override
@@ -153,10 +196,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     final jsonModeFromArgs = argsList.contains('--json');
 
     try {
-      final topLevelResults = _withDefaultSubcommand(
-        argsList,
-        parse(argsList),
-      );
+      final topLevelResults = parse(withDefaultSubcommand(argsList));
 
       final localEngineSrcPath =
           topLevelResults['local-engine-src-path'] as String?;
