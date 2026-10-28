@@ -256,7 +256,7 @@ void main() {
     });
   });
 
-  group('UsageCommand --enterprise-id', () {
+  group('UsageCommand --enterprise', () {
     late EnterpriseHarness h;
     late UsageCommand command;
 
@@ -360,20 +360,20 @@ void main() {
       ]);
     });
 
-    test('rejects an organization id with --enterprise-id', () async {
+    test('rejects an organization id with --enterprise', () async {
       when(() => h.argResults.rest).thenReturn(['42']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
         () => h.logger.err(
-          'Pass an organization id or --enterprise-id, not both: '
-          '--enterprise-id already covers every organization in the '
+          'Pass an organization id or --enterprise, not both: '
+          '--enterprise already covers every organization in the '
           'enterprise.',
         ),
       ).called(1);
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
 
-    test('rejects --org-id with --enterprise-id', () async {
+    test('rejects --org-id with --enterprise', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);

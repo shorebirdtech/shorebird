@@ -24,7 +24,7 @@ class AuditLogCommand extends ShorebirdCommand {
       'shows one page (the same as `shorebird audit-log list`). Needs '
       'a plan that includes the audit log, and the owner, admin or auditor '
       'role.\n\n'
-      "Pass --enterprise-id for an enterprise's log: membership and access "
+      "Pass --enterprise for an enterprise's log: membership and access "
       'across its organizations, for its owners and admins.';
 
   @override

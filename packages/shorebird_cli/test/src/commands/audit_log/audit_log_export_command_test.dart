@@ -245,7 +245,7 @@ void main() {
     });
   });
 
-  group('AuditLogExportCommand --enterprise-id', () {
+  group('AuditLogExportCommand --enterprise', () {
     late EnterpriseHarness h;
     late AuditLogExportCommand command;
 
@@ -263,8 +263,7 @@ void main() {
 
     test("--json exports the enterprise's whole log", () async {
       command.testArgResults = command.argParser.parse([
-        '--enterprise-id',
-        '7',
+        '--enterprise',
       ]);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),

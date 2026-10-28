@@ -321,7 +321,7 @@ void main() {
     });
   });
 
-  group('AuditLogListCommand --enterprise-id', () {
+  group('AuditLogListCommand --enterprise', () {
     late EnterpriseHarness h;
     late AuditLogListCommand command;
 
@@ -343,8 +343,8 @@ void main() {
     void parse(List<String> args) =>
         command.testArgResults = command.argParser.parse(args);
 
-    test("reads the enterprise's log and pages with --enterprise-id", () async {
-      parse(['--enterprise-id', '7', '--event', 'app.create']);
+    test("reads the enterprise's log and pages with --enterprise", () async {
+      parse(['--enterprise', '--event', 'app.create']);
       expect(await h.run(command.run), ExitCode.success.code);
       verify(
         () => h.codePushClientWrapper.getEnterpriseAuditLogs(
@@ -355,7 +355,7 @@ void main() {
       ).called(1);
       verify(
         () => h.logger.info(
-          'Next page: shorebird audit-log list --enterprise-id 7 --event '
+          'Next page: shorebird audit-log list --enterprise --event '
           'app.create --cursor c2',
         ),
       ).called(1);
@@ -363,7 +363,7 @@ void main() {
     });
 
     test('--json keys the page by enterprise', () async {
-      parse(['--enterprise-id', '7']);
+      parse(['--enterprise']);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),
       );
@@ -374,23 +374,24 @@ void main() {
       expect(data['next_cursor'], 'c2');
     });
 
-    test('rejects an organization id with --enterprise-id', () async {
-      parse(['42', '--enterprise-id', '7']);
+    test('rejects an organization id with --enterprise', () async {
+      parse(['42', '--enterprise']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
 
-    test('rejects --org-id with --enterprise-id', () async {
-      parse(['--org-id', '42', '--enterprise-id', '7']);
+    test('rejects --org-id with --enterprise', () async {
+      parse(['--org-id', '42', '--enterprise']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
 
-    test('names your enterprises for one you are not in', () async {
-      parse(['--enterprise-id', '99']);
+    test('says when you are in no enterprise', () async {
+      when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
+      parse(['--enterprise']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
-        () => h.logger.err('You are not a member of enterprise 99.'),
+        () => h.logger.err("You aren't a member of an enterprise."),
       ).called(1);
     });
 
@@ -398,7 +399,7 @@ void main() {
       when(
         () => anyEnterpriseAuditLogFetch(h.codePushClientWrapper),
       ).thenThrow(ProcessExit(ExitCode.software.code));
-      parse(['--enterprise-id', '7']);
+      parse(['--enterprise']);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),
       );

@@ -37,9 +37,10 @@ class AuditLogScope {
   /// Whether [id] names an enterprise.
   final bool isEnterprise;
 
-  /// The option that names this scope on a command line.
+  /// The option that names this scope on a command line. The user is in at
+  /// most one enterprise, so `--enterprise` needs no id.
   String get option => isEnterprise
-      ? '--${CommonArguments.enterpriseIdArg.name} $id'
+      ? '--${CommonArguments.enterpriseArg.name}'
       : '--${CommonArguments.orgIdArg.name} $id';
 
   /// This scope in a sentence, such as "organization 42".
@@ -94,13 +95,13 @@ mixin AuditLogFilterOptions
     'order',
   ];
 
-  /// Adds `--org-id`, `--enterprise-id` and the filter options
+  /// Adds `--org-id`, `--enterprise` and the filter options
   /// [parseFilters] reads.
   void addFilterOptions() {
     addOrganizationScopeOption();
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          "Read this enterprise's log (e.g. \"7\") instead: who joined, left "
+          "Read your enterprise's log instead: who joined, left "
           'or changed roles and access across its organizations. App '
           'activity (releases, patches, channels) stays in each '
           "organization's log. Needs an owner or admin of the enterprise.",
@@ -209,7 +210,7 @@ mixin AuditLogFilterOptions
     );
   }
 
-  /// Picks whose log to read: the enterprise `--enterprise-id` names, else
+  /// Picks whose log to read: your enterprise with `--enterprise`, else
   /// the organization as [resolveOrganizationFromArguments] picks it.
   /// [example] is the command with `<org-id>` where the id goes.
   ///
@@ -217,7 +218,7 @@ mixin AuditLogFilterOptions
   Future<({AuditLogScope? scope, int? errorCode})> resolveScope({
     required String example,
   }) async {
-    if (enterpriseIdOption != null) {
+    if (enterpriseScope) {
       final scopeError =
           rejectOrganizationAndEnterprise() ??
           rejectOrganizationArgumentWithEnterprise();
