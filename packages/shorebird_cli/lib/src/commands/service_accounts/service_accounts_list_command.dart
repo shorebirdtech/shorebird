@@ -17,11 +17,10 @@ class ServiceAccountsListCommand extends ShorebirdCommand
   /// {@macro service_accounts_list_command}
   ServiceAccountsListCommand() {
     addOrganizationScopeOption();
-    addEnterpriseScopeOption(
+    addEnterpriseScopeFlag(
       help:
-          'List the service accounts of every organization in this '
-          'enterprise (e.g. "7") instead. Needs an owner or admin of the '
-          'enterprise.',
+          'List the service accounts of every organization in your '
+          'enterprise instead. Needs an owner or admin of the enterprise.',
     );
   }
 
@@ -33,7 +32,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
       "Lists an organization's service accounts.\n\n"
       'Example output (space-separated: id  name  role  last signed in):\n'
       '  383  release-bot  developer  2026-10-20\n\n'
-      "With --enterprise-id, lists every organization's service accounts "
+      "With --enterprise, lists every organization's service accounts "
       '(space-separated: id  name  organization_id  organization_name  role  '
       'last signed in). '
       'They stay owned by their organization; manage one with --org-id.\n\n'
@@ -45,7 +44,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
   Future<int> run() async {
     final scopeError = rejectOrganizationAndEnterprise();
     if (scopeError != null) return scopeError;
-    if (enterpriseIdOption != null) return _listEnterpriseServiceAccounts();
+    if (enterpriseScope) return _listEnterpriseServiceAccounts();
 
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return errorCode;

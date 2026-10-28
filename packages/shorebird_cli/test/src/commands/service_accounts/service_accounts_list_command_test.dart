@@ -75,7 +75,7 @@ void main() {
     });
   });
 
-  group('ServiceAccountsListCommand --enterprise-id', () {
+  group('ServiceAccountsListCommand --enterprise', () {
     late EnterpriseHarness h;
     late ServiceAccountsListCommand command;
 
@@ -108,7 +108,7 @@ void main() {
         command.testArgResults = command.argParser.parse(args);
 
     test("lists every organization's accounts", () async {
-      parse(['--enterprise-id', '7']);
+      parse(['--enterprise']);
       expect(await h.run(command.run), ExitCode.success.code);
       final lines = verify(
         () => h.logger.info(captureAny()),
@@ -133,7 +133,7 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenAnswer((_) async => []);
-      parse(['--enterprise-id', '7']);
+      parse(['--enterprise']);
       expect(await h.run(command.run), ExitCode.success.code);
       verify(
         () => h.logger.info('"Acme" has no service accounts.'),
@@ -141,7 +141,7 @@ void main() {
     });
 
     test("--json names each account's organization", () async {
-      parse(['--enterprise-id', '7']);
+      parse(['--enterprise']);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),
       );
@@ -163,8 +163,8 @@ void main() {
       });
     });
 
-    test('rejects --org-id with --enterprise-id', () async {
-      parse(['--org-id', '42', '--enterprise-id', '7']);
+    test('rejects --org-id with --enterprise', () async {
+      parse(['--org-id', '42', '--enterprise']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
@@ -175,7 +175,7 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenThrow(ProcessExit(ExitCode.software.code));
-      parse(['--enterprise-id', '7']);
+      parse(['--enterprise']);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),
       );
