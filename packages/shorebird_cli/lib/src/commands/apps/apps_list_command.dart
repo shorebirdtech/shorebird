@@ -100,7 +100,7 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
         enterpriseId: enterprise.id,
       ),
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch the apps of enterprise ${enterprise.id}.',
+      message: 'Failed to fetch the apps of "${enterprise.name}".',
     );
     if (fetchError != null) return fetchError;
 

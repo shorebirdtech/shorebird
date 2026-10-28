@@ -103,8 +103,7 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
       () async => organizations = await codePushClientWrapper
           .getEnterpriseOrganizations(enterpriseId: enterprise.id),
       code: JsonErrorCode.fetchFailed,
-      message:
-          'Failed to fetch the organizations of enterprise ${enterprise.id}.',
+      message: 'Failed to fetch the organizations of "${enterprise.name}".',
     );
     if (fetchError != null) return fetchError;
 

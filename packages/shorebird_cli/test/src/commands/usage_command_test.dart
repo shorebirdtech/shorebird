@@ -328,23 +328,58 @@ void main() {
       ).called(1);
     });
 
-    test('says when the enterprise has no billing account', () async {
+    group('without a billing account', () {
+      setUp(() {
+        when(
+          () => h.codePushClientWrapper.getEnterpriseBilling(enterpriseId: 7),
+        ).thenAnswer(
+          (_) async => EnterpriseBilling.fromJson(const {
+            'has_billing_account': false,
+            'plan': null,
+            'position': null,
+          }),
+        );
+      });
+
+      test('says so, without fetching the organizations', () async {
+        expect(await h.run(command.run), ExitCode.success.code);
+        verify(
+          () => h.logger.info(
+            '"Acme" has no billing account: each organization bills through '
+            'its owner. Run `shorebird usage <org-id>` for one '
+            "organization's usage.",
+          ),
+        ).called(1);
+        verifyNever(
+          () => h.codePushClientWrapper.getEnterpriseBillingOrganizations(
+            enterpriseId: any(named: 'enterpriseId'),
+          ),
+        );
+      });
+
+      test('--json has no organizations', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => h.run(command.run, json: true),
+        );
+        expect(exitCode, ExitCode.success.code);
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['has_billing_account'], isFalse);
+        expect(data['organizations'], isEmpty);
+      });
+    });
+
+    test('says when a billing account has no current plan', () async {
       when(
         () => h.codePushClientWrapper.getEnterpriseBilling(enterpriseId: 7),
       ).thenAnswer(
         (_) async => EnterpriseBilling.fromJson(const {
-          'has_billing_account': false,
+          'has_billing_account': true,
           'plan': null,
           'position': null,
         }),
       );
-      when(
-        () => h.codePushClientWrapper.getEnterpriseBillingOrganizations(
-          enterpriseId: 7,
-        ),
-      ).thenAnswer((_) async => []);
       expect(await h.run(command.run), ExitCode.success.code);
-      verify(() => h.logger.info('"Acme" has no billing account.')).called(1);
+      verify(() => h.logger.info('"Acme" has no current plan.')).called(1);
     });
 
     test('--json has the plan, position and organizations', () async {
@@ -389,7 +424,23 @@ void main() {
       expect(exitCode, ExitCode.software.code);
       expect(
         (json['error'] as Map)['message'],
-        'Failed to fetch usage for enterprise 7.',
+        'Failed to fetch usage for "Acme".',
+      );
+    });
+
+    test('reports a failed fetch of the organizations', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseBillingOrganizations(
+          enterpriseId: 7,
+        ),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch usage for "Acme".',
       );
     });
   });

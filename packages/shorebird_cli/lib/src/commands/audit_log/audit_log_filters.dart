@@ -26,10 +26,11 @@ String? auditLogErrorHint(String? apiCode) => switch (apiCode) {
 /// which covers every organization in it.
 class AuditLogScope {
   /// Organization [id]'s log.
-  const AuditLogScope.organization(this.id) : isEnterprise = false;
+  const AuditLogScope.organization(this.id) : isEnterprise = false, name = null;
 
-  /// Enterprise [id]'s log.
-  const AuditLogScope.enterprise(this.id) : isEnterprise = true;
+  /// The log of enterprise [id], called [name].
+  const AuditLogScope.enterprise(this.id, {required String this.name})
+    : isEnterprise = true;
 
   /// The organization or enterprise id.
   final int id;
@@ -37,14 +38,17 @@ class AuditLogScope {
   /// Whether [id] names an enterprise.
   final bool isEnterprise;
 
+  /// The enterprise's name; null for an organization.
+  final String? name;
+
   /// The option that names this scope on a command line. The user is in at
   /// most one enterprise, so `--enterprise` needs no id.
   String get option => isEnterprise
       ? '--${CommonArguments.enterpriseArg.name}'
       : '--${CommonArguments.orgIdArg.name} $id';
 
-  /// This scope in a sentence, such as "organization 42".
-  String get label => isEnterprise ? 'enterprise $id' : 'organization $id';
+  /// This scope in a sentence, such as "organization 42" or `"Acme"`.
+  String get label => isEnterprise ? '"$name"' : 'organization $id';
 
   /// The `--json` key that holds [id].
   String get jsonKey => isEnterprise ? 'enterprise_id' : 'organization_id';
@@ -225,7 +229,13 @@ mixin AuditLogFilterOptions
       if (scopeError != null) return (scope: null, errorCode: scopeError);
       final (:membership, :errorCode) = await resolveEnterprise();
       if (errorCode != null) return (scope: null, errorCode: errorCode);
-      return (scope: AuditLogScope.enterprise(membership!.id), errorCode: null);
+      return (
+        scope: AuditLogScope.enterprise(
+          membership!.id,
+          name: membership.name,
+        ),
+        errorCode: null,
+      );
     }
     final (:membership, :errorCode) = await resolveOrganizationFromArguments(
       example: example,

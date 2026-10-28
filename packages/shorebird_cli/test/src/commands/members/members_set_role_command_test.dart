@@ -290,7 +290,7 @@ void main() {
       when(
         h.codePushClientWrapper.getEnterprises,
       ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
-      expect(await h.run(command.run), ExitCode.usage.code);
+      expect(await h.run(command.run), ExitCode.noPerm.code);
       verify(
         () => h.logger.err(
           'Only owners of "Acme" can change enterprise roles; you are admin.',
@@ -326,7 +326,7 @@ void main() {
       expect(exitCode, ExitCode.software.code);
       expect(
         (json['error'] as Map)['message'],
-        'Failed to fetch the members of enterprise 7.',
+        'Failed to fetch the members of "Acme".',
       );
     });
 

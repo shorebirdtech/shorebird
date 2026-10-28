@@ -108,19 +108,27 @@ class UsageCommand extends ShorebirdCommand
     final enterprise = membership!;
 
     late final EnterpriseBilling billing;
-    late final List<EnterpriseBillingOrganization> organizations;
     final fetchError = await guardApiCall(
-      () async {
-        billing = await codePushClientWrapper.getEnterpriseBilling(
-          enterpriseId: enterprise.id,
-        );
-        organizations = await codePushClientWrapper
-            .getEnterpriseBillingOrganizations(enterpriseId: enterprise.id);
-      },
+      () async => billing = await codePushClientWrapper.getEnterpriseBilling(
+        enterpriseId: enterprise.id,
+      ),
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch usage for enterprise ${enterprise.id}.',
+      message: 'Failed to fetch usage for "${enterprise.name}".',
     );
     if (fetchError != null) return fetchError;
+
+    // Without a billing account, each organization bills through its own
+    // owner, so there is no enterprise breakdown to fetch.
+    var organizations = const <EnterpriseBillingOrganization>[];
+    if (billing.hasBillingAccount) {
+      final organizationsError = await guardApiCall(
+        () async => organizations = await codePushClientWrapper
+            .getEnterpriseBillingOrganizations(enterpriseId: enterprise.id),
+        code: JsonErrorCode.fetchFailed,
+        message: 'Failed to fetch usage for "${enterprise.name}".',
+      );
+      if (organizationsError != null) return organizationsError;
+    }
 
     if (isJsonMode) {
       emitJsonSuccess({
@@ -131,10 +139,18 @@ class UsageCommand extends ShorebirdCommand
       return ExitCode.success.code;
     }
 
+    if (!billing.hasBillingAccount) {
+      logger.info(
+        '"${enterprise.name}" has no billing account: each organization '
+        'bills through its owner. Run `shorebird usage <org-id>` for one '
+        "organization's usage.",
+      );
+      return ExitCode.success.code;
+    }
     final plan = billing.plan;
     final position = billing.position;
     if (plan == null || position == null) {
-      logger.info('"${enterprise.name}" has no billing account.');
+      logger.info('"${enterprise.name}" has no current plan.');
       return ExitCode.success.code;
     }
     logger.info(

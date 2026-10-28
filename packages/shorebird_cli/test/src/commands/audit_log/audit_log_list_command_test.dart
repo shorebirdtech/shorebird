@@ -389,7 +389,7 @@ void main() {
     test('says when you are in no enterprise', () async {
       when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
       parse(['--enterprise']);
-      expect(await h.run(command.run), ExitCode.usage.code);
+      expect(await h.run(command.run), ExitCode.noPerm.code);
       verify(
         () => h.logger.err("You aren't a member of an enterprise."),
       ).called(1);
@@ -406,7 +406,7 @@ void main() {
       expect(exitCode, ExitCode.software.code);
       expect(
         (json['error'] as Map)['message'],
-        'Failed to fetch the audit log of enterprise 7.',
+        'Failed to fetch the audit log of "Acme".',
       );
     });
   });
