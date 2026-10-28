@@ -27,7 +27,7 @@ void main() {
       ).captured.cast<String>();
       expect(lines, [
         allOf(startsWith('7  '), contains('Acme'), endsWith('admin')),
-        allOf(startsWith('8  '), contains('Globex'), endsWith('member')),
+        allOf(startsWith('8  '), contains('Beacon'), endsWith('member')),
       ]);
     });
 
@@ -47,7 +47,7 @@ void main() {
       expect(json['data'], {
         'enterprises': [
           {'id': 7, 'name': 'Acme', 'role': 'admin'},
-          {'id': 8, 'name': 'Globex', 'role': 'member'},
+          {'id': 8, 'name': 'Beacon', 'role': 'member'},
         ],
       });
     });

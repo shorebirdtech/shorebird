@@ -11,7 +11,7 @@ import '../../mocks.dart';
 import 'enterprise_fixtures.dart';
 
 /// Mocks for commands run with `--enterprise-id 7`, where the user is an
-/// admin of Acme (7) and a member of Globex (8).
+/// admin of Acme (7) and a member of Beacon (8).
 class EnterpriseHarness {
   EnterpriseHarness() {
     when(() => argResults['enterprise-id']).thenReturn('7');
@@ -24,7 +24,7 @@ class EnterpriseHarness {
     when(shorebirdEnv.getShorebirdYaml).thenReturn(null);
     when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
     when(codePushClientWrapper.getEnterprises).thenAnswer(
-      (_) async => [EnterpriseFixtures.acme, EnterpriseFixtures.globex],
+      (_) async => [EnterpriseFixtures.acme, EnterpriseFixtures.beacon],
     );
   }
 

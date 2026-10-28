@@ -85,7 +85,7 @@ void main() {
         verify(
           () => h.logger.info(
             'Enterprise ids are integers, e.g. --enterprise-id 7. Your '
-            'enterprises: Acme (id: 7), Globex (id: 8).',
+            'enterprises: Acme (id: 7), Beacon (id: 8).',
           ),
         ).called(1);
       },
@@ -114,7 +114,7 @@ void main() {
       expect(json['error'], {
         'code': 'usage_error',
         'message': 'You are not a member of enterprise 99.',
-        'hint': 'Your enterprises: Acme (id: 7), Globex (id: 8).',
+        'hint': 'Your enterprises: Acme (id: 7), Beacon (id: 8).',
       });
     });
 

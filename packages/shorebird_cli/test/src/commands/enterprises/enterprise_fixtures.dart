@@ -9,9 +9,9 @@ abstract final class EnterpriseFixtures {
     'role': 'admin',
   });
 
-  static final globex = EnterpriseMembership.fromJson(const {
+  static final beacon = EnterpriseMembership.fromJson(const {
     'id': 8,
-    'name': 'Globex',
+    'name': 'Beacon',
     'role': 'member',
   });
 
