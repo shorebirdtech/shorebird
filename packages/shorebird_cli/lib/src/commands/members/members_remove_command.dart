@@ -2,12 +2,13 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/confirm_delete.dart';
 import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/finish_in_console.dart';
 import 'package:shorebird_cli/src/commands/members/member_target.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
-import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template members_remove_command}
@@ -19,6 +20,7 @@ class MembersRemoveCommand extends ShorebirdCommand
         OrganizationScopedCommand,
         EnterpriseScopedCommand,
         ConfirmDelete,
+        FinishInConsole,
         MemberLookup,
         EnterpriseMemberLookup {
   /// {@macro members_remove_command}
@@ -28,8 +30,8 @@ class MembersRemoveCommand extends ShorebirdCommand
     addEnterpriseScopeOption(
       help:
           'Remove them from this enterprise (e.g. "7") and every '
-          'organization in it instead. Needs an owner or admin of the '
-          'enterprise.',
+          'organization in it instead, in the console. Needs an owner or '
+          'admin of the enterprise.',
     );
   }
 
@@ -52,9 +54,9 @@ class MembersRemoveCommand extends ShorebirdCommand
       'CI, or --json).\n\n'
       'Example output:\n'
       '  Removed bob@acme.com from "Acme Corp".\n\n'
-      'With --enterprise-id, removes them from the enterprise and every '
-      'organization in it, revokes their sessions and API keys, and prints '
-      'the access removed.\n\n'
+      'With --enterprise-id, opens the console to remove them from the '
+      'enterprise and every organization in it. That is permanent and signs '
+      'them out everywhere, so it is confirmed there.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members remove bob@acme.com --org-id 42 --yes --json',
       )}';
@@ -181,6 +183,9 @@ class MembersRemoveCommand extends ShorebirdCommand
     return ExitCode.success.code;
   }
 
+  /// Removing someone from an enterprise is permanent and revokes every
+  /// session and API key on their account, so it finishes in the console
+  /// (ADR-0026).
   Future<int> _removeFromEnterprise(String user) async {
     final (:membership, :errorCode) = await resolveEnterprise();
     if (errorCode != null) return errorCode;
@@ -196,53 +201,9 @@ class MembersRemoveCommand extends ShorebirdCommand
       email: member.email,
       displayName: member.displayName,
     );
-
-    final confirmError = confirmDelete(
-      name: label,
-      verb: 'Remove',
-      description: '$label from "${enterprise.name}" and all its organizations',
-      consequence:
-          '$label will lose access to every organization and app in '
-          '"${enterprise.name}", and their sessions and API keys will be '
-          'revoked.',
+    return finishInConsole(
+      action: 'remove $label from "${enterprise.name}"',
+      url: ShorebirdWebConsole.uri('enterprise/people'),
     );
-    if (confirmError != null) return confirmError;
-
-    late final RemoveEnterpriseMember200Response removed;
-    final removeError = await guardApiCall(
-      () async => removed = await codePushClientWrapper.removeEnterpriseMember(
-        enterpriseId: enterprise.id,
-        userId: member.userId,
-      ),
-      code: JsonErrorCode.softwareError,
-      message: 'Failed to remove $label from enterprise ${enterprise.id}.',
-    );
-    if (removeError != null) return removeError;
-
-    if (isJsonMode) {
-      emitJsonSuccess({
-        'enterprise_id': enterprise.id,
-        'user_id': member.userId,
-        'email': member.email,
-        'removed': removed.toJson(),
-      });
-      return ExitCode.success.code;
-    }
-    final organizations = removed.organizations
-        .map((o) => '"${o.organizationName}" (${o.role.value})')
-        .join(', ');
-    logger
-      ..success('Removed $label from "${enterprise.name}".')
-      ..info(
-        'Organizations left: '
-        '${organizations.isEmpty ? 'none' : organizations}.',
-      )
-      ..info(
-        'Also removed ${formatCount(removed.appGrants.length, 'app grant')}, '
-        'and revoked ${formatCount(removed.sessionsRevoked, 'session')}, '
-        "${formatCount(removed.apiKeysRevoked, 'API key')} and "
-        "${formatCount(removed.invitationsRevoked, 'invitation')}.",
-      );
-    return ExitCode.success.code;
   }
 }

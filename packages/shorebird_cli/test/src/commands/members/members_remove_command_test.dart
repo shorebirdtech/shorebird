@@ -1,11 +1,13 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/commands/members/members.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../../mocks.dart';
 import '../enterprises/enterprise_fixtures.dart';
 import 'members_test_harness.dart';
 
@@ -230,154 +232,61 @@ void main() {
   group('MembersRemoveCommand --enterprise-id', () {
     late MembersHarness h;
     late MembersRemoveCommand command;
+    late Browser browser;
 
     setUp(() {
       h = MembersHarness();
+      browser = MockBrowser();
+      when(() => browser.canOpen).thenReturn(false);
       when(() => h.argResults['org-id']).thenReturn(null);
       when(() => h.argResults['enterprise-id']).thenReturn('7');
+      when(() => h.argResults.rest).thenReturn(['bob@acme.com']);
       when(
         h.codePushClientWrapper.getEnterprises,
       ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
       when(
         () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
-      ).thenAnswer(
-        (_) async => [
-          EnterpriseFixtures.member(),
-          EnterpriseFixtures.member(
-            userId: 11,
-            email: 'old@acme.com',
-            removedAt: '2026-10-01T00:00:00.000Z',
-          ),
-        ],
-      );
-      when(() => h.argResults.rest).thenReturn(['bob@acme.com']);
-      when(() => h.argResults['yes']).thenReturn(false);
-      when(() => h.argResults['confirm-name']).thenReturn(null);
-      when(
-        () => h.logger.confirm(any(), hint: any(named: 'hint')),
-      ).thenReturn(true);
-      when(
-        () => h.codePushClientWrapper.removeEnterpriseMember(
-          enterpriseId: 7,
-          userId: 9,
-        ),
-      ).thenAnswer((_) async => EnterpriseFixtures.removal);
+      ).thenAnswer((_) async => [EnterpriseFixtures.member()]);
       command = h.run(MembersRemoveCommand.new)..testArgResults = h.argResults;
     });
 
-    test(
-      'removes them everywhere once confirmed and prints what went',
-      () async {
-        expect(await h.run(command.run), ExitCode.success.code);
-        verify(
-          () => h.logger.confirm(
-            'Remove bob@acme.com from "Acme" and all its organizations?',
-            hint: any(named: 'hint'),
-          ),
-        ).called(1);
-        verify(
-          () => h.logger.success('Removed bob@acme.com from "Acme".'),
-        ).called(1);
-        verify(
-          () => h.logger.info(
-            'Organizations left: "Mobile" (developer), "Web" (viewer).',
-          ),
-        ).called(1);
-        verify(
-          () => h.logger.info(
-            'Also removed 1 app grant, and revoked 2 sessions, 1 API key and '
-            '0 invitations.',
-          ),
-        ).called(1);
-      },
+    Future<int> run({bool json = false}) => runScoped(
+      () => h.run(command.run, json: json),
+      values: {browserRef.overrideWith(() => browser)},
     );
 
-    test('removes nothing when the prompt is declined', () async {
-      when(
-        () => h.logger.confirm(any(), hint: any(named: 'hint')),
-      ).thenReturn(false);
-      await expectLater(h.run(command.run), throwsA(isA<ProcessExit>()));
-      verifyNever(
-        () => h.codePushClientWrapper.removeEnterpriseMember(
-          enterpriseId: any(named: 'enterpriseId'),
-          userId: any(named: 'userId'),
-        ),
-      );
-    });
-
-    test('needs --yes under --json', () async {
-      when(() => h.shorebirdEnv.canAcceptUserInput).thenReturn(false);
-      final (:exitCode, :json) = await captureJson(
-        () => h.run(command.run, json: true),
-      );
-      expect(exitCode, ExitCode.usage.code);
+    test('sends them to the console, changing nothing', () async {
+      expect(await run(), ExitCode.success.code);
+      final message =
+          verify(() => h.logger.info(captureAny())).captured.single as String;
       expect(
-        (json['error'] as Map)['hint'],
-        'Re-run with --yes to remove bob@acme.com from "Acme" and all its '
-        'organizations.',
-      );
-    });
-
-    test('--json with --yes reports the access removed', () async {
-      when(() => h.argResults['yes']).thenReturn(true);
-      final (:exitCode, :json) = await captureJson(
-        () => h.run(command.run, json: true),
-      );
-      expect(exitCode, ExitCode.success.code);
-      expect(json['data'], {
-        'enterprise_id': 7,
-        'user_id': 9,
-        'email': 'bob@acme.com',
-        'removed': EnterpriseFixtures.removal.toJson(),
-      });
-    });
-
-    test('says no organizations were left when there were none', () async {
-      when(
-        () => h.codePushClientWrapper.removeEnterpriseMember(
-          enterpriseId: 7,
-          userId: 9,
+        message,
+        allOf(
+          contains('remove bob@acme.com from "Acme"'),
+          contains('enterprise/people'),
         ),
-      ).thenAnswer(
-        (_) async => RemoveEnterpriseMember200Response.fromJson(const {
-          'organizations': <Object>[],
-          'app_grants': <Object>[],
-          'invitations_revoked': 1,
-          'sessions_revoked': 1,
-          'api_keys_revoked': 0,
-        }),
       );
-      expect(await h.run(command.run), ExitCode.success.code);
-      verify(() => h.logger.info('Organizations left: none.')).called(1);
+      verifyNever(() => h.logger.confirm(any(), hint: any(named: 'hint')));
+    });
+
+    test('fails naming the console page when nobody can finish it', () async {
+      when(() => h.shorebirdEnv.canAcceptUserInput).thenReturn(false);
+      final (:exitCode, :json) = await captureJson(() => run(json: true));
+      expect(exitCode, ExitCode.unavailable.code);
+      expect((json['error'] as Map)['code'], 'console_required');
     });
 
     test('reports someone not in the directory', () async {
       when(() => h.argResults.rest).thenReturn(['nobody@acme.com']);
-      expect(await h.run(command.run), ExitCode.usage.code);
-      verifyNever(() => h.logger.confirm(any(), hint: any(named: 'hint')));
-    });
-
-    test('reports a failed removal', () async {
-      when(() => h.argResults['yes']).thenReturn(true);
-      when(
-        () => h.codePushClientWrapper.removeEnterpriseMember(
-          enterpriseId: 7,
-          userId: 9,
-        ),
-      ).thenThrow(ProcessExit(ExitCode.software.code));
-      final (:exitCode, :json) = await captureJson(
-        () => h.run(command.run, json: true),
-      );
-      expect(exitCode, ExitCode.software.code);
-      expect(
-        (json['error'] as Map)['message'],
-        'Failed to remove bob@acme.com from enterprise 7.',
-      );
+      expect(await run(), ExitCode.usage.code);
+      verify(
+        () => h.logger.err('"nobody@acme.com" is not a member of "Acme".'),
+      ).called(1);
     });
 
     test('rejects --org-id with --enterprise-id', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
-      expect(await h.run(command.run), ExitCode.usage.code);
+      expect(await run(), ExitCode.usage.code);
       verify(
         () => h.logger.err(
           'Pass --org-id or --enterprise-id, not both: --enterprise-id '

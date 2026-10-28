@@ -260,21 +260,6 @@ class CodePushClientWrapper {
     );
   }
 
-  /// Removes member [userId] from enterprise [enterpriseId] and all its
-  /// organizations, returning the access removed.
-  Future<RemoveEnterpriseMember200Response> removeEnterpriseMember({
-    required int enterpriseId,
-    required int userId,
-  }) {
-    return _withProgress(
-      'Removing member',
-      () => codePushClient.removeEnterpriseMember(
-        enterpriseId: enterpriseId,
-        userId: userId,
-      ),
-    );
-  }
-
   /// Fetches the members of organization [organizationId].
   Future<List<OrganizationUser>> getOrganizationUsers({
     required int organizationId,

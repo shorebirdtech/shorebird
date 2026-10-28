@@ -6,13 +6,6 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// Help text for `--enterprise-id` on a command that otherwise acts on one
-/// organization, or on what you can see.
-const enterpriseScopeHelp =
-    'Act on every organization in this enterprise (e.g. "7") instead. '
-    'Needs an owner or admin of the enterprise. Run '
-    '`shorebird enterprises list` for ids.';
-
 /// The shared `--enterprise-id` option, which widens a command to every
 /// organization in an enterprise, and the logic that finds the enterprise.
 ///
@@ -22,7 +15,7 @@ const enterpriseScopeHelp =
 /// when it is set.
 mixin EnterpriseScopedCommand on ShorebirdCommand {
   /// Adds the `--enterprise-id` option that [resolveEnterprise] reads.
-  void addEnterpriseScopeOption({String help = enterpriseScopeHelp}) {
+  void addEnterpriseScopeOption({required String help}) {
     argParser.addOption(CommonArguments.enterpriseIdArg.name, help: help);
   }
 

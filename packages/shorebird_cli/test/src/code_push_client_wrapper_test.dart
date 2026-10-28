@@ -1106,12 +1106,6 @@ void main() {
               role: EnterpriseRole.admin,
             ),
           ).thenAnswer((_) async {});
-          when(
-            () => codePushClient.removeEnterpriseMember(
-              enterpriseId: 7,
-              userId: 9,
-            ),
-          ).thenAnswer((_) async => EnterpriseFixtures.removal);
 
           await runWithOverrides(() async {
             expect(await codePushClientWrapper.getEnterprises(), [
@@ -1146,15 +1140,8 @@ void main() {
               userId: 9,
               role: EnterpriseRole.admin,
             );
-            expect(
-              await codePushClientWrapper.removeEnterpriseMember(
-                enterpriseId: 7,
-                userId: 9,
-              ),
-              EnterpriseFixtures.removal,
-            );
           });
-          verify(() => progress.complete()).called(8);
+          verify(() => progress.complete()).called(7);
         });
 
         test('updateCurrentUser sends the display name', () async {

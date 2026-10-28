@@ -49,7 +49,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
       'Example output:\n'
       '  Changed bob@acme.com from developer to admin in "Acme Corp".\n\n'
       'With --enterprise-id, changes their enterprise role (owner, admin, '
-      'billingManager or member), which applies across its organizations.'
+      'member or billingManager). Needs an owner of the enterprise.'
       '\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members set-role bob@acme.com --role admin --org-id 42 '
@@ -167,6 +167,13 @@ class MembersSetRoleCommand extends ShorebirdCommand
     final (:membership, :errorCode) = await resolveEnterprise();
     if (errorCode != null) return errorCode;
     final enterprise = membership!;
+    if (enterprise.role != EnterpriseRole.owner) {
+      return reportError(
+        message:
+            'Only owners of "${enterprise.name}" can change enterprise roles; '
+            'you are ${enterprise.role.value}.',
+      );
+    }
 
     final (:member, errorCode: lookupError) = await findEnterpriseMember(
       user,

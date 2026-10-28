@@ -210,19 +210,10 @@ void main() {
       when(() => h.argResults['enterprise-id']).thenReturn('7');
       when(
         h.codePushClientWrapper.getEnterprises,
-      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+      ).thenAnswer((_) async => [EnterpriseFixtures.acmeOwner]);
       when(
         () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
-      ).thenAnswer(
-        (_) async => [
-          EnterpriseFixtures.member(),
-          EnterpriseFixtures.member(
-            userId: 11,
-            email: 'old@acme.com',
-            removedAt: '2026-10-01T00:00:00.000Z',
-          ),
-        ],
-      );
+      ).thenAnswer((_) async => [EnterpriseFixtures.member()]);
       when(() => h.argResults.rest).thenReturn(['bob@acme.com']);
       when(() => h.argResults['role']).thenReturn('billing-manager');
       when(
@@ -295,11 +286,28 @@ void main() {
       ).called(1);
     });
 
-    test('skips members already removed', () async {
-      when(() => h.argResults.rest).thenReturn(['old@acme.com']);
+    test('needs an owner of the enterprise', () async {
+      when(
+        h.codePushClientWrapper.getEnterprises,
+      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
-        () => h.logger.err('"old@acme.com" is not a member of "Acme".'),
+        () => h.logger.err(
+          'Only owners of "Acme" can change enterprise roles; you are admin.',
+        ),
+      ).called(1);
+      verifyNever(
+        () => h.codePushClientWrapper.getEnterpriseMembers(
+          enterpriseId: any(named: 'enterpriseId'),
+        ),
+      );
+    });
+
+    test('names the directory for someone not in it', () async {
+      when(() => h.argResults.rest).thenReturn(['nobody@acme.com']);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err('"nobody@acme.com" is not a member of "Acme".'),
       ).called(1);
       verify(
         () => h.logger.info(

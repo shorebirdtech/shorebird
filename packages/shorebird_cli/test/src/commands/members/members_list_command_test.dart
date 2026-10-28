@@ -156,16 +156,7 @@ void main() {
       ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
       when(
         () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
-      ).thenAnswer(
-        (_) async => [
-          EnterpriseFixtures.member(),
-          EnterpriseFixtures.member(
-            userId: 11,
-            email: 'old@acme.com',
-            removedAt: '2026-10-01T00:00:00.000Z',
-          ),
-        ],
-      );
+      ).thenAnswer((_) async => [EnterpriseFixtures.member()]);
       when(
         () => h.codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
       ).thenAnswer((_) async => [EnterpriseFixtures.guest]);
@@ -182,10 +173,6 @@ void main() {
           startsWith('9  '),
           contains('bob@acme.com'),
           endsWith('member  2 organizations'),
-        ),
-        allOf(
-          startsWith('11  '),
-          endsWith('member  2 organizations  removed 2026-10-01'),
         ),
       ]);
       verifyNever(
@@ -211,8 +198,15 @@ void main() {
           {'organization_id': 42, 'role': 'developer'},
           {'organization_id': 43, 'role': 'viewer'},
         ],
-        'removed_at': null,
       });
+    });
+
+    test('says when the directory is empty', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
+      ).thenAnswer((_) async => []);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(() => h.logger.info('"Acme" has no members.')).called(1);
     });
 
     group('--guests', () {

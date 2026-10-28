@@ -14,7 +14,13 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 class EnterprisesGetCommand extends ShorebirdCommand
     with EnterpriseScopedCommand {
   /// {@macro enterprises_get_command}
-  EnterprisesGetCommand();
+  EnterprisesGetCommand() {
+    addEnterpriseScopeOption(
+      help:
+          'The id of the enterprise (e.g. "7"), as an option rather than an '
+          'argument. Defaults to your only enterprise.',
+    );
+  }
 
   @override
   String get name => 'get';
@@ -34,7 +40,8 @@ class EnterprisesGetCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     final rest = results.rest;
-    if (rest.length > 1) {
+    final option = enterpriseIdOption;
+    if (rest.length > 1 || (rest.isNotEmpty && option != null)) {
       return reportError(
         message: 'Pass one enterprise id: shorebird enterprises get 7.',
       );
@@ -42,7 +49,7 @@ class EnterprisesGetCommand extends ShorebirdCommand
     // Reading one enterprise widens nothing, so your only one is a safe
     // default, as `orgs get` defaults to your only organization.
     final (:membership, :errorCode) = await resolveEnterprise(
-      enterpriseId: rest.firstOrNull,
+      enterpriseId: option ?? rest.firstOrNull,
       defaultToOnly: true,
     );
     if (errorCode != null) return errorCode;

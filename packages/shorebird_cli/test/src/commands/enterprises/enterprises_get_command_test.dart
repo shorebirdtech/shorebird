@@ -91,6 +91,38 @@ void main() {
       },
     );
 
+    test('defaults to your only enterprise from real arguments', () async {
+      when(
+        h.codePushClientWrapper.getEnterprises,
+      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+      command.testArgResults = command.argParser.parse([]);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(
+        () => h.codePushClientWrapper.getEnterprise(enterpriseId: 7),
+      ).called(1);
+    });
+
+    test('takes the id as --enterprise-id', () async {
+      command.testArgResults = command.argParser.parse([
+        '--enterprise-id',
+        '7',
+      ]);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(
+        () => h.codePushClientWrapper.getEnterprise(enterpriseId: 7),
+      ).called(1);
+    });
+
+    test('rejects an id given both ways', () async {
+      command.testArgResults = command.argParser.parse([
+        '7',
+        '--enterprise-id',
+        '8',
+      ]);
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
+    });
+
     test('rejects more than one id', () async {
       when(() => h.argResults.rest).thenReturn(['7', '8']);
       expect(await h.run(command.run), ExitCode.usage.code);

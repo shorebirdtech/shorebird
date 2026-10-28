@@ -143,7 +143,7 @@ final enterpriseRoleHelp =
 /// Finds the member of an enterprise's directory a `USER` argument names.
 mixin EnterpriseMemberLookup on ShorebirdCommand {
   /// Finds the member [user] names in [enterprise]'s directory, by user id
-  /// or email (ignoring case). Members already removed are skipped.
+  /// or email (ignoring case).
   ///
   /// Returns the member, or an exit code once a failed fetch or no match is
   /// reported.
@@ -164,9 +164,7 @@ mixin EnterpriseMemberLookup on ShorebirdCommand {
     final id = int.tryParse(user);
     final email = user.toLowerCase();
     final member = members.firstWhereOrNull(
-      (m) =>
-          m.removedAt == null &&
-          (m.userId == id || m.email?.toLowerCase() == email),
+      (m) => m.userId == id || m.email?.toLowerCase() == email,
     );
     if (member != null) return (member: member, errorCode: null);
     return (

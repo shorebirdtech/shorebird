@@ -172,20 +172,21 @@ class MembersListCommand extends ShorebirdCommand
               'name': m.displayName,
               'role': m.role.value,
               'organizations': _organizationsJson(m.teams),
-              'removed_at': m.removedAt?.toUtc().toIso8601String(),
             },
         ],
       });
       return ExitCode.success.code;
     }
 
+    if (members.isEmpty) {
+      logger.info('"${enterprise.name}" has no members.');
+      return ExitCode.success.code;
+    }
     for (final m in members) {
-      final removedAt = m.removedAt;
       final label = _label(m.userId, m.email, m.displayName);
       logger.info(
         '${m.userId}  ${lightCyan.wrap(label)}  '
-        '${m.role.value}  ${_organizationCount(m.teams)}'
-        '${removedAt == null ? '' : '  removed ${_date(removedAt)}'}',
+        '${m.role.value}  ${_organizationCount(m.teams)}',
       );
     }
     return ExitCode.success.code;

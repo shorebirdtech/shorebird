@@ -9,6 +9,13 @@ abstract final class EnterpriseFixtures {
     'role': 'admin',
   });
 
+  /// [acme], where the user is an owner.
+  static final acmeOwner = EnterpriseMembership.fromJson(const {
+    'id': 7,
+    'name': 'Acme',
+    'role': 'owner',
+  });
+
   static final beacon = EnterpriseMembership.fromJson(const {
     'id': 8,
     'name': 'Beacon',
@@ -43,7 +50,6 @@ abstract final class EnterpriseFixtures {
     int userId = 9,
     String? email = 'bob@acme.com',
     String role = 'member',
-    String? removedAt,
   }) => EnterpriseMember.fromJson({
     'user_id': userId,
     'email': email,
@@ -58,7 +64,7 @@ abstract final class EnterpriseFixtures {
     'sign_in_method': null,
     'signed_in_at': null,
     'last_active_at': null,
-    'removed_at': removedAt,
+    'removed_at': null,
     'removed_by_email': null,
   });
 
@@ -75,22 +81,5 @@ abstract final class EnterpriseFixtures {
     'sign_in_method': null,
     'signed_in_at': null,
     'last_active_at': null,
-  });
-
-  static final removal = RemoveEnterpriseMember200Response.fromJson(const {
-    'organizations': [
-      {
-        'organization_id': 42,
-        'organization_name': 'Mobile',
-        'role': 'developer',
-      },
-      {'organization_id': 43, 'organization_name': 'Web', 'role': 'viewer'},
-    ],
-    'app_grants': [
-      {'app_id': 'app-2', 'organization_id': 44, 'role': 'developer'},
-    ],
-    'invitations_revoked': 0,
-    'sessions_revoked': 2,
-    'api_keys_revoked': 1,
   });
 }
