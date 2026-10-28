@@ -282,6 +282,62 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches one page of organization [organizationId]'s audit log. See
+  /// [CodePushClient.getOrganizationAuditLogs] for the arguments.
+  Future<GetOrganizationAuditLogsResponse> getOrganizationAuditLogs({
+    required int organizationId,
+    int? perPage,
+    String? cursor,
+    AuditLogOrder? order,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? appId,
+    int? actorId,
+    String? operation,
+  }) {
+    return _withProgress(
+      'Fetching audit log',
+      () => codePushClient.getOrganizationAuditLogs(
+        organizationId: organizationId,
+        perPage: perPage,
+        cursor: cursor,
+        order: order,
+        startDate: startDate,
+        endDate: endDate,
+        appId: appId,
+        actorId: actorId,
+        operation: operation,
+      ),
+    );
+  }
+
+  /// Fetches patch-install usage for the account that owns organization
+  /// [organizationId].
+  Future<GetUsageResponse> getOrganizationUsage({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching usage',
+      () => codePushClient.getOrganizationUsage(organizationId: organizationId),
+    );
+  }
+
+  /// Fetches usage as [getOrganizationUsage] does, or null when the user's
+  /// role may not see it (the auditor role).
+  Future<GetUsageResponse?> maybeGetOrganizationUsage({
+    required int organizationId,
+  }) {
+    return _withProgress('Fetching usage', () async {
+      try {
+        return await codePushClient.getOrganizationUsage(
+          organizationId: organizationId,
+        );
+      } on CodePushForbiddenException {
+        return null;
+      }
+    });
+  }
+
   /// Fetches the service accounts organization [organizationId] owns.
   Future<List<ServiceAccount>> getServiceAccounts({
     required int organizationId,
