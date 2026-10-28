@@ -4,11 +4,14 @@ import 'package:shorebird_cli/src/commands/orgs/orgs_list_command.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import 'enterprise_test_harness.dart';
 
 /// The command tests stub `results['enterprise']`, so these parse real
 /// arguments to check that each command still declares the flag.
 void main() {
+  useTempWorkingDirectory();
+
   final commands = <String, ShorebirdCommand Function()>{
     'orgs list': OrgsListCommand.new,
     'apps list': AppsListCommand.new,
