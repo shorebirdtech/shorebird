@@ -24,20 +24,22 @@ const yesRequiredMessage =
 /// Deletes that ADR-0026 keeps out of the CLI (apps, accounts, teams) use
 /// `FinishInConsole` instead.
 mixin ConfirmDelete on ShorebirdCommand {
-  /// Adds `-y, --yes` and a hidden, deprecated `--confirm-name`.
-  void addConfirmDeleteOptions() {
-    argParser
-      ..addFlag(
-        yesArgName,
-        abbr: 'y',
-        negatable: false,
-        help: 'Skip the confirmation prompt.',
-      )
-      ..addOption(
+  /// Adds `-y, --yes` and, unless [deprecatedConfirmName] is false (as for
+  /// commands that never had it), a hidden, deprecated `--confirm-name`.
+  void addConfirmDeleteOptions({bool deprecatedConfirmName = true}) {
+    argParser.addFlag(
+      yesArgName,
+      abbr: 'y',
+      negatable: false,
+      help: 'Skip the confirmation prompt.',
+    );
+    if (deprecatedConfirmName) {
+      argParser.addOption(
         confirmNameArgName,
         hide: true,
         help: 'Deprecated: use --$yesArgName.',
       );
+    }
   }
 
   /// Confirms deleting [description], whose name is [name].
@@ -62,7 +64,9 @@ mixin ConfirmDelete on ShorebirdCommand {
   }) {
     final hint =
         'Re-run with --$yesArgName to ${verb.toLowerCase()} $description.';
-    final confirmName = results[confirmNameArgName] as String?;
+    final confirmName = argParser.options.containsKey(confirmNameArgName)
+        ? results[confirmNameArgName] as String?
+        : null;
     if (confirmName != null) {
       logger.warn(
         '--$confirmNameArgName is deprecated and will be removed; use '

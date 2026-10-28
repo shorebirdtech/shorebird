@@ -941,6 +941,150 @@ void main() {
       });
 
       group('account', () {
+        group('service accounts', () {
+          final account = ServiceAccount(
+            id: 383,
+            organizationId: 42,
+            name: 'release-bot',
+            label: 'release-bot[bot]',
+            role: ServiceAccountRole.developer,
+            createdAt: DateTime(2026),
+            createdByUserId: null,
+            createdByEmail: null,
+            lastAuthAt: null,
+          );
+          final key = ServiceAccountKey(
+            id: 12,
+            name: 'ci',
+            createdAt: DateTime(2026),
+            lastUsedAt: null,
+            expiresAt: null,
+            scopes: const [],
+          );
+
+          test('getServiceAccounts returns the accounts', () async {
+            when(
+              () => codePushClient.getServiceAccounts(organizationId: 42),
+            ).thenAnswer((_) async => [account]);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.getServiceAccounts(
+                  organizationId: 42,
+                ),
+              ),
+              completion([account]),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('createServiceAccount returns the new account', () async {
+            when(
+              () => codePushClient.createServiceAccount(
+                organizationId: 42,
+                name: 'release-bot',
+                role: ServiceAccountRole.viewer,
+              ),
+            ).thenAnswer((_) async => account);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.createServiceAccount(
+                  organizationId: 42,
+                  name: 'release-bot',
+                  role: ServiceAccountRole.viewer,
+                ),
+              ),
+              completion(account),
+            );
+          });
+
+          test('updateServiceAccount returns the updated account', () async {
+            when(
+              () => codePushClient.updateServiceAccount(
+                organizationId: 42,
+                serviceAccountId: 383,
+                role: ServiceAccountRole.viewer,
+              ),
+            ).thenAnswer((_) async => account);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.updateServiceAccount(
+                  organizationId: 42,
+                  serviceAccountId: 383,
+                  role: ServiceAccountRole.viewer,
+                ),
+              ),
+              completion(account),
+            );
+          });
+
+          test('deleteServiceAccount deletes the account', () async {
+            when(
+              () => codePushClient.deleteServiceAccount(
+                organizationId: 42,
+                serviceAccountId: 383,
+              ),
+            ).thenAnswer((_) async {});
+            await runWithOverrides(
+              () => codePushClientWrapper.deleteServiceAccount(
+                organizationId: 42,
+                serviceAccountId: 383,
+              ),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('getServiceAccountKeys returns the keys', () async {
+            when(
+              () => codePushClient.getServiceAccountKeys(
+                organizationId: 42,
+                serviceAccountId: 383,
+              ),
+            ).thenAnswer((_) async => [key]);
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.getServiceAccountKeys(
+                  organizationId: 42,
+                  serviceAccountId: 383,
+                ),
+              ),
+              completion([key]),
+            );
+          });
+
+          test('revokeServiceAccountKey revokes the key', () async {
+            when(
+              () => codePushClient.revokeServiceAccountKey(
+                organizationId: 42,
+                serviceAccountId: 383,
+                keyId: 12,
+              ),
+            ).thenAnswer((_) async {});
+            await runWithOverrides(
+              () => codePushClientWrapper.revokeServiceAccountKey(
+                organizationId: 42,
+                serviceAccountId: 383,
+                keyId: 12,
+              ),
+            );
+            verify(() => progress.complete()).called(1);
+          });
+
+          test('exits with code 70 when a call fails', () async {
+            when(
+              () => codePushClient.getServiceAccounts(organizationId: 42),
+            ).thenThrow('boom');
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.getServiceAccounts(
+                  organizationId: 42,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail('boom')).called(1);
+          });
+        });
+
         test('createOrganization returns the new organization', () async {
           final organization = Organization(
             id: 42,
