@@ -48,7 +48,8 @@ class AuditLogExportCommand extends ShorebirdCommand
   @override
   String get description =>
       "Writes every page of an organization's audit log to stdout, as OCSF "
-      'API Activity events for a security log tool.\n\n'
+      'API Activity events for a security log tool. With --enterprise-id, '
+      "writes the enterprise's log instead.\n\n"
       'Examples:\n'
       '  shorebird audit-log export --start 2026-10-01 > audit.json\n'
       '  shorebird audit-log export --order asc --format jsonl '

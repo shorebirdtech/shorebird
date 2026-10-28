@@ -51,16 +51,10 @@ class UsageCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     if (enterpriseIdOption != null) {
-      final scopeError = rejectOrganizationAndEnterprise();
+      final scopeError =
+          rejectOrganizationAndEnterprise() ??
+          rejectOrganizationArgumentWithEnterprise();
       if (scopeError != null) return scopeError;
-      if (results.rest.isNotEmpty) {
-        return reportError(
-          message:
-              'Pass an organization id or --enterprise-id, not both: '
-              '--enterprise-id already covers every organization in the '
-              'enterprise.',
-        );
-      }
       return _enterpriseUsage();
     }
     final (:membership, :errorCode) = await resolveOrganizationFromArguments(
@@ -149,7 +143,12 @@ class UsageCommand extends ShorebirdCommand
     );
     // A contract sets an enterprise's limits, so there is no setting to
     // point at.
-    _printPosition(position, nextStep: null);
+    _printPosition(
+      position,
+      nextStep:
+          'Your contract sets the limit; ask your Shorebird contact to '
+          'raise it.',
+    );
     if (organizations.isEmpty) return ExitCode.success.code;
     final number = NumberFormat.decimalPattern('en_US');
     logger.info('Organizations (id  name  installs):');
@@ -163,8 +162,8 @@ class UsageCommand extends ShorebirdCommand
   }
 
   /// Prints installs against [position]'s plan, and a warning near or at
-  /// its limit, followed by [nextStep] when there is one.
-  void _printPosition(AccountPosition position, {required String? nextStep}) {
+  /// its limit, followed by [nextStep].
+  void _printPosition(AccountPosition position, {required String nextStep}) {
     final number = NumberFormat.decimalPattern('en_US');
     logger.info(
       'Patch installs: ${number.format(position.installs)} of '
@@ -182,15 +181,15 @@ class UsageCommand extends ShorebirdCommand
         'Installs left before patches stop: ${number.format(remaining)}',
       );
     }
-    final then = nextStep == null ? '' : ' $nextStep';
     if (position.atCeiling) {
       logger.warn(
-        'Patches have stopped: the account reached its install limit.$then',
+        'Patches have stopped: the account reached its install limit. '
+        '$nextStep',
       );
     } else if (position.nearingLimit) {
       logger.warn(
         'The account is nearing its install limit, after which patches '
-        'stop.$then',
+        'stop. $nextStep',
       );
     }
   }

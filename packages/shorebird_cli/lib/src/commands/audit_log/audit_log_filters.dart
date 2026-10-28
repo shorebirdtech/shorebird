@@ -100,8 +100,10 @@ mixin AuditLogFilterOptions
     addOrganizationScopeOption();
     addEnterpriseScopeOption(
       help:
-          'Read the log of this enterprise (e.g. "7") instead: every '
-          'organization in it. Needs an owner or admin of the enterprise.',
+          "Read this enterprise's log (e.g. \"7\") instead: who joined, left "
+          'or changed roles and access across its organizations. App '
+          'activity (releases, patches, channels) stays in each '
+          "organization's log. Needs an owner or admin of the enterprise.",
     );
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')
@@ -216,19 +218,10 @@ mixin AuditLogFilterOptions
     required String example,
   }) async {
     if (enterpriseIdOption != null) {
-      final scopeError = rejectOrganizationAndEnterprise();
+      final scopeError =
+          rejectOrganizationAndEnterprise() ??
+          rejectOrganizationArgumentWithEnterprise();
       if (scopeError != null) return (scope: null, errorCode: scopeError);
-      if (results.rest.isNotEmpty) {
-        return (
-          scope: null,
-          errorCode: reportError(
-            message:
-                'Pass an organization id or --enterprise-id, not both: '
-                '--enterprise-id already covers every organization in the '
-                'enterprise.',
-          ),
-        );
-      }
       final (:membership, :errorCode) = await resolveEnterprise();
       if (errorCode != null) return (scope: null, errorCode: errorCode);
       return (scope: AuditLogScope.enterprise(membership!.id), errorCode: null);

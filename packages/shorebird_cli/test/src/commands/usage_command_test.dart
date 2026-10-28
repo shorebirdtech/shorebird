@@ -265,7 +265,7 @@ void main() {
       'plan': {
         'name': 'Enterprise',
         'level': 'enterprise',
-        'billing_interval': 'year',
+        'billing_interval': 'month',
         'billing_interval_count': 1,
         'current_period_start': '2026-10-01T00:00:00.000Z',
         'current_period_end': '2026-11-01T00:00:00.000Z',
@@ -322,7 +322,8 @@ void main() {
       verify(
         () => h.logger.warn(
           'The account is nearing its install limit, after which patches '
-          'stop.',
+          'stop. Your contract sets the limit; ask your Shorebird contact to '
+          'raise it.',
         ),
       ).called(1);
     });
@@ -362,6 +363,13 @@ void main() {
     test('rejects an organization id with --enterprise-id', () async {
       when(() => h.argResults.rest).thenReturn(['42']);
       expect(await h.run(command.run), ExitCode.usage.code);
+      verify(
+        () => h.logger.err(
+          'Pass an organization id or --enterprise-id, not both: '
+          '--enterprise-id already covers every organization in the '
+          'enterprise.',
+        ),
+      ).called(1);
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
 
