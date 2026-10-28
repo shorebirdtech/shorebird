@@ -20,13 +20,15 @@ class EnterpriseGetCommand extends ShorebirdCommand
 
   @override
   String get description =>
-      "Shows your enterprise's name, its domains and your role in it. Needs "
-      'an owner or admin of the enterprise.\n\n'
+      "Shows your enterprise's name and your role in it, and to owners and "
+      'admins its domains.\n\n'
       'Example output:\n'
       '  Acme (id: 7)\n'
       '  Domains: acme.com, acme.dev\n'
       '  Your role: admin\n\n'
-      'Role is "owner", "admin", "billingManager" or "member".\n\n'
+      'Role is "owner", "admin", "billingManager" or "member". Members and '
+      'billing managers see no Domains line, and `domains` is null in '
+      '--json.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird enterprise get --json')}';
 
   @override
@@ -42,30 +44,36 @@ class EnterpriseGetCommand extends ShorebirdCommand
     if (errorCode != null) return errorCode;
     final role = membership!.role;
 
-    late final Enterprise enterprise;
-    final fetchError = await guardApiCall(
-      () async => enterprise = await codePushClientWrapper.getEnterprise(
-        enterpriseId: membership.id,
-      ),
-      code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch enterprise ${membership.id}.',
-    );
-    if (fetchError != null) return fetchError;
+    // Only owners and admins may read the enterprise itself, which is all
+    // the domains add; everyone else gets what the membership says.
+    List<String>? domains;
+    if (role == EnterpriseRole.owner || role == EnterpriseRole.admin) {
+      late final Enterprise enterprise;
+      final fetchError = await guardApiCall(
+        () async => enterprise = await codePushClientWrapper.getEnterprise(
+          enterpriseId: membership.id,
+        ),
+        code: JsonErrorCode.fetchFailed,
+        message: 'Failed to fetch "${membership.name}".',
+      );
+      if (fetchError != null) return fetchError;
+      domains = enterprise.domains;
+    }
 
     if (isJsonMode) {
       emitJsonSuccess({
-        'id': enterprise.id,
-        'name': enterprise.name,
+        'id': membership.id,
+        'name': membership.name,
         'role': role.value,
-        'domains': enterprise.domains,
+        'domains': domains,
       });
       return ExitCode.success.code;
     }
-    final domains = enterprise.domains;
-    logger
-      ..info('${lightCyan.wrap(enterprise.name)} (id: ${enterprise.id})')
-      ..info('Domains: ${domains.isEmpty ? 'none' : domains.join(', ')}')
-      ..info('Your role: ${role.value}');
+    logger.info('${lightCyan.wrap(membership.name)} (id: ${membership.id})');
+    if (domains != null) {
+      logger.info('Domains: ${domains.isEmpty ? 'none' : domains.join(', ')}');
+    }
+    logger.info('Your role: ${role.value}');
     return ExitCode.success.code;
   }
 }

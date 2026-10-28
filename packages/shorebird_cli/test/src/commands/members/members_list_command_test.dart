@@ -276,7 +276,7 @@ void main() {
         expect(exitCode, ExitCode.software.code);
         expect(
           (json['error'] as Map)['message'],
-          'Failed to fetch the guests of enterprise 7.',
+          'Failed to fetch the guests of "Acme".',
         );
       });
     });
@@ -297,7 +297,7 @@ void main() {
       expect(exitCode, ExitCode.software.code);
       expect(
         (json['error'] as Map)['message'],
-        'Failed to fetch the members of enterprise 7.',
+        'Failed to fetch the members of "Acme".',
       );
     });
   });

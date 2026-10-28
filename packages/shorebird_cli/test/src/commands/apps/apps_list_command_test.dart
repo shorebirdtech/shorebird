@@ -286,7 +286,7 @@ void main() {
 
     test('says when you are in no enterprise', () async {
       when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
-      expect(await h.run(command.run), ExitCode.usage.code);
+      expect(await h.run(command.run), ExitCode.noPerm.code);
       verifyNever(
         () => h.codePushClientWrapper.getEnterpriseApps(
           enterpriseId: any(named: 'enterpriseId'),
@@ -304,7 +304,7 @@ void main() {
       expect(exitCode, ExitCode.software.code);
       expect(
         (json['error'] as Map)['message'],
-        'Failed to fetch the apps of enterprise 7.',
+        'Failed to fetch the apps of "Acme".',
       );
     });
   });

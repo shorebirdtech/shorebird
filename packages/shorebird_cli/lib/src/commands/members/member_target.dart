@@ -157,7 +157,7 @@ mixin EnterpriseMemberLookup on ShorebirdCommand {
         enterpriseId: enterprise.id,
       ),
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch the members of enterprise ${enterprise.id}.',
+      message: 'Failed to fetch the members of "${enterprise.name}".',
     );
     if (fetchError != null) return (member: null, errorCode: fetchError);
 

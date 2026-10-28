@@ -156,7 +156,7 @@ class MembersListCommand extends ShorebirdCommand
         enterpriseId: enterprise.id,
       ),
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch the members of enterprise ${enterprise.id}.',
+      message: 'Failed to fetch the members of "${enterprise.name}".',
     );
     if (fetchError != null) return fetchError;
 
@@ -202,7 +202,7 @@ class MembersListCommand extends ShorebirdCommand
         enterpriseId: enterprise.id,
       ),
       code: JsonErrorCode.fetchFailed,
-      message: 'Failed to fetch the guests of enterprise ${enterprise.id}.',
+      message: 'Failed to fetch the guests of "${enterprise.name}".',
     );
     if (fetchError != null) return fetchError;
 
