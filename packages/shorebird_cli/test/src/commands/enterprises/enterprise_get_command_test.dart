@@ -80,11 +80,81 @@ void main() {
 
     test('says when you are in no enterprise', () async {
       when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
-      expect(await h.run(command.run), ExitCode.usage.code);
+      expect(await h.run(command.run), ExitCode.noPerm.code);
       verify(
         () => h.logger.err("You aren't a member of an enterprise."),
       ).called(1);
     });
+
+    test('fails when the server lists more than one enterprise', () async {
+      when(h.codePushClientWrapper.getEnterprises).thenAnswer(
+        (_) async => [
+          EnterpriseFixtures.acme,
+          EnterpriseMembership.fromJson(const {
+            'id': 8,
+            'name': 'Beta',
+            'role': 'member',
+          }),
+        ],
+      );
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      final error = json['error'] as Map;
+      expect(error['code'], 'software_error');
+      expect(error['message'], contains('Acme (id: 7), Beta (id: 8)'));
+      verifyNever(
+        () => h.codePushClientWrapper.getEnterprise(
+          enterpriseId: any(named: 'enterpriseId'),
+        ),
+      );
+    });
+
+    for (final role in ['member', 'billingManager']) {
+      group('as a $role', () {
+        setUp(() {
+          when(h.codePushClientWrapper.getEnterprises).thenAnswer(
+            (_) async => [
+              EnterpriseMembership.fromJson({
+                'id': 7,
+                'name': 'Acme',
+                'role': role,
+              }),
+            ],
+          );
+        });
+
+        test('prints the name and role without fetching domains', () async {
+          expect(await h.run(command.run), ExitCode.success.code);
+          final lines = verify(
+            () => h.logger.info(captureAny()),
+          ).captured.cast<String>();
+          expect(lines, [
+            allOf(contains('Acme'), endsWith('(id: 7)')),
+            'Your role: $role',
+          ]);
+          verifyNever(
+            () => h.codePushClientWrapper.getEnterprise(
+              enterpriseId: any(named: 'enterpriseId'),
+            ),
+          );
+        });
+
+        test('--json has null domains', () async {
+          final (:exitCode, :json) = await captureJson(
+            () => h.run(command.run, json: true),
+          );
+          expect(exitCode, ExitCode.success.code);
+          expect(json['data'], {
+            'id': 7,
+            'name': 'Acme',
+            'role': role,
+            'domains': null,
+          });
+        });
+      });
+    }
 
     test('reports a failed fetch of your enterprises', () async {
       when(
@@ -110,7 +180,7 @@ void main() {
       expect(exitCode, ExitCode.software.code);
       expect(
         (json['error'] as Map)['message'],
-        'Failed to fetch enterprise 7.',
+        'Failed to fetch "Acme".',
       );
     });
 

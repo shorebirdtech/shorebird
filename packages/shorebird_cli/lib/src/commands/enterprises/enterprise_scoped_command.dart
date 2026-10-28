@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -81,7 +82,22 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
     if (fetchError != null) return (membership: null, errorCode: fetchError);
 
     // The server holds each account to one enterprise, so the list has at
-    // most one entry.
+    // most one entry. More than one means that rule changed: fail rather
+    // than act on one of them, since some of these commands change data.
+    if (enterprises.length > 1) {
+      final names = enterprises.map((e) => '${e.name} (id: ${e.id})');
+      return (
+        membership: null,
+        errorCode: reportError(
+          message:
+              'The server says you are in ${enterprises.length} enterprises '
+              '(${names.join(', ')}), but an account can be in only one.',
+          hint: 'Update shorebird, then report this if it persists.',
+          code: JsonErrorCode.softwareError,
+          exitCode: ExitCode.software.code,
+        ),
+      );
+    }
     final membership = enterprises.firstOrNull;
     if (membership == null) {
       return (
@@ -92,6 +108,8 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
               '--${CommonArguments.enterpriseArg.name} widens a command to '
               'every organization in your enterprise. Without it, commands '
               'act on one organization (--${CommonArguments.orgIdArg.name}).',
+          code: JsonErrorCode.preconditionFailed,
+          exitCode: ExitCode.noPerm.code,
         ),
       );
     }

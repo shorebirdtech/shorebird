@@ -172,6 +172,8 @@ class MembersSetRoleCommand extends ShorebirdCommand
         message:
             'Only owners of "${enterprise.name}" can change enterprise roles; '
             'you are ${enterprise.role.value}.',
+        code: JsonErrorCode.preconditionFailed,
+        exitCode: ExitCode.noPerm.code,
       );
     }
 
