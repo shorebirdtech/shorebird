@@ -455,6 +455,92 @@ class CodePushClientWrapper {
     });
   }
 
+  /// Fetches the service accounts organization [organizationId] owns.
+  Future<List<ServiceAccount>> getServiceAccounts({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching service accounts',
+      () => codePushClient.getServiceAccounts(organizationId: organizationId),
+    );
+  }
+
+  /// Creates service account [name] in organization [organizationId].
+  Future<ServiceAccount> createServiceAccount({
+    required int organizationId,
+    required String name,
+    ServiceAccountRole? role,
+  }) {
+    return _withProgress(
+      'Creating service account',
+      () => codePushClient.createServiceAccount(
+        organizationId: organizationId,
+        name: name,
+        role: role,
+      ),
+    );
+  }
+
+  /// Sets the role of service account [serviceAccountId] to [role].
+  Future<ServiceAccount> updateServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+    required ServiceAccountRole role,
+  }) {
+    return _withProgress(
+      'Updating service account',
+      () => codePushClient.updateServiceAccount(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        role: role,
+      ),
+    );
+  }
+
+  /// Deletes service account [serviceAccountId].
+  Future<void> deleteServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Deleting service account',
+      () => codePushClient.deleteServiceAccount(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Fetches the unrevoked keys of service account [serviceAccountId].
+  Future<List<ServiceAccountKey>> getServiceAccountKeys({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Fetching service account keys',
+      () => codePushClient.getServiceAccountKeys(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Revokes key [keyId] of service account [serviceAccountId].
+  Future<void> revokeServiceAccountKey({
+    required int organizationId,
+    required int serviceAccountId,
+    required int keyId,
+  }) {
+    return _withProgress(
+      'Revoking service account key',
+      () => codePushClient.revokeServiceAccountKey(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        keyId: keyId,
+      ),
+    );
+  }
+
   /// Finds which of [memberships]' organizations app [appId] is in, or null
   /// if none of them lists it.
   ///
