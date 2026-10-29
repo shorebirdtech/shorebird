@@ -44,7 +44,7 @@ class EnterpriseMembersCommand extends ShorebirdCommand {
 class EnterpriseGuestsCommand extends ShorebirdCommand {
   /// {@macro enterprise_guests_command}
   EnterpriseGuestsCommand() {
-    addSubcommand(MembersListCommand(enterpriseRoute: true, guestsRoute: true));
+    addSubcommand(MembersListCommand.enterpriseGuests());
   }
 
   @override

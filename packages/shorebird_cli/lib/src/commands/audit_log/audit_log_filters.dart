@@ -105,10 +105,11 @@ mixin AuditLogFilterOptions
 
   /// Adds `--org-id`, the hidden `--enterprise` and the filter options
   /// [parseFilters] reads; for the `shorebird enterprise audit-log` copy
-  /// ([enterpriseRoute]), the filter options alone.
+  /// ([enterpriseRoute]), the filter options and the hidden scope options
+  /// of [addEnterpriseScope].
   void addFilterOptions({bool enterpriseRoute = false}) {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')
       ..addOption(
@@ -120,7 +121,9 @@ mixin AuditLogFilterOptions
       ..addOption(
         'event',
         aliases: const ['operation'],
-        help: 'Only entries of this event (e.g. "organization.rename").',
+        help: enterpriseRoute
+            ? 'Only entries of this event (e.g. "enterprise_member.remove").'
+            : 'Only entries of this event (e.g. "organization.rename").',
       )
       ..addOption(
         'start',
@@ -222,9 +225,7 @@ mixin AuditLogFilterOptions
     required String example,
   }) async {
     if (enterpriseScope) {
-      final scopeError =
-          rejectOrganizationAndEnterprise() ??
-          rejectOrganizationArgumentWithEnterprise();
+      final scopeError = rejectConflictingScope();
       if (scopeError != null) return (scope: null, errorCode: scopeError);
       final (:membership, :errorCode) = await resolveEnterprise();
       if (errorCode != null) return (scope: null, errorCode: errorCode);

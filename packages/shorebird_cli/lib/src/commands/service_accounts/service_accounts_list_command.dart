@@ -20,7 +20,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
   /// `shorebird enterprise service-accounts list`.
   ServiceAccountsListCommand({bool enterpriseRoute = false}) {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
   }
 
   @override
@@ -54,7 +54,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    final scopeError = rejectOrganizationAndEnterprise();
+    final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
     if (enterpriseScope) return _listEnterpriseServiceAccounts();
 

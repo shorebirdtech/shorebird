@@ -67,12 +67,25 @@ void main() {
     test('lists the choices for anything else', () {
       expect(
         parseMemberRole('none').error,
-        '"none" is not a role you can grant. Choose one of: admin, '
-        'appManager, developer, viewer.',
+        '"none" is not a role you can grant in an organization. Choose one '
+        'of: admin, appManager, developer, viewer.',
       );
       // No plan offers auditor to members; the server refuses it.
       expect(parseMemberRole('auditor').error, startsWith('"auditor" is not'));
       expect(parseMemberRole('boss').error, startsWith('"boss" is not'));
+    });
+
+    test('points an enterprise role at the enterprise command', () {
+      for (final role in ['billingManager', 'billing-manager', 'member']) {
+        expect(
+          parseMemberRole(role).error,
+          endsWith(
+            'For an enterprise role, run '
+            '`shorebird enterprise members set-role`.',
+          ),
+        );
+      }
+      expect(parseMemberRole('boss').error, isNot(contains('enterprise')));
     });
   });
 }

@@ -20,7 +20,7 @@ class UsageCommand extends ShorebirdCommand
   /// With [enterpriseRoute], it is `shorebird enterprise usage`.
   UsageCommand({bool enterpriseRoute = false}) {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
   }
 
   @override
@@ -66,9 +66,7 @@ class UsageCommand extends ShorebirdCommand
   @override
   Future<int> run() async {
     if (enterpriseScope) {
-      final scopeError =
-          rejectOrganizationAndEnterprise() ??
-          rejectOrganizationArgumentWithEnterprise();
+      final scopeError = rejectConflictingScope();
       if (scopeError != null) return scopeError;
       return _enterpriseUsage();
     }

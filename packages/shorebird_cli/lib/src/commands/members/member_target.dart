@@ -38,11 +38,18 @@ String get ownershipInConsoleMessage =>
   );
   if (role == Role.owner) return (role: null, error: ownershipInConsoleMessage);
   if (role == null || !grantableRoles.contains(role)) {
+    // `billingManager` and `member` are roles in an enterprise, not in an
+    // organization.
+    final enterpriseRole =
+        role == null &&
+        EnterpriseRole.values.any((r) => normalize(r.value) == normalize(arg));
     return (
       role: null,
       error:
-          '"$arg" is not a role you can grant. Choose one of: '
-          '${grantableRoles.map((r) => r.value).join(', ')}.',
+          '"$arg" is not a role you can grant in an organization. Choose one '
+          'of: ${grantableRoles.map((r) => r.value).join(', ')}.'
+          '${enterpriseRole ? ' For an enterprise role, run '
+                    '`shorebird enterprise members set-role`.' : ''}',
     );
   }
   return (role: role, error: null);

@@ -17,7 +17,7 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   ///
   /// With [enterpriseRoute], it is `shorebird enterprise apps list`.
   AppsListCommand({bool enterpriseRoute = false}) {
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
   }
 
   @override
@@ -50,6 +50,8 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
 
   @override
   Future<int> run() async {
+    final scopeError = rejectConflictingScope();
+    if (scopeError != null) return scopeError;
     if (enterpriseScope) return _listEnterpriseApps();
     try {
       await shorebirdValidator.validatePreconditions(

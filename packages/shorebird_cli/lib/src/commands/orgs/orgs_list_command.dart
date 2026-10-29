@@ -18,7 +18,7 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   ///
   /// With [enterpriseRoute], it is `shorebird enterprise orgs list`.
   OrgsListCommand({bool enterpriseRoute = false}) {
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
   }
 
   @override
@@ -53,6 +53,8 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
 
   @override
   Future<int> run() async {
+    final scopeError = rejectConflictingScope();
+    if (scopeError != null) return scopeError;
     if (enterpriseScope) return _listEnterpriseOrganizations();
     try {
       await shorebirdValidator.validatePreconditions(

@@ -28,7 +28,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
       mandatory: true,
     );
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
   }
 
   @override
@@ -75,11 +75,11 @@ class MembersSetRoleCommand extends ShorebirdCommand
       return reportError(
         message:
             'Name one member by email or user id: '
-            'shorebird members set-role bob@acme.com --role admin.',
+            '$commandLine bob@acme.com --role admin.',
       );
     }
     final user = rest.single.trim();
-    final scopeError = rejectOrganizationAndEnterprise();
+    final scopeError = rejectConflictingScope(takesUserArgument: true);
     if (scopeError != null) return scopeError;
     if (enterpriseScope) return _setEnterpriseRole(user);
 

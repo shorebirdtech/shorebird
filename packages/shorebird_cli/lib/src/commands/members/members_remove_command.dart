@@ -32,7 +32,7 @@ class MembersRemoveCommand extends ShorebirdCommand
       addConfirmDeleteOptions();
       addOrganizationScopeOption();
     }
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
   }
 
   @override
@@ -83,11 +83,11 @@ class MembersRemoveCommand extends ShorebirdCommand
       return reportError(
         message:
             'Name one member by email or user id: '
-            'shorebird members remove bob@acme.com.',
+            '$commandLine bob@acme.com.',
       );
     }
     final user = rest.single.trim();
-    final scopeError = rejectOrganizationAndEnterprise();
+    final scopeError = rejectConflictingScope(takesUserArgument: true);
     if (scopeError != null) return scopeError;
     if (enterpriseScope) return _removeFromEnterprise(user);
 

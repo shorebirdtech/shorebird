@@ -289,8 +289,8 @@ void main() {
       expect(await run(), ExitCode.usage.code);
       verify(
         () => h.logger.err(
-          'Pass --org-id or --enterprise, not both: --enterprise '
-          'already covers every organization in the enterprise.',
+          '--enterprise covers every organization in your enterprise, so '
+          'it takes no --org-id.',
         ),
       ).called(1);
     });

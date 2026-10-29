@@ -32,9 +32,11 @@ class AuditLogListCommand extends ShorebirdCommand
   @override
   String get name => 'list';
 
-  // The org id, as in `shorebird audit-log 42`.
+  // The org id, as in `shorebird audit-log 42`; the enterprise copy takes
+  // none, so `shorebird enterprise audit-log lst` stays a mistyped
+  // subcommand.
   @override
-  bool get takesPositionalArguments => true;
+  bool get takesPositionalArguments => !isEnterpriseRoute;
 
   @override
   String get invocation => isEnterpriseRoute

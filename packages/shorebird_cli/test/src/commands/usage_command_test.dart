@@ -400,9 +400,8 @@ void main() {
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
         () => h.logger.err(
-          'Pass an organization id or --enterprise, not both: '
-          '--enterprise already covers every organization in the '
-          'enterprise.',
+          '--enterprise covers every organization in your enterprise, so '
+          'it takes no organization id.',
         ),
       ).called(1);
       verifyNever(h.codePushClientWrapper.getEnterprises);

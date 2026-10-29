@@ -17,12 +17,20 @@ class MembersListCommand extends ShorebirdCommand
     with OrganizationScopedCommand, EnterpriseScopedCommand {
   /// {@macro members_list_command}
   ///
-  /// With [enterpriseRoute], it is `shorebird enterprise members list`, or
-  /// with [guestsRoute] too, `shorebird enterprise guests list`.
-  MembersListCommand({bool enterpriseRoute = false, bool guestsRoute = false})
-    : _guestsRoute = guestsRoute {
+  /// With [enterpriseRoute], it is `shorebird enterprise members list`.
+  MembersListCommand({bool enterpriseRoute = false})
+    : this._(enterpriseRoute: enterpriseRoute, guestsRoute: false);
+
+  /// `shorebird enterprise guests list`: the enterprise's guests, always.
+  MembersListCommand.enterpriseGuests()
+    : this._(enterpriseRoute: true, guestsRoute: true);
+
+  MembersListCommand._({
+    required bool enterpriseRoute,
+    required bool guestsRoute,
+  }) : _guestsRoute = guestsRoute {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
+    addEnterpriseScope(route: enterpriseRoute);
     if (!guestsRoute) {
       argParser.addFlag(
         _guestsFlag,
@@ -86,7 +94,7 @@ class MembersListCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    final scopeError = rejectOrganizationAndEnterprise();
+    final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
     final guests = _guestsRoute || results[_guestsFlag] == true;
     if (enterpriseScope) {

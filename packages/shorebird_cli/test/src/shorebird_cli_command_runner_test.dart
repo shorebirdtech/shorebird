@@ -508,6 +508,49 @@ Engine • revision $shorebirdEngineRevision'''),
         );
       });
 
+      test('reaches the default of each enterprise noun', () {
+        for (final (args, expanded) in [
+          (['enterprise'], ['enterprise', 'get']),
+          (['enterprise', 'members'], ['enterprise', 'members', 'list']),
+          (
+            ['enterprise', 'members', '--guests'],
+            ['enterprise', 'members', 'list', '--guests'],
+          ),
+          (['enterprise', 'guests'], ['enterprise', 'guests', 'list']),
+          (['enterprise', 'orgs'], ['enterprise', 'orgs', 'list']),
+          (['enterprise', 'teams'], ['enterprise', 'teams', 'list']),
+          (['enterprise', 'apps'], ['enterprise', 'apps', 'list']),
+          (
+            ['enterprise', 'service-accounts'],
+            ['enterprise', 'service-accounts', 'list'],
+          ),
+          (['enterprise', 'audit-log'], ['enterprise', 'audit-log', 'list']),
+          (
+            ['enterprise', 'audit-log', '--start', '2026-10-21'],
+            ['enterprise', 'audit-log', 'list', '--start', '2026-10-21'],
+          ),
+          (
+            ['enterprises', 'audit', '--cursor', 'c'],
+            ['enterprises', 'audit', 'list', '--cursor', 'c'],
+          ),
+        ]) {
+          expect(
+            commandRunner.withDefaultSubcommand(args),
+            expanded,
+            reason: args.join(' '),
+          );
+        }
+      });
+
+      test('leaves a mistyped enterprise subcommand an error', () {
+        for (final args in [
+          ['enterprise', 'audit-log', 'lst'],
+          ['enterprise', 'members', 'lst'],
+        ]) {
+          expect(commandRunner.withDefaultSubcommand(args), args);
+        }
+      });
+
       test('leaves a named subcommand alone', () {
         final args = ['audit-log', 'export', '42'];
         expect(commandRunner.withDefaultSubcommand(args), args);
