@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/commands/commands.dart';
+import 'package:shorebird_ci/src/version.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
@@ -56,6 +57,23 @@ void main() {
           ),
         ).existsSync(),
         isFalse,
+      );
+    });
+
+    test('pins shorebird_ci to the version that generated it', () async {
+      // Unpinned, every shorebird_ci release changes every generated
+      // workflow the moment it's published.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+
+      expect(
+        _readMain(tempDir),
+        contains(
+          '      - run: dart pub global activate shorebird_ci '
+          '$packageVersion\n',
+        ),
       );
     });
 
@@ -302,6 +320,21 @@ void main() {
       expect(
         content,
         contains('            solo:\n              - tools/solo/**\n'),
+      );
+    });
+
+    test('static workflow pins shorebird_ci to its version', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        _readMain(tempDir),
+        contains(
+          '      - run: dart pub global activate shorebird_ci '
+          '$packageVersion\n',
+        ),
       );
     });
 

@@ -34,7 +34,7 @@ jobs:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
       - uses: dart-lang/setup-dart@v1
-      - run: dart pub global activate shorebird_ci
+      - run: dart pub global activate shorebird_ci 0.2.5
       - name: Verify CI coverage
         run: shorebird_ci verify
       - uses: dorny/paths-filter@v4

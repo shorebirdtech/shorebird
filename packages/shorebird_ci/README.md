@@ -11,6 +11,9 @@ the repo evolves.
 dart pub global activate shorebird_ci
 ```
 
+Generated workflows pin the shorebird_ci version that generated them,
+so a new release doesn't change your CI until you rerun `generate`.
+
 ## Quick Start
 
 ```sh
