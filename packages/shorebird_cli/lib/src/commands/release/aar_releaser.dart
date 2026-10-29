@@ -13,7 +13,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template aar_releaser}
@@ -56,10 +55,7 @@ class AarReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    if (!argResults.wasParsed('release-version')) {
-      logger.err('Missing required argument: --release-version');
-      throw ProcessExit(ExitCode.usage.code);
-    }
+    assertReleaseVersionProvided();
   }
 
   @override
