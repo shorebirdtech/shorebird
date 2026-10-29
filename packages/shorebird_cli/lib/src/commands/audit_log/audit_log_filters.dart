@@ -86,9 +86,9 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
         'start',
         aliases: const ['since'],
         help:
-            'Only entries at or after this time: how long ago (7d, 24h, 30m, '
-            '2w), a date (2026-10-01, the start of that day UTC) or a time '
-            'with its zone (2026-10-01T09:00:00Z).',
+            'Only entries at or after this time: how long ago (2w, 7d, 24h, '
+            '30m, 45s), a date (2026-10-01, the start of that day UTC) or a '
+            'time with its zone (2026-10-01T09:00:00Z).',
       )
       ..addOption(
         'end',
@@ -133,8 +133,8 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
       return (
         filters: null,
         error:
-            '--start (${results['start']}) is after --end '
-            '(${results['end']}), so no entry could match.',
+            '--start (${_describeTime('start')}) is after --end '
+            '(${_describeTime('end')}), so no entry could match.',
       );
     }
 
@@ -151,6 +151,13 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     );
   }
 
+  /// [option]'s argument, with the time it resolved to when that was a
+  /// duration, since a longer duration is the earlier time.
+  String _describeTime(String option) => switch (_timesFromDurations[option]) {
+    final time? => '${results[option]}: ${_formatTime(time)}',
+    null => '${results[option]}',
+  };
+
   ({DateTime? value, String? error}) _parseTime(
     String option, {
     required bool endOfDay,
@@ -160,6 +167,7 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     if (_duration.firstMatch(arg) case final match?) {
       final amount = int.parse(match[1]!);
       final ago = switch (match[2]!) {
+        's' => Duration(seconds: amount),
         'm' => Duration(minutes: amount),
         'h' => Duration(hours: amount),
         'd' => Duration(days: amount),
@@ -191,7 +199,7 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     return (
       value: null,
       error:
-          'Pass --$option as how long ago (7d, 24h, 30m, 2w), a date '
+          'Pass --$option as how long ago (2w, 7d, 24h, 30m, 45s), a date '
           '(2026-10-01) or a time with its zone (2026-10-01T09:00:00Z), not '
           '"$arg".',
     );
@@ -209,7 +217,7 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
       '--${CommonArguments.orgIdArg.name} $organizationId',
       for (final option in _filterOptions)
         if (_timesFromDurations[option] case final time?)
-          '--$option ${time.toIso8601String().replaceFirst('.000Z', 'Z')}'
+          '--$option ${_formatTime(time)}'
         else if (results.wasParsed(option))
           '--$option ${_quote(results[option])}',
       ...extra,
@@ -287,8 +295,13 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
   }
 }
 
-// cspell:words mhdw
-final _duration = RegExp(r'^(\d+)([mhdw])$');
+// At most 4 digits: 9999w is 190 years, so a typo can't overflow the date.
+// cspell:words smhdw
+final _duration = RegExp(r'^(\d{1,4})([smhdw])$');
+
+/// [time] (whole seconds, UTC) as an option value.
+String _formatTime(DateTime time) =>
+    time.toIso8601String().replaceFirst('.000Z', 'Z');
 final _date = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 final _timeWithZone = RegExp(
   r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$',

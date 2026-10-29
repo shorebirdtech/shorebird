@@ -202,6 +202,7 @@ void main() {
       final now = DateTime.utc(2026, 10, 28, 12, 30, 15, 500);
 
       for (final (value, expected) in [
+        ('45s', DateTime.utc(2026, 10, 28, 12, 29, 30)),
         ('30m', DateTime.utc(2026, 10, 28, 12, 0, 15)),
         ('24h', DateTime.utc(2026, 10, 27, 12, 30, 15)),
         ('7d', DateTime.utc(2026, 10, 21, 12, 30, 15)),
@@ -231,6 +232,24 @@ void main() {
             organizationId: 42,
             order: AuditLogOrder.desc,
             endDate: DateTime.utc(2026, 10, 27, 12, 30, 15),
+          ),
+        ).called(1);
+      });
+
+      test('says what a duration start after a duration end means', () async {
+        stubOption('start', '1d');
+        stubOption('end', '7d');
+        expect(
+          await withClock(
+            Clock.fixed(now),
+            () => runWithOverrides(command.run),
+          ),
+          ExitCode.usage.code,
+        );
+        verify(
+          () => logger.err(
+            '--start (1d: 2026-10-27T12:30:15Z) is after --end '
+            '(7d: 2026-10-21T12:30:15Z), so no entry could match.',
           ),
         ).called(1);
       });
@@ -297,6 +316,8 @@ void main() {
         ('start', 'last week'),
         ('start', '7y'),
         ('start', '-7d'),
+        // Five digits could overflow the date.
+        ('start', '10000w'),
         // Read as local midnight, not a date, by DateTime.parse.
         ('end', '20261001'),
         // No zone: local time, which the help doesn't promise.
@@ -307,7 +328,7 @@ void main() {
         test('--$option $value', () async {
           stubOption(option, value);
           await expectUsageError(
-            'Pass --$option as how long ago (7d, 24h, 30m, 2w), a date '
+            'Pass --$option as how long ago (2w, 7d, 24h, 30m, 45s), a date '
             '(2026-10-01) or a time with its zone (2026-10-01T09:00:00Z), not '
             '"$value".',
           );
