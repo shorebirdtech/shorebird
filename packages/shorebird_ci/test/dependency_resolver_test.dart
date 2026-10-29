@@ -138,6 +138,20 @@ dependencies:
         );
       });
 
+      test('workspaceFiles names the root pubspec files', () {
+        createWorkspaceRoot(tempDir, members: ['packages/app']);
+        writeMember('packages/app', 'app', '');
+        createPackage(tempDir, 'tools/solo', 'solo');
+
+        final resolver = DependencyResolver(tempDir.path);
+
+        expect(
+          resolver.workspaceFiles('packages/app'),
+          equals({'pubspec.yaml', 'pubspec.lock'}),
+        );
+        expect(resolver.workspaceFiles('tools/solo'), isEmpty);
+      });
+
       test('ignores a name match outside the workspace', () {
         createWorkspaceRoot(tempDir, members: ['packages/app']);
         writeMember('packages/app', 'app', '''

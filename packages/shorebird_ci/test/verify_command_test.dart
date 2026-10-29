@@ -252,8 +252,20 @@ dependencies:
         expect(await runVerify(tempDir), 1);
       });
 
+      test('filter missing the workspace lockfile → returns 1', () async {
+        writeFooFilter(['packages/foo/**', 'packages/bar/**', 'pubspec.yaml']);
+        initGitRepo(tempDir);
+
+        expect(await runVerify(tempDir), 1);
+      });
+
       test('filter covering it → passes', () async {
-        writeFooFilter(['packages/foo/**', 'packages/bar/**']);
+        writeFooFilter([
+          'packages/foo/**',
+          'packages/bar/**',
+          'pubspec.lock',
+          './pubspec.yaml',
+        ]);
         initGitRepo(tempDir);
 
         expect(await runVerify(tempDir), 0);

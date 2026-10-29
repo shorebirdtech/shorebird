@@ -67,6 +67,22 @@ class DependencyResolver {
     return deps;
   }
 
+  /// Returns the files (repo-relative) outside [packageDir] that decide
+  /// what it resolves to: its workspace root's `pubspec.yaml` and
+  /// `pubspec.lock`, if it uses `resolution: workspace`. A workspace
+  /// member has no lockfile of its own, so a dependency bump changes
+  /// only these.
+  Set<String> workspaceFiles(String packageDir) {
+    final absolute = p.join(repoRoot, packageDir);
+    if (!usesWorkspaceResolution(absolute)) return const {};
+    final root = findWorkspaceRoot(absolute);
+    if (root == null) return const {};
+    return {
+      for (final file in ['pubspec.yaml', 'pubspec.lock'])
+        posixRelative(p.join(root.path, file), from: repoRoot),
+    };
+  }
+
   /// Returns the members of the workspace [packageDir] resolves in,
   /// or an empty map if it doesn't use `resolution: workspace`.
   Map<String, String> _workspaceMembers(String packageDir) {

@@ -366,6 +366,11 @@ jobs:
       for (final dep in sortedDeps) {
         buffer.writeln('              - $dep/**');
       }
+      final workspaceFiles = resolver.workspaceFiles(packageDir).toList()
+        ..sort();
+      for (final file in workspaceFiles) {
+        buffer.writeln('              - $file');
+      }
     }
     buffer.writeln();
 

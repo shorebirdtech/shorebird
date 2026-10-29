@@ -164,15 +164,17 @@ class VerifyCommand extends Command<int> with RepoRootOption {
         continue;
       }
       final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
-      final deps = resolver.resolve(
-        posixRelative(pkg.rootPath, from: repoRoot),
-      );
+      final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
+      final deps = resolver.resolve(packageDir);
+      final files = resolver.workspaceFiles(packageDir);
       var covered = true;
       for (final workflow in workflows) {
         final patterns = filtersByWorkflow[workflow]![slug]!;
         final uncovered = [
           for (final dep in deps)
-            if (!_coversPackage(patterns, dep)) dep,
+            if (!_covers(patterns, dep, isDirectory: true)) '$dep/**',
+          for (final file in files)
+            if (!_covers(patterns, file, isDirectory: false)) file,
         ]..sort();
         if (uncovered.isNotEmpty) {
           covered = false;
@@ -187,15 +189,15 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     if (drift.isNotEmpty) {
       for (final MapEntry(key: label, value: deps) in drift.entries) {
         stderr.writeln(
-          'DRIFT: the $label misses packages it depends on. '
+          'DRIFT: the $label misses files its package depends on. '
           'Add to it:',
         );
         for (final dep in deps) {
-          stderr.writeln('              - $dep/**');
+          stderr.writeln('              - $dep');
         }
       }
       stderr.writeln(
-        '${drift.length} filter(s) miss packages they depend on.',
+        '${drift.length} filter(s) miss files their package depends on.',
       );
     }
 
@@ -229,6 +231,9 @@ class VerifyCommand extends Command<int> with RepoRootOption {
         ..writeln('            $slug:');
       for (final dep in sortedDeps) {
         stdout.writeln('              - $dep/**');
+      }
+      for (final file in resolver.workspaceFiles(packageDir).toList()..sort()) {
+        stdout.writeln('              - $file');
       }
       stdout.writeln();
     }
@@ -392,16 +397,17 @@ class _RequiredJobReport {
   final bool isMalformed;
 }
 
-/// Whether one of a dorny filter's [patterns] matches every file in
-/// the repo-relative [packageDir]: `<dir>/**` for the package or one
-/// of its ancestors, or `**`.
-bool _coversPackage(Set<String> patterns, String packageDir) {
+/// Whether one of a dorny filter's [patterns] matches the repo-relative
+/// [path] (every file in it, if [isDirectory]): the path itself, a
+/// `<dir>/**` for it or one of its ancestors, or `**`.
+bool _covers(Set<String> patterns, String path, {required bool isDirectory}) {
   for (var pattern in patterns) {
     if (pattern.startsWith('./')) pattern = pattern.substring(2);
     if (pattern == '**') return true;
+    if (pattern == path && !isDirectory) return true;
     if (!pattern.endsWith('/**')) continue;
     final dir = pattern.substring(0, pattern.length - 3);
-    if (packageDir == dir || packageDir.startsWith('$dir/')) return true;
+    if ((isDirectory && path == dir) || path.startsWith('$dir/')) return true;
   }
   return false;
 }

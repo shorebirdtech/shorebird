@@ -44,15 +44,23 @@ jobs:
             dex:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
+              - pubspec.lock
+              - pubspec.yaml
             scoped_deps:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/scoped_deps/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_build_trace:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_build_trace/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_ci:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_ci/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_cli:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
@@ -61,19 +69,29 @@ jobs:
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_code_push_client:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_code_push_protocol:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_redis_client:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/redis_client/**
+              - pubspec.lock
+              - pubspec.yaml
             verify_cache:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/verify_cache/**
+              - pubspec.lock
+              - pubspec.yaml
 
   dex:
     needs: changes

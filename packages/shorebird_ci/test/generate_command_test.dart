@@ -279,6 +279,32 @@ void main() {
       );
     });
 
+    test('static filters include the workspace root pubspec files', () async {
+      createWorkspaceRoot(tempDir, members: ['packages/foo']);
+      createPackage(tempDir, 'packages/foo', 'foo', useWorkspace: true);
+      createPackage(tempDir, 'tools/solo', 'solo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final content = File(
+        p.join(tempDir.path, '.github', 'workflows', 'shorebird_ci.yaml'),
+      ).readAsStringSync();
+      expect(
+        content,
+        contains(
+          '            foo:\n'
+          '              - packages/foo/**\n'
+          '              - pubspec.lock\n'
+          '              - pubspec.yaml\n',
+        ),
+      );
+      expect(
+        content,
+        contains('            solo:\n              - tools/solo/**\n'),
+      );
+    });
+
     test('static workflow triggers on merge_group', () async {
       // Branch protection's required contexts only gate a merge if they
       // report on the queue's temp branch too.
