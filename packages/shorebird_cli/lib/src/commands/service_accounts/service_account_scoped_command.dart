@@ -187,3 +187,26 @@ String serviceAccountKeyLine(ServiceAccountKey key) =>
     '${key.id}  ${key.name}  created ${formatDate(key.createdAt)}  '
     'expires ${formatDate(key.expiresAt)}  '
     'last used ${formatDate(key.lastUsedAt)}';
+
+/// [rule] for `--json` output.
+Map<String, Object?> trustRuleJson(ServiceAccountTrustRule rule) => {
+  'id': rule.id,
+  'provider': rule.provider.value,
+  'repository_owner': rule.github.repositoryOwner,
+  'repository_owner_id': rule.github.repositoryOwnerId,
+  'repository_name': rule.github.repositoryName,
+  'workflow_path': rule.github.workflowPath,
+  'environment': rule.github.environment,
+  'ref_pattern': rule.github.refPattern,
+  'created_at': jsonTime(rule.createdAt),
+  'last_used_at': jsonTime(rule.lastUsedAt),
+};
+
+/// [rule] as one line of human-readable output.
+String trustRuleLine(ServiceAccountTrustRule rule) {
+  final github = rule.github;
+  return '${rule.id}  ${github.repositoryOwner}/${github.repositoryName}  '
+      '${github.workflowPath}  ref ${github.refPattern ?? 'any'}  '
+      'environment ${github.environment ?? 'any'}  '
+      'last used ${formatDate(rule.lastUsedAt)}';
+}

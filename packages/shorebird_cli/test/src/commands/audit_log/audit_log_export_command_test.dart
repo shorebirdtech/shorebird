@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -166,6 +167,22 @@ void main() {
           contains(
             'To export newer entries later: shorebird audit-log export '
             '--org-id 42 --start 2026-10-01 --order asc --cursor p2',
+          ),
+        );
+      });
+
+      test('resumes from the time a duration meant', () async {
+        stubOption('start', '7d');
+        final (:exitCode, :stdout, :stderr) = await withClock(
+          Clock.fixed(DateTime.utc(2026, 10, 28, 12, 30, 15)),
+          runExport,
+        );
+        expect(exitCode, ExitCode.success.code);
+        expect(
+          stderr,
+          contains(
+            'To export newer entries later: shorebird audit-log export '
+            '--org-id 42 --start 2026-10-21T12:30:15Z --order asc --cursor p2',
           ),
         );
       });

@@ -3859,6 +3859,28 @@ void main() {
       );
       const accountPath =
           'organizations/$organizationId/service-accounts/$serviceAccountId';
+      const ruleRequest = CreateServiceAccountTrustRuleRequest(
+        provider: TrustRuleProvider.github,
+        repositoryOwner: 'acme',
+        repositoryName: 'app',
+        workflowPath: '.github/workflows/release.yml',
+        refPattern: 'refs/heads/main',
+      );
+      final rule = ServiceAccountTrustRule(
+        id: 7,
+        provider: TrustRuleProvider.github,
+        createdAt: DateTime.utc(2026, 10),
+        createdByUserId: null,
+        lastUsedAt: null,
+        github: const GithubTrustRule(
+          repositoryOwner: 'acme',
+          repositoryOwnerId: 1,
+          repositoryName: 'app',
+          workflowPath: '.github/workflows/release.yml',
+          environment: null,
+          refPattern: 'refs/heads/main',
+        ),
+      );
 
       void respondWith(Object? body, int status) {
         when(() => httpClient.send(any())).thenAnswer(
@@ -4005,6 +4027,60 @@ void main() {
         expect(request.method, 'GET');
         expect(request.url, v1('$accountPath/keys'));
         expect(keys, [key]);
+      });
+
+      test('getServiceAccountTrustRules lists the rules', () async {
+        respondWith(
+          GetServiceAccountTrustRulesResponse(trustRules: [rule]).toJson(),
+          HttpStatus.ok,
+        );
+        late List<ServiceAccountTrustRule> rules;
+        final request = await sentRequest(
+          () async => rules = await codePushClient.getServiceAccountTrustRules(
+            organizationId: organizationId,
+            serviceAccountId: serviceAccountId,
+          ),
+        );
+        expect(request.method, 'GET');
+        expect(request.url, v1('$accountPath/trust-rules'));
+        expect(rules, [rule]);
+      });
+
+      test('createServiceAccountTrustRule sends a flat body', () async {
+        respondWith(rule.toJson(), HttpStatus.created);
+        late ServiceAccountTrustRule created;
+        final request = await sentRequest(
+          () async =>
+              created = await codePushClient.createServiceAccountTrustRule(
+                organizationId: organizationId,
+                serviceAccountId: serviceAccountId,
+                rule: ruleRequest,
+              ),
+        );
+        expect(request.method, 'POST');
+        expect(request.url, v1('$accountPath/trust-rules'));
+        expect(json.decode(request.body), {
+          'provider': 'github',
+          'repository_owner': 'acme',
+          'repository_name': 'app',
+          'workflow_path': '.github/workflows/release.yml',
+          'environment': null,
+          'ref_pattern': 'refs/heads/main',
+        });
+        expect(created, rule);
+      });
+
+      test('deleteServiceAccountTrustRule deletes the rule', () async {
+        respondWith(null, HttpStatus.noContent);
+        final request = await sentRequest(
+          () => codePushClient.deleteServiceAccountTrustRule(
+            organizationId: organizationId,
+            serviceAccountId: serviceAccountId,
+            ruleId: 7,
+          ),
+        );
+        expect(request.method, 'DELETE');
+        expect(request.url, v1('$accountPath/trust-rules/7'));
       });
 
       test('revokeServiceAccountKey deletes the key', () async {

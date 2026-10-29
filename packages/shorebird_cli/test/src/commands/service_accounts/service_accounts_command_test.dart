@@ -19,12 +19,19 @@ void main() {
         'credentials',
         'list',
         'set-role',
+        'trust',
+        'trust-rules',
+        'oidc',
       ]);
       expect(command.defaultSubcommand, 'list');
       expect(command.aliases, ['service-account']);
       expect(
         command.subcommands['keys']!.subcommands.keys,
         containsAll(['create', 'list', 'revoke', 'delete']),
+      );
+      expect(
+        command.subcommands['trust']!.subcommands.keys,
+        containsAll(['add', 'create', 'list', 'remove', 'delete']),
       );
     });
   });

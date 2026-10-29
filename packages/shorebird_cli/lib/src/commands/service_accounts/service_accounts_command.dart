@@ -14,6 +14,7 @@ class ServiceAccountsCommand extends ShorebirdCommand {
     addSubcommand(ServiceAccountKeysCommand());
     addSubcommand(ServiceAccountsListCommand());
     addSubcommand(ServiceAccountsSetRoleCommand());
+    addSubcommand(ServiceAccountTrustCommand());
   }
 
   @override

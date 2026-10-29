@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -85,16 +86,16 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
         'start',
         aliases: const ['since'],
         help:
-            'Only entries at or after this time: a date (2026-10-01, the '
-            'start of that day UTC) or a time with its zone '
-            '(2026-10-01T09:00:00Z).',
+            'Only entries at or after this time: how long ago (2w, 7d, 24h, '
+            '30m, 45s), a date (2026-10-01, the start of that day UTC) or a '
+            'time with its zone (2026-10-01T09:00:00Z).',
       )
       ..addOption(
         'end',
         aliases: const ['until'],
         help:
-            'Only entries at or before this time: a date (the end of that '
-            'day UTC) or a time with its zone.',
+            'Only entries at or before this time: how long ago (1d), a date '
+            '(the end of that day UTC) or a time with its zone.',
       )
       ..addOption(
         'order',
@@ -103,6 +104,11 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
         allowedHelp: const {'desc': 'Newest first.', 'asc': 'Oldest first.'},
       );
   }
+
+  /// The times [parseFilters] resolved from a duration (`--start 7d`), by
+  /// option, so a printed command repeats the time rather than a duration
+  /// that would mean a later time when it runs.
+  final _timesFromDurations = <String, DateTime>{};
 
   /// The filters this run was given, or why they are invalid.
   ({AuditLogFilters? filters, String? error}) parseFilters() {
@@ -127,8 +133,8 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
       return (
         filters: null,
         error:
-            '--start (${results['start']}) is after --end '
-            '(${results['end']}), so no entry could match.',
+            '--start (${_describeTime('start')}) is after --end '
+            '(${_describeTime('end')}), so no entry could match.',
       );
     }
 
@@ -145,12 +151,38 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     );
   }
 
+  /// [option]'s argument, with the time it resolved to when that was a
+  /// duration, since a longer duration is the earlier time.
+  String _describeTime(String option) => switch (_timesFromDurations[option]) {
+    final time? => '${results[option]}: ${_formatTime(time)}',
+    null => '${results[option]}',
+  };
+
   ({DateTime? value, String? error}) _parseTime(
     String option, {
     required bool endOfDay,
   }) {
     final arg = results[option] as String?;
     if (arg == null) return (value: null, error: null);
+    if (_duration.firstMatch(arg) case final match?) {
+      final amount = int.parse(match[1]!);
+      final ago = switch (match[2]!) {
+        's' => Duration(seconds: amount),
+        'm' => Duration(minutes: amount),
+        'h' => Duration(hours: amount),
+        'd' => Duration(days: amount),
+        _ => Duration(days: amount * 7),
+      };
+      // Whole seconds, so a printed command repeats a readable time.
+      final now = clock.now().toUtc();
+      final value = now
+          .subtract(
+            Duration(microseconds: now.microsecondsSinceEpoch % 1000000),
+          )
+          .subtract(ago);
+      _timesFromDurations[option] = value;
+      return (value: value, error: null);
+    }
     if (_date.hasMatch(arg)) {
       final day = DateTime.tryParse('${arg}T00:00:00Z');
       // DateTime.parse rolls 2026-02-30 over into March; refuse it instead.
@@ -167,8 +199,9 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     return (
       value: null,
       error:
-          'Pass --$option as a date (2026-10-01) or a time with its zone '
-          '(2026-10-01T09:00:00Z), not "$arg".',
+          'Pass --$option as how long ago (2w, 7d, 24h, 30m, 45s), a date '
+          '(2026-10-01) or a time with its zone (2026-10-01T09:00:00Z), not '
+          '"$arg".',
     );
   }
 
@@ -183,7 +216,10 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     final options = [
       '--${CommonArguments.orgIdArg.name} $organizationId',
       for (final option in _filterOptions)
-        if (results.wasParsed(option)) '--$option ${_quote(results[option])}',
+        if (_timesFromDurations[option] case final time?)
+          '--$option ${_formatTime(time)}'
+        else if (results.wasParsed(option))
+          '--$option ${_quote(results[option])}',
       ...extra,
       '--cursor ${_quote(cursor)}',
     ];
@@ -259,6 +295,13 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
   }
 }
 
+// At most 4 digits: 9999w is 190 years, so a typo can't overflow the date.
+// cspell:words smhdw
+final _duration = RegExp(r'^(\d{1,4})([smhdw])$');
+
+/// [time] (whole seconds, UTC) as an option value.
+String _formatTime(DateTime time) =>
+    time.toIso8601String().replaceFirst('.000Z', 'Z');
 final _date = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 final _timeWithZone = RegExp(
   r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$',

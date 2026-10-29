@@ -4884,6 +4884,37 @@ components:
         notes:
           type: string
           description: Freeform notes associated with the release, if any.
+        flutter_revision_issue:
+          $ref: '#/components/schemas/FlutterRevisionIssue'
+    FlutterRevisionIssue:
+      type: object
+      description: |
+        A known problem with the Flutter revision a release was built on,
+        which Shorebird marked bad. Absent from a release whose revision has
+        no mark. A mark names the platforms it affects; a release on none of
+        them is not affected.
+      required:
+        - summary
+      properties:
+        summary:
+          type: string
+          description: What is wrong, in one line of at most 80 characters.
+        details:
+          type: string
+          description: The full explanation and what to do, as markdown.
+        platforms:
+          type: array
+          description: |
+            The platforms the problem affects. Absent when it affects every
+            platform.
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+        fixed_in_revision:
+          type: string
+          description: The Flutter revision to release with instead, if any.
+        fixed_in_version:
+          type: string
+          description: The Flutter version of `fixed_in_revision`, when known.
     ReleasePlatformDetails:
       type: object
       description: A release on one platform.

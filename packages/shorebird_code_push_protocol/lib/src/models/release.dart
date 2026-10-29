@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/flutter_revision_issue.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform_details.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
@@ -23,6 +24,7 @@ class Release {
     this.displayName,
     @deprecated this.platformStatuses,
     this.notes,
+    this.flutterRevisionIssue,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Release].
@@ -53,6 +55,9 @@ class Release {
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         notes: json['notes'] as String?,
+        flutterRevisionIssue: FlutterRevisionIssue.maybeFromJson(
+          json['flutter_revision_issue'] as Map<String, dynamic>?,
+        ),
       ),
     );
   }
@@ -104,6 +109,12 @@ class Release {
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
+  /// A known problem with the Flutter revision a release was built on,
+  /// which Shorebird marked bad. Absent from a release whose revision has
+  /// no mark. A mark names the platforms it affects; a release on none of
+  /// them is not affected.
+  final FlutterRevisionIssue? flutterRevisionIssue;
+
   /// Converts a [Release] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -122,6 +133,7 @@ class Release {
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'notes': ?notes,
+      'flutter_revision_issue': ?flutterRevisionIssue?.toJson(),
     };
   }
 
@@ -138,6 +150,7 @@ class Release {
     createdAt,
     updatedAt,
     notes,
+    flutterRevisionIssue,
   ]);
 
   @override
@@ -154,6 +167,7 @@ class Release {
         mapsEqual(platforms, other.platforms) &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
-        notes == other.notes;
+        notes == other.notes &&
+        flutterRevisionIssue == other.flutterRevisionIssue;
   }
 }

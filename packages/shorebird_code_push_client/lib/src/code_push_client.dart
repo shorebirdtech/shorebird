@@ -1273,6 +1273,71 @@ class CodePushClient {
     }
   }
 
+  /// Gets the trust rules of service account [serviceAccountId] in
+  /// organization [organizationId], oldest first.
+  Future<List<ServiceAccountTrustRule>> getServiceAccountTrustRules({
+    required int organizationId,
+    required int serviceAccountId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/service-accounts/'
+        '$serviceAccountId/trust-rules',
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetServiceAccountTrustRulesResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).trustRules;
+  }
+
+  /// Adds trust rule [rule] to service account [serviceAccountId] in
+  /// organization [organizationId].
+  Future<ServiceAccountTrustRule> createServiceAccountTrustRule({
+    required int organizationId,
+    required int serviceAccountId,
+    required CreateServiceAccountTrustRuleRequest rule,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/service-accounts/'
+        '$serviceAccountId/trust-rules',
+      ),
+      body: json.encode(rule.toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return ServiceAccountTrustRule.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Deletes trust rule [ruleId] of service account [serviceAccountId] in
+  /// organization [organizationId].
+  Future<void> deleteServiceAccountTrustRule({
+    required int organizationId,
+    required int serviceAccountId,
+    required int ruleId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse(
+        '$_v1/organizations/$organizationId/service-accounts/'
+        '$serviceAccountId/trust-rules/$ruleId',
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Gets the apps in organization [organizationId] that the user can see.
   Future<List<AppMetadata>> getOrganizationApps({
     required int organizationId,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:args/args.dart';
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -197,6 +198,80 @@ void main() {
       ).called(1);
     });
 
+    group('takes how long ago', () {
+      final now = DateTime.utc(2026, 10, 28, 12, 30, 15, 500);
+
+      for (final (value, expected) in [
+        ('45s', DateTime.utc(2026, 10, 28, 12, 29, 30)),
+        ('30m', DateTime.utc(2026, 10, 28, 12, 0, 15)),
+        ('24h', DateTime.utc(2026, 10, 27, 12, 30, 15)),
+        ('7d', DateTime.utc(2026, 10, 21, 12, 30, 15)),
+        ('2w', DateTime.utc(2026, 10, 14, 12, 30, 15)),
+      ]) {
+        test(value, () async {
+          stubOption('start', value);
+          await withClock(
+            Clock.fixed(now),
+            () => runWithOverrides(command.run),
+          );
+          verify(
+            () => codePushClientWrapper.getOrganizationAuditLogs(
+              organizationId: 42,
+              order: AuditLogOrder.desc,
+              startDate: expected,
+            ),
+          ).called(1);
+        });
+      }
+
+      test('for --end too', () async {
+        stubOption('end', '1d');
+        await withClock(Clock.fixed(now), () => runWithOverrides(command.run));
+        verify(
+          () => codePushClientWrapper.getOrganizationAuditLogs(
+            organizationId: 42,
+            order: AuditLogOrder.desc,
+            endDate: DateTime.utc(2026, 10, 27, 12, 30, 15),
+          ),
+        ).called(1);
+      });
+
+      test('says what a duration start after a duration end means', () async {
+        stubOption('start', '1d');
+        stubOption('end', '7d');
+        expect(
+          await withClock(
+            Clock.fixed(now),
+            () => runWithOverrides(command.run),
+          ),
+          ExitCode.usage.code,
+        );
+        verify(
+          () => logger.err(
+            '--start (1d: 2026-10-27T12:30:15Z) is after --end '
+            '(7d: 2026-10-21T12:30:15Z), so no entry could match.',
+          ),
+        ).called(1);
+      });
+
+      test('and the next page repeats the time, not the duration', () async {
+        stubOption('start', '7d');
+        stubAuditLogPages(codePushClientWrapper, {
+          null: GetOrganizationAuditLogsResponse(
+            data: [auditLogEntry()],
+            nextCursor: 'abc',
+          ),
+        });
+        await withClock(Clock.fixed(now), () => runWithOverrides(command.run));
+        verify(
+          () => logger.info(
+            'Next page: shorebird audit-log list --org-id 42 '
+            '--start 2026-10-21T12:30:15Z --cursor abc',
+          ),
+        ).called(1);
+      });
+    });
+
     test('--json emits the entries as OCSF events', () async {
       stubAuditLogPages(codePushClientWrapper, {
         null: GetOrganizationAuditLogsResponse(
@@ -239,6 +314,10 @@ void main() {
 
       for (final (option, value) in [
         ('start', 'last week'),
+        ('start', '7y'),
+        ('start', '-7d'),
+        // Five digits could overflow the date.
+        ('start', '10000w'),
         // Read as local midnight, not a date, by DateTime.parse.
         ('end', '20261001'),
         // No zone: local time, which the help doesn't promise.
@@ -249,8 +328,9 @@ void main() {
         test('--$option $value', () async {
           stubOption(option, value);
           await expectUsageError(
-            'Pass --$option as a date (2026-10-01) or a time with its zone '
-            '(2026-10-01T09:00:00Z), not "$value".',
+            'Pass --$option as how long ago (2w, 7d, 24h, 30m, 45s), a date '
+            '(2026-10-01) or a time with its zone (2026-10-01T09:00:00Z), not '
+            '"$value".',
           );
         });
       }
