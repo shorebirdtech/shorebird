@@ -19,11 +19,12 @@ void main() {
     });
 
     test("reads an organization's entry", () {
-      final metadata = AuditLogEventMetadata.fromJson({
+      final metadata = AuditLogEventMetadata.fromJson(const {
         ...json,
         'tenant_uid': '42',
       });
       expect(metadata.tenantUid, '42');
+      expect(metadata.toJson(), containsPair('tenant_uid', '42'));
     });
   });
 }
