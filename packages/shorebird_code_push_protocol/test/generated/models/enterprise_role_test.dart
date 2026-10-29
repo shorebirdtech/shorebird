@@ -6,7 +6,7 @@ void main() {
   group('EnterpriseRole', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = EnterpriseRole.owner;
-      final parsed = EnterpriseRole.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseRole.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

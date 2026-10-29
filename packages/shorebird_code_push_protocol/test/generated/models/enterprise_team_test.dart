@@ -15,7 +15,7 @@ void main() {
           EnterpriseAppSummary(id: 'example', displayName: 'example'),
         ],
       );
-      final parsed = EnterpriseTeam.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseTeam.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

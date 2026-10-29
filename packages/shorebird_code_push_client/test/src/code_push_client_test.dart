@@ -4386,6 +4386,50 @@ void main() {
           expect(requests().single.url, v1('enterprises/7/audit-logs'));
         });
 
+        // An event above any organization, such as the enterprise's own
+        // creation, belongs to the enterprise alone and has no tenant_uid.
+        test('reads an entry with no organization', () async {
+          respond({
+            'data': [
+              {
+                'class_uid': 6003,
+                'category_uid': 6,
+                'activity_id': 1,
+                'type_uid': 600301,
+                'time': 1792500000000,
+                'severity_id': 1,
+                'status_id': 1,
+                'metadata': {
+                  'version': '1.9.0',
+                  'product': {'name': 'Shorebird', 'vendor_name': 'Shorebird'},
+                  'uid': '501',
+                  'log_name': 'audit',
+                },
+                'api': {'operation': 'enterprise.create'},
+                'actor': {
+                  'user': {
+                    'uid': '9',
+                    'email_addr': 'alice@acme.com',
+                    'type_id': 1,
+                    'type': 'User',
+                  },
+                },
+                'src_endpoint': {'name': 'unknown'},
+                'resources': [
+                  {'type': 'enterprise', 'uid': '7'},
+                ],
+                'unmapped': {'enterprise_id': '7'},
+              },
+            ],
+          }, HttpStatus.ok);
+          final page = await codePushClient.getEnterpriseAuditLogs(
+            enterpriseId: enterpriseId,
+          );
+          final entry = page.data.single;
+          expect(entry.metadata.tenantUid, isNull);
+          expect(entry.api.operation, 'enterprise.create');
+        });
+
         test('throws on failure', () {
           respond(errorResponse.toJson(), HttpStatus.badRequest);
           expect(

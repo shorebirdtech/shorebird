@@ -36,7 +36,7 @@ void main() {
       );
       final parsed = GetEnterpriseServiceAccounts200Response.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

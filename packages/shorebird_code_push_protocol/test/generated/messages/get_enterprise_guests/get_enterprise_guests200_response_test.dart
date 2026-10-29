@@ -44,7 +44,7 @@ void main() {
       );
       final parsed = GetEnterpriseGuests200Response.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

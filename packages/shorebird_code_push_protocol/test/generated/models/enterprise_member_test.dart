@@ -23,7 +23,7 @@ void main() {
         removedAt: DateTime.utc(2024),
         removedByEmail: 'example',
       );
-      final parsed = EnterpriseMember.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseMember.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
