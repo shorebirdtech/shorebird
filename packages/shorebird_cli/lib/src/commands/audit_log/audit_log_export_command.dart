@@ -4,6 +4,7 @@ import 'dart:io' as io;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/audit_log/audit_log_filters.dart';
+import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -15,7 +16,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Write every page of an organization's audit log to stdout.
 /// {@endtemplate}
 class AuditLogExportCommand extends ShorebirdCommand
-    with OrganizationScopedCommand, AuditLogFilterOptions {
+    with
+        OrganizationScopedCommand,
+        EnterpriseScopedCommand,
+        AuditLogFilterOptions {
   /// {@macro audit_log_export_command}
   AuditLogExportCommand() {
     addFilterOptions();
@@ -44,7 +48,8 @@ class AuditLogExportCommand extends ShorebirdCommand
   @override
   String get description =>
       "Writes every page of an organization's audit log to stdout, as OCSF "
-      'API Activity events for a security log tool.\n\n'
+      'API Activity events for a security log tool. With --enterprise, '
+      "writes the enterprise's log instead.\n\n"
       'Examples:\n'
       '  shorebird audit-log export --start 2026-10-01 > audit.json\n'
       '  shorebird audit-log export --order asc --format jsonl '
@@ -73,23 +78,23 @@ class AuditLogExportCommand extends ShorebirdCommand
     final (:filters, :error) = parseFilters();
     if (error != null) return reportError(message: error);
 
-    final (:membership, :errorCode) = await resolveOrganizationFromArguments(
+    final (scope: resolved, :errorCode) = await resolveScope(
       example: 'shorebird audit-log export <org-id>',
     );
     if (errorCode != null) return errorCode;
-    final organizationId = membership!.organization.id;
+    final scope = resolved!;
 
     // With --json the runner already keeps stdout for the envelope.
     final out = read(jsonSinkRef, orElse: () => io.stdout);
-    if (isJsonMode) return _export(organizationId, filters!, out: out);
+    if (isJsonMode) return _export(scope, filters!, out: out);
     // Bound before the redirect, so entries reach the real stdout.
     return runWithStdoutOnStderr(
-      () => _export(organizationId, filters!, out: out),
+      () => _export(scope, filters!, out: out),
     );
   }
 
   Future<int> _export(
-    int organizationId,
+    AuditLogScope scope,
     AuditLogFilters filters, {
     required io.IOSink out,
   }) async {
@@ -102,7 +107,7 @@ class AuditLogExportCommand extends ShorebirdCommand
       () async {
         do {
           final page = await fetchPage(
-            organizationId,
+            scope,
             filters,
             perPage: 100,
             cursor: cursor,
@@ -121,12 +126,12 @@ class AuditLogExportCommand extends ShorebirdCommand
           cursor = page.data.isEmpty ? null : page.nextCursor;
         } while (cursor != null);
       },
-      organizationId: organizationId,
+      scope: scope,
       // Only a streamed export has written anything to resume after.
       resumeHint: () => streaming && written > 0 && cursor != null
           ? 'The $written entries before the failure were written. To '
                 'continue after them: '
-                '${_command(organizationId, cursor!)}'
+                '${_command(scope, cursor!)}'
           : null,
     );
     if (fetchError != null) return fetchError;
@@ -134,7 +139,7 @@ class AuditLogExportCommand extends ShorebirdCommand
     final resumeCursor = filters.order == AuditLogOrder.asc ? lastCursor : null;
     if (isJsonMode) {
       emitJsonSuccess({
-        'organization_id': organizationId,
+        scope.jsonKey: scope.id,
         'entries': entries,
         'next_cursor': resumeCursor,
       });
@@ -144,15 +149,15 @@ class AuditLogExportCommand extends ShorebirdCommand
     if (resumeCursor != null) {
       logger.info(
         'To export newer entries later: '
-        '${_command(organizationId, resumeCursor)}',
+        '${_command(scope, resumeCursor)}',
       );
     }
     return ExitCode.success.code;
   }
 
-  String _command(int organizationId, String cursor) => commandFrom(
+  String _command(AuditLogScope scope, String cursor) => commandFrom(
     'export',
-    organizationId: organizationId,
+    scope: scope,
     cursor: cursor,
     extra: [if (results.wasParsed('format')) '--format $_format'],
   );

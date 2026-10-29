@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -12,10 +13,17 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// `shorebird usage`
 /// Show patch-install usage this allotment period.
 /// {@endtemplate}
-class UsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
+class UsageCommand extends ShorebirdCommand
+    with OrganizationScopedCommand, EnterpriseScopedCommand {
   /// {@macro usage_command}
   UsageCommand() {
     addOrganizationScopeOption();
+    addEnterpriseScopeFlag(
+      help:
+          "Show your enterprise's plan instead: its installs "
+          'across every organization, then each organization. Needs an owner '
+          'or billing manager of the enterprise.',
+    );
   }
 
   @override
@@ -34,12 +42,21 @@ class UsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
       '  Installs left before patches stop: 37,655\n'
       '  Apps (id  name  installs):\n'
       '    0b6c...  Acme Mobile  12,345\n\n'
+      'With --enterprise, shows the enterprise plan and each '
+      'organization on it (id  name  installs).\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird usage 42 --json',
       )}';
 
   @override
   Future<int> run() async {
+    if (enterpriseScope) {
+      final scopeError =
+          rejectOrganizationAndEnterprise() ??
+          rejectOrganizationArgumentWithEnterprise();
+      if (scopeError != null) return scopeError;
+      return _enterpriseUsage();
+    }
     final (:membership, :errorCode) = await resolveOrganizationFromArguments(
       example: 'shorebird usage <org-id>',
     );
@@ -62,7 +79,108 @@ class UsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
     }
 
     final number = NumberFormat.decimalPattern('en_US');
-    final position = usage.position;
+    // The overage fields are null exactly when the plan has no overage
+    // billing, so they say which way out the account has.
+    final billsOverage =
+        usage.position.accruedOverageAmount != null ||
+        usage.reportedOverage != null;
+    _printPosition(
+      usage.position,
+      nextStep: billsOverage
+          ? 'Raise your overage limit at ${ShorebirdWebConsole.baseUri}.'
+          : 'Upgrade your plan at ${ShorebirdWebConsole.baseUri}.',
+    );
+
+    if (usage.apps.isEmpty) return ExitCode.success.code;
+    logger.info('Apps (id  name  installs):');
+    for (final app in usage.apps) {
+      logger.info(
+        '  ${app.id}  ${lightCyan.wrap(app.name)}  '
+        '${number.format(app.patchInstallCount)}',
+      );
+    }
+    return ExitCode.success.code;
+  }
+
+  Future<int> _enterpriseUsage() async {
+    final (:membership, :errorCode) = await resolveEnterprise();
+    if (errorCode != null) return errorCode;
+    final enterprise = membership!;
+
+    late final EnterpriseBilling billing;
+    final fetchError = await guardApiCall(
+      () async => billing = await codePushClientWrapper.getEnterpriseBilling(
+        enterpriseId: enterprise.id,
+      ),
+      code: JsonErrorCode.fetchFailed,
+      message: 'Failed to fetch usage for "${enterprise.name}".',
+    );
+    if (fetchError != null) return fetchError;
+
+    // Without a billing account, each organization bills through its own
+    // owner, so there is no enterprise breakdown to fetch.
+    var organizations = const <EnterpriseBillingOrganization>[];
+    if (billing.hasBillingAccount) {
+      final organizationsError = await guardApiCall(
+        () async => organizations = await codePushClientWrapper
+            .getEnterpriseBillingOrganizations(enterpriseId: enterprise.id),
+        code: JsonErrorCode.fetchFailed,
+        message: 'Failed to fetch usage for "${enterprise.name}".',
+      );
+      if (organizationsError != null) return organizationsError;
+    }
+
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'enterprise_id': enterprise.id,
+        ...billing.toJson(),
+        'organizations': [for (final org in organizations) org.toJson()],
+      });
+      return ExitCode.success.code;
+    }
+
+    if (!billing.hasBillingAccount) {
+      logger.info(
+        '"${enterprise.name}" has no billing account: each organization '
+        'bills through its owner. Run `shorebird usage <org-id>` for one '
+        "organization's usage.",
+      );
+      return ExitCode.success.code;
+    }
+    final plan = billing.plan;
+    final position = billing.position;
+    if (plan == null || position == null) {
+      logger.info('"${enterprise.name}" has no current plan.');
+      return ExitCode.success.code;
+    }
+    logger.info(
+      'Plan: ${plan.name}, this period ${_day(plan.currentPeriodStart)} to '
+      '${_day(plan.currentPeriodEnd)}',
+    );
+    // A contract sets an enterprise's limits, so there is no setting to
+    // point at.
+    _printPosition(
+      position,
+      nextStep:
+          'Your contract sets the limit; ask your Shorebird contact to '
+          'raise it.',
+    );
+    if (organizations.isEmpty) return ExitCode.success.code;
+    final number = NumberFormat.decimalPattern('en_US');
+    logger.info('Organizations (id  name  installs):');
+    for (final org in organizations) {
+      logger.info(
+        '  ${org.id}  ${lightCyan.wrap(org.name)}  '
+        '${number.format(org.patchInstalls)}',
+      );
+    }
+    return ExitCode.success.code;
+  }
+
+  /// Prints installs against [position]'s plan, and a warning near or at
+  /// its limit, followed by [nextStep].
+  void _printPosition(AccountPosition position, {required String nextStep}) {
+    final number = NumberFormat.decimalPattern('en_US');
     logger.info(
       'Patch installs: ${number.format(position.installs)} of '
       '${number.format(position.includedInstalls)} included',
@@ -79,13 +197,6 @@ class UsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
         'Installs left before patches stop: ${number.format(remaining)}',
       );
     }
-    // The overage fields are null exactly when the plan has no overage
-    // billing, so they say which way out the account has.
-    final billsOverage =
-        position.accruedOverageAmount != null || usage.reportedOverage != null;
-    final nextStep = billsOverage
-        ? 'Raise your overage limit at ${ShorebirdWebConsole.baseUri}.'
-        : 'Upgrade your plan at ${ShorebirdWebConsole.baseUri}.';
     if (position.atCeiling) {
       logger.warn(
         'Patches have stopped: the account reached its install limit. '
@@ -97,18 +208,11 @@ class UsageCommand extends ShorebirdCommand with OrganizationScopedCommand {
         'stop. $nextStep',
       );
     }
-
-    if (usage.apps.isEmpty) return ExitCode.success.code;
-    logger.info('Apps (id  name  installs):');
-    for (final app in usage.apps) {
-      logger.info(
-        '  ${app.id}  ${lightCyan.wrap(app.name)}  '
-        '${number.format(app.patchInstallCount)}',
-      );
-    }
-    return ExitCode.success.code;
   }
 }
+
+/// [time]'s UTC calendar date, as YYYY-MM-DD.
+String _day(DateTime time) => time.toUtc().toIso8601String().substring(0, 10);
 
 /// [minorUnits], an amount in minor units as the API sends it (e.g.
 /// "1234.5"), in major units with two decimals (e.g. "12.35"), or null when

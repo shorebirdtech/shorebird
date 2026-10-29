@@ -16,6 +16,7 @@ import 'package:test/test.dart';
 
 import '../../helpers.dart';
 import '../../mocks.dart';
+import '../enterprises/enterprise_test_harness.dart';
 import 'audit_log_test_helpers.dart';
 
 void main() {
@@ -241,6 +242,43 @@ void main() {
       final data = json['data'] as Map<String, dynamic>;
       expect(entryIds(data['entries'] as List), ['1', '2']);
       expect(data['next_cursor'], isNull);
+    });
+  });
+
+  group('AuditLogExportCommand --enterprise', () {
+    late EnterpriseHarness h;
+    late AuditLogExportCommand command;
+
+    setUpAll(() => registerFallbackValue(AuditLogOrder.desc));
+
+    setUp(() {
+      h = EnterpriseHarness();
+      when(
+        () => anyEnterpriseAuditLogFetch(h.codePushClientWrapper),
+      ).thenAnswer(
+        (_) async => GetOrganizationAuditLogsResponse(data: [auditLogEntry()]),
+      );
+      command = h.run(AuditLogExportCommand.new);
+    });
+
+    test("--json exports the enterprise's whole log", () async {
+      command.testArgResults = command.argParser.parse([
+        '--enterprise',
+      ]);
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      final data = json['data'] as Map<String, dynamic>;
+      expect(data['enterprise_id'], 7);
+      expect(entryIds(data['entries'] as List), ['1']);
+      verify(
+        () => h.codePushClientWrapper.getEnterpriseAuditLogs(
+          enterpriseId: 7,
+          perPage: 100,
+          order: AuditLogOrder.desc,
+        ),
+      ).called(1);
     });
   });
 }

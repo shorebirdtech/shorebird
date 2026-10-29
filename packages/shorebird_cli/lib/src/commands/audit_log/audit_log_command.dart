@@ -23,7 +23,9 @@ class AuditLogCommand extends ShorebirdCommand {
       "Read an organization's audit log: who did what. With no subcommand, "
       'shows one page (the same as `shorebird audit-log list`). Needs '
       'a plan that includes the audit log, and the owner, admin or auditor '
-      'role.';
+      'role.\n\n'
+      "Pass --enterprise for an enterprise's log: membership and access "
+      'across its organizations, for its owners and admins.';
 
   @override
   String get defaultSubcommand => 'list';

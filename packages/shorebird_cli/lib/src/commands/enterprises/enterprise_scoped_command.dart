@@ -44,6 +44,20 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
     );
   }
 
+  /// Reports a positional organization id passed with `--enterprise`, as in
+  /// `shorebird usage 42 --enterprise`, and returns the exit code; null
+  /// when there is none.
+  int? rejectOrganizationArgumentWithEnterprise() {
+    if (!enterpriseScope || results.rest.isEmpty) return null;
+    return reportError(
+      message:
+          'Pass an organization id or '
+          '--${CommonArguments.enterpriseArg.name}, not both: '
+          '--${CommonArguments.enterpriseArg.name} already covers every '
+          'organization in the enterprise.',
+    );
+  }
+
   /// Finds the user's membership in their enterprise, validating that the
   /// user is signed in. A user who isn't in an enterprise fails.
   ///

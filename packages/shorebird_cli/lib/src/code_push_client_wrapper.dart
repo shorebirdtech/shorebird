@@ -380,6 +380,54 @@ class CodePushClientWrapper {
     );
   }
 
+  /// [CodePushClient.getEnterpriseAuditLogs] for the arguments.
+  Future<GetOrganizationAuditLogsResponse> getEnterpriseAuditLogs({
+    required int enterpriseId,
+    int? perPage,
+    String? cursor,
+    AuditLogOrder? order,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? appId,
+    int? actorId,
+    String? operation,
+  }) {
+    return _withProgress(
+      'Fetching audit log',
+      () => codePushClient.getEnterpriseAuditLogs(
+        enterpriseId: enterpriseId,
+        perPage: perPage,
+        cursor: cursor,
+        order: order,
+        startDate: startDate,
+        endDate: endDate,
+        appId: appId,
+        actorId: actorId,
+        operation: operation,
+      ),
+    );
+  }
+
+  /// Fetches enterprise [enterpriseId]'s plan and its installs this period.
+  Future<EnterpriseBilling> getEnterpriseBilling({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching usage',
+      () => codePushClient.getEnterpriseBilling(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches each organization on enterprise [enterpriseId]'s plan with its
+  /// installs this period.
+  Future<List<EnterpriseBillingOrganization>>
+  getEnterpriseBillingOrganizations({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching usage by organization',
+      () => codePushClient.getEnterpriseBillingOrganizations(
+        enterpriseId: enterpriseId,
+      ),
+    );
+  }
+
   /// Fetches patch-install usage for the account that owns organization
   /// [organizationId].
   Future<GetUsageResponse> getOrganizationUsage({
