@@ -343,6 +343,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
+    _warnIfFlutterRevisionHasKnownIssue(release: release, patcher: patcher);
 
     try {
       await shorebirdFlutter.installRevision(revision: release.flutterRevision);
@@ -866,6 +867,47 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 shorebird.yaml sets `patch_verification: install_only`, which does not check patch signatures with Flutter $flutterVersion, the Flutter release ${release.version} was built with. If the release was built with this setting, devices on it will install this patch without checking its signature.
 To have signatures checked, remove `patch_verification` from shorebird.yaml (or set it to `strict`) and create a new release, or release with a Flutter version that checks signatures in install_only mode, such as --flutter-version=3.41.8.''',
     );
+  }
+
+  /// Warns if Shorebird marked the Flutter revision [release] was built with
+  /// as having a known problem on [patcher]'s platform. A patch can't change
+  /// the Flutter a release was built with, so the patch goes ahead; the fix
+  /// is a new release.
+  void _warnIfFlutterRevisionHasKnownIssue({
+    required Release release,
+    required Patcher patcher,
+  }) {
+    final issue = release.flutterRevisionIssue;
+    if (issue == null) return;
+    final platform = patcher.releaseType.releasePlatform;
+    final platforms = issue.platforms;
+    if (platforms != null && !platforms.contains(platform)) return;
+
+    String flutterBuild(String? version, String revision) {
+      final shortRevision = revision.length > 10
+          ? revision.substring(0, 10)
+          : revision;
+      return version == null
+          ? 'Flutter $shortRevision'
+          : 'Flutter $version ($shortRevision)';
+    }
+
+    final details = issue.details;
+    final fixedInRevision = issue.fixedInRevision;
+    final releaseWith = fixedInRevision == null
+        ? 'a Flutter version without this problem'
+        : flutterBuild(issue.fixedInVersion, fixedInRevision);
+    final builtWith = flutterBuild(
+      release.flutterVersion,
+      release.flutterRevision,
+    );
+    final problem =
+        'Release ${release.version} was built with $builtWith, which has a '
+        'known problem on ${platform.displayName}: ${issue.summary}';
+    final fix =
+        'A patch cannot change the Flutter version a release was built with. '
+        'To fix this, create a new release with $releaseWith.';
+    logger.warn([problem, ?details, fix].join('\n'));
   }
 
   /// Reports a successful check and exits with success if this is a dry run.

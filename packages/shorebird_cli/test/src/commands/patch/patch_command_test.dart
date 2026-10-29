@@ -749,6 +749,95 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         });
       });
 
+      group("when the release's Flutter revision has a known issue", () {
+        const issue = FlutterRevisionIssue(
+          summary: "Android patches don't install.",
+          details: 'Patches download but never install.',
+          platforms: [ReleasePlatform.android],
+          fixedInRevision: '0cae2fc0a4b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5',
+          fixedInVersion: '3.22.1',
+        );
+
+        void setUpIssue(FlutterRevisionIssue? issue) {
+          when(
+            () => codePushClientWrapper.getRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer(
+            (_) async => Release(
+              id: release.id,
+              appId: release.appId,
+              version: release.version,
+              flutterRevision: release.flutterRevision,
+              flutterVersion: release.flutterVersion,
+              displayName: release.displayName,
+              platforms: release.platforms,
+              createdAt: release.createdAt,
+              updatedAt: release.updatedAt,
+              flutterRevisionIssue: issue,
+            ),
+          );
+        }
+
+        const warning =
+            '''
+Release $releaseVersion was built with Flutter $flutterVersion (83305b5088), which has a known problem on Android: Android patches don't install.
+Patches download but never install.
+A patch cannot change the Flutter version a release was built with. To fix this, create a new release with Flutter 3.22.1 (0cae2fc0a4).''';
+
+        Matcher isIssueWarning() => contains('has a known problem');
+
+        test('warns, then builds and publishes the patch', () async {
+          setUpIssue(issue);
+
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verify(() => logger.warn(warning)).called(1);
+          verify(
+            () => patcher.uploadPatchArtifacts(
+              appId: appId,
+              releaseId: any(named: 'releaseId'),
+              metadata: any(named: 'metadata'),
+              track: any(named: 'track'),
+              artifacts: patchArtifactBundles,
+            ),
+          ).called(1);
+        });
+
+        test('warns on every platform when the mark names none', () async {
+          setUpIssue(
+            const FlutterRevisionIssue(summary: 'Known problem.'),
+          );
+
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verify(
+            () => logger.warn(
+              any(
+                that: allOf(
+                  isIssueWarning(),
+                  contains('a Flutter version without this problem'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test("does not warn for a platform the mark doesn't name", () async {
+          setUpIssue(
+            const FlutterRevisionIssue(
+              summary: 'Known crashes on iOS.',
+              platforms: [ReleasePlatform.ios],
+            ),
+          );
+
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verifyNever(() => logger.warn(any(that: isIssueWarning())));
+        });
+      });
+
       group('flavor validation', () {
         group('when no flavors are present', () {
           test('validates successfully', () async {

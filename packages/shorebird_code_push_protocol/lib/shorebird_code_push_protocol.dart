@@ -130,6 +130,7 @@ export 'package:shorebird_code_push_protocol/src/models/enterprise_role.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise_service_account.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise_team.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise_team_access.dart';
+export 'package:shorebird_code_push_protocol/src/models/flutter_revision_issue.dart';
 export 'package:shorebird_code_push_protocol/src/models/get_app_patch_downloads_granularity.dart';
 export 'package:shorebird_code_push_protocol/src/models/get_app_patch_downloads_group_by.dart';
 export 'package:shorebird_code_push_protocol/src/models/get_app_patch_installs_granularity.dart';
