@@ -117,9 +117,9 @@ mixin MemberLookup on ShorebirdCommand {
   }
 }
 
-/// Help text for `--role` with `--enterprise`.
+/// Help text for `--role` on `shorebird enterprise members set-role`.
 final enterpriseRoleHelp =
-    'With --enterprise, the enterprise role: '
+    'The enterprise role: '
     '${EnterpriseRole.values.map((r) => r.value).join(', ')}.';
 
 /// Parses a `--role` value given with `--enterprise`, returning the
@@ -171,9 +171,7 @@ mixin EnterpriseMemberLookup on ShorebirdCommand {
       member: null,
       errorCode: reportError(
         message: '"$user" is not a member of "${enterprise.name}".',
-        hint:
-            'Run `shorebird members list --enterprise` '
-            'to see its members.',
+        hint: 'Run `shorebird enterprise members list` to see its members.',
       ),
     );
   }

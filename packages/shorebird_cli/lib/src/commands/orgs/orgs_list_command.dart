@@ -15,12 +15,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   /// {@macro orgs_list_command}
-  OrgsListCommand() {
-    addEnterpriseScopeFlag(
-      help:
-          'List every organization in your enterprise, including ones you '
-          "aren't in. Needs an owner or admin of the enterprise.",
-    );
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise orgs list`.
+  OrgsListCommand({bool enterpriseRoute = false}) {
+    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
   }
 
   @override
@@ -28,6 +26,18 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      'Lists every organization in your enterprise, including ones you '
+      "aren't in. Needs an owner or admin of the enterprise.\n\n"
+      'Example output (space-separated: id  name  members  apps):\n'
+      '  42  Mobile  12 members  3 apps\n\n'
+      '${ShorebirdCommand.jsonHint(
+        'shorebird enterprise orgs list --json',
+      )}';
+
+  String get _organizationDescription =>
       'List the organizations you can access.\n\n'
       'Example output (space-separated: id  name  type  role):\n'
       '  1  Acme Corp  team  admin\n'
@@ -37,9 +47,8 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
       '"none".\n'
       'A "none" role means you only collaborate on apps in that organization.'
       '\n\n'
-      'With --enterprise, lists every organization in the enterprise '
-      '(space-separated: id  name  members  apps):\n'
-      '  42  Mobile  12 members  3 apps\n\n'
+      'For every organization in your enterprise, run '
+      '`shorebird enterprise orgs list`.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird orgs list --json')}';
 
   @override

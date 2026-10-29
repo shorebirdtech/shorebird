@@ -19,18 +19,16 @@ class MembersSetRoleCommand extends ShorebirdCommand
         MemberLookup,
         EnterpriseMemberLookup {
   /// {@macro members_set_role_command}
-  MembersSetRoleCommand() {
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise members set-role`.
+  MembersSetRoleCommand({bool enterpriseRoute = false}) {
     argParser.addOption(
       'role',
-      help: '$memberRoleHelp $enterpriseRoleHelp',
+      help: enterpriseRoute ? enterpriseRoleHelp : memberRoleHelp,
       mandatory: true,
     );
-    addOrganizationScopeOption();
-    addEnterpriseScopeFlag(
-      help:
-          'Change their role in your enterprise instead. Needs '
-          'an owner of the enterprise.',
-    );
+    if (!enterpriseRoute) addOrganizationScopeOption();
+    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
   }
 
   @override
@@ -40,17 +38,31 @@ class MembersSetRoleCommand extends ShorebirdCommand
   List<String> get aliases => const ['update'];
 
   @override
-  String get invocation =>
-      'shorebird members set-role <email or user id> --role <role>';
+  String get invocation => isEnterpriseRoute
+      ? 'shorebird enterprise members set-role <email or user id> '
+            '--role <role>'
+      : 'shorebird members set-role <email or user id> --role <role>';
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      "Changes a member's enterprise role. Needs an owner of the "
+      'enterprise.\n\n'
+      'Example output:\n'
+      '  Changed bob@acme.com from member to admin in "Acme".\n\n'
+      '${ShorebirdCommand.jsonHint(
+        'shorebird enterprise members set-role bob@acme.com --role '
+        'admin --json',
+      )}';
+
+  String get _organizationDescription =>
       "Changes a member's role in an organization.\n\n"
       'Example output:\n'
       '  Changed bob@acme.com from developer to admin in "Acme Corp".\n\n'
-      'With --enterprise, changes their enterprise role (owner, admin, '
-      'member or billingManager). Needs an owner of the enterprise.'
-      '\n\n'
+      'For an enterprise role, run '
+      '`shorebird enterprise members set-role`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members set-role bob@acme.com --role admin --org-id 42 '
         '--json',

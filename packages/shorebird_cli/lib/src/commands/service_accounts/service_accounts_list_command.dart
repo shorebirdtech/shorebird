@@ -15,13 +15,12 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 class ServiceAccountsListCommand extends ShorebirdCommand
     with OrganizationScopedCommand, EnterpriseScopedCommand {
   /// {@macro service_accounts_list_command}
-  ServiceAccountsListCommand() {
-    addOrganizationScopeOption();
-    addEnterpriseScopeFlag(
-      help:
-          'List the service accounts of every organization in your '
-          'enterprise instead. Needs an owner or admin of the enterprise.',
-    );
+  ///
+  /// With [enterpriseRoute], it is
+  /// `shorebird enterprise service-accounts list`.
+  ServiceAccountsListCommand({bool enterpriseRoute = false}) {
+    if (!enterpriseRoute) addOrganizationScopeOption();
+    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
   }
 
   @override
@@ -29,13 +28,26 @@ class ServiceAccountsListCommand extends ShorebirdCommand
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      "Lists every organization's service accounts in your enterprise. "
+      'Needs an owner or admin of the enterprise.\n\n'
+      'Example output (space-separated: id  name  organization_id  '
+      'organization_name  role  last signed in):\n'
+      '  383  release-bot  42  Mobile  developer  2026-10-20\n\n'
+      'They stay owned by their organization: create, change or delete '
+      'one with `shorebird service-accounts ... --org-id <id>`.\n\n'
+      '${ShorebirdCommand.jsonHint(
+        'shorebird enterprise service-accounts list --json',
+      )}';
+
+  String get _organizationDescription =>
       "Lists an organization's service accounts.\n\n"
       'Example output (space-separated: id  name  role  last signed in):\n'
       '  383  release-bot  developer  2026-10-20\n\n'
-      "With --enterprise, lists every organization's service accounts "
-      '(space-separated: id  name  organization_id  organization_name  role  '
-      'last signed in). '
-      'They stay owned by their organization; manage one with --org-id.\n\n'
+      "For every organization's service accounts in your enterprise, run "
+      '`shorebird enterprise service-accounts list`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird service-accounts list --org-id 42 --json',
       )}';

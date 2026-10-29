@@ -343,7 +343,7 @@ void main() {
     void parse(List<String> args) =>
         command.testArgResults = command.argParser.parse(args);
 
-    test("reads the enterprise's log and pages with --enterprise", () async {
+    test("reads the enterprise's log and pages with its command", () async {
       parse(['--enterprise', '--event', 'app.create']);
       expect(await h.run(command.run), ExitCode.success.code);
       verify(
@@ -355,7 +355,7 @@ void main() {
       ).called(1);
       verify(
         () => h.logger.info(
-          'Next page: shorebird audit-log list --enterprise --event '
+          'Next page: shorebird enterprise audit-log list --event '
           'app.create --cursor c2',
         ),
       ).called(1);

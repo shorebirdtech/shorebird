@@ -24,15 +24,15 @@ class MembersRemoveCommand extends ShorebirdCommand
         MemberLookup,
         EnterpriseMemberLookup {
   /// {@macro members_remove_command}
-  MembersRemoveCommand() {
-    addConfirmDeleteOptions();
-    addOrganizationScopeOption();
-    addEnterpriseScopeFlag(
-      help:
-          'Remove them from your enterprise and every organization in it '
-          'instead, in the console. Needs an owner or '
-          'admin of the enterprise.',
-    );
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise members remove`,
+  /// which confirms in the console, so it takes no --yes.
+  MembersRemoveCommand({bool enterpriseRoute = false}) {
+    if (!enterpriseRoute) {
+      addConfirmDeleteOptions();
+      addOrganizationScopeOption();
+    }
+    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
   }
 
   @override
@@ -42,11 +42,27 @@ class MembersRemoveCommand extends ShorebirdCommand
   List<String> get aliases => const ['delete'];
 
   @override
-  String get invocation =>
-      'shorebird members remove <email, user id or invitation id>';
+  String get invocation => isEnterpriseRoute
+      ? 'shorebird enterprise members remove <email or user id>'
+      : 'shorebird members remove <email, user id or invitation id>';
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      'Opens the console to remove someone from your enterprise and every '
+      'organization in it. That is permanent and signs them out '
+      'everywhere, so it is confirmed there; nothing changes until you '
+      'confirm. Needs an owner or admin of the enterprise.\n\n'
+      'Example output:\n'
+      '  Opening the Shorebird console to remove bob@acme.com from '
+      '"Acme":\n'
+      '  https://console.shorebird.dev/enterprise/people\n\n'
+      'Under --json, or without a terminal, it opens nothing and fails '
+      'with console_required, naming the URL.';
+
+  String get _organizationDescription =>
       'Removes a member from an organization, or cancels a pending '
       'invitation (named by email or invitation id).\n\n'
       'In a terminal, asks for confirmation. Pass --$yesArgName to skip the '
@@ -54,9 +70,8 @@ class MembersRemoveCommand extends ShorebirdCommand
       'CI, or --json).\n\n'
       'Example output:\n'
       '  Removed bob@acme.com from "Acme Corp".\n\n'
-      'With --enterprise, opens the console to remove them from the '
-      'enterprise and every organization in it. That is permanent and signs '
-      'them out everywhere, so it is confirmed there.\n\n'
+      'To remove someone from an enterprise, run '
+      '`shorebird enterprise members remove`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members remove bob@acme.com --org-id 42 --yes --json',
       )}';

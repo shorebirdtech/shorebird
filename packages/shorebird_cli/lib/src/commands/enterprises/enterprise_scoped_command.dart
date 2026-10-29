@@ -7,32 +7,51 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// The shared `--enterprise` flag, which widens a command to every
-/// organization in the user's enterprise, and the logic that finds it.
+/// Enterprise scope, which widens a command to every organization in the
+/// user's enterprise, and the logic that finds the enterprise.
 ///
-/// An account is in at most one enterprise, so the flag takes no id, but
-/// widening the scope still has to be asked for. Call
+/// A command reaches it two ways. The documented one is its copy under
+/// `shorebird enterprise` (`shorebird enterprise members list`), built with
+/// `enterpriseRoute: true`, which is always enterprise-scoped. The other is
+/// a hidden `--enterprise` flag on the command itself (`shorebird members
+/// list --enterprise`), kept because agents guess it too.
+///
+/// An account is in at most one enterprise, so neither takes an id. Call
 /// [addEnterpriseScopeFlag] from the command's constructor, then check
 /// [enterpriseScope] in `run` and call [resolveEnterprise] when it is set.
 mixin EnterpriseScopedCommand on ShorebirdCommand {
-  /// Adds the `--enterprise` flag that [enterpriseScope] reads.
-  void addEnterpriseScopeFlag({required String help}) {
+  bool _enterpriseRoute = false;
+
+  /// Whether this is the command's copy under `shorebird enterprise`, which
+  /// always acts on the enterprise and has no `--enterprise` or `--org-id`.
+  bool get isEnterpriseRoute => _enterpriseRoute;
+
+  /// Makes the command enterprise-scoped: always, for its copy under
+  /// `shorebird enterprise` ([enterpriseRoute]), or else with the hidden
+  /// `--enterprise` flag that [enterpriseScope] reads.
+  void addEnterpriseScopeFlag({bool enterpriseRoute = false}) {
+    if (enterpriseRoute) {
+      _enterpriseRoute = true;
+      return;
+    }
     argParser.addFlag(
       CommonArguments.enterpriseArg.name,
       negatable: false,
-      help: help,
+      hide: true,
     );
   }
 
-  /// Whether `--enterprise` was passed, widening the command from one
-  /// organization to the user's enterprise.
+  /// Whether the command acts on the user's enterprise rather than one
+  /// organization: its `shorebird enterprise` copy, or `--enterprise`.
   bool get enterpriseScope =>
-      results[CommonArguments.enterpriseArg.name] == true;
+      _enterpriseRoute || results[CommonArguments.enterpriseArg.name] == true;
 
   /// Reports `--org-id` and `--enterprise` passed together, which name two
   /// scopes, and returns the exit code; null when at most one is set.
   int? rejectOrganizationAndEnterprise() {
-    if (!enterpriseScope || results[CommonArguments.orgIdArg.name] == null) {
+    if (_enterpriseRoute ||
+        !enterpriseScope ||
+        results[CommonArguments.orgIdArg.name] == null) {
       return null;
     }
     return reportError(
@@ -49,6 +68,15 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
   /// when there is none.
   int? rejectOrganizationArgumentWithEnterprise() {
     if (!enterpriseScope || results.rest.isEmpty) return null;
+    if (_enterpriseRoute) {
+      return reportError(
+        message:
+            'Commands under `shorebird enterprise` cover every '
+            'organization in your enterprise, so they take no organization '
+            'id. For one organization, run the command without '
+            '`enterprise`.',
+      );
+    }
     return reportError(
       message:
           'Pass an organization id or '
@@ -105,9 +133,9 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
         errorCode: reportError(
           message: "You aren't a member of an enterprise.",
           hint:
-              '--${CommonArguments.enterpriseArg.name} widens a command to '
-              'every organization in your enterprise. Without it, commands '
-              'act on one organization (--${CommonArguments.orgIdArg.name}).',
+              '`shorebird enterprise` commands act on every organization in '
+              'an enterprise. The same commands without `enterprise` act on '
+              'one organization (--${CommonArguments.orgIdArg.name}).',
           code: JsonErrorCode.preconditionFailed,
           exitCode: ExitCode.noPerm.code,
         ),

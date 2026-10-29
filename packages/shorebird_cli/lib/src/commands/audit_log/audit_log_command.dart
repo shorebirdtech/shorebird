@@ -7,10 +7,19 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 /// {@endtemplate}
 class AuditLogCommand extends ShorebirdCommand {
   /// {@macro audit_log_command}
-  AuditLogCommand() {
+  AuditLogCommand() : _enterpriseRoute = false {
     addSubcommand(AuditLogListCommand());
     addSubcommand(AuditLogExportCommand());
   }
+
+  /// `shorebird enterprise audit-log`: the same subcommands, reading the
+  /// enterprise's log.
+  AuditLogCommand.enterprise() : _enterpriseRoute = true {
+    addSubcommand(AuditLogListCommand(enterpriseRoute: true));
+    addSubcommand(AuditLogExportCommand(enterpriseRoute: true));
+  }
+
+  final bool _enterpriseRoute;
 
   @override
   String get name => 'audit-log';
@@ -19,13 +28,16 @@ class AuditLogCommand extends ShorebirdCommand {
   List<String> get aliases => const ['audit-logs', 'audit'];
 
   @override
-  String get description =>
-      "Read an organization's audit log: who did what. With no subcommand, "
-      'shows one page (the same as `shorebird audit-log list`). Needs '
-      'a plan that includes the audit log, and the owner, admin or auditor '
-      'role.\n\n'
-      "Pass --enterprise for an enterprise's log: membership and access "
-      'across its organizations, for its owners and admins.';
+  String get description => _enterpriseRoute
+      ? "Read your enterprise's audit log: who joined, left or changed roles "
+            'and access across its organizations. With no subcommand, shows '
+            'one page (the same as `shorebird enterprise audit-log list`). '
+            'Needs an owner or admin of the enterprise.'
+      : "Read an organization's audit log: who did what. With no subcommand, "
+            'shows one page (the same as `shorebird audit-log list`). Needs '
+            'a plan that includes the audit log, and the owner, admin or '
+            'auditor role.\n\n'
+            "For an enterprise's log, run `shorebird enterprise audit-log`.";
 
   @override
   String get defaultSubcommand => 'list';

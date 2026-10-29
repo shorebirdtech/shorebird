@@ -11,8 +11,20 @@ void main() {
 
     setUp(() => command = EnterpriseCommand());
 
-    test('has get', () {
-      expect(command.subcommands.keys, ['get']);
+    test('has get and the enterprise nouns', () {
+      expect(
+        {for (final c in command.subcommands.values) c.name},
+        {
+          'get',
+          'members',
+          'guests',
+          'orgs',
+          'apps',
+          'audit-log',
+          'usage',
+          'service-accounts',
+        },
+      );
     });
 
     test('answers to the plural', () {
@@ -23,8 +35,9 @@ void main() {
       expect(command.defaultSubcommand, 'get');
     });
 
-    test('points at --enterprise on the existing nouns', () {
-      expect(command.description, contains('--enterprise'));
+    test('shows its nouns as examples, not the hidden flag', () {
+      expect(command.description, contains('shorebird enterprise members'));
+      expect(command.description, isNot(contains('--enterprise')));
     });
   });
 }

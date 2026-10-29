@@ -41,11 +41,15 @@ class AuditLogScope {
   /// The enterprise's name; null for an organization.
   final String? name;
 
-  /// The option that names this scope on a command line. The user is in at
-  /// most one enterprise, so `--enterprise` needs no id.
-  String get option => isEnterprise
-      ? '--${CommonArguments.enterpriseArg.name}'
-      : '--${CommonArguments.orgIdArg.name} $id';
+  /// The command that reads this scope's log, before its subcommand. The
+  /// user is in at most one enterprise, so its command names no id.
+  String get command =>
+      isEnterprise ? 'shorebird enterprise audit-log' : 'shorebird audit-log';
+
+  /// The options that name this scope after the subcommand: none for the
+  /// enterprise, whose [command] already says it.
+  List<String> get options =>
+      isEnterprise ? const [] : ['--${CommonArguments.orgIdArg.name} $id'];
 
   /// This scope in a sentence, such as "organization 42" or `"Acme"`.
   String get label => isEnterprise ? '"$name"' : 'organization $id';
@@ -99,17 +103,12 @@ mixin AuditLogFilterOptions
     'order',
   ];
 
-  /// Adds `--org-id`, `--enterprise` and the filter options
-  /// [parseFilters] reads.
-  void addFilterOptions() {
-    addOrganizationScopeOption();
-    addEnterpriseScopeFlag(
-      help:
-          "Read your enterprise's log instead: who joined, left "
-          'or changed roles and access across its organizations. App '
-          'activity (releases, patches, channels) stays in each '
-          "organization's log. Needs an owner or admin of the enterprise.",
-    );
+  /// Adds `--org-id`, the hidden `--enterprise` and the filter options
+  /// [parseFilters] reads; for the `shorebird enterprise audit-log` copy
+  /// ([enterpriseRoute]), the filter options alone.
+  void addFilterOptions({bool enterpriseRoute = false}) {
+    if (!enterpriseRoute) addOrganizationScopeOption();
+    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')
       ..addOption(
@@ -256,13 +255,13 @@ mixin AuditLogFilterOptions
     List<String> extra = const [],
   }) {
     final options = [
-      scope.option,
+      ...scope.options,
       for (final option in _filterOptions)
         if (results.wasParsed(option)) '--$option ${_quote(results[option])}',
       ...extra,
       '--cursor ${_quote(cursor)}',
     ];
-    return 'shorebird audit-log $subcommand ${options.join(' ')}';
+    return '${scope.command} $subcommand ${options.join(' ')}';
   }
 
   /// Fetches one page of [scope]'s audit log matching [filters].

@@ -14,12 +14,10 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   /// {@macro apps_list_command}
-  AppsListCommand() {
-    addEnterpriseScopeFlag(
-      help:
-          'List every app in every organization of your enterprise. Needs '
-          'an owner or admin of the enterprise.',
-    );
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise apps list`.
+  AppsListCommand({bool enterpriseRoute = false}) {
+    addEnterpriseScopeFlag(enterpriseRoute: enterpriseRoute);
   }
 
   @override
@@ -27,16 +25,27 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      'Lists every app in every organization of your enterprise. Needs an '
+      'owner or admin of the enterprise.\n\n'
+      'Example output (space-separated: app_id  display_name  '
+      'organization_id  organization_name):\n'
+      '  01H...  Acme Mobile  42  Mobile\n\n'
+      '${ShorebirdCommand.jsonHint(
+        'shorebird enterprise apps list --json',
+      )}';
+
+  String get _organizationDescription =>
       'Lists the apps you have access to.\n\n'
       'Example output (space-separated: app_id  display_name  '
       'latest_release_version  latest_patch_number):\n'
       '  01H...  Acme Mobile  1.2.3  4\n'
       '  01J...  Acme Internal  -  -\n\n'
       '"-" indicates no release or patch has been published yet.\n\n'
-      'With --enterprise, lists every app in the enterprise '
-      '(space-separated: app_id  display_name  organization_id  '
-      'organization_name):\n'
-      '  01H...  Acme Mobile  42  Mobile\n\n'
+      'For every app in your enterprise, run '
+      '`shorebird enterprise apps list`.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird apps list --json')}';
 
   @override

@@ -255,13 +255,14 @@ void main() {
         });
       });
 
-      test('needs --enterprise', () async {
+      test('points at shorebird enterprise guests without it', () async {
         when(() => h.argResults['enterprise']).thenReturn(false);
         when(() => h.argResults['org-id']).thenReturn('42');
         expect(await h.run(command.run), ExitCode.usage.code);
         verify(
           () => h.logger.err(
-            "--guests lists an enterprise's guests; pass --enterprise too.",
+            "--guests lists an enterprise's guests; run "
+            '`shorebird enterprise guests`.',
           ),
         ).called(1);
       });

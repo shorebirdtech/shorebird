@@ -21,8 +21,10 @@ class AuditLogExportCommand extends ShorebirdCommand
         EnterpriseScopedCommand,
         AuditLogFilterOptions {
   /// {@macro audit_log_export_command}
-  AuditLogExportCommand() {
-    addFilterOptions();
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise audit-log export`.
+  AuditLogExportCommand({bool enterpriseRoute = false}) {
+    addFilterOptions(enterpriseRoute: enterpriseRoute);
     argParser
       ..addOption(
         'cursor',
@@ -43,13 +45,34 @@ class AuditLogExportCommand extends ShorebirdCommand
   String get name => 'export';
 
   @override
-  String get invocation => 'shorebird audit-log export [<org-id>]';
+  String get invocation => isEnterpriseRoute
+      ? 'shorebird enterprise audit-log export'
+      : 'shorebird audit-log export [<org-id>]';
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      "Writes every page of your enterprise's audit log to stdout, as OCSF "
+      'API Activity events for a security log tool: membership and '
+      'access across its organizations. Needs an owner or admin of the '
+      'enterprise.\n\n'
+      'Examples:\n'
+      '  shorebird enterprise audit-log export --start 2026-10-01 > '
+      'audit.json\n'
+      '  shorebird enterprise audit-log export --order asc --format '
+      'jsonl >> audit.jsonl\n\n'
+      'Oldest first, it prints the cursor to export newer entries from '
+      'later.\n\n'
+      '${ShorebirdCommand.jsonHint(
+        'shorebird enterprise audit-log export --json',
+      )}';
+
+  String get _organizationDescription =>
       "Writes every page of an organization's audit log to stdout, as OCSF "
-      'API Activity events for a security log tool. With --enterprise, '
-      "writes the enterprise's log instead.\n\n"
+      "API Activity events for a security log tool. For an enterprise's "
+      'log, run `shorebird enterprise audit-log export`.\n\n'
       'Examples:\n'
       '  shorebird audit-log export --start 2026-10-01 > audit.json\n'
       '  shorebird audit-log export --order asc --format jsonl '

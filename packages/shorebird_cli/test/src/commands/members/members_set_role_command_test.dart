@@ -311,7 +311,7 @@ void main() {
       ).called(1);
       verify(
         () => h.logger.info(
-          'Run `shorebird members list --enterprise` to see its members.',
+          'Run `shorebird enterprise members list` to see its members.',
         ),
       ).called(1);
     });
