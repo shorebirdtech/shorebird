@@ -1,0 +1,19 @@
+name: verify_cache
+description: >-
+  Runs a verification command at most once per set of inputs, remembering
+  each clean pass keyed by git tree hash and toolchain versions.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  args: ^2.4.2
+  crypto: ^3.0.7
+  path: ^1.9.0
+  yaml: ^3.1.4
+
+dev_dependencies:
+  test: ^1.32.0

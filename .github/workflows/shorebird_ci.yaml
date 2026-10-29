@@ -27,6 +27,7 @@ jobs:
       shorebird_code_push_client: ${{ steps.filter.outputs.shorebird_code_push_client }}
       shorebird_code_push_protocol: ${{ steps.filter.outputs.shorebird_code_push_protocol }}
       shorebird_redis_client: ${{ steps.filter.outputs.shorebird_redis_client }}
+      verify_cache: ${{ steps.filter.outputs.verify_cache }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -69,6 +70,9 @@ jobs:
             shorebird_redis_client:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/redis_client/**
+            verify_cache:
+              - .github/workflows/_shorebird_ci_dart.yaml
+              - packages/verify_cache/**
 
   dex:
     needs: changes
@@ -151,6 +155,16 @@ jobs:
       subpackages: ""
       needs_redis: true
 
+  verify_cache:
+    needs: changes
+    if: needs.changes.outputs.verify_cache == 'true'
+    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    with:
+      package_name: verify_cache
+      package_path: packages/verify_cache
+      has_unit_tests: true
+      subpackages: ""
+
   cspell:
     name: CSpell
     runs-on: ubuntu-latest
@@ -176,6 +190,7 @@ jobs:
       - shorebird_code_push_client
       - shorebird_code_push_protocol
       - shorebird_redis_client
+      - verify_cache
       - cspell
     runs-on: ubuntu-latest
     steps:
