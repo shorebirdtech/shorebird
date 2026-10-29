@@ -10,10 +10,8 @@ import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -50,10 +48,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
 
   @override
   Future<void> assertArgsAreValid() async {
-    if (!argResults.wasParsed('release-version')) {
-      logger.err('Missing required argument: --release-version');
-      throw ProcessExit(ExitCode.usage.code);
-    }
+    assertReleaseVersionProvided();
   }
 
   @override
@@ -102,7 +97,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    return argResults['release-version'] as String;
+    return (argResults['release-version'] as String).trim();
   }
 
   @override

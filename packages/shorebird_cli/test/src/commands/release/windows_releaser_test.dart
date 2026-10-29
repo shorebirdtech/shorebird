@@ -166,20 +166,18 @@ void main() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
         });
 
-        test('logs error and exits with usage err', () async {
+        test('exits with an error saying the flag is unsupported', () async {
           await expectLater(
             () => runWithOverrides(releaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(
-            () => logger.err(
-              '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
+            exitsWithError(
+              message:
+                  '--release-version is only supported for aar and '
+                  'ios-framework releases.',
+              hint:
+                  'Remove --release-version. This release takes its version '
+                  'from your pubspec.yaml.',
             ),
-          ).called(1);
+          );
         });
       });
 
@@ -463,22 +461,24 @@ To change the version of this release, change your app's version in your pubspec
           releaseDirectory.deleteSync();
         });
 
-        test('fails progress, exits', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => releaser.uploadReleaseArtifacts(
-                release: release,
-                appId: appId,
+        test(
+          'exits with an error saying no release directory was found',
+          () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => releaser.uploadReleaseArtifacts(
+                  release: release,
+                  appId: appId,
+                ),
               ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(
-            () => logger.err(
-              any(that: startsWith('No release directory found at')),
-            ),
-          ).called(1);
-        });
+              exitsWithError(
+                message: startsWith('No release directory found at'),
+                hint: 'Re-run with --verbose to see the build output.',
+                exitCode: ExitCode.software,
+              ),
+            );
+          },
+        );
       });
 
       group('when release directory exists', () {

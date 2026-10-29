@@ -245,22 +245,35 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      group('when release-version was not provided', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(false);
-        });
+      for (final (description, value) in [
+        ('was not provided', null),
+        ('is blank', '  '),
+        ('is latest', 'latest'),
+      ]) {
+        group('when release-version $description', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn(value);
+          });
 
-        test('exits with code 64', () async {
-          await expectLater(
-            () => runWithOverrides(aarReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
+          test('exits saying which version to pass', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithError(
+                message:
+                    'An aar release needs --release-version: the version of '
+                    'the Android app that embeds this module.',
+                hint:
+                    'Run: shorebird release aar '
+                    '--release-version=$releaseVersionExample',
+              ),
+            );
+          });
         });
-      });
+      }
 
       group('when arguments are valid', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0+1');
         });
 
         test('returns normally', () {
@@ -273,7 +286,7 @@ void main() {
 
       group('when --obfuscate is not passed', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0+1');
         });
 
         test('returns normally', () async {
@@ -496,6 +509,15 @@ void main() {
               aarReleaser.getReleaseVersion(releaseArtifactRoot: Directory('')),
         );
         expect(result, releaseVersion);
+      });
+
+      test('trims surrounding whitespace', () async {
+        when(() => argResults['release-version']).thenReturn(' 1.0.0 ');
+        final result = await runWithOverrides(
+          () =>
+              aarReleaser.getReleaseVersion(releaseArtifactRoot: Directory('')),
+        );
+        expect(result, equals('1.0.0'));
       });
     });
 

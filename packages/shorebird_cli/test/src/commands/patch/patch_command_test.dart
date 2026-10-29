@@ -31,6 +31,7 @@ import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -479,16 +480,17 @@ void main() {
         });
 
         test(
-          '''warns that staging flag will be deprecated and exits with usage code''',
+          'errors that --staging is unsupported and exits with usage code',
           () async {
             await expectLater(
               runWithOverrides(command.run),
               completion(equals(ExitCode.usage.code)),
             );
             verify(
-              () => logger.err(
-                '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
-              ),
+              () => logger.err('--staging is no longer supported.'),
+            ).called(1);
+            verify(
+              () => logger.info('Pass --track=staging instead.'),
             ).called(1);
           },
         );
@@ -549,32 +551,40 @@ void main() {
             ).thenAnswer((_) async => Version(3, 0, 0));
           });
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(() => command.createPatch(patcher)),
-              exitsWithCode(ExitCode.software),
-            );
+          test(
+            'exits with an error saying a newer Flutter is needed',
+            () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithError(
+                  message:
+                      'Release ${release.version} was built with Flutter '
+                      '$flutterRevision, but patching with `ios` needs at '
+                      'least Flutter $minimumFlutterVersion (see '
+                      '$supportedFlutterVersionsUrl).',
+                  hint:
+                      'A release cannot change Flutter versions, so create a '
+                      'new release with the latest Flutter to patch. Run: '
+                      'shorebird release ios',
+                  exitCode: ExitCode.software,
+                ),
+              );
 
-            verify(
-              () => logger.err('''
-Release ${release.version} was built with Flutter $flutterRevision, but at least Flutter $minimumFlutterVersion is required to patch with `ios`.
-A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ios --flutter-version=${minimumReleaseFlutterVersion(ReleaseType.ios)}')} and patch that one.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-            ).called(1);
-            verifyNever(
-              () => codePushClientWrapper.getReleaseArtifact(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-              ),
-            );
-            verifyNever(
-              () => patcher.buildPatchArtifact(
-                releaseVersion: any(named: 'releaseVersion'),
-              ),
-            );
-          });
+              verifyNever(
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  arch: any(named: 'arch'),
+                  platform: any(named: 'platform'),
+                ),
+              );
+              verifyNever(
+                () => patcher.buildPatchArtifact(
+                  releaseVersion: any(named: 'releaseVersion'),
+                ),
+              );
+            },
+          );
         });
 
         group('when the release Flutter version is supported', () {
@@ -1006,7 +1016,15 @@ A patch cannot change the Flutter version a release was built with. To fix this,
 
           await expectLater(
             runWithOverrides(() => command.createPatch(patcher)),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: endsWith(
+                'is signed with a Shorebird-managed key, but the server did '
+                'not return it.',
+              ),
+              hint:
+                  'Try again, and contact Shorebird support if this persists.',
+              exitCode: ExitCode.software,
+            ),
           );
           verifyNever(() => patcher.releaseManagedPublicKeyPem = any());
         });
@@ -1340,16 +1358,19 @@ A patch cannot change the Flutter version a release was built with. To fix this,
 
                   await expectLater(
                     () => runWithOverrides(() => command.createPatch(patcher)),
-                    exitsWithCode(ExitCode.unavailable),
-                  );
-                  verify(
-                    () => logger.err(
-                      'Release $releaseVersion was built with obfuscation on '
-                      'Flutter 3.38.9, but patching an obfuscated iOS release '
-                      'requires Flutter $minimumObfuscationFlutterVersion or '
-                      'later.',
+                    exitsWithError(
+                      message:
+                          'Release $releaseVersion was built with obfuscation '
+                          'on Flutter 3.38.9, but patching an obfuscated iOS '
+                          'release requires Flutter '
+                          '$minimumObfuscationFlutterVersion or later.',
+                      hint:
+                          'Create a new release to patch. Run: shorebird '
+                          'release ios --obfuscate '
+                          '--flutter-version=$minimumObfuscationFlutterVersion',
+                      exitCode: ExitCode.unavailable,
                     ),
-                  ).called(1);
+                  );
                 },
               );
             });
@@ -1582,12 +1603,6 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 ),
                 completes,
               );
-
-              verifyNever(() {
-                logger.err(
-                  any(that: contains('is below the minimum threshold')),
-                );
-              });
             });
           });
 
@@ -1600,7 +1615,10 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               ).thenReturn(minLinkPercentageArg);
             });
 
-            test('prints error message and exits', () async {
+            test('exits with an error naming the threshold', () async {
+              final debugInfoPath = runWithOverrides(
+                () => Patcher.debugInfoFile.path,
+              );
               await expectLater(
                 runWithOverrides(
                   () => command.logPatchSummary(
@@ -1610,22 +1628,17 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                     patchArtifactBundles: patchArtifactBundles,
                   ),
                 ),
-                exitsWithCode(ExitCode.software),
-              );
-
-              verify(
-                () => logger.err(
-                  '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold (50%).''',
+                exitsWithError(
+                  message:
+                      'The link percentage of this patch ($linkPercentage%) '
+                      'is below the minimum threshold (50%).',
+                  hint:
+                      'Not publishing. Lower --min-link-percentage to accept '
+                      'this patch, or see $debugInfoPath for what could not '
+                      'be linked.',
+                  exitCode: ExitCode.software,
                 ),
-              ).called(1);
-              final debugInfoPath = runWithOverrides(
-                () => Patcher.debugInfoFile.path,
               );
-              verify(
-                () => logger.info(
-                  '''Not publishing. Lower --min-link-percentage to accept this patch, or see $debugInfoPath for what could not be linked.''',
-                ),
-              ).called(1);
             });
           });
 
@@ -1912,13 +1925,15 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).thenThrow(exception);
         });
 
-        test('logs error, fixes, and throws ProcessExit', () async {
+        test('exits with the error and its fix as the hint', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: 'oops',
+              hint: 'fix it',
+              exitCode: ExitCode.software,
+            ),
           );
-          verify(() => logger.err(exception.message)).called(1);
-          verify(() => logger.info('fix it')).called(1);
         });
       });
 
@@ -1934,14 +1949,35 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).thenThrow(exception);
         });
 
-        test('logs error, and throws ProcessExit', () async {
+        test('exits with an error saying the build failed', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: 'Failed to build patch artifacts: $exception',
+              exitCode: ExitCode.software,
+            ),
           );
-          verify(
-            () => logger.err('Failed to build patch artifacts: $exception'),
-          ).called(1);
+        });
+      });
+
+      group('when building artifact throws ProcessExit', () {
+        late ProcessExit error;
+
+        setUp(() {
+          // A build step that already reported why it stopped.
+          error = ProcessExit(ExitCode.unavailable.code);
+          when(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenThrow(error);
+        });
+
+        test('rethrows it as-is', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            throwsA(same(error)),
+          );
         });
       });
     });
@@ -1979,21 +2015,19 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         test('names the release command and exits', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.usage),
+            exitsWithError(
+              message:
+                  'No ${releasePlatform.displayName} releases found for app '
+                  '$appId.',
+              hint:
+                  'A patch needs a release to apply to (or pass --app-id / '
+                  '--flavor if this is the wrong app). Run: shorebird release '
+                  'android',
+            ),
           );
 
           verify(
             () => codePushClientWrapper.getReleases(appId: appId),
-          ).called(1);
-          verify(
-            () => logger.err(
-              '''No ${releasePlatform.displayName} releases found for app $appId.''',
-            ),
-          ).called(1);
-          verify(
-            () => logger.info(
-              '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release android')}, or pass --app-id / --flavor if this is the wrong app.''',
-            ),
           ).called(1);
         });
       });
@@ -2145,19 +2179,16 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         test('names the release command and exits', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.usage),
+            exitsWithError(
+              message:
+                  'No ${releasePlatform.displayName} releases found for app '
+                  '$appId.',
+              hint:
+                  'A patch needs a release to apply to (or pass --app-id / '
+                  '--flavor if this is the wrong app). Run: shorebird release '
+                  'android',
+            ),
           );
-
-          verify(
-            () => logger.err(
-              '''No ${releasePlatform.displayName} releases found for app $appId.''',
-            ),
-          ).called(1);
-          verify(
-            () => logger.info(
-              '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release android')}, or pass --app-id / --flavor if this is the wrong app.''',
-            ),
-          ).called(1);
         });
       });
 
@@ -2346,10 +2377,14 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               );
             });
 
-            test('exits with code 70 after the speculative build', () async {
+            test('exits with an error after the speculative build', () async {
               await expectLater(
                 () => runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithCode(ExitCode.software),
+                exitsWithError(
+                  message: contains('patching with `android` needs at least'),
+                  hint: contains('Run: shorebird release android'),
+                  exitCode: ExitCode.software,
+                ),
               );
 
               verify(() => patcher.buildPatchArtifact()).called(1);
@@ -2357,15 +2392,6 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 () =>
                     patcher.buildPatchArtifact(releaseVersion: releaseVersion),
               );
-              verify(
-                () => logger.err(
-                  any(
-                    that: contains(
-                      'is required to patch with `android`',
-                    ),
-                  ),
-                ),
-              ).called(1);
             });
           });
 
@@ -2531,17 +2557,19 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         );
       });
 
-      test('logs error and exits with code 70', () async {
+      test('exits with an error saying the release is incomplete', () async {
         await expectLater(
           () => runWithOverrides(command.run),
-          exitsWithCode(ExitCode.software),
+          exitsWithError(
+            message:
+                'Release ${release.version} is incomplete: the release '
+                'command that created it was stopped or failed.',
+            hint:
+                'Re-run the release for this version, or create a new one. '
+                'Run: shorebird release android',
+            exitCode: ExitCode.software,
+          ),
         );
-
-        verify(
-          () => logger.err('''
-Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-Please re-run the release command for this version or create a new release.'''),
-        ).called(1);
       });
     });
 
@@ -2571,17 +2599,47 @@ Please re-run the release command for this version or create a new release.'''),
         );
       });
 
-      test('logs error and exits with code 70', () async {
+      test('exits with an error saying the release has no build', () async {
         await expectLater(
           () => runWithOverrides(command.run),
-          exitsWithCode(ExitCode.software),
+          exitsWithError(
+            message: 'Release ${release.version} has no Android build.',
+            hint: 'Run: shorebird release android',
+            exitCode: ExitCode.software,
+          ),
+        );
+      });
+
+      test('names the release version for an add-to-app patch', () {
+        final aarPatcher = MockPatcher();
+        when(() => aarPatcher.releaseType).thenReturn(ReleaseType.aar);
+        final iosOnlyRelease = Release(
+          id: 0,
+          appId: appId,
+          version: '2.0.0+3',
+          flutterRevision: flutterRevision,
+          flutterVersion: flutterVersion,
+          displayName: '2.0.0+3',
+          platforms: const {
+            ReleasePlatform.ios: ReleasePlatformDetails(
+              status: ReleaseStatus.active,
+            ),
+          },
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
         );
 
-        verify(
-          () => logger.err(
-            '''No release exists for android in release version ${release.version}. Please run shorebird release android to create one.''',
+        expect(
+          () => command.assertReleaseContainsPlatform(
+            release: iosOnlyRelease,
+            patcher: aarPatcher,
           ),
-        ).called(1);
+          exitsWithError(
+            message: 'Release 2.0.0+3 has no Android build.',
+            hint: 'Run: shorebird release aar --release-version=2.0.0+3',
+            exitCode: ExitCode.software,
+          ),
+        );
       });
     });
 
@@ -2637,13 +2695,19 @@ Please re-run the release command for this version or create a new release.'''),
           ).thenThrow(UnpatchableChangeException());
         });
 
-        test('logs and exits with code 70', () async {
+        test('exits with an error saying it is not publishing', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message:
+                  'Not publishing: the patch changes native code or assets, '
+                  'which a patch may not update safely.',
+              hint:
+                  'To publish anyway, pass --allow-native-diffs (native '
+                  'changes) or --allow-asset-diffs (asset changes).',
+              exitCode: ExitCode.software,
+            ),
           );
-
-          verify(() => logger.info('Not publishing.')).called(1);
         });
       });
     });

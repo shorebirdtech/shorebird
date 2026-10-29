@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
@@ -285,12 +286,12 @@ Valid platforms: $validPlatformNames''',
     JsonErrorCode code = JsonErrorCode.usageError,
     int? exitCode,
   }) {
-    if (isJsonMode) {
-      emitJsonError(code: code, message: message, hint: hint);
-    } else {
-      logger.err(message);
-      if (hint != null) logger.info(hint);
-    }
+    reportCommandError(
+      command: fullCommandName,
+      message: message,
+      hint: hint,
+      code: code,
+    );
     return exitCode ?? ExitCode.usage.code;
   }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
@@ -12,7 +13,6 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template android_releaser}
@@ -60,18 +60,15 @@ class AndroidReleaser extends Releaser {
     assertReleaseVersionFlagNotProvided();
 
     if (generateApk && splitApk) {
-      logger
-        ..err(
-          'Shorebird does not support the split-per-abi option at this time',
-        )
-        ..info(
-          '''
-Split APKs are each given a different release version than what is specified in the pubspec.yaml.
-
-See ${link(uri: Uri.parse('https://github.com/flutter/flutter/issues/39817'))} for more information about this issue.
-Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1141'))} if you would like shorebird to support this.''',
-        );
-      throw ProcessExit(ExitCode.unavailable.code);
+      throw CommandError(
+        message:
+            'Shorebird does not support --split-per-abi: each split APK gets '
+            'a different version than the one in your pubspec.yaml.',
+        hint:
+            'Re-run without --split-per-abi. To ask for support, upvote '
+            'https://github.com/shorebirdtech/shorebird/issues/1141.',
+        exitCode: ExitCode.unavailable,
+      );
     }
   }
 
@@ -121,8 +118,13 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
           .extractReleaseVersionFromAppBundle(releaseArtifactRoot.path);
       releaseVersionProgress.complete('Release version: $releaseVersion');
     } on Exception catch (error) {
-      releaseVersionProgress.fail('$error');
-      throw ProcessExit(ExitCode.software.code);
+      releaseVersionProgress.fail();
+      throw CommandError(
+        message:
+            'Unable to read the release version from the app bundle: '
+            '$error',
+        exitCode: ExitCode.software,
+      );
     }
 
     return releaseVersion;

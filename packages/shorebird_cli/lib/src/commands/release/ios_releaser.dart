@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
@@ -14,7 +15,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -81,8 +81,13 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
     if (xcarchiveDirectory == null) {
-      logger.err('Unable to find .xcarchive directory');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'Unable to find the .xcarchive directory in the iOS build '
+            'output.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     final appDirectory = artifactManager.getIosAppDirectory(
@@ -90,8 +95,11 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
     );
 
     if (appDirectory == null) {
-      logger.err('Unable to find .app directory');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Unable to find the .app directory in the .xcarchive.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     // Surface mismatched app extension versions here rather than letting the
@@ -111,13 +119,15 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
     // report a successful release and point the user at an .ipa that does not
     // exist. See https://github.com/shorebirdtech/shorebird/issues/3807.
     if (argResults.appleCodesign && artifactManager.getIpa() == null) {
-      logger.err(
-        '''
-Unable to find generated IPA. This usually means that the IPA export step of "flutter build ipa" failed (for example, due to a missing or invalid code signing certificate). Review the build output above for the underlying error.
-
-If you do not need a signed IPA (for example, you will sign the .xcarchive in Xcode), re-run this command with --no-codesign.''',
+      throw CommandError(
+        message:
+            '`flutter build ipa` exported no .ipa, usually because code '
+            'signing failed. The build output above has the cause.',
+        hint:
+            'To sign the .xcarchive in Xcode instead, release it unsigned. '
+            'Run: shorebird release ios --no-codesign',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
 
     return xcarchiveDirectory;
@@ -128,6 +138,7 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
     required FileSystemEntity releaseArtifactRoot,
   }) async => readReleaseVersionFromInfoPlist(
     File(p.join(releaseArtifactRoot.path, 'Info.plist')),
+    hint: 'Re-run with --verbose to see the build output.',
   );
 
   @override

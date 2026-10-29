@@ -1,5 +1,6 @@
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The different types of shorebird releases that can be created.
@@ -44,6 +45,21 @@ enum ReleaseType {
         return 'windows';
     }
   }
+
+  /// Whether this is an add-to-app release (a module embedded in a host
+  /// Android or iOS app), whose version is the host app's and must be passed
+  /// with `--release-version`.
+  bool get isAddToApp =>
+      this == ReleaseType.aar || this == ReleaseType.iosFramework;
+
+  /// The `shorebird release` command that creates a release of this type,
+  /// for hints. Add-to-app releases get `--release-version`: [releaseVersion]
+  /// when given, otherwise an example version.
+  String releaseCommand({String? releaseVersion}) => [
+    'shorebird release $cliName',
+    if (isAddToApp)
+      '--release-version=${releaseVersion ?? releaseVersionExample}',
+  ].join(' ');
 
   /// Whether builds of this type take a Flutter target (`--target`).
   /// `flutter build aar` always uses `lib/main.dart`.

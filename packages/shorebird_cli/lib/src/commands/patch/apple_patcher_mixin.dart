@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
@@ -192,8 +193,11 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
           );
           patchBaseProgress.complete();
         } on Exception catch (error) {
-          patchBaseProgress.fail('$error');
-          throw ProcessExit(ExitCode.software.code);
+          patchBaseProgress.fail();
+          throw CommandError(
+            message: 'Failed to generate the patch diff base: $error',
+            exitCode: ExitCode.software,
+          );
         }
 
         patchFile = File(

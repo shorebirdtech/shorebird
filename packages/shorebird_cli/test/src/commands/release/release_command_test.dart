@@ -397,15 +397,14 @@ void main() {
         ).thenThrow(Exception('oops'));
       });
 
-      test('exits with code 70', () async {
+      test('exits with an error saying the build failed', () async {
         await expectLater(
           () => runWithOverrides(command.run),
-          exitsWithCode(ExitCode.software),
+          exitsWithError(
+            message: 'Failed to build release artifacts: Exception: oops',
+            exitCode: ExitCode.software,
+          ),
         );
-        verify(
-          () =>
-              logger.err('Failed to build release artifacts: Exception: oops'),
-        ).called(1);
       });
 
       test('passes on an exit that was already reported', () async {
@@ -415,11 +414,6 @@ void main() {
         await expectLater(
           () => runWithOverrides(command.run),
           throwsA(same(exit)),
-        );
-        verifyNever(
-          () => logger.err(
-            any(that: startsWith('Failed to build release artifacts')),
-          ),
         );
       });
 
@@ -437,12 +431,15 @@ void main() {
             when(() => exception.fixRecommendation).thenReturn('fix it');
           });
 
-          test('logs fix recommendation at the info level', () async {
+          test('exits with the fix recommendation as the hint', () async {
             await expectLater(
               () => runWithOverrides(command.run),
-              exitsWithCode(ExitCode.software),
+              exitsWithError(
+                message: 'oops',
+                hint: 'fix it',
+                exitCode: ExitCode.software,
+              ),
             );
-            verify(() => logger.info('fix it')).called(1);
           });
         });
       });
@@ -723,12 +720,24 @@ void main() {
           ).thenReturn('3.12.1');
         });
 
-        test('logs error and exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
-          );
-        });
+        test(
+          'exits with an error naming the existing release Flutter',
+          () async {
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithError(
+                message: allOf(
+                  startsWith('Release $releaseVersion was built with Flutter'),
+                  endsWith(
+                    'All platforms of a release must use the same Flutter.',
+                  ),
+                ),
+                hint: startsWith('Re-run with --flutter-version=different,'),
+                exitCode: ExitCode.software,
+              ),
+            );
+          },
+        );
       });
 
       group('when the release uses the same version of Flutter', () {
@@ -772,16 +781,17 @@ void main() {
           ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
+        test('exits with an error saying the revision is unknown', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message:
+                  'Unable to determine the revision for Flutter '
+                  '$flutterVersion: $exception',
+              hint: 'Run: shorebird flutter versions list',
+              exitCode: ExitCode.software,
+            ),
           );
-          verify(
-            () => logger.err('''
-Unable to determine revision for Flutter version: $flutterVersion.
-$exception'''),
-          ).called(1);
         });
       });
 
@@ -792,16 +802,17 @@ $exception'''),
           ).thenAnswer((_) async => null);
         });
 
-        test('exits with code 70', () async {
+        test('exits with an error saying the version is unavailable', () async {
           await expectLater(
             () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(
-            () => logger.err(
-              any(that: contains('Version $flutterVersion not found.')),
+            exitsWithError(
+              message: startsWith(
+                'Flutter $flutterVersion is not available to Shorebird.',
+              ),
+              hint: 'Run: shorebird flutter versions list',
+              exitCode: ExitCode.software,
             ),
-          ).called(1);
+          );
         });
       });
 
@@ -904,16 +915,19 @@ $exception'''),
             when(getVersion()).thenThrow(exception);
           });
 
-          test('exits with code 70', () async {
+          test('exits with an error saying the lookup failed', () async {
             await expectLater(
               () => runWithOverrides(command.run),
-              exitsWithCode(ExitCode.software),
+              exitsWithError(
+                message:
+                    'Unable to determine the Flutter version from '
+                    '`$versionCommand`: $exception',
+                hint:
+                    'Pass a version with --flutter-version=<version> instead. '
+                    'Run: shorebird flutter versions list',
+                exitCode: ExitCode.software,
+              ),
             );
-            verify(
-              () => logger.err('''
-Unable to determine the Flutter version from `$versionCommand`.
-$exception'''),
-            ).called(1);
           });
         });
 
@@ -922,17 +936,19 @@ $exception'''),
             when(getVersion()).thenAnswer((_) async => null);
           });
 
-          test('exits with code 70', () async {
+          test('exits with an error when the version is unparsable', () async {
             await expectLater(
               () => runWithOverrides(command.run),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(
-              () => logger.err(
-                'Unable to parse a Flutter version from the output of '
-                '`$versionCommand`.',
+              exitsWithError(
+                message:
+                    'Unable to parse a Flutter version from the output of '
+                    '`$versionCommand`.',
+                hint:
+                    'Pass a version with --flutter-version=<version> instead. '
+                    'Run: shorebird flutter versions list',
+                exitCode: ExitCode.software,
               ),
-            ).called(1);
+            );
           });
         });
       });
@@ -1340,7 +1356,7 @@ Did you mean --release-version=1.0.0+1?''',
         );
       });
 
-      test('exits with code 64 if flutter version is not supported', () async {
+      test('exits with an error if flutter version is not supported', () async {
         final releaser = MockReleaser();
         when(
           () => releaser.releaseType,
@@ -1353,14 +1369,44 @@ Did you mean --release-version=1.0.0+1?''',
         ).thenReturn(laterFlutterVersion);
         await expectLater(
           () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
-          exitsWithCode(ExitCode.usage),
+          exitsWithError(
+            message:
+                'At least Flutter $laterFlutterVersion is required to release '
+                'with `ios-framework` (see $supportedFlutterVersionsUrl).',
+            hint: isNull,
+          ),
         );
-        verify(
-          () => logger.err('''
-At least Flutter $laterFlutterVersion is required to release with `ios-framework`.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-        ).called(1);
       });
+
+      test(
+        'suggests dropping --flutter-version when it names an old Flutter',
+        () async {
+          final releaser = MockReleaser();
+          when(
+            () => releaser.releaseType,
+          ).thenReturn(ReleaseType.iosFramework);
+          when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+          when(() => argResults['flutter-version']).thenReturn('3.22.0');
+          final laterFlutterVersion = Version(3, 23, 0);
+          expect(laterFlutterVersion, greaterThan(flutterVersion));
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(laterFlutterVersion);
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithError(
+              message:
+                  'At least Flutter $laterFlutterVersion is required to '
+                  'release with `ios-framework` '
+                  '(see $supportedFlutterVersionsUrl).',
+              hint:
+                  'Drop --flutter-version to release with the latest supported '
+                  'Flutter. Run: shorebird release ios-framework '
+                  '--release-version=$releaseVersionExample',
+            ),
+          );
+        },
+      );
 
       group('when obfuscating below the obfuscation map floor', () {
         late MockReleaser releaser;
@@ -1383,15 +1429,17 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
           await expectLater(
             () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
-            exitsWithCode(ExitCode.unavailable),
-          );
-          verify(
-            () => logger.err(
-              'Obfuscation on iOS requires Flutter '
-              '$minimumObfuscationFlutterVersion or later '
-              '(current: $oldFlutterVersion).',
+            exitsWithError(
+              message:
+                  'Obfuscation on iOS requires Flutter '
+                  '$minimumObfuscationFlutterVersion or later '
+                  '(current: $oldFlutterVersion).',
+              hint:
+                  'Run: shorebird release ios --obfuscate '
+                  '--flutter-version=$minimumObfuscationFlutterVersion',
+              exitCode: ExitCode.unavailable,
             ),
-          ).called(1);
+          );
         });
 
         test('allows Android, whose patches are complete snapshots', () async {

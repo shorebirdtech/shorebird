@@ -7,6 +7,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -65,19 +66,37 @@ abstract class Releaser {
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid();
 
+  /// Requires `--release-version` with a concrete version, for add-to-app
+  /// releases (aar, ios-framework), whose version cannot be read from the
+  /// built module: it is the version of the app that embeds the module.
+  /// Rejects a missing, blank or `latest` value.
+  void assertReleaseVersionProvided() {
+    final value = (argResults['release-version'] as String?)?.trim();
+    if (value != null && value.isNotEmpty && value != 'latest') return;
+
+    final hostPlatform = releaseType.releasePlatform.displayName;
+    throw CommandError(
+      message:
+          'An ${releaseType.cliName} release needs --release-version: the '
+          'version of the $hostPlatform app that embeds this module.',
+      hint: 'Run: ${releaseType.releaseCommand()}',
+    );
+  }
+
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).
   /// Call from [assertArgsAreValid] in releasers that read the version from
   /// the built app.
   void assertReleaseVersionFlagNotProvided() {
     if (argResults.wasParsed('release-version')) {
-      logger.err(
-        '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
+      throw CommandError(
+        message:
+            '--release-version is only supported for aar and ios-framework '
+            'releases.',
+        hint:
+            'Remove --release-version. This release takes its version from '
+            'your pubspec.yaml.',
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
   }
 
@@ -376,11 +395,13 @@ To change the version of this release, change your app's version in your pubspec
     if (!useObfuscation) return;
     final mapFile = File(obfuscationMapPath);
     if (!mapFile.existsSync()) {
-      logger.err(
-        'Obfuscation was enabled but the obfuscation map was not '
-        'generated at $obfuscationMapPath',
+      throw CommandError(
+        message:
+            'Obfuscation was enabled but the obfuscation map was not '
+            'generated at $obfuscationMapPath.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
     logger.detail('Obfuscation map saved to $obfuscationMapPath');
   }

@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
@@ -125,17 +126,16 @@ class IosPatcher extends Patcher
         xcarchiveDirectory: releaseXcarchiveDirectory,
       );
       if (appDirectory == null) {
-        logger
-          ..err(
-            'The release .xcarchive downloaded from Shorebird has no '
-            'Products/Applications/*.app directory.',
-          )
-          ..info(
-            'Re-run to download it again. If this persists, the release '
-            'artifact is damaged; create a new release with '
-            '${lightCyan.wrap('shorebird release ios')} and patch that one.',
-          );
-        throw ProcessExit(ExitCode.software.code);
+        throw CommandError(
+          message:
+              'The release .xcarchive downloaded from Shorebird has no '
+              'Products/Applications/*.app directory.',
+          hint:
+              'Re-run to download it again. If this persists, the release '
+              'artifact is damaged: create a new release and patch that one. '
+              'Run: shorebird release ios',
+          exitCode: ExitCode.software,
+        );
       }
       final releaseArtifactFile = File(
         p.join(appDirectory.path, 'Frameworks', 'App.framework', 'App'),
@@ -177,13 +177,12 @@ class IosPatcher extends Patcher
       'ios',
       'archive',
     );
-    logger
-      ..err('No .xcarchive found in $archiveDirectory after the build.')
-      ..info(
-        'Shorebird looks for the archive that '
-        '${lightCyan.wrap('flutter build ipa')} writes there. '
-        'Re-run with --verbose to see the build output.',
-      );
-    throw ProcessExit(ExitCode.software.code);
+    throw CommandError(
+      message:
+          'No .xcarchive found in $archiveDirectory, where `flutter build '
+          'ipa` writes it.',
+      hint: 'Re-run with --verbose to see the build output.',
+      exitCode: ExitCode.software,
+    );
   }
 }

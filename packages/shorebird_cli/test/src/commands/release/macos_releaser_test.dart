@@ -187,20 +187,18 @@ void main() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
         });
 
-        test('logs error and exits with usage err', () async {
+        test('exits with an error saying the flag is unsupported', () async {
           await expectLater(
             () => runWithOverrides(releaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(
-            () => logger.err(
-              '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
+            exitsWithError(
+              message:
+                  '--release-version is only supported for aar and '
+                  'ios-framework releases.',
+              hint:
+                  'Remove --release-version. This release takes its version '
+                  'from your pubspec.yaml.',
             ),
-          ).called(1);
+          );
         });
       });
 
@@ -366,28 +364,17 @@ To change the version of this release, change your app's version in your pubspec
           when(() => artifactManager.getMacOSAppDirectory()).thenReturn(null);
         });
 
-        test('logs message and exits with code 70', () async {
+        test('exits with an error saying the .app was not found', () async {
           await expectLater(
             () => runWithOverrides(releaser.buildReleaseArtifacts),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message:
+                  'Unable to find the .app directory in the macOS build '
+                  'output.',
+              hint: 'Re-run with --verbose to see the build output.',
+              exitCode: ExitCode.software,
+            ),
           );
-
-          verify(() => logger.err('Unable to find .app directory')).called(1);
-        });
-      });
-
-      group('when app not found after build', () {
-        setUp(() {
-          when(() => artifactManager.getMacOSAppDirectory()).thenReturn(null);
-        });
-
-        test('logs message and exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.buildReleaseArtifacts),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => logger.err('Unable to find .app directory')).called(1);
         });
       });
 
@@ -502,20 +489,19 @@ To change the version of this release, change your app's version in your pubspec
       });
 
       group('when plist does not exist', () {
-        test('logs error and exits', () async {
+        test('exits with an error naming the missing file', () async {
           await expectLater(
             () => runWithOverrides(
               () =>
                   releaser.getReleaseVersion(releaseArtifactRoot: appDirectory),
             ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err(
-              '''No Info.plist file found at ${p.join(appDirectory.path, 'Contents', 'Info.plist')}''',
+            exitsWithError(
+              message:
+                  'No Info.plist file found at '
+                  '${p.join(appDirectory.path, 'Contents', 'Info.plist')}',
+              exitCode: ExitCode.software,
             ),
-          ).called(1);
+          );
         });
       });
 
@@ -617,7 +603,7 @@ To change the version of this release, change your app's version in your pubspec
           when(() => artifactManager.getMacOSAppDirectory()).thenReturn(null);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('exits with an error saying the .app was not found', () async {
           await expectLater(
             () => runWithOverrides(
               () => releaser.uploadReleaseArtifacts(
@@ -625,10 +611,14 @@ To change the version of this release, change your app's version in your pubspec
                 appId: appId,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message:
+                  'Unable to find the .app directory in the macOS build '
+                  'output.',
+              hint: 'Re-run with --verbose to see the build output.',
+              exitCode: ExitCode.software,
+            ),
           );
-
-          verify(() => logger.err('Unable to find .app directory')).called(1);
         });
       });
 

@@ -147,22 +147,25 @@ void main() {
         );
       });
 
-      test('logs error and exits with usage code when passed', () {
-        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+      test(
+        'exits with an error saying the flag is unsupported when passed',
+        () {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
 
-        expect(
-          () => runWithOverrides(releaser.assertReleaseVersionFlagNotProvided),
-          exitsWithCode(ExitCode.usage),
-        );
-        verify(
-          () => logger.err(
-            '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
-          ),
-        ).called(1);
-      });
+          expect(
+            () =>
+                runWithOverrides(releaser.assertReleaseVersionFlagNotProvided),
+            exitsWithError(
+              message:
+                  '--release-version is only supported for aar and '
+                  'ios-framework releases.',
+              hint:
+                  'Remove --release-version. This release takes its version '
+                  'from your pubspec.yaml.',
+            ),
+          );
+        },
+      );
     });
 
     group('useObfuscation', () {
@@ -506,22 +509,19 @@ To change the version of this release, change your app's version in your pubspec
         ).called(1);
       });
 
-      test('logs error and exits when the map was not generated', () {
+      test('exits with an error when the map was not generated', () {
         setObfuscate(enabled: true);
 
         expect(
           () => runWithOverrides(releaser.verifyObfuscationMap),
-          exitsWithCode(ExitCode.software),
-        );
-        verify(
-          () => logger.err(
-            any(
-              that: contains(
-                'Obfuscation was enabled but the obfuscation map was not',
-              ),
+          exitsWithError(
+            message: contains(
+              'Obfuscation was enabled but the obfuscation map was not',
             ),
+            hint: 'Re-run with --verbose to see the build output.',
+            exitCode: ExitCode.software,
           ),
-        ).called(1);
+        );
       });
     });
 

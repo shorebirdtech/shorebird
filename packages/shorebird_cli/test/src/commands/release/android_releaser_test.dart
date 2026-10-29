@@ -238,20 +238,18 @@ void main() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
         });
 
-        test('logs error and exits with usage err', () async {
+        test('exits with an error saying the flag is unsupported', () async {
           await expectLater(
             () => runWithOverrides(androidReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(
-            () => logger.err(
-              '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
+            exitsWithError(
+              message:
+                  '--release-version is only supported for aar and '
+                  'ios-framework releases.',
+              hint:
+                  'Remove --release-version. This release takes its version '
+                  'from your pubspec.yaml.',
             ),
-          ).called(1);
+          );
         });
       });
 
@@ -261,12 +259,21 @@ To change the version of this release, change your app's version in your pubspec
           when(() => argResults['split-per-abi']).thenReturn(true);
         });
 
-        test('exits with code 69', () async {
-          await expectLater(
-            () => runWithOverrides(androidReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.unavailable),
-          );
-        });
+        test(
+          'exits with an error saying split-per-abi is unsupported',
+          () async {
+            await expectLater(
+              () => runWithOverrides(androidReleaser.assertArgsAreValid),
+              exitsWithError(
+                message: startsWith(
+                  'Shorebird does not support --split-per-abi',
+                ),
+                hint: startsWith('Re-run without --split-per-abi.'),
+                exitCode: ExitCode.unavailable,
+              ),
+            );
+          },
+        );
       });
 
       group('when arguments are valid', () {
@@ -630,16 +637,21 @@ To change the version of this release, change your app's version in your pubspec
           ).thenThrow(Exception('oops'));
         });
 
-        test('logs error and exits with code 70', () async {
+        test('fails progress and exits with the error', () async {
           await expectLater(
             () => runWithOverrides(
               () => androidReleaser.getReleaseVersion(
                 releaseArtifactRoot: Directory(''),
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message:
+                  'Unable to read the release version from the app bundle: '
+                  'Exception: oops',
+              exitCode: ExitCode.software,
+            ),
           );
-          verify(() => progress.fail('Exception: oops')).called(1);
+          verify(() => progress.fail()).called(1);
         });
       });
     });
