@@ -105,10 +105,12 @@ mixin AuditLogFilterOptions
     addOrganizationScopeOption();
     addEnterpriseScopeFlag(
       help:
-          "Read your enterprise's log instead: who joined, left "
-          'or changed roles and access across its organizations. App '
-          'activity (releases, patches, channels) stays in each '
-          "organization's log. Needs an owner or admin of the enterprise.",
+          "Read your enterprise's log instead: its own events, and "
+          'across its organizations members, invitations, service '
+          'accounts and keys, app access, and organizations and apps '
+          'being created, changed, moved or deleted. Releases, patches '
+          "and channels stay in each organization's log. Needs an owner "
+          'or admin of the enterprise.',
     );
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')

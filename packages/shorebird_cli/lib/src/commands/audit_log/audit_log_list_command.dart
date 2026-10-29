@@ -45,9 +45,10 @@ class AuditLogListCommand extends ShorebirdCommand
       'organization:42\n\n'
       'For every page, as OCSF events, run '
       '`shorebird audit-log export`.\n\n'
-      "Pass --enterprise for an enterprise's log: membership and access "
-      "across its organizations. Each organization's app activity stays in "
-      'its own log.\n\n'
+      "Pass --enterprise for an enterprise's log: its own events, and "
+      'across its organizations who is in them, with what access, and '
+      'organizations and apps being created, changed, moved or deleted. '
+      "Releases, patches and channels stay in each organization's log.\n\n"
       '${ShorebirdCommand.jsonHint('shorebird audit-log 42 --json')}';
 
   @override
