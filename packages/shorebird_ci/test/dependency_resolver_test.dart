@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/shorebird_ci.dart';
 import 'package:test/test.dart';
 
@@ -95,6 +98,78 @@ void main() {
       final deps = resolver.resolve('apps/server');
 
       expect(deps, containsAll(['apps/server', 'libs/util']));
+    });
+
+    group('workspace members', () {
+      // A member depending on another by name alone, as pub resolves
+      // `scoped_deps: ^0.1.0` to the workspace's scoped_deps.
+      void writeMember(String relativePath, String name, String deps) {
+        final dir = Directory(p.join(tempDir.path, relativePath))
+          ..createSync(recursive: true);
+        File(p.join(dir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: $name
+resolution: workspace
+environment:
+  sdk: ^3.0.0
+$deps''');
+      }
+
+      test('resolves a member depended on by name alone', () {
+        createWorkspaceRoot(
+          tempDir,
+          members: ['packages/app', 'packages/lib_a', 'packages/lib_b'],
+        );
+        writeMember('packages/lib_b', 'lib_b', '');
+        writeMember('packages/lib_a', 'lib_a', '''
+dependencies:
+  lib_b: ^1.0.0
+''');
+        writeMember('packages/app', 'app', '''
+dependencies:
+  lib_a: ^1.0.0
+  path: ^1.9.0
+''');
+
+        final deps = DependencyResolver(tempDir.path).resolve('packages/app');
+
+        expect(
+          deps,
+          equals({'packages/app', 'packages/lib_a', 'packages/lib_b'}),
+        );
+      });
+
+      test('ignores a name match outside the workspace', () {
+        createWorkspaceRoot(tempDir, members: ['packages/app']);
+        writeMember('packages/app', 'app', '''
+dependencies:
+  other: ^1.0.0
+''');
+        createPackage(tempDir, 'packages/other', 'other');
+
+        final deps = DependencyResolver(tempDir.path).resolve('packages/app');
+
+        expect(deps, equals({'packages/app'}));
+      });
+
+      test('ignores names for a package without workspace resolution', () {
+        createWorkspaceRoot(tempDir, members: ['packages/lib_a']);
+        writeMember('packages/lib_a', 'lib_a', '');
+        File(
+            p.join(tempDir.path, 'packages', 'app', 'pubspec.yaml'),
+          )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('''
+name: app
+environment:
+  sdk: ^3.0.0
+dependencies:
+  lib_a: ^1.0.0
+''');
+
+        final deps = DependencyResolver(tempDir.path).resolve('packages/app');
+
+        expect(deps, equals({'packages/app'}));
+      });
     });
   });
 }

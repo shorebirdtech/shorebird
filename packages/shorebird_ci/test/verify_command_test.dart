@@ -170,6 +170,77 @@ jobs:
     expect(await runVerify(tempDir), 1);
   });
 
+  group('dep graph drift', () {
+    void writeFooFilter(List<String> paths) {
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+${paths.map((path) => '              - $path').join('\n')}
+            bar:
+              - packages/bar/**
+''');
+    }
+
+    setUp(() {
+      createPackage(tempDir, 'packages/bar', 'bar');
+      createPackage(
+        tempDir,
+        'packages/foo',
+        'foo',
+        dependencies: {'bar': '../bar'},
+      );
+    });
+
+    test('filter missing a dependency → returns 1', () async {
+      writeFooFilter(['packages/foo/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('filter covering every dependency → passes', () async {
+      writeFooFilter(['packages/foo/**', './packages/bar/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('an ancestor glob covers the dependency', () async {
+      writeFooFilter(['packages/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('each workflow filter must cover the dependency', () async {
+      writeFooFilter(['packages/foo/**', 'packages/bar/**']);
+      _writeWorkflow(tempDir, 'other.yaml', '''
+name: Other
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+  });
+
   test(
     'colliding package names match by slug, not by name',
     () async {

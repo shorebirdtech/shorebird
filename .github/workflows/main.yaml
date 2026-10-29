@@ -59,6 +59,9 @@ jobs:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
+              - packages/dex/**
+              - packages/scoped_deps/**
+              - packages/shorebird_build_trace/**
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
