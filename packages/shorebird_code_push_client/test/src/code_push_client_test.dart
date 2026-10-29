@@ -4166,6 +4166,403 @@ void main() {
       });
     });
 
+    group('enterprises', () {
+      const enterpriseId = 7;
+
+      void respond(Object? body, int status) {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            body == null
+                ? const Stream.empty()
+                : Stream.value(utf8.encode(json.encode(body))),
+            status,
+          ),
+        );
+      }
+
+      void respondPages(List<Map<String, dynamic>> pages) {
+        var call = 0;
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(pages[call++]))),
+            HttpStatus.ok,
+          ),
+        );
+      }
+
+      List<http.Request> requests() => verify(
+        () => httpClient.send(captureAny()),
+      ).captured.cast<http.Request>();
+
+      final failsWithServerMessage = throwsA(
+        isA<CodePushException>().having(
+          (e) => e.message,
+          'message',
+          errorResponse.message,
+        ),
+      );
+
+      const membership = {'id': 7, 'name': 'Acme', 'role': 'admin'};
+      const team = {
+        'id': 42,
+        'name': 'Mobile',
+        'member_count': 3,
+        'app_count': 1,
+        'default_role': null,
+        'apps': [
+          {'id': 'app-1', 'display_name': 'Acme App'},
+        ],
+      };
+      const member = {
+        'user_id': 9,
+        'email': 'bob@acme.com',
+        'display_name': 'Bob',
+        'kind': 'user',
+        'role': 'member',
+        'teams': [
+          {'team_id': 42, 'role': 'developer'},
+        ],
+        'app_grants': <Object>[],
+        'sign_in_method': null,
+        'signed_in_at': null,
+        'last_active_at': null,
+        'removed_at': null,
+        'removed_by_email': null,
+      };
+
+      group('getEnterprises', () {
+        test('follows every page', () async {
+          respondPages([
+            {
+              'enterprises': [membership],
+              'total_count': 2,
+              'next_cursor': 'c2',
+            },
+            {
+              'enterprises': [membership],
+              'total_count': 2,
+            },
+          ]);
+          final enterprises = await codePushClient.getEnterprises();
+          expect(enterprises.map((e) => e.role), [
+            EnterpriseRole.admin,
+            EnterpriseRole.admin,
+          ]);
+          final urls = requests().map((r) => r.url).toList();
+          expect(urls[0].path, endsWith('/api/v1/enterprises'));
+          expect(urls[0].queryParameters, {'per_page': '100'});
+          expect(urls[1].queryParameters, {'per_page': '100', 'cursor': 'c2'});
+        });
+
+        test('stops on an empty page that carries a cursor', () async {
+          respond({
+            'enterprises': <Object>[],
+            'total_count': 0,
+            'next_cursor': 'again',
+          }, HttpStatus.ok);
+          await expectLater(
+            codePushClient.getEnterprises(),
+            completion(isEmpty),
+          );
+          expect(requests(), hasLength(1));
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.forbidden);
+          expect(codePushClient.getEnterprises(), failsWithServerMessage);
+        });
+      });
+
+      group('getEnterprise', () {
+        test('returns the enterprise', () async {
+          respond({
+            'id': 7,
+            'name': 'Acme',
+            'domains': ['acme.com'],
+          }, HttpStatus.ok);
+          final enterprise = await codePushClient.getEnterprise(
+            enterpriseId: enterpriseId,
+          );
+          expect(enterprise.domains, ['acme.com']);
+          expect(requests().single.url, v1('enterprises/7'));
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.notFound);
+          expect(
+            codePushClient.getEnterprise(enterpriseId: enterpriseId),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      test('getEnterpriseOrganizations returns every organization', () async {
+        respond({
+          'organizations': [team],
+          'total_count': 1,
+        }, HttpStatus.ok);
+        final organizations = await codePushClient.getEnterpriseOrganizations(
+          enterpriseId: enterpriseId,
+        );
+        expect(organizations.single.memberCount, 3);
+        expect(
+          requests().single.url.path,
+          endsWith('enterprises/7/organizations'),
+        );
+      });
+
+      test('getEnterpriseApps returns every app', () async {
+        respond({
+          'apps': [
+            {
+              'organization_id': 42,
+              'organization_name': 'Mobile',
+              'app_id': 'app-1',
+              'app_display_name': 'Acme App',
+            },
+          ],
+          'total_count': 1,
+        }, HttpStatus.ok);
+        final apps = await codePushClient.getEnterpriseApps(
+          enterpriseId: enterpriseId,
+        );
+        expect(apps.single.appId, 'app-1');
+        expect(requests().single.url.path, endsWith('enterprises/7/apps'));
+      });
+
+      test('getEnterpriseMembers returns the directory', () async {
+        respond({
+          'members': [member],
+          'teams': [team],
+          'apps': <Object>[],
+          'member_count': 1,
+          'removed_count': 0,
+          'total_count': 1,
+        }, HttpStatus.ok);
+        final members = await codePushClient.getEnterpriseMembers(
+          enterpriseId: enterpriseId,
+        );
+        expect(members.single.email, 'bob@acme.com');
+        expect(requests().single.url.path, endsWith('enterprises/7/members'));
+      });
+
+      test('getEnterpriseGuests returns the guests', () async {
+        respond({
+          'guests': [
+            {
+              'user_id': 10,
+              'email': 'eve@contractor.com',
+              'display_name': null,
+              'kind': 'user',
+              'outside_guest_policy': true,
+              'teams': <Object>[],
+              'app_grants': <Object>[],
+              'sign_in_method': null,
+              'signed_in_at': null,
+              'last_active_at': null,
+            },
+          ],
+          'teams': <Object>[],
+          'apps': <Object>[],
+          'outside_guest_policy_count': 1,
+          'total_count': 1,
+        }, HttpStatus.ok);
+        final guests = await codePushClient.getEnterpriseGuests(
+          enterpriseId: enterpriseId,
+        );
+        expect(guests.single.outsideGuestPolicy, isTrue);
+        expect(requests().single.url.path, endsWith('enterprises/7/guests'));
+      });
+
+      group('setEnterpriseMemberRole', () {
+        test('patches the role', () async {
+          respond({'user_id': 9, 'role': 'admin'}, HttpStatus.ok);
+          await codePushClient.setEnterpriseMemberRole(
+            enterpriseId: enterpriseId,
+            userId: 9,
+            role: EnterpriseRole.admin,
+          );
+          final request = requests().single;
+          expect(request.method, 'PATCH');
+          expect(request.url, v1('enterprises/7/members/9'));
+          expect(json.decode(request.body), {'role': 'admin'});
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.forbidden);
+          expect(
+            codePushClient.setEnterpriseMemberRole(
+              enterpriseId: enterpriseId,
+              userId: 9,
+              role: EnterpriseRole.admin,
+            ),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      test('getEnterpriseServiceAccounts returns every account', () async {
+        respond({
+          'service_accounts': [
+            {
+              'user_id': 11,
+              'name': 'ci',
+              'team_id': 42,
+              'role': 'developer',
+              'created_at': '2026-10-01T00:00:00.000Z',
+              'last_auth_at': null,
+              'created_by_email': null,
+            },
+          ],
+          'teams': [team],
+          'apps': <Object>[],
+          'total_count': 1,
+        }, HttpStatus.ok);
+        final accounts = await codePushClient.getEnterpriseServiceAccounts(
+          enterpriseId: enterpriseId,
+        );
+        expect(accounts.single.teamId, 42);
+        expect(
+          requests().single.url.path,
+          endsWith('enterprises/7/service-accounts'),
+        );
+      });
+
+      group('getEnterpriseAuditLogs', () {
+        test('sends the filters', () async {
+          respond({'data': <Object>[]}, HttpStatus.ok);
+          await codePushClient.getEnterpriseAuditLogs(
+            enterpriseId: enterpriseId,
+            perPage: 50,
+            cursor: 'c2',
+            order: AuditLogOrder.asc,
+            startDate: DateTime.utc(2026, 10),
+            appId: 'app-1',
+            actorId: 9,
+            operation: 'app.create',
+          );
+          final url = requests().single.url;
+          expect(url.path, endsWith('enterprises/7/audit-logs'));
+          expect(url.queryParameters, {
+            'per_page': '50',
+            'cursor': 'c2',
+            'order': 'asc',
+            'startDate': '2026-10-01T00:00:00.000Z',
+            'appId': 'app-1',
+            'actorId': '9',
+            'operation': 'app.create',
+          });
+        });
+
+        test('sends no query without filters', () async {
+          respond({'data': <Object>[]}, HttpStatus.ok);
+          await codePushClient.getEnterpriseAuditLogs(
+            enterpriseId: enterpriseId,
+          );
+          expect(requests().single.url, v1('enterprises/7/audit-logs'));
+        });
+
+        // An event above any organization, such as the enterprise's own
+        // creation, belongs to the enterprise alone and has no tenant_uid.
+        test('reads an entry with no organization', () async {
+          respond({
+            'data': [
+              {
+                'class_uid': 6003,
+                'category_uid': 6,
+                'activity_id': 1,
+                'type_uid': 600301,
+                'time': 1792500000000,
+                'severity_id': 1,
+                'status_id': 1,
+                'metadata': {
+                  'version': '1.9.0',
+                  'product': {'name': 'Shorebird', 'vendor_name': 'Shorebird'},
+                  'uid': '501',
+                  'log_name': 'audit',
+                },
+                'api': {'operation': 'enterprise.create'},
+                'actor': {
+                  'user': {
+                    'uid': '9',
+                    'email_addr': 'alice@acme.com',
+                    'type_id': 1,
+                    'type': 'User',
+                  },
+                },
+                'src_endpoint': {'name': 'unknown'},
+                'resources': [
+                  {'type': 'enterprise', 'uid': '7'},
+                ],
+                'unmapped': {'enterprise_id': '7'},
+              },
+            ],
+          }, HttpStatus.ok);
+          final page = await codePushClient.getEnterpriseAuditLogs(
+            enterpriseId: enterpriseId,
+          );
+          final entry = page.data.single;
+          expect(entry.metadata.tenantUid, isNull);
+          expect(entry.api.operation, 'enterprise.create');
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.badRequest);
+          expect(
+            codePushClient.getEnterpriseAuditLogs(enterpriseId: enterpriseId),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      group('getEnterpriseBilling', () {
+        test('returns the billing', () async {
+          respond({
+            'has_billing_account': false,
+            'plan': null,
+            'position': null,
+          }, HttpStatus.ok);
+          final billing = await codePushClient.getEnterpriseBilling(
+            enterpriseId: enterpriseId,
+          );
+          expect(billing.hasBillingAccount, isFalse);
+          expect(requests().single.url, v1('enterprises/7/billing'));
+        });
+
+        test('throws on failure', () {
+          respond(errorResponse.toJson(), HttpStatus.forbidden);
+          expect(
+            codePushClient.getEnterpriseBilling(enterpriseId: enterpriseId),
+            failsWithServerMessage,
+          );
+        });
+      });
+
+      test(
+        'getEnterpriseBillingOrganizations returns each organization',
+        () async {
+          respond({
+            'organizations': [
+              {
+                'id': 42,
+                'name': 'Mobile',
+                'app_count': 1,
+                'patch_installs': 120,
+              },
+            ],
+            'total_count': 1,
+          }, HttpStatus.ok);
+          final organizations = await codePushClient
+              .getEnterpriseBillingOrganizations(enterpriseId: enterpriseId);
+          expect(organizations.single.patchInstalls, 120);
+          expect(
+            requests().single.url.path,
+            endsWith('enterprises/7/billing/organizations'),
+          );
+        },
+      );
+    });
+
     group('getReceivedInvitations', () {
       ReceivedInvitation invitation(String id) => ReceivedInvitation(
         id: id,

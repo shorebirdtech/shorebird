@@ -3824,6 +3824,659 @@ paths:
                     description: The GCP-signed download URL.
         default:
           $ref: '#/components/responses/Error'
+
+  /enterprises:
+    get:
+      tags:
+        - enterprises
+      summary: List the enterprises the caller belongs to.
+      description: |
+        Each with the caller's role in it. Empty for someone in none, which
+        is nearly everyone.
+      operationId: getEnterprises
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+      responses:
+        '200':
+          description: One page of the caller's enterprises.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterprisePageFields'
+                  - type: object
+                    required:
+                      - enterprises
+                    properties:
+                      enterprises:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EnterpriseMembership'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: Read an enterprise.
+      description: |
+        Its id, name and the domains it owns. Its organizations, people and
+        apps are paged lists of their own under it. Admins only.
+      operationId: getEnterprise
+      responses:
+        '200':
+          description: The enterprise.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enterprise'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/organizations:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: List an enterprise's organizations.
+      description: |
+        By name, each with its member and app counts, its first apps and
+        its default role. Admins only.
+      operationId: getEnterpriseOrganizations
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+      responses:
+        '200':
+          description: One page of organizations.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterprisePageFields'
+                  - type: object
+                    required:
+                      - organizations
+                    properties:
+                      organizations:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EnterpriseTeam'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/organizations/{organizationId}/members:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+      - $ref: '#/components/parameters/EnterpriseOrganizationId'
+    get:
+      tags:
+        - enterprises
+      summary: List the members of one of an enterprise's organizations.
+      description: |
+        Each with their role in it, in the order they joined, as the
+        organization's own member list orders them. Admins only, whether or
+        not they are a member of the organization.
+      operationId: getEnterpriseOrganizationMembers
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+      responses:
+        '200':
+          description: One page of members.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterprisePageFields'
+                  - type: object
+                    required:
+                      - users
+                    properties:
+                      users:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OrganizationUser'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags:
+        - enterprises
+      summary: Add a member of the enterprise to one of its organizations.
+      description: |
+        Adds them at once, with no invitation to accept, and emails them to
+        say so. Only people in the enterprise's directory can be added:
+        anyone else, a guest or a removed member included, is a `404`
+        (`enterprise_member_not_found`), and someone already in the
+        organization a `409` (`enterprise_organization_member_exists`). The
+        owner role is not grantable here (`403`), and a role the
+        organization's plan does not offer is a `403`
+        (`shorebird_plan_insufficient_tier`). Admins only.
+      operationId: addEnterpriseOrganizationMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - role
+              properties:
+                user_id:
+                  type: integer
+                  format: int64
+                role:
+                  $ref: '#/components/schemas/Role'
+      responses:
+        '201':
+          description: The member, as added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationUser'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/organizations/{organizationId}/members/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+      - $ref: '#/components/parameters/EnterpriseOrganizationId'
+      - $ref: '#/components/parameters/EnterpriseUserId'
+    patch:
+      tags:
+        - enterprises
+      summary: Change a member's role in one of an enterprise's organizations.
+      description: |
+        Ownership is not changed here: making someone the owner, or changing
+        the owner's role, is a `403`
+        (`enterprise_organization_owner`), since ownership carries the
+        organization's bill and moves only by transfer. A role the
+        organization's plan does not offer is a `403`
+        (`shorebird_plan_insufficient_tier`), and someone not in the
+        organization a `404` (`enterprise_organization_member_not_found`).
+        Admins only.
+      operationId: setEnterpriseOrganizationMemberRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  $ref: '#/components/schemas/Role'
+      responses:
+        '200':
+          description: The member, with the role as set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationUser'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags:
+        - enterprises
+      summary: Remove a member from one of an enterprise's organizations.
+      description: |
+        Removes them and their grants on the organization's apps, and
+        nothing else: they stay in the enterprise and in its other
+        organizations. The owner is a `403`
+        (`enterprise_organization_owner`), and someone not in the
+        organization a `404` (`enterprise_organization_member_not_found`).
+        Admins only.
+      operationId: removeEnterpriseOrganizationMember
+      responses:
+        '204':
+          description: They were removed.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/billing:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: Get an enterprise's contract and usage.
+      description: |
+        The plan of the billing account the enterprise owns, and the patch
+        installs of every organization it pays for in the plan's current
+        period. `plan` and `position` are null while the enterprise owns no
+        account and its organizations bill through their owners. Owners and
+        billing managers only; anyone else in the enterprise gets a `403`
+        (`enterprise_billing_required`).
+      operationId: getEnterpriseBilling
+      responses:
+        '200':
+          description: The enterprise's billing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseBilling'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/billing/organizations:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: List the organizations an enterprise's billing account pays for.
+      description: |
+        By name, each with its patch installs in the plan's current period.
+        Empty while the enterprise owns no account. Owners and billing
+        managers only.
+      operationId: getEnterpriseBillingOrganizations
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+      responses:
+        '200':
+          description: One page of organizations.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterprisePageFields'
+                  - type: object
+                    required:
+                      - organizations
+                    properties:
+                      organizations:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EnterpriseBillingOrganization'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/members:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: List an enterprise's members.
+      description: |
+        Admins first, then by email: those it has not removed, or with
+        `removed=true` those it has. Each carries the organizations they are
+        in and their grants on single apps, and the page carries those
+        organizations and apps. `member_count` and `removed_count` count both
+        lists, whichever the page is from. Admins only.
+      operationId: getEnterpriseMembers
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - person
+              - -person
+              - account
+              - -account
+              - role
+              - -role
+              - last_sign_in
+              - -last_sign_in
+              - last_active
+              - -last_active
+              - removed
+              - -removed
+              - removed_by
+              - -removed_by
+          description: |
+            The column to sort by, ascending, or after a `-` descending, in
+            place of the list's own order. Rows with no value in the column
+            come last either way. Any other value is a `400`
+            (`enterprise_sort_invalid`).
+        - name: removed
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: List the members the enterprise has removed instead.
+      responses:
+        '200':
+          description: One page of members.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterpriseAccessPageFields'
+                  - type: object
+                    required:
+                      - members
+                      - member_count
+                      - removed_count
+                    properties:
+                      members:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EnterpriseMember'
+                      member_count:
+                        type: integer
+                        description: How many members it has not removed.
+                      removed_count:
+                        type: integer
+                        description: How many members it has removed.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/members/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+      - $ref: '#/components/parameters/EnterpriseUserId'
+    patch:
+      tags:
+        - enterprises
+      summary: Set a member's enterprise role.
+      description: |
+        Owners only. Only the role changes: an owner or admin gains no
+        organization or app access from it. A guest or removed member is a
+        `404` (`enterprise_member_not_found`), and leaving the enterprise
+        without an owner a `409` (`enterprise_last_owner`).
+      operationId: setEnterpriseMemberRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  $ref: '#/components/schemas/EnterpriseRole'
+      responses:
+        '200':
+          description: The member's role, as set.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user_id
+                  - role
+                properties:
+                  user_id:
+                    type: integer
+                    format: int64
+                  role:
+                    $ref: '#/components/schemas/EnterpriseRole'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags:
+        - enterprises
+      summary: Remove a member from an enterprise.
+      description: |
+        Removes a leaver from every one of the enterprise's organizations and
+        every grant on a single app in them, revokes their pending
+        invitations into them, and revokes their sessions and API keys, so
+        they lose access at their next request. Permanent. Their account and
+        their access outside the enterprise are left alone. Admins only.
+
+        A `409` refuses the caller themselves (`enterprise_member_is_self`),
+        someone already removed (`enterprise_member_already_removed`), an
+        owner of the enterprise (`enterprise_member_is_owner`), and an owner
+        of one of its organizations (`enterprise_member_owns_organizations`).
+      operationId: removeEnterpriseMember
+      responses:
+        '200':
+          description: What removing them took.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterpriseRemovedAccess'
+                  - type: object
+                    required:
+                      - invitations_revoked
+                      - sessions_revoked
+                      - api_keys_revoked
+                    properties:
+                      invitations_revoked:
+                        type: integer
+                      sessions_revoked:
+                        type: integer
+                      api_keys_revoked:
+                        type: integer
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/guests:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: List an enterprise's guests.
+      description: |
+        By email: the people who reach its organizations' apps but are not
+        its members, each flagged when its guest policy would refuse them
+        now. Carries what they reach as the member list does, and
+        `outside_guest_policy_count` over every guest. Admins only.
+      operationId: getEnterpriseGuests
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - person
+              - -person
+              - last_sign_in
+              - -last_sign_in
+              - last_active
+              - -last_active
+          description: |
+            The column to sort by, ascending, or after a `-` descending, in
+            place of the list's own order. Rows with no value in the column
+            come last either way. Any other value is a `400`
+            (`enterprise_sort_invalid`).
+      responses:
+        '200':
+          description: One page of guests.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterpriseAccessPageFields'
+                  - type: object
+                    required:
+                      - guests
+                      - outside_guest_policy_count
+                    properties:
+                      guests:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EnterpriseGuest'
+                      outside_guest_policy_count:
+                        type: integer
+                        description: How many guests the policy would refuse now.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/service-accounts:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: List the service accounts an enterprise's organizations own.
+      description: |
+        By organization name and then account name, with their
+        organizations, each with its first apps. Admins only.
+      operationId: getEnterpriseServiceAccounts
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - account
+              - -account
+              - organization
+              - -organization
+              - created_by
+              - -created_by
+              - last_used
+              - -last_used
+          description: |
+            The column to sort by, ascending, or after a `-` descending, in
+            place of the list's own order. Rows with no value in the column
+            come last either way. Any other value is a `400`
+            (`enterprise_sort_invalid`).
+      responses:
+        '200':
+          description: One page of service accounts.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterpriseAccessPageFields'
+                  - type: object
+                    required:
+                      - service_accounts
+                    properties:
+                      service_accounts:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EnterpriseServiceAccount'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/apps:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: List the apps in an enterprise's organizations.
+      description: |
+        Every one, each with its organization, by organization name and then
+        app name. Admins only.
+      operationId: getEnterpriseApps
+      parameters:
+        - $ref: '#/components/parameters/EnterprisePerPage'
+        - $ref: '#/components/parameters/EnterpriseCursor'
+        - $ref: '#/components/parameters/EnterprisePage'
+      responses:
+        '200':
+          description: One page of apps.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/EnterprisePageFields'
+                  - type: object
+                    required:
+                      - apps
+                    properties:
+                      apps:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EnterpriseApp'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /enterprises/{enterpriseId}/audit-logs:
+    parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+    get:
+      tags:
+        - enterprises
+      summary: Read an enterprise's audit log.
+      description: |
+        Events about the enterprise, and its organizations' membership and
+        access events, never their app content. An organization's events
+        are here when they were written while it was in the enterprise.
+        Takes the same query parameters, and pages the same way, as an
+        organization's audit log. Admins only.
+      operationId: getEnterpriseAuditLogs
+      parameters:
+        - $ref: '#/components/parameters/PerPage'
+          description: |
+            The number of entries per page. This list always pages: without
+            `per_page` a page holds 30. Values above 100 are treated as 100;
+            values that are not a positive integer are treated as 30.
+        - $ref: '#/components/parameters/Cursor'
+        - name: order
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AuditLogOrder'
+          description: The order entries are listed in. Defaults to `desc`.
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Only entries at or after this time (ISO 8601, inclusive).
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Only entries at or before this time (ISO 8601, inclusive).
+        - name: appId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Only entries about this app.
+        - name: actorId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: Only entries this user or service account caused.
+        - name: operation
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Only entries of this event, named as in an entry's
+            `api.operation`. A name that is not an audit event is a `400`.
+      responses:
+        '200':
+          description: One page of audit log entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetOrganizationAuditLogsResponse'
+        default:
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     apiKey:
@@ -3976,6 +4629,76 @@ components:
         pagination. Send either `page` or `cursor`, not both (`400`,
         `invalid_page`). A value that is not a positive integer reads the
         first page.
+
+    EnterpriseCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+      description: |
+        The `next_cursor` of the previous page. Opaque. An unreadable cursor
+        is a `400` (`invalid_cursor`), and sending it with `page` a `400`
+        (`invalid_page`).
+
+    EnterpriseId:
+      name: enterpriseId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: |
+        The ID of the enterprise. An enterprise the caller does not belong
+        to, and a value that is not an integer, are a `404`
+        (`enterprise_not_found`).
+
+    EnterpriseOrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: |
+        The ID of one of the enterprise's organizations. An organization in
+        another enterprise or in none is a `404`
+        (`enterprise_organization_not_found`).
+
+    EnterprisePage:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: |
+        The 1-based number of the page to read, instead of `cursor`. A value
+        that is not a positive integer reads the first page.
+
+    EnterprisePerPage:
+      name: per_page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 30
+      description: |
+        The number of items per page. These lists always page: without
+        `per_page` a page holds 30. Values above 100 are treated as 100;
+        values that are not a positive integer are treated as 30.
+
+    EnterpriseUserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: The user ID of the person.
   schemas:
     App:
       type: object
@@ -7434,3 +8157,434 @@ components:
         role:
           $ref: '#/components/schemas/Role'
           description: The user's role on the app.
+
+    Enterprise:
+      type: object
+      description: An enterprise, as its admins read it.
+      required:
+        - id
+        - name
+        - domains
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        domains:
+          type: array
+          items:
+            type: string
+          description: The domains it owns.
+
+    EnterpriseAccessPageFields:
+      description: |
+        The paging fields, and what the people or accounts on the page reach:
+        their organizations, each with its first apps, and the apps of their
+        grants on single apps.
+      allOf:
+        - $ref: '#/components/schemas/EnterprisePageFields'
+        - type: object
+          required:
+            - teams
+            - apps
+          properties:
+            teams:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseTeam'
+            apps:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseAppSummary'
+
+    EnterpriseApp:
+      type: object
+      description: An app in one of an enterprise's organizations.
+      required:
+        - organization_id
+        - organization_name
+        - app_id
+        - app_display_name
+      properties:
+        organization_id:
+          type: integer
+          format: int64
+        organization_name:
+          type: string
+        app_id:
+          type: string
+        app_display_name:
+          type: string
+
+    EnterpriseAppGrant:
+      type: object
+      required:
+        - app_id
+        - role
+      properties:
+        app_id:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+
+    EnterpriseAppSummary:
+      type: object
+      required:
+        - id
+        - display_name
+      properties:
+        id:
+          type: string
+        display_name:
+          type: string
+
+    EnterpriseBilling:
+      type: object
+      description: An enterprise's contract and its usage against it.
+      required:
+        - has_billing_account
+        - plan
+        - position
+      properties:
+        has_billing_account:
+          type: boolean
+          description: Whether the enterprise owns a billing account.
+        plan:
+          oneOf:
+            - $ref: '#/components/schemas/EnterpriseBillingPlan'
+            - type: 'null'
+        position:
+          description: |
+            Where the account's organizations stand against the plan's
+            included installs, together.
+          oneOf:
+            - $ref: '#/components/schemas/AccountPosition'
+            - type: 'null'
+
+    EnterpriseBillingOrganization:
+      type: object
+      description: An organization an enterprise's billing account pays for.
+      required:
+        - id
+        - name
+        - app_count
+        - patch_installs
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        app_count:
+          type: integer
+        patch_installs:
+          type: integer
+          description: Its apps' patch installs in the plan's current period.
+
+    EnterpriseBillingPlan:
+      type: object
+      description: The plan of an enterprise's billing account.
+      required:
+        - name
+        - level
+        - current_period_start
+        - current_period_end
+        - cancel_at_period_end
+        - currency
+      properties:
+        name:
+          type: string
+          description: The plan's name, as the contract's price names it.
+        level:
+          type: string
+          description: The plan level, such as `enterprise`.
+        billing_interval:
+          type:
+            - string
+            - 'null'
+          description: The unit the plan bills on (`month`, `year`).
+        billing_interval_count:
+          type:
+            - integer
+            - 'null'
+          description: How many intervals make one billing period.
+        current_period_start:
+          type: string
+          format: date-time
+        current_period_end:
+          type: string
+          format: date-time
+          description: When the current period ends and the plan renews.
+        cancel_at_period_end:
+          type: boolean
+          description: Whether the plan ends instead of renewing.
+        currency:
+          type: string
+
+    EnterpriseDefaultRole:
+      type: string
+      description: A role a default organization joins people at.
+      enum:
+        - viewer
+        - developer
+
+    EnterpriseGuest:
+      allOf:
+        - $ref: '#/components/schemas/EnterprisePerson'
+        - type: object
+          required:
+            - outside_guest_policy
+          properties:
+            outside_guest_policy:
+              type: boolean
+              description: Whether the guest policy would refuse them now.
+
+    EnterpriseMember:
+      allOf:
+        - $ref: '#/components/schemas/EnterprisePerson'
+        - type: object
+          required:
+            - role
+            - removed_at
+            - removed_by_email
+          properties:
+            role:
+              $ref: '#/components/schemas/EnterpriseRole'
+            removed_at:
+              type:
+                - string
+                - 'null'
+              format: date-time
+              description: When the enterprise removed them, or null.
+            removed_by_email:
+              type:
+                - string
+                - 'null'
+              description: Who removed them, or null.
+
+    EnterpriseMembership:
+      type: object
+      description: An enterprise the caller belongs to, and their role in it.
+      required:
+        - id
+        - name
+        - role
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/EnterpriseRole'
+
+    EnterprisePageFields:
+      type: object
+      description: The paging fields of a page of an enterprise list.
+      required:
+        - total_count
+      properties:
+        total_count:
+          type: integer
+          description: How many items the whole list holds.
+        next_cursor:
+          type: string
+          description: The cursor of the next page; absent on the last page.
+
+    EnterprisePerson:
+      type: object
+      description: |
+        A member or guest: who they are, where they are and how they sign in.
+      required:
+        - user_id
+        - email
+        - display_name
+        - kind
+        - teams
+        - app_grants
+        - sign_in_method
+        - signed_in_at
+        - last_active_at
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        email:
+          type:
+            - string
+            - 'null'
+        display_name:
+          type:
+            - string
+            - 'null'
+        kind:
+          type: string
+          description: What kind of account it is.
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseTeamAccess'
+        app_grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseAppGrant'
+        sign_in_method:
+          description: How they last signed in, or null if never.
+          oneOf:
+            - $ref: '#/components/schemas/SignInMethod'
+            - type: 'null'
+        signed_in_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        last_active_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+
+    EnterpriseRemovedAccess:
+      type: object
+      description: The memberships and app grants removing a person took.
+      required:
+        - organizations
+        - app_grants
+      properties:
+        organizations:
+          type: array
+          items:
+            type: object
+            required:
+              - organization_id
+              - organization_name
+              - role
+            properties:
+              organization_id:
+                type: integer
+                format: int64
+              organization_name:
+                type: string
+              role:
+                $ref: '#/components/schemas/Role'
+        app_grants:
+          type: array
+          items:
+            type: object
+            required:
+              - app_id
+              - organization_id
+              - role
+            properties:
+              app_id:
+                type: string
+              organization_id:
+                type: integer
+                format: int64
+              role:
+                $ref: '#/components/schemas/Role'
+
+    EnterpriseRole:
+      type: string
+      description: A person's role in an enterprise.
+      enum:
+        - owner
+        - admin
+        - member
+        - billingManager
+      x-enum-descriptions:
+        - Does everything an admin does, and also grants enterprise roles, requires a domain's sign-in method and sees billing.
+        - Manages the enterprise's people and policies. Does not see billing.
+        - Belongs to the enterprise, which by itself grants no app access.
+        - Sees the enterprise's billing and nothing else on it, and no app access.
+
+    EnterpriseServiceAccount:
+      type: object
+      description: A service account one of an enterprise's organizations owns.
+      required:
+        - user_id
+        - name
+        - team_id
+        - role
+        - created_at
+        - last_auth_at
+        - created_by_email
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        team_id:
+          type: integer
+          format: int64
+        role:
+          $ref: '#/components/schemas/Role'
+        created_at:
+          type: string
+          format: date-time
+        last_auth_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_by_email:
+          type:
+            - string
+            - 'null'
+
+    EnterpriseTeam:
+      type: object
+      description: |
+        One of an enterprise's organizations, with its counts and the apps it
+        carries, which may be only the first of `app_count`.
+      required:
+        - id
+        - name
+        - member_count
+        - app_count
+        - default_role
+        - apps
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        member_count:
+          type: integer
+        app_count:
+          type: integer
+        default_role:
+          description: |
+            The role a managed sign-in joins people at, or null when it is
+            not a default organization.
+          oneOf:
+            - $ref: '#/components/schemas/EnterpriseDefaultRole'
+            - type: 'null'
+        apps:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseAppSummary'
+
+    EnterpriseTeamAccess:
+      type: object
+      required:
+        - team_id
+        - role
+      properties:
+        team_id:
+          type: integer
+          format: int64
+        role:
+          $ref: '#/components/schemas/Role'
+
+    SignInMethod:
+      type: string
+      description: How a person signs in, named from their identity's issuer.
+      enum:
+        - google
+        - microsoft
+        - saml
+        - other

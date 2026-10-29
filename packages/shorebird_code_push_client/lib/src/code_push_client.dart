@@ -1355,6 +1355,207 @@ class CodePushClient {
     ).apps;
   }
 
+  /// Gets the enterprises the current user belongs to, with the user's role
+  /// in each.
+  Future<List<EnterpriseMembership>> getEnterprises() => _getEveryPage(
+    Uri.parse('$_v1/enterprises'),
+    (json) {
+      final page = GetEnterprises200Response.fromJson(json);
+      return (items: page.enterprises, nextCursor: page.nextCursor);
+    },
+  );
+
+  /// Gets enterprise [enterpriseId]: its name and domains.
+  Future<Enterprise> getEnterprise({required int enterpriseId}) async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/enterprises/$enterpriseId'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return Enterprise.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Gets every organization in enterprise [enterpriseId], including ones
+  /// the user isn't a member of.
+  Future<List<EnterpriseTeam>> getEnterpriseOrganizations({
+    required int enterpriseId,
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/organizations'),
+    (json) {
+      final page = GetEnterpriseOrganizations200Response.fromJson(json);
+      return (items: page.organizations, nextCursor: page.nextCursor);
+    },
+  );
+
+  /// Gets every app in every organization of enterprise [enterpriseId].
+  Future<List<EnterpriseApp>> getEnterpriseApps({required int enterpriseId}) =>
+      _getEveryPage(Uri.parse('$_v1/enterprises/$enterpriseId/apps'), (json) {
+        final page = GetEnterpriseApps200Response.fromJson(json);
+        return (items: page.apps, nextCursor: page.nextCursor);
+      });
+
+  /// Gets enterprise [enterpriseId]'s directory: its members, each with
+  /// their enterprise role and the organizations they're in.
+  Future<List<EnterpriseMember>> getEnterpriseMembers({
+    required int enterpriseId,
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/members'),
+    (json) {
+      final page = GetEnterpriseMembers200Response.fromJson(json);
+      return (items: page.members, nextCursor: page.nextCursor);
+    },
+  );
+
+  /// Gets the guests of enterprise [enterpriseId]: people in its
+  /// organizations who aren't in its directory.
+  Future<List<EnterpriseGuest>> getEnterpriseGuests({
+    required int enterpriseId,
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/guests'),
+    (json) {
+      final page = GetEnterpriseGuests200Response.fromJson(json);
+      return (items: page.guests, nextCursor: page.nextCursor);
+    },
+  );
+
+  /// Sets member [userId]'s enterprise role in enterprise [enterpriseId] to
+  /// [role].
+  Future<void> setEnterpriseMemberRole({
+    required int enterpriseId,
+    required int userId,
+    required EnterpriseRole role,
+  }) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/enterprises/$enterpriseId/members/$userId'),
+      body: json.encode(SetEnterpriseMemberRoleRequest(role: role).toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Gets the service accounts of every organization in enterprise
+  /// [enterpriseId].
+  Future<List<EnterpriseServiceAccount>> getEnterpriseServiceAccounts({
+    required int enterpriseId,
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/service-accounts'),
+    (json) {
+      final page = GetEnterpriseServiceAccounts200Response.fromJson(json);
+      return (items: page.serviceAccounts, nextCursor: page.nextCursor);
+    },
+  );
+
+  /// Gets one page of enterprise [enterpriseId]'s audit log, which covers
+  /// every organization in it.
+  ///
+  /// [cursor] is the `nextCursor` of the previous page. The other arguments
+  /// filter the entries; null leaves a filter off.
+  ///
+  /// With [AuditLogOrder.asc] the server returns a cursor even on an empty
+  /// page, so a caller can poll for new entries; stop on an empty page
+  /// rather than on a null cursor.
+  Future<GetOrganizationAuditLogsResponse> getEnterpriseAuditLogs({
+    required int enterpriseId,
+    int? perPage,
+    String? cursor,
+    AuditLogOrder? order,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? appId,
+    int? actorId,
+    String? operation,
+  }) async {
+    final queryParameters = {
+      'per_page': ?perPage?.toString(),
+      'cursor': ?cursor,
+      'order': ?order?.value,
+      'startDate': ?startDate?.toUtc().toIso8601String(),
+      'endDate': ?endDate?.toUtc().toIso8601String(),
+      'appId': ?appId,
+      'actorId': ?actorId?.toString(),
+      'operation': ?operation,
+    };
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/enterprises/$enterpriseId/audit-logs').replace(
+        // An empty map would leave a bare "?" on the URL.
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      ),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetOrganizationAuditLogsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Gets enterprise [enterpriseId]'s plan and its installs this period,
+  /// across every organization the plan covers.
+  Future<EnterpriseBilling> getEnterpriseBilling({
+    required int enterpriseId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/enterprises/$enterpriseId/billing'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return EnterpriseBilling.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Gets each organization on enterprise [enterpriseId]'s plan with its
+  /// installs this period.
+  Future<List<EnterpriseBillingOrganization>>
+  getEnterpriseBillingOrganizations({
+    required int enterpriseId,
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/billing/organizations'),
+    (json) {
+      final page = GetEnterpriseBillingOrganizations200Response.fromJson(json);
+      return (items: page.organizations, nextCursor: page.nextCursor);
+    },
+  );
+
+  /// Gets every item of the paged list at [uri], 100 to a page, reading
+  /// each page's items and next cursor with [readPage].
+  Future<List<T>> _getEveryPage<T>(
+    Uri uri,
+    ({List<T> items, String? nextCursor}) Function(Map<String, dynamic> json)
+    readPage,
+  ) async {
+    final items = <T>[];
+    String? cursor;
+    do {
+      final response = await _httpClient.get(
+        uri.replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
+      );
+
+      if (!response.isSuccess) {
+        throw _parseErrorResponse(response.statusCode, response.body);
+      }
+
+      final page = readPage(json.decode(response.body) as Map<String, dynamic>);
+      items.addAll(page.items);
+      // An empty page ends the list even if it carries a cursor, so a
+      // misbehaving server cannot keep this loop going.
+      cursor = page.items.isEmpty ? null : page.nextCursor;
+    } while (cursor != null);
+    return items;
+  }
+
   /// Gets the pending invitations sent to the current user, most recently
   /// sent first, following every page.
   Future<List<ReceivedInvitation>> getReceivedInvitations() async {
