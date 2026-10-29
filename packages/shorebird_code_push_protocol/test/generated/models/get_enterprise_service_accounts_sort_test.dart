@@ -8,7 +8,7 @@ void main() {
       const instance = GetEnterpriseServiceAccountsSort.account;
       final parsed = GetEnterpriseServiceAccountsSort.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

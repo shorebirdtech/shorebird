@@ -10,7 +10,7 @@ void main() {
         name: 'example',
         domains: <String>['example'],
       );
-      final parsed = Enterprise.maybeFromJson(instance.toJson());
+      final parsed = Enterprise.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
