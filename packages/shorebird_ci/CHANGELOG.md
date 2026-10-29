@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# Unreleased
+
+- `generate` pins `dart pub global activate shorebird_ci` to the version that generated the workflow. Before, generated workflows activated whatever shorebird_ci was newest, so each release changed every user's CI the moment it was published, and a new `verify` check could fail a merge queue that hadn't changed. To move to a new shorebird_ci, run `generate` again (or bump the version in the workflow).
+
 # 0.2.5
 
 - The dependency graph behind `generate`'s static filters and `verify`'s suggestions now follows Dart workspace members referenced by name alone. In a workspace, `foo: ^1.0.0` resolves to the member named `foo`, but only `path:` dependencies were followed, so a package's filter left out such a member and a change to it skipped the package's job.

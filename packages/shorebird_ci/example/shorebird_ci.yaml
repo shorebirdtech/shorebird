@@ -21,7 +21,7 @@ jobs:
         with:
           submodules: recursive
       - uses: dart-lang/setup-dart@v1
-      - run: dart pub global activate shorebird_ci
+      - run: dart pub global activate shorebird_ci 0.2.5
       # Verify first so we fail fast if CI coverage is broken and
       # don't waste time computing affected packages.
       - name: Verify CI coverage

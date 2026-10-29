@@ -10,6 +10,7 @@ import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
 import 'package:shorebird_ci/src/repository_description.dart';
+import 'package:shorebird_ci/src/version.dart';
 
 /// Generates a GitHub Actions CI workflow for a Dart/Flutter repository.
 class GenerateCommand extends Command<int> with RepoRootOption {
@@ -345,7 +346,7 @@ jobs:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
       - uses: dart-lang/setup-dart@v1
-      - run: dart pub global activate shorebird_ci
+      - run: dart pub global activate shorebird_ci $packageVersion
       - name: Verify CI coverage
         run: shorebird_ci verify
       - uses: dorny/paths-filter@v4
@@ -742,7 +743,8 @@ jobs:
       );
     }
 
-    buffer.write(r'''
+    buffer
+      ..write('''
     steps:
       - uses: actions/checkout@v6
         with:
@@ -752,7 +754,11 @@ jobs:
           # diff to resolve.
           fetch-depth: 0
       - uses: dart-lang/setup-dart@v1
-      - run: dart pub global activate shorebird_ci
+''')
+      ..writeln(
+        '      - run: dart pub global activate shorebird_ci $packageVersion',
+      )
+      ..write(r'''
       # Verify first so we fail fast if CI coverage is broken and
       # don't waste time computing affected packages.
       - name: Verify CI coverage
