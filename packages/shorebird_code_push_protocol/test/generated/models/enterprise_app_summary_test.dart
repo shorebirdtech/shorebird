@@ -9,7 +9,7 @@ void main() {
         id: 'example',
         displayName: 'example',
       );
-      final parsed = EnterpriseAppSummary.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseAppSummary.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

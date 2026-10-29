@@ -14,7 +14,7 @@ void main() {
         lastAuthAt: DateTime.utc(2024),
         createdByEmail: 'example',
       );
-      final parsed = EnterpriseServiceAccount.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseServiceAccount.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

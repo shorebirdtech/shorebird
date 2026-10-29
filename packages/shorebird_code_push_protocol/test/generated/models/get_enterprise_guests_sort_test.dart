@@ -6,7 +6,7 @@ void main() {
   group('GetEnterpriseGuestsSort', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = GetEnterpriseGuestsSort.person;
-      final parsed = GetEnterpriseGuestsSort.maybeFromJson(instance.toJson());
+      final parsed = GetEnterpriseGuestsSort.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

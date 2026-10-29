@@ -10,7 +10,7 @@ void main() {
       );
       final parsed = SetEnterpriseMemberRoleRequest.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

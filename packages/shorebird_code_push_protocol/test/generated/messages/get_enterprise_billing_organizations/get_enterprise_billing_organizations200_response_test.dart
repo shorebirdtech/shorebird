@@ -18,7 +18,7 @@ void main() {
       );
       final parsed = GetEnterpriseBillingOrganizations200Response.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

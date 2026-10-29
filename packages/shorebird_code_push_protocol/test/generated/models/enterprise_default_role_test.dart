@@ -6,7 +6,7 @@ void main() {
   group('EnterpriseDefaultRole', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = EnterpriseDefaultRole.viewer;
-      final parsed = EnterpriseDefaultRole.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseDefaultRole.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

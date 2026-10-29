@@ -29,7 +29,7 @@ void main() {
           accruedOverageAmount: 'example',
         ),
       );
-      final parsed = EnterpriseBilling.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseBilling.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
