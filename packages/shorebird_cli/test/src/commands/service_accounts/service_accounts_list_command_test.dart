@@ -75,7 +75,7 @@ void main() {
     });
   });
 
-  group('ServiceAccountsListCommand --enterprise', () {
+  group('ServiceAccountsListCommand under shorebird enterprise', () {
     late EnterpriseHarness h;
     late ServiceAccountsListCommand command;
 
@@ -101,14 +101,14 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenAnswer((_) async => [EnterpriseFixtures.mobile]);
-      command = h.run(ServiceAccountsListCommand.new);
+      command = h.run(() => ServiceAccountsListCommand(enterpriseRoute: true));
     });
 
     void parse(List<String> args) =>
         command.testArgResults = command.argParser.parse(args);
 
     test("lists every organization's accounts", () async {
-      parse(['--enterprise']);
+      parse([]);
       expect(await h.run(command.run), ExitCode.success.code);
       final lines = verify(
         () => h.logger.info(captureAny()),
@@ -133,7 +133,7 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenAnswer((_) async => []);
-      parse(['--enterprise']);
+      parse([]);
       expect(await h.run(command.run), ExitCode.success.code);
       verify(
         () => h.logger.info('"Acme" has no service accounts.'),
@@ -141,7 +141,7 @@ void main() {
     });
 
     test("--json names each account's organization", () async {
-      parse(['--enterprise']);
+      parse([]);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),
       );
@@ -163,8 +163,8 @@ void main() {
       });
     });
 
-    test('rejects --org-id with --enterprise', () async {
-      parse(['--org-id', '42', '--enterprise']);
+    test('rejects --org-id', () async {
+      parse(['--org-id', '42']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
@@ -175,7 +175,7 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenThrow(ProcessExit(ExitCode.software.code));
-      parse(['--enterprise']);
+      parse([]);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),
       );

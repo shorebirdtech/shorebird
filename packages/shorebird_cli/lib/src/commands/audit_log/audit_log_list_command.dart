@@ -17,8 +17,10 @@ class AuditLogListCommand extends ShorebirdCommand
         EnterpriseScopedCommand,
         AuditLogFilterOptions {
   /// {@macro audit_log_list_command}
-  AuditLogListCommand() {
-    addFilterOptions();
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise audit-log list`.
+  AuditLogListCommand({bool enterpriseRoute = false}) {
+    addFilterOptions(enterpriseRoute: enterpriseRoute);
     argParser
       ..addOption('limit', help: 'Entries on the page, 1 to 100 (default 30).')
       ..addOption(
@@ -30,25 +32,45 @@ class AuditLogListCommand extends ShorebirdCommand
   @override
   String get name => 'list';
 
-  // The org id, as in `shorebird audit-log 42`.
+  // The org id, as in `shorebird audit-log 42`; the enterprise copy takes
+  // none, so `shorebird enterprise audit-log lst` stays a mistyped
+  // subcommand.
   @override
-  bool get takesPositionalArguments => true;
+  bool get takesPositionalArguments => !isEnterpriseRoute;
 
   @override
-  String get invocation => 'shorebird audit-log list [<org-id>]';
+  String get invocation => isEnterpriseRoute
+      ? 'shorebird enterprise audit-log list'
+      : 'shorebird audit-log list [<org-id>]';
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      "Shows one page of your enterprise's audit log, newest first: its "
+      'own events, and across its organizations who is in them, with '
+      'what access, and organizations and apps being created, changed, '
+      'moved or deleted. Releases, patches and channels stay in each '
+      "organization's log (`shorebird audit-log list <org-id>`). Needs an "
+      'owner or admin of the enterprise.\n\n'
+      'Example output (time  event  actor  resources):\n'
+      '  2026-10-20 14:03:22Z  enterprise_member.remove  '
+      'alice@acme.com (id: 12)  user:9\n\n'
+      'For every page, as OCSF events, run '
+      '`shorebird enterprise audit-log export`.\n\n'
+      '${ShorebirdCommand.jsonHint(
+        'shorebird enterprise audit-log --json',
+      )}';
+
+  String get _organizationDescription =>
       "Shows one page of an organization's audit log, newest first.\n\n"
       'Example output (time  event  actor  resources):\n'
       '  2026-10-20 14:03:22Z  organization.rename  alice@acme.com (id: 12)  '
       'organization:42\n\n'
       'For every page, as OCSF events, run '
       '`shorebird audit-log export`.\n\n'
-      "Pass --enterprise for an enterprise's log: its own events, and "
-      'across its organizations who is in them, with what access, and '
-      'organizations and apps being created, changed, moved or deleted. '
-      "Releases, patches and channels stay in each organization's log.\n\n"
+      "For an enterprise's log, run `shorebird enterprise audit-log`.\n\n"
       '${ShorebirdCommand.jsonHint('shorebird audit-log 42 --json')}';
 
   @override

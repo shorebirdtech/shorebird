@@ -256,7 +256,7 @@ void main() {
     });
   });
 
-  group('UsageCommand --enterprise', () {
+  group('UsageCommand under shorebird enterprise', () {
     late EnterpriseHarness h;
     late UsageCommand command;
 
@@ -303,7 +303,8 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenAnswer((_) async => [mobile]);
-      command = h.run(UsageCommand.new)..testArgResults = h.argResults;
+      command = h.run(() => UsageCommand(enterpriseRoute: true))
+        ..testArgResults = h.argResults;
     });
 
     test('shows the plan, then each organization', () async {
@@ -395,20 +396,19 @@ void main() {
       ]);
     });
 
-    test('rejects an organization id with --enterprise', () async {
+    test('rejects an organization id', () async {
       when(() => h.argResults.rest).thenReturn(['42']);
       expect(await h.run(command.run), ExitCode.usage.code);
       verify(
         () => h.logger.err(
-          'Pass an organization id or --enterprise, not both: '
-          '--enterprise already covers every organization in the '
-          'enterprise.',
+          '`shorebird enterprise usage` covers every organization in your '
+          'enterprise, so it takes no organization id.',
         ),
       ).called(1);
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
 
-    test('rejects --org-id with --enterprise', () async {
+    test('rejects --org-id', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);

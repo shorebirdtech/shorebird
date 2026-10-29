@@ -198,7 +198,7 @@ void main() {
     });
   });
 
-  group('MembersSetRoleCommand --enterprise', () {
+  group('MembersSetRoleCommand under shorebird enterprise', () {
     late MembersHarness h;
     late MembersSetRoleCommand command;
 
@@ -207,7 +207,6 @@ void main() {
     setUp(() {
       h = MembersHarness();
       when(() => h.argResults['org-id']).thenReturn(null);
-      when(() => h.argResults['enterprise']).thenReturn(true);
       when(
         h.codePushClientWrapper.getEnterprises,
       ).thenAnswer((_) async => [EnterpriseFixtures.acmeOwner]);
@@ -223,7 +222,8 @@ void main() {
           role: EnterpriseRole.billingManager,
         ),
       ).thenAnswer((_) async {});
-      command = h.run(MembersSetRoleCommand.new)..testArgResults = h.argResults;
+      command = h.run(() => MembersSetRoleCommand(enterpriseRoute: true))
+        ..testArgResults = h.argResults;
     });
 
     test('changes the enterprise role', () async {
@@ -311,7 +311,7 @@ void main() {
       ).called(1);
       verify(
         () => h.logger.info(
-          'Run `shorebird members list --enterprise` to see its members.',
+          'Run `shorebird enterprise members list` to see its members.',
         ),
       ).called(1);
     });
@@ -348,7 +348,7 @@ void main() {
       );
     });
 
-    test('rejects --org-id with --enterprise', () async {
+    test('rejects --org-id', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);

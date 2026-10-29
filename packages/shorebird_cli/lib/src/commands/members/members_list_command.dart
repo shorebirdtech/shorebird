@@ -16,30 +16,68 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 class MembersListCommand extends ShorebirdCommand
     with OrganizationScopedCommand, EnterpriseScopedCommand {
   /// {@macro members_list_command}
-  MembersListCommand() {
-    addOrganizationScopeOption();
-    addEnterpriseScopeFlag(
-      help:
-          "List your enterprise's directory instead: everyone "
-          'in it, with their enterprise role. Needs an owner or admin of the '
-          'enterprise.',
-    );
-    argParser.addFlag(
-      _guestsFlag,
-      negatable: false,
-      help:
-          "With --enterprise, list the enterprise's guests instead: people "
-          "in its organizations who aren't in its directory.",
-    );
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise members list`.
+  MembersListCommand({bool enterpriseRoute = false})
+    : this._(enterpriseRoute: enterpriseRoute, guestsRoute: false);
+
+  /// `shorebird enterprise guests list`: the enterprise's guests, always.
+  MembersListCommand.enterpriseGuests()
+    : this._(enterpriseRoute: true, guestsRoute: true);
+
+  MembersListCommand._({
+    required bool enterpriseRoute,
+    required bool guestsRoute,
+  }) : _guestsRoute = guestsRoute {
+    if (!enterpriseRoute) addOrganizationScopeOption();
+    addEnterpriseScope(route: enterpriseRoute);
+    if (!guestsRoute) {
+      argParser.addFlag(
+        _guestsFlag,
+        negatable: false,
+        hide: !enterpriseRoute,
+        help:
+            "List the enterprise's guests instead: people in its "
+            "organizations who aren't in its directory (the same as "
+            '`shorebird enterprise guests`).',
+      );
+    }
   }
 
   static const _guestsFlag = 'guests';
+
+  final bool _guestsRoute;
 
   @override
   String get name => 'list';
 
   @override
-  String get description =>
+  String get description {
+    if (_guestsRoute) {
+      return "Lists your enterprise's guests: people in its organizations "
+          "who aren't in its directory. Needs an owner or admin of the "
+          'enterprise.\n\n'
+          'Example output (space-separated: id  email  role  '
+          'organizations):\n'
+          '  31  carol@vendor.com  guest  1 organization\n\n'
+          '${ShorebirdCommand.jsonHint('shorebird enterprise guests --json')}';
+    }
+    if (isEnterpriseRoute) {
+      return "Lists your enterprise's directory: everyone in it, with their "
+          'enterprise role. Needs an owner or admin of the enterprise.\n\n'
+          'Example output (space-separated: id  email  enterprise_role  '
+          'organizations):\n'
+          '  12  alice@acme.com  admin  3 organizations\n\n'
+          'Add --guests (or run `shorebird enterprise guests`) for the people '
+          'in its organizations who are not in its directory.\n\n'
+          '${ShorebirdCommand.jsonHint(
+            'shorebird enterprise members list --json',
+          )}';
+    }
+    return _organizationDescription;
+  }
+
+  String get _organizationDescription =>
       "Lists an organization's members and pending invitations.\n\n"
       'Example output (space-separated: id  email  role  status):\n'
       '  12  alice@acme.com  owner  member\n'
@@ -48,28 +86,25 @@ class MembersListCommand extends ShorebirdCommand
       'invitation; `members set-role` and `members remove` take either, or '
       'the email.\n\n'
       'Invite someone with `shorebird members add <email>`.\n\n'
-      'With --enterprise, lists the enterprise directory '
-      '(space-separated: id  email  enterprise_role  organizations):\n'
-      '  12  alice@acme.com  admin  3 organizations\n'
-      'Add --guests for the people in its organizations who are not in its '
-      'directory.\n\n'
+      "For your enterprise's directory, run "
+      '`shorebird enterprise members list`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members list --org-id 42 --json',
       )}';
 
   @override
   Future<int> run() async {
-    final scopeError = rejectOrganizationAndEnterprise();
+    final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
-    final guests = results[_guestsFlag] == true;
-    if (enterpriseScope) {
+    final guests = _guestsRoute || results[_guestsFlag] == true;
+    if (isEnterpriseRoute) {
       return guests ? _listEnterpriseGuests() : _listEnterpriseMembers();
     }
     if (guests) {
       return reportError(
         message:
-            "--$_guestsFlag lists an enterprise's guests; pass "
-            '--enterprise too.',
+            "--$_guestsFlag lists an enterprise's guests; run "
+            '`shorebird enterprise guests`.',
       );
     }
 

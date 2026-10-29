@@ -10,11 +10,10 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import '../../mocks.dart';
 import 'enterprise_fixtures.dart';
 
-/// Mocks for commands run with `--enterprise`, where the user is an admin
-/// of Acme (7).
+/// Mocks for commands run under `shorebird enterprise`, where the user is
+/// an admin of Acme (7).
 class EnterpriseHarness {
   EnterpriseHarness() {
-    when(() => argResults['enterprise']).thenReturn(true);
     when(() => argResults.rest).thenReturn([]);
     when(
       () => shorebirdValidator.validatePreconditions(

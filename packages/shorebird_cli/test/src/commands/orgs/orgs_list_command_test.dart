@@ -225,7 +225,7 @@ void main() {
     });
   });
 
-  group('OrgsListCommand --enterprise', () {
+  group('OrgsListCommand under shorebird enterprise', () {
     late EnterpriseHarness h;
     late OrgsListCommand command;
 
@@ -236,7 +236,8 @@ void main() {
           enterpriseId: 7,
         ),
       ).thenAnswer((_) async => [EnterpriseFixtures.mobile]);
-      command = h.run(OrgsListCommand.new)..testArgResults = h.argResults;
+      command = h.run(() => OrgsListCommand(enterpriseRoute: true))
+        ..testArgResults = h.argResults;
     });
 
     test('lists every organization in the enterprise', () async {

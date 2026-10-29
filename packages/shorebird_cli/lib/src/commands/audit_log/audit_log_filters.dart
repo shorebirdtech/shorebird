@@ -41,11 +41,15 @@ class AuditLogScope {
   /// The enterprise's name; null for an organization.
   final String? name;
 
-  /// The option that names this scope on a command line. The user is in at
-  /// most one enterprise, so `--enterprise` needs no id.
-  String get option => isEnterprise
-      ? '--${CommonArguments.enterpriseArg.name}'
-      : '--${CommonArguments.orgIdArg.name} $id';
+  /// The command that reads this scope's log, before its subcommand. The
+  /// user is in at most one enterprise, so its command names no id.
+  String get command =>
+      isEnterprise ? 'shorebird enterprise audit-log' : 'shorebird audit-log';
+
+  /// The options that name this scope after the subcommand: none for the
+  /// enterprise, whose [command] already says it.
+  List<String> get options =>
+      isEnterprise ? const [] : ['--${CommonArguments.orgIdArg.name} $id'];
 
   /// This scope in a sentence, such as "organization 42" or `"Acme"`.
   String get label => isEnterprise ? '"$name"' : 'organization $id';
@@ -99,19 +103,12 @@ mixin AuditLogFilterOptions
     'order',
   ];
 
-  /// Adds `--org-id`, `--enterprise` and the filter options
-  /// [parseFilters] reads.
-  void addFilterOptions() {
-    addOrganizationScopeOption();
-    addEnterpriseScopeFlag(
-      help:
-          "Read your enterprise's log instead: its own events, and "
-          'across its organizations members, invitations, service '
-          'accounts and keys, app access, and organizations and apps '
-          'being created, changed, moved or deleted. Releases, patches '
-          "and channels stay in each organization's log. Needs an owner "
-          'or admin of the enterprise.',
-    );
+  /// Adds `--org-id` and the filter options [parseFilters] reads; for the
+  /// `shorebird enterprise audit-log` copy ([enterpriseRoute]), the filter
+  /// options and the hidden `--org-id` of [addEnterpriseScope].
+  void addFilterOptions({bool enterpriseRoute = false}) {
+    if (!enterpriseRoute) addOrganizationScopeOption();
+    addEnterpriseScope(route: enterpriseRoute);
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')
       ..addOption(
@@ -123,7 +120,9 @@ mixin AuditLogFilterOptions
       ..addOption(
         'event',
         aliases: const ['operation'],
-        help: 'Only entries of this event (e.g. "organization.rename").',
+        help: enterpriseRoute
+            ? 'Only entries of this event (e.g. "enterprise_member.remove").'
+            : 'Only entries of this event (e.g. "organization.rename").',
       )
       ..addOption(
         'start',
@@ -216,18 +215,17 @@ mixin AuditLogFilterOptions
     );
   }
 
-  /// Picks whose log to read: your enterprise with `--enterprise`, else
-  /// the organization as [resolveOrganizationFromArguments] picks it.
+  /// Picks whose log to read: your enterprise under `shorebird
+  /// enterprise`, else the organization as
+  /// [resolveOrganizationFromArguments] picks it.
   /// [example] is the command with `<org-id>` where the id goes.
   ///
   /// Returns the scope, or an exit code once the failure is reported.
   Future<({AuditLogScope? scope, int? errorCode})> resolveScope({
     required String example,
   }) async {
-    if (enterpriseScope) {
-      final scopeError =
-          rejectOrganizationAndEnterprise() ??
-          rejectOrganizationArgumentWithEnterprise();
+    if (isEnterpriseRoute) {
+      final scopeError = rejectConflictingScope();
       if (scopeError != null) return (scope: null, errorCode: scopeError);
       final (:membership, :errorCode) = await resolveEnterprise();
       if (errorCode != null) return (scope: null, errorCode: errorCode);
@@ -258,13 +256,13 @@ mixin AuditLogFilterOptions
     List<String> extra = const [],
   }) {
     final options = [
-      scope.option,
+      ...scope.options,
       for (final option in _filterOptions)
         if (results.wasParsed(option)) '--$option ${_quote(results[option])}',
       ...extra,
       '--cursor ${_quote(cursor)}',
     ];
-    return 'shorebird audit-log $subcommand ${options.join(' ')}';
+    return '${scope.command} $subcommand ${options.join(' ')}';
   }
 
   /// Fetches one page of [scope]'s audit log matching [filters].

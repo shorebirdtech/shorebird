@@ -27,7 +27,9 @@ class ServiceAccountsCommand extends ShorebirdCommand {
       "Manage an organization's service accounts: credentials for CI that "
       'belong to the organization rather than to a person. With no '
       'subcommand, lists them (the same as `shorebird service-accounts '
-      'list`).';
+      'list`).\n\n'
+      "For every organization's service accounts in your enterprise, run "
+      '`shorebird enterprise service-accounts`.';
 
   @override
   String get defaultSubcommand => 'list';

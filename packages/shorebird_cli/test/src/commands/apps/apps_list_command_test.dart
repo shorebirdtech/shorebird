@@ -231,7 +231,7 @@ void main() {
     });
   });
 
-  group('AppsListCommand --enterprise', () {
+  group('AppsListCommand under shorebird enterprise', () {
     late EnterpriseHarness h;
     late AppsListCommand command;
 
@@ -240,7 +240,8 @@ void main() {
       when(
         () => h.codePushClientWrapper.getEnterpriseApps(enterpriseId: 7),
       ).thenAnswer((_) async => [EnterpriseFixtures.app]);
-      command = h.run(AppsListCommand.new)..testArgResults = h.argResults;
+      command = h.run(() => AppsListCommand(enterpriseRoute: true))
+        ..testArgResults = h.argResults;
     });
 
     test('lists every app with its organization', () async {

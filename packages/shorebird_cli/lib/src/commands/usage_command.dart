@@ -16,24 +16,39 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 class UsageCommand extends ShorebirdCommand
     with OrganizationScopedCommand, EnterpriseScopedCommand {
   /// {@macro usage_command}
-  UsageCommand() {
-    addOrganizationScopeOption();
-    addEnterpriseScopeFlag(
-      help:
-          "Show your enterprise's plan instead: its installs "
-          'across every organization, then each organization. Needs an owner '
-          'or billing manager of the enterprise.',
-    );
+  ///
+  /// With [enterpriseRoute], it is `shorebird enterprise usage`.
+  UsageCommand({bool enterpriseRoute = false}) {
+    if (!enterpriseRoute) addOrganizationScopeOption();
+    addEnterpriseScope(route: enterpriseRoute);
   }
 
   @override
   String get name => 'usage';
 
   @override
-  String get invocation => 'shorebird usage [<org-id>]';
+  String get invocation => isEnterpriseRoute
+      ? 'shorebird enterprise usage'
+      : 'shorebird usage [<org-id>]';
 
   @override
   String get description =>
+      isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
+
+  String get _enterpriseDescription =>
+      "Shows your enterprise's patch installs this period against its "
+      'contract: the total across every organization, then each '
+      'organization. Needs an owner or billing manager of the '
+      'enterprise.\n\n'
+      'Example output:\n'
+      '  Plan: Enterprise, this period 2026-10-01 to 2026-11-01\n'
+      '  Patch installs: 950,000 of 1,000,000 included\n'
+      '  Installs left before patches stop: 50,000\n'
+      '  Organizations (id  name  installs):\n'
+      '    42  Mobile  950,000\n\n'
+      '${ShorebirdCommand.jsonHint('shorebird enterprise usage --json')}';
+
+  String get _organizationDescription =>
       'Shows patch installs this allotment period against your plan.\n\n'
       "Usage counts every app the organization's owner owns. Other members "
       "see only this organization's apps in the list.\n\n"
@@ -42,18 +57,16 @@ class UsageCommand extends ShorebirdCommand
       '  Installs left before patches stop: 37,655\n'
       '  Apps (id  name  installs):\n'
       '    0b6c...  Acme Mobile  12,345\n\n'
-      'With --enterprise, shows the enterprise plan and each '
-      'organization on it (id  name  installs).\n\n'
+      "For an enterprise's contract and each organization on it, run "
+      '`shorebird enterprise usage`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird usage 42 --json',
       )}';
 
   @override
   Future<int> run() async {
-    if (enterpriseScope) {
-      final scopeError =
-          rejectOrganizationAndEnterprise() ??
-          rejectOrganizationArgumentWithEnterprise();
+    if (isEnterpriseRoute) {
+      final scopeError = rejectConflictingScope();
       if (scopeError != null) return scopeError;
       return _enterpriseUsage();
     }

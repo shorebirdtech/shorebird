@@ -357,6 +357,98 @@ The warning that fails the patch names the one that applies.''';
       });
     });
 
+    group('--enterprise', () {
+      const general =
+          'Commands that act on every organization in your enterprise '
+          'are under `shorebird enterprise`. Run: shorebird enterprise --help';
+
+      Future<void> expectHint(List<String> args, String hint) async {
+        final result = await runWithOverrides(() => commandRunner.run(args));
+        expect(result, equals(ExitCode.usage.code));
+        verify(() => logger.err(hint)).called(1);
+        verifyNever(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        );
+      }
+
+      String suggests(String command) =>
+          'To act on every organization in your enterprise, run '
+          '`$command`.';
+
+      test('points at the shorebird enterprise command', () async {
+        await expectHint(
+          ['members', 'list', '--enterprise'],
+          suggests('shorebird enterprise members list'),
+        );
+      });
+
+      test('names a group run with its default subcommand', () async {
+        await expectHint(
+          ['members', '--enterprise'],
+          suggests('shorebird enterprise members'),
+        );
+      });
+
+      test('never names a command the enterprise lacks', () async {
+        for (final args in [
+          ['apps', 'delete', '--enterprise'],
+          ['members', 'add', 'bob@acme.com', '--enterprise'],
+          ['service-accounts', 'create', 'ci', '--enterprise'],
+          ['orgs', 'create', '--enterprise'],
+        ]) {
+          reset(logger);
+          await expectHint(args, general);
+        }
+      });
+
+      test('drops positional arguments', () async {
+        await expectHint(
+          ['usage', '42', '--enterprise'],
+          suggests('shorebird enterprise usage'),
+        );
+      });
+
+      test('skips global flags before the command', () async {
+        await expectHint(
+          ['--verbose', 'members', 'list', '--enterprise'],
+          suggests('shorebird enterprise members list'),
+        );
+      });
+
+      test('says to drop the flag under shorebird enterprise', () async {
+        await expectHint(
+          ['enterprise', 'members', 'list', '--enterprise'],
+          '`shorebird enterprise` commands already act on your whole '
+          'enterprise. Drop --enterprise.',
+        );
+      });
+
+      test('reads aliases as their command', () async {
+        await expectHint(
+          ['teams', 'list', '--enterprise'],
+          suggests('shorebird enterprise orgs list'),
+        );
+      });
+
+      test('treats --no-enterprise the same', () async {
+        await expectHint(
+          ['members', 'list', '--no-enterprise'],
+          suggests('shorebird enterprise members list'),
+        );
+      });
+
+      test('keeps the options the enterprise command takes', () async {
+        await expectHint(
+          ['members', 'list', '--guests', '--enterprise'],
+          suggests('shorebird enterprise members list --guests'),
+        );
+      });
+
+      test('points at shorebird enterprise --help elsewhere', () async {
+        await expectHint(['releases', 'list', '--enterprise-id', '7'], general);
+      });
+    });
+
     group('--version', () {
       test('outputs current version info', () async {
         final result = await runWithOverrides(
@@ -506,6 +598,49 @@ Engine • revision $shorebirdEngineRevision'''),
           commandRunner.withDefaultSubcommand(['audit-log', '--start', 'x']),
           ['audit-log', 'list', '--start', 'x'],
         );
+      });
+
+      test('reaches the default of each enterprise noun', () {
+        for (final (args, expanded) in [
+          (['enterprise'], ['enterprise', 'get']),
+          (['enterprise', 'members'], ['enterprise', 'members', 'list']),
+          (
+            ['enterprise', 'members', '--guests'],
+            ['enterprise', 'members', 'list', '--guests'],
+          ),
+          (['enterprise', 'guests'], ['enterprise', 'guests', 'list']),
+          (['enterprise', 'orgs'], ['enterprise', 'orgs', 'list']),
+          (['enterprise', 'teams'], ['enterprise', 'teams', 'list']),
+          (['enterprise', 'apps'], ['enterprise', 'apps', 'list']),
+          (
+            ['enterprise', 'service-accounts'],
+            ['enterprise', 'service-accounts', 'list'],
+          ),
+          (['enterprise', 'audit-log'], ['enterprise', 'audit-log', 'list']),
+          (
+            ['enterprise', 'audit-log', '--start', '2026-10-21'],
+            ['enterprise', 'audit-log', 'list', '--start', '2026-10-21'],
+          ),
+          (
+            ['enterprises', 'audit', '--cursor', 'c'],
+            ['enterprises', 'audit', 'list', '--cursor', 'c'],
+          ),
+        ]) {
+          expect(
+            commandRunner.withDefaultSubcommand(args),
+            expanded,
+            reason: args.join(' '),
+          );
+        }
+      });
+
+      test('leaves a mistyped enterprise subcommand an error', () {
+        for (final args in [
+          ['enterprise', 'audit-log', 'lst'],
+          ['enterprise', 'members', 'lst'],
+        ]) {
+          expect(commandRunner.withDefaultSubcommand(args), args);
+        }
       });
 
       test('leaves a named subcommand alone', () {

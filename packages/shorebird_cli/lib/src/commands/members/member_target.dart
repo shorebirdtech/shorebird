@@ -38,11 +38,18 @@ String get ownershipInConsoleMessage =>
   );
   if (role == Role.owner) return (role: null, error: ownershipInConsoleMessage);
   if (role == null || !grantableRoles.contains(role)) {
+    // `billingManager` and `member` are roles in an enterprise, not in an
+    // organization.
+    final enterpriseRole =
+        role == null &&
+        EnterpriseRole.values.any((r) => normalize(r.value) == normalize(arg));
     return (
       role: null,
       error:
-          '"$arg" is not a role you can grant. Choose one of: '
-          '${grantableRoles.map((r) => r.value).join(', ')}.',
+          '"$arg" is not a role you can grant in an organization. Choose one '
+          'of: ${grantableRoles.map((r) => r.value).join(', ')}.'
+          '${enterpriseRole ? ' For an enterprise role, run '
+                    '`shorebird enterprise members set-role`.' : ''}',
     );
   }
   return (role: role, error: null);
@@ -117,13 +124,13 @@ mixin MemberLookup on ShorebirdCommand {
   }
 }
 
-/// Help text for `--role` with `--enterprise`.
+/// Help text for `--role` on `shorebird enterprise members set-role`.
 final enterpriseRoleHelp =
-    'With --enterprise, the enterprise role: '
+    'The enterprise role: '
     '${EnterpriseRole.values.map((r) => r.value).join(', ')}.';
 
-/// Parses a `--role` value given with `--enterprise`, returning the
-/// enterprise role or why it isn't one. Matching ignores case, dashes and
+/// Parses a `--role` value given under `shorebird enterprise`, returning
+/// the enterprise role or why it isn't one. Matching ignores case, dashes and
 /// underscores, so `billing-manager` names [EnterpriseRole.billingManager].
 ({EnterpriseRole? role, String? error}) parseEnterpriseRole(String arg) {
   String normalize(String s) =>
@@ -171,9 +178,7 @@ mixin EnterpriseMemberLookup on ShorebirdCommand {
       member: null,
       errorCode: reportError(
         message: '"$user" is not a member of "${enterprise.name}".',
-        hint:
-            'Run `shorebird members list --enterprise` '
-            'to see its members.',
+        hint: 'Run `shorebird enterprise members list` to see its members.',
       ),
     );
   }
