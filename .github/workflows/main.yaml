@@ -33,7 +33,7 @@ jobs:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/spell_check.yml@v1
     with:
       config: cspell.config.yaml
-      # pr_title.yaml checks the title, rerunning when it's edited.
+      # We don't check PR titles.
       check_pr_title: false
 
   changes:
