@@ -6714,8 +6714,9 @@ components:
           description: |
             Fields OCSF has no place for, keyed in snake_case: the event's
             own metadata (which varies by event, nested keys included),
-            `app_id` when the entry is about an app, and `actor_source`, the
-            kind of credential that acted (for example `session`, `api_key`,
+            `app_id` when the entry is about an app, `enterprise_id` when it
+            belongs to an enterprise, and `actor_source`, the kind of
+            credential that acted (for example `session`, `api_key`,
             `service_account`, `federated` or `admin_api`), when known.
     AuditLogEventMetadata:
       type: object
@@ -6724,7 +6725,6 @@ components:
         - version
         - product
         - uid
-        - tenant_uid
         - log_name
       properties:
         version:
@@ -6737,7 +6737,10 @@ components:
           description: The entry's ID, as a string.
         tenant_uid:
           type: string
-          description: The organization's ID, as a string.
+          description: |
+            The organization's ID, as a string. Absent for an event above
+            any organization, which belongs to an enterprise alone (its
+            `unmapped.enterprise_id`).
         log_name:
           type: string
           const: audit

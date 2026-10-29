@@ -9,7 +9,6 @@ void main() {
         version: 'example',
         product: AuditLogProduct(name: 'example', vendorName: 'example'),
         uid: 'example',
-        tenantUid: 'example',
       );
       final parsed = AuditLogEventMetadata.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));

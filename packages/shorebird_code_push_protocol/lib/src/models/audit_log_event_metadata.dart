@@ -12,7 +12,7 @@ class AuditLogEventMetadata {
     required this.version,
     required this.product,
     required this.uid,
-    required this.tenantUid,
+    this.tenantUid,
     this.correlationUid,
   });
 
@@ -27,7 +27,7 @@ class AuditLogEventMetadata {
           json['product'] as Map<String, dynamic>,
         ),
         uid: json['uid'] as String,
-        tenantUid: json['tenant_uid'] as String,
+        tenantUid: json['tenant_uid'] as String?,
         correlationUid: json['correlation_uid'] as String?,
       ),
     );
@@ -51,8 +51,10 @@ class AuditLogEventMetadata {
   /// The entry's ID, as a string.
   final String uid;
 
-  /// The organization's ID, as a string.
-  final String tenantUid;
+  /// The organization's ID, as a string. Absent for an event above
+  /// any organization, which belongs to an enterprise alone (its
+  /// `unmapped.enterprise_id`).
+  final String? tenantUid;
 
   /// Always `audit`.
   String get logName => 'audit';
@@ -67,7 +69,7 @@ class AuditLogEventMetadata {
       'version': version,
       'product': product.toJson(),
       'uid': uid,
-      'tenant_uid': tenantUid,
+      'tenant_uid': ?tenantUid,
       'log_name': logName,
       'correlation_uid': ?correlationUid,
     };

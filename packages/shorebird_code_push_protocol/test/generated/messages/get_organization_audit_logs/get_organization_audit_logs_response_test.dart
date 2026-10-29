@@ -15,7 +15,6 @@ void main() {
               version: 'example',
               product: AuditLogProduct(name: 'example', vendorName: 'example'),
               uid: 'example',
-              tenantUid: 'example',
             ),
             api: AuditLogApi(operation: 'example'),
             actor: AuditLogActor(
