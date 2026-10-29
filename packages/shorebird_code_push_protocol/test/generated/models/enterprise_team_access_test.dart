@@ -6,7 +6,7 @@ void main() {
   group('EnterpriseTeamAccess', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = EnterpriseTeamAccess(teamId: 0, role: Role.owner);
-      final parsed = EnterpriseTeamAccess.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseTeamAccess.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
