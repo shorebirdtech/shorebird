@@ -758,7 +758,10 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
           fixedInVersion: '3.22.1',
         );
 
-        void setUpIssue(FlutterRevisionIssue? issue) {
+        void setUpIssue(
+          FlutterRevisionIssue? issue, {
+          String? releaseFlutterVersion = flutterVersion,
+        }) {
           when(
             () => codePushClientWrapper.getRelease(
               appId: any(named: 'appId'),
@@ -770,7 +773,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
               appId: release.appId,
               version: release.version,
               flutterRevision: release.flutterRevision,
-              flutterVersion: release.flutterVersion,
+              flutterVersion: releaseFlutterVersion,
               displayName: release.displayName,
               platforms: release.platforms,
               createdAt: release.createdAt,
@@ -784,7 +787,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
             '''
 Release $releaseVersion was built with Flutter $flutterVersion (83305b5088), which has a known problem on Android: Android patches don't install.
 Patches download but never install.
-A patch cannot change the Flutter version a release was built with. To fix this, create a new release with Flutter 3.22.1 (0cae2fc0a4).''';
+A patch cannot change the Flutter version a release was built with. To fix this, create a new release with Flutter 3.22.1 (0cae2fc0a4) or newer.''';
 
         Matcher isIssueWarning() => contains('has a known problem');
 
@@ -818,6 +821,25 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 that: allOf(
                   isIssueWarning(),
                   contains('a Flutter version without this problem'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('names the revision when the release has no version', () async {
+          setUpIssue(
+            const FlutterRevisionIssue(summary: 'Known problem.'),
+            releaseFlutterVersion: null,
+          );
+
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verify(
+            () => logger.warn(
+              any(
+                that: contains(
+                  'built with Flutter revision 83305b5088, which has a known',
                 ),
               ),
             ),

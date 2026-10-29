@@ -888,7 +888,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
           ? revision.substring(0, 10)
           : revision;
       return version == null
-          ? 'Flutter $shortRevision'
+          ? 'Flutter revision $shortRevision'
           : 'Flutter $version ($shortRevision)';
     }
 
@@ -896,7 +896,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     final fixedInRevision = issue.fixedInRevision;
     final releaseWith = fixedInRevision == null
         ? 'a Flutter version without this problem'
-        : flutterBuild(issue.fixedInVersion, fixedInRevision);
+        : '${flutterBuild(issue.fixedInVersion, fixedInRevision)} or newer';
     final builtWith = flutterBuild(
       release.flutterVersion,
       release.flutterRevision,
