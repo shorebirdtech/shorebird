@@ -81,7 +81,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
     final user = rest.single.trim();
     final scopeError = rejectConflictingScope(takesUserArgument: true);
     if (scopeError != null) return scopeError;
-    if (enterpriseScope) return _setEnterpriseRole(user);
+    if (isEnterpriseRoute) return _setEnterpriseRole(user);
 
     final (:role, error: roleError) = parseMemberRole(
       results['role'] as String,

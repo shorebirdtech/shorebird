@@ -56,7 +56,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
   Future<int> run() async {
     final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
-    if (enterpriseScope) return _listEnterpriseServiceAccounts();
+    if (isEnterpriseRoute) return _listEnterpriseServiceAccounts();
 
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return errorCode;

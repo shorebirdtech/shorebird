@@ -52,7 +52,7 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   Future<int> run() async {
     final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
-    if (enterpriseScope) return _listEnterpriseApps();
+    if (isEnterpriseRoute) return _listEnterpriseApps();
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,

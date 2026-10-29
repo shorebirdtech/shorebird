@@ -89,7 +89,7 @@ class MembersRemoveCommand extends ShorebirdCommand
     final user = rest.single.trim();
     final scopeError = rejectConflictingScope(takesUserArgument: true);
     if (scopeError != null) return scopeError;
-    if (enterpriseScope) return _removeFromEnterprise(user);
+    if (isEnterpriseRoute) return _removeFromEnterprise(user);
 
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return errorCode;

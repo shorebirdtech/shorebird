@@ -55,7 +55,7 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   Future<int> run() async {
     final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
-    if (enterpriseScope) return _listEnterpriseOrganizations();
+    if (isEnterpriseRoute) return _listEnterpriseOrganizations();
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,

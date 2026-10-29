@@ -1,14 +1,8 @@
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:shorebird_cli/src/commands/apps/apps_list_command.dart';
-import 'package:shorebird_cli/src/commands/audit_log/audit_log.dart';
 import 'package:shorebird_cli/src/commands/enterprises/enterprises.dart';
-import 'package:shorebird_cli/src/commands/members/members.dart';
-import 'package:shorebird_cli/src/commands/orgs/orgs_list_command.dart';
-import 'package:shorebird_cli/src/commands/service_accounts/service_accounts_list_command.dart';
-import 'package:shorebird_cli/src/commands/usage_command.dart';
-import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
@@ -398,29 +392,21 @@ void main() {
     });
 
     test('no command takes --enterprise', () {
-      final commands = <ShorebirdCommand Function()>[
-        OrgsListCommand.new,
-        AppsListCommand.new,
-        MembersListCommand.new,
-        MembersSetRoleCommand.new,
-        MembersRemoveCommand.new,
-        AuditLogListCommand.new,
-        AuditLogExportCommand.new,
-        UsageCommand.new,
-        ServiceAccountsListCommand.new,
-      ];
-      for (final create in commands) {
-        final command = h.run(create);
+      final runner = h.run(ShorebirdCliCommandRunner.new);
+      void check(Command<int> command, String path) {
         expect(
           command.argParser.options.containsKey('enterprise'),
           isFalse,
-          reason: command.name,
+          reason: path,
         );
+        for (final MapEntry(:key, :value) in command.subcommands.entries) {
+          check(value, '$path $key');
+        }
       }
-      expect(
-        h.run(MembersListCommand.new).description,
-        contains('shorebird enterprise members'),
-      );
+
+      for (final MapEntry(:key, :value) in runner.commands.entries) {
+        check(value, key);
+      }
     });
   });
 }

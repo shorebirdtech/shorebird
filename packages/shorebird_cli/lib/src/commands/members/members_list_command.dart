@@ -97,7 +97,7 @@ class MembersListCommand extends ShorebirdCommand
     final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
     final guests = _guestsRoute || results[_guestsFlag] == true;
-    if (enterpriseScope) {
+    if (isEnterpriseRoute) {
       return guests ? _listEnterpriseGuests() : _listEnterpriseMembers();
     }
     if (guests) {

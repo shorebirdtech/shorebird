@@ -65,7 +65,7 @@ class UsageCommand extends ShorebirdCommand
 
   @override
   Future<int> run() async {
-    if (enterpriseScope) {
+    if (isEnterpriseRoute) {
       final scopeError = rejectConflictingScope();
       if (scopeError != null) return scopeError;
       return _enterpriseUsage();

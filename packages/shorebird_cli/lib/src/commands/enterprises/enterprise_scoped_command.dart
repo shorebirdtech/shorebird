@@ -19,7 +19,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 ///
 /// An account is in at most one enterprise, so the copy takes no id. Call
 /// [addEnterpriseScope] from the command's constructor, then
-/// [rejectConflictingScope] first in `run`, then check [enterpriseScope]
+/// [rejectConflictingScope] first in `run`, then check [isEnterpriseRoute]
 /// and call [resolveEnterprise] when it is set.
 mixin EnterpriseScopedCommand on ShorebirdCommand {
   bool _enterpriseRoute = false;
@@ -37,10 +37,6 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
     _enterpriseRoute = route;
     if (route) argParser.addOption(CommonArguments.orgIdArg.name, hide: true);
   }
-
-  /// Whether the command acts on the user's enterprise rather than one
-  /// organization: whether it is its `shorebird enterprise` copy.
-  bool get enterpriseScope => _enterpriseRoute;
 
   /// The command's words after `shorebird`, leaving out `enterprise`, such
   /// as `members list`.
@@ -68,7 +64,7 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
   /// enterprise scope, else [organizationCommandLine]. Hints that repeat
   /// the command use it.
   String get commandLine =>
-      enterpriseScope ? enterpriseCommandLine : organizationCommandLine;
+      isEnterpriseRoute ? enterpriseCommandLine : organizationCommandLine;
 
   /// Reports an organization named alongside enterprise scope and returns
   /// the exit code; null when there is no conflict.
@@ -78,7 +74,7 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
   /// `members remove bob@acme.com`), by a positional id
   /// (`shorebird usage 42`).
   int? rejectConflictingScope({bool takesUserArgument = false}) {
-    if (!enterpriseScope) return null;
+    if (!isEnterpriseRoute) return null;
     final hasOrgIdOption = argParser.options.containsKey(
       CommonArguments.orgIdArg.name,
     );

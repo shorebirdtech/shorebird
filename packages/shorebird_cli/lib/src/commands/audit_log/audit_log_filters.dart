@@ -224,7 +224,7 @@ mixin AuditLogFilterOptions
   Future<({AuditLogScope? scope, int? errorCode})> resolveScope({
     required String example,
   }) async {
-    if (enterpriseScope) {
+    if (isEnterpriseRoute) {
       final scopeError = rejectConflictingScope();
       if (scopeError != null) return (scope: null, errorCode: scopeError);
       final (:membership, :errorCode) = await resolveEnterprise();
