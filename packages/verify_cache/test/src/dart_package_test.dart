@@ -59,6 +59,35 @@ dependencies:
       ]);
     });
 
+    test('follows a dependency on a workspace member, however written', () {
+      pubspec('.', '''
+name: _
+workspace:
+  - packages/app
+  - packages/shared
+  - packages/tools
+''');
+      pubspec('packages/app', '''
+name: app
+dependencies:
+  shared: ^0.1.0
+  http: ^1.0.0
+dev_dependencies:
+  tools:
+''');
+      pubspec('packages/shared', 'name: shared\n');
+      pubspec('packages/tools', 'name: tools\n');
+
+      expect(
+        dartPackageInputs(root.path, 'packages/app'),
+        containsAll(['packages/shared', 'packages/tools']),
+      );
+      expect(
+        dartPackageInputs(root.path, 'packages/shared'),
+        isNot(contains('packages/app')),
+      );
+    });
+
     test('adds what verify_cache: inputs: lists, from the package', () {
       pubspec('packages/app', '''
 name: app

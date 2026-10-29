@@ -20,7 +20,7 @@ if ! repo_root="$(env -u GIT_DIR -u GIT_WORK_TREE git rev-parse --show-toplevel)
   exit 2
 fi
 if [ ! -f "$repo_root/tool/agent_verify.dart" ]; then
-  echo "error: $repo_root is not a checkout of shorebirdtech/shorebird" >&2
+  echo "error: $repo_root has no tool/agent_verify.dart, so it is not a checkout of shorebirdtech/shorebird or is one from before agent-verify" >&2
   exit 2
 fi
 if ! command -v dart >/dev/null 2>&1; then

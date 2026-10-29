@@ -21,7 +21,8 @@ const _usage = 'usage: tool/agent-verify.sh [--plan] [--force]';
 
 Future<void> main(List<String> arguments) async {
   if (arguments case ['--package', final package]) {
-    exit(await _checkPackage(package));
+    exitCode = await _checkPackage(package);
+    return;
   }
   final rest = [...arguments];
   final force = rest.remove('--force');
@@ -30,7 +31,8 @@ Future<void> main(List<String> arguments) async {
     stderr
       ..writeln('error: agent-verify takes no paths, got ${rest.first}')
       ..writeln(_usage);
-    exit(2);
+    exitCode = 2;
+    return;
   }
 
   final packages = _workspacePackages();
@@ -43,13 +45,15 @@ Future<void> main(List<String> arguments) async {
 
   // `dart run verify_cache` needs the workspace resolved, and a fresh
   // worktree has not been.
-  final resolve = await Process.run('dart', ['pub', 'get']);
-  if (resolve.exitCode != 0) {
-    stderr
-      ..write(resolve.stdout)
-      ..write(resolve.stderr)
-      ..writeln('error: dart pub get failed, so nothing was verified');
-    exit(3);
+  stdout.writeln('agent-verify: dart pub get');
+  final resolve = await Process.start('dart', [
+    'pub',
+    'get',
+  ], mode: ProcessStartMode.inheritStdio);
+  if (await resolve.exitCode != 0) {
+    stderr.writeln('error: dart pub get failed, so nothing was verified');
+    exitCode = 3;
+    return;
   }
 
   final passed = force ? const <String>{} : await _passed(packages);
@@ -78,7 +82,7 @@ Future<void> main(List<String> arguments) async {
     return;
   }
   stdout.writeln('agent-verify: failed: ${failures.join(', ')}');
-  exit(1);
+  exitCode = 1;
 }
 
 const _keyOptions = ['--input', _self, '--tool', 'dart'];
@@ -141,18 +145,19 @@ Future<int> _checkPackage(String package) async {
 }
 
 /// The workspace list in the root pubspec, which is the set CI checks. Read
-/// by hand, because package:yaml is not resolved before `dart pub get`.
+/// by hand, because package:yaml is not resolved before `dart pub get`. The
+/// list runs to the next top-level key; blank and comment lines in it are
+/// skipped.
 List<String> _workspacePackages() {
   final lines = File('pubspec.yaml').readAsLinesSync();
   final start = lines.indexOf('workspace:');
   if (start < 0) return const [];
+  final list = lines
+      .skip(start + 1)
+      .takeWhile((line) => line.isEmpty || line.startsWith(RegExp('[ #]')));
   return [
-    for (final line
-        in lines
-            .skip(start + 1)
-            .takeWhile(
-              (line) => line.startsWith('  - '),
-            ))
-      line.substring(4).trim(),
+    for (final line in list)
+      if (line.trim() case final item when item.startsWith('- '))
+        item.substring(2).split('#').first.trim(),
   ];
 }

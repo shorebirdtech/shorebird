@@ -27,8 +27,10 @@ other, and putting a file back as it was finds its earlier pass.
 `--input` narrows the key to the paths given, relative to the checkout root,
 so a change elsewhere keeps the pass. `--dart-package <path>` adds that
 package's inputs: the package, every package it reaches through `path:`
-dependencies (its own `dev_dependencies` included), and the workspace
-`pubspec.yaml`, `pubspec.lock` and `analysis_options.yaml`.
+dependencies or a dependency on another workspace member (which pub resolves
+to that member whatever version it names), its own `dev_dependencies`
+included, and the workspace `pubspec.yaml`, `pubspec.lock` and
+`analysis_options.yaml`.
 `tool/agent-verify.sh` checks each workspace package this way.
 
 `--lookup` runs nothing and answers for many packages at once. Each
