@@ -78,6 +78,8 @@ class VerifyCommand extends Command<int> with RepoRootOption {
 
     // Map each package name to the workflow(s) that cover it.
     final coverageMap = <String, List<String>>{};
+    // Each workflow's static filters, mapped to their path patterns.
+    final filtersByWorkflow = <String, Map<String, Set<String>>>{};
     final workflowFiles =
         workflowDir
             .listSync()
@@ -99,8 +101,9 @@ class VerifyCommand extends Command<int> with RepoRootOption {
         continue;
       }
 
-      final names = extractDornyFilterNames(content);
-      for (final name in names) {
+      final filters = extractDornyFilters(content);
+      filtersByWorkflow[fileName] = filters;
+      for (final name in filters.keys) {
         coverageMap.putIfAbsent(name, () => []).add(fileName);
       }
     }
@@ -146,20 +149,65 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       repoRoot: repoRoot,
     );
     final missing = <PackageDescription>[];
+    final resolver = DependencyResolver(repoRoot);
+    // Filters that don't match every package their job depends on, so
+    // a change to one of those packages skips the job. Each workflow's
+    // filter is checked on its own: its jobs run only on its matches.
+    final drift = <String, List<String>>{};
 
     for (final pkg in allPackages) {
       if (ignoreSet.contains(pkg.name)) continue;
       final slug = slugs[pkg]!;
       final workflows = coverageMap[slug];
-      if (workflows != null) {
-        final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
-        stdout.writeln('OK: $label (${workflows.join(', ')})');
-      } else {
+      if (workflows == null) {
         missing.add(pkg);
+        continue;
+      }
+      final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
+      final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
+      final deps = resolver.resolve(packageDir);
+      final files = resolver.workspaceFiles(packageDir);
+      var covered = true;
+      for (final workflow in workflows) {
+        final patterns = filtersByWorkflow[workflow]![slug]!;
+        final uncovered = [
+          for (final dep in deps)
+            if (!_covers(patterns, dep, isDirectory: true)) '$dep/**',
+          for (final file in files)
+            if (!_covers(patterns, file, isDirectory: false)) file,
+        ]..sort();
+        if (uncovered.isNotEmpty) {
+          covered = false;
+          drift['$label filter in $workflow'] = uncovered;
+        }
+      }
+      if (covered) {
+        stdout.writeln('OK: $label (${workflows.join(', ')})');
       }
     }
 
+    if (drift.isNotEmpty) {
+      for (final MapEntry(key: label, value: deps) in drift.entries) {
+        stderr.writeln(
+          'DRIFT: the $label misses files its package depends on. '
+          'Add to it:',
+        );
+        for (final dep in deps) {
+          stderr.writeln('              - $dep');
+        }
+      }
+      stderr.writeln(
+        '${drift.length} filter(s) miss files their package depends on.',
+      );
+    }
+
     if (missing.isEmpty) {
+      if (drift.isNotEmpty) {
+        if (requiredJobErrors.isNotEmpty) {
+          _printRequiredJobErrors(requiredJobErrors);
+        }
+        return 1;
+      }
       stdout.writeln('\nAll packages have CI coverage.');
       if (requiredJobErrors.isNotEmpty) {
         _printRequiredJobErrors(requiredJobErrors);
@@ -169,7 +217,6 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     }
 
     stdout.writeln();
-    final resolver = DependencyResolver(repoRoot);
 
     for (final pkg in missing) {
       final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
@@ -184,6 +231,9 @@ class VerifyCommand extends Command<int> with RepoRootOption {
         ..writeln('            $slug:');
       for (final dep in sortedDeps) {
         stdout.writeln('              - $dep/**');
+      }
+      for (final file in resolver.workspaceFiles(packageDir).toList()..sort()) {
+        stdout.writeln('              - $file');
       }
       stdout.writeln();
     }
@@ -345,4 +395,19 @@ class _RequiredJobReport {
   /// true, `missing` and `stale` are empty — there's nothing structured
   /// to compare.
   final bool isMalformed;
+}
+
+/// Whether one of a dorny filter's [patterns] matches the repo-relative
+/// [path] (every file in it, if [isDirectory]): the path itself, a
+/// `<dir>/**` for it or one of its ancestors, or `**`.
+bool _covers(Set<String> patterns, String path, {required bool isDirectory}) {
+  for (var pattern in patterns) {
+    if (pattern.startsWith('./')) pattern = pattern.substring(2);
+    if (pattern == '**') return true;
+    if (pattern == path && !isDirectory) return true;
+    if (!pattern.endsWith('/**')) continue;
+    final dir = pattern.substring(0, pattern.length - 3);
+    if ((isDirectory && path == dir) || path.startsWith('$dir/')) return true;
+  }
+  return false;
 }

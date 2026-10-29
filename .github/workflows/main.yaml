@@ -59,30 +59,43 @@ jobs:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
+              - packages/dex/**
+              - packages/scoped_deps/**
+              - packages/shorebird_build_trace/**
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_code_push_client:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_code_push_protocol:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             scoped_deps:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/scoped_deps/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_ci:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_ci/**
+              - pubspec.lock
+              - pubspec.yaml
 
       - uses: dorny/paths-filter@v4
         name: Redis Detection
@@ -94,6 +107,8 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/redis_client/**
+              - pubspec.lock
+              - pubspec.yaml
 
       - uses: dorny/paths-filter@v4
         name: Verify Detection
