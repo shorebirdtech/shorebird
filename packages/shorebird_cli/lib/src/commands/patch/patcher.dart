@@ -8,18 +8,17 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -206,16 +205,22 @@ More info: ${troubleshootingUrl.toLink()}.
         try {
           return await codeSigner.signWithCmd(data: hash, command: signCmd);
         } on ProcessException catch (e) {
-          logger.err(
-            'Failed to run --${CommonArguments.signCmd.name}: ${e.message}',
+          throw CommandError(
+            message:
+                'Failed to run --${CommonArguments.signCmd.name}: '
+                '${e.message}',
+            exitCode: ExitCode.software,
           );
-          throw ProcessExit(ExitCode.software.code);
         } on FormatException catch (e) {
-          logger.err(
-            '--${CommonArguments.signCmd.name} produced invalid output: '
-            '${e.message}',
+          throw CommandError(
+            message:
+                '--${CommonArguments.signCmd.name} produced invalid output: '
+                '${e.message}',
+            hint:
+                '--${CommonArguments.signCmd.name} must print a base64 '
+                'signature to stdout.',
+            exitCode: ExitCode.software,
           );
-          throw ProcessExit(ExitCode.software.code);
         }
       };
     }
@@ -247,17 +252,20 @@ More info: ${troubleshootingUrl.toLink()}.
     try {
       return await argResults.resolvePublicKeyPem();
     } on ProcessException catch (e) {
-      logger.err(
-        'Failed to run '
-        '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+      throw CommandError(
+        message:
+            'Failed to run '
+            '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     } on FormatException catch (e) {
       final source = argResults.wasParsed(CommonArguments.publicKeyArg.name)
           ? '--${CommonArguments.publicKeyArg.name} file'
           : '--${CommonArguments.publicKeyCmd.name} output';
-      logger.err('The $source ${e.message}');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'The $source ${e.message}',
+        exitCode: ExitCode.software,
+      );
     }
   }
 
@@ -272,12 +280,12 @@ More info: ${troubleshootingUrl.toLink()}.
     final publicKeyPem = await _resolvePublicKeyPem();
 
     if (publicKeyPem == null) {
-      logger.err(
-        'A public key is required for code signing. '
-        'Provide --${CommonArguments.publicKeyArg.name} or '
-        '--${CommonArguments.publicKeyCmd.name}.',
+      throw CommandError(
+        message: 'A public key is required for code signing.',
+        hint:
+            'Pass --${CommonArguments.publicKeyArg.name} or '
+            '--${CommonArguments.publicKeyCmd.name}.',
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
 
     if (!codeSigner.verify(
@@ -285,11 +293,13 @@ More info: ${troubleshootingUrl.toLink()}.
       signature: signature,
       publicKeyPem: publicKeyPem,
     )) {
-      logger.err(
-        'Signature verification failed. The signature does not match '
-        'the provided public key.',
+      throw CommandError(
+        message:
+            'Signature verification failed: the signature does not match '
+            'the provided public key.',
+        hint: 'Pass the public key of the key pair that signs the patch.',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
 
     return signature;
@@ -301,8 +311,8 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The hash (and its signature) is of the full patch artifact, not of the
   /// diff, since that is what the device has after applying the patch.
   ///
-  /// If creating the diff fails, [progress] is failed with the error and the
-  /// command exits with [ExitCode.software].
+  /// If creating the diff fails, [progress] is failed and a [CommandError]
+  /// saying why is thrown, exiting with [ExitCode.software].
   Future<PatchArtifactBundle> createDiffBundle({
     required Arch arch,
     required String releaseArtifactPath,
@@ -322,8 +332,11 @@ More info: ${troubleshootingUrl.toLink()}.
         patchArtifactPath: patchArtifactPath,
       );
     } on Exception catch (error) {
-      progress.fail('$error');
-      throw ProcessExit(ExitCode.software.code);
+      progress.fail();
+      throw CommandError(
+        message: 'Failed to create the patch diff: $error',
+        exitCode: ExitCode.software,
+      );
     }
 
     return PatchArtifactBundle(

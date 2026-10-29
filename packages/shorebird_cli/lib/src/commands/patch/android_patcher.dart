@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/patch/android_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
@@ -18,7 +19,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template android_patcher}
@@ -107,8 +107,10 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     final missingLibappMessage =
         await ArtifactManager.describeMissingLibappInAab(aabFile);
     if (missingLibappMessage != null) {
-      logger.err(missingLibappMessage);
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: missingLibappMessage,
+        exitCode: ExitCode.software,
+      );
     }
 
     _patchAab = aabFile;
@@ -137,17 +139,17 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       aab: _patchAab,
       action: (patchArchsBuildDir) async {
         if (patchArchsBuildDir == null) {
-          logger
-            ..err('Cannot find patch build artifacts.')
-            ..info('''
-Please run `shorebird cache clean` and try again. If the issue persists, please
-file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
-
-Looked in:
-  - the libapp.so entries inside the built .aab
-  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
-  - build/app/intermediates/stripped_native_libs/{variant}/out/lib''');
-          throw ProcessExit(ExitCode.software.code);
+          throw CommandError(
+            message:
+                'Cannot find patch build artifacts: no libapp.so in the '
+                'built .aab or in '
+                'build/app/intermediates/stripped_native_libs.',
+            hint:
+                'Clear the cache and try again, and file an issue at '
+                'https://github.com/shorebirdtech/shorebird/issues/new if '
+                'this persists. Run: shorebird cache clean',
+            exitCode: ExitCode.software,
+          );
         }
 
         return createAndroidPatchArtifactBundles(

@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -158,13 +159,16 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       );
     }
     if (patchArtifactBundles.isEmpty) {
-      createDiffProgress.fail(
+      createDiffProgress.fail();
+      throw CommandError(
         // No path here: patchArchsDir may be a temporary directory that is
         // deleted before the command exits.
-        'No patch artifacts produced: the patch build has no libapp.so for '
-        'any architecture in the release.',
+        message:
+            'No patch artifacts produced: the patch build has no libapp.so '
+            'for any architecture in the release.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
     createDiffProgress.complete();
 

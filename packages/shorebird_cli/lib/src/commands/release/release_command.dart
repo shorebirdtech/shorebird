@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -315,22 +316,33 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     try {
       version = await getVersion();
     } on Exception catch (error) {
-      logger.err('''
-Unable to determine the Flutter version from `$command`.
-$error''');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'Unable to determine the Flutter version from `$command`: '
+            '$error',
+        hint: _passFlutterVersionHint,
+        exitCode: ExitCode.software,
+      );
     }
 
     if (version == null) {
-      logger.err(
-        'Unable to parse a Flutter version from the output of `$command`.',
+      throw CommandError(
+        message:
+            'Unable to parse a Flutter version from the output of `$command`.',
+        hint: _passFlutterVersionHint,
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
 
     logger.info('Using Flutter $version, as reported by `$command`.');
     return _resolvedFlutterVersionArg = version;
   }
+
+  /// The hint for a `--flutter-version` (`system`, `fvm`) whose version
+  /// could not be read.
+  static const _passFlutterVersionHint =
+      'Pass a version with --flutter-version=<version> instead. '
+      'Run: shorebird flutter versions list';
 
   /// The build name specified via `--build-name`.
   String? get buildName =>
@@ -516,19 +528,21 @@ $error''');
     try {
       return await releaser.buildReleaseArtifacts();
     } on ArtifactBuildException catch (e) {
-      logger.err(e.message);
-      if (!e.fixRecommendation.isNullOrEmpty) {
-        logger.info(e.fixRecommendation);
-      }
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: e.message,
+        hint: e.fixRecommendation.isNullOrEmpty ? null : e.fixRecommendation,
+        exitCode: ExitCode.software,
+      );
     } on ProcessExit {
       // A step before the build (such as fetching the patch signing key)
       // already reported why it stopped, and an ApiErrorExit carries the
       // server's error for --json.
       rethrow;
     } on Exception catch (e) {
-      logger.err('Failed to build release artifacts: $e');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Failed to build release artifacts: $e',
+        exitCode: ExitCode.software,
+      );
     }
   }
 
@@ -649,23 +663,32 @@ $error''');
     );
     final minimumFlutterVersion = releaser.minimumFlutterVersion;
     if (version != null && version < minimumFlutterVersion) {
-      logger.err('''
-At least Flutter $minimumFlutterVersion is required to release with `${releaser.releaseType.cliName}`.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-      throw ProcessExit(ExitCode.usage.code);
+      final cliName = releaser.releaseType.cliName;
+      throw CommandError(
+        message:
+            'At least Flutter $minimumFlutterVersion is required to release '
+            'with `$cliName` (see $supportedFlutterVersionsUrl).',
+        hint:
+            'Run: shorebird release $cliName '
+            '--flutter-version=$minimumFlutterVersion',
+      );
     }
 
     if (releaser.useObfuscation &&
         patchesLinkAgainstRelease(releaser.releaseType.releasePlatform) &&
         version != null &&
         version < minimumObfuscationFlutterVersion) {
-      logger.err(
-        'Obfuscation on '
-        '${releaser.releaseType.releasePlatform.displayName} '
-        'requires Flutter $minimumObfuscationFlutterVersion or later '
-        '(current: $version).',
+      throw CommandError(
+        message:
+            'Obfuscation on '
+            '${releaser.releaseType.releasePlatform.displayName} '
+            'requires Flutter $minimumObfuscationFlutterVersion or later '
+            '(current: $version).',
+        hint:
+            'Run: shorebird release ${releaser.releaseType.cliName} '
+            '--obfuscate --flutter-version=$minimumObfuscationFlutterVersion',
+        exitCode: ExitCode.unavailable,
       );
-      throw ProcessExit(ExitCode.unavailable.code);
     }
 
     // Ask the releaser to assert its own args are valid.
@@ -689,24 +712,24 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     try {
       revision = await shorebirdFlutter.resolveFlutterRevision(versionOrHash);
     } on Exception catch (error) {
-      logger.err('''
-Unable to determine revision for Flutter version: $versionOrHash.
-$error''');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'Unable to determine the revision for Flutter $versionOrHash: '
+            '$error',
+        hint: 'Run: shorebird flutter versions list',
+        exitCode: ExitCode.software,
+      );
     }
 
     if (revision == null) {
-      final openIssueLink = link(
-        uri: Uri.parse(
-          'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
-        ),
-        message: 'open an issue',
+      throw CommandError(
+        message:
+            'Flutter $versionOrHash is not available to Shorebird. To request '
+            'it, open an issue at '
+            'https://github.com/shorebirdtech/shorebird/issues/new.',
+        hint: 'Run: shorebird flutter versions list',
+        exitCode: ExitCode.software,
       );
-      logger.err('''
-Version $versionOrHash not found. Please $openIssueLink to request a new version.
-Use `shorebird flutter versions list` to list available versions.
-''');
-      throw ProcessExit(ExitCode.software.code);
     }
 
     return revision;
@@ -750,24 +773,18 @@ Use `shorebird flutter versions list` to list available versions.
           version: existingRelease.flutterVersion,
         );
 
-        logger
-          ..err('''
-${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
-''')
-          ..info(
-            '''
-
-  Existing release built with: ${lightCyan.wrap(formattedExistingReleaseVersion)}
-  Current release built with: ${lightCyan.wrap(formattedCurrentReleaseVersion)}
-
-${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
-
-To resolve this issue, you can:
-  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
-  * Delete the existing release and re-run the release command with the desired Flutter version.
-  * Bump the release version and re-run the release command with the desired Flutter version.''',
-          );
-        throw ProcessExit(ExitCode.software.code);
+        throw CommandError(
+          message:
+              'Release $version was built with Flutter '
+              '$formattedExistingReleaseVersion, not '
+              '$formattedCurrentReleaseVersion. All platforms of a release '
+              'must use the same Flutter.',
+          hint:
+              'Re-run with '
+              '--flutter-version=${existingRelease.flutterRevision}, or bump '
+              'the release version to use another Flutter.',
+          exitCode: ExitCode.software,
+        );
       }
     }
   }

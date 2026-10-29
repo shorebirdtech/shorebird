@@ -658,7 +658,7 @@ void main() {
           }
         });
 
-        test('fails progress and exits with code 70', () async {
+        test('fails progress and exits with an error', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.createPatchArtifacts(
@@ -667,14 +667,14 @@ void main() {
                 releaseArtifact: releaseArtifactFile,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: startsWith('No patch artifacts produced'),
+              hint: 'Re-run with --verbose to see the build output.',
+              exitCode: ExitCode.software,
+            ),
           );
 
-          verify(
-            () => progress.fail(
-              any(that: contains('No patch artifacts produced')),
-            ),
-          ).called(1);
+          verify(() => progress.fail()).called(1);
         });
       });
 
@@ -688,7 +688,7 @@ void main() {
           ).thenThrow(Exception('error'));
         });
 
-        test('logs error and exits with code 70', () async {
+        test('fails progress and exits with the error', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.createPatchArtifacts(
@@ -697,10 +697,13 @@ void main() {
                 releaseArtifact: releaseArtifactFile,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: 'Failed to create the patch diff: Exception: error',
+              exitCode: ExitCode.software,
+            ),
           );
 
-          verify(() => progress.fail('Exception: error')).called(1);
+          verify(() => progress.fail()).called(1);
         });
       });
 

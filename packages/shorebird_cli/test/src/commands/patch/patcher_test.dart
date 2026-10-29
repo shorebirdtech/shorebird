@@ -15,12 +15,12 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
 import '../../helpers.dart';
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -425,15 +425,12 @@ void main() {
               progress: progress,
             ),
           ),
-          throwsA(
-            isA<ProcessExit>().having(
-              (e) => e.exitCode,
-              'exitCode',
-              ExitCode.software.code,
-            ),
+          exitsWithError(
+            message: 'Failed to create the patch diff: Exception: diff failed',
+            exitCode: ExitCode.software,
           ),
         );
-        verify(() => progress.fail('Exception: diff failed')).called(1);
+        verify(() => progress.fail()).called(1);
       });
     });
 
@@ -578,7 +575,7 @@ void main() {
       });
 
       test(
-        'throws ProcessExit when signer present but no public key',
+        'exits with an error when signer present but no public key',
         () async {
           argResults = argParser.parse([
             '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
@@ -602,13 +599,11 @@ void main() {
             () async {
               await expectLater(
                 () => patcher.signHash('test-hash'),
-                throwsA(isA<ProcessExit>()),
-              );
-              verify(
-                () => logger.err(
-                  any(that: contains('public key is required')),
+                exitsWithError(
+                  message: 'A public key is required for code signing.',
+                  hint: 'Pass --public-key-path or --public-key-cmd.',
                 ),
-              ).called(1);
+              );
             },
             values: {
               codeSignerRef.overrideWith(() => codeSigner),
@@ -735,7 +730,7 @@ void main() {
         },
       );
 
-      test('throws ProcessExit when sign-cmd fails', () async {
+      test('exits with an error when sign-cmd fails', () async {
         argResults = argParser.parse([
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
           '--${CommonArguments.signCmd.name}=bad-cmd',
@@ -761,11 +756,11 @@ void main() {
           () async {
             await expectLater(
               () => patcher.signHash('test-hash'),
-              throwsA(isA<ProcessExit>()),
+              exitsWithError(
+                message: 'Failed to run --sign-cmd: command not found',
+                exitCode: ExitCode.software,
+              ),
             );
-            verify(
-              () => logger.err(any(that: contains('--sign-cmd'))),
-            ).called(1);
           },
           values: {
             codeSignerRef.overrideWith(() => codeSigner),
@@ -774,7 +769,7 @@ void main() {
         );
       });
 
-      test('throws ProcessExit when public-key-cmd fails', () async {
+      test('exits with an error when public-key-cmd fails', () async {
         argResults = argParser.parse([
           '--${CommonArguments.publicKeyCmd.name}=bad-key-cmd',
           '--${CommonArguments.signCmd.name}=sign-cmd',
@@ -808,11 +803,11 @@ void main() {
           () async {
             await expectLater(
               () => patcher.signHash('test-hash'),
-              throwsA(isA<ProcessExit>()),
+              exitsWithError(
+                message: 'Failed to run --public-key-cmd: command not found',
+                exitCode: ExitCode.software,
+              ),
             );
-            verify(
-              () => logger.err(any(that: contains('--public-key-cmd'))),
-            ).called(1);
           },
           values: {
             codeSignerRef.overrideWith(() => codeSigner),
@@ -865,7 +860,7 @@ void main() {
         );
       });
 
-      test('throws ProcessExit when signature verification fails', () async {
+      test('exits with an error when signature verification fails', () async {
         argResults = argParser.parse([
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
           '--${CommonArguments.signCmd.name}=sign-cmd',
@@ -899,7 +894,14 @@ void main() {
           () async {
             await expectLater(
               () => patcher.signHash('test-hash'),
-              throwsA(isA<ProcessExit>()),
+              exitsWithError(
+                message:
+                    'Signature verification failed: the signature does not '
+                    'match the provided public key.',
+                hint:
+                    'Pass the public key of the key pair that signs the patch.',
+                exitCode: ExitCode.software,
+              ),
             );
           },
           values: {

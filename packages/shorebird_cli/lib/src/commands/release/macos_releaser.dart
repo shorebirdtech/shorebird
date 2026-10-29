@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -13,7 +14,6 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -73,8 +73,11 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
 
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
-      logger.err('Unable to find .app directory');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Unable to find the .app directory in the macOS build output.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     return appDirectory;
@@ -94,8 +97,11 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   }) async {
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
-      logger.err('Unable to find .app directory');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Unable to find the .app directory in the macOS build output.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     await codePushClientWrapper.createMacosReleaseArtifacts(

@@ -5,15 +5,14 @@ import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_releaser}
@@ -79,8 +78,11 @@ class WindowsReleaser extends Releaser {
     final releaseDir = artifactManager.getWindowsReleaseDirectory();
 
     if (!releaseDir.existsSync()) {
-      logger.err('No release directory found at ${releaseDir.path}');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'No release directory found at ${releaseDir.path}.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     await codePushClientWrapper.createWindowsReleaseArtifacts(

@@ -1264,7 +1264,7 @@ This may indicate that the patch contains native changes, which cannot be applie
             ).thenReturn(null);
           });
 
-          test('logs error and exits with code 70', () async {
+          test('exits with an error saying the .app is missing', () async {
             await expectLater(
               () => runWithOverrides(
                 () => patcher.createPatchArtifacts(
@@ -1273,20 +1273,17 @@ This may indicate that the patch contains native changes, which cannot be applie
                   releaseArtifact: releaseArtifactFile,
                 ),
               ),
-              exitsWithCode(ExitCode.software),
+              exitsWithError(
+                message:
+                    'The release .xcarchive downloaded from Shorebird has no '
+                    'Products/Applications/*.app directory.',
+                hint: allOf(
+                  startsWith('Re-run to download it again.'),
+                  endsWith('Run: shorebird release ios'),
+                ),
+                exitCode: ExitCode.software,
+              ),
             );
-
-            verify(
-              () => logger.err(
-                'The release .xcarchive downloaded from Shorebird has no '
-                'Products/Applications/*.app directory.',
-              ),
-            ).called(1);
-            verify(
-              () => logger.info(
-                any(that: startsWith('Re-run to download it again.')),
-              ),
-            ).called(1);
           });
         });
       });
@@ -1316,18 +1313,20 @@ This may indicate that the patch contains native changes, which cannot be applie
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(null);
         });
 
-        test('names the expected archive path and exits 70', () async {
+        test('exits with an error naming the expected archive path', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.extractReleaseVersionFromArtifact(File('')),
             ),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(
-            () => logger.err(
-              '''No .xcarchive found in ${p.join(projectRoot.path, 'build', 'ios', 'archive')} after the build.''',
+            exitsWithError(
+              message:
+                  'No .xcarchive found in '
+                  '${p.join(projectRoot.path, 'build', 'ios', 'archive')}, '
+                  'where `flutter build ipa` writes it.',
+              hint: 'Re-run with --verbose to see the build output.',
+              exitCode: ExitCode.software,
             ),
-          ).called(1);
+          );
         });
       });
 

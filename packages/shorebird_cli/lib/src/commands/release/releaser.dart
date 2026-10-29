@@ -7,6 +7,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -71,13 +72,14 @@ abstract class Releaser {
   /// the built app.
   void assertReleaseVersionFlagNotProvided() {
     if (argResults.wasParsed('release-version')) {
-      logger.err(
-        '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
+      throw CommandError(
+        message:
+            '--release-version is only supported for aar and ios-framework '
+            'releases.',
+        hint:
+            'Remove --release-version. This release takes its version from '
+            'your pubspec.yaml.',
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
   }
 
@@ -376,11 +378,13 @@ To change the version of this release, change your app's version in your pubspec
     if (!useObfuscation) return;
     final mapFile = File(obfuscationMapPath);
     if (!mapFile.existsSync()) {
-      logger.err(
-        'Obfuscation was enabled but the obfuscation map was not '
-        'generated at $obfuscationMapPath',
+      throw CommandError(
+        message:
+            'Obfuscation was enabled but the obfuscation map was not '
+            'generated at $obfuscationMapPath.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
     logger.detail('Obfuscation map saved to $obfuscationMapPath');
   }

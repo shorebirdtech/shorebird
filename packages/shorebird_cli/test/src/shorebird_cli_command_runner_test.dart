@@ -9,6 +9,7 @@ import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart' hide logger;
@@ -171,6 +172,16 @@ void main() {
             ),
           ),
         ).called(1);
+      });
+
+      test('reports a CommandError and exits with its code', () async {
+        commandRunner.addCommand(_CommandErrorCommand());
+        final result = await runWithOverrides(
+          () => commandRunner.run(['command-error']),
+        );
+        expect(result, equals(ExitCode.unavailable.code));
+        verify(() => logger.err('Something is wrong.')).called(1);
+        verify(() => logger.info('Run: shorebird fix')).called(1);
       });
 
       test('exits 1 without the failure footer when a prompt is '
@@ -1021,6 +1032,26 @@ Engine • revision $shorebirdEngineRevision'''),
         });
       });
 
+      test('reports a CommandError in the JSON error envelope', () async {
+        commandRunner.addCommand(_CommandErrorCommand());
+        final result = await captureStdout(
+          () => runWithOverrides(
+            () => commandRunner.run(['--json', 'command-error']),
+          ),
+        );
+        expect(result, equals(ExitCode.unavailable.code));
+        expect(stdoutOutput, hasLength(1));
+        final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+        expect(json['status'], equals('error'));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('process_exit'));
+        expect(error['message'], equals('Something is wrong.'));
+        expect(error['hint'], equals('Run: shorebird fix'));
+        final meta = json['meta'] as Map<String, dynamic>;
+        expect(meta['command'], equals('command-error'));
+        verifyNever(() => logger.err(any()));
+      });
+
       group('when a command fails without writing an envelope', () {
         test('emits exactly one error envelope', () async {
           // e.g. a failed precondition (not logged in, not initialized),
@@ -1703,6 +1734,25 @@ class _TestCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
+  }
+}
+
+/// Throws a [CommandError], as a releaser or patcher does on a command's
+/// behalf.
+class _CommandErrorCommand extends ShorebirdCommand {
+  @override
+  String get name => 'command-error';
+
+  @override
+  String get description => 'A command that throws a CommandError';
+
+  @override
+  Future<int> run() async {
+    throw CommandError(
+      message: 'Something is wrong.',
+      hint: 'Run: shorebird fix',
+      exitCode: ExitCode.unavailable,
+    );
   }
 }
 

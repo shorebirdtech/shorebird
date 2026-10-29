@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -245,10 +246,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
 
     if (results.wasParsed('staging')) {
-      logger.err(
-        '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+      return reportError(
+        message: '--staging is no longer supported.',
+        hint: 'Pass --track=staging instead.',
       );
-      return ExitCode.usage.code;
     }
 
     final published = <PublishedPatch>[];
@@ -610,12 +611,13 @@ Building with Flutter $flutterVersionString to determine the release version...
     }
     final publicKeyPem = signing!.publicKeyPem;
     if (publicKeyPem == null) {
-      logger.err(
-        'Release ${release.version} is signed with a Shorebird-managed key, '
-        'but the server did not return it. Try again, and contact Shorebird '
-        'support if this persists.',
+      throw CommandError(
+        message:
+            'Release ${release.version} is signed with a Shorebird-managed '
+            'key, but the server did not return it.',
+        hint: 'Try again, and contact Shorebird support if this persists.',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
     patcher.releaseManagedPublicKeyPem = publicKeyPem;
 
@@ -663,13 +665,18 @@ Building with Flutter $flutterVersionString to determine the release version...
         releaseFlutterVersion != null &&
         releaseFlutterVersion < minimumObfuscationFlutterVersion) {
       if (patchesLinkAgainstRelease(releasePlatform)) {
-        logger.err(
-          'Release ${release.version} was built with obfuscation on Flutter '
-          '$releaseFlutterVersion, but patching an obfuscated '
-          '${releasePlatform.displayName} release requires Flutter '
-          '$minimumObfuscationFlutterVersion or later.',
+        throw CommandError(
+          message:
+              'Release ${release.version} was built with obfuscation on '
+              'Flutter $releaseFlutterVersion, but patching an obfuscated '
+              '${releasePlatform.displayName} release requires Flutter '
+              '$minimumObfuscationFlutterVersion or later.',
+          hint:
+              'Create a new release to patch. Run: shorebird release '
+              '${patcher.releaseType.cliName} --obfuscate '
+              '--flutter-version=$minimumObfuscationFlutterVersion',
+          exitCode: ExitCode.unavailable,
         );
-        throw ProcessExit(ExitCode.unavailable.code);
       }
       loadObfuscationMap = false;
     }
@@ -835,11 +842,22 @@ Building patch with Flutter $flutterVersionString
 
     final flutterVersionAndRevision = await shorebirdFlutter
         .getVersionAndRevision();
-    logger.err('''
-Release ${release.version} was built with Flutter $flutterVersionAndRevision, but at least Flutter $minimumFlutterVersion is required to patch with `${patcher.releaseType.cliName}`.
-A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ${patcher.releaseType.cliName} --flutter-version=${minimumReleaseFlutterVersion(patcher.releaseType)}')} and patch that one.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-    throw ProcessExit(ExitCode.software.code);
+    final cliName = patcher.releaseType.cliName;
+    final releaseFlutterVersion = minimumReleaseFlutterVersion(
+      patcher.releaseType,
+    );
+    throw CommandError(
+      message:
+          'Release ${release.version} was built with Flutter '
+          '$flutterVersionAndRevision, but patching with `$cliName` needs at '
+          'least Flutter $minimumFlutterVersion (see '
+          '$supportedFlutterVersionsUrl).',
+      hint:
+          'A release cannot change Flutter versions, so create a new release '
+          'to patch. Run: shorebird release $cliName '
+          '--flutter-version=$releaseFlutterVersion',
+      exitCode: ExitCode.software,
+    );
   }
 
   /// Warns if shorebird.yaml asks for `patch_verification: install_only` and
@@ -984,18 +1002,15 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     );
   }
 
-  /// Logs that there is nothing to patch for [releaseType] and returns the
-  /// [ProcessExit] to throw.
-  ProcessExit _noReleasesToPatch(ReleaseType releaseType) {
-    logger
-      ..err(
-        '''No ${releaseType.releasePlatform.displayName} releases found for app $appId.''',
-      )
-      ..info(
-        '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release ${releaseType.cliName}')}, or pass --app-id / --flavor if this is the wrong app.''',
-      );
-    return ProcessExit(ExitCode.usage.code);
-  }
+  /// The error to throw when there is nothing to patch for [releaseType].
+  CommandError _noReleasesToPatch(ReleaseType releaseType) => CommandError(
+    message:
+        'No ${releaseType.releasePlatform.displayName} releases found for '
+        'app $appId.',
+    hint:
+        'A patch needs a release to apply to (or pass --app-id / --flavor if '
+        'this is the wrong app). Run: shorebird release ${releaseType.cliName}',
+  );
 
   /// Asserts that the release contains a platform for the given [patcher].
   void assertReleaseContainsPlatform({
@@ -1004,11 +1019,13 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
   }) {
     final releasePlatform = patcher.releaseType.releasePlatform;
     if (!release.hasPlatform(releasePlatform)) {
-      final platformName = releasePlatform.name;
-      logger.err(
-        '''No release exists for $platformName in release version ${release.version}. Please run shorebird release $platformName to create one.''',
+      throw CommandError(
+        message:
+            'Release ${release.version} has no '
+            '${releasePlatform.displayName} build.',
+        hint: 'Run: shorebird release ${patcher.releaseType.cliName}',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
   }
 
@@ -1018,10 +1035,15 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     required Patcher patcher,
   }) {
     if (!release.isActiveOn(patcher.releaseType.releasePlatform)) {
-      logger.err('''
-Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-Please re-run the release command for this version or create a new release.''');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'Release ${release.version} is incomplete: the release command '
+            'that created it was stopped or failed.',
+        hint:
+            'Re-run the release for this version, or create a new one. '
+            'Run: shorebird release ${patcher.releaseType.cliName}',
+        exitCode: ExitCode.software,
+      );
     }
   }
 
@@ -1046,8 +1068,12 @@ Please re-run the release command for this version or create a new release.''');
     } on UnpatchableChangeException {
       // The diff checker has already named the change and the flag that
       // overrides it.
-      logger.info('Not publishing.');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'Not publishing: the patch has changes that cannot be '
+            'patched.',
+        exitCode: ExitCode.software,
+      );
     }
   }
 
@@ -1092,14 +1118,16 @@ Please re-run the release command for this version or create a new release.''');
       );
     }
     if (linkPercentage != null && linkPercentage < minLinkPercentage) {
-      logger
-        ..err(
-          '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold ($minLinkPercentage%).''',
-        )
-        ..info(
-          '''Not publishing. Lower --min-link-percentage to accept this patch, or see ${Patcher.debugInfoFile.path} for what could not be linked.''',
-        );
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'The link percentage of this patch ($linkPercentage%) is below '
+            'the minimum threshold ($minLinkPercentage%).',
+        hint:
+            'Not publishing. Lower --min-link-percentage to accept this '
+            'patch, or see ${Patcher.debugInfoFile.path} for what could not '
+            'be linked.',
+        exitCode: ExitCode.software,
+      );
     }
 
     final summary = [
@@ -1145,14 +1173,19 @@ Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
   try {
     return await build();
   } on ArtifactBuildException catch (e) {
-    logger.err(e.message);
-    if (!e.fixRecommendation.isNullOrEmpty) {
-      logger.info(e.fixRecommendation);
-    }
-    throw ProcessExit(ExitCode.software.code);
+    throw CommandError(
+      message: e.message,
+      hint: e.fixRecommendation.isNullOrEmpty ? null : e.fixRecommendation,
+      exitCode: ExitCode.software,
+    );
+  } on ProcessExit {
+    // The build already reported why it stopped.
+    rethrow;
   } on Exception catch (e) {
-    logger.err('Failed to build patch artifacts: $e');
-    throw ProcessExit(ExitCode.software.code);
+    throw CommandError(
+      message: 'Failed to build patch artifacts: $e',
+      exitCode: ExitCode.software,
+    );
   }
 }
 

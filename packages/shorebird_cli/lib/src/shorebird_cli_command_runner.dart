@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
@@ -390,6 +391,11 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             message: 'Process exited with code $exitCode.',
             command: commandName,
           ).write();
+        }
+      } on CommandError catch (error) {
+        exitCode = error.exitCode;
+        if (!(isJsonMode && envelope.written)) {
+          error.report(command: commandName);
         }
       } on ProcessExit catch (error) {
         exitCode = error.exitCode;
