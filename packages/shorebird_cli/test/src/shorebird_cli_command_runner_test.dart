@@ -357,6 +357,35 @@ The warning that fails the patch names the one that applies.''';
       });
     });
 
+    group('--enterprise', () {
+      test('points at the shorebird enterprise command', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['members', 'list', '--enterprise']),
+        );
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            'To act on every organization in your enterprise, run '
+            '`shorebird enterprise members list`.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        );
+      });
+
+      test('points at shorebird enterprise --help elsewhere', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['releases', 'list', '--enterprise-id', '7']),
+        );
+        verify(
+          () => logger.err(
+            any(that: endsWith('Run: shorebird enterprise --help')),
+          ),
+        ).called(1);
+      });
+    });
+
     group('--version', () {
       test('outputs current version info', () async {
         final result = await runWithOverrides(

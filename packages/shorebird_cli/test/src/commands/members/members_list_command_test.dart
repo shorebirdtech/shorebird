@@ -143,14 +143,13 @@ void main() {
     });
   });
 
-  group('MembersListCommand --enterprise', () {
+  group('MembersListCommand under shorebird enterprise', () {
     late MembersHarness h;
     late MembersListCommand command;
 
     setUp(() {
       h = MembersHarness();
       when(() => h.argResults['org-id']).thenReturn(null);
-      when(() => h.argResults['enterprise']).thenReturn(true);
       when(
         h.codePushClientWrapper.getEnterprises,
       ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
@@ -160,7 +159,8 @@ void main() {
       when(
         () => h.codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
       ).thenAnswer((_) async => [EnterpriseFixtures.guest]);
-      command = h.run(MembersListCommand.new)..testArgResults = h.argResults;
+      command = h.run(() => MembersListCommand(enterpriseRoute: true))
+        ..testArgResults = h.argResults;
     });
 
     test('lists the directory with enterprise roles', () async {
@@ -256,8 +256,9 @@ void main() {
       });
 
       test('points at shorebird enterprise guests without it', () async {
-        when(() => h.argResults['enterprise']).thenReturn(false);
         when(() => h.argResults['org-id']).thenReturn('42');
+        final command = h.run(MembersListCommand.new)
+          ..testArgResults = h.argResults;
         expect(await h.run(command.run), ExitCode.usage.code);
         verify(
           () => h.logger.err(
@@ -282,7 +283,7 @@ void main() {
       });
     });
 
-    test('rejects --org-id with --enterprise', () async {
+    test('rejects --org-id', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await h.run(command.run), ExitCode.usage.code);
       verifyNever(h.codePushClientWrapper.getEnterprises);

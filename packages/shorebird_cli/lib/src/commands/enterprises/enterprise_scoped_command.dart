@@ -12,13 +12,12 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Enterprise scope, which widens a command to every organization in the
 /// user's enterprise, and the logic that finds the enterprise.
 ///
-/// A command reaches it two ways. The documented one is its copy under
-/// `shorebird enterprise` (`shorebird enterprise members list`), built with
-/// `enterpriseRoute: true`, which is always enterprise-scoped. The other is
-/// a hidden `--enterprise` flag on the command itself (`shorebird members
-/// list --enterprise`), kept because agents guess it too.
+/// A command reaches it through its copy under `shorebird enterprise`
+/// (`shorebird enterprise members list`), built with `enterpriseRoute:
+/// true`, which is always enterprise-scoped. There is no `--enterprise`
+/// flag: one way to do each thing.
 ///
-/// An account is in at most one enterprise, so neither takes an id. Call
+/// An account is in at most one enterprise, so the copy takes no id. Call
 /// [addEnterpriseScope] from the command's constructor, then
 /// [rejectConflictingScope] first in `run`, then check [enterpriseScope]
 /// and call [resolveEnterprise] when it is set.
@@ -29,28 +28,19 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
   /// always acts on the enterprise.
   bool get isEnterpriseRoute => _enterpriseRoute;
 
-  /// Makes the command enterprise-scoped: always, for its copy under
-  /// `shorebird enterprise` ([route]), or else with the hidden
-  /// `--enterprise` flag that [enterpriseScope] reads.
+  /// Makes the command its copy under `shorebird enterprise` when [route]
+  /// is set.
   ///
-  /// The copy takes a hidden `--enterprise` too, which changes nothing, so
-  /// `shorebird enterprise members list --enterprise` works, and a hidden
-  /// `--org-id`, which [rejectConflictingScope] answers by naming the
-  /// command for one organization.
+  /// The copy takes a hidden `--org-id`, which [rejectConflictingScope]
+  /// answers by naming the command for one organization.
   void addEnterpriseScope({required bool route}) {
     _enterpriseRoute = route;
-    argParser.addFlag(
-      CommonArguments.enterpriseArg.name,
-      negatable: false,
-      hide: true,
-    );
     if (route) argParser.addOption(CommonArguments.orgIdArg.name, hide: true);
   }
 
   /// Whether the command acts on the user's enterprise rather than one
-  /// organization: its `shorebird enterprise` copy, or `--enterprise`.
-  bool get enterpriseScope =>
-      _enterpriseRoute || results[CommonArguments.enterpriseArg.name] == true;
+  /// organization: whether it is its `shorebird enterprise` copy.
+  bool get enterpriseScope => _enterpriseRoute;
 
   /// The command's words after `shorebird`, leaving out `enterprise`, such
   /// as `members list`.
@@ -107,15 +97,10 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
               '<id>` for one organization'
         : '`$organizationCommandLine` for the ones you can access';
     return reportError(
-      message: _enterpriseRoute
-          ? '`$enterpriseCommandLine` covers every organization in your '
-                'enterprise, so it takes no $named.'
-          : '--${CommonArguments.enterpriseArg.name} covers every '
-                'organization in your enterprise, so it takes no $named.',
-      hint: _enterpriseRoute
-          ? 'Drop `enterprise`: run $organizationCommand.'
-          : 'Run $organizationCommand, or `$enterpriseCommandLine` for '
-                'every organization in your enterprise.',
+      message:
+          '`$enterpriseCommandLine` covers every organization in your '
+          'enterprise, so it takes no $named.',
+      hint: 'Drop `enterprise`: run $organizationCommand.',
     );
   }
 

@@ -619,6 +619,9 @@ ${currentRunLogFile.absolute.path}
   /// gets the `--` pass-through explanation.
   String _unknownOptionHint(String option, List<String> args) {
     final commandName = args.where((a) => !a.startsWith('-')).firstOrNull;
+    if (option == 'enterprise' || option.startsWith('enterprise-')) {
+      return _enterpriseOptionHint(args);
+    }
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
 shorebird patch has no --$option flag. The patch safety checks are bypassed per check:
@@ -634,6 +637,28 @@ To proxy an option to the flutter command, use the $separator --<option> syntax.
 Example:
 
 ${lightCyan.wrap("shorebird release android $separator --no-pub lib/main.dart")}''';
+  }
+
+  /// Commands with a copy under `shorebird enterprise`.
+  static const _enterpriseNouns = {
+    'orgs',
+    'apps',
+    'members',
+    'audit-log',
+    'usage',
+    'service-accounts',
+  };
+
+  /// The hint for `--enterprise` on a command: enterprise scope is the
+  /// `shorebird enterprise` group, not a flag.
+  String _enterpriseOptionHint(List<String> args) {
+    final words = args.takeWhile((a) => !a.startsWith('-')).toList();
+    if (words.isNotEmpty && _enterpriseNouns.contains(words.first)) {
+      return 'To act on every organization in your enterprise, run '
+          '`shorebird enterprise ${words.join(' ')}`.';
+    }
+    return 'Commands that act on every organization in your enterprise '
+        'are under `shorebird enterprise`. Run: shorebird enterprise --help';
   }
 
   /// If this version of shorebird is on the `stable` branch, checks to see if

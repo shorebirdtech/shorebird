@@ -129,8 +129,8 @@ final enterpriseRoleHelp =
     'The enterprise role: '
     '${EnterpriseRole.values.map((r) => r.value).join(', ')}.';
 
-/// Parses a `--role` value given with `--enterprise`, returning the
-/// enterprise role or why it isn't one. Matching ignores case, dashes and
+/// Parses a `--role` value given under `shorebird enterprise`, returning
+/// the enterprise role or why it isn't one. Matching ignores case, dashes and
 /// underscores, so `billing-manager` names [EnterpriseRole.billingManager].
 ({EnterpriseRole? role, String? error}) parseEnterpriseRole(String arg) {
   String normalize(String s) =>

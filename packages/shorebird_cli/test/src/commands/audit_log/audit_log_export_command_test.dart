@@ -245,7 +245,7 @@ void main() {
     });
   });
 
-  group('AuditLogExportCommand --enterprise', () {
+  group('AuditLogExportCommand under shorebird enterprise', () {
     late EnterpriseHarness h;
     late AuditLogExportCommand command;
 
@@ -258,13 +258,11 @@ void main() {
       ).thenAnswer(
         (_) async => GetOrganizationAuditLogsResponse(data: [auditLogEntry()]),
       );
-      command = h.run(AuditLogExportCommand.new);
+      command = h.run(() => AuditLogExportCommand(enterpriseRoute: true));
     });
 
     test("--json exports the enterprise's whole log", () async {
-      command.testArgResults = command.argParser.parse([
-        '--enterprise',
-      ]);
+      command.testArgResults = command.argParser.parse([]);
       final (:exitCode, :json) = await captureJson(
         () => h.run(command.run, json: true),
       );

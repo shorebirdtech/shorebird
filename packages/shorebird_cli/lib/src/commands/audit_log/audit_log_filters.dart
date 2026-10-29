@@ -103,10 +103,9 @@ mixin AuditLogFilterOptions
     'order',
   ];
 
-  /// Adds `--org-id`, the hidden `--enterprise` and the filter options
-  /// [parseFilters] reads; for the `shorebird enterprise audit-log` copy
-  /// ([enterpriseRoute]), the filter options and the hidden scope options
-  /// of [addEnterpriseScope].
+  /// Adds `--org-id` and the filter options [parseFilters] reads; for the
+  /// `shorebird enterprise audit-log` copy ([enterpriseRoute]), the filter
+  /// options and the hidden `--org-id` of [addEnterpriseScope].
   void addFilterOptions({bool enterpriseRoute = false}) {
     if (!enterpriseRoute) addOrganizationScopeOption();
     addEnterpriseScope(route: enterpriseRoute);
@@ -216,8 +215,9 @@ mixin AuditLogFilterOptions
     );
   }
 
-  /// Picks whose log to read: your enterprise with `--enterprise`, else
-  /// the organization as [resolveOrganizationFromArguments] picks it.
+  /// Picks whose log to read: your enterprise under `shorebird
+  /// enterprise`, else the organization as
+  /// [resolveOrganizationFromArguments] picks it.
   /// [example] is the command with `<org-id>` where the id goes.
   ///
   /// Returns the scope, or an exit code once the failure is reported.

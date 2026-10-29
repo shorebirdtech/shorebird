@@ -1,8 +1,14 @@
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shorebird_cli/src/commands/apps/apps_list_command.dart';
+import 'package:shorebird_cli/src/commands/audit_log/audit_log.dart';
 import 'package:shorebird_cli/src/commands/enterprises/enterprises.dart';
 import 'package:shorebird_cli/src/commands/members/members.dart';
+import 'package:shorebird_cli/src/commands/orgs/orgs_list_command.dart';
+import 'package:shorebird_cli/src/commands/service_accounts/service_accounts_list_command.dart';
+import 'package:shorebird_cli/src/commands/usage_command.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
@@ -273,16 +279,6 @@ void main() {
       });
     });
 
-    test('accepts --enterprise, which changes nothing', () async {
-      expect(
-        await run(['enterprise', 'members', 'list', '--enterprise']),
-        ExitCode.success.code,
-      );
-      verify(
-        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
-      ).called(1);
-    });
-
     test('a missing member names the enterprise command', () async {
       expect(
         await run(['enterprise', 'members', 'remove']),
@@ -376,14 +372,14 @@ void main() {
       ).called(1);
     });
 
-    test('shows no --org-id or --enterprise in help', () {
+    test('shows no --org-id in help', () {
       final enterprise = h.run(EnterpriseCommand.new);
       for (final noun in enterprise.subcommands.values.toSet()) {
         final leaves = noun.subcommands.isEmpty
             ? [noun]
             : noun.subcommands.values.toSet();
         for (final leaf in leaves) {
-          for (final name in ['org-id', 'enterprise']) {
+          for (final name in ['org-id']) {
             final option = leaf.argParser.options[name];
             if (option == null) continue;
             expect(
@@ -394,31 +390,37 @@ void main() {
           }
           expect(
             leaf.argParser.usage,
-            isNot(anyOf(contains('--org-id'), contains('--enterprise'))),
+            isNot(contains('--org-id')),
             reason: '${noun.name} ${leaf.name}',
           );
         }
       }
     });
 
-    test('the hidden --enterprise flag still works', () async {
+    test('no command takes --enterprise', () {
+      final commands = <ShorebirdCommand Function()>[
+        OrgsListCommand.new,
+        AppsListCommand.new,
+        MembersListCommand.new,
+        MembersSetRoleCommand.new,
+        MembersRemoveCommand.new,
+        AuditLogListCommand.new,
+        AuditLogExportCommand.new,
+        UsageCommand.new,
+        ServiceAccountsListCommand.new,
+      ];
+      for (final create in commands) {
+        final command = h.run(create);
+        expect(
+          command.argParser.options.containsKey('enterprise'),
+          isFalse,
+          reason: command.name,
+        );
+      }
       expect(
-        await run([
-          'members',
-          'list',
-          '--enterprise',
-        ], command: MembersCommand()),
-        ExitCode.success.code,
+        h.run(MembersListCommand.new).description,
+        contains('shorebird enterprise members'),
       );
-      verify(
-        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
-      ).called(1);
-    });
-
-    test('the top-level help hides --enterprise', () {
-      final command = h.run(MembersListCommand.new);
-      expect(command.argParser.usage, isNot(contains('--enterprise')));
-      expect(command.description, contains('shorebird enterprise members'));
     });
   });
 }

@@ -229,7 +229,7 @@ void main() {
     });
   });
 
-  group('MembersRemoveCommand --enterprise', () {
+  group('MembersRemoveCommand under shorebird enterprise', () {
     late MembersHarness h;
     late MembersRemoveCommand command;
     late Browser browser;
@@ -239,7 +239,6 @@ void main() {
       browser = MockBrowser();
       when(() => browser.canOpen).thenReturn(false);
       when(() => h.argResults['org-id']).thenReturn(null);
-      when(() => h.argResults['enterprise']).thenReturn(true);
       when(() => h.argResults.rest).thenReturn(['bob@acme.com']);
       when(
         h.codePushClientWrapper.getEnterprises,
@@ -247,7 +246,8 @@ void main() {
       when(
         () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
       ).thenAnswer((_) async => [EnterpriseFixtures.member()]);
-      command = h.run(MembersRemoveCommand.new)..testArgResults = h.argResults;
+      command = h.run(() => MembersRemoveCommand(enterpriseRoute: true))
+        ..testArgResults = h.argResults;
     });
 
     Future<int> run({bool json = false}) => runScoped(
@@ -284,13 +284,20 @@ void main() {
       ).called(1);
     });
 
-    test('rejects --org-id with --enterprise', () async {
+    test('rejects --org-id', () async {
       when(() => h.argResults['org-id']).thenReturn('42');
       expect(await run(), ExitCode.usage.code);
       verify(
         () => h.logger.err(
-          '--enterprise covers every organization in your enterprise, so '
-          'it takes no --org-id.',
+          any(
+            that: allOf(
+              startsWith('`shorebird enterprise '),
+              endsWith(
+                'covers every organization in your enterprise, so '
+                'it takes no --org-id.',
+              ),
+            ),
+          ),
         ),
       ).called(1);
     });
