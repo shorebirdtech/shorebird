@@ -260,8 +260,8 @@ void main() {
               () => runWithOverrides(aarReleaser.assertArgsAreValid),
               exitsWithError(
                 message:
-                    'Missing --release-version: pass the version of the '
-                    'Android app that embeds this module.',
+                    'An aar release needs --release-version: the version of '
+                    'the Android app that embeds this module.',
                 hint:
                     'Run: shorebird release aar '
                     '--release-version=$releaseVersionExample',
@@ -509,6 +509,15 @@ void main() {
               aarReleaser.getReleaseVersion(releaseArtifactRoot: Directory('')),
         );
         expect(result, releaseVersion);
+      });
+
+      test('trims surrounding whitespace', () async {
+        when(() => argResults['release-version']).thenReturn(' 1.0.0 ');
+        final result = await runWithOverrides(
+          () =>
+              aarReleaser.getReleaseVersion(releaseArtifactRoot: Directory('')),
+        );
+        expect(result, equals('1.0.0'));
       });
     });
 

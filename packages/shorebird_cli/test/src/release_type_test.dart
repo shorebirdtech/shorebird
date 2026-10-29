@@ -1,4 +1,5 @@
 import 'package:args/args.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -21,6 +22,39 @@ void main() {
       expect(ReleaseType.iosFramework.releasePlatform, ReleasePlatform.ios);
       expect(ReleaseType.aar.releasePlatform, ReleasePlatform.android);
       expect(ReleaseType.windows.releasePlatform, ReleasePlatform.windows);
+    });
+
+    test('isAddToApp', () {
+      expect(ReleaseType.aar.isAddToApp, isTrue);
+      expect(ReleaseType.iosFramework.isAddToApp, isTrue);
+      expect(ReleaseType.android.isAddToApp, isFalse);
+      expect(ReleaseType.ios.isAddToApp, isFalse);
+      expect(ReleaseType.windows.isAddToApp, isFalse);
+    });
+
+    group('releaseCommand', () {
+      test('is the bare command for an app release', () {
+        expect(ReleaseType.ios.releaseCommand(), 'shorebird release ios');
+        expect(
+          ReleaseType.android.releaseCommand(releaseVersion: '2.0.0+3'),
+          'shorebird release android',
+        );
+      });
+
+      test('passes the given --release-version for add-to-app', () {
+        expect(
+          ReleaseType.aar.releaseCommand(releaseVersion: '2.0.0+3'),
+          'shorebird release aar --release-version=2.0.0+3',
+        );
+      });
+
+      test('passes an example --release-version for add-to-app', () {
+        expect(
+          ReleaseType.iosFramework.releaseCommand(),
+          'shorebird release ios-framework '
+          '--release-version=$releaseVersionExample',
+        );
+      });
     });
 
     group('releaseTypes', () {

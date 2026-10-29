@@ -167,8 +167,8 @@ void main() {
               () => runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
               exitsWithError(
                 message:
-                    'Missing --release-version: pass the version of the '
-                    'iOS app that embeds this module.',
+                    'An ios-framework release needs --release-version: the '
+                    'version of the iOS app that embeds this module.',
                 hint:
                     'Run: shorebird release ios-framework '
                     '--release-version=$releaseVersionExample',
@@ -508,6 +508,16 @@ void main() {
           ),
         );
         expect(result, releaseVersion);
+      });
+
+      test('trims surrounding whitespace', () async {
+        when(() => argResults['release-version']).thenReturn(' 1.0.0 ');
+        final result = await runWithOverrides(
+          () => iosFrameworkReleaser.getReleaseVersion(
+            releaseArtifactRoot: Directory(''),
+          ),
+        );
+        expect(result, equals('1.0.0'));
       });
     });
 

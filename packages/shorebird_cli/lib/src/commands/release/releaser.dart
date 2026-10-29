@@ -77,11 +77,9 @@ abstract class Releaser {
     final hostPlatform = releaseType.releasePlatform.displayName;
     throw CommandError(
       message:
-          'Missing --release-version: pass the version of the $hostPlatform '
-          'app that embeds this module.',
-      hint:
-          'Run: shorebird release ${releaseType.cliName} '
-          '--release-version=$releaseVersionExample',
+          'An ${releaseType.cliName} release needs --release-version: the '
+          'version of the $hostPlatform app that embeds this module.',
+      hint: 'Run: ${releaseType.releaseCommand()}',
     );
   }
 

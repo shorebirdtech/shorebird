@@ -358,11 +358,10 @@ The version of the Android or iOS app that embeds this module
   /// the process with success once the build has been checked.
   ///
   /// Expectations for methods invoked by this command:
-  ///  - They perform their own logging. If an error occurs, they are
-  ///    responsible for properly logging the error, cleaning up running
-  ///    [Progress]es, etc.
-  ///  - They handle their own exceptions and exit with a non-zero exit code if
-  ///    an error occurs *instead of* throwing an exception.
+  ///  - They clean up their own [Progress]es when they fail.
+  ///  - They report a failure by throwing a [CommandError] (or a
+  ///    [ProcessExit] when a callee already reported it), never another
+  ///    exception.
   @visibleForTesting
   Future<Release> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
@@ -668,9 +667,10 @@ The version of the Android or iOS app that embeds this module
         message:
             'At least Flutter $minimumFlutterVersion is required to release '
             'with `$cliName` (see $supportedFlutterVersionsUrl).',
-        hint:
-            'Run: shorebird release $cliName '
-            '--flutter-version=$minimumFlutterVersion',
+        hint: flutterVersionArg == 'latest'
+            ? null
+            : 'Drop --flutter-version to release with the latest supported '
+                  'Flutter. Run: ${releaser.releaseType.releaseCommand()}',
       );
     }
 
@@ -685,8 +685,8 @@ The version of the Android or iOS app that embeds this module
             'requires Flutter $minimumObfuscationFlutterVersion or later '
             '(current: $version).',
         hint:
-            'Run: shorebird release ${releaser.releaseType.cliName} '
-            '--obfuscate --flutter-version=$minimumObfuscationFlutterVersion',
+            'Run: ${releaser.releaseType.releaseCommand()} --obfuscate '
+            '--flutter-version=$minimumObfuscationFlutterVersion',
         exitCode: ExitCode.unavailable,
       );
     }

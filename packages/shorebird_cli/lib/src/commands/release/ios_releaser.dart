@@ -138,6 +138,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
     required FileSystemEntity releaseArtifactRoot,
   }) async => readReleaseVersionFromInfoPlist(
     File(p.join(releaseArtifactRoot.path, 'Info.plist')),
+    hint: 'Re-run with --verbose to see the build output.',
   );
 
   @override

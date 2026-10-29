@@ -1331,17 +1331,17 @@ This may indicate that the patch contains native changes, which cannot be applie
       });
 
       group('when Info.plist does not exist', () {
-        test('logs error and hint and exits with code 70', () async {
+        test('exits with an error and the hint', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.extractReleaseVersionFromArtifact(File('')),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: 'No Info.plist file found at ${infoPlist.path}',
+              hint: passReleaseVersionHint,
+              exitCode: ExitCode.software,
+            ),
           );
-          verify(
-            () => logger.err('No Info.plist file found at ${infoPlist.path}'),
-          ).called(1);
-          verify(() => logger.info(passReleaseVersionHint)).called(1);
         });
       });
 
@@ -1358,23 +1358,17 @@ This may indicate that the patch contains native changes, which cannot be applie
 ''');
         });
 
-        test('exits with code 70 and logs error', () async {
+        test('exits with an error and the hint', () async {
           await expectLater(
             runWithOverrides(
               () => patcher.extractReleaseVersionFromArtifact(File('')),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: startsWith('Failed to determine release version'),
+              hint: passReleaseVersionHint,
+              exitCode: ExitCode.software,
+            ),
           );
-          verify(
-            () => logger.err(
-              any(that: startsWith('Failed to determine release version')),
-            ),
-          ).called(1);
-          verify(
-            () => logger.info(
-              any(that: startsWith('Pass --release-version=<version>')),
-            ),
-          ).called(1);
         });
       });
 

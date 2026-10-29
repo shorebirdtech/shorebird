@@ -86,7 +86,7 @@ class AarReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    return argResults['release-version'] as String;
+    return (argResults['release-version'] as String).trim();
   }
 
   @override

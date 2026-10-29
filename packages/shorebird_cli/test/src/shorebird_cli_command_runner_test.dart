@@ -1233,6 +1233,20 @@ Engine • revision $shorebirdEngineRevision'''),
           expect(error['message'], equals('own envelope'));
         });
 
+        test('and throws CommandError, does not add a second', () async {
+          final error = await runSingleEnvelope(
+            _FailingCommand(
+              reports: true,
+              thenThrow: CommandError(
+                message: 'Something is wrong.',
+                hint: 'Run: shorebird fix',
+              ),
+            ),
+          );
+          expect(error['message'], equals('own envelope'));
+          verifyNever(() => logger.err(any()));
+        });
+
         test('and throws UsageException, does not add a second', () async {
           final error = await runSingleEnvelope(
             _FailingCommand(

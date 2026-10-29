@@ -672,8 +672,8 @@ Building with Flutter $flutterVersionString to determine the release version...
               '${releasePlatform.displayName} release requires Flutter '
               '$minimumObfuscationFlutterVersion or later.',
           hint:
-              'Create a new release to patch. Run: shorebird release '
-              '${patcher.releaseType.cliName} --obfuscate '
+              'Create a new release to patch. Run: '
+              '${patcher.releaseType.releaseCommand()} --obfuscate '
               '--flutter-version=$minimumObfuscationFlutterVersion',
           exitCode: ExitCode.unavailable,
         );
@@ -843,9 +843,6 @@ Building patch with Flutter $flutterVersionString
     final flutterVersionAndRevision = await shorebirdFlutter
         .getVersionAndRevision();
     final cliName = patcher.releaseType.cliName;
-    final releaseFlutterVersion = minimumReleaseFlutterVersion(
-      patcher.releaseType,
-    );
     throw CommandError(
       message:
           'Release ${release.version} was built with Flutter '
@@ -854,8 +851,8 @@ Building patch with Flutter $flutterVersionString
           '$supportedFlutterVersionsUrl).',
       hint:
           'A release cannot change Flutter versions, so create a new release '
-          'to patch. Run: shorebird release $cliName '
-          '--flutter-version=$releaseFlutterVersion',
+          'with the latest Flutter to patch. Run: '
+          '${patcher.releaseType.releaseCommand()}',
       exitCode: ExitCode.software,
     );
   }
@@ -1009,7 +1006,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         'app $appId.',
     hint:
         'A patch needs a release to apply to (or pass --app-id / --flavor if '
-        'this is the wrong app). Run: shorebird release ${releaseType.cliName}',
+        'this is the wrong app). Run: ${releaseType.releaseCommand()}',
   );
 
   /// Asserts that the release contains a platform for the given [patcher].
@@ -1019,11 +1016,14 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
   }) {
     final releasePlatform = patcher.releaseType.releasePlatform;
     if (!release.hasPlatform(releasePlatform)) {
+      final releaseCommand = patcher.releaseType.releaseCommand(
+        releaseVersion: release.version,
+      );
       throw CommandError(
         message:
             'Release ${release.version} has no '
             '${releasePlatform.displayName} build.',
-        hint: 'Run: shorebird release ${patcher.releaseType.cliName}',
+        hint: 'Run: $releaseCommand',
         exitCode: ExitCode.software,
       );
     }
@@ -1035,13 +1035,16 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     required Patcher patcher,
   }) {
     if (!release.isActiveOn(patcher.releaseType.releasePlatform)) {
+      final releaseCommand = patcher.releaseType.releaseCommand(
+        releaseVersion: release.version,
+      );
       throw CommandError(
         message:
             'Release ${release.version} is incomplete: the release command '
             'that created it was stopped or failed.',
         hint:
             'Re-run the release for this version, or create a new one. '
-            'Run: shorebird release ${patcher.releaseType.cliName}',
+            'Run: $releaseCommand',
         exitCode: ExitCode.software,
       );
     }
@@ -1070,8 +1073,11 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       // overrides it.
       throw CommandError(
         message:
-            'Not publishing: the patch has changes that cannot be '
-            'patched.',
+            'Not publishing: the patch changes native code or assets, which '
+            'a patch may not update safely.',
+        hint:
+            'To publish anyway, pass --allow-native-diffs (native changes) '
+            'or --allow-asset-diffs (asset changes).',
         exitCode: ExitCode.software,
       );
     }

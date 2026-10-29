@@ -88,6 +88,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
     required FileSystemEntity releaseArtifactRoot,
   }) async => readReleaseVersionFromInfoPlist(
     File(p.join(releaseArtifactRoot.path, 'Contents', 'Info.plist')),
+    hint: 'Re-run with --verbose to see the build output.',
   );
 
   @override

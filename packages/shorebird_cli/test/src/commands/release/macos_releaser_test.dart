@@ -489,20 +489,19 @@ void main() {
       });
 
       group('when plist does not exist', () {
-        test('logs error and exits', () async {
+        test('exits with an error naming the missing file', () async {
           await expectLater(
             () => runWithOverrides(
               () =>
                   releaser.getReleaseVersion(releaseArtifactRoot: appDirectory),
             ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err(
-              '''No Info.plist file found at ${p.join(appDirectory.path, 'Contents', 'Info.plist')}''',
+            exitsWithError(
+              message:
+                  'No Info.plist file found at '
+                  '${p.join(appDirectory.path, 'Contents', 'Info.plist')}',
+              exitCode: ExitCode.software,
             ),
-          ).called(1);
+          );
         });
       });
 

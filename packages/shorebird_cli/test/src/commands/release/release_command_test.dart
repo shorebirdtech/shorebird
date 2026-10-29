@@ -1373,12 +1373,40 @@ Did you mean --release-version=1.0.0+1?''',
             message:
                 'At least Flutter $laterFlutterVersion is required to release '
                 'with `ios-framework` (see $supportedFlutterVersionsUrl).',
-            hint:
-                'Run: shorebird release ios-framework '
-                '--flutter-version=$laterFlutterVersion',
+            hint: isNull,
           ),
         );
       });
+
+      test(
+        'suggests dropping --flutter-version when it names an old Flutter',
+        () async {
+          final releaser = MockReleaser();
+          when(
+            () => releaser.releaseType,
+          ).thenReturn(ReleaseType.iosFramework);
+          when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+          when(() => argResults['flutter-version']).thenReturn('3.22.0');
+          final laterFlutterVersion = Version(3, 23, 0);
+          expect(laterFlutterVersion, greaterThan(flutterVersion));
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(laterFlutterVersion);
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithError(
+              message:
+                  'At least Flutter $laterFlutterVersion is required to '
+                  'release with `ios-framework` '
+                  '(see $supportedFlutterVersionsUrl).',
+              hint:
+                  'Drop --flutter-version to release with the latest supported '
+                  'Flutter. Run: shorebird release ios-framework '
+                  '--release-version=$releaseVersionExample',
+            ),
+          );
+        },
+      );
 
       group('when obfuscating below the obfuscation map floor', () {
         late MockReleaser releaser;

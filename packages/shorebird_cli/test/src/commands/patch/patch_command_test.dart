@@ -31,6 +31,7 @@ import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -563,9 +564,8 @@ void main() {
                       '$supportedFlutterVersionsUrl).',
                   hint:
                       'A release cannot change Flutter versions, so create a '
-                      'new release to patch. Run: shorebird release ios '
-                      '--flutter-version='
-                      '${minimumReleaseFlutterVersion(ReleaseType.ios)}',
+                      'new release with the latest Flutter to patch. Run: '
+                      'shorebird release ios',
                   exitCode: ExitCode.software,
                 ),
               );
@@ -1959,6 +1959,27 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           );
         });
       });
+
+      group('when building artifact throws ProcessExit', () {
+        late ProcessExit error;
+
+        setUp(() {
+          // A build step that already reported why it stopped.
+          error = ProcessExit(ExitCode.unavailable.code);
+          when(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenThrow(error);
+        });
+
+        test('rethrows it as-is', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            throwsA(same(error)),
+          );
+        });
+      });
     });
 
     group('when release version is latest', () {
@@ -2588,6 +2609,38 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ),
         );
       });
+
+      test('names the release version for an add-to-app patch', () {
+        final aarPatcher = MockPatcher();
+        when(() => aarPatcher.releaseType).thenReturn(ReleaseType.aar);
+        final iosOnlyRelease = Release(
+          id: 0,
+          appId: appId,
+          version: '2.0.0+3',
+          flutterRevision: flutterRevision,
+          flutterVersion: flutterVersion,
+          displayName: '2.0.0+3',
+          platforms: const {
+            ReleasePlatform.ios: ReleasePlatformDetails(
+              status: ReleaseStatus.active,
+            ),
+          },
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
+        );
+
+        expect(
+          () => command.assertReleaseContainsPlatform(
+            release: iosOnlyRelease,
+            patcher: aarPatcher,
+          ),
+          exitsWithError(
+            message: 'Release 2.0.0+3 has no Android build.',
+            hint: 'Run: shorebird release aar --release-version=2.0.0+3',
+            exitCode: ExitCode.software,
+          ),
+        );
+      });
     });
 
     group('when primary release artifact fails to download', () {
@@ -2647,8 +2700,11 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             () => runWithOverrides(command.run),
             exitsWithError(
               message:
-                  'Not publishing: the patch has changes that cannot be '
-                  'patched.',
+                  'Not publishing: the patch changes native code or assets, '
+                  'which a patch may not update safely.',
+              hint:
+                  'To publish anyway, pass --allow-native-diffs (native '
+                  'changes) or --allow-asset-diffs (asset changes).',
               exitCode: ExitCode.software,
             ),
           );
