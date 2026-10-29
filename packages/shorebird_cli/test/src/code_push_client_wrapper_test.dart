@@ -1381,6 +1381,21 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
 
+        test('getEnterpriseServiceAccounts passes through', () async {
+          when(
+            () => codePushClient.getEnterpriseServiceAccounts(enterpriseId: 7),
+          ).thenAnswer((_) async => []);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.getEnterpriseServiceAccounts(
+                enterpriseId: 7,
+              ),
+            ),
+            completion(isEmpty),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
         test('enterprise audit log and billing pass through', () async {
           const page = GetOrganizationAuditLogsResponse(data: []);
           final billing = EnterpriseBilling.fromJson(const {

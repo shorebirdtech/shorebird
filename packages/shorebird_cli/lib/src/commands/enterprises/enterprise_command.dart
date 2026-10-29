@@ -23,7 +23,7 @@ class EnterpriseCommand extends ShorebirdCommand {
       'same as `shorebird enterprise get`).\n\n'
       'An enterprise holds several organizations. To act on all of them, '
       'pass --enterprise to `orgs list`, `apps list`, `members`, '
-      '`audit-log` or `usage`.';
+      '`audit-log`, `usage` or `service-accounts list`.';
 
   @override
   String get defaultSubcommand => 'get';

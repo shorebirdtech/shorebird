@@ -380,6 +380,19 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the service accounts of every organization in enterprise
+  /// [enterpriseId].
+  Future<List<EnterpriseServiceAccount>> getEnterpriseServiceAccounts({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching service accounts',
+      () => codePushClient.getEnterpriseServiceAccounts(
+        enterpriseId: enterpriseId,
+      ),
+    );
+  }
+
   /// [CodePushClient.getEnterpriseAuditLogs] for the arguments.
   Future<GetOrganizationAuditLogsResponse> getEnterpriseAuditLogs({
     required int enterpriseId,
