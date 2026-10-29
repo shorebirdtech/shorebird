@@ -220,6 +220,46 @@ ${paths.map((path) => '              - $path').join('\n')}
       expect(await runVerify(tempDir), 0);
     });
 
+    test('a ! pattern does not cover the dependency', () async {
+      writeFooFilter(['packages/foo/**', '!packages/bar/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    group('with bar a workspace member depended on by name', () {
+      setUp(() {
+        createWorkspaceRoot(
+          tempDir,
+          members: ['packages/foo', 'packages/bar'],
+        );
+        File(
+          p.join(tempDir.path, 'packages', 'foo', 'pubspec.yaml'),
+        ).writeAsStringSync('''
+name: foo
+resolution: workspace
+environment:
+  sdk: ^3.0.0
+dependencies:
+  bar: ^1.0.0
+''');
+      });
+
+      test('filter missing it → returns 1', () async {
+        writeFooFilter(['packages/foo/**']);
+        initGitRepo(tempDir);
+
+        expect(await runVerify(tempDir), 1);
+      });
+
+      test('filter covering it → passes', () async {
+        writeFooFilter(['packages/foo/**', 'packages/bar/**']);
+        initGitRepo(tempDir);
+
+        expect(await runVerify(tempDir), 0);
+      });
+    });
+
     test('each workflow filter must cover the dependency', () async {
       writeFooFilter(['packages/foo/**', 'packages/bar/**']);
       _writeWorkflow(tempDir, 'other.yaml', '''

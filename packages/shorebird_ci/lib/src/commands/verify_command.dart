@@ -194,6 +194,9 @@ class VerifyCommand extends Command<int> with RepoRootOption {
           stderr.writeln('              - $dep/**');
         }
       }
+      stderr.writeln(
+        '${drift.length} filter(s) miss packages they depend on.',
+      );
     }
 
     if (missing.isEmpty) {
