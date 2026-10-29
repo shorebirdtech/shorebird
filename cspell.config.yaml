@@ -78,6 +78,7 @@ words:
   - libusbmuxd
   - lldb
   - LOCALAPPDATA
+  - lockfiles
   - logcat
   - longpaths
   - lookback # active-hours "best time to release" lookback window
@@ -155,11 +156,13 @@ words:
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
   - timebase # Mach timebase (mach_timebase_info)
+  - toplevel # git rev-parse --show-toplevel
   - ttfb
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unanalyzed
   - unawaited
+  - unheld
   - unmockable
   - unobfuscated
   - unpadded

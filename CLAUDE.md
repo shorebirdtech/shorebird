@@ -20,17 +20,15 @@ For each one:
 # workspace, and without it analyze reports thousands of bogus issues)
 dart pub get
 
-# Run all tests (must run from packages/ directory to avoid cache conflicts)
-cd packages && very_good test -r
-
-# Before pushing, from each package you changed, run what CI checks there
-dart format --set-exit-if-changed .
-dart analyze --fatal-warnings .
-dart test -j 4
+# Before pushing, prove the change: format, analyze and test over every
+# workspace package, as CI runs them, from anywhere in the checkout
+tool/agent-verify.sh
 
 # and spell check the files you changed (CI checks the whole repo)
 npx cspell <changed files>
 ```
+
+`tool/agent-verify.sh` remembers passes through `packages/verify_cache`, under `~/.cache/shorebird-verify-cache`. Each package is keyed by its own files, every package it reaches through `path:` dependencies, the workspace `pubspec.yaml`, `pubspec.lock` and `analysis_options.yaml`, and the `dart` version, so a package whose inputs already passed in any worktree is skipped, and an edit rechecks only the packages that reach it. A test that reads a file outside its package must list it under `verify_cache: inputs:` in its pubspec, or its pass outlives a change to that file until CI. Failures are never recorded; `--force` checks everything. At most two checking runs go at once per machine (`VERIFY_CACHE_SLOTS`). It skips what CI adds: coverage, the version check, and `redis_client`'s tests, which need a Redis server. To check one package by hand, run the three commands CI runs from its directory: `dart format --set-exit-if-changed .`, `dart analyze --fatal-warnings .` and `dart test -j 4`.
 
 ## Architecture
 
