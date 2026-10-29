@@ -13,7 +13,7 @@ void main() {
         cancelAtPeriodEnd: false,
         currency: 'example',
       );
-      final parsed = EnterpriseBillingPlan1.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseBillingPlan1.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

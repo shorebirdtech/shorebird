@@ -21,7 +21,7 @@ void main() {
         lastActiveAt: DateTime.utc(2024),
         outsideGuestPolicy: false,
       );
-      final parsed = EnterpriseGuest.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseGuest.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

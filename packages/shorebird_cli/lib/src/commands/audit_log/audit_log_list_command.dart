@@ -46,12 +46,12 @@ class AuditLogListCommand extends ShorebirdCommand
       isEnterpriseRoute ? _enterpriseDescription : _organizationDescription;
 
   String get _enterpriseDescription =>
-      "Shows one page of your enterprise's audit log, newest first: who "
-      'joined, left or changed roles and access across its '
-      "organizations. Each organization's app activity (releases, "
-      'patches, channels) stays in its own log '
-      '(`shorebird audit-log list <org-id>`). Needs an owner or admin '
-      'of the enterprise.\n\n'
+      "Shows one page of your enterprise's audit log, newest first: its "
+      'own events, and across its organizations who is in them, with '
+      'what access, and organizations and apps being created, changed, '
+      'moved or deleted. Releases, patches and channels stay in each '
+      "organization's log (`shorebird audit-log list <org-id>`). Needs an "
+      'owner or admin of the enterprise.\n\n'
       'Example output (time  event  actor  resources):\n'
       '  2026-10-20 14:03:22Z  enterprise_member.remove  '
       'alice@acme.com (id: 12)  user:9\n\n'

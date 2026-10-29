@@ -29,8 +29,9 @@ class AuditLogCommand extends ShorebirdCommand {
 
   @override
   String get description => _enterpriseRoute
-      ? "Read your enterprise's audit log: who joined, left or changed roles "
-            'and access across its organizations. With no subcommand, shows '
+      ? "Read your enterprise's audit log: its own events, and across its "
+            'organizations who is in them, with what access, and changes to '
+            'organizations and apps. With no subcommand, shows '
             'one page (the same as `shorebird enterprise audit-log list`). '
             'Needs an owner or admin of the enterprise.'
       : "Read an organization's audit log: who did what. With no subcommand, "

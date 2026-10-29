@@ -6,7 +6,7 @@ void main() {
   group('SignInMethod', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = SignInMethod.google;
-      final parsed = SignInMethod.maybeFromJson(instance.toJson());
+      final parsed = SignInMethod.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

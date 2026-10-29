@@ -6,7 +6,7 @@ void main() {
   group('EnterpriseAppGrant', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = EnterpriseAppGrant(appId: 'example', role: Role.owner);
-      final parsed = EnterpriseAppGrant.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseAppGrant.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

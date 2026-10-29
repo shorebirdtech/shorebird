@@ -10,7 +10,7 @@ void main() {
         name: 'example',
         role: EnterpriseRole.owner,
       );
-      final parsed = EnterpriseMembership.maybeFromJson(instance.toJson());
+      final parsed = EnterpriseMembership.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
