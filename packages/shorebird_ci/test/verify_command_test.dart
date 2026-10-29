@@ -246,7 +246,7 @@ dependencies:
       });
 
       test('filter missing it → returns 1', () async {
-        writeFooFilter(['packages/foo/**']);
+        writeFooFilter(['packages/foo/**', 'pubspec.lock', 'pubspec.yaml']);
         initGitRepo(tempDir);
 
         expect(await runVerify(tempDir), 1);
