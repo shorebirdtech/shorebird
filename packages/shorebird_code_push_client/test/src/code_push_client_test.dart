@@ -4483,7 +4483,8 @@ void main() {
             {
               'user_id': 11,
               'name': 'ci',
-              'team_id': 42,
+              // An account the enterprise owns directly has no team.
+              'team_id': null,
               'role': 'developer',
               'created_at': '2026-10-01T00:00:00.000Z',
               'last_auth_at': null,
@@ -4497,7 +4498,7 @@ void main() {
         final accounts = await codePushClient.getEnterpriseServiceAccounts(
           enterpriseId: enterpriseId,
         );
-        expect(accounts.single.teamId, 42);
+        expect(accounts.single.userId, 11);
         expect(
           requests().single.url.path,
           endsWith('enterprises/7/service-accounts'),

@@ -11,7 +11,6 @@ class EnterpriseServiceAccount {
   const EnterpriseServiceAccount({
     required this.userId,
     required this.name,
-    required this.teamId,
     required this.role,
     required this.createdAt,
     required this.lastAuthAt,
@@ -26,7 +25,6 @@ class EnterpriseServiceAccount {
       () => EnterpriseServiceAccount(
         userId: json['user_id'] as int,
         name: json['name'] as String,
-        teamId: json['team_id'] as int,
         role: Role.fromJson(json['role'] as String),
         createdAt: DateTime.parse(json['created_at'] as String),
         lastAuthAt: maybeParseDateTime(
@@ -48,7 +46,6 @@ class EnterpriseServiceAccount {
 
   final int userId;
   final String name;
-  final int teamId;
 
   /// A role that a user can have relative to an Organization or App.
   final Role role;
@@ -61,7 +58,6 @@ class EnterpriseServiceAccount {
     return {
       'user_id': userId,
       'name': name,
-      'team_id': teamId,
       'role': role.toJson(),
       'created_at': createdAt.toUtc().toIso8601String(),
       'last_auth_at': lastAuthAt?.toUtc().toIso8601String(),
@@ -73,7 +69,6 @@ class EnterpriseServiceAccount {
   int get hashCode => Object.hashAll([
     userId,
     name,
-    teamId,
     role,
     createdAt,
     lastAuthAt,
@@ -86,7 +81,6 @@ class EnterpriseServiceAccount {
     return other is EnterpriseServiceAccount &&
         userId == other.userId &&
         name == other.name &&
-        teamId == other.teamId &&
         role == other.role &&
         createdAt == other.createdAt &&
         lastAuthAt == other.lastAuthAt &&
