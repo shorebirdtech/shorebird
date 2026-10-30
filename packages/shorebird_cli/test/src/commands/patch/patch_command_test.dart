@@ -2750,7 +2750,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               defaultValue: any(named: 'defaultValue'),
               display: any(named: 'display'),
             ),
-          ).thenReturn(DeploymentTrack.staging);
+          ).thenReturn(DeploymentTrack.beta);
         });
 
         test('asks for the track, defaulting to staging, before building '
@@ -2777,9 +2777,27 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               releaseId: release.id,
               metadata: any(named: 'metadata'),
               artifacts: any(named: 'artifacts'),
-              track: DeploymentTrack.staging,
+              track: DeploymentTrack.beta,
             ),
           ]);
+        });
+
+        test('does not ask on a dry run', () async {
+          when(() => argResults['dry-run']).thenReturn(true);
+
+          await expectLater(
+            runWithOverrides(command.run),
+            exitsWithCode(ExitCode.success),
+          );
+
+          verifyNever(
+            () => logger.chooseOne<DeploymentTrack>(
+              any(),
+              choices: any(named: 'choices'),
+              defaultValue: any(named: 'defaultValue'),
+              display: any(named: 'display'),
+            ),
+          );
         });
       });
 

@@ -460,8 +460,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     assertSigningArgsValid();
 
     // Resolve the track now so a bad --track, or the prompt for a missing
-    // one, comes before the build rather than after it.
-    _track ??= _resolveTrack();
+    // one, comes before the build rather than after it. A dry run publishes
+    // nothing, so it only checks a --track that was given.
+    if (results['dry-run'] != true || results['track'] != null) {
+      _track ??= _resolveTrack();
+    }
 
     try {
       await shorebirdValidator.validateFlavors(
