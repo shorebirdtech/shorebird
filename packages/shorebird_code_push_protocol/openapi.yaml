@@ -8534,7 +8534,6 @@ components:
       required:
         - user_id
         - name
-        - team_id
         - role
         - created_at
         - last_auth_at
@@ -8545,9 +8544,6 @@ components:
           format: int64
         name:
           type: string
-        team_id:
-          type: integer
-          format: int64
         role:
           $ref: '#/components/schemas/Role'
         created_at:
