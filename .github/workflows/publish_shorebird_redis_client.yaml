@@ -5,6 +5,9 @@ on:
     tags:
       - "shorebird_redis_client-v[0-9]+.[0-9]+.[0-9]+*"
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     uses: ./.github/workflows/publish_dart_package.yaml

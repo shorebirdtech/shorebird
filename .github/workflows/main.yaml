@@ -15,29 +15,28 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   license_check:
     name: 📄 License Check
     runs-on: ubuntu-latest
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 👀 Check Licenses
         uses: ./.github/actions/license_check
         with:
           working_directory: ${{ github.workspace }}
 
-  cspell:
-    name: 🔤 Check Spelling
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/spell_check.yml@v1
-    with:
-      config: cspell.config.yaml
-      # We don't check PR titles.
-      check_pr_title: false
-
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # dorny/paths-filter lists a pull request's changed files through the API.
+      pull-requests: read
 
     outputs:
       needs_cross_platform_dart_build: ${{ steps.needs_cross_platform_dart_build.outputs.changes }}
@@ -48,9 +47,9 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Build Detection
         id: needs_cross_platform_dart_build
         with:
@@ -97,7 +96,7 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
 
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Redis Detection
         id: needs_redis_build
         with:
@@ -110,7 +109,7 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
 
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Verify Detection
         id: needs_verify
         with:
@@ -141,7 +140,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
@@ -154,8 +153,6 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.needs_redis_build != '[]' }}
 
-    permissions: write-all
-
     strategy:
       matrix:
         package: ${{ fromJSON(needs.changes.outputs.needs_redis_build) }}
@@ -166,7 +163,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 🐳 Run Redis
         run: |
@@ -194,7 +191,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version

@@ -19,13 +19,16 @@ on:
       - bin/**
       - .github/workflows/windows_wrapper.yaml
 
+permissions:
+  contents: read
+
 jobs:
   shorebird_bat:
     name: 🪟 shorebird.bat
     runs-on: windows-latest
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: 🧪 Run shorebird through cmd.exe
         shell: cmd

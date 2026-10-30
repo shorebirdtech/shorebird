@@ -15,9 +15,16 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # dorny/paths-filter lists a pull request's changed files through the API.
+      pull-requests: read
     outputs:
       dex: ${{ steps.filter.outputs.dex }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
@@ -29,15 +36,15 @@ jobs:
       shorebird_redis_client: ${{ steps.filter.outputs.shorebird_redis_client }}
       verify_cache: ${{ steps.filter.outputs.verify_cache }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@v1
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
       - run: dart pub global activate shorebird_ci 0.2.5
       - name: Verify CI coverage
         run: shorebird_ci verify
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -188,10 +195,10 @@ jobs:
     name: CSpell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
-      - uses: streetsidesoftware/cspell-action@v9
+      - uses: streetsidesoftware/cspell-action@ce1816e4ce36532956ac6e983737392774b6e169 # v9.2.0
         with:
           incremental_files_only: false
           config: cspell.config.yaml
