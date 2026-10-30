@@ -149,8 +149,25 @@ function Update-Shorebird {
     Update-Flutter
 
     Push-Location $shorebirdCliDir
-    & $dart pub get
+    # Install exactly the versions and bytes in the checked-in pubspec.lock, so
+    # every install runs the dependencies we tested. The lockfile names pub.dev
+    # as each package's source, so with a mirror (PUB_HOSTED_URL) pub can't use
+    # it at all; resolve those installs as before.
+    $pubGetArgs = @('pub', 'get')
+    if (!$env:PUB_HOSTED_URL -or $env:PUB_HOSTED_URL.TrimEnd('/') -eq 'https://pub.dev') {
+        $pubGetArgs += '--enforce-lockfile'
+    }
+    & $dart @pubGetArgs
+    $pubGetExitCode = $LASTEXITCODE
     Pop-Location
+    if ($pubGetExitCode -eq 65) {
+        Write-Output "Error: Couldn't install the exact packages in Shorebird's pubspec.lock: a pubspec.yaml in $shorebirdRootDir changed, or a downloaded package's hash doesn't match the lockfile. Undo any local changes there (git -C `"$shorebirdRootDir`" status) and run shorebird again. If there are none, report it at https://github.com/shorebirdtech/shorebird/issues."
+        exit $pubGetExitCode
+    }
+    elseif ($pubGetExitCode -ne 0) {
+        Write-Output "Command 'pub get' failed, giving up."
+        exit $pubGetExitCode
+    }
     # pub get may not update pubspec.lock's mtime if dependencies are unchanged,
     # which would cause the pubspec.yaml -gt pubspec.lock check to keep
     # triggering a rebuild on every invocation.

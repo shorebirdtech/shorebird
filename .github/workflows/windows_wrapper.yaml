@@ -2,6 +2,11 @@ name: windows_wrapper
 
 # bin/shorebird.bat is what cmd.exe users and `shell: cmd` CI steps run.
 # Nothing else exercises it: `shell: pwsh` picks bin/shorebird.ps1 instead.
+#
+# Both jobs also install the CLI the way customers do: pub get
+# --enforce-lockfile with the pinned Flutter's Dart, so a pubspec.lock that
+# Dart can't install from (one written by a newer Dart) fails here, not on
+# customers' machines.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,15 +16,31 @@ on:
   pull_request:
     paths:
       - bin/**
+      - third_party/flutter/bin/**
+      - pubspec.lock
+      - "**/pubspec.yaml"
       - .github/workflows/windows_wrapper.yaml
   push:
     branches:
       - main
     paths:
       - bin/**
+      - third_party/flutter/bin/**
+      - pubspec.lock
+      - "**/pubspec.yaml"
       - .github/workflows/windows_wrapper.yaml
 
 jobs:
+  shorebird_sh:
+    name: 🐧 bin/shorebird
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+
+      - name: 🧪 Install and run shorebird
+        run: bin/shorebird --version
+
   shorebird_bat:
     name: 🪟 shorebird.bat
     runs-on: windows-latest

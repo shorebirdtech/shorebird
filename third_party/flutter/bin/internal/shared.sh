@@ -29,8 +29,22 @@ function update_flutter {
 function pub_get_with_retry {
   local total_tries="10"
   local remaining_tries=$((total_tries - 1))
+  # Install exactly the versions and bytes in the checked-in pubspec.lock, so
+  # every install runs the dependencies we tested. The lockfile names pub.dev
+  # as each package's source, so with a mirror (PUB_HOSTED_URL) pub can't use
+  # it at all; resolve those installs as before.
+  local enforce_lockfile=""
+  case "${PUB_HOSTED_URL:-https://pub.dev}" in
+    https://pub.dev|https://pub.dev/) enforce_lockfile="--enforce-lockfile" ;;
+  esac
   while [[ "$remaining_tries" -gt 0 ]]; do
-    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get) && break
+    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get $enforce_lockfile) && break
+    # 65: the pubspecs or a package's hash don't match pubspec.lock. Retrying
+    # won't fix either.
+    if [[ "$?" == 65 ]]; then
+      >&2 echo "Error: Couldn't install the exact packages in Shorebird's pubspec.lock: a pubspec.yaml in $SHOREBIRD_ROOT changed, or a downloaded package's hash doesn't match the lockfile. Undo any local changes there (git -C \"$SHOREBIRD_ROOT\" status) and run shorebird again. If there are none, report it at https://github.com/shorebirdtech/shorebird/issues."
+      return 1
+    fi
     >&2 echo "Error: Unable to 'pub get' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
     remaining_tries=$((remaining_tries - 1))
     sleep 5
