@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
@@ -71,15 +72,26 @@ class PatchArtifactBundle extends Equatable {
 }
 
 /// A reference to a [CodePushClientWrapper] instance.
-ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
+ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(
+  buildCodePushClientWrapper,
+);
+
+/// Builds the [CodePushClientWrapper] for the current environment, its client
+/// handing the server's notices to [serverNotices].
+///
+/// [codePushClientWrapperRef] holds the one instance; tests that need a fresh
+/// one call this.
+@visibleForTesting
+CodePushClientWrapper buildCodePushClientWrapper() {
   return CodePushClientWrapper(
     codePushClient: CodePushClient(
       httpClient: auth.client,
       hostedUri: shorebirdEnv.hostedUri,
       customHeaders: {'x-cli-version': packageVersion},
+      onNotice: serverNotices.add,
     ),
   );
-});
+}
 
 /// The [CodePushClientWrapper] instance available in the current zone.
 CodePushClientWrapper get codePushClientWrapper =>
