@@ -25,7 +25,9 @@ runs:
     - name: 📦 Install Dependencies
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
-      run: dart pub get
+      # The install scripts install with --enforce-lockfile, so fail here if a
+      # pubspec change didn't update pubspec.lock.
+      run: dart pub get --enforce-lockfile
 
     - name: 📄 License Check
       working-directory: ${{ inputs.working_directory }}

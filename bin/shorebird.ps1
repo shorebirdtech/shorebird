@@ -149,8 +149,15 @@ function Update-Shorebird {
     Update-Flutter
 
     Push-Location $shorebirdCliDir
-    & $dart pub get
+    # Install exactly the versions in the checked-in pubspec.lock, so every
+    # install runs the dependencies we tested, never a newer one pub picks.
+    & $dart pub get --enforce-lockfile
+    $pubGetExitCode = $LASTEXITCODE
     Pop-Location
+    if ($pubGetExitCode -ne 0) {
+        Write-Output "Command 'pub get' failed, giving up."
+        exit $pubGetExitCode
+    }
     # pub get may not update pubspec.lock's mtime if dependencies are unchanged,
     # which would cause the pubspec.yaml -gt pubspec.lock check to keep
     # triggering a rebuild on every invocation.

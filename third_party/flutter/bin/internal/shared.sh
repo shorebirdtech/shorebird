@@ -30,7 +30,11 @@ function pub_get_with_retry {
   local total_tries="10"
   local remaining_tries=$((total_tries - 1))
   while [[ "$remaining_tries" -gt 0 ]]; do
-    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get) && break
+    # Install exactly the versions in the checked-in pubspec.lock, so every
+    # install runs the dependencies we tested, never a newer one pub picks.
+    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get --enforce-lockfile) && break
+    # 65 means pubspec.lock doesn't satisfy the pubspecs; retrying won't fix it.
+    [[ "$?" == 65 ]] && return 1
     >&2 echo "Error: Unable to 'pub get' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
     remaining_tries=$((remaining_tries - 1))
     sleep 5
