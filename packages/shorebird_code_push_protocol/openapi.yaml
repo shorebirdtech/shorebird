@@ -4200,8 +4200,6 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - role
               properties:
                 role:
                   $ref: '#/components/schemas/EnterpriseRole'

@@ -5,7 +5,7 @@ import 'package:shorebird_code_push_protocol/src/models/enterprise_role.dart';
 @immutable
 class SetEnterpriseMemberRoleRequest {
   const SetEnterpriseMemberRoleRequest({
-    required this.role,
+    this.role,
   });
 
   /// Converts a `Map<String, dynamic>` to a [SetEnterpriseMemberRoleRequest].
@@ -14,7 +14,7 @@ class SetEnterpriseMemberRoleRequest {
       'SetEnterpriseMemberRoleRequest',
       json,
       () => SetEnterpriseMemberRoleRequest(
-        role: EnterpriseRole.fromJson(json['role'] as String),
+        role: EnterpriseRole.maybeFromJson(json['role'] as String?),
       ),
     );
   }
@@ -31,12 +31,12 @@ class SetEnterpriseMemberRoleRequest {
   }
 
   /// A person's role in an enterprise.
-  final EnterpriseRole role;
+  final EnterpriseRole? role;
 
   /// Converts a [SetEnterpriseMemberRoleRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'role': role.toJson(),
+      'role': ?role?.toJson(),
     };
   }
 
