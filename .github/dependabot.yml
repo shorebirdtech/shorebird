@@ -4,11 +4,18 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
+# Each ecosystem waits 5 days after a release before Dependabot opens its PR,
+# so a broken or compromised version has time to be flagged and yanked first.
+# Security updates skip the cooldown. Use `default-days` only: the
+# semver-*-days keys aren't accepted for every ecosystem (github-actions
+# rejects them), and one unsupported key makes Dependabot reject the whole file.
 updates:
   - package-ecosystem: "pub"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 5
     groups:
       dart-deps:
         patterns:
@@ -19,6 +26,8 @@ updates:
       - "/.github/actions/*"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 5
     groups:
       gh-deps:
         patterns:
