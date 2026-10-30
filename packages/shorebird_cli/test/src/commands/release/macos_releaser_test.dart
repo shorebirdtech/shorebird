@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -45,6 +46,7 @@ void main() {
     late FlavorValidator flavorValidator;
     late Progress progress;
     late ShorebirdLogger logger;
+    late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
@@ -62,6 +64,7 @@ void main() {
           codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -92,6 +95,7 @@ void main() {
       projectRoot = Directory.systemTemp.createTempSync();
       progress = MockProgress();
       logger = MockShorebirdLogger();
+      shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
@@ -722,13 +726,24 @@ void main() {
     });
 
     group('postReleaseInstructions', () {
+      const analyzeSnapshotArtifacts = [
+        ShorebirdArtifact.analyzeSnapshotMacosArm64,
+        ShorebirdArtifact.analyzeSnapshotMacosX64,
+      ];
       late Directory appDirectory;
+      late Directory artifactsDirectory;
 
       setUp(() {
         appDirectory = Directory.systemTemp.createTempSync();
+        artifactsDirectory = Directory.systemTemp.createTempSync();
         when(
           () => artifactManager.getMacOSAppDirectory(),
         ).thenReturn(appDirectory);
+        for (final artifact in analyzeSnapshotArtifacts) {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(artifact: artifact),
+          ).thenReturn(p.join(artifactsDirectory.path, artifact.name));
+        }
       });
 
       test('prints xcarchive upload steps', () {
@@ -736,6 +751,40 @@ void main() {
           runWithOverrides(() => releaser.postReleaseInstructions),
           contains('macOS app created at ${appDirectory.path}.'),
         );
+      });
+
+      group(
+        'when the engine publishes the macOS analyze_snapshot artifacts',
+        () {
+          setUp(() {
+            for (final artifact in analyzeSnapshotArtifacts) {
+              File(p.join(artifactsDirectory.path, artifact.name)).createSync();
+            }
+          });
+
+          test('does not print the re-signing note', () {
+            expect(
+              runWithOverrides(() => releaser.postReleaseInstructions),
+              isNot(contains('re-signed')),
+            );
+          });
+        },
+      );
+
+      group('when the engine does not publish the macOS analyze_snapshot '
+          'artifacts', () {
+        test('prints the re-signing note', () {
+          expect(
+            runWithOverrides(() => releaser.postReleaseInstructions),
+            allOf(
+              contains('may fail to install after the app is re-signed'),
+              contains('Flutter 3.47.7 or newer'),
+              contains(
+                'https://github.com/shorebirdtech/shorebird/issues/3223',
+              ),
+            ),
+          );
+        });
       });
     });
   }, testOn: 'mac-os');
