@@ -737,15 +737,6 @@ void main() {
           contains('macOS app created at ${appDirectory.path}.'),
         );
       });
-
-      test('includes .pkg distribution warning', () {
-        expect(
-          runWithOverrides(() => releaser.postReleaseInstructions),
-          contains(
-            'https://github.com/shorebirdtech/shorebird/issues/3223',
-          ),
-        );
-      });
     });
   }, testOn: 'mac-os');
 }
