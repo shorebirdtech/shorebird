@@ -235,6 +235,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   DeploymentTrack get track => _track ??= _resolveTrack();
   DeploymentTrack? _track;
 
+  /// Whether [track] is stable only because --track wasn't given and the CLI
+  /// couldn't ask.
+  bool _usedDefaultTrack = false;
+
   /// The track from --track, or asked for when it wasn't given.
   ///
   /// Without a terminal to ask in, a missing --track still means stable so CI
@@ -272,6 +276,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       'it cannot ask. Pass --track=stable to keep publishing to stable, or '
       '--track=staging to test the patch before promoting it.',
     );
+    _usedDefaultTrack = true;
     return DeploymentTrack.stable;
   }
 
@@ -1000,6 +1005,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       usedIgnoreNativeChangesFlag: allowNativeDiffs,
       hasNativeChanges: diffStatus.hasNativeChanges,
       inferredReleaseVersion: inferredReleaseVersion,
+      usedDefaultTrack: _usedDefaultTrack,
       isSigned:
           results.wasParsed(CommonArguments.privateKeyArg.name) ||
           results.wasParsed(CommonArguments.signCmd.name),

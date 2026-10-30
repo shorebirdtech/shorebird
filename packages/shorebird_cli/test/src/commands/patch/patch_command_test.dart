@@ -2772,6 +2772,15 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             () => patcher.buildPatchArtifact(
               releaseVersion: any(named: 'releaseVersion'),
             ),
+            () => patcher.updatedCreatePatchMetadata(
+              any(
+                that: isA<CreatePatchMetadata>().having(
+                  (m) => m.usedDefaultTrack,
+                  'usedDefaultTrack',
+                  isFalse,
+                ),
+              ),
+            ),
             () => patcher.uploadPatchArtifacts(
               appId: appId,
               releaseId: release.id,
@@ -2806,9 +2815,22 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
-        test('warns and publishes to stable', () async {
+        test('warns, publishes to stable and records that it used the '
+            'default', () async {
           final exitCode = await runWithOverrides(command.run);
           expect(exitCode, equals(ExitCode.success.code));
+
+          verify(
+            () => patcher.updatedCreatePatchMetadata(
+              any(
+                that: isA<CreatePatchMetadata>().having(
+                  (m) => m.usedDefaultTrack,
+                  'usedDefaultTrack',
+                  isTrue,
+                ),
+              ),
+            ),
+          ).called(1);
 
           verify(
             () => logger.warn(
