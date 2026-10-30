@@ -2735,6 +2735,93 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
     });
 
+    group('when --track is not given', () {
+      setUp(() {
+        when(() => argResults['track']).thenReturn(null);
+      });
+
+      group('when it can ask', () {
+        setUp(() {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+          when(
+            () => logger.chooseOne<DeploymentTrack>(
+              any(),
+              choices: any(named: 'choices'),
+              defaultValue: any(named: 'defaultValue'),
+              display: any(named: 'display'),
+            ),
+          ).thenReturn(DeploymentTrack.staging);
+        });
+
+        test('asks for the track, defaulting to staging, before building '
+            'and publishes to the chosen one', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+
+          verifyInOrder([
+            () => logger.chooseOne<DeploymentTrack>(
+              'Which track should this patch be published to?',
+              choices: const [
+                DeploymentTrack.staging,
+                DeploymentTrack.beta,
+                DeploymentTrack.stable,
+              ],
+              defaultValue: DeploymentTrack.staging,
+              display: any(named: 'display'),
+            ),
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+            () => patcher.uploadPatchArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              metadata: any(named: 'metadata'),
+              artifacts: any(named: 'artifacts'),
+              track: DeploymentTrack.staging,
+            ),
+          ]);
+        });
+      });
+
+      group('when it cannot ask', () {
+        setUp(() {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        });
+
+        test('warns and publishes to stable', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+
+          verify(
+            () => logger.warn(
+              'No --track given, so this patch is published to the stable '
+              'track, which reaches all users. A future release will require '
+              '--track when it cannot ask. Pass --track=stable to keep '
+              'publishing to stable, or --track=staging to test the patch '
+              'before promoting it.',
+            ),
+          ).called(1);
+          verify(
+            () => patcher.uploadPatchArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              metadata: any(named: 'metadata'),
+              artifacts: any(named: 'artifacts'),
+              track: DeploymentTrack.stable,
+            ),
+          ).called(1);
+          verifyNever(
+            () => logger.chooseOne<DeploymentTrack>(
+              any(),
+              choices: any(named: 'choices'),
+              defaultValue: any(named: 'defaultValue'),
+              display: any(named: 'display'),
+            ),
+          );
+        });
+      });
+    });
+
     group('when no platform argument is provided', () {
       setUp(() {
         when(() => argResults['platforms']).thenReturn(const <String>[]);
