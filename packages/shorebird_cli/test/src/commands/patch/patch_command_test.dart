@@ -2735,6 +2735,25 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
     });
 
+    group('when --track=stable is given', () {
+      test('does not record that it used the default', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verify(
+          () => patcher.updatedCreatePatchMetadata(
+            any(
+              that: isA<CreatePatchMetadata>().having(
+                (m) => m.usedDefaultTrack,
+                'usedDefaultTrack',
+                isFalse,
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+    });
+
     group('when --track is not given', () {
       setUp(() {
         when(() => argResults['track']).thenReturn(null);
