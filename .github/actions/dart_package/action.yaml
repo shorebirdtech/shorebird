@@ -46,7 +46,7 @@ runs:
   using: "composite"
   steps:
     - name: 🎯 Setup Dart
-      uses: dart-lang/setup-dart@v1
+      uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
       with:
         sdk: ${{inputs.dart_sdk}}
         # Its matcher path resolves against the calling composite action rather
@@ -97,7 +97,7 @@ runs:
       run: echo "package_name=${PACKAGE_PATH##*/}" >> $GITHUB_OUTPUT
 
     - name: 📊 Upload Coverage
-      uses: codecov/codecov-action@v7
+      uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
       with:
         flags: ${{ steps.split.outputs.package_name }}
         token: ${{ inputs.codecov_token }}
