@@ -2,6 +2,9 @@
 
 # Unreleased
 
+- `generate` pins every action to a commit SHA, with its release tag in a trailing comment (`actions/checkout@<sha> # v7.0.1`), the form GitHub's hardening guide recommends and Dependabot keeps updating. Before, generated workflows used major tags (`@v6`), which whoever controls the action's repo can move to new code that then runs with the job's token and secrets. `--no-update-actions` writes the pins built into this version of shorebird_ci; otherwise `generate` pins each action's latest release.
+- `update_actions` pins `owner/repo@vN` refs to the action's latest release by SHA, and moves `owner/repo@<sha> # vN.N.N` pins to a newer release when there is one. It doesn't follow a tag that was moved under the same version, never moves a pin to an older release, and leaves SHA pins without a version comment alone. Breaking for library users: `LatestMajorResolver` is now `LatestReleaseResolver`, returning an `ActionRelease` (tag and SHA), and the `resolveLatestMajor:` parameters are `resolveLatestRelease:`.
+
 - `generate` pins `dart pub global activate shorebird_ci` to the version that generated the workflow. Before, generated workflows activated whatever shorebird_ci was newest, so each release changed every user's CI the moment it was published, and a new `verify` check could fail a merge queue that hadn't changed. To move to a new shorebird_ci, run `generate` again (or bump the version in the workflow).
 
 # 0.2.5

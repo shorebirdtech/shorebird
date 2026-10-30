@@ -3,18 +3,19 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:shorebird_ci/src/action_versions.dart';
 
-/// Updates GitHub Actions `uses:` versions to the current latest major
-/// in one or more workflow files.
+/// Pins GitHub Actions `uses:` references to each action's latest
+/// release, by commit SHA, in one or more workflow files.
 ///
-/// Scans each workflow file for `uses: owner/repo@vN` references,
-/// queries GitHub's API for the latest major version, and rewrites the
-/// file in place. Works on any workflow file, not just ones generated
+/// Scans each workflow file for `uses: owner/repo@vN` and
+/// `uses: owner/repo@<sha> # vN.N.N` references, queries GitHub's API
+/// for the latest release and its commit, and rewrites the file in place
+/// as `owner/repo@<sha> # <tag>`. Works on any workflow file, not just ones generated
 /// by `shorebird_ci`.
 class UpdateActionsCommand extends Command<int> {
-  /// Creates an [UpdateActionsCommand]. The optional [resolveLatestMajor]
+  /// Creates an [UpdateActionsCommand]. The optional [resolveLatestRelease]
   /// is exposed for tests so they don't have to hit the live GitHub API.
-  UpdateActionsCommand({LatestMajorResolver? resolveLatestMajor})
-    : _resolveLatestMajor = resolveLatestMajor {
+  UpdateActionsCommand({LatestReleaseResolver? resolveLatestRelease})
+    : _resolveLatestRelease = resolveLatestRelease {
     argParser.addOption(
       'workflow-dir',
       help: 'Directory containing workflow YAML files to update.',
@@ -22,13 +23,14 @@ class UpdateActionsCommand extends Command<int> {
     );
   }
 
-  final LatestMajorResolver? _resolveLatestMajor;
+  final LatestReleaseResolver? _resolveLatestRelease;
 
   @override
   String get name => 'update_actions';
 
   @override
-  String get description => 'Update GitHub Actions versions in workflow files';
+  String get description =>
+      'Pin GitHub Actions in workflow files to their latest releases by SHA';
 
   @override
   Future<int> run() async {
@@ -54,24 +56,37 @@ class UpdateActionsCommand extends Command<int> {
     }
 
     var updatedCount = 0;
+    final unpinned = <String>[];
     for (final file in files) {
       final before = file.readAsStringSync();
       final after = await updateActionVersions(
         before,
-        resolveLatestMajor: _resolveLatestMajor,
+        resolveLatestRelease: _resolveLatestRelease,
       );
       if (before != after) {
         file.writeAsStringSync(after);
         stdout.writeln('Updated: ${file.path}');
         updatedCount++;
       }
+      for (final ref in unpinnedActionRefs(after)) {
+        unpinned.add('${file.path}: $ref');
+      }
     }
 
     stdout.writeln(
       updatedCount == 0
-          ? 'All action versions are up to date.'
+          ? 'No action pins changed.'
           : '\nUpdated $updatedCount workflow(s).',
     );
+    if (unpinned.isNotEmpty) {
+      stderr
+        ..writeln(
+          '\nNot pinned to a commit SHA (no GitHub release found, the '
+          'tag is newer than the latest release, or the ref is in a form '
+          'this command does not rewrite):',
+        )
+        ..writeln(unpinned.map((u) => '  $u').join('\n'));
+    }
     return 0;
   }
 }

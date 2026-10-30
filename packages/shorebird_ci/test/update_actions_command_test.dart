@@ -8,13 +8,16 @@ import 'package:test/test.dart';
 
 import 'test_utils.dart';
 
+// cspell:disable-next-line
+const _sha = 'cccccccccccccccccccccccccccccccccccccccc';
+
 Future<int?> runUpdate(
   Directory workflowDir, {
-  LatestMajorResolver? resolveLatestMajor,
+  LatestReleaseResolver? resolveLatestRelease,
 }) async {
   final runner = CommandRunner<int>('test', 'test')
     ..addCommand(
-      UpdateActionsCommand(resolveLatestMajor: resolveLatestMajor),
+      UpdateActionsCommand(resolveLatestRelease: resolveLatestRelease),
     );
   return runner.run([
     'update_actions',
@@ -74,31 +77,34 @@ steps:
 ''';
       file.writeAsStringSync(before);
 
-      Future<String?> resolver(String repo) async => 'v9';
+      Future<ActionRelease?> resolver(String repo) async =>
+          const ActionRelease(tag: 'v9.0.0', sha: _sha);
       expect(
-        await runUpdate(tempDir, resolveLatestMajor: resolver),
+        await runUpdate(tempDir, resolveLatestRelease: resolver),
         0,
       );
       expect(
         file.readAsStringSync(),
         equals('''
 steps:
-  - uses: actions/checkout@v9
+  - uses: actions/checkout@$_sha # v9.0.0
 '''),
       );
     },
   );
 
-  test('leaves files alone when the resolver returns the same major', () async {
+  test('leaves files alone when already pinned to the latest', () async {
     final file = File(p.join(tempDir.path, 'already_latest.yaml'));
-    const content = '''
+    const content =
+        '''
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@$_sha # v4.0.0
 ''';
     file.writeAsStringSync(content);
 
-    Future<String?> resolver(String repo) async => 'v4';
-    expect(await runUpdate(tempDir, resolveLatestMajor: resolver), 0);
+    Future<ActionRelease?> resolver(String repo) async =>
+        const ActionRelease(tag: 'v4.0.0', sha: _sha);
+    expect(await runUpdate(tempDir, resolveLatestRelease: resolver), 0);
     expect(file.readAsStringSync(), equals(content));
   });
 
@@ -111,8 +117,8 @@ steps:
 ''';
     file.writeAsStringSync(content);
 
-    Future<String?> resolver(String repo) async => null;
-    expect(await runUpdate(tempDir, resolveLatestMajor: resolver), 0);
+    Future<ActionRelease?> resolver(String repo) async => null;
+    expect(await runUpdate(tempDir, resolveLatestRelease: resolver), 0);
     expect(file.readAsStringSync(), equals(content));
   });
 

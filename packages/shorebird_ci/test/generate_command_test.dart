@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/commands.dart';
 import 'package:shorebird_ci/src/version.dart';
 import 'package:test/test.dart';
@@ -854,16 +855,19 @@ void main() {
   });
 
   group('--update-actions (auto-bump)', () {
-    test('rewrites action pins in place when enabled', () async {
-      // Inject a resolver that bumps every action to v99 so we can
+    // cspell:disable-next-line
+    const sha99 = 'abcdefabcdefabcdefabcdefabcdefabcdef9999';
+    Future<ActionRelease?> resolve99(String _) async =>
+        const ActionRelease(tag: 'v99.0.0', sha: sha99);
+
+    test('pins each action to its latest release when enabled', () async {
+      // Inject a resolver that reports v99 for every action so we can
       // confirm the post-write step actually runs and mutates the file.
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
 
       final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(
-          GenerateCommand(resolveLatestMajor: (_) async => 'v99'),
-        );
+        ..addCommand(GenerateCommand(resolveLatestRelease: resolve99));
       final code = await runner.run([
         'generate',
         '--repo-root',
@@ -873,22 +877,18 @@ void main() {
 
       expect(code, 0);
       final yaml = _readMain(tempDir);
-      // setup-dart and checkout were emitted at @v1/@v6 by the generator;
-      // resolver bumps them both to @v99.
-      expect(yaml, contains('actions/checkout@v99'));
-      expect(yaml, contains('dart-lang/setup-dart@v99'));
+      expect(yaml, contains('uses: actions/checkout@$sha99 # v99.0.0'));
+      expect(yaml, contains('uses: dart-lang/setup-dart@$sha99 # v99.0.0'));
     });
 
-    test('--no-update-actions skips the bump', () async {
+    test('--no-update-actions writes the built-in SHA pins', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
 
       // Resolver would bump to v99 if called; --no-update-actions should
-      // prevent that, leaving the generator's @v6/@v1 pins untouched.
+      // prevent that, leaving the generator's built-in pins untouched.
       final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(
-          GenerateCommand(resolveLatestMajor: (_) async => 'v99'),
-        );
+        ..addCommand(GenerateCommand(resolveLatestRelease: resolve99));
       final code = await runner.run([
         'generate',
         '--repo-root',
@@ -898,8 +898,68 @@ void main() {
 
       expect(code, 0);
       final yaml = _readMain(tempDir);
-      expect(yaml, isNot(contains('@v99')));
-      expect(yaml, contains('actions/checkout@v6'));
+      expect(yaml, isNot(contains('v99')));
+      expect(yaml, contains('uses: $checkoutAction'));
+    });
+
+    test('every generated uses: ref is pinned to a commit SHA', () async {
+      // Covers both styles, Flutter and Dart, codecov, bloc and cspell,
+      // so every action the templates can emit is checked.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      for (final pkg in ['foo', 'bar']) {
+        File(
+          p.join(tempDir.path, 'packages', pkg, 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'dev_dependencies:\n  bloc_lint: ^0.3.0\n',
+          mode: FileMode.append,
+        );
+      }
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      File(p.join(tempDir.path, 'cspell.config.yaml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      final usesLine = RegExp(r'uses:\s+(\S+)(.*)');
+      final pinned = RegExp(r'^[\w.-]+/[\w.-]+@[0-9a-f]{40}$');
+      for (final style in ['dynamic', 'static']) {
+        final runner = CommandRunner<int>('test', 'test')
+          ..addCommand(GenerateCommand());
+        final code = await runner.run([
+          'generate',
+          '--repo-root',
+          tempDir.path,
+          '--style',
+          style,
+          '--no-update-actions',
+        ]);
+        expect(code, 0);
+        final dir = Directory(p.join(tempDir.path, '.github', 'workflows'));
+        final repos = <String>{};
+        for (final file in dir.listSync().whereType<File>()) {
+          for (final m in usesLine.allMatches(file.readAsStringSync())) {
+            final ref = m.group(1)!;
+            if (ref.startsWith('./')) continue;
+            repos.add(ref.split('@').first);
+            expect(ref, matches(pinned), reason: '${file.path}: $ref');
+            expect(m.group(2), matches(RegExp(r'^ # v\d+\.\d+\.\d+$')));
+          }
+        }
+        expect(unpinnedActionRefs(_readAll(dir)), isEmpty);
+        // Every action the templates can emit showed up, so each was
+        // checked.
+        expect(
+          repos,
+          containsAll([
+            'actions/checkout',
+            'dart-lang/setup-dart',
+            'codecov/codecov-action',
+            'subosito/flutter-action',
+            'felangel/setup-bloc-tools',
+            'streetsidesoftware/cspell-action',
+            if (style == 'static') 'dorny/paths-filter',
+          ]),
+        );
+      }
     });
   });
 
@@ -968,7 +1028,7 @@ void main() {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
       final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(GenerateCommand(resolveLatestMajor: (_) async => null));
+        ..addCommand(GenerateCommand(resolveLatestRelease: (_) async => null));
       await runner.run([
         'generate',
         '--repo-root',
@@ -1166,3 +1226,7 @@ String _readMain(Directory repoRoot) {
     p.join(repoRoot.path, '.github', 'workflows', 'shorebird_ci.yaml'),
   ).readAsStringSync();
 }
+
+String _readAll(Directory dir) => [
+  for (final f in dir.listSync().whereType<File>()) f.readAsStringSync(),
+].join('\n');
