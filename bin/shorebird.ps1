@@ -149,12 +149,22 @@ function Update-Shorebird {
     Update-Flutter
 
     Push-Location $shorebirdCliDir
-    # Install exactly the versions in the checked-in pubspec.lock, so every
-    # install runs the dependencies we tested, never a newer one pub picks.
-    & $dart pub get --enforce-lockfile
+    # Install exactly the versions and bytes in the checked-in pubspec.lock, so
+    # every install runs the dependencies we tested. The lockfile names pub.dev
+    # as each package's source, so with a mirror (PUB_HOSTED_URL) pub can't use
+    # it at all; resolve those installs as before.
+    $pubGetArgs = @('pub', 'get')
+    if (!$env:PUB_HOSTED_URL -or $env:PUB_HOSTED_URL.TrimEnd('/') -eq 'https://pub.dev') {
+        $pubGetArgs += '--enforce-lockfile'
+    }
+    & $dart @pubGetArgs
     $pubGetExitCode = $LASTEXITCODE
     Pop-Location
-    if ($pubGetExitCode -ne 0) {
+    if ($pubGetExitCode -eq 65) {
+        Write-Output "Error: Shorebird's pubspec.lock doesn't match its pubspec.yaml files in $shorebirdRootDir. Undo local changes there (git -C `"$shorebirdRootDir`" status) or reinstall Shorebird."
+        exit $pubGetExitCode
+    }
+    elseif ($pubGetExitCode -ne 0) {
         Write-Output "Command 'pub get' failed, giving up."
         exit $pubGetExitCode
     }

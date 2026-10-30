@@ -29,12 +29,21 @@ function update_flutter {
 function pub_get_with_retry {
   local total_tries="10"
   local remaining_tries=$((total_tries - 1))
+  # Install exactly the versions and bytes in the checked-in pubspec.lock, so
+  # every install runs the dependencies we tested. The lockfile names pub.dev
+  # as each package's source, so with a mirror (PUB_HOSTED_URL) pub can't use
+  # it at all; resolve those installs as before.
+  local enforce_lockfile=""
+  case "${PUB_HOSTED_URL:-https://pub.dev}" in
+    https://pub.dev|https://pub.dev/) enforce_lockfile="--enforce-lockfile" ;;
+  esac
   while [[ "$remaining_tries" -gt 0 ]]; do
-    # Install exactly the versions in the checked-in pubspec.lock, so every
-    # install runs the dependencies we tested, never a newer one pub picks.
-    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get --enforce-lockfile) && break
-    # 65 means pubspec.lock doesn't satisfy the pubspecs; retrying won't fix it.
-    [[ "$?" == 65 ]] && return 1
+    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get $enforce_lockfile) && break
+    # 65: pubspec.lock doesn't satisfy the pubspecs. Retrying won't fix it.
+    if [[ "$?" == 65 ]]; then
+      >&2 echo "Error: Shorebird's pubspec.lock doesn't match its pubspec.yaml files in $SHOREBIRD_ROOT. Undo local changes there (git -C \"$SHOREBIRD_ROOT\" status) or reinstall Shorebird."
+      return 1
+    fi
     >&2 echo "Error: Unable to 'pub get' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
     remaining_tries=$((remaining_tries - 1))
     sleep 5
