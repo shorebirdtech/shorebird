@@ -12,45 +12,100 @@ import 'dart:io';
 //
 // Since `shorebird_ci generate` wants to emit current versions the
 // moment a user runs it (not "eventually, after Dependabot catches
-// up"), we need to do it ourselves. This is ~80 lines of "scan for
-// `uses:` references, hit /releases/latest, rewrite major version."
+// up"), we need to do it ourselves: scan for `uses:` references, hit
+// /releases/latest, resolve that tag to a commit, and rewrite the ref
+// as `<sha> # <tag>`, the form Dependabot keeps updating afterwards.
 //
 // If GitHub (or anyone else) ships a proper CLI for this, delete this
 // file and use that instead.
 
-/// Resolves the latest major version tag (e.g. `'v5'`) for the action
-/// at `<owner>/<repo>` on GitHub. Returns `null` if no version can be
-/// determined (network failure, missing release, malformed tag, etc.).
-typedef LatestMajorResolver = Future<String?> Function(String repo);
+/// The action refs `generate` writes, each pinned to a commit with its
+/// release tag in a trailing comment. A tag can be moved to new code by
+/// whoever controls the action's repo; a commit can't. `generate` then
+/// moves each to the action's latest release unless
+/// `--no-update-actions` is passed.
+const checkoutAction =
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1';
+
+/// See [checkoutAction].
+const setupDartAction =
+    'dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1';
+
+/// See [checkoutAction].
+const pathsFilterAction =
+    'dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3';
+
+/// See [checkoutAction].
+const codecovAction =
+    'codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1';
+
+/// See [checkoutAction].
+const flutterAction =
+    'subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0';
+
+/// See [checkoutAction].
+const setupBlocToolsAction =
+    'felangel/setup-bloc-tools@7be2b47e63c845e5a92032c6ff2243f42cda65f3 # v0.1.1';
+
+/// See [checkoutAction].
+const cspellAction =
+    'streetsidesoftware/cspell-action@ce1816e4ce36532956ac6e983737392774b6e169 # v9.2.0';
+
+/// An action release: its tag (e.g. `'v5.1.0'`) and the commit [sha] the
+/// tag points at.
+class ActionRelease {
+  /// Creates an [ActionRelease].
+  const ActionRelease({required this.tag, required this.sha});
+
+  /// The release's tag, e.g. `'v5.1.0'`.
+  final String tag;
+
+  /// The full 40-character commit SHA [tag] points at.
+  final String sha;
+}
+
+/// Resolves the latest release of the action at `<owner>/<repo>` on
+/// GitHub. Returns `null` if it can't be determined (network failure,
+/// missing release, malformed tag, etc.).
+typedef LatestReleaseResolver = Future<ActionRelease?> Function(String repo);
 
 /// Scans [workflowContent] for GitHub Actions `uses:` references and
-/// returns a copy with each version bumped to the current latest major
-/// (e.g., `@v4` becomes `@v5` if v5 is the latest major release).
+/// returns a copy with each pinned to its action's latest release, as
+/// `owner/repo@<sha> # <tag>`.
 ///
-/// Only `uses:` references themselves are rewritten — mentions of the
-/// same `owner/repo@vN` string in YAML comments or `run:` shell strings
-/// are left alone.
+/// Rewrites two forms:
+/// - a version tag (`@v4`, `@v4.1.0`): pinned to the latest release
+///   unless that release is older than the tag.
+/// - a SHA pin with a version comment (`@<sha> # v4.1.0`): moved to the
+///   latest release only if it's newer than the comment. A tag that was
+///   moved to a different commit under the same version isn't followed.
 ///
-/// Queries `repos/<owner>/<repo>/releases/latest` on GitHub's public API.
-/// If the lookup fails for a given action (network down, not found,
-/// rate limited), that action's version is left unchanged.
+/// A SHA pin without a version comment, a branch (`@main`) and a local
+/// action (`./...`) are left alone, as are mentions of `owner/repo@vN` in
+/// YAML comments or `run:` strings.
 ///
-/// [resolveLatestMajor] is exposed for testing — production callers should
-/// leave it `null` to use the default GitHub API resolver.
+/// Queries GitHub's public API. If the lookup fails for a given action
+/// (network down, not found, rate limited), its ref is left unchanged.
+///
+/// [resolveLatestRelease] is exposed for testing — production callers
+/// should leave it `null` to use the default GitHub API resolver.
 ///
 /// Returns the updated content. If nothing changed, the return value is
 /// identical to the input.
 Future<String> updateActionVersions(
   String workflowContent, {
-  LatestMajorResolver? resolveLatestMajor,
+  LatestReleaseResolver? resolveLatestRelease,
 }) async {
-  final actions = _extractActions(workflowContent);
-  if (actions.isEmpty) return workflowContent;
+  final matches = _usesRegex.allMatches(workflowContent).toList();
+  if (matches.isEmpty) return workflowContent;
 
-  final resolver = resolveLatestMajor ?? _defaultResolver;
-  final latestByRepo = <String, String?>{};
-  for (final action in actions) {
-    latestByRepo[action.repo] ??= await resolver(action.repo);
+  final resolver = resolveLatestRelease ?? _defaultResolver;
+  final latestByRepo = <String, ActionRelease?>{};
+  for (final match in matches) {
+    final repo = match.group(1)!;
+    if (!latestByRepo.containsKey(repo)) {
+      latestByRepo[repo] = await resolver(repo);
+    }
   }
 
   // Replace at regex match positions only, so mentions in comments or
@@ -58,77 +113,98 @@ Future<String> updateActionVersions(
   return workflowContent.replaceAllMapped(_usesRegex, (match) {
     final whole = match.group(0)!;
     final repo = match.group(1)!;
-    final version = match.group(2)!;
-    if (repo.startsWith('./')) return whole;
     final latest = latestByRepo[repo];
-    if (latest == null || latest == version) return whole;
-    return 'uses: $repo@$latest';
+    if (latest == null || _parseVersion(latest.tag) == null) return whole;
+    final tag = match.group(2);
+    final pinnedVersion = match.group(4);
+    final cmp = _compareVersions(latest.tag, tag ?? pinnedVersion!);
+    final update = tag != null ? cmp >= 0 : cmp > 0;
+    if (!update) return whole;
+    return 'uses: $repo@${latest.sha} # ${latest.tag}';
   });
 }
 
+/// Matches `uses: owner/repo@vN[.N...]`, or
+/// `uses: owner/repo@<sha> # vN[.N...]`. Group 1 is the repo, group 2 the tag, groups 3 and 4 the
+/// SHA and its version comment. Doesn't match `./` local actions,
+/// branches, or SHA pins without a version comment.
+final _usesRegex = RegExp(
+  r'uses:\s+([a-zA-Z0-9_-][a-zA-Z0-9_.-]*/[a-zA-Z0-9_.-]+)@'
+  r'(?:(v\d+(?:\.\d+)*)\b(?![.\w-])|'
+  r'([0-9a-f]{40})[ \t]+#[ \t]*(v\d+(?:\.\d+)*)\b(?![.\w-]))',
+);
+
+List<int>? _parseVersion(String tag) {
+  final match = RegExp(r'^v?(\d+(?:\.\d+)*)$').firstMatch(tag);
+  return match?.group(1)!.split('.').map(int.parse).toList();
+}
+
+/// Compares two version tags, padding the shorter with zeros, so `v7`
+/// sorts as `v7.0.0`.
+int _compareVersions(String a, String b) {
+  final va = _parseVersion(a)!;
+  final vb = _parseVersion(b)!;
+  for (var i = 0; i < va.length || i < vb.length; i++) {
+    final x = i < va.length ? va[i] : 0;
+    final y = i < vb.length ? vb[i] : 0;
+    if (x != y) return x.compareTo(y);
+  }
+  return 0;
+}
+
 // coverage:ignore-start
-// Wraps the GitHub API call and is exercised end-to-end by the
+// Wraps the GitHub API calls and is exercised end-to-end by the
 // `generate` workflow at runtime. The resolver indirection above lets
-// tests cover the version-bumping logic without touching the network.
-Future<String?> _defaultResolver(String repo) async {
+// tests cover the pinning logic without touching the network.
+Future<ActionRelease?> _defaultResolver(String repo) async {
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
   try {
-    return await _latestMajor(client, repo);
+    return await _latestRelease(client, repo);
   } finally {
     client.close();
   }
 }
-// coverage:ignore-end
 
-class _ActionRef {
-  _ActionRef(this.repo, this.version);
-  final String repo;
-  final String version;
-}
-
-/// Matches `uses: owner/repo@version` where version starts with `v`
-/// followed by a digit. Deliberately skips SHA pins and `@main`/`@master`.
-final _usesRegex = RegExp(
-  r'uses:\s+([a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+)@(v\d+(?:\.\d+)*)',
-);
-
-Set<_ActionRef> _extractActions(String content) {
-  final refs = <String, _ActionRef>{};
-  for (final match in _usesRegex.allMatches(content)) {
-    final repo = match.group(1)!;
-    final version = match.group(2)!;
-    // Skip local action references (they start with ./ or are single-segment).
-    if (repo.startsWith('./')) continue;
-    refs['$repo@$version'] = _ActionRef(repo, version);
-  }
-  return refs.values.toSet();
-}
-
-// coverage:ignore-start
-Future<String?> _latestMajor(HttpClient client, String repo) async {
-  final uri = Uri.parse(
-    'https://api.github.com/repos/$repo/releases/latest',
-  );
-
+Future<ActionRelease?> _latestRelease(HttpClient client, String repo) async {
   try {
-    final request = await client.getUrl(uri);
-    request.headers
-      ..add('Accept', 'application/vnd.github+json')
-      ..add('User-Agent', 'shorebird_ci');
-    final response = await request.close();
-    if (response.statusCode != 200) return null;
-
-    final body = await response.transform(utf8.decoder).join();
-    final json = jsonDecode(body) as Map<String, dynamic>;
+    final release = await _get(
+      client,
+      'repos/$repo/releases/latest',
+      accept: 'application/vnd.github+json',
+    );
+    if (release == null) return null;
+    final json = jsonDecode(release) as Map<String, dynamic>;
     final tag = json['tag_name'] as String?;
-    if (tag == null) return null;
+    if (tag == null || _parseVersion(tag) == null) return null;
 
-    final match = RegExp(r'^v?(\d+)').firstMatch(tag);
-    if (match == null) return null;
-    return 'v${match.group(1)}';
+    // The `sha` media type returns the commit the ref resolves to, with
+    // annotated tags peeled, as a bare 40-character string.
+    final sha = (await _get(
+      client,
+      'repos/$repo/commits/${Uri.encodeComponent(tag)}',
+      accept: 'application/vnd.github.sha',
+    ))?.trim();
+    if (sha == null || !RegExp(r'^[0-9a-f]{40}$').hasMatch(sha)) return null;
+    return ActionRelease(tag: tag, sha: sha);
   } on Exception {
     return null;
   }
+}
+
+Future<String?> _get(
+  HttpClient client,
+  String path, {
+  required String accept,
+}) async {
+  final request = await client.getUrl(
+    Uri.parse('https://api.github.com/$path'),
+  );
+  request.headers
+    ..add('Accept', accept)
+    ..add('User-Agent', 'shorebird_ci');
+  final response = await request.close();
+  final body = await response.transform(utf8.decoder).join();
+  return response.statusCode == 200 ? body : null;
 }
 
 // coverage:ignore-end

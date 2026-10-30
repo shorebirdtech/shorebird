@@ -35,7 +35,7 @@ You run these locally:
 |---|---|
 | `generate` | Write `.github/workflows/shorebird_ci.yaml` (plus reusable workflows in `--style static`) |
 | `verify` | Check that every package has CI coverage, and that any `required` aggregator stays in sync with the rest of the workflow |
-| `update_actions` | Rewrite `uses:` pins in workflow files to current latest majors. `generate` already calls this after writing; run it standalone to bump pins in hand-maintained workflows |
+| `update_actions` | Pin `uses:` refs in workflow files to each action's latest release by commit SHA (`owner/repo@<sha> # v1.2.3`). `generate` already calls this after writing; run it standalone to pin hand-maintained workflows |
 
 CI runs these inside the generated workflow. You don't usually invoke
 them by hand:
@@ -65,7 +65,11 @@ nested subpackages, `bloc_lint`, integration tests, pinned Flutter
 versions. Adding or removing packages requires no workflow changes;
 the setup job discovers them at runtime.
 
-`generate` also writes `.github/dependabot.yml` (if missing) so action
+Every action is pinned to a commit SHA, with its release tag in a
+trailing comment (`actions/checkout@<sha> # v7.0.1`). Whoever controls
+an action's repo can move a tag to new code; they can't move a commit.
+`generate` also writes `.github/dependabot.yml` (if missing), and
+Dependabot updates the SHA and the comment together, so action
 versions stay current over time.
 
 ### Manual runs and the empty-diff case
@@ -136,10 +140,10 @@ it.
 
 ### `--no-update-actions`
 
-By default, `generate` queries GitHub for current latest majors and
-bumps action pins after writing the workflow. `--no-update-actions`
-skips the network call and leaves the static pins in the template
-as-is. Use it in offline environments. Once you push, Dependabot picks
+By default, `generate` queries GitHub for each action's latest release
+and pins it by SHA after writing the workflow. `--no-update-actions`
+skips the network call and leaves the SHA pins built into this version
+of `shorebird_ci` as-is. Use it in offline environments. Once you push, Dependabot picks
 up bumps on its weekly schedule.
 
 ### `--style static`

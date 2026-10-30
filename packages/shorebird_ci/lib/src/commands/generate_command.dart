@@ -14,11 +14,11 @@ import 'package:shorebird_ci/src/version.dart';
 
 /// Generates a GitHub Actions CI workflow for a Dart/Flutter repository.
 class GenerateCommand extends Command<int> with RepoRootOption {
-  /// Creates a [GenerateCommand]. The optional [resolveLatestMajor] is
+  /// Creates a [GenerateCommand]. The optional [resolveLatestRelease] is
   /// exposed for tests so they don't have to hit the live GitHub API
   /// when verifying the `--update-actions` path.
-  GenerateCommand({LatestMajorResolver? resolveLatestMajor})
-    : _resolveLatestMajor = resolveLatestMajor {
+  GenerateCommand({LatestReleaseResolver? resolveLatestRelease})
+    : _resolveLatestRelease = resolveLatestRelease {
     addRepoRootOption();
     argParser
       ..addOption(
@@ -42,9 +42,10 @@ class GenerateCommand extends Command<int> with RepoRootOption {
       ..addFlag(
         'no-update-actions',
         help: '''
-Skip the post-generate step that queries GitHub for current action
-versions and bumps pins in place. By default, generate auto-bumps
-action versions to current latest. Pass this flag in offline
+Skip the post-generate step that queries GitHub for each action's
+latest release and pins it in place. Without it, generate writes the
+commit pins built into this version of shorebird_ci. Either way every
+action is pinned to a commit SHA. Pass this flag in offline
 environments.''',
         negatable: false,
       )
@@ -75,7 +76,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
       );
   }
 
-  final LatestMajorResolver? _resolveLatestMajor;
+  final LatestReleaseResolver? _resolveLatestRelease;
 
   @override
   String get name => 'generate';
@@ -144,8 +145,8 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
     // Dynamic returns a single entry; static returns a main workflow
     // plus one or two reusable workflows.
     //
-    // Action versions are emitted as the hardcoded defaults below;
-    // run `shorebird_ci update_actions` to bump them.
+    // Actions are emitted at the commit pins in action_versions.dart;
+    // the update step below moves them to each action's latest release.
     final files = style == 'static'
         ? _buildStaticFiles(
             repository,
@@ -192,7 +193,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
     return 0;
   }
 
-  /// Rewrites each file in place w/ latest-major action pins. Best-effort:
+  /// Rewrites each file in place w/ latest-release action pins. Best-effort:
   /// network failures leave the file untouched (handled by
   /// [updateActionVersions], which returns null per-action on lookup
   /// failure).
@@ -202,7 +203,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
       final before = file.readAsStringSync();
       final after = await updateActionVersions(
         before,
-        resolveLatestMajor: _resolveLatestMajor,
+        resolveLatestRelease: _resolveLatestRelease,
       );
       if (before != after) file.writeAsStringSync(after);
     }
@@ -341,15 +342,15 @@ jobs:
     // a changed `path:` dependency would silently go uncovered.
     buffer.write('''
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@v1
+      - uses: $setupDartAction
       - run: dart pub global activate shorebird_ci $packageVersion
       - name: Verify CI coverage
         run: shorebird_ci verify
-      - uses: dorny/paths-filter@v4
+      - uses: $pathsFilterAction
         id: filter
         with:
           filters: |
@@ -463,7 +464,7 @@ jobs:
           dart test --coverage=coverage && \\
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
-        uses: codecov/codecov-action@v5
+        uses: $codecovAction
         with:
           flags: \${{ inputs.package_name }}
           working-directory: \${{ inputs.package_path }}
@@ -499,10 +500,10 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
-      - uses: dart-lang/setup-dart@v1
+      - uses: $setupDartAction
 ${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
         run: |
@@ -528,7 +529,7 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep''';
         working-directory: \${{ inputs.package_path }}
         run: flutter test --coverage
       - if: inputs.has_unit_tests
-        uses: codecov/codecov-action@v5
+        uses: $codecovAction
         with:
           flags: \${{ inputs.package_name }}
           working-directory: \${{ inputs.package_path }}
@@ -572,11 +573,11 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: $flutterAction
         with:
           flutter-version: \${{ inputs.flutter_version || '' }}
           channel: \${{ inputs.flutter_version && '' || 'stable' }}
@@ -618,10 +619,11 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
         type: boolean
 ''';
 
-  static const _staticBlocToolsSetupStep = '''
+  static const _staticBlocToolsSetupStep =
+      '''
       - name: Setup Bloc Tools
         if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
+        uses: $setupBlocToolsAction
 ''';
 
   static const _staticBlocLintStep = r'''
@@ -746,14 +748,14 @@ jobs:
     buffer
       ..write('''
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
           # affected_packages diffs against origin/main, which isn't in
           # the default shallow checkout. Full history is needed for the
           # diff to resolve.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@v1
+      - uses: $setupDartAction
 ''')
       ..writeln(
         '      - run: dart pub global activate shorebird_ci $packageVersion',
@@ -851,7 +853,7 @@ jobs:
       run:
         working-directory: \${{ matrix.path }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
 ''';
@@ -860,20 +862,21 @@ jobs:
   // For Flutter, use `flutter_version` from the matrix if the pubspec
   // pins an exact version; otherwise fall back to `channel: stable`.
   String _sdkSetupStep({required bool isFlutter}) {
-    if (!isFlutter) return '      - uses: dart-lang/setup-dart@v1\n';
-    return r'''
+    if (!isFlutter) return '      - uses: $setupDartAction\n';
+    return '''
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: $flutterAction
         with:
-          flutter-version: ${{ matrix.flutter_version || '' }}
-          channel: ${{ matrix.flutter_version && '' || 'stable' }}
+          flutter-version: \${{ matrix.flutter_version || '' }}
+          channel: \${{ matrix.flutter_version && '' || 'stable' }}
 ''';
   }
 
-  static const _blocToolsSetupStep = '''
+  static const _blocToolsSetupStep =
+      '''
       - name: Setup Bloc Tools
         if: matrix.has_bloc_lint == true
-        uses: felangel/setup-bloc-tools@v0
+        uses: $setupBlocToolsAction
 ''';
 
   String _installDependenciesStep({required String executable}) {
@@ -933,7 +936,7 @@ jobs:
 
   String _codecovUploadStep({required String? codecovTokenSecret}) {
     return '''
-      - uses: codecov/codecov-action@v5
+      - uses: $codecovAction
         with:
           flags: \${{ matrix.name }}
 ${_codecovTokenLine(codecovTokenSecret)}''';
@@ -958,10 +961,10 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
     name: CSpell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
-      - uses: streetsidesoftware/cspell-action@v6
+      - uses: $cspellAction
         with:
           incremental_files_only: false
           config: $configPath
