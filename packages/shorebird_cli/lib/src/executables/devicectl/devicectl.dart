@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:io/io.dart';
-import 'package:json_path/json_path.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -116,11 +115,15 @@ class Devicectl {
 
     final String bundleId;
     try {
-      final maybeBundleId =
-          JsonPath(
-                r'$.result.installedApplications[0].bundleID',
-              ).read(jsonResult).firstOrNull?.value
-              as String?;
+      final maybeBundleId = switch (jsonResult) {
+        {
+          'result': {
+            'installedApplications': [{'bundleID': final String id}, ...],
+          },
+        } =>
+          id,
+        _ => null,
+      };
       if (maybeBundleId == null) {
         throw Exception(
           'Unable to find installed app bundleID in devicectl output',
@@ -446,14 +449,12 @@ class Devicectl {
       );
     }
 
-    final devicesMatchValue = JsonPath(
-      r'$.result.devices',
-    ).read(jsonResult).firstOrNull?.value;
-    if (devicesMatchValue == null) {
-      throw DevicectlException(message: failureErrorMessage);
-    }
+    final devices = switch (jsonResult) {
+      {'result': {'devices': final List<dynamic> devices}} => devices,
+      _ => throw DevicectlException(message: failureErrorMessage),
+    };
 
-    return (devicesMatchValue as List)
+    return devices
         .whereType<Json>()
         .map(AppleDevice.tryParse)
         .whereType<AppleDevice>()
