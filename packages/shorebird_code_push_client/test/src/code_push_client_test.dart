@@ -4483,6 +4483,8 @@ void main() {
             {
               'user_id': 11,
               'name': 'ci',
+              // An account the enterprise owns directly has no team.
+              'team_id': null,
               'role': 'developer',
               'created_at': '2026-10-01T00:00:00.000Z',
               'last_auth_at': null,
