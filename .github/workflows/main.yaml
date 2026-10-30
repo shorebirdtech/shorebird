@@ -30,7 +30,7 @@ jobs:
 
   cspell:
     name: 🔤 Check Spelling
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/spell_check.yml@v1
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/spell_check.yml@v2
     with:
       config: cspell.config.yaml
       # We don't check PR titles.
