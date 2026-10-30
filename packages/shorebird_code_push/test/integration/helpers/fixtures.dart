@@ -6,10 +6,7 @@ import 'dart:typed_data';
 ///
 ///     cargo run --bin string_patch -- "<base>" "<new>"
 ///
-/// They are self-contained zstd payloads — applying them against an
-/// empty source produces the `new` content, so tests using the stub
-/// `FileCallbacks` from `shorebird_test_init` (which read 0 bytes
-/// from the source apk) still get the right inflated bytes.
+/// They copy from `base`, so applying one needs the real `base` bytes.
 class PatchFixture {
   PatchFixture({
     required this.number,

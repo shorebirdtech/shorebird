@@ -42,11 +42,11 @@ class TestEngine {
   /// version, and the `shorebird.yaml` (synthesized here from
   /// `app_id` + the test's [server] base URL).
   ///
-  /// [libappBase] is written to `libapp_path` before init. On
-  /// non-test desktop builds, `patch_base` (in
-  /// `library/src/updater.rs`) reads that file directly when applying
-  /// a patch — the Android `cfg(test)` path that uses an apk doesn't
-  /// run in our non-`cfg(test)` cdylib. Tests that install a patch
+  /// [libappBase] is written to `libapp_path` before init. The
+  /// patch base comes from that file: Linux and Windows builds of
+  /// `patch_base` (in `library/src/updater.rs`) read it directly, and
+  /// macOS builds read it through the `FileCallbacks` that
+  /// `shorebird_test_init` serves it with. Tests that install a patch
   /// must pass the patch fixture's `base` bytes here. Tests that
   /// don't install a patch can leave it as the default empty slice.
   void init({
