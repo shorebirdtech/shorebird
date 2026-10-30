@@ -1,3 +1,4 @@
+// cspell:words shivammathur codeql
 import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:test/test.dart';
 
@@ -138,21 +139,119 @@ steps:
       expect(calls, equals(['actions/checkout', 'dart-lang/setup-dart']));
     });
 
+    test('compares a major-only comment at its own precision', () async {
+      // `# v5` may be any v5.x; don't move it "forward" to v5.1.0.
+      const input = '  - uses: actions/checkout@$_oldSha # v5\n';
+      expect(await _update(input), equals(input));
+      expect(
+        await _update(input, tag: 'v6.0.0'),
+        equals('  - uses: actions/checkout@$_newSha # v6.0.0\n'),
+      );
+    });
+
+    test('handles release tags without a v', () async {
+      const input = '  - uses: shivammathur/setup-php@v2\n';
+      final pinned = await _update(input, tag: '2.40.0');
+      expect(
+        pinned,
+        equals('  - uses: shivammathur/setup-php@$_newSha # 2.40.0\n'),
+      );
+      // The next run reads the comment back and moves it.
+      expect(
+        await _update(pinned, tag: '2.41.0'),
+        equals('  - uses: shivammathur/setup-php@$_newSha # 2.41.0\n'),
+      );
+    });
+
+    test('pins actions in a subdirectory of their repo', () async {
+      final calls = <String>[];
+      final result = await updateActionVersions(
+        '  - uses: github/codeql-action/init@v3\n',
+        resolveLatestRelease: (repo) async {
+          calls.add(repo);
+          return const ActionRelease(tag: 'v3.2.0', sha: _newSha);
+        },
+      );
+      expect(calls, equals(['github/codeql-action']));
+      expect(
+        result,
+        equals('  - uses: github/codeql-action/init@$_newSha # v3.2.0\n'),
+      );
+    });
+
+    test('pins quoted refs', () async {
+      expect(
+        await _update('  - uses: "actions/checkout@v4"\n'),
+        equals('  - uses: actions/checkout@$_newSha # v5.1.0\n'),
+      );
+    });
+
+    test('keeps an existing trailing comment valid YAML', () async {
+      expect(
+        await _update('  - uses: actions/checkout@v4 # keep\n'),
+        equals('  - uses: actions/checkout@$_newSha # v5.1.0 # keep\n'),
+      );
+    });
+
+    test('leaves flow-style refs alone', () async {
+      // A trailing comment would swallow the rest of the mapping.
+      const input = '  - {uses: actions/checkout@v4, with: {fetch-depth: 0}}\n';
+      expect(await _update(input), equals(input));
+    });
+
+    test('keeps CRLF line endings', () async {
+      expect(
+        await _update('  - uses: actions/checkout@v4\r\n'),
+        equals('  - uses: actions/checkout@$_newSha # v5.1.0\r\n'),
+      );
+    });
+
+    test('ignores versions too large to compare', () async {
+      const input = '  - uses: actions/checkout@v99999999999999999999\n';
+      expect(await _update(input), equals(input));
+    });
+
     test('only rewrites uses: lines, not comments or run: strings', () async {
       // Regression: a previous version used String.replaceAll, which
       // would also rewrite `actions/checkout@v4` inside comments and
       // `run:` strings.
       const input = '''
 # Pinned to actions/checkout@v4 — see release notes
+# uses: actions/checkout@v4
 steps:
   - uses: actions/checkout@v4
   - run: echo "we use actions/checkout@v4 here"
+  - run: |
+      echo uses: actions/checkout@v4
 ''';
       final result = await _update(input);
-      // Only the uses: line gets pinned; comment and echo keep v4.
+      // Only the uses: line gets pinned; comments and echoes keep v4.
       expect(result, contains('# Pinned to actions/checkout@v4'));
+      expect(result, contains('# uses: actions/checkout@v4\n'));
       expect(result, contains('echo "we use actions/checkout@v4 here"'));
+      expect(result, contains('echo uses: actions/checkout@v4\n'));
       expect(result, contains('uses: actions/checkout@$_newSha # v5.1.0'));
     });
+  });
+
+  test('unpinnedActionRefs lists refs not pinned to a SHA', () {
+    const content =
+        '''
+steps:
+  - uses: actions/checkout@$_oldSha # v4.0.0
+  - uses: github/codeql-action/init@v3
+  - uses: "actions/cache@v4"
+  - uses: ./.github/actions/local
+  - uses: docker://alpine:3
+  - uses: some/action@main
+''';
+    expect(
+      unpinnedActionRefs(content),
+      equals([
+        'github/codeql-action/init@v3',
+        'actions/cache@v4',
+        'some/action@main',
+      ]),
+    );
   });
 }

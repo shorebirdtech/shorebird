@@ -56,6 +56,7 @@ class UpdateActionsCommand extends Command<int> {
     }
 
     var updatedCount = 0;
+    final unpinned = <String>[];
     for (final file in files) {
       final before = file.readAsStringSync();
       final after = await updateActionVersions(
@@ -67,13 +68,25 @@ class UpdateActionsCommand extends Command<int> {
         stdout.writeln('Updated: ${file.path}');
         updatedCount++;
       }
+      for (final ref in unpinnedActionRefs(after)) {
+        unpinned.add('${file.path}: $ref');
+      }
     }
 
     stdout.writeln(
       updatedCount == 0
-          ? 'All action versions are up to date.'
+          ? 'No action pins changed.'
           : '\nUpdated $updatedCount workflow(s).',
     );
+    if (unpinned.isNotEmpty) {
+      stderr
+        ..writeln(
+          '\nNot pinned to a commit SHA (no GitHub release found, the '
+          'tag is newer than the latest release, or the ref is in a form '
+          'this command does not rewrite):',
+        )
+        ..writeln(unpinned.map((u) => '  $u').join('\n'));
+    }
     return 0;
   }
 }

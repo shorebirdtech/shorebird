@@ -924,7 +924,7 @@ void main() {
       for (final style in ['dynamic', 'static']) {
         final runner = CommandRunner<int>('test', 'test')
           ..addCommand(GenerateCommand());
-        await runner.run([
+        final code = await runner.run([
           'generate',
           '--repo-root',
           tempDir.path,
@@ -932,18 +932,33 @@ void main() {
           style,
           '--no-update-actions',
         ]);
+        expect(code, 0);
         final dir = Directory(p.join(tempDir.path, '.github', 'workflows'));
-        final refs = <String>[];
+        final repos = <String>{};
         for (final file in dir.listSync().whereType<File>()) {
           for (final m in usesLine.allMatches(file.readAsStringSync())) {
             final ref = m.group(1)!;
             if (ref.startsWith('./')) continue;
-            refs.add(ref);
+            repos.add(ref.split('@').first);
             expect(ref, matches(pinned), reason: '${file.path}: $ref');
             expect(m.group(2), matches(RegExp(r'^ # v\d+\.\d+\.\d+$')));
           }
         }
-        expect(refs, isNotEmpty);
+        expect(unpinnedActionRefs(_readAll(dir)), isEmpty);
+        // Every action the templates can emit showed up, so each was
+        // checked.
+        expect(
+          repos,
+          containsAll([
+            'actions/checkout',
+            'dart-lang/setup-dart',
+            'codecov/codecov-action',
+            'subosito/flutter-action',
+            'felangel/setup-bloc-tools',
+            'streetsidesoftware/cspell-action',
+            if (style == 'static') 'dorny/paths-filter',
+          ]),
+        );
       }
     });
   });
@@ -1211,3 +1226,7 @@ String _readMain(Directory repoRoot) {
     p.join(repoRoot.path, '.github', 'workflows', 'shorebird_ci.yaml'),
   ).readAsStringSync();
 }
+
+String _readAll(Directory dir) => [
+  for (final f in dir.listSync().whereType<File>()) f.readAsStringSync(),
+].join('\n');

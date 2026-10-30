@@ -74,21 +74,30 @@ typedef LatestReleaseResolver = Future<ActionRelease?> Function(String repo);
 /// `owner/repo@<sha> # <tag>`.
 ///
 /// Rewrites two forms:
-/// - a version tag (`@v4`, `@v4.1.0`): pinned to the latest release
-///   unless that release is older than the tag.
+/// - a version tag (`@v4`, `@v4.1.0`, `@2`): pinned to the commit the
+///   latest release points at now, unless that release is older than the
+///   tag.
 /// - a SHA pin with a version comment (`@<sha> # v4.1.0`): moved to the
-///   latest release only if it's newer than the comment. A tag that was
-///   moved to a different commit under the same version isn't followed.
+///   latest release only if it's newer than the comment, compared at the
+///   comment's precision (`# v5` moves to v6.0.0, not v5.0.1). The same
+///   version resolving to a different commit (a moved tag) isn't
+///   followed. This doesn't vet a new release itself: Dependabot's
+///   cooldown and review of its PR are what catch a malicious release.
 ///
-/// A SHA pin without a version comment, a branch (`@main`) and a local
-/// action (`./...`) are left alone, as are mentions of `owner/repo@vN` in
-/// YAML comments or `run:` strings.
+/// A SHA pin without a version comment, a branch (`@main`), a local
+/// action (`./...`), a ref with anything but a comment after it on the
+/// line (YAML flow style), and `uses:` text that doesn't start its line
+/// (inside comments or `run:` strings) are left alone. Use
+/// [unpinnedActionRefs] to list what's still on a tag afterwards.
 ///
 /// Queries GitHub's public API. If the lookup fails for a given action
-/// (network down, not found, rate limited), its ref is left unchanged.
+/// (network down, no GitHub release, rate limited), its ref is left
+/// unchanged.
 ///
 /// [resolveLatestRelease] is exposed for testing — production callers
-/// should leave it `null` to use the default GitHub API resolver.
+/// should leave it `null` to use the default GitHub API resolver, which
+/// remembers each repo's answer for the life of the process, so one run
+/// over several files looks each action up once.
 ///
 /// Returns the updated content. If nothing changed, the return value is
 /// identical to the input.
@@ -99,54 +108,76 @@ Future<String> updateActionVersions(
   final matches = _usesRegex.allMatches(workflowContent).toList();
   if (matches.isEmpty) return workflowContent;
 
-  final resolver = resolveLatestRelease ?? _defaultResolver;
+  final resolver = resolveLatestRelease ?? _cachedDefaultResolver;
   final latestByRepo = <String, ActionRelease?>{};
   for (final match in matches) {
-    final repo = match.group(1)!;
+    final repo = match.namedGroup('repo')!;
     if (!latestByRepo.containsKey(repo)) {
       latestByRepo[repo] = await resolver(repo);
     }
   }
 
-  // Replace at regex match positions only, so mentions in comments or
-  // `run:` strings (e.g. `echo "see actions/checkout@v4"`) are left alone.
-  return workflowContent.replaceAllMapped(_usesRegex, (match) {
+  return workflowContent.replaceAllMapped(_usesRegex, (m) {
+    final match = m as RegExpMatch;
     final whole = match.group(0)!;
-    final repo = match.group(1)!;
-    final latest = latestByRepo[repo];
-    if (latest == null || _parseVersion(latest.tag) == null) return whole;
-    final tag = match.group(2);
-    final pinnedVersion = match.group(4);
-    final cmp = _compareVersions(latest.tag, tag ?? pinnedVersion!);
-    final update = tag != null ? cmp >= 0 : cmp > 0;
+    final latest = latestByRepo[match.namedGroup('repo')!];
+    final latestVersion = latest == null ? null : _parseVersion(latest.tag);
+    if (latestVersion == null) return whole;
+    final tag = match.namedGroup('tag');
+    final current = _parseVersion(tag ?? match.namedGroup('pinned')!);
+    if (current == null) return whole;
+    final update = tag != null
+        ? _compare(latestVersion, current) >= 0
+        : _compare(latestVersion.take(current.length).toList(), current) > 0;
     if (!update) return whole;
-    return 'uses: $repo@${latest.sha} # ${latest.tag}';
+    final action = '${match.namedGroup('repo')}${match.namedGroup('path')}';
+    return '${match.namedGroup('prefix')}$action@${latest!.sha} '
+        '# ${latest.tag}';
   });
 }
 
-/// Matches `uses: owner/repo@vN[.N...]`, or
-/// `uses: owner/repo@<sha> # vN[.N...]`. Group 1 is the repo, group 2 the tag, groups 3 and 4 the
-/// SHA and its version comment. Doesn't match `./` local actions,
-/// branches, or SHA pins without a version comment.
+/// The `uses:` refs in [workflowContent] that aren't pinned to a commit
+/// SHA, e.g. `actions/checkout@v4`. Local actions and `docker://` images
+/// aren't listed.
+List<String> unpinnedActionRefs(String workflowContent) => [
+  for (final match in _anyUsesRegex.allMatches(workflowContent))
+    if (!RegExp(r'@[0-9a-f]{40}$').hasMatch(match.group(1)!) &&
+        !match.group(1)!.startsWith('./') &&
+        !match.group(1)!.startsWith('docker://'))
+      match.group(1)!,
+];
+
+final _anyUsesRegex = RegExp(
+  r'''^[ \t]*(?:-[ \t]+)?uses:[ \t]+["']?([^\s"'#]+)''',
+  multiLine: true,
+);
+
+/// Matches a `uses:` line whose ref is `owner/repo[/path]@<version tag>`
+/// or `owner/repo[/path]@<sha> # <version>`, followed by nothing but an
+/// optional comment. The value may be quoted.
 final _usesRegex = RegExp(
-  r'uses:\s+([a-zA-Z0-9_-][a-zA-Z0-9_.-]*/[a-zA-Z0-9_.-]+)@'
-  r'(?:(v\d+(?:\.\d+)*)\b(?![.\w-])|'
-  r'([0-9a-f]{40})[ \t]+#[ \t]*(v\d+(?:\.\d+)*)\b(?![.\w-]))',
+  r'''(?<prefix>^[ \t]*(?:-[ \t]+)?uses:[ \t]+)(?<q>["']?)'''
+  '(?<repo>[a-zA-Z0-9_-][a-zA-Z0-9_.-]*/[a-zA-Z0-9_.-]+)'
+  '(?<path>(?:/[a-zA-Z0-9_.-]+)*)@'
+  r'(?:(?<sha>[0-9a-f]{40})\k<q>[ \t]+#[ \t]*(?<pinned>v?\d+(?:\.\d+)*)'
+  r'|(?<tag>v?\d+(?:\.\d+)*)\k<q>)'
+  r'(?=[ \t]*(?:#[^\r\n]*)?\r?$)',
+  multiLine: true,
 );
 
 List<int>? _parseVersion(String tag) {
   final match = RegExp(r'^v?(\d+(?:\.\d+)*)$').firstMatch(tag);
-  return match?.group(1)!.split('.').map(int.parse).toList();
+  if (match == null) return null;
+  final parts = match.group(1)!.split('.').map(int.tryParse).toList();
+  return parts.contains(null) ? null : parts.cast<int>();
 }
 
-/// Compares two version tags, padding the shorter with zeros, so `v7`
-/// sorts as `v7.0.0`.
-int _compareVersions(String a, String b) {
-  final va = _parseVersion(a)!;
-  final vb = _parseVersion(b)!;
-  for (var i = 0; i < va.length || i < vb.length; i++) {
-    final x = i < va.length ? va[i] : 0;
-    final y = i < vb.length ? vb[i] : 0;
+/// Compares two versions, padding the shorter with zeros, so `7` sorts
+/// as `7.0.0`.
+int _compare(List<int> a, List<int> b) {
+  for (var i = 0; i < a.length || i < b.length; i++) {
+    final x = i < a.length ? a[i] : 0;
+    final y = i < b.length ? b[i] : 0;
     if (x != y) return x.compareTo(y);
   }
   return 0;
@@ -156,6 +187,11 @@ int _compareVersions(String a, String b) {
 // Wraps the GitHub API calls and is exercised end-to-end by the
 // `generate` workflow at runtime. The resolver indirection above lets
 // tests cover the pinning logic without touching the network.
+final _releaseCache = <String, Future<ActionRelease?>>{};
+
+Future<ActionRelease?> _cachedDefaultResolver(String repo) =>
+    _releaseCache[repo] ??= _defaultResolver(repo);
+
 Future<ActionRelease?> _defaultResolver(String repo) async {
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
   try {
@@ -202,6 +238,11 @@ Future<String?> _get(
   request.headers
     ..add('Accept', accept)
     ..add('User-Agent', 'shorebird_ci');
+  // Optional: lifts the unauthenticated limit of 60 requests an hour.
+  final token = Platform.environment['GITHUB_TOKEN'];
+  if (token != null && token.isNotEmpty) {
+    request.headers.add('Authorization', 'Bearer $token');
+  }
   final response = await request.close();
   final body = await response.transform(utf8.decoder).join();
   return response.statusCode == 200 ? body : null;
