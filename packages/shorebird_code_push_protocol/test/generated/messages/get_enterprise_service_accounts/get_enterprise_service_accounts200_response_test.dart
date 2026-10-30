@@ -26,7 +26,6 @@ void main() {
           EnterpriseServiceAccount(
             userId: 0,
             name: 'example',
-            teamId: 0,
             role: Role.owner,
             createdAt: DateTime.utc(2024),
             lastAuthAt: DateTime.utc(2024),
