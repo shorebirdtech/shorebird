@@ -161,7 +161,7 @@ function Update-Shorebird {
     $pubGetExitCode = $LASTEXITCODE
     Pop-Location
     if ($pubGetExitCode -eq 65) {
-        Write-Output "Error: Shorebird's pubspec.lock doesn't match its pubspec.yaml files in $shorebirdRootDir. Undo local changes there (git -C `"$shorebirdRootDir`" status) or reinstall Shorebird."
+        Write-Output "Error: Couldn't install the exact packages in Shorebird's pubspec.lock: a pubspec.yaml in $shorebirdRootDir changed, or a downloaded package's hash doesn't match the lockfile. Undo any local changes there (git -C `"$shorebirdRootDir`" status) and run shorebird again. If there are none, report it at https://github.com/shorebirdtech/shorebird/issues."
         exit $pubGetExitCode
     }
     elseif ($pubGetExitCode -ne 0) {

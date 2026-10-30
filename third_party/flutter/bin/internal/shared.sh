@@ -39,9 +39,10 @@ function pub_get_with_retry {
   esac
   while [[ "$remaining_tries" -gt 0 ]]; do
     (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get $enforce_lockfile) && break
-    # 65: pubspec.lock doesn't satisfy the pubspecs. Retrying won't fix it.
+    # 65: the pubspecs or a package's hash don't match pubspec.lock. Retrying
+    # won't fix either.
     if [[ "$?" == 65 ]]; then
-      >&2 echo "Error: Shorebird's pubspec.lock doesn't match its pubspec.yaml files in $SHOREBIRD_ROOT. Undo local changes there (git -C \"$SHOREBIRD_ROOT\" status) or reinstall Shorebird."
+      >&2 echo "Error: Couldn't install the exact packages in Shorebird's pubspec.lock: a pubspec.yaml in $SHOREBIRD_ROOT changed, or a downloaded package's hash doesn't match the lockfile. Undo any local changes there (git -C \"$SHOREBIRD_ROOT\" status) and run shorebird again. If there are none, report it at https://github.com/shorebirdtech/shorebird/issues."
       return 1
     fi
     >&2 echo "Error: Unable to 'pub get' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
