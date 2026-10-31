@@ -227,11 +227,8 @@ BUILD FAILED in 3s
           runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
           completion(
             equals({
-              'development',
               'developmentInternal',
-              'staging',
               'stagingInternal',
-              'production',
               'productionInternal',
             }),
           ),
@@ -246,6 +243,98 @@ BUILD FAILED in 3s
           ),
         ).called(1);
       }, testOn: 'linux || mac-os');
+
+      group('when there are several flavor dimensions', () {
+        test('extracts only full flavor combinations', () async {
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          when(() => result.stdout).thenReturn(
+            File(
+              p.join(
+                fixturesDirectory,
+                'gradle',
+                'gradle_app_tasks_multi_dimension_flavors.txt',
+              ),
+            ).readAsStringSync(),
+          );
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(
+              equals({
+                'internalGlobal',
+                'internalPlayStore',
+                'internalLocal',
+                'stableGlobal',
+                'stablePlayStore',
+                'stableLocal',
+              }),
+            ),
+          );
+        }, testOn: 'linux || mac-os');
+      });
+
+      group('when a flavor name ends in Release', () {
+        test('extracts the flavor', () async {
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          when(() => result.stdout).thenReturn('''
+assemblePreRelease - Assembles main outputs for all PreRelease variants.
+assemblePreReleaseDebug - Assembles main output for variant preReleaseDebug
+assemblePreReleaseRelease - Assembles main output for variant preReleaseRelease
+assembleRelease - Assembles main outputs for all Release variants.
+''');
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(equals({'preRelease'})),
+          );
+        }, testOn: 'linux || mac-os');
+      });
+
+      group('when a build type name ends in Release', () {
+        test('extracts only the flavors', () async {
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          when(() => result.stdout).thenReturn('''
+assembleBenchmarkRelease - Assembles main outputs for all BenchmarkRelease variants.
+assembleDebug - Assembles main outputs for all Debug variants.
+assembleDev - Assembles main outputs for all Dev variants.
+assembleDevBenchmarkRelease - Assembles main output for variant devBenchmarkRelease
+assembleDevDebug - Assembles main output for variant devDebug
+assembleDevRelease - Assembles main output for variant devRelease
+assembleProd - Assembles main outputs for all Prod variants.
+assembleProdBenchmarkRelease - Assembles main output for variant prodBenchmarkRelease
+assembleProdDebug - Assembles main output for variant prodDebug
+assembleProdRelease - Assembles main output for variant prodRelease
+assembleRelease - Assembles main outputs for all Release variants.
+''');
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(equals({'dev', 'prod'})),
+          );
+        }, testOn: 'linux || mac-os');
+
+        test('extracts nothing when there are no flavors', () async {
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          when(() => result.stdout).thenReturn('''
+assembleDebug - Assembles main outputs for all Debug variants.
+assembleQaRelease - Assembles main outputs for all QaRelease variants.
+assembleRelease - Assembles main outputs for all Release variants.
+''');
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(isEmpty),
+          );
+        }, testOn: 'linux || mac-os');
+      });
 
       group('when flavors are all upper case', () {
         test('extracts flavors', () async {
