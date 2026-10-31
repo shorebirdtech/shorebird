@@ -1111,6 +1111,54 @@ Run "aot_tools help" to see global options.
       });
     });
 
+    group('isLinkMetadataSupported', () {
+      void stubHelp(String stdout) {
+        when(
+          () => process.start(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {
+          final mockProcess = MockProcess();
+          when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+          when(
+            () => mockProcess.stdout,
+          ).thenAnswer((_) => Stream.value(utf8.encode(stdout)));
+          when(
+            () => mockProcess.stderr,
+          ).thenAnswer((_) => const Stream.empty());
+          return mockProcess;
+        });
+      }
+
+      test('returns true when the command is listed in the help', () async {
+        stubHelp('''
+Available commands:
+  link            Link two aot snapshots.
+  link_metadata   Dumps minimal link stats for inclusion in patch metadata.
+''');
+        await expectLater(
+          runWithOverrides(() => aotTools.isLinkMetadataSupported()),
+          completion(isTrue),
+        );
+      });
+
+      test(
+        'returns false when the command is not listed in the help',
+        () async {
+          stubHelp('''
+Available commands:
+  link            Link two aot snapshots.
+''');
+          await expectLater(
+            runWithOverrides(() => aotTools.isLinkMetadataSupported()),
+            completion(isFalse),
+          );
+        },
+      );
+    });
+
     group('isGeneratePatchDiffBaseSupported', () {
       var stdout = '';
       setUp(() {

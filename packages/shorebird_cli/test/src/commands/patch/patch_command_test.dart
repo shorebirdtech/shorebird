@@ -249,6 +249,7 @@ void main() {
       when(() => argResults.rest).thenReturn([]);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
+      when(aotTools.isLinkMetadataSupported).thenAnswer((_) async => true);
 
       when(
         () => artifactManager.downloadReleaseArtifact(
