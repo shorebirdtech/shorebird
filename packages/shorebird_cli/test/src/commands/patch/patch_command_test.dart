@@ -495,9 +495,65 @@ void main() {
           },
         );
       });
+
+      group('when patching more than one platform', () {
+        late Patcher iosPatcher;
+
+        setUp(() {
+          iosPatcher = MockPatcher();
+          when(() => iosPatcher.releaseType).thenReturn(ReleaseType.ios);
+          when(
+            () => argResults['platforms'],
+          ).thenReturn(['android', 'ios']);
+          command =
+              PatchCommand(
+                  resolvePatcher: (type) =>
+                      type == ReleaseType.ios ? iosPatcher : patcher,
+                )
+                ..testArgResults = argResults
+                ..testRunner = usageRunner();
+        });
+
+        test(
+          'checks every platform before building any of them',
+          () async {
+            when(
+              () => iosPatcher.assertPreconditions(),
+            ).thenThrow(ProcessExit(ExitCode.config.code));
+
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithCode(ExitCode.config),
+            );
+
+            verify(() => patcher.assertPreconditions()).called(1);
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+            verifyNever(
+              () => patcher.uploadPatchArtifacts(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                metadata: any(named: 'metadata'),
+                track: any(named: 'track'),
+                artifacts: any(named: 'artifacts'),
+              ),
+            );
+          },
+        );
+      });
     });
 
     group('createPatch', () {
+      test('checks the patcher once when run already checked it', () async {
+        await runWithOverrides(command.run);
+
+        verify(() => patcher.assertPreconditions()).called(1);
+        verify(() => patcher.assertArgsAreValid()).called(1);
+      });
+
       test('publishes the patch', () async {
         await runWithOverrides(() => command.createPatch(patcher));
 
