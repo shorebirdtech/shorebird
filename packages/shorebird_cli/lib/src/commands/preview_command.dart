@@ -730,7 +730,10 @@ This is only applicable when previewing Android releases.''',
     );
     if (!await _runStep(
       'Installing apks',
-      () => bundletool.installApks(apks: apksPath, deviceId: deviceId),
+      () async {
+        await adb.uninstallApp(package: package, deviceId: deviceId);
+        await bundletool.installApks(apks: apksPath, deviceId: deviceId);
+      },
     )) {
       return ExitCode.software.code;
     }
@@ -740,7 +743,6 @@ This is only applicable when previewing Android releases.''',
     // from whenever logcat happens to start.
     String? logsSince;
     if (!await _runStep('Starting app', () async {
-      await adb.clearAppData(package: package, deviceId: deviceId);
       logsSince = await adb.latestLogTimestamp(deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
     })) {

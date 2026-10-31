@@ -74,26 +74,25 @@ class UpgradeCommand extends ShorebirdCommand {
 
     updateProgress.complete('Updated successfully.');
 
-    // On Windows, set up the new version now (fetch its Flutter, get its
-    // packages, compile it) by running it once, as `flutter upgrade` does.
-    // Otherwise the next command does that setup, with its output mixed into
-    // that command's.
-    if (platform.isWindows) {
-      final launcher = p.join(
-        shorebirdEnv.shorebirdRoot.path,
-        'bin',
-        'shorebird.bat',
-      );
-      final setupExitCode = await process.stream(launcher, ['--version']);
-      if (setupExitCode != ExitCode.success.code) {
-        logger.err(
-          'Setting up the new version failed (exit code $setupExitCode). '
-          'Run `shorebird --version` to try again.',
-        );
-        return ExitCode.software.code;
-      }
-    }
+    return _setUpNewVersion();
+  }
 
+  /// Runs the new version once, so that it fetches its Flutter and builds
+  /// itself now rather than at the start of the next command.
+  Future<int> _setUpNewVersion() async {
+    final shorebird = p.join(
+      shorebirdEnv.shorebirdRoot.path,
+      'bin',
+      platform.isWindows ? 'shorebird.bat' : 'shorebird',
+    );
+    final exitCode = await process.stream(shorebird, ['--version']);
+    if (exitCode != ExitCode.success.code) {
+      logger.err(
+        'Setting up the new version failed (exit code $exitCode). '
+        'The next shorebird command will try again.',
+      );
+      return exitCode;
+    }
     return ExitCode.success.code;
   }
 }

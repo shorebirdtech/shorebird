@@ -27,6 +27,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess process;
     late ShorebirdVersion shorebirdVersion;
+    late String newShorebird;
     late UpgradeCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -47,9 +48,12 @@ void main() {
       final progressLogs = <String>[];
 
       logger = MockShorebirdLogger();
-      platform = TestNativePlatform(operatingSystem: NativePlatform.macOS);
-      shorebirdEnv = MockShorebirdEnv();
+      platform = TestNativePlatform(
+        environment: {},
+        operatingSystem: NativePlatform.macOS,
+      );
       process = MockShorebirdProcess();
+      shorebirdEnv = MockShorebirdEnv();
       shorebirdVersion = MockShorebirdVersion();
       command = runWithOverrides(UpgradeCommand.new);
 
@@ -63,6 +67,12 @@ void main() {
       when(
         () => shorebirdVersion.attemptReset(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
+      final shorebirdRoot = Directory(
+        p.join(Directory.current.path, 'shorebird_root'),
+      );
+      newShorebird = p.join(shorebirdRoot.path, 'bin', 'shorebird');
+      when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
+      when(() => process.stream(any(), any())).thenAnswer((_) async => 0);
 
       when(() => progress.complete(any())).thenAnswer((invocation) {
         final message = invocation.positionalArguments.elementAt(0) as String?;
@@ -140,58 +150,37 @@ void main() {
       expect(result, equals(ExitCode.success.code));
       verify(() => logger.progress('Checking for updates')).called(1);
       verify(() => logger.progress('Updating')).called(1);
-      verifyNever(() => process.stream(any(), any()));
+      verify(() => process.stream(newShorebird, ['--version'])).called(1);
     });
 
-    group('on Windows', () {
-      final shorebirdRoot = Directory('shorebird');
-      final launcher = p.join(shorebirdRoot.path, 'bin', 'shorebird.bat');
+    test('fails when setting up the new version fails', () async {
+      when(() => logger.progress(any())).thenReturn(MockProgress());
+      when(() => process.stream(any(), any())).thenAnswer((_) async => 70);
 
-      setUp(() {
-        platform = TestNativePlatform(operatingSystem: NativePlatform.windows);
-        when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
-      });
+      final result = await runWithOverrides(command.run);
 
-      test('sets up the new version after updating', () async {
-        when(
-          () => process.stream(launcher, ['--version']),
-        ).thenAnswer((_) async => ExitCode.success.code);
+      expect(result, equals(70));
+      verify(
+        () => logger.err(
+          'Setting up the new version failed (exit code 70). '
+          'The next shorebird command will try again.',
+        ),
+      ).called(1);
+    });
 
-        final result = await runWithOverrides(command.run);
+    test('runs bin/shorebird.bat on Windows', () async {
+      platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+      when(() => logger.progress(any())).thenReturn(MockProgress());
 
-        expect(result, equals(ExitCode.success.code));
-        verifyInOrder([
-          () => shorebirdVersion.attemptReset(revision: newerShorebirdRevision),
-          () => process.stream(launcher, ['--version']),
-        ]);
-      });
+      final result = await runWithOverrides(command.run);
 
-      test('fails when setting up the new version fails', () async {
-        when(
-          () => process.stream(launcher, ['--version']),
-        ).thenAnswer((_) async => 1);
-
-        final result = await runWithOverrides(command.run);
-
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => logger.err(
-            'Setting up the new version failed (exit code 1). '
-            'Run `shorebird --version` to try again.',
-          ),
-        ).called(1);
-      });
-
-      test('does not set up anything when already up to date', () async {
-        when(
-          shorebirdVersion.fetchLatestGitHash,
-        ).thenAnswer((_) async => currentShorebirdRevision);
-
-        final result = await runWithOverrides(command.run);
-
-        expect(result, equals(ExitCode.success.code));
-        verifyNever(() => process.stream(any(), any()));
-      });
+      expect(result, equals(ExitCode.success.code));
+      verify(
+        () => process.stream(
+          p.join(p.dirname(newShorebird), 'shorebird.bat'),
+          ['--version'],
+        ),
+      ).called(1);
     });
 
     test('does not update when already on latest version', () async {
@@ -206,6 +195,7 @@ void main() {
       verify(
         () => logger.info('Shorebird is already at the latest version.'),
       ).called(1);
+      verifyNever(() => process.stream(any(), any()));
     });
   });
 }

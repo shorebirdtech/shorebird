@@ -391,6 +391,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
+    _assertCanSignForRelease(release: release, patcher: patcher);
     _warnIfFlutterRevisionHasKnownIssue(release: release, patcher: patcher);
 
     try {
@@ -1094,6 +1095,35 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         exitCode: ExitCode.software,
       );
     }
+  }
+
+  /// Exits if [release] embeds the customer's own key on [patcher]'s
+  /// platform but no key was passed to sign the patch with: devices running
+  /// the release reject an unsigned patch.
+  void _assertCanSignForRelease({
+    required Release release,
+    required Patcher patcher,
+  }) {
+    final signingMode =
+        release.platforms[patcher.releaseType.releasePlatform]?.signingMode;
+    if (signingMode != ReleaseSigningMode.customer.value) return;
+
+    final publicKeyPath = CommonArguments.publicKeyArg.name;
+    final privateKeyPath = CommonArguments.privateKeyArg.name;
+    final publicKeyCmd = CommonArguments.publicKeyCmd.name;
+    final signCmd = CommonArguments.signCmd.name;
+    final hasPublicKey =
+        results.wasParsed(publicKeyPath) || results.wasParsed(publicKeyCmd);
+    final hasSigner =
+        results.wasParsed(privateKeyPath) || results.wasParsed(signCmd);
+    if (hasPublicKey && hasSigner) return;
+
+    usageException(
+      'Release ${release.version} was signed with your own key, so its '
+      'patches must be too. Pass the same public key as the release, with '
+      '--$publicKeyPath and --$privateKeyPath, or --$publicKeyCmd and '
+      '--$signCmd.',
+    );
   }
 
   /// Ensures the diff between the release and patch archives is safe to patch.

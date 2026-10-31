@@ -939,6 +939,87 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         });
       });
 
+      group('when the release embeds the customer\'s key', () {
+        final signedRelease = Release(
+          id: release.id,
+          appId: release.appId,
+          version: release.version,
+          flutterRevision: release.flutterRevision,
+          flutterVersion: release.flutterVersion,
+          displayName: release.displayName,
+          platforms: {
+            releasePlatform: ReleasePlatformDetails(
+              status: ReleaseStatus.active,
+              signingMode: ReleaseSigningMode.customer.value,
+            ),
+          },
+          createdAt: release.createdAt,
+          updatedAt: release.updatedAt,
+        );
+
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer((_) async => signedRelease);
+        });
+
+        test('exits before building when no key is passed', () async {
+          await expectLater(
+            runWithOverrides(() => command.createPatch(patcher)),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                'Release ${release.version} was signed with your own key, so '
+                    'its patches must be too. Pass the same public key as the '
+                    'release, with --public-key-path and --private-key-path, '
+                    'or --public-key-cmd and --sign-cmd.',
+              ),
+            ),
+          );
+          verifyNever(
+            () => shorebirdFlutter.installRevision(
+              revision: any(named: 'revision'),
+            ),
+          );
+          verifyNever(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          );
+        });
+
+        test('builds the patch when keys are passed', () async {
+          when(
+            () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults[CommonArguments.privateKeyArg.name],
+          ).thenReturn(createTempFile('private.pem').path);
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn(createTempFile('public.pem').path);
+
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verify(
+            () => patcher.uploadPatchArtifacts(
+              appId: appId,
+              releaseId: any(named: 'releaseId'),
+              metadata: any(named: 'metadata'),
+              track: any(named: 'track'),
+              artifacts: patchArtifactBundles,
+            ),
+          ).called(1);
+        });
+      });
+
       group('when the release embeds a managed key', () {
         const managedPem = 'managed-public-key-pem';
 
