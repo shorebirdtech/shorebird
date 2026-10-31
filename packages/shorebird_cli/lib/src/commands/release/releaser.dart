@@ -369,8 +369,9 @@ abstract class Releaser {
   /// [uploadReleaseArtifacts].
   ///
   /// Both uploads run while the release is a draft on this platform, and
-  /// `shorebird patch` refuses a draft release. A run stopped between them
-  /// leaves a release nothing can patch until it is released again.
+  /// `shorebird patch` refuses a release that is not active on its platform.
+  /// A run stopped between them leaves a release nothing can patch until it
+  /// is released again.
   Future<void> uploadSupplementArtifact({
     required String appId,
     required int releaseId,
