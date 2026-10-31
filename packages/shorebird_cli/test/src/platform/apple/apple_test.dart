@@ -1,3 +1,4 @@
+// cspell:words xcuserdata xcuserdatad
 import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
@@ -300,6 +301,45 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
                 () => apple.flavors(platform: ApplePlatform.ios),
               ),
               {'internal', 'beta', 'stable', 'dev'},
+            );
+          });
+        });
+
+        group('when a scheme is only in xcuserdata', () {
+          setUp(() {
+            File(
+                p.join(
+                  projectRoot.path,
+                  'ios',
+                  'Runner.xcodeproj',
+                  'xcuserdata',
+                  'dev.xcuserdatad',
+                  'xcschemes',
+                  'qa.xcscheme',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('<Scheme></Scheme>');
+          });
+
+          test('ignores it by default', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              isNot(contains('qa')),
+            );
+          });
+
+          test('includes it with includeUserSchemes', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(
+                  platform: ApplePlatform.ios,
+                  includeUserSchemes: true,
+                ),
+              ),
+              {'internal', 'beta', 'stable', 'dev', 'qa'},
             );
           });
         });

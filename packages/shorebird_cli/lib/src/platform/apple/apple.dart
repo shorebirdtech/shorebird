@@ -1,3 +1,4 @@
+// cspell:words xcuserdata
 import 'dart:convert';
 import 'dart:io';
 
@@ -144,7 +145,13 @@ class Apple {
 
   /// Returns the set of flavors for the Xcode project associated with
   /// [platform], if this project has that platform configured.
-  Set<String>? flavors({required ApplePlatform platform}) {
+  ///
+  /// With [includeUserSchemes], schemes a developer hasn't shared (under
+  /// `xcuserdata`) count too, as they do for `flutter build`.
+  Set<String>? flavors({
+    required ApplePlatform platform,
+    bool includeUserSchemes = false,
+  }) {
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     // Ideally, we would use `xcodebuild -list` to detect schemes/flavors.
     // Unfortunately, many projects contain schemes that are not flavors, and we
@@ -180,8 +187,15 @@ class Apple {
       throw Exception('Unable to detect schemes in $xcschemesDir');
     }
 
-    return xcschemesDir
-        .listSync()
+    final userSchemeFiles = <FileSystemEntity>[
+      if (includeUserSchemes)
+        for (final userDir in _subdirectories(
+          p.join(xcodeProjDirectory.path, 'xcuserdata'),
+        ))
+          ..._listIfExists(p.join(userDir.path, 'xcschemes')),
+    ];
+
+    return [...xcschemesDir.listSync(), ...userSchemeFiles]
         .whereType<File>()
         .where((e) => p.extension(e.path) == '.xcscheme')
         .where((e) => p.basenameWithoutExtension(e.path) != 'Runner')
@@ -357,6 +371,14 @@ $error''');
         dumpDebugInfoDir.deleteSync(recursive: true);
       }
     }
+  }
+
+  Iterable<Directory> _subdirectories(String path) =>
+      _listIfExists(path).whereType<Directory>();
+
+  List<FileSystemEntity> _listIfExists(String path) {
+    final directory = Directory(path);
+    return directory.existsSync() ? directory.listSync() : const [];
   }
 
   /// Parses the .xcscheme file to determine if it was created for an app

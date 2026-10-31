@@ -3,6 +3,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../helpers.dart';
@@ -113,6 +114,94 @@ void main() {
                 ]),
               );
             });
+          });
+        });
+
+        group('when the platform project has no matching flavor', () {
+          test('returns an error naming the default app id', () async {
+            validator = FlavorValidator(
+              flavorArg: 'flavorA',
+              platform: ReleasePlatform.ios,
+              platformFlavors: {},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(
+              issues,
+              equals([
+                ValidationIssue.error(
+                  message:
+                      '''The iOS project has no Xcode scheme for flavor "flavorA", so it cannot be built with --flavor=flavorA. Add a scheme named "flavorA" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), or re-run without --flavor to use the default app id $appId.''',
+                ),
+              ]),
+            );
+          });
+
+          test(
+            'suggests the shorebird.yaml flavors that have a scheme',
+            () async {
+              when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+                const ShorebirdYaml(
+                  appId: appId,
+                  flavors: {'Prod': 'prod-id', 'Dev': 'dev-id'},
+                ),
+              );
+              validator = FlavorValidator(
+                flavorArg: 'Prod',
+                platform: ReleasePlatform.ios,
+                platformFlavors: {'dev', 'staging'},
+              );
+              final issues = await runWithOverrides(validator.validate);
+              expect(
+                issues,
+                equals([
+                  ValidationIssue.error(
+                    message:
+                        '''The iOS project has no Xcode scheme for flavor "Prod", so it cannot be built with --flavor=Prod. Add a scheme named "Prod" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), or pass one of: Dev.''',
+                  ),
+                ]),
+              );
+            },
+          );
+
+          test('links no guide for macOS', () async {
+            validator = FlavorValidator(
+              flavorArg: 'flavorA',
+              platform: ReleasePlatform.macos,
+              platformFlavors: {},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(
+              issues,
+              equals([
+                ValidationIssue.error(
+                  message:
+                      '''The macOS project has no Xcode scheme for flavor "flavorA", so it cannot be built with --flavor=flavorA. Add a scheme named "flavorA", or re-run without --flavor to use the default app id $appId.''',
+                ),
+              ]),
+            );
+          });
+
+          test('matches scheme names case-insensitively', () async {
+            when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+              const ShorebirdYaml(appId: appId, flavors: {'Staging': 'id'}),
+            );
+            validator = FlavorValidator(
+              flavorArg: 'Staging',
+              platform: ReleasePlatform.ios,
+              platformFlavors: {'staging'},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(issues, isEmpty);
+          });
+
+          test('does not warn about a missing --flavor', () async {
+            validator = FlavorValidator(
+              flavorArg: null,
+              platform: ReleasePlatform.ios,
+              platformFlavors: {},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(issues, isEmpty);
           });
         });
 
