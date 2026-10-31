@@ -462,18 +462,8 @@ Reason: Exited with code $exitCode.''',
     if (flutterBuildDir.existsSync()) {
       flutterBuildDir.deleteSync(recursive: true);
     }
-    // Delete .dart_tool/version so `flutter build` runs `pub get` with
-    // Shorebird's Flutter. Another Flutter (an IDE's) may have resolved
-    // package_config.json since our last build, and Flutter skips `pub get`
-    // when this file matches its version, which can be shared by several
-    // Flutter checkouts.
-    // The rest of .dart_tool (build_runner and native asset caches) is kept.
-    final dartToolVersionFile = File(
-      p.join(projectRoot.path, '.dart_tool', 'version'),
-    );
-    if (dartToolVersionFile.existsSync()) {
-      dartToolVersionFile.deleteSync();
-    }
+    // The rest of .dart_tool (build_runner and native asset caches) is kept;
+    // [_runShorebirdBuildCommand] deletes .dart_tool/version.
 
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
@@ -659,72 +649,75 @@ Reason: Exited with code $exitCode.''',
   }
 
   /// Runs [command] (a `flutter build` with Shorebird's fork of Flutter), then
-  /// puts back the `package_config.json` the project had before it.
+  /// puts back the pub resolution the project had before it.
   ///
   /// The build's `pub get` points package_config.json at Shorebird's Flutter,
   /// which confuses IDEs that use the developer's own Flutter. See
-  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
-  /// Restoring the file keeps whichever Flutter the IDE resolved with (one on
-  /// PATH, FVM's) without running it and without touching the other files its
-  /// `pub get` would regenerate.
+  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info. It
+  /// can also rewrite pubspec.lock when Shorebird's Flutter pins different
+  /// versions of its SDK's dependencies. Restoring the files keeps whichever
+  /// Flutter the IDE resolved with (one on PATH, FVM's) without running it.
   Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
-    final packageConfig = _packageConfigFile();
-    final original = packageConfig != null && packageConfig.existsSync()
-        ? packageConfig.readAsBytesSync()
-        : null;
+    final root = _pubRoot();
+    if (root == null) return command();
+    final dartTool = p.join(root, '.dart_tool');
+    // Restored in this order, so package_config.json ends up newest: tools
+    // that compare its time with the lockfile's then treat it as current.
+    final originals = {
+      for (final file in [
+        File(p.join(root, 'pubspec.lock')),
+        File(p.join(dartTool, 'package_graph.json')),
+        File(p.join(dartTool, 'package_config.json')),
+      ])
+        if (file.existsSync()) file: file.readAsBytesSync(),
+    };
+    // Flutter skips `pub get` when this file names its own version, a string
+    // shared by Shorebird's Flutter and the matching release of Flutter.
+    // Deleting it before the build makes Shorebird's Flutter resolve rather
+    // than build against another Flutter's package config, and deleting it
+    // after makes the next Flutter to run (the IDE's) resolve rather than keep
+    // Shorebird's when the build created the package config.
+    final version = File(p.join(dartTool, 'version'));
+    if (version.existsSync()) version.deleteSync();
     try {
       await command();
     } finally {
-      if (packageConfig != null && original != null) {
-        _restorePackageConfig(packageConfig, original);
+      for (final MapEntry(key: file, value: bytes) in originals.entries) {
+        if (file.existsSync() &&
+            const ListEquality<int>().equals(file.readAsBytesSync(), bytes)) {
+          continue;
+        }
+        logger.detail('Restoring ${file.path} from before the build.');
+        file.writeAsBytesSync(bytes);
       }
+      if (version.existsSync()) version.deleteSync();
     }
   }
 
-  /// The project's `.dart_tool/package_config.json`, or the workspace root's
-  /// when the project is in a pub workspace, or null outside a project.
-  File? _packageConfigFile() {
+  /// The directory holding the project's pubspec.lock and
+  /// `.dart_tool/package_config.json`: the workspace root when the project is
+  /// in a pub workspace, else the project root, or null outside a project.
+  String? _pubRoot() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
     if (projectRoot == null) return null;
-    var root = projectRoot.path;
     // Pub writes this file into each workspace package; it names the
     // workspace root, relative to its own directory. Flutter's `pub get`
     // finds package_config.json the same way.
     final workspaceRef = File(
-      p.join(root, '.dart_tool', 'pub', 'workspace_ref.json'),
+      p.join(projectRoot.path, '.dart_tool', 'pub', 'workspace_ref.json'),
     );
     if (workspaceRef.existsSync()) {
       try {
         if (jsonDecode(workspaceRef.readAsStringSync()) case {
           'workspaceRoot': final String workspaceRoot,
         }) {
-          root = p.normalize(p.join(workspaceRef.parent.path, workspaceRoot));
+          return p.normalize(p.join(workspaceRef.parent.path, workspaceRoot));
         }
       } on FormatException {
-        // A malformed file: fall back to the project's own package config.
+        // A malformed file: fall back to the project's own files.
       }
     }
-    return File(p.join(root, '.dart_tool', 'package_config.json'));
-  }
-
-  /// Writes [original] back to [packageConfig] if the build changed it.
-  void _restorePackageConfig(File packageConfig, List<int> original) {
-    if (packageConfig.existsSync() &&
-        const ListEquality<int>().equals(
-          packageConfig.readAsBytesSync(),
-          original,
-        )) {
-      return;
-    }
-    logger.detail('Restoring ${packageConfig.path} from before the build.');
-    packageConfig.writeAsBytesSync(original);
-    // The build wrote Shorebird's Flutter version here, which no longer
-    // describes the restored package_config.json. Flutter skips `pub get`
-    // when this file matches its own version, so without it the next Flutter
-    // to run (ours or the IDE's) resolves again instead of trusting a stale
-    // package config.
-    final version = File(p.join(packageConfig.parent.path, 'version'));
-    if (version.existsSync()) version.deleteSync();
+    return projectRoot.path;
   }
 
   /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and

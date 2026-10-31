@@ -177,16 +177,16 @@ void main() {
       const original = '{"flutterRoot": "file:///system/flutter"}';
       const vended = '{"flutterRoot": "file:///shorebird/flutter"}';
       late Directory packageConfigRoot;
-      late bool buildRewritesConfig;
+      late bool versionExistedDuringBuild;
 
       File packageConfigIn(Directory root) =>
           File(p.join(root.path, '.dart_tool', 'package_config.json'));
       File versionIn(Directory root) =>
           File(p.join(root.path, '.dart_tool', 'version'));
+      File lockIn(Directory root) => File(p.join(root.path, 'pubspec.lock'));
 
       setUp(() {
         packageConfigRoot = projectRoot;
-        buildRewritesConfig = true;
         when(
           () => artifactManager.linuxBundleDirectory,
         ).thenReturn(Directory(p.join(projectRoot.path, 'build')));
@@ -199,14 +199,12 @@ void main() {
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          if (buildRewritesConfig) {
-            packageConfigIn(packageConfigRoot)
-              ..createSync(recursive: true)
-              ..writeAsStringSync(vended);
-            versionIn(packageConfigRoot)
-              ..createSync(recursive: true)
-              ..writeAsStringSync('3.35.4');
-          }
+          versionExistedDuringBuild = versionIn(packageConfigRoot).existsSync();
+          packageConfigIn(packageConfigRoot)
+            ..createSync(recursive: true)
+            ..writeAsStringSync(vended);
+          versionIn(packageConfigRoot).writeAsStringSync('3.35.4');
+          lockIn(packageConfigRoot).writeAsStringSync('vended pins');
           return ExitCode.success.code;
         });
       });
@@ -218,23 +216,25 @@ void main() {
           packageConfigIn(projectRoot).readAsStringSync(),
           equals(vended),
         );
-        expect(versionIn(projectRoot).existsSync(), isTrue);
+        expect(versionIn(projectRoot).existsSync(), isFalse);
       });
 
-      test('leaves .dart_tool/version when the build kept the file', () async {
-        buildRewritesConfig = false;
-        packageConfigIn(projectRoot)
+      test('deletes .dart_tool/version before the build', () async {
+        versionIn(projectRoot)
           ..createSync(recursive: true)
-          ..writeAsStringSync(original);
-        versionIn(projectRoot).writeAsStringSync('3.35.4');
+          ..writeAsStringSync('3.35.4');
 
         await runWithOverrides(builder.buildLinuxApp);
 
-        expect(
-          packageConfigIn(projectRoot).readAsStringSync(),
-          equals(original),
-        );
-        expect(versionIn(projectRoot).existsSync(), isTrue);
+        expect(versionExistedDuringBuild, isFalse);
+      });
+
+      test('restores pubspec.lock', () async {
+        lockIn(projectRoot).writeAsStringSync('system pins');
+
+        await runWithOverrides(builder.buildLinuxApp);
+
+        expect(lockIn(projectRoot).readAsStringSync(), equals('system pins'));
       });
 
       group('in a pub workspace', () {
