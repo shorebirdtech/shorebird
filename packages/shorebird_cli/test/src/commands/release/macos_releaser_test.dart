@@ -742,7 +742,7 @@ void main() {
         expect(
           runWithOverrides(() => releaser.postReleaseInstructions),
           contains(
-            'https://docs.shorebird.dev/code-push/release/#notarize-your-app',
+            'https://docs.shorebird.dev/code-push/release/#notarize-a-macos-app',
           ),
         );
       });

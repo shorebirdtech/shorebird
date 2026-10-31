@@ -120,6 +120,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
 
 macOS app created at ${artifactManager.getMacOSAppDirectory(flavor: flavor)!.path}.
 
-To distribute your app outside the Mac App Store, sign it with your Developer ID and notarize it: ${link(uri: Uri.parse('https://docs.shorebird.dev/code-push/release/#notarize-your-app'))}
+To distribute your app outside the Mac App Store, sign it with your Developer ID and notarize it: ${link(uri: Uri.parse('https://docs.shorebird.dev/code-push/release/#notarize-a-macos-app'))}
 ''';
 }
