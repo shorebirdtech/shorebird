@@ -1062,15 +1062,27 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
   }
 
   /// The error to throw when there is nothing to patch for [releaseType].
-  CommandError _noReleasesToPatch(ReleaseType releaseType) => CommandError(
-    message:
-        'No ${releaseType.releasePlatform.displayName} releases found for '
-        'app $appId.',
-    hint:
-        'A patch needs a release to apply to (if this is the wrong app, check '
-        'app_id in shorebird.yaml or pass --flavor). Run: '
-        '${releaseType.releaseCommand()}',
-  );
+  ///
+  /// The app id comes from the flavor's entry under `flavors` in
+  /// shorebird.yaml when --flavor is passed, otherwise from `app_id`.
+  CommandError _noReleasesToPatch(ReleaseType releaseType) {
+    final flavor = this.flavor;
+    final checkAppId = flavor == null
+        ? 'check app_id in shorebird.yaml or pass --flavor'
+        : 'check flavors.$flavor in shorebird.yaml';
+    final releaseCommand = [
+      releaseType.releaseCommand(),
+      if (flavor != null) '--flavor=$flavor',
+    ].join(' ');
+    return CommandError(
+      message:
+          'No ${releaseType.releasePlatform.displayName} releases found for '
+          'app $appId.',
+      hint:
+          'A patch needs a release to apply to (if this is the wrong app, '
+          '$checkAppId). Run: $releaseCommand',
+    );
+  }
 
   /// Asserts that the release contains a platform for the given [patcher].
   void assertReleaseContainsPlatform({

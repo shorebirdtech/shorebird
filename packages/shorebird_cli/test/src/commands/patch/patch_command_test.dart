@@ -2328,6 +2328,36 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             ),
           );
         });
+
+        group('with a flavor', () {
+          const flavor = 'development';
+          const flavorAppId = 'development-app-id';
+
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn(flavor);
+            when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+              const ShorebirdYaml(
+                appId: appId,
+                flavors: {flavor: flavorAppId},
+              ),
+            );
+          });
+
+          test('points at the flavor and names its release command', () async {
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithError(
+                message:
+                    'No ${releasePlatform.displayName} releases found for app '
+                    '$flavorAppId.',
+                hint:
+                    'A patch needs a release to apply to (if this is the wrong '
+                    'app, check flavors.$flavor in shorebird.yaml). Run: '
+                    'shorebird release android --flavor=$flavor',
+              ),
+            );
+          });
+        });
       });
 
       group('when prompting for releases and multiple exist', () {
