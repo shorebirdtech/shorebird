@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -1528,5 +1529,21 @@ Did you mean --release-version=1.0.0+1?''',
         });
       });
     });
+  });
+
+  test('ReleaseCommand accepts flutter build options without --', () {
+    final results = ReleaseCommand().argParser.parse([
+      'android',
+      '--no-tree-shake-icons',
+      '-D',
+      'FOO=bar',
+      '-P',
+      'key=value',
+    ]);
+    expect(results.forwardedArgs, [
+      '--dart-define=FOO=bar',
+      '--android-project-arg=key=value',
+      '--no-tree-shake-icons',
+    ]);
   });
 }

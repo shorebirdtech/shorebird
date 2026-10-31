@@ -640,12 +640,31 @@ The warning that fails the patch names the one that applies.''';
     }
 
     final separator = platform.isWindows ? "'--'" : '--';
+    // Move the option (as typed, with any `=value`) after the separator.
+    final index = args.indexWhere(
+      (a) => a == '--$option' || a.startsWith('--$option='),
+    );
+    final typed = index == -1 ? '--$option' : args[index];
+    final others = [...args];
+    if (index != -1) others.removeAt(index);
+    final separatorIndex = others.indexOf('--');
+    final example = [
+      'shorebird',
+      if (separatorIndex == -1) ...[
+        ...others,
+        separator,
+        typed,
+      ] else ...[
+        ...others.take(separatorIndex),
+        separator,
+        typed,
+        ...others.skip(separatorIndex + 1),
+      ],
+    ].join(' ');
     return '''
-To proxy an option to the flutter command, use the $separator --<option> syntax.
+To pass --$option to flutter build, put it after $separator:
 
-Example:
-
-${lightCyan.wrap("shorebird release android $separator --no-pub lib/main.dart")}''';
+  ${lightCyan.wrap(example)}''';
   }
 
   /// If this version of shorebird is on the `stable` branch, checks to see if
