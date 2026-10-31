@@ -471,14 +471,15 @@ This is only applicable when previewing Android releases.''',
     final apps = await codePushClientWrapper.getApps();
     if (apps.isEmpty) return null;
     // Apps can share a display name, so tell those apart by their id.
-    final nameCounts = <String, int>{};
-    for (final app in apps) {
-      nameCounts.update(app.displayName, (n) => n + 1, ifAbsent: () => 1);
-    }
+    final seenNames = <String>{};
+    final sharedNames = {
+      for (final app in apps)
+        if (!seenNames.add(app.displayName)) app.displayName,
+    };
     final app = logger.chooseOne(
       'Which app would you like to preview?',
       choices: apps,
-      display: (app) => nameCounts[app.displayName]! > 1
+      display: (app) => sharedNames.contains(app.displayName)
           ? '${app.displayName} (${app.appId})'
           : app.displayName,
       hint:
