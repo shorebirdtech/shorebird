@@ -738,11 +738,11 @@ void main() {
         );
       });
 
-      test('includes .pkg distribution warning', () {
+      test('links to the notarization docs', () {
         expect(
           runWithOverrides(() => releaser.postReleaseInstructions),
           contains(
-            'https://github.com/shorebirdtech/shorebird/issues/3223',
+            'https://docs.shorebird.dev/code-push/release/#notarize-your-app',
           ),
         );
       });
