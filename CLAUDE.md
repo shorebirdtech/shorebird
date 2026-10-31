@@ -1,63 +1,32 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+When you work around something (a silent command, a surprising default, an unhelpful error, an unrelated failing test, a toolchain mismatch with CI, a command or flag you guessed that didn't exist), fix the tool: open a small PR unprompted and link it in your report; for a bigger fix, describe it and ask first.
 
-## Notice when you're working around something, and fix it
-
-We want our processes, both the ones customers use and the ones we use, to be as normal and as agent-friendly as possible. So notice when you're working around something instead of quietly getting past it. Examples: a `shorebird` command that waits with no output, a command or flag whose default surprised you, an error that doesn't say what to do, a test that fails for reasons unrelated to your change, a local Dart or Flutter toolchain that doesn't match CI.
-
-Your own wrong guesses count too. If you reached for a command, flag, path, or convention that didn't exist or didn't do what you expected, that's a place the tool didn't meet you where you were, and usually the tool should change rather than the docs.
-
-For each one:
-
-- If the fix is small, make the PR without waiting to be asked, and link it in your final report.
-- If it isn't, describe it in your final report (what you did, what you expected, what happened, and the fix you'd propose) and ask before starting it.
-
-## Build Commands
+## Commands
 
 ```bash
-# Install dependencies (once, at the repo root: packages share one pub
-# workspace, and without it analyze reports thousands of bogus issues)
-dart pub get
-
-# Before pushing, prove the change: format, analyze and test over every
-# workspace package, as CI runs them, from anywhere in the checkout
-tool/agent-verify.sh
-
-# and spell check the files you changed (CI checks the whole repo)
+dart pub get              # once, at the repo root (one pub workspace)
+tool/agent-verify.sh      # format, analyze, test every package as CI does; --force skips the cache
 npx cspell <changed files>
 ```
 
-`tool/agent-verify.sh` remembers passes through `packages/verify_cache`, under `~/.cache/shorebird-verify-cache`. Each package is keyed by its own files, every package it reaches through `path:` dependencies or a dependency on another workspace member, the workspace `pubspec.yaml`, `pubspec.lock` and `analysis_options.yaml`, and the `dart` version, so a package whose inputs already passed in any worktree is skipped, and an edit rechecks only the packages that reach it. A test that reads a file outside its package must list it under `verify_cache: inputs:` in its pubspec, or its pass outlives a change to that file until CI. Failures are never recorded; `--force` checks everything. At most two checking runs go at once per machine (`VERIFY_CACHE_SLOTS`). It skips what CI adds: coverage, the version check, and `redis_client`'s tests, which need a Redis server. To check one package by hand, run the three commands CI runs from its directory: `dart format --set-exit-if-changed .`, `dart analyze --fatal-warnings .` and `dart test -j 4`.
+`agent-verify.sh` caches passes per package. A test reading a file outside its package must list it under `verify_cache: inputs:` in its pubspec. It skips coverage, the version check and `redis_client`'s tests.
 
-## Architecture
+## Conventions
 
-Dart monorepo. Main package is `shorebird_cli`.
-
-**Platform-specific operations** use the Releaser/Patcher pattern:
-- `commands/release/` - `Releaser` base class with platform implementations
-- `commands/patch/` - `Patcher` base class with platform implementations
-
-**Dependency injection** uses `scoped_deps` with zone-based refs (see any `*Ref` variable).
-
-**Two files are named `shorebird.yaml`**: the checked-in project config at the app's root, and the generated one the Flutter fork bundles into `flutter_assets`, which has keys the checked-in one doesn't (such as `patch_public_key`). In code that touches the bundled file, and in comments, PRs and issues about either one, say "checked-in shorebird.yaml" or "generated (bundled) shorebird.yaml", so a change aimed at one doesn't hit the other. Messages customers read keep saying `shorebird.yaml`: to them it is the checked-in file.
-
-## Code Style
-
-- CSpell: use inline `// cspell:words` for 1-2 files; add to global config for more. For an invalid-input test fixture, prefer a real word that's wrong in context (such as `web` for an unsupported platform) over a misspelling.
-- Prefer new commits over amending in PRs - history gets squashed anyway
-- Dart style rules beyond the lints are in `style_guides/dart.md`
-- Name anything a customer reads (env vars, flags, doc headings, error messages) after what they see, such as the host, not our internal service names: customers configure mirrors and allowlists by hostname. The setting for `download.shorebird.dev` is `SHOREBIRD_DOWNLOAD_URL`, named for the host. Internal names are fine in code internals.
+- Say "checked-in shorebird.yaml" or "generated (bundled) shorebird.yaml" in code, comments, PRs and issues; customer messages say `shorebird.yaml`.
+- Name anything customers read (env vars, flags, errors, doc headings) after the host they see: `SHOREBIRD_DOWNLOAD_URL` for `download.shorebird.dev`.
+- CSpell: inline `// cspell:words` for 1-2 files, else the global config. Invalid-input fixtures use a real word wrong in context, such as `web` for a platform.
+- Add commits to a PR; don't amend.
+- Dart style: `style_guides/dart.md`.
 
 ## Landing a PR
 
-A PR can land when all of these hold at its current head commit:
+All must hold at the head commit:
 
-- The review bot used on Shorebird's private repos doesn't run here, so an agent-authored PR gets that same review run locally: a separate agent, not the one that wrote the change, reviews the full diff adversarially, looking for reasons it should not land, and its findings are posted as their own PR comment. Blockers are fixed or answered before asking for an LGTM.
-- A maintainer has LGTM'd: a `lgtm` comment, an approving review, or the maintainer opening the PR themselves. A PR an agent opened needs a maintainer's LGTM. Agents never post `lgtm` or approve, even when they act under a maintainer's account, so an `lgtm` is always a human's. An LGTM approves the direction, so small follow-up fixes, rebases and merges from `main` keep it. Ask again when the scope or approach changes.
-- Required checks pass on the head commit, with nothing pending (`gh pr checks <N> --required`), and review threads are resolved. Check again right before merging; `--admin` skips GitHub's own gates, so this check is the gate.
-
-Then squash-merge, pinned to the head you checked:
+- A separate agent reviewed the full diff adversarially and posted findings as a PR comment; blockers fixed or answered.
+- A maintainer LGTM'd (`lgtm` comment, approving review, or opened it). Agents never post `lgtm` or approve. Rebases and small fixes keep it; scope changes need a new one.
+- `gh pr checks <N> --required` all pass, nothing pending; threads resolved. Recheck right before merging.
 
 ```sh
 gh pr merge <N> --admin --squash --match-head-commit <full sha>
