@@ -38,6 +38,16 @@ void main() {
         }
       });
 
+      test('returns null for a load command smaller than its header', () {
+        // Zero the first load command's cmdsize, at offset 32 + 4.
+        final bytes = fixture('with_debug_info.dwarf').readAsBytesSync()
+          ..setRange(36, 40, [0, 0, 0, 0]);
+        final file = File(
+          p.join(Directory.systemTemp.createTempSync().path, 'app.symbols'),
+        )..writeAsBytesSync(bytes);
+        expect(MachO.debugInfoSize(file), isNull);
+      });
+
       test('returns null for a file shorter than a Mach-O header', () {
         final file = File(
           p.join(Directory.systemTemp.createTempSync().path, 'app.symbols'),

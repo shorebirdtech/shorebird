@@ -73,6 +73,7 @@ class MachO {
       if (offset + 8 > bytes.length) return null;
       final commandType = data.getUint32(offset, Endian.little);
       final commandLength = data.getUint32(offset + 4, Endian.little);
+      if (commandLength < 8) return null;
       if (commandType == _segment64LoadCommandType) {
         if (offset + _segment64CommandSize > bytes.length) return null;
         final sectionCount = data.getUint32(offset + 64, Endian.little);
