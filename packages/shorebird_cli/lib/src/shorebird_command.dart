@@ -370,6 +370,12 @@ Valid platforms: $validPlatformNames''',
       // A failed precondition reports itself (as precondition_failed); don't
       // relabel it as this call's error.
       rethrow;
+    } on CommandError catch (e) {
+      // A CommandError says what's wrong and what to do about it; report
+      // that rather than this call's generic message.
+      if (!isJsonMode) rethrow;
+      e.report(command: fullCommandName);
+      return e.exitCode;
     } on ApiErrorExit catch (e) {
       if (!isJsonMode) rethrow;
       return reportApiError(e.error, message: message, code: code);

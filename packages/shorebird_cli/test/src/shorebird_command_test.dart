@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -573,6 +574,32 @@ void main() {
               'details': 'Upgrade to Business.',
             }),
           );
+        });
+
+        test('reports a CommandError with its own message and hint', () async {
+          final result = await captureJson(
+            () async => (await runWithOverrides<Future<int?>>(
+              () => guard(
+                () async => throw CommandError(
+                  message: 'App not found.',
+                  hint: 'Run: shorebird apps list',
+                  exitCode: ExitCode.software,
+                ),
+              ),
+              jsonMode: true,
+            ))!,
+          );
+
+          expect(result.exitCode, equals(ExitCode.software.code));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'process_exit',
+              'message': 'App not found.',
+              'hint': 'Run: shorebird apps list',
+            }),
+          );
+          verifyNever(() => logger.err(any()));
         });
 
         test('lets other exceptions through', () async {
