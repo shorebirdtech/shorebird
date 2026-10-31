@@ -141,18 +141,20 @@ class ShorebirdAndroidArtifacts {
       flavor != null ? '${flavor}Release' : 'release',
     );
 
-    // Gradle writes each variant's bundle to its own directory, so a lone
-    // .aab there is the one just built, whatever `base.archivesName` named
-    // it. This matches how Flutter finds the bundle (by directory, not by
-    // file name).
+    // Gradle writes each variant's bundle to its own directory, so the .aab
+    // there is the one just built, whatever `base.archivesName` named it.
+    // Flutter finds the bundle the same way (by directory, not file name).
+    // Gradle doesn't clear the directory, so with several (left from an
+    // earlier build under another name) the newest is the one just built.
     final directory = Directory(buildDir);
     if (directory.existsSync()) {
-      final bundles = directory
-          .listSync()
-          .whereType<File>()
-          .where((file) => p.extension(file.path) == '.aab')
-          .toList();
-      if (bundles.length == 1) return bundles.single;
+      final bundles = directory.listSync().whereType<File>().where(
+        (file) => p.extension(file.path) == '.aab',
+      );
+      final newest = bundles
+          .sortedBy((file) => file.lastModifiedSync())
+          .lastOrNull;
+      if (newest != null) return newest;
     }
 
     final artifactName = flavor == null

@@ -232,7 +232,7 @@ void main() {
         );
       });
 
-      test('picks the default name when several bundles exist', () {
+      test('picks the newest when several bundles exist', () {
         final bundleDir = p.join(
           projectRoot.path,
           'build',
@@ -241,11 +241,15 @@ void main() {
           'bundle',
           'release',
         );
-        File(
-          p.join(bundleDir, 'shop-1-release.aab'),
-        ).createSync(recursive: true);
-        final artifact = File(p.join(bundleDir, 'app-release.aab'))
-          ..createSync(recursive: true);
+        File(p.join(bundleDir, 'app-release.aab'))
+          ..createSync(recursive: true)
+          ..setLastModifiedSync(DateTime(2026));
+        final artifact = File(p.join(bundleDir, 'shop-2-release.aab'))
+          ..createSync(recursive: true)
+          ..setLastModifiedSync(DateTime(2026, 2));
+        File(p.join(bundleDir, 'shop-1-release.aab'))
+          ..createSync(recursive: true)
+          ..setLastModifiedSync(DateTime(2026, 1, 2));
 
         expect(
           shorebirdAndroidArtifacts
@@ -350,53 +354,6 @@ void main() {
     );
 
     group('when multiple files are found', () {
-      test('throws MultipleArtifactsFoundException when looking for aab', () {
-        final buildDir = Directory(
-          p.join(
-            projectRoot.path,
-            'build',
-            'app',
-            'outputs',
-            'bundle',
-            'stablePlayStoreRelease',
-          ),
-        );
-        final duplicatedArtifactPath = p.join(
-          buildDir.path,
-          'app---stable-playStore-release.aab',
-        );
-        File(
-          p.join(projectRoot.path, duplicatedArtifactPath),
-        ).createSync(recursive: true);
-
-        final artifactPath = p.join(
-          buildDir.path,
-          'app-stable-playStore-release.aab',
-        );
-        File(
-          p.join(projectRoot.path, artifactPath),
-        ).createSync(recursive: true);
-
-        const flavor = 'stablePlayStore';
-
-        expect(
-          () => shorebirdAndroidArtifacts.findAab(
-            project: projectRoot,
-            flavor: flavor,
-          ),
-          throwsA(
-            isA<MultipleArtifactsFoundException>().having(
-              (exception) => exception.toString(),
-              'message',
-              equals(
-                'Multiple artifacts found in ${buildDir.path}: '
-                '($duplicatedArtifactPath, $artifactPath)',
-              ),
-            ),
-          ),
-        );
-      });
-
       test('throws MultipleArtifactsFoundException when looking for apk', () {
         final buildDir = Directory(
           p.join(projectRoot.path, 'build', 'app', 'outputs', 'flutter-apk'),
