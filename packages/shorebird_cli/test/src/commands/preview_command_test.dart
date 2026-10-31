@@ -1435,6 +1435,34 @@ channel: ${track.channel}
           expect(captured(app), equals(app.displayName));
           verify(() => codePushClientWrapper.getApps()).called(1);
         });
+
+        test('shows the app id of apps that share a display name', () async {
+          final twin = MockAppMetadata();
+          final other = MockAppMetadata();
+          when(() => twin.appId).thenReturn('twin-app-id');
+          when(() => twin.displayName).thenReturn(app.displayName);
+          when(() => other.appId).thenReturn('other-app-id');
+          when(() => other.displayName).thenReturn('Other App');
+          when(
+            () => codePushClientWrapper.getApps(),
+          ).thenAnswer((_) async => [app, twin, other]);
+
+          await runWithOverrides(command.run);
+
+          final display =
+              verify(
+                    () => logger.chooseOne<AppMetadata>(
+                      any(),
+                      choices: any(named: 'choices'),
+                      display: captureAny(named: 'display'),
+                      hint: any(named: 'hint'),
+                    ),
+                  ).captured.single
+                  as String Function(AppMetadata);
+          expect(display(app), equals('${app.displayName} ($appId)'));
+          expect(display(twin), equals('${app.displayName} (twin-app-id)'));
+          expect(display(other), equals('Other App'));
+        });
       });
 
       group('when release-version is not specified', () {
