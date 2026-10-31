@@ -185,7 +185,6 @@ function Update-Shorebird {
     # `shorebird upgrade` the running CLI has the old snapshot mapped, so
     # Windows won't let us overwrite or delete it, only rename it.
     $snapshotTmpPath = "$snapshotPath.tmp"
-    $snapshotOldPath = "$snapshotPath.old"
     & $dart --verbosity=error --disable-dart-dev --snapshot="$snapshotTmpPath" `
         --snapshot-kind="app-jit" --packages="$shorebirdRootDir/.dart_tool/package_config.json" `
         --no-enable-mirrors "$shorebirdScript" completion > $null
@@ -194,15 +193,14 @@ function Update-Shorebird {
         Write-Output "Compiling shorebird failed, giving up."
         exit $compileExitCode
     }
-    # A snapshot left from an earlier upgrade is no longer mapped by anything.
-    Remove-Item $snapshotOldPath -ErrorAction SilentlyContinue
+    # Each old snapshot gets its own name: one moved aside by an earlier
+    # rebuild may still be mapped by a shorebird that hasn't exited.
     if (Test-Path $snapshotPath) {
-        Move-Item $snapshotPath $snapshotOldPath
+        Move-Item $snapshotPath "$snapshotPath.$([guid]::NewGuid()).old"
     }
     Move-Item $snapshotTmpPath $snapshotPath
-    # Still mapped if we're running under `shorebird upgrade`; the next
-    # rebuild removes it then.
-    Remove-Item $snapshotOldPath -ErrorAction SilentlyContinue
+    # Old snapshots still mapped are removed by a later rebuild.
+    Remove-Item "$snapshotPath.*.old" -ErrorAction SilentlyContinue
 
     Write-Debug "writing $compileKey to $stampPath"
     Set-Content -Path $stampPath -Value $compileKey

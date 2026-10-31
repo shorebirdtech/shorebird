@@ -20,6 +20,7 @@ on:
       - pubspec.lock
       - "**/pubspec.yaml"
       - packages/shorebird_cli/lib/src/commands/upgrade_command.dart
+      - packages/shorebird_cli/lib/src/shorebird_version.dart
       - .github/workflows/windows_wrapper.yaml
   push:
     branches:
@@ -30,6 +31,7 @@ on:
       - pubspec.lock
       - "**/pubspec.yaml"
       - packages/shorebird_cli/lib/src/commands/upgrade_command.dart
+      - packages/shorebird_cli/lib/src/shorebird_version.dart
       - .github/workflows/windows_wrapper.yaml
 
 permissions:
