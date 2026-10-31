@@ -15,12 +15,10 @@ import 'package:shorebird_cli/src/artifact_builder/legacy_flutter_jar.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart' as scoped_platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -177,9 +175,9 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     return ['--shorebird-trace=${traceFile.path}'];
   }
 
-  /// Builds an aab using `flutter build appbundle`. Runs `flutter pub get` with
-  /// the system installation of Flutter to reset
-  /// `.dart_tool/package_config.json` after the build completes or fails.
+  /// Builds an aab using `flutter build appbundle`. Puts back the project's
+  /// `.dart_tool/package_config.json` after the build completes or fails (see
+  /// [_runShorebirdBuildCommand]).
   Future<File> buildAppBundle({
     String? flavor,
     String? target,
@@ -217,9 +215,9 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     );
   }
 
-  /// Builds an APK using `flutter build apk`. Runs `flutter pub get` with the
-  /// system installation of Flutter to reset `.dart_tool/package_config.json`
-  /// after the build completes or fails.
+  /// Builds an APK using `flutter build apk`. Puts back the project's
+  /// `.dart_tool/package_config.json` after the build completes or fails (see
+  /// [_runShorebirdBuildCommand]).
   Future<File> buildApk({
     String? flavor,
     String? target,
@@ -263,9 +261,9 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     );
   }
 
-  /// Builds an AAR using `flutter build aar`. Runs `flutter pub get` with the
-  /// system installation of Flutter to reset `.dart_tool/package_config.json`
-  /// after the build completes or fails.
+  /// Builds an AAR using `flutter build aar`. Puts back the project's
+  /// `.dart_tool/package_config.json` after the build completes or fails (see
+  /// [_runShorebirdBuildCommand]).
   Future<void> buildAar({
     required String buildNumber,
     Iterable<Arch>? targetPlatforms,
@@ -313,9 +311,9 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     );
   }
 
-  /// Builds a macOS app using `flutter build macos`. Runs `flutter pub get`
-  /// with the system installation of Flutter to reset
-  /// `.dart_tool/package_config.json` after the build completes or fails.
+  /// Builds a macOS app using `flutter build macos`. Puts back the project's
+  /// `.dart_tool/package_config.json` after the build completes or fails (see
+  /// [_runShorebirdBuildCommand]).
   Future<AppleBuildResult> buildMacos({
     bool codesign = true,
     String? flavor,
@@ -465,10 +463,10 @@ Reason: Exited with code $exitCode.''',
       flutterBuildDir.deleteSync(recursive: true);
     }
     // Delete .dart_tool/version so `flutter build` runs `pub get` with
-    // Shorebird's Flutter. After the previous build we reset
-    // package_config.json with the system Flutter (see
-    // [_runShorebirdBuildCommand]), and Flutter skips `pub get` when this file
-    // matches its version, which can be shared by several Flutter checkouts.
+    // Shorebird's Flutter. Another Flutter (an IDE's) may have resolved
+    // package_config.json since our last build, and Flutter skips `pub get`
+    // when this file matches its version, which can be shared by several
+    // Flutter checkouts.
     // The rest of .dart_tool (build_runner and native asset caches) is kept.
     final dartToolVersionFile = File(
       p.join(projectRoot.path, '.dart_tool', 'version'),
@@ -660,46 +658,73 @@ Reason: Exited with code $exitCode.''',
     logger.detail('Build trace summary written to $summaryPath');
   }
 
-  /// A wrapper around [command] (which runs a `flutter build` command with
-  /// Shorebird's fork of Flutter) with a try/finally that runs
-  /// `flutter pub get` with the system installation of Flutter to reset
-  /// `.dart_tool/package_config.json` to the system Flutter.
+  /// Runs [command] (a `flutter build` with Shorebird's fork of Flutter), then
+  /// puts back the `package_config.json` the project had before it.
+  ///
+  /// The build's `pub get` points package_config.json at Shorebird's Flutter,
+  /// which confuses IDEs that use the developer's own Flutter. See
+  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
+  /// Restoring the file keeps whichever Flutter the IDE resolved with (one on
+  /// PATH, FVM's) without running it and without touching the other files its
+  /// `pub get` would regenerate.
   Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
+    final packageConfig = _packageConfigFile();
+    final original = packageConfig != null && packageConfig.existsSync()
+        ? packageConfig.readAsBytesSync()
+        : null;
     try {
       await command();
     } finally {
-      await _systemFlutterPubGet();
+      if (packageConfig != null && original != null) {
+        _restorePackageConfig(packageConfig, original);
+      }
     }
   }
 
-  /// This is a hack to reset `.dart_tool/package_config.json` to point to the
-  /// Flutter SDK on the user's PATH. This is necessary because Flutter commands
-  /// run by shorebird update the package_config.json file to point to
-  /// shorebird's version of Flutter, which confuses VS Code. See
-  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
-  Future<void> _systemFlutterPubGet() async {
-    const executable = 'flutter';
-    if (osInterface.which(executable) == null) {
-      // If the user doesn't have Flutter on their PATH, then we can't run
-      // `flutter pub get` with the system Flutter.
+  /// The project's `.dart_tool/package_config.json`, or the workspace root's
+  /// when the project is in a pub workspace, or null outside a project.
+  File? _packageConfigFile() {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null) return null;
+    var root = projectRoot.path;
+    // Pub writes this file into each workspace package; it names the
+    // workspace root, relative to its own directory. Flutter's `pub get`
+    // finds package_config.json the same way.
+    final workspaceRef = File(
+      p.join(root, '.dart_tool', 'pub', 'workspace_ref.json'),
+    );
+    if (workspaceRef.existsSync()) {
+      try {
+        if (jsonDecode(workspaceRef.readAsStringSync()) case {
+          'workspaceRoot': final String workspaceRoot,
+        }) {
+          root = p.normalize(p.join(workspaceRef.parent.path, workspaceRoot));
+        }
+      } on FormatException {
+        // A malformed file: fall back to the project's own package config.
+      }
+    }
+    return File(p.join(root, '.dart_tool', 'package_config.json'));
+  }
+
+  /// Writes [original] back to [packageConfig] if the build changed it.
+  void _restorePackageConfig(File packageConfig, List<int> original) {
+    if (packageConfig.existsSync() &&
+        const ListEquality<int>().equals(
+          packageConfig.readAsBytesSync(),
+          original,
+        )) {
       return;
     }
-
-    final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
-
-    final result = await process.run(
-      executable,
-      arguments,
-      useVendedFlutter: false,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      logger.warn('''
-After the build, `flutter pub get` with the Flutter on your PATH failed. You may see unexpected behavior in VS Code.
-
-Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCodeUrl.toLink()}.
-''');
-    }
+    logger.detail('Restoring ${packageConfig.path} from before the build.');
+    packageConfig.writeAsBytesSync(original);
+    // The build wrote Shorebird's Flutter version here, which no longer
+    // describes the restored package_config.json. Flutter skips `pub get`
+    // when this file matches its own version, so without it the next Flutter
+    // to run (ours or the IDE's) resolves again instead of trusting a stale
+    // package config.
+    final version = File(p.join(packageConfig.parent.path, 'version'));
+    if (version.existsSync()) version.deleteSync();
   }
 
   /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and
@@ -766,13 +791,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   /// `flutter_export_environment.sh` when they name a Flutter other than
   /// Shorebird's, so `flutter build ios-framework` writes them again.
   ///
-  /// Another Flutter that runs in the project (the system Flutter's `pub get`
-  /// after our build, see [_runShorebirdBuildCommand], or an IDE's) writes its
-  /// own FLUTTER_ROOT there. Flutter only rewrites these files when they are
-  /// older than its own flutter_tools stamp, so Shorebird's Flutter keeps the
-  /// other Flutter's files and `pod install` builds against that Flutter's
-  /// engine, or fails when it has no iOS artifacts. `flutter build ios` and
-  /// `ipa` always rewrite them; `ios-framework` doesn't.
+  /// Another Flutter that runs in the project (an IDE's `pub get`, or the
+  /// system Flutter's `pub get` older Shorebird CLIs ran after each build)
+  /// writes its own FLUTTER_ROOT there. Flutter only rewrites these files when
+  /// they are older than its own flutter_tools stamp, so Shorebird's Flutter
+  /// keeps the other Flutter's files and `pod install` builds against that
+  /// Flutter's engine, or fails when it has no iOS artifacts. `flutter build
+  /// ios` and `ipa` always rewrite them; `ios-framework` doesn't.
   void _deleteForeignModuleXcodeProperties(Directory projectRoot) {
     final flutterDir = p.join(projectRoot.path, '.ios', 'Flutter');
     final xcconfig = File(p.join(flutterDir, 'Generated.xcconfig'));
