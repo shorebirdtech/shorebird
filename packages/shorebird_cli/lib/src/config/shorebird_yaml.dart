@@ -25,6 +25,7 @@ class ShorebirdYaml {
     this.baseUrl,
     this.autoUpdate,
     this.patchVerification,
+    this.hotRestart,
   });
 
   /// Creates a [ShorebirdYaml] from a JSON map.
@@ -61,6 +62,12 @@ class ShorebirdYaml {
 
   /// The patch verification mode for the app.
   final PatchVerification? patchVerification;
+
+  /// Whether the app may apply a pending patch by restarting in place.
+  ///
+  /// When `false`, a patch still installs but is only loaded on the next
+  /// cold launch.
+  final bool? hotRestart;
 }
 
 /// Extension on [ShorebirdYaml] to get the app id for a specific flavor.

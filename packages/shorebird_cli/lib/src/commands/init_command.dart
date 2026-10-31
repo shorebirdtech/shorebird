@@ -543,6 +543,13 @@ app_id:
 # https://pub.dev/packages/shorebird_code_push
 # Uncomment the following line to disable automatic updates.
 # auto_update: false
+
+# hot_restart controls if Shorebird may apply a patch by restarting your app in place.
+# Restarting is requested by your app via package:shorebird_code_push.
+# If hot_restart: false, an installed patch is only loaded on the next cold launch.
+# https://pub.dev/packages/shorebird_code_push
+# Uncomment the following line to disable hot restart.
+# hot_restart: false
 ''';
 
     final editor = YamlEditor(content)..update(['app_id'], appId);
