@@ -368,11 +368,10 @@ abstract class Releaser {
   /// assembled. `shorebird release` calls this right after
   /// [uploadReleaseArtifacts].
   ///
-  // TODO(bdero): This is a separate network call from the primary artifact
-  // upload, so an interruption between the two leaves the release without its
-  // supplement. Now that the supplement drives patching decisions (e.g.
-  // obfuscation), we should make this atomic or recoverable.
-  // https://github.com/shorebirdtech/shorebird/issues/3630
+  /// Both uploads run while the release is a draft on this platform, and
+  /// `shorebird patch` refuses a release that is not active on its platform.
+  /// A run stopped between them leaves a release nothing can patch until it
+  /// is released again.
   Future<void> uploadSupplementArtifact({
     required String appId,
     required int releaseId,
