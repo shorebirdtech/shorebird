@@ -299,9 +299,18 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       );
     }
 
+    final patchers = [
+      for (final releaseType in releaseTypes) _resolvePatcher(releaseType),
+    ];
+    // Check every platform before building any, so a platform this machine
+    // can't patch stops the run before another platform's patch is published.
+    for (final patcher in patchers) {
+      await _assertCanPatch(patcher);
+    }
+
     final published = <PublishedPatch>[];
-    for (final releaseType in releaseTypes) {
-      published.add(await createPatch(_resolvePatcher(releaseType)));
+    for (final patcher in patchers) {
+      published.add(await createPatch(patcher));
     }
 
     if (isJsonMode) {
@@ -458,9 +467,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
   }
 
+  /// The patchers [_assertCanPatch] has already passed.
+  final _checkedPatchers = Set<Patcher>.identity();
+
   /// Checks that [patcher] can build a patch with the given arguments and
-  /// flavors, exiting otherwise.
+  /// flavors, exiting otherwise. A patcher already checked is not checked
+  /// again.
   Future<void> _assertCanPatch(Patcher patcher) async {
+    if (_checkedPatchers.contains(patcher)) return;
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
     assertSigningArgsValid();
@@ -480,6 +494,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     } on ValidationFailedException catch (e) {
       throw PreconditionFailedExit(e);
     }
+    _checkedPatchers.add(patcher);
   }
 
   /// Determines which release to patch.
