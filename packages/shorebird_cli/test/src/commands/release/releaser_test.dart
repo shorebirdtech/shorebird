@@ -310,18 +310,20 @@ void main() {
         });
 
         test('finds it among comma-separated options', () {
+          // An absolute path in this platform's style.
+          final absolutePath = p.join(Directory.systemTemp.path, 'b.json');
           when(() => argResults.rest).thenReturn([
             '--extra-gen-snapshot-options=--foo,--save-obfuscation-map=a.json',
             '--extra-gen-snapshot-options',
-            '--save-obfuscation-map=/abs/b.json',
+            '--save-obfuscation-map=$absolutePath',
           ]);
           expect(
             runWithOverrides(() => releaser.userObfuscationMapPath),
-            equals('/abs/b.json'),
+            equals(absolutePath),
           );
           expect(
             runWithOverrides(() => releaser.obfuscationMapPath),
-            equals('/abs/b.json'),
+            equals(p.normalize(absolutePath)),
           );
         });
 
