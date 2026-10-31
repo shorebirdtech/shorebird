@@ -521,6 +521,23 @@ void main() {
           expect(captured, isEmpty);
           verifyNever(() => logger.err(any()));
         });
+
+        test('rethrows a CommandError and emits nothing', () async {
+          final error = CommandError(message: 'App not found.');
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw error),
+                jsonMode: false,
+              ),
+              captured: captured,
+            ),
+            throwsA(same(error)),
+          );
+          expect(captured, isEmpty);
+          verifyNever(() => logger.err(any()));
+        });
       });
 
       group('when in JSON mode', () {
@@ -576,7 +593,8 @@ void main() {
           );
         });
 
-        test('reports a CommandError with its own message and hint', () async {
+        test('reports a CommandError with its own message and hint, '
+            "keeping the call's code", () async {
           final result = await captureJson(
             () async => (await runWithOverrides<Future<int?>>(
               () => guard(
@@ -594,13 +612,33 @@ void main() {
           expect(
             result.json['error'],
             equals({
-              'code': 'process_exit',
+              'code': 'fetch_failed',
               'message': 'App not found.',
               'hint': 'Run: shorebird apps list',
             }),
           );
           verifyNever(() => logger.err(any()));
         });
+
+        test(
+          "reports a CommandError's own code when it has a specific one",
+          () async {
+            final result = await captureJson(
+              () async => (await runWithOverrides<Future<int?>>(
+                () => guard(
+                  () async => throw CommandError(message: 'Bad --app-id.'),
+                ),
+                jsonMode: true,
+              ))!,
+            );
+
+            expect(result.exitCode, equals(ExitCode.usage.code));
+            expect(
+              result.json['error'],
+              equals({'code': 'usage_error', 'message': 'Bad --app-id.'}),
+            );
+          },
+        );
 
         test('lets other exceptions through', () async {
           final captured = <String>[];

@@ -372,9 +372,15 @@ Valid platforms: $validPlatformNames''',
       rethrow;
     } on CommandError catch (e) {
       // A CommandError says what's wrong and what to do about it; report
-      // that rather than this call's generic message.
+      // that rather than this call's generic message. Keep this call's code
+      // unless the error names a more specific one than process_exit.
       if (!isJsonMode) rethrow;
-      e.report(command: fullCommandName);
+      reportCommandError(
+        command: fullCommandName,
+        message: e.message,
+        hint: e.hint,
+        code: e.code == JsonErrorCode.processExit ? code : e.code,
+      );
       return e.exitCode;
     } on ApiErrorExit catch (e) {
       if (!isJsonMode) rethrow;
