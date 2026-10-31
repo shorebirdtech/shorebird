@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
@@ -91,6 +92,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             'Run `shorebird orgs create "<name>"` to create one, or ask an '
             'organization admin to invite you, then run "shorebird init" '
             'again.',
+        code: JsonErrorCode.processExit,
         exitCode: ExitCode.software.code,
       );
     }

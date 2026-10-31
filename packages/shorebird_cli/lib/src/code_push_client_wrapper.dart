@@ -139,8 +139,11 @@ class CodePushClientWrapper {
     );
     if (user == null) {
       throw CommandError(
-        message: 'No Shorebird account found for the signed-in user.',
-        hint: 'Run: shorebird login',
+        message: 'No Shorebird account found for these credentials.',
+        hint:
+            'Create an account at https://console.shorebird.dev, or run '
+            '`shorebird logout` and `shorebird login` with the account you '
+            'use for Shorebird.',
         exitCode: ExitCode.software,
       );
     }
@@ -561,8 +564,8 @@ class CodePushClientWrapper {
             'Could not find app with id: "$appId". This app may not exist or '
             'you may not have permission to view it.',
         hint:
-            'Check app_id in shorebird.yaml. Run `shorebird apps list` to see '
-            'the apps you can access.',
+            'Check the app ID (from --app-id or shorebird.yaml). Run '
+            '`shorebird apps list` to see the apps you can access.',
         exitCode: ExitCode.software,
       );
     }
@@ -719,12 +722,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
     if (release == null) {
       throw CommandError(
-        message:
-            'Release not found: "$releaseVersion". Patches can only be '
-            'published for existing releases.',
+        message: 'Release not found: "$releaseVersion".',
         hint:
             'Run `shorebird releases list --app-id $appId` to see its '
-            'releases, or `shorebird release` to create one.',
+            'releases.',
         exitCode: ExitCode.software,
       );
     }

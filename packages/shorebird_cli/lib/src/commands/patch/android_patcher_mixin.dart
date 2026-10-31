@@ -111,7 +111,9 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       } on Exception {
         throw CommandError(
           message: 'Could not download the release artifact.',
-          hint: 'Check your network connection and run the command again.',
+          hint:
+              'Fix the cause above (often the network or disk space), then '
+              'run the command again.',
           exitCode: ExitCode.software,
         );
       }

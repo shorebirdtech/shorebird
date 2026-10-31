@@ -393,15 +393,12 @@ void main() {
         ).thenThrow(exception);
       });
 
-      test('exits with code 70', () async {
+      test('exits naming the failed download', () async {
         await expectLater(
           () => runWithOverrides(command.run),
-          throwsA(
-            isA<ProcessExit>().having(
-              (e) => e.exitCode,
-              'exitCode',
-              ExitCode.software.code,
-            ),
+          exitsWithError(
+            message: 'Could not download the release artifact.',
+            exitCode: ExitCode.software,
           ),
         );
       });
@@ -417,7 +414,7 @@ void main() {
         ).thenAnswer((_) async => []);
       });
 
-      test('exits with code 70', () async {
+      test('exits with a usage error naming the fix', () async {
         await expectLater(
           () => runWithOverrides(command.run),
           exitsWithError(

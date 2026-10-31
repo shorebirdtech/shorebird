@@ -338,8 +338,8 @@ void main() {
           await expectLater(
             () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
             exitsWithError(
-              message: 'No Shorebird account found for the signed-in user.',
-              hint: 'Run: shorebird login',
+              message: 'No Shorebird account found for these credentials.',
+              hint: contains('console.shorebird.dev'),
               exitCode: ExitCode.software,
             ),
           );
