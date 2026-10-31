@@ -1483,6 +1483,68 @@ Reason: Exited with code 70.'''),
         });
       });
 
+      group('when Flutter copies the kernel it compiled', () {
+        File kernelCopy() => File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'macos',
+            'shorebird_kernel',
+            'app.dill',
+          ),
+        );
+
+        test('uses the copy, not a flutter_build app.dill', () async {
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            File(
+                p.join(
+                  projectRoot.path,
+                  '.dart_tool',
+                  'flutter_build',
+                  'h',
+                  'app.dill',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..setLastModifiedSync(
+                DateTime.now().add(const Duration(seconds: 10)),
+              );
+            kernelCopy().createSync(recursive: true);
+            return ExitCode.success.code;
+          });
+
+          final result = await runWithOverrides(builder.buildMacos);
+
+          expect(result.kernelFile.path, equals(kernelCopy().path));
+        });
+
+        test('ignores a copy left by a previous build', () async {
+          kernelCopy().createSync(recursive: true);
+
+          final result = await runWithOverrides(builder.buildMacos);
+
+          expect(kernelCopy().existsSync(), isFalse);
+          expect(
+            result.kernelFile.path,
+            p.join(
+              projectRoot.path,
+              '.dart_tool',
+              'flutter_build',
+              'h',
+              'app.dill',
+            ),
+          );
+        });
+      });
+
       group('with default arguments', () {
         test('invokes flutter build with an export options plist', () async {
           final result = await runWithOverrides(builder.buildMacos);
@@ -1736,6 +1798,68 @@ Reason: Exited with code 70.'''),
                 'message',
                 'Unable to find app.dill file.',
               ),
+            ),
+          );
+        });
+      });
+
+      group('when Flutter copies the kernel it compiled', () {
+        File kernelCopy() => File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'shorebird_kernel',
+            'app.dill',
+          ),
+        );
+
+        test('uses the copy, not a flutter_build app.dill', () async {
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            File(
+                p.join(
+                  projectRoot.path,
+                  '.dart_tool',
+                  'flutter_build',
+                  'h',
+                  'app.dill',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..setLastModifiedSync(
+                DateTime.now().add(const Duration(seconds: 10)),
+              );
+            kernelCopy().createSync(recursive: true);
+            return ExitCode.success.code;
+          });
+
+          final result = await runWithOverrides(builder.buildIpa);
+
+          expect(result.kernelFile.path, equals(kernelCopy().path));
+        });
+
+        test('ignores a copy left by a previous build', () async {
+          kernelCopy().createSync(recursive: true);
+
+          final result = await runWithOverrides(builder.buildIpa);
+
+          expect(kernelCopy().existsSync(), isFalse);
+          expect(
+            result.kernelFile.path,
+            p.join(
+              projectRoot.path,
+              '.dart_tool',
+              'flutter_build',
+              'h',
+              'app.dill',
             ),
           );
         });
@@ -2132,6 +2256,68 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
           ),
         ).called(1);
         expect(result.kernelFile.path, equals(appDill.path));
+      });
+
+      group('when Flutter copies the kernel it compiled', () {
+        File kernelCopy() => File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'shorebird_kernel',
+            'app.dill',
+          ),
+        );
+
+        test('uses the copy, not a flutter_build app.dill', () async {
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            File(
+                p.join(
+                  projectRoot.path,
+                  '.dart_tool',
+                  'flutter_build',
+                  'h',
+                  'app.dill',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..setLastModifiedSync(
+                DateTime.now().add(const Duration(seconds: 10)),
+              );
+            kernelCopy().createSync(recursive: true);
+            return ExitCode.success.code;
+          });
+
+          final result = await runWithOverrides(builder.buildIosFramework);
+
+          expect(result.kernelFile.path, equals(kernelCopy().path));
+        });
+
+        test('ignores a copy left by a previous build', () async {
+          kernelCopy().createSync(recursive: true);
+
+          final result = await runWithOverrides(builder.buildIosFramework);
+
+          expect(kernelCopy().existsSync(), isFalse);
+          expect(
+            result.kernelFile.path,
+            p.join(
+              projectRoot.path,
+              '.dart_tool',
+              'flutter_build',
+              'h',
+              'app.dill',
+            ),
+          );
+        });
       });
 
       test('uses the first app.dill the build produced', () async {
