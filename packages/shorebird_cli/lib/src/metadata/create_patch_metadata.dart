@@ -27,6 +27,7 @@ class CreatePatchMetadata extends Equatable {
     required this.inferredReleaseVersion,
     required this.environment,
     required this.isSigned,
+    this.usedDefaultTrack = false,
     this.linkPercentage,
     this.linkMetadata,
     this.buildTraceSummary,
@@ -43,6 +44,7 @@ class CreatePatchMetadata extends Equatable {
     bool hasNativeChanges = false,
     bool inferredReleaseVersion = false,
     bool isSigned = false,
+    bool usedDefaultTrack = false,
     double? linkPercentage,
     Json? linkMetadata,
     Json? buildTraceSummary,
@@ -54,6 +56,7 @@ class CreatePatchMetadata extends Equatable {
     usedIgnoreNativeChangesFlag: usedIgnoreNativeChangesFlag,
     hasNativeChanges: hasNativeChanges,
     isSigned: isSigned,
+    usedDefaultTrack: usedDefaultTrack,
     inferredReleaseVersion: inferredReleaseVersion,
     linkPercentage: linkPercentage,
     linkMetadata: linkMetadata,
@@ -79,6 +82,7 @@ class CreatePatchMetadata extends Equatable {
     bool? hasNativeChanges,
     bool? inferredReleaseVersion,
     bool? isSigned,
+    bool? usedDefaultTrack,
     double? linkPercentage,
     Json? linkMetadata,
     Json? buildTraceSummary,
@@ -94,6 +98,7 @@ class CreatePatchMetadata extends Equatable {
     inferredReleaseVersion:
         inferredReleaseVersion ?? this.inferredReleaseVersion,
     isSigned: isSigned ?? this.isSigned,
+    usedDefaultTrack: usedDefaultTrack ?? this.usedDefaultTrack,
     linkPercentage: linkPercentage ?? this.linkPercentage,
     linkMetadata: linkMetadata ?? this.linkMetadata,
     buildTraceSummary: buildTraceSummary ?? this.buildTraceSummary,
@@ -149,6 +154,13 @@ class CreatePatchMetadata extends Equatable {
   /// issues.
   final bool isSigned;
 
+  /// Whether the patch went to the stable track only because no --track was
+  /// given and the CLI could not ask for one.
+  ///
+  /// Reason: that default is deprecated; this counts who still relies on it
+  /// before it becomes an error.
+  final bool usedDefaultTrack;
+
   /// Properties about the environment in which the patch was created.
   ///
   /// Reason: see [BuildEnvironmentMetadata].
@@ -173,6 +185,7 @@ class CreatePatchMetadata extends Equatable {
     linkPercentage,
     linkMetadata,
     inferredReleaseVersion,
+    usedDefaultTrack,
     isSigned,
     environment,
     buildTraceSummary,

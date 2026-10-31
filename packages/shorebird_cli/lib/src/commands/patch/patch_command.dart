@@ -109,8 +109,9 @@ To target the latest release (e.g. the release that was most recently updated) u
       ..addOption(
         'track',
         aliases: const ['channel'],
-        help: 'The track to publish the patch to.',
-        defaultsTo: DeploymentTrack.stable.channel,
+        help:
+            'The track to publish the patch to (staging, beta, stable, or a '
+            'custom track). Asked for when not given.',
       )
       ..addFlag(
         'staging',
@@ -231,7 +232,53 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   bool get useLatestRelease => results['release-version'] == 'latest';
 
   /// The deployment track to publish the patch to.
-  DeploymentTrack get track => DeploymentTrack(results['track'] as String);
+  DeploymentTrack get track => _track ??= _resolveTrack();
+  DeploymentTrack? _track;
+
+  /// Whether [track] is stable only because --track wasn't given and the CLI
+  /// couldn't ask.
+  bool _usedDefaultTrack = false;
+
+  /// The track from --track, or asked for when it wasn't given.
+  ///
+  /// Without a terminal to ask in, a missing --track still means stable so CI
+  /// scripts written against that default keep working, with a warning that
+  /// a future release will require --track.
+  DeploymentTrack _resolveTrack() {
+    if (results['track'] case final String trackName) {
+      // A new track is created on first publish, so reject a name that
+      // `channels create` and `patches set-track` would also reject.
+      final trackNameError = CommonArguments.nameError(
+        label: 'Track name',
+        value: trackName,
+        maxLength: CommonArguments.trackNameMaxLength,
+      );
+      if (trackNameError != null) usageException(trackNameError);
+      return DeploymentTrack(trackName);
+    }
+
+    if (shorebirdEnv.canAcceptUserInput) {
+      return logger.chooseOne<DeploymentTrack>(
+        'Which track should this patch be published to?',
+        choices: const [
+          DeploymentTrack.staging,
+          DeploymentTrack.beta,
+          DeploymentTrack.stable,
+        ],
+        defaultValue: DeploymentTrack.staging,
+        display: (track) => track.channel,
+      );
+    }
+
+    logger.warn(
+      'No --track given, so this patch is published to the stable track, '
+      'which reaches all users. A future release will require --track when '
+      'it cannot ask. Pass --track=stable to keep publishing to stable, or '
+      '--track=staging to test the patch before promoting it.',
+    );
+    _usedDefaultTrack = true;
+    return DeploymentTrack.stable;
+  }
 
   @override
   Future<int> run() async {
@@ -417,14 +464,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     await patcher.assertArgsAreValid();
     assertSigningArgsValid();
 
-    // A new track is created on first publish, so reject a name that
-    // `channels create` and `patches set-track` would also reject.
-    final trackNameError = CommonArguments.nameError(
-      label: 'Track name',
-      value: results['track'] as String,
-      maxLength: CommonArguments.trackNameMaxLength,
-    );
-    if (trackNameError != null) usageException(trackNameError);
+    // Resolve the track now so a bad --track, or the prompt for a missing
+    // one, comes before the build rather than after it. A dry run publishes
+    // nothing, so it only checks a --track that was given.
+    if (results['dry-run'] != true || results['track'] != null) {
+      _track ??= _resolveTrack();
+    }
 
     try {
       await shorebirdValidator.validateFlavors(
@@ -960,6 +1005,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       usedIgnoreNativeChangesFlag: allowNativeDiffs,
       hasNativeChanges: diffStatus.hasNativeChanges,
       inferredReleaseVersion: inferredReleaseVersion,
+      usedDefaultTrack: _usedDefaultTrack,
       isSigned:
           results.wasParsed(CommonArguments.privateKeyArg.name) ||
           results.wasParsed(CommonArguments.signCmd.name),
