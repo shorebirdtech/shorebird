@@ -19,6 +19,7 @@ on:
       - third_party/flutter/bin/**
       - pubspec.lock
       - "**/pubspec.yaml"
+      - packages/shorebird_cli/lib/src/commands/upgrade_command.dart
       - .github/workflows/windows_wrapper.yaml
   push:
     branches:
@@ -28,6 +29,7 @@ on:
       - third_party/flutter/bin/**
       - pubspec.lock
       - "**/pubspec.yaml"
+      - packages/shorebird_cli/lib/src/commands/upgrade_command.dart
       - .github/workflows/windows_wrapper.yaml
 
 permissions:
@@ -82,5 +84,38 @@ jobs:
           cmd /c "bin\shorebird.bat --version"
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Expected exit code 0 from --version, got $LASTEXITCODE."
+            exit 1
+          }
+
+      # `shorebird upgrade` sets up the new version by running bin\shorebird.bat
+      # while the running CLI still has the old snapshot mapped, so the rebuild
+      # has to move it aside rather than overwrite it. Upgrade to an empty
+      # commit on a local upstream branch.
+      - name: 🧪 Upgrade sets up the new version
+        shell: pwsh
+        run: |
+          git checkout -q -B upgrade-test
+          git -c user.name=ci -c user.email=ci@example.com commit -q --allow-empty -m "upgrade target"
+          git branch -f upgrade-target HEAD
+          git reset -q --hard HEAD~1
+          git branch -q --set-upstream-to=upgrade-target
+          cmd /c "bin\shorebird.bat upgrade"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Expected exit code 0 from upgrade, got $LASTEXITCODE."
+            exit 1
+          }
+          $head = git rev-parse HEAD
+          if ($head -ne (git rev-parse upgrade-target)) {
+            Write-Error "upgrade didn't move HEAD to upgrade-target."
+            exit 1
+          }
+          $stamp = (Get-Content bin\cache\shorebird.stamp).Trim()
+          if ($stamp -ne $head) {
+            Write-Error "upgrade didn't rebuild the CLI: stamp is $stamp, HEAD is $head."
+            exit 1
+          }
+          cmd /c "bin\shorebird.bat --version"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Expected exit code 0 from --version after upgrade, got $LASTEXITCODE."
             exit 1
           }

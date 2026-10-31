@@ -2,8 +2,12 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 
 /// {@template upgrade_command}
@@ -69,6 +73,26 @@ class UpgradeCommand extends ShorebirdCommand {
     }
 
     updateProgress.complete('Updated successfully.');
+
+    // On Windows, set up the new version now (fetch its Flutter, get its
+    // packages, compile it) by running it once, as `flutter upgrade` does.
+    // Otherwise the next command does that setup, with its output mixed into
+    // that command's.
+    if (platform.isWindows) {
+      final launcher = p.join(
+        shorebirdEnv.shorebirdRoot.path,
+        'bin',
+        'shorebird.bat',
+      );
+      final setupExitCode = await process.stream(launcher, ['--version']);
+      if (setupExitCode != ExitCode.success.code) {
+        logger.err(
+          'Setting up the new version failed (exit code $setupExitCode). '
+          'Run `shorebird --version` to try again.',
+        );
+        return ExitCode.software.code;
+      }
+    }
 
     return ExitCode.success.code;
   }
