@@ -1,7 +1,9 @@
+import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template flavor_validator}
 /// Verifies that the flavors in the Shorebird configuration match the
@@ -18,15 +20,15 @@ class FlavorValidator extends Validator {
   /// {@macro flavor_validator}
   FlavorValidator({
     required this.flavorArg,
-    this.platformName,
+    this.platform,
     this.platformFlavors,
   });
 
   /// The flavor argument provided by the user via `--flavor`.
   final String? flavorArg;
 
-  /// The name of the platform being built, as customers read it (`iOS`).
-  final String? platformName;
+  /// The platform being built.
+  final ReleasePlatform? platform;
 
   /// The flavors (lowercased) the platform's native project defines, or null
   /// when unknown. Shorebird only knows these for Apple platforms, from the
@@ -49,14 +51,22 @@ class FlavorValidator extends Validator {
     if (flavor != null &&
         nativeFlavors != null &&
         !nativeFlavors.contains(flavor.toLowerCase())) {
-      final fix = nativeFlavors.isEmpty
+      // Flutter matches schemes case-insensitively; shorebird.yaml keys are
+      // matched exactly, so suggest them as spelled there.
+      final buildable = (shorebirdYaml.flavors?.keys ?? const <String>[])
+          .where((name) => nativeFlavors.contains(name.toLowerCase()))
+          .sorted();
+      final fix = buildable.isEmpty
           ? 'or re-run without --flavor to use the default app id '
                 '${shorebirdYaml.appId}'
-          : 'or pass one of: ${nativeFlavors.join(', ')}';
+          : 'or pass one of: ${buildable.join(', ')}';
+      final guide = platform == ReleasePlatform.ios
+          ? ' (see https://docs.shorebird.dev/code-push/guides/flavors/ios/)'
+          : '';
       return [
         ValidationIssue.error(
           message:
-              '''The $platformName project has no Xcode scheme for flavor "$flavor", so it cannot be built with --flavor=$flavor. Add a scheme named "$flavor" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), $fix.''',
+              '''The ${platform?.displayName} project has no Xcode scheme for flavor "$flavor", so it cannot be built with --flavor=$flavor. Add a scheme named "$flavor"$guide, $fix.''',
         ),
       ];
     }

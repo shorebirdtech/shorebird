@@ -630,6 +630,7 @@ The default app id test will be used. Pass --flavor=<name> to target a flavor.''
                 ),
                 completes,
               );
+              verifyZeroInteractions(apple);
             });
           });
         });

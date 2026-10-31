@@ -309,7 +309,7 @@ To fix, update your pubspec.yaml to include the following:
 
     final flavorValidator = FlavorValidator(
       flavorArg: flavorArg,
-      platformName: releasePlatform.displayName,
+      platform: releasePlatform,
       platformFlavors: _appleFlavors(releasePlatform),
     );
     final issues = await flavorValidator.validate();
