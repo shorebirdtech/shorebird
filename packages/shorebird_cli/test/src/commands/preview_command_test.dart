@@ -1935,6 +1935,9 @@ channel: ${track.channel}
               ),
             ).called(1);
             verify(
+              () => logger.info(PreviewCommand.iosSimulatorNotSupportedMessage),
+            ).called(1);
+            verify(
               () => iosDeploy.installAndLaunchApp(
                 bundlePath: iosRunnerPath(),
                 deviceId: 'not-a-device-id',
@@ -1965,6 +1968,9 @@ channel: ${track.channel}
               bundlePath: any(named: 'bundlePath'),
               deviceId: any(named: 'deviceId'),
             ),
+          );
+          verifyNever(
+            () => logger.info(PreviewCommand.iosSimulatorNotSupportedMessage),
           );
         });
       });

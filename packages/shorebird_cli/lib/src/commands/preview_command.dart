@@ -52,7 +52,9 @@ class PreviewCommand extends ShorebirdCommand {
       ..addOption(
         'device-id',
         abbr: 'd',
-        help: 'The ID of the device or simulator to preview the release on.',
+        help:
+            'The ID of the device or Android emulator to preview the release '
+            'on. iOS simulators are not supported.',
       )
       ..addOption(
         CommonArguments.appIdArg.name,
@@ -855,6 +857,7 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
           ? 'Using device ${deviceForLaunch.name}'
           : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
       deviceLocateProgress.complete(progressCompleteMessage);
+      if (deviceForLaunch == null) logger.info(iosSimulatorNotSupportedMessage);
 
       logger.info(
         'This will reinstall the app and clear its data on the device.',
@@ -882,6 +885,13 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
       return ExitCode.software.code;
     }
   }
+
+  /// Printed when no iOS 17+ device is found, since people without a phone
+  /// expect a running simulator to be used.
+  @visibleForTesting
+  static const iosSimulatorNotSupportedMessage =
+      'shorebird preview runs on physical iPhones and iPads only. Shorebird '
+      'releases are release builds, which the iOS simulator cannot run.';
 
   /// Returns a paired iOS 17+ device that devicectl knows about but cannot
   /// currently reach (e.g. locked, screen off, off Wi-Fi while wireless
