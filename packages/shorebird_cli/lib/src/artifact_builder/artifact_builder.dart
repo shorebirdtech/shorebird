@@ -706,15 +706,18 @@ Reason: Exited with code $exitCode.''',
         if (file.existsSync()) file: file.readAsBytesSync(),
     };
 
-    final result = await process.run(
-      executable,
-      arguments,
-      useVendedFlutter: false,
-    );
-
-    for (final MapEntry(key: file, value: bytes)
-        in manifestLockContents.entries) {
-      if (!file.existsSync()) file.writeAsBytesSync(bytes);
+    final ShorebirdProcessResult result;
+    try {
+      result = await process.run(
+        executable,
+        arguments,
+        useVendedFlutter: false,
+      );
+    } finally {
+      for (final MapEntry(key: file, value: bytes)
+          in manifestLockContents.entries) {
+        if (!file.existsSync()) file.writeAsBytesSync(bytes);
+      }
     }
 
     if (result.exitCode != ExitCode.success.code) {
