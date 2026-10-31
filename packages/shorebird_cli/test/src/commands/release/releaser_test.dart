@@ -283,6 +283,59 @@ void main() {
 
         expect(buildArgs, equals([saveMapArg()]));
       });
+
+      group('when the user passes --save-obfuscation-map', () {
+        const userArg =
+            '--extra-gen-snapshot-options='
+            '--save-obfuscation-map=build/map.json';
+
+        setUp(() {
+          when(() => argResults.rest).thenReturn([userArg]);
+        });
+
+        test('keeps theirs and reads the map from their path', () async {
+          setObfuscate(enabled: true);
+          stubPreStrip(preStrip: false);
+
+          final buildArgs = [userArg];
+          await runWithOverrides(
+            () => releaser.addObfuscationMapArgs(buildArgs),
+          );
+
+          expect(buildArgs, equals([userArg]));
+          expect(
+            runWithOverrides(() => releaser.obfuscationMapPath),
+            equals(p.join(projectRoot.path, 'build', 'map.json')),
+          );
+        });
+
+        test('finds it among comma-separated options', () {
+          // An absolute path in this platform's style.
+          final absolutePath = p.join(Directory.systemTemp.path, 'b.json');
+          when(() => argResults.rest).thenReturn([
+            '--extra-gen-snapshot-options=--foo,--save-obfuscation-map=a.json',
+            '--extra-gen-snapshot-options',
+            '--save-obfuscation-map=$absolutePath',
+          ]);
+          expect(
+            runWithOverrides(() => releaser.userObfuscationMapPath),
+            equals(absolutePath),
+          );
+          expect(
+            runWithOverrides(() => releaser.obfuscationMapPath),
+            equals(p.normalize(absolutePath)),
+          );
+        });
+
+        test('verifies the map at their path', () {
+          setObfuscate(enabled: true);
+          File(
+            p.join(projectRoot.path, 'build', 'map.json'),
+          ).createSync(recursive: true);
+
+          runWithOverrides(releaser.verifyObfuscationMap);
+        });
+      });
     });
 
     group('resolvePatchSigningKey', () {
