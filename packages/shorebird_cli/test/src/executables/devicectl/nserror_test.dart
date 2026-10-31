@@ -42,6 +42,7 @@ NSError(
   description: description,
   localizedDescription: localizedDescription,
   localizedFailureReason: localizedFailureReason,
+  localizedRecoverySuggestion: null,
   underlyingError: null
 )
 )''');
@@ -76,6 +77,7 @@ UserInfo(
   description: description,
   localizedDescription: localizedDescription,
   localizedFailureReason: localizedFailureReason,
+  localizedRecoverySuggestion: null,
   underlyingError: null
 )''');
       });
@@ -144,6 +146,7 @@ NSUnderlyingError(
   description: description,
   localizedDescription: localizedDescription,
   localizedFailureReason: localizedFailureReason,
+  localizedRecoverySuggestion: null,
   underlyingError: null
 )
 )
