@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -119,7 +120,11 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
       '''
 
 macOS app created at ${artifactManager.getMacOSAppDirectory(flavor: flavor)!.path}.
+${shorebirdArtifacts.macosPatchesSurviveResigning ? '' : _resigningNote}''';
 
-${styleBold.wrap('Note:')} If you distribute your app via the Mac App Store using a .pkg installer, the packaging process may modify the binary and cause patch failures. See ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/3223'))} for more information.
+  String get _resigningNote =>
+      '''
+
+${styleBold.wrap('Note:')} Patches to this release may fail to install after the app is re-signed (Developer ID or a Mac App Store .pkg). Release with Flutter 3.47.7 or newer to avoid this. See ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/3223'))} for more information.
 ''';
 }
