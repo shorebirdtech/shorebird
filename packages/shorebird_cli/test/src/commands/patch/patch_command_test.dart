@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -3107,5 +3108,21 @@ Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
         ]),
       );
     });
+  });
+
+  test('PatchCommand accepts flutter build options without --', () {
+    final results = PatchCommand().argParser.parse([
+      'android',
+      '--no-tree-shake-icons',
+      '-D',
+      'FOO=a,b',
+      '-P',
+      'key=value',
+    ]);
+    expect(results.forwardedArgs, [
+      '--dart-define=FOO=a,b',
+      '--android-project-arg=key=value',
+      '--no-tree-shake-icons',
+    ]);
   });
 }
