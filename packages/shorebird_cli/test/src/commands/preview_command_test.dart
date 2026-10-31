@@ -2159,6 +2159,9 @@ channel: ${track.channel}
               deviceId: any(named: 'deviceId'),
             ),
           ).called(1);
+          verify(
+            () => logger.info(PreviewCommand.iosSimulatorNotSupportedMessage),
+          ).called(1);
         });
       });
 

@@ -890,8 +890,9 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
   /// expect a running simulator to be used.
   @visibleForTesting
   static const iosSimulatorNotSupportedMessage =
-      'shorebird preview runs on physical iPhones and iPads only. Shorebird '
-      'releases are release builds, which the iOS simulator cannot run.';
+      '`shorebird preview` runs on physical iPhones and iPads only. '
+      'Shorebird releases are release builds, which the iOS simulator cannot '
+      'run.';
 
   /// Returns a paired iOS 17+ device that devicectl knows about but cannot
   /// currently reach (e.g. locked, screen off, off Wi-Fi while wireless
