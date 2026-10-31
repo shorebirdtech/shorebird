@@ -502,9 +502,13 @@ Reason: Exited with code $exitCode.''',
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
       );
-      appDillPath = shorebirdKernelFile.existsSync()
-          ? shorebirdKernelFile.path
-          : _findAppDill(projectRoot: projectRoot, after: buildStart);
+      if (shorebirdKernelFile.existsSync()) {
+        appDillPath = shorebirdKernelFile.path;
+        logger.detail('Using the kernel Flutter copied: $appDillPath');
+      } else {
+        appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
+        logger.detail('Found the kernel by modification time: $appDillPath');
+      }
     });
 
     if (appDillPath == null) {
