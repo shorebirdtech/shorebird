@@ -1,7 +1,6 @@
 // cspell:words Dorg
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -245,18 +244,21 @@ class Gradlew {
       }
     }
 
-    /// Iterate through all variants and compare them to each other. If one
-    /// variant is a prefix of another, then it is a product flavor.
-    /// For example, if the variants are:
-    /// `debug`, `developmentDebug`, and `productionDebug`,
-    /// then `development`, and `production` are product flavors.
-    final productFlavors = <String>{};
-    for (final variant in variants) {
-      final match = variants.firstWhereOrNull(
-        (v) => v.startsWith(variant) && v != variant,
-      );
-      if (match != null) productFlavors.add(variant);
-    }
+    // Flutter builds `<flavor>Release`, so a product flavor is the name in
+    // front of a `Release` variant. With several flavor dimensions, that is
+    // the full combination (`internalGlobal`): Gradle also makes aggregate
+    // tasks for each dimension's flavors (`assembleInternal`), but Flutter
+    // can't build those. A variant that other variants extend
+    // (`preReleaseRelease` extends `preRelease`, the aggregate of a flavor
+    // named `preRelease`) is an aggregate, not a release variant.
+    const release = 'Release';
+    final productFlavors = <String>{
+      for (final variant in variants)
+        if (variant.length > release.length &&
+            variant.endsWith(release) &&
+            !variants.any((v) => v != variant && v.startsWith(variant)))
+          variant.substring(0, variant.length - release.length),
+    };
     return productFlavors;
   }
 }
