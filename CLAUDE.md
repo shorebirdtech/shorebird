@@ -5,7 +5,7 @@ When you work around something (a silent command, a surprising default, an unhel
 ## Commands
 
 ```bash
-dart pub get              # once, at the repo root (one pub workspace)
+dart pub get              # once, at the repo root
 tool/agent-verify.sh      # format, analyze, test every package as CI does; --force skips the cache
 npx cspell <changed files>
 ```
@@ -14,18 +14,18 @@ npx cspell <changed files>
 
 ## Conventions
 
-- Say "checked-in shorebird.yaml" or "generated (bundled) shorebird.yaml" in code, comments, PRs and issues; customer messages say `shorebird.yaml`.
-- Name anything customers read (env vars, flags, errors, doc headings) after the host they see: `SHOREBIRD_DOWNLOAD_URL` for `download.shorebird.dev`.
-- CSpell: inline `// cspell:words` for 1-2 files, else the global config. Invalid-input fixtures use a real word wrong in context, such as `web` for a platform.
-- Add commits to a PR; don't amend.
+- Two files are named `shorebird.yaml`: the checked-in one, and the one generated into `flutter_assets` with extra keys such as `patch_public_key`. In code touching the bundled one, and in comments, PRs and issues, say "checked-in shorebird.yaml" or "generated (bundled) shorebird.yaml". Customer messages say `shorebird.yaml`.
+- Name anything customers read (env vars, flags, errors, doc headings) after what they see, such as the host: `SHOREBIRD_DOWNLOAD_URL` for `download.shorebird.dev`.
+- CSpell: inline `// cspell:words` for 1-2 files, else the global config. Invalid-input fixtures use a real word wrong in context, such as `web` for an unsupported platform.
+- Prefer new commits over amending.
 - Dart style: `style_guides/dart.md`.
 
 ## Landing a PR
 
 All must hold at the head commit:
 
-- A separate agent reviewed the full diff adversarially and posted findings as a PR comment; blockers fixed or answered.
-- A maintainer LGTM'd (`lgtm` comment, approving review, or opened it). Agents never post `lgtm` or approve. Rebases and small fixes keep it; scope changes need a new one.
+- A separate agent reviewed the full diff adversarially and posted findings as a PR comment; blockers fixed or answered before asking for an LGTM.
+- A maintainer LGTM'd: a `lgtm` comment, an approving review, or opening it themselves. A PR an agent opened, even under a maintainer's account, needs an explicit LGTM. Agents never post `lgtm` or approve. Small fixes, rebases and merges from `main` keep it; a new scope or approach needs a new one.
 - `gh pr checks <N> --required` all pass, nothing pending; threads resolved. Recheck right before merging.
 
 ```sh
