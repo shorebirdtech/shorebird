@@ -168,18 +168,20 @@ void main() {
       ).called(1);
     });
 
-    test(
-      'leaves setting up the new version to the next command on Windows',
-      () async {
-        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
-        when(() => logger.progress(any())).thenReturn(MockProgress());
+    test('runs bin/shorebird.bat on Windows', () async {
+      platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+      when(() => logger.progress(any())).thenReturn(MockProgress());
 
-        final result = await runWithOverrides(command.run);
+      final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.success.code));
-        verifyNever(() => process.stream(any(), any()));
-      },
-    );
+      expect(result, equals(ExitCode.success.code));
+      verify(
+        () => process.stream(
+          p.join(p.dirname(newShorebird), 'shorebird.bat'),
+          ['--version'],
+        ),
+      ).called(1);
+    });
 
     test('does not update when already on latest version', () async {
       when(

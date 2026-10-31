@@ -79,16 +79,11 @@ class UpgradeCommand extends ShorebirdCommand {
 
   /// Runs the new version once, so that it fetches its Flutter and builds
   /// itself now rather than at the start of the next command.
-  ///
-  /// Windows is skipped: shorebird.ps1 rewrites the snapshot in place, which
-  /// this process still has open.
   Future<int> _setUpNewVersion() async {
-    if (platform.isWindows) return ExitCode.success.code;
-
     final shorebird = p.join(
       shorebirdEnv.shorebirdRoot.path,
       'bin',
-      'shorebird',
+      platform.isWindows ? 'shorebird.bat' : 'shorebird',
     );
     final exitCode = await process.stream(shorebird, ['--version']);
     if (exitCode != ExitCode.success.code) {
