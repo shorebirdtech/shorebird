@@ -2853,26 +2853,66 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
 
       group('when UnpatchableChangeException is thrown', () {
-        setUp(() {
+        void throwsChanges(Set<UnpatchableChange> changes) {
           when(
             () => patcher.assertUnpatchableDiffs(
               releaseArtifact: any(named: 'releaseArtifact'),
               releaseArchive: any(named: 'releaseArchive'),
               patchArchive: any(named: 'patchArchive'),
             ),
-          ).thenThrow(UnpatchableChangeException());
-        });
+          ).thenThrow(UnpatchableChangeException(changes));
+        }
 
-        test('exits with an error saying it is not publishing', () async {
+        test('for assets, exits naming the release and the flag', () async {
+          throwsChanges({UnpatchableChange.asset});
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithError(
               message:
-                  'Not publishing: the patch changes native code or assets, '
-                  'which a patch may not update safely.',
+                  'Not publishing: assets changed since the release, and a '
+                  "patch can't include those changes.",
               hint:
-                  'To publish anyway, pass --allow-native-diffs (native '
-                  'changes) or --allow-asset-diffs (asset changes).',
+                  'To ship these changes, create a new release. '
+                  'Run: shorebird release android\n'
+                  'To publish the patch without them, pass '
+                  '--allow-asset-diffs.',
+              exitCode: ExitCode.software,
+            ),
+          );
+        });
+
+        test('for native code and assets, names both flags and warns of '
+            'crashes', () async {
+          throwsChanges({UnpatchableChange.native, UnpatchableChange.asset});
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithError(
+              message:
+                  'Not publishing: native code and assets changed since the '
+                  "release, and a patch can't include those changes.",
+              hint:
+                  'To ship these changes, create a new release. '
+                  'Run: shorebird release android\n'
+                  'To publish the patch without them, pass '
+                  '--allow-native-diffs --allow-asset-diffs.\n'
+                  "Only do this if your Dart code doesn't depend on the "
+                  'native changes: a mismatch between your Dart code and the '
+                  "release's native code can crash your app.",
+              exitCode: ExitCode.software,
+            ),
+          );
+        });
+
+        test('for an add-to-app release, asks for a new version', () async {
+          when(() => patcher.releaseType).thenReturn(ReleaseType.aar);
+          throwsChanges({UnpatchableChange.asset});
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithError(
+              message: anything,
+              hint: contains(
+                'Run: shorebird release aar --release-version=<new version>',
+              ),
               exitCode: ExitCode.software,
             ),
           );
