@@ -19,6 +19,11 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
+/// What to say when Gradle needs properties usually passed on its command
+/// line, which `shorebird init` doesn't take.
+const gradlePropertiesHint =
+    r'''If your Gradle build needs properties you usually pass on the command line, set them where Gradle reads them without arguments, so that "shorebird init" and "shorebird release" both see them: in ~/.gradle/gradle.properties (or $GRADLE_USER_HOME/gradle.properties) or android/gradle.properties (name=value for -P, systemProp.name=value for -D), or as an ORG_GRADLE_PROJECT_name environment variable for -P.''';
+
 /// {@template init_command}
 ///
 /// `shorebird init`
@@ -131,7 +136,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             ..err('Unable to start the gradle daemon: $error')
             ..info(
               '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --daemon')} in the android directory to reproduce it), then re-run "shorebird init".''',
-            );
+            )
+            ..info(gradlePropertiesHint);
           return ExitCode.software.code;
         }
       }
@@ -164,10 +170,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       logger
         ..err('Unable to detect product flavors.\n$error')
         ..info(
-          '''Fix the build error above (run ${lightCyan.wrap('./gradlew app:tasks --all')} in the android directory to reproduce it), then re-run "shorebird init".
-
-If your Gradle build needs properties you usually pass on the command line, set them where Gradle reads them without arguments, so that "shorebird init" and "shorebird release" both see them: in android/gradle.properties or ~/.gradle/gradle.properties (name=value for -P, systemProp.name=value for -D), or as an ORG_GRADLE_PROJECT_name environment variable for -P.''',
-        );
+          '''Fix the build error above (run ${lightCyan.wrap('./gradlew app:tasks --all')} in the android directory to reproduce it), then re-run "shorebird init".''',
+        )
+        ..info(gradlePropertiesHint);
       return ExitCode.software.code;
     }
 

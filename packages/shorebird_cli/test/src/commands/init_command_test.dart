@@ -496,6 +496,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --daemon')} in the android directory to reproduce it), then re-run "shorebird init".''',
         ),
       ).called(1);
+      verify(() => logger.info(gradlePropertiesHint)).called(1);
     });
 
     test('starts gradle daemon if needed and streams logs', () async {
@@ -519,11 +520,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       ).called(1);
       verify(
         () => logger.info(
-          '''Fix the build error above (run ${lightCyan.wrap('./gradlew app:tasks --all')} in the android directory to reproduce it), then re-run "shorebird init".
-
-If your Gradle build needs properties you usually pass on the command line, set them where Gradle reads them without arguments, so that "shorebird init" and "shorebird release" both see them: in android/gradle.properties or ~/.gradle/gradle.properties (name=value for -P, systemProp.name=value for -D), or as an ORG_GRADLE_PROJECT_name environment variable for -P.''',
+          '''Fix the build error above (run ${lightCyan.wrap('./gradlew app:tasks --all')} in the android directory to reproduce it), then re-run "shorebird init".''',
         ),
       ).called(1);
+      verify(() => logger.info(gradlePropertiesHint)).called(1);
       verify(() => progress.fail()).called(1);
       expect(exitCode, ExitCode.software.code);
     });
