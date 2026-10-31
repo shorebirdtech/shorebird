@@ -24,6 +24,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import 'commands/enterprises/enterprise_fixtures.dart';
 import 'fakes.dart';
 import 'helpers.dart';
 import 'matchers.dart';
@@ -1318,6 +1319,71 @@ void main() {
             await codePushClientWrapper.removeOrganizationUser(
               organizationId: 42,
               userId: 7,
+            );
+          });
+          verify(() => progress.complete()).called(7);
+        });
+
+        test('enterprise calls pass through and complete progress', () async {
+          final member = EnterpriseFixtures.member();
+          when(
+            () => codePushClient.getEnterprises(),
+          ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+          when(
+            () => codePushClient.getEnterprise(enterpriseId: 7),
+          ).thenAnswer((_) async => EnterpriseFixtures.acmeEnterprise);
+          when(
+            () => codePushClient.getEnterpriseOrganizations(enterpriseId: 7),
+          ).thenAnswer((_) async => [EnterpriseFixtures.mobile]);
+          when(
+            () => codePushClient.getEnterpriseApps(enterpriseId: 7),
+          ).thenAnswer((_) async => [EnterpriseFixtures.app]);
+          when(
+            () => codePushClient.getEnterpriseMembers(enterpriseId: 7),
+          ).thenAnswer((_) async => [member]);
+          when(
+            () => codePushClient.getEnterpriseGuests(enterpriseId: 7),
+          ).thenAnswer((_) async => [EnterpriseFixtures.guest]);
+          when(
+            () => codePushClient.setEnterpriseMemberRole(
+              enterpriseId: 7,
+              userId: 9,
+              role: EnterpriseRole.admin,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(() async {
+            expect(await codePushClientWrapper.getEnterprises(), [
+              EnterpriseFixtures.acme,
+            ]);
+            expect(
+              await codePushClientWrapper.getEnterprise(enterpriseId: 7),
+              EnterpriseFixtures.acmeEnterprise,
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseOrganizations(
+                enterpriseId: 7,
+              ),
+              [EnterpriseFixtures.mobile],
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseApps(enterpriseId: 7),
+              [EnterpriseFixtures.app],
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseMembers(
+                enterpriseId: 7,
+              ),
+              [member],
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
+              [EnterpriseFixtures.guest],
+            );
+            await codePushClientWrapper.setEnterpriseMemberRole(
+              enterpriseId: 7,
+              userId: 9,
+              role: EnterpriseRole.admin,
             );
           });
           verify(() => progress.complete()).called(7);
