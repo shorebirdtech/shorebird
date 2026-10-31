@@ -11,11 +11,9 @@ import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -32,13 +30,11 @@ void main() {
     late Apple apple;
     late ArtifactManager artifactManager;
     late ShorebirdLogger logger;
-    late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
-    late ShorebirdProcessResult pubGetProcessResult;
     late ArtifactBuilder builder;
 
     R runWithOverrides<R>(R Function() body) {
@@ -51,7 +47,6 @@ void main() {
             () => BuildTraceSession(commandStartedAt: DateTime.now()),
           ),
           loggerRef.overrideWith(() => logger),
-          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -74,8 +69,6 @@ void main() {
       apple = MockApple();
       artifactManager = MockArtifactManager();
       logger = MockShorebirdLogger();
-      operatingSystemInterface = MockOperatingSystemInterface();
-      pubGetProcessResult = MockProcessResult();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
@@ -89,17 +82,6 @@ void main() {
         () => shorebirdFlutter.resolveFlutterVersion(any()),
       ).thenAnswer((_) async => Version(3, 0, 0));
 
-      when(
-        () => shorebirdProcess.run('flutter', [
-          '--no-version-check',
-          'pub',
-          'get',
-          '--offline',
-        ], useVendedFlutter: false),
-      ).thenAnswer((_) async => pubGetProcessResult);
-      when(
-        () => pubGetProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
       // Default stub for the `flutter build <command> -h` probe used by
       // `_supportsTraceFlag`. Returns help text that includes
       // `--shorebird-trace` so that trace tests pass when tracing is enabled.
@@ -131,9 +113,6 @@ void main() {
 
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
-      when(
-        () => operatingSystemInterface.which('flutter'),
-      ).thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
       when(
         () => shorebirdEnv.buildDirectory,
@@ -144,63 +123,165 @@ void main() {
       builder = ArtifactBuilder();
     });
 
-    void verifyCorrectFlutterPubGet(Future<void> Function() testCall) {
-      group('when flutter is installed', () {
+    /// Checks that [testCall]'s build puts back the package_config.json the
+    /// project had before it. The fake build rewrites that file and
+    /// .dart_tool/version as `pub get` with Shorebird's Flutter does, and
+    /// writes an app.dill for Apple builds to find.
+    void verifyRestoresPackageConfig(
+      Future<void> Function() testCall, {
+      bool buildFails = false,
+    }) {
+      group('package_config.json', () {
+        const original = '{"flutterRoot": "file:///system/flutter"}';
+        late File packageConfig;
+        late File version;
+
         setUp(() {
+          final dartTool = p.join(projectRoot.path, '.dart_tool');
+          packageConfig = File(p.join(dartTool, 'package_config.json'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync(original);
+          version = File(p.join(dartTool, 'version'));
           when(
-            () => operatingSystemInterface.which('flutter'),
-          ).thenReturn('/path/to/flutter');
-        });
-
-        test('runs flutter pub get with system flutter', () async {
-          await testCall();
-
-          verify(
-            () => shorebirdProcess.run('flutter', [
-              '--no-version-check',
-              'pub',
-              'get',
-              '--offline',
-            ], useVendedFlutter: false),
-          ).called(1);
-        });
-
-        test('prints error message if system flutter pub get fails', () async {
-          when(() => pubGetProcessResult.exitCode).thenReturn(1);
-
-          await testCall();
-
-          verify(
-            () => logger.warn('''
-After the build, `flutter pub get` with the Flutter on your PATH failed. You may see unexpected behavior in VS Code.
-
-Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCodeUrl.toLink()}.
-'''),
-          ).called(1);
-        });
-      });
-
-      group('when flutter is not installed', () {
-        setUp(() {
-          when(
-            () => operatingSystemInterface.which('flutter'),
-          ).thenReturn(null);
-        });
-
-        test('does not attempt to run flutter pub get', () async {
-          await testCall();
-
-          verifyNever(
-            () => shorebirdProcess.run(
-              'flutter',
-              ['--no-version-check', 'pub', 'get', '--offline'],
-              useVendedFlutter: false,
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
               runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
             ),
-          );
+          ).thenAnswer((_) async {
+            packageConfig.writeAsStringSync(
+              '{"flutterRoot": "file:///shorebird/flutter"}',
+            );
+            version.writeAsStringSync('3.35.4');
+            File(p.join(dartTool, 'flutter_build', 'h', 'app.dill'))
+              ..createSync(recursive: true)
+              ..setLastModifiedSync(
+                DateTime.now().add(const Duration(seconds: 10)),
+              );
+            return buildFails ? ExitCode.software.code : ExitCode.success.code;
+          });
+        });
+
+        test('restores the one from before the build', () async {
+          await testCall();
+
+          expect(packageConfig.readAsStringSync(), equals(original));
+          expect(version.existsSync(), isFalse);
         });
       });
     }
+
+    group('restoring package_config.json', () {
+      const original = '{"flutterRoot": "file:///system/flutter"}';
+      const vended = '{"flutterRoot": "file:///shorebird/flutter"}';
+      late Directory packageConfigRoot;
+      late bool versionExistedDuringBuild;
+
+      File packageConfigIn(Directory root) =>
+          File(p.join(root.path, '.dart_tool', 'package_config.json'));
+      File versionIn(Directory root) =>
+          File(p.join(root.path, '.dart_tool', 'version'));
+      File lockIn(Directory root) => File(p.join(root.path, 'pubspec.lock'));
+
+      setUp(() {
+        packageConfigRoot = projectRoot;
+        when(
+          () => artifactManager.linuxBundleDirectory,
+        ).thenReturn(Directory(p.join(projectRoot.path, 'build')));
+        when(
+          () => shorebirdProcess.stream(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+            onStart: any(named: 'onStart'),
+          ),
+        ).thenAnswer((_) async {
+          versionExistedDuringBuild = versionIn(packageConfigRoot).existsSync();
+          packageConfigIn(packageConfigRoot)
+            ..createSync(recursive: true)
+            ..writeAsStringSync(vended);
+          versionIn(packageConfigRoot).writeAsStringSync('3.35.4');
+          lockIn(packageConfigRoot).writeAsStringSync('vended pins');
+          return ExitCode.success.code;
+        });
+      });
+
+      test("keeps the build's when there was none before", () async {
+        await runWithOverrides(builder.buildLinuxApp);
+
+        expect(
+          packageConfigIn(projectRoot).readAsStringSync(),
+          equals(vended),
+        );
+        expect(versionIn(projectRoot).existsSync(), isFalse);
+      });
+
+      test('deletes .dart_tool/version before the build', () async {
+        versionIn(projectRoot)
+          ..createSync(recursive: true)
+          ..writeAsStringSync('3.35.4');
+
+        await runWithOverrides(builder.buildLinuxApp);
+
+        expect(versionExistedDuringBuild, isFalse);
+      });
+
+      test('restores pubspec.lock', () async {
+        lockIn(projectRoot).writeAsStringSync('system pins');
+
+        await runWithOverrides(builder.buildLinuxApp);
+
+        expect(lockIn(projectRoot).readAsStringSync(), equals('system pins'));
+      });
+
+      group('in a pub workspace', () {
+        late Directory app;
+
+        setUp(() {
+          packageConfigRoot = projectRoot;
+          app = Directory(p.join(projectRoot.path, 'packages', 'app'));
+          File(p.join(app.path, '.dart_tool', 'pub', 'workspace_ref.json'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('{"workspaceRoot": "../../../.."}');
+          when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(app);
+          packageConfigIn(projectRoot)
+            ..createSync(recursive: true)
+            ..writeAsStringSync(original);
+        });
+
+        test("restores the workspace root's", () async {
+          await runWithOverrides(builder.buildLinuxApp);
+
+          expect(
+            packageConfigIn(projectRoot).readAsStringSync(),
+            equals(original),
+          );
+          expect(versionIn(projectRoot).existsSync(), isFalse);
+        });
+
+        test(
+          "uses the project's when workspace_ref.json is malformed",
+          () async {
+            File(
+              p.join(app.path, '.dart_tool', 'pub', 'workspace_ref.json'),
+            ).writeAsStringSync('not json');
+            packageConfigRoot = app;
+            packageConfigIn(app).writeAsStringSync(original);
+
+            await runWithOverrides(builder.buildLinuxApp);
+
+            expect(packageConfigIn(app).readAsStringSync(), equals(original));
+            expect(
+              packageConfigIn(projectRoot).readAsStringSync(),
+              equals(original),
+            );
+          },
+        );
+      });
+    });
 
     group('buildAppBundle', () {
       setUp(() {
@@ -576,7 +657,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
-          verifyCorrectFlutterPubGet(
+          verifyRestoresPackageConfig(
             () => runWithOverrides(() => builder.buildAppBundle()),
           );
 
@@ -592,7 +673,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyRestoresPackageConfig(
+              buildFails: true,
               () => expectLater(
                 () => runWithOverrides(() => builder.buildAppBundle()),
                 throwsA(
@@ -978,7 +1060,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
-          verifyCorrectFlutterPubGet(
+          verifyRestoresPackageConfig(
             () => runWithOverrides(() => builder.buildApk()),
           );
 
@@ -994,7 +1076,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyRestoresPackageConfig(
+              buildFails: true,
               () => expectLater(
                 () => runWithOverrides(() => builder.buildApk()),
                 throwsA(
@@ -1153,7 +1236,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
-          verifyCorrectFlutterPubGet(
+          verifyRestoresPackageConfig(
             () async => runWithOverrides(
               () => builder.buildAar(buildNumber: buildNumber),
             ),
@@ -1171,7 +1254,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyRestoresPackageConfig(
+              buildFails: true,
               () async => expectLater(
                 () async => runWithOverrides(
                   () => builder.buildAar(buildNumber: buildNumber),
@@ -1615,7 +1699,7 @@ Reason: Exited with code 70.'''),
 
       group('after a build', () {
         group('when the build is successful', () {
-          verifyCorrectFlutterPubGet(
+          verifyRestoresPackageConfig(
             () async =>
                 runWithOverrides(() => builder.buildMacos(codesign: false)),
           );
@@ -1632,7 +1716,8 @@ Reason: Exited with code 70.'''),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyRestoresPackageConfig(
+              buildFails: true,
               () async => expectLater(
                 () async =>
                     runWithOverrides(() => builder.buildMacos(codesign: false)),
@@ -1917,7 +2002,7 @@ Reason: Exited with code 70.'''),
 
       group('after a build', () {
         group('when the build is successful', () {
-          verifyCorrectFlutterPubGet(
+          verifyRestoresPackageConfig(
             () async =>
                 runWithOverrides(() => builder.buildIpa(codesign: false)),
           );
@@ -1934,7 +2019,8 @@ Reason: Exited with code 70.'''),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyRestoresPackageConfig(
+              buildFails: true,
               () async => expectLater(
                 () async =>
                     runWithOverrides(() => builder.buildIpa(codesign: false)),
@@ -2247,7 +2333,7 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
 
       group('after a build', () {
         group('when the build is successful', () {
-          verifyCorrectFlutterPubGet(
+          verifyRestoresPackageConfig(
             () => runWithOverrides(builder.buildIosFramework),
           );
 
@@ -2295,7 +2381,8 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyRestoresPackageConfig(
+              buildFails: true,
               () => expectLater(
                 () => runWithOverrides(builder.buildIosFramework),
                 throwsA(
