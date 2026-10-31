@@ -177,13 +177,18 @@ class Devicectl {
   /// CoreDevices starting with Xcode 26.
   static const minimumConsoleLoggingXcodeVersion = 26;
 
+  static final _profileError = RegExp(
+    '(provisioning|embedded) profile',
+    caseSensitive: false,
+  );
+
   /// Printed when the device rejects the provisioning profile the release
   /// was signed with.
   static const provisioningProfileFixInstructions = '''
-The provisioning profile this release was signed with can't be installed on this device.
-This usually means the device was added to the profile after the release was built.
+The device rejected the provisioning profile this release was signed with.
+Usually the device was added to the profile after the release was built; the profile may also have expired or not match the app's bundle ID or entitlements.
 
-Make sure the profile includes this device, then create a new release with `shorebird release ios` and preview that release.''';
+Fix the profile (for example, make sure it includes this device), then create a new release with `shorebird release ios` and preview that release.''';
 
   /// The line devicectl prints once the app has launched and its console is
   /// attached.
@@ -235,7 +240,9 @@ Make sure the profile includes this device, then create a new release with `shor
       );
     } on Exception catch (error) {
       installProgress.fail('Failed to install app: $error');
-      if ('$error'.contains('profile')) {
+      // "embedded profile" covers installer errors that don't say
+      // "provisioning", such as a beta profile without its entitlement.
+      if (_profileError.hasMatch('$error')) {
         logger.info(provisioningProfileFixInstructions);
       }
       return ExitCode.software.code;
