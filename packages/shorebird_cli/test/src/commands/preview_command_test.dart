@@ -551,7 +551,7 @@ void main() {
           ),
         ).thenAnswer((_) async {});
         when(
-          () => adb.clearAppData(
+          () => adb.uninstallApp(
             package: any(named: 'package'),
             deviceId: any(named: 'deviceId'),
           ),
@@ -1076,7 +1076,7 @@ channel: ${track.channel}
         });
       });
 
-      group('when clearing app data fails', () {
+      group('when uninstalling the app fails', () {
         setUp(() {
           when(
             () => artifactManager.extractZip(
@@ -1087,14 +1087,17 @@ channel: ${track.channel}
 
           final exception = Exception('oops');
           when(
-            () => adb.clearAppData(package: any(named: 'package')),
+            () => adb.uninstallApp(package: any(named: 'package')),
           ).thenThrow(exception);
         });
 
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => adb.clearAppData(package: packageName)).called(1);
+          verify(() => adb.uninstallApp(package: packageName)).called(1);
+          verifyNever(
+            () => bundletool.installApks(apks: any(named: 'apks')),
+          );
         });
       });
 
@@ -1152,7 +1155,8 @@ channel: ${track.channel}
         await runWithOverrides(command.run);
 
         verifyInOrder([
-          () => adb.clearAppData(package: packageName),
+          () => adb.uninstallApp(package: packageName),
+          () => bundletool.installApks(apks: apksPath()),
           () => adb.latestLogTimestamp(),
           () => adb.startApp(package: packageName),
           () => adb.logcat(filter: 'flutter', since: logTimestamp),
@@ -3526,7 +3530,7 @@ channel: ${DeploymentTrack.staging.channel}
             ),
           ).thenAnswer((_) async {});
           when(
-            () => adb.clearAppData(
+            () => adb.uninstallApp(
               package: any(named: 'package'),
               deviceId: any(named: 'deviceId'),
             ),

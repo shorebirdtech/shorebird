@@ -1,4 +1,6 @@
+// cspell:words OPPO
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:scoped_deps/scoped_deps.dart';
@@ -27,18 +29,38 @@ class Adb {
     return process.start(adbPath, args);
   }
 
-  /// Clears the app data for the given [package] name.
-  Future<void> clearAppData({required String package, String? deviceId}) async {
-    final args = [
+  /// Uninstalls the app with the given [package] name, removing its data, or
+  /// does nothing if it isn't installed.
+  ///
+  /// Uninstalling is how preview starts from clean data: `pm clear` needs
+  /// CLEAR_APP_USER_DATA, which some devices (OPPO, POCO) deny to adb.
+  Future<void> uninstallApp({required String package, String? deviceId}) async {
+    final device = [
       if (deviceId != null) ...['-s', deviceId],
-      'shell',
-      'pm',
-      'clear',
-      package,
     ];
-    final result = await _exec(args);
-    if (result.exitCode != 0) {
-      throw Exception('Unable to clear app data: ${result.stderr}');
+    final packages = await _exec([
+      ...device,
+      ...['shell', 'pm', 'list', 'packages', package],
+    ]);
+    if (packages.exitCode != 0) {
+      throw Exception('Unable to list installed packages: ${packages.stderr}');
+    }
+    // `pm list packages` matches substrings, so look for this exact package.
+    final installed = LineSplitter.split(
+      '${packages.stdout}',
+    ).any((line) => line.trim() == 'package:$package');
+    if (!installed) return;
+
+    final result = await _exec([...device, 'uninstall', package]);
+    // Older devices exit 0 when uninstalling fails, so check the output too.
+    final failure = RegExp(
+      '^Failure.*\$',
+      multiLine: true,
+    ).stringMatch('${result.stdout}');
+    if (result.exitCode != 0 || failure != null) {
+      throw Exception(
+        'Unable to uninstall app: ${failure ?? result.stderr}',
+      );
     }
   }
 
