@@ -742,6 +742,11 @@ Building with Flutter $flutterVersionString to determine the release version...
       loadObfuscationMap = false;
     }
 
+    // A patch built to read the release version was built without the
+    // release's obfuscation, so it can't be compared with this release:
+    // build it again obfuscated.
+    if (obfuscationMapFile != null) lastBuiltFlutterRevision = null;
+
     patcher
       ..obfuscate = obfuscationMapFile != null
       ..obfuscationMapPath = loadObfuscationMap

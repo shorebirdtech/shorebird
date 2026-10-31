@@ -2435,6 +2435,41 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           },
         );
 
+        test(
+          'builds again obfuscated when the release is obfuscated',
+          () async {
+            when(
+              () => patcher.supplementaryReleaseArtifactArch,
+            ).thenReturn('supplement');
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenAnswer((invocation) async {
+              final outputDirectory =
+                  invocation.namedArguments[#outputDirectory] as Directory;
+              File(
+                p.join(outputDirectory.path, 'obfuscation_map.json'),
+              ).writeAsStringSync('{}');
+            });
+            when(
+              () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                platform: any(named: 'platform'),
+                flutterRevision: any(named: 'flutterRevision'),
+              ),
+            ).thenAnswer((_) async => false);
+
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyInOrder([
+              () => patcher.buildPatchArtifact(),
+              () => patcher.obfuscate = true,
+              () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+            ]);
+          },
+        );
+
         group('when release Flutter version is not default', () {
           const releaseFlutterRevision = 'different-revision';
 
