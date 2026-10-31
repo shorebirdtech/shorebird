@@ -273,7 +273,7 @@ This may indicate that the patch contains native changes, which cannot be applie
       // warning.
       if (!allowNativeDiffs && !shorebirdEnv.canAcceptUserInput) {
         logger.err(podfileLockMessage);
-        throw const UnpatchableChangeException(UnpatchableChange.native);
+        throw const UnpatchableChangeException({UnpatchableChange.native});
       }
       logger.warn(podfileLockMessage);
 

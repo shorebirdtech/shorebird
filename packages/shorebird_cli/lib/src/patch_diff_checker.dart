@@ -68,11 +68,11 @@ enum UnpatchableChange {
 /// Thrown when an unpatchable change is detected in an environment where the
 /// user cannot be prompted to continue.
 class UnpatchableChangeException implements Exception {
-  /// Creates an [UnpatchableChangeException] for [change].
-  const UnpatchableChangeException(this.change);
+  /// Creates an [UnpatchableChangeException] for [changes].
+  const UnpatchableChangeException(this.changes);
 
-  /// The change that blocked the patch.
-  final UnpatchableChange change;
+  /// The changes that blocked the patch, in [UnpatchableChange] order.
+  final Set<UnpatchableChange> changes;
 }
 
 /// Thrown when the user cancels after being prompted to continue.
@@ -121,6 +121,9 @@ class PatchDiffChecker {
     // Where the CLI can't prompt, a change the user didn't allow fails the
     // patch, so its message is an error, not a warning.
     final canPrompt = shorebirdEnv.canAcceptUserInput;
+    // Changes that fail the patch, collected so the error names every flag
+    // the user needs rather than one per run.
+    final blocked = <UnpatchableChange>{};
 
     if (status.hasNativeChanges && confirmNativeChanges) {
       const nativeMessage =
@@ -191,10 +194,8 @@ If you don't know why you're seeing this, visit our troubleshooting page at ${na
 
       if (!allowNativeChanges) {
         if (!canPrompt) {
-          throw const UnpatchableChangeException(UnpatchableChange.native);
-        }
-
-        if (!logger.confirm(
+          blocked.add(UnpatchableChange.native);
+        } else if (!logger.confirm(
           'Continue anyway?',
           hint: allowNativeDiffsHint,
         )) {
@@ -235,10 +236,8 @@ If you don't know why you're seeing this, visit our troubleshooting page at ${as
 
       if (!allowAssetChanges) {
         if (!canPrompt) {
-          throw const UnpatchableChangeException(UnpatchableChange.asset);
-        }
-
-        if (!logger.confirm(
+          blocked.add(UnpatchableChange.asset);
+        } else if (!logger.confirm(
           'Continue anyway?',
           hint: allowAssetDiffsHint,
         )) {
@@ -246,6 +245,8 @@ If you don't know why you're seeing this, visit our troubleshooting page at ${as
         }
       }
     }
+
+    if (blocked.isNotEmpty) throw UnpatchableChangeException(blocked);
 
     return status;
   }

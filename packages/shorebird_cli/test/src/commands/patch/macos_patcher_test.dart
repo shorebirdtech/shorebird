@@ -489,9 +489,9 @@ This may indicate that the patch contains native changes, which cannot be applie
                       ),
                       throwsA(
                         isA<UnpatchableChangeException>().having(
-                          (e) => e.change,
-                          'change',
-                          UnpatchableChange.native,
+                          (e) => e.changes,
+                          'changes',
+                          {UnpatchableChange.native},
                         ),
                       ),
                     );

@@ -473,9 +473,9 @@ void main() {
             ),
             throwsA(
               isA<UnpatchableChangeException>().having(
-                (e) => e.change,
-                'change',
-                UnpatchableChange.native,
+                (e) => e.changes,
+                'changes',
+                {UnpatchableChange.native},
               ),
             ),
           );
@@ -603,9 +603,9 @@ void main() {
             ),
             throwsA(
               isA<UnpatchableChangeException>().having(
-                (e) => e.change,
-                'change',
-                UnpatchableChange.asset,
+                (e) => e.changes,
+                'changes',
+                {UnpatchableChange.asset},
               ),
             ),
           );
@@ -622,6 +622,57 @@ void main() {
           ).called(1);
           verifyNever(() => logger.warn(any()));
         });
+      });
+
+      group('when native and asset diffs are detected', () {
+        setUp(() {
+          when(
+            () => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()),
+          ).thenReturn(true);
+          when(
+            () => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()),
+          ).thenReturn(true);
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        });
+
+        test('reports both changes when unable to prompt', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            ),
+            throwsA(
+              isA<UnpatchableChangeException>().having(
+                (e) => e.changes,
+                'changes',
+                {UnpatchableChange.native, UnpatchableChange.asset},
+              ),
+            ),
+          );
+        });
+
+        test(
+          'warns, not errs, about allowed changes when unable to prompt',
+          () async {
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: true,
+                allowNativeChanges: true,
+              ),
+            );
+
+            verify(() => logger.warn(any())).called(2);
+            verifyNever(() => logger.err(any()));
+          },
+        );
       });
 
       test(
