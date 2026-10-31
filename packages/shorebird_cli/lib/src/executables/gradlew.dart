@@ -244,20 +244,19 @@ class Gradlew {
       }
     }
 
-    // Flutter builds `<flavor>Release`, so a product flavor is the name in
-    // front of a `Release` variant. With several flavor dimensions, that is
-    // the full combination (`internalGlobal`): Gradle also makes aggregate
-    // tasks for each dimension's flavors (`assembleInternal`), but Flutter
-    // can't build those. A variant that other variants extend
-    // (`preReleaseRelease` extends `preRelease`, the aggregate of a flavor
-    // named `preRelease`) is an aggregate, not a release variant.
-    const release = 'Release';
+    // Every product flavor (with several flavor dimensions, every full
+    // combination, such as `internalGlobal`) has a `<flavor>Release` and a
+    // `<flavor>Debug` variant, and Flutter builds `<flavor>Release`. Gradle's
+    // aggregate tasks for one dimension's flavor (`assembleInternal`) aren't
+    // flavors Flutter can build, and have no such pair. Requiring both also
+    // keeps build types whose names end in `Release` (the baseline profile
+    // plugin's `benchmarkRelease`) from looking like flavors.
     final productFlavors = <String>{
       for (final variant in variants)
-        if (variant.length > release.length &&
-            variant.endsWith(release) &&
-            !variants.any((v) => v != variant && v.startsWith(variant)))
-          variant.substring(0, variant.length - release.length),
+        if (variant.endsWith('Release') && variant != 'release')
+          if (variant.substring(0, variant.length - 'Release'.length)
+              case final flavor when variants.contains('${flavor}Debug'))
+            flavor,
     };
     return productFlavors;
   }

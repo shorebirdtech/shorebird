@@ -294,6 +294,48 @@ assembleRelease - Assembles main outputs for all Release variants.
         }, testOn: 'linux || mac-os');
       });
 
+      group('when a build type name ends in Release', () {
+        test('extracts only the flavors', () async {
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          when(() => result.stdout).thenReturn('''
+assembleBenchmarkRelease - Assembles main outputs for all BenchmarkRelease variants.
+assembleDebug - Assembles main outputs for all Debug variants.
+assembleDev - Assembles main outputs for all Dev variants.
+assembleDevBenchmarkRelease - Assembles main output for variant devBenchmarkRelease
+assembleDevDebug - Assembles main output for variant devDebug
+assembleDevRelease - Assembles main output for variant devRelease
+assembleProd - Assembles main outputs for all Prod variants.
+assembleProdBenchmarkRelease - Assembles main output for variant prodBenchmarkRelease
+assembleProdDebug - Assembles main output for variant prodDebug
+assembleProdRelease - Assembles main output for variant prodRelease
+assembleRelease - Assembles main outputs for all Release variants.
+''');
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(equals({'dev', 'prod'})),
+          );
+        }, testOn: 'linux || mac-os');
+
+        test('extracts nothing when there are no flavors', () async {
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          when(() => result.stdout).thenReturn('''
+assembleDebug - Assembles main outputs for all Debug variants.
+assembleQaRelease - Assembles main outputs for all QaRelease variants.
+assembleRelease - Assembles main outputs for all Release variants.
+''');
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(isEmpty),
+          );
+        }, testOn: 'linux || mac-os');
+      });
+
       group('when flavors are all upper case', () {
         test('extracts flavors', () async {
           final tempDir = setUpAppTempDir();
