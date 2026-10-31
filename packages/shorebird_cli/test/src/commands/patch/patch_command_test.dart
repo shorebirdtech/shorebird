@@ -2465,6 +2465,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             verifyInOrder([
               () => patcher.buildPatchArtifact(),
               () => patcher.obfuscate = true,
+              () => patcher.extraBuildArgs = any(that: contains('--obfuscate')),
               () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
             ]);
           },

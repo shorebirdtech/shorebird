@@ -800,10 +800,10 @@ Building with Flutter $flutterVersionString to determine the release version...
     patcher.extraBuildArgs = extraBuildArgs;
   }
 
-  /// Builds the patch with [release]'s Flutter revision (unless
-  /// [existingPatchArtifact] was already built with it), checks it against the
-  /// release, and uploads it. Must run with the release's Flutter revision in
-  /// scope.
+  /// Builds the patch with [release]'s Flutter revision and settings (unless
+  /// [existingPatchArtifact] was already built with them, which
+  /// [lastBuiltFlutterRevision] says), checks it against the release, and
+  /// uploads it. Must run with the release's Flutter revision in scope.
   ///
   /// A dry run exits the process with success once the patch is checked.
   Future<PublishedPatch> _buildAndPublishPatch({
