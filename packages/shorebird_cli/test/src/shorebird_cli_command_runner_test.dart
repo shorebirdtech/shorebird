@@ -304,60 +304,42 @@ void main() {
     });
 
     test('handles missing option error', () async {
-      final exception = UsageException(
-        'Could not find an option named "foo".',
-        'exception usage',
-      );
-      var isFirstInvocation = true;
-      when(() => logger.info(any())).thenAnswer((_) {
-        if (isFirstInvocation) {
-          isFirstInvocation = false;
-          throw exception;
-        }
-      });
       final result = await runWithOverrides(
-        () => commandRunner.run(['--version']),
+        () => commandRunner.run(['release', 'android', '--foo']),
       );
       expect(result, equals(ExitCode.usage.code));
-      verify(() => logger.err(exception.message)).called(1);
+      verify(
+        () => logger.err('Could not find an option named "--foo".'),
+      ).called(1);
       verify(
         () => logger.err('''
-To proxy an option to the flutter command, use the -- --<option> syntax.
+To pass --foo to flutter build, put it after --:
 
-Example:
-
-${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}'''),
+  ${lightCyan.wrap('shorebird release android -- --foo')}'''),
       ).called(1);
-      verify(() => logger.info('exception usage')).called(1);
+      verify(
+        () => logger.info(any(that: startsWith('Usage: shorebird release'))),
+      ).called(1);
     });
 
     test('handles missing option error on Windows', () async {
       platform = TestNativePlatform(operatingSystem: NativePlatform.windows);
-      final exception = UsageException(
-        'Could not find an option named "foo".',
-        'exception usage',
-      );
-      var isFirstInvocation = true;
-      when(() => logger.info(any())).thenAnswer((_) {
-        if (isFirstInvocation) {
-          isFirstInvocation = false;
-          throw exception;
-        }
-      });
       final result = await runWithOverrides(
-        () => commandRunner.run(['--version']),
+        () => commandRunner.run(['release', 'android', '--foo']),
       );
       expect(result, equals(ExitCode.usage.code));
-      verify(() => logger.err(exception.message)).called(1);
+      verify(
+        () => logger.err('Could not find an option named "--foo".'),
+      ).called(1);
       verify(
         () => logger.err('''
-To proxy an option to the flutter command, use the '--' --<option> syntax.
+To pass --foo to flutter build, put it after '--':
 
-Example:
-
-${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}'''),
+  ${lightCyan.wrap("shorebird release android '--' --foo")}'''),
       ).called(1);
-      verify(() => logger.info('exception usage')).called(1);
+      verify(
+        () => logger.info(any(that: startsWith('Usage: shorebird release'))),
+      ).called(1);
     });
 
     group('unknown option on patch', () {
@@ -377,7 +359,8 @@ The warning that fails the patch names the one that applies.''';
         ).called(1);
         verify(() => logger.err(overrideHint)).called(1);
         verifyNever(
-          () => logger.err(any(that: contains('To proxy an option'))),
+          () =>
+              logger.err(any(that: contains('to flutter build, put it after'))),
         );
       });
 
@@ -392,13 +375,44 @@ The warning that fails the patch names the one that applies.''';
         ).called(1);
       });
 
-      test('falls back to the proxy hint for other options', () async {
+      test('falls back to the pass-through hint for other options', () async {
         await runWithOverrides(
-          () => commandRunner.run(['patch', 'android', '--no-pub']),
+          () => commandRunner.run(['patch', 'android', '--fast=true']),
         );
         verify(
-          () => logger.err(any(that: contains('To proxy an option'))),
+          () => logger.err('''
+To pass --fast to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird patch android -- --fast=true')}'''),
         ).called(1);
+      });
+
+      test('puts the option right after an existing --', () async {
+        await runWithOverrides(
+          () => commandRunner.run([
+            'patch',
+            'android',
+            '--fast',
+            '--',
+            '--no-pub',
+          ]),
+        );
+        verify(
+          () => logger.err('''
+To pass --fast to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird patch android -- --fast --no-pub')}'''),
+        ).called(1);
+      });
+
+      test('commands that do not build get no pass-through hint', () async {
+        await runWithOverrides(() => commandRunner.run(['doctor', '--fast']));
+        verify(
+          () => logger.err('Could not find an option named "--fast".'),
+        ).called(1);
+        verifyNever(
+          () => logger.err(any(that: contains('to flutter build'))),
+        );
       });
 
       test('does not apply to other commands', () async {
@@ -406,7 +420,8 @@ The warning that fails the patch names the one that applies.''';
           () => commandRunner.run(['release', 'android', '--force']),
         );
         verify(
-          () => logger.err(any(that: contains('To proxy an option'))),
+          () =>
+              logger.err(any(that: contains('to flutter build, put it after'))),
         ).called(1);
       });
 

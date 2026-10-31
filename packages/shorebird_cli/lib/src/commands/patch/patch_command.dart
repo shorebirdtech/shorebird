@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
+import 'package:shorebird_cli/src/flutter_build_options.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -53,6 +54,8 @@ class PatchCommand extends ShorebirdCommand {
     argParser
       ..addMultiOption(
         CommonArguments.dartDefineArg.name,
+        abbr: 'D',
+        splitCommas: false,
         help: CommonArguments.dartDefineArg.description,
       )
       ..addMultiOption(
@@ -185,7 +188,8 @@ To target the latest release (e.g. the release that was most recently updated) u
         CommonArguments.ddMaxBytesArg.name,
         hide: true,
         help: CommonArguments.ddMaxBytesArg.description,
-      );
+      )
+      ..addFlutterBuildOptions();
   }
 
   /// Warning message for when native code diffs are detected.
@@ -211,6 +215,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @override
   String get name => 'patch';
+
+  @override
+  String get usageFooter => flutterBuildOptionsUsage('patch');
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);

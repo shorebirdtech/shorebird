@@ -10,6 +10,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/flutter_build_options.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:test/test.dart';
@@ -221,7 +222,67 @@ void main() {
           CommonArguments.obfuscateArg.name,
           negatable: false,
         )
-        ..addFlag('verbose', abbr: 'v');
+        ..addFlag('verbose', abbr: 'v')
+        ..addFlutterBuildOptions();
+    });
+
+    group('flutter build options', () {
+      test('forwards flags given without --', () {
+        final result = parser.parse([
+          'android',
+          '--no-tree-shake-icons',
+          '--pub',
+          '--ignore-deprecation',
+        ]);
+        expect(result.forwardedArgs, [
+          '--ignore-deprecation',
+          '--pub',
+          '--no-tree-shake-icons',
+        ]);
+      });
+
+      test('forwards every value of an option, commas intact', () {
+        final result = parser.parse([
+          'android',
+          '-P',
+          'a=1,2',
+          '--android-project-arg=b=3',
+          '--code-size-directory',
+          'sizes',
+        ]);
+        expect(result.forwardedArgs, [
+          '--android-project-arg=a=1,2',
+          '--android-project-arg=b=3',
+          '--code-size-directory=sizes',
+        ]);
+      });
+
+      test('keeps args after -- alongside them', () {
+        final result = parser.parse([
+          'android',
+          '--no-pub',
+          '--',
+          '--extra-gen-snapshot-options=--foo',
+        ]);
+        expect(result.forwardedArgs, [
+          '--extra-gen-snapshot-options=--foo',
+          '--no-pub',
+        ]);
+      });
+
+      test('forwards nothing for options not passed', () {
+        final result = parser.parse(['android']);
+        expect(result.forwardedArgs, isEmpty);
+      });
+
+      test('are hidden from --help', () {
+        expect(parser.usage, isNot(contains('tree-shake-icons')));
+      });
+
+      test('none is registered twice', () {
+        final names = flutterBuildOptions.map((o) => o.name);
+        expect(names.toSet(), hasLength(names.length));
+      });
     });
 
     test('returns an empty list when rest is empty', () {

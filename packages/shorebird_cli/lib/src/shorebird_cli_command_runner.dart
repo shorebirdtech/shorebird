@@ -631,9 +631,10 @@ ${currentRunLogFile.absolute.path}
   /// The hint to print under an unknown-option error.
   ///
   /// `shorebird patch --force` (or any override-shaped option) gets the
-  /// flags that actually bypass the patch safety checks; everything else
-  /// gets the `--` pass-through explanation.
-  String _unknownOptionHint(String option, List<String> args) {
+  /// flags that actually bypass the patch safety checks; other options on
+  /// release and patch get the `--` pass-through explanation, and other
+  /// commands get no hint.
+  String? _unknownOptionHint(String option, List<String> args) {
     final commandName = args.where((a) => !a.startsWith('-')).firstOrNull;
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
@@ -643,13 +644,35 @@ shorebird patch has no --$option flag. The patch safety checks are bypassed per 
 The warning that fails the patch names the one that applies.''';
     }
 
+    // Only release and patch forward options to flutter build.
+    if (commandName != 'release' && commandName != 'patch') return null;
+
     final separator = platform.isWindows ? "'--'" : '--';
+    // Move the option (as typed, with any `=value`) after the separator.
+    final index = args.indexWhere(
+      (a) => a == '--$option' || a.startsWith('--$option='),
+    );
+    final typed = index == -1 ? '--$option' : args[index];
+    final others = [...args];
+    if (index != -1) others.removeAt(index);
+    final separatorIndex = others.indexOf('--');
+    final example = [
+      'shorebird',
+      if (separatorIndex == -1) ...[
+        ...others,
+        separator,
+        typed,
+      ] else ...[
+        ...others.take(separatorIndex),
+        separator,
+        typed,
+        ...others.skip(separatorIndex + 1),
+      ],
+    ].join(' ');
     return '''
-To proxy an option to the flutter command, use the $separator --<option> syntax.
+To pass --$option to flutter build, put it after $separator:
 
-Example:
-
-${lightCyan.wrap("shorebird release android $separator --no-pub lib/main.dart")}''';
+  ${lightCyan.wrap(example)}''';
   }
 
   /// If this version of shorebird is on the `stable` branch, checks to see if
