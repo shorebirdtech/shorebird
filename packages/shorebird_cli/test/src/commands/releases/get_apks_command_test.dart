@@ -20,6 +20,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -419,12 +420,9 @@ void main() {
       test('exits with code 70', () async {
         await expectLater(
           () => runWithOverrides(command.run),
-          throwsA(
-            isA<ProcessExit>().having(
-              (e) => e.exitCode,
-              'exitCode',
-              ExitCode.usage.code,
-            ),
+          exitsWithError(
+            message: 'No Android releases found for app $appId.',
+            hint: 'Run: shorebird release android',
           ),
         );
         verify(
@@ -433,7 +431,6 @@ void main() {
             sideloadableOnly: true,
           ),
         ).called(1);
-        verify(() => logger.err('No releases found for app $appId')).called(1);
       });
     });
 

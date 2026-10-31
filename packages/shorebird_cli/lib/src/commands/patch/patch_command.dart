@@ -406,7 +406,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     try {
       await shorebirdFlutter.installRevision(revision: release.flutterRevision);
     } on Exception {
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Could not install the Flutter version this release uses.',
+        hint: 'Check your network connection and run the command again.',
+        exitCode: ExitCode.software,
+      );
     }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
@@ -1257,7 +1261,11 @@ ${summary.join('\n')}
         message: 'Downloading ${releaseArtifact.arch}',
       );
     } on Exception {
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Could not download the release artifact.',
+        hint: 'Check your network connection and run the command again.',
+        exitCode: ExitCode.software,
+      );
     }
 
     return artifactFile;

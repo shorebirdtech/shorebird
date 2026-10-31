@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
@@ -137,8 +138,11 @@ class CodePushClientWrapper {
       codePushClient.getCurrentUser,
     );
     if (user == null) {
-      logger.err('Could not find current user.');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'No Shorebird account found for the signed-in user.',
+        hint: 'Run: shorebird login',
+        exitCode: ExitCode.software,
+      );
     }
     return user;
   }
@@ -552,11 +556,15 @@ class CodePushClientWrapper {
   Future<AppMetadata> getApp({required String appId}) async {
     final app = await maybeGetApp(appId: appId);
     if (app == null) {
-      logger.err('''
-Could not find app with id: "$appId".
-This app may not exist or you may not have permission to view it.''');
-
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'Could not find app with id: "$appId". This app may not exist or '
+            'you may not have permission to view it.',
+        hint:
+            'Check app_id in shorebird.yaml. Run `shorebird apps list` to see '
+            'the apps you can access.',
+        exitCode: ExitCode.software,
+      );
     }
 
     return app;
@@ -710,13 +718,15 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     );
 
     if (release == null) {
-      logger.err('''
-Release not found: "$releaseVersion"
-
-Patches can only be published for existing releases.
-Please create a release using "shorebird release" and try again.
-''');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message:
+            'Release not found: "$releaseVersion". Patches can only be '
+            'published for existing releases.',
+        hint:
+            'Run `shorebird releases list --app-id $appId` to see its '
+            'releases, or `shorebird release` to create one.',
+        exitCode: ExitCode.software,
+      );
     }
 
     return release;

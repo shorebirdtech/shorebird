@@ -1,8 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Checks the preconditions every release and patch shares: the user is
@@ -32,7 +31,12 @@ Future<void> assertBuildPreconditions({
 /// `androidPackage` that Android archive (aar) releases and patches need.
 void assertAndroidPackageNameConfigured() {
   if (shorebirdEnv.androidPackageName == null) {
-    logger.err('Could not find androidPackage in pubspec.yaml.');
-    throw ProcessExit(ExitCode.config.code);
+    throw CommandError(
+      message: 'Could not find androidPackage in pubspec.yaml.',
+      hint:
+          'Add it under flutter: module: in pubspec.yaml, such as '
+          'androidPackage: com.example.my_module',
+      exitCode: ExitCode.config,
+    );
   }
 }

@@ -85,10 +85,14 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     final organizationMemberships = await codePushClientWrapper
         .getOrganizationMemberships();
     if (organizationMemberships.isEmpty) {
-      logger.err(
-        '''You do not have any organizations. This should never happen. Please contact us on Discord or send us an email at contact@shorebird.dev.''',
+      return reportError(
+        message: 'You are not a member of any organization.',
+        hint:
+            'Run `shorebird orgs create "<name>"` to create one, or ask an '
+            'organization admin to invite you, then run "shorebird init" '
+            'again.',
+        exitCode: ExitCode.software.code,
       );
-      return ExitCode.software.code;
     }
     // Checked up front so a bad --org-id fails before any slow setup.
     final namedMembership = _membershipNamedByOrgId(organizationMemberships);

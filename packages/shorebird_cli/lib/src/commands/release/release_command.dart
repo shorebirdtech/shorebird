@@ -412,7 +412,11 @@ The version of the Android or iOS app that embeds this module
     try {
       await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
     } on Exception {
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Could not install the Flutter version to release with.',
+        hint: 'Check your network connection and run the command again.',
+        exitCode: ExitCode.software,
+      );
     }
     return targetFlutterRevision;
   }

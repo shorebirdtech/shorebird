@@ -10,7 +10,6 @@ import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Shared logic for patchers whose release artifacts are per-architecture
@@ -110,7 +109,11 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
             );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } on Exception {
-        throw ProcessExit(ExitCode.software.code);
+        throw CommandError(
+          message: 'Could not download the release artifact.',
+          hint: 'Check your network connection and run the command again.',
+          exitCode: ExitCode.software,
+        );
       }
     }
 
