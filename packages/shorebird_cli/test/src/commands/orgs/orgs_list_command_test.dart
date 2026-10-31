@@ -13,6 +13,8 @@ import 'package:test/test.dart';
 
 import '../../helpers.dart';
 import '../../mocks.dart';
+import '../enterprises/enterprise_fixtures.dart';
+import '../enterprises/enterprise_test_harness.dart';
 
 void main() {
   useTempWorkingDirectory();
@@ -220,6 +222,83 @@ void main() {
         final data = json['data'] as Map<String, dynamic>;
         expect(data['organizations'], isEmpty);
       });
+    });
+  });
+
+  group('OrgsListCommand --enterprise', () {
+    late EnterpriseHarness h;
+    late OrgsListCommand command;
+
+    setUp(() {
+      h = EnterpriseHarness();
+      when(
+        () => h.codePushClientWrapper.getEnterpriseOrganizations(
+          enterpriseId: 7,
+        ),
+      ).thenAnswer((_) async => [EnterpriseFixtures.mobile]);
+      command = h.run(OrgsListCommand.new)..testArgResults = h.argResults;
+    });
+
+    test('lists every organization in the enterprise', () async {
+      expect(await h.run(command.run), ExitCode.success.code);
+      final lines = verify(
+        () => h.logger.info(captureAny()),
+      ).captured.cast<String>();
+      expect(lines, [
+        allOf(
+          startsWith('42  '),
+          contains('Mobile'),
+          endsWith('12 members  1 app'),
+        ),
+      ]);
+      verifyNever(h.codePushClientWrapper.getOrganizationMemberships);
+    });
+
+    test('says when the enterprise has none', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseOrganizations(
+          enterpriseId: 7,
+        ),
+      ).thenAnswer((_) async => []);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(() => h.logger.info('"Acme" has no organizations.')).called(1);
+    });
+
+    test('--json lists counts', () async {
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      expect(json['data'], {
+        'enterprise_id': 7,
+        'organizations': [
+          {'id': 42, 'name': 'Mobile', 'member_count': 12, 'app_count': 1},
+        ],
+      });
+    });
+
+    test('says when you are in no enterprise', () async {
+      when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
+      expect(await h.run(command.run), ExitCode.noPerm.code);
+      verify(
+        () => h.logger.err("You aren't a member of an enterprise."),
+      ).called(1);
+    });
+
+    test('reports a failed fetch', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseOrganizations(
+          enterpriseId: 7,
+        ),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch the organizations of "Acme".',
+      );
     });
   });
 }

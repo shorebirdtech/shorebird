@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../enterprises/enterprise_fixtures.dart';
 import 'members_test_harness.dart';
 
 void main() {
@@ -139,6 +140,165 @@ void main() {
           },
         ],
       });
+    });
+  });
+
+  group('MembersListCommand --enterprise', () {
+    late MembersHarness h;
+    late MembersListCommand command;
+
+    setUp(() {
+      h = MembersHarness();
+      when(() => h.argResults['org-id']).thenReturn(null);
+      when(() => h.argResults['enterprise']).thenReturn(true);
+      when(
+        h.codePushClientWrapper.getEnterprises,
+      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+      when(
+        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
+      ).thenAnswer((_) async => [EnterpriseFixtures.member()]);
+      when(
+        () => h.codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
+      ).thenAnswer((_) async => [EnterpriseFixtures.guest]);
+      command = h.run(MembersListCommand.new)..testArgResults = h.argResults;
+    });
+
+    test('lists the directory with enterprise roles', () async {
+      expect(await h.run(command.run), ExitCode.success.code);
+      final lines = verify(
+        () => h.logger.info(captureAny()),
+      ).captured.cast<String>();
+      expect(lines, [
+        allOf(
+          startsWith('9  '),
+          contains('bob@acme.com'),
+          endsWith('member  2 organizations'),
+        ),
+      ]);
+      verifyNever(
+        () => h.codePushClientWrapper.getOrganizationUsers(
+          organizationId: any(named: 'organizationId'),
+        ),
+      );
+    });
+
+    test('--json lists each member with their organizations', () async {
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      final data = json['data'] as Map<String, dynamic>;
+      expect(data['enterprise_id'], 7);
+      expect((data['members'] as List).first, {
+        'user_id': 9,
+        'email': 'bob@acme.com',
+        'name': 'Bob',
+        'role': 'member',
+        'organizations': [
+          {'organization_id': 42, 'role': 'developer'},
+          {'organization_id': 43, 'role': 'viewer'},
+        ],
+      });
+    });
+
+    test('says when the directory is empty', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
+      ).thenAnswer((_) async => []);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(() => h.logger.info('"Acme" has no members.')).called(1);
+    });
+
+    group('--guests', () {
+      setUp(() => when(() => h.argResults['guests']).thenReturn(true));
+
+      test('lists the guests', () async {
+        expect(await h.run(command.run), ExitCode.success.code);
+        final lines = verify(
+          () => h.logger.info(captureAny()),
+        ).captured.cast<String>();
+        expect(lines, [
+          allOf(
+            startsWith('10  '),
+            contains('eve@contractor.com'),
+            endsWith('guest  1 organization  outside guest policy'),
+          ),
+        ]);
+      });
+
+      test('says when there are none', () async {
+        when(
+          () => h.codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
+        ).thenAnswer((_) async => []);
+        expect(await h.run(command.run), ExitCode.success.code);
+        verify(() => h.logger.info('"Acme" has no guests.')).called(1);
+      });
+
+      test('--json lists them', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => h.run(command.run, json: true),
+        );
+        expect(exitCode, ExitCode.success.code);
+        expect(json['data'], {
+          'enterprise_id': 7,
+          'guests': [
+            {
+              'user_id': 10,
+              'email': 'eve@contractor.com',
+              'name': null,
+              'organizations': [
+                {'organization_id': 42, 'role': 'viewer'},
+              ],
+              'outside_guest_policy': true,
+            },
+          ],
+        });
+      });
+
+      test('needs --enterprise', () async {
+        when(() => h.argResults['enterprise']).thenReturn(false);
+        when(() => h.argResults['org-id']).thenReturn('42');
+        expect(await h.run(command.run), ExitCode.usage.code);
+        verify(
+          () => h.logger.err(
+            "--guests lists an enterprise's guests; pass --enterprise too.",
+          ),
+        ).called(1);
+      });
+
+      test('reports a failed fetch', () async {
+        when(
+          () => h.codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+        final (:exitCode, :json) = await captureJson(
+          () => h.run(command.run, json: true),
+        );
+        expect(exitCode, ExitCode.software.code);
+        expect(
+          (json['error'] as Map)['message'],
+          'Failed to fetch the guests of "Acme".',
+        );
+      });
+    });
+
+    test('rejects --org-id with --enterprise', () async {
+      when(() => h.argResults['org-id']).thenReturn('42');
+      expect(await h.run(command.run), ExitCode.usage.code);
+      verifyNever(h.codePushClientWrapper.getEnterprises);
+    });
+
+    test('reports a failed fetch', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch the members of "Acme".',
+      );
     });
   });
 }

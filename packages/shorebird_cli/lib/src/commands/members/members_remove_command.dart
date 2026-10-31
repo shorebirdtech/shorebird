@@ -1,11 +1,14 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/confirm_delete.dart';
+import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/finish_in_console.dart';
 import 'package:shorebird_cli/src/commands/members/member_target.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template members_remove_command}
@@ -13,11 +16,23 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Remove a member from an organization, or cancel a pending invitation.
 /// {@endtemplate}
 class MembersRemoveCommand extends ShorebirdCommand
-    with OrganizationScopedCommand, ConfirmDelete, MemberLookup {
+    with
+        OrganizationScopedCommand,
+        EnterpriseScopedCommand,
+        ConfirmDelete,
+        FinishInConsole,
+        MemberLookup,
+        EnterpriseMemberLookup {
   /// {@macro members_remove_command}
   MembersRemoveCommand() {
     addConfirmDeleteOptions();
     addOrganizationScopeOption();
+    addEnterpriseScopeFlag(
+      help:
+          'Remove them from your enterprise and every organization in it '
+          'instead, in the console. Needs an owner or '
+          'admin of the enterprise.',
+    );
   }
 
   @override
@@ -39,6 +54,9 @@ class MembersRemoveCommand extends ShorebirdCommand
       'CI, or --json).\n\n'
       'Example output:\n'
       '  Removed bob@acme.com from "Acme Corp".\n\n'
+      'With --enterprise, opens the console to remove them from the '
+      'enterprise and every organization in it. That is permanent and signs '
+      'them out everywhere, so it is confirmed there.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird members remove bob@acme.com --org-id 42 --yes --json',
       )}';
@@ -54,6 +72,9 @@ class MembersRemoveCommand extends ShorebirdCommand
       );
     }
     final user = rest.single.trim();
+    final scopeError = rejectOrganizationAndEnterprise();
+    if (scopeError != null) return scopeError;
+    if (enterpriseScope) return _removeFromEnterprise(user);
 
     final (:membership, :errorCode) = await resolveOrganization();
     if (errorCode != null) return errorCode;
@@ -160,5 +181,29 @@ class MembersRemoveCommand extends ShorebirdCommand
       logger.success(text);
     }
     return ExitCode.success.code;
+  }
+
+  /// Removing someone from an enterprise is permanent and revokes every
+  /// session and API key on their account, so it finishes in the console
+  /// (ADR-0026).
+  Future<int> _removeFromEnterprise(String user) async {
+    final (:membership, :errorCode) = await resolveEnterprise();
+    if (errorCode != null) return errorCode;
+    final enterprise = membership!;
+
+    final (:member, errorCode: lookupError) = await findEnterpriseMember(
+      user,
+      enterprise: enterprise,
+    );
+    if (lookupError != null) return lookupError;
+    final label = enterpriseUserLabel(
+      userId: member!.userId,
+      email: member.email,
+      displayName: member.displayName,
+    );
+    return finishInConsole(
+      action: 'remove $label from "${enterprise.name}"',
+      url: ShorebirdWebConsole.uri('enterprise/people'),
+    );
   }
 }

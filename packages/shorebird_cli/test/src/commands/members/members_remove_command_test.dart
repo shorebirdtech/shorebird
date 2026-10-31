@@ -1,10 +1,14 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/commands/members/members.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../../mocks.dart';
+import '../enterprises/enterprise_fixtures.dart';
 import 'members_test_harness.dart';
 
 void main() {
@@ -222,6 +226,73 @@ void main() {
         'email': 'bob@acme.com',
         'status': 'member',
       });
+    });
+  });
+
+  group('MembersRemoveCommand --enterprise', () {
+    late MembersHarness h;
+    late MembersRemoveCommand command;
+    late Browser browser;
+
+    setUp(() {
+      h = MembersHarness();
+      browser = MockBrowser();
+      when(() => browser.canOpen).thenReturn(false);
+      when(() => h.argResults['org-id']).thenReturn(null);
+      when(() => h.argResults['enterprise']).thenReturn(true);
+      when(() => h.argResults.rest).thenReturn(['bob@acme.com']);
+      when(
+        h.codePushClientWrapper.getEnterprises,
+      ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+      when(
+        () => h.codePushClientWrapper.getEnterpriseMembers(enterpriseId: 7),
+      ).thenAnswer((_) async => [EnterpriseFixtures.member()]);
+      command = h.run(MembersRemoveCommand.new)..testArgResults = h.argResults;
+    });
+
+    Future<int> run({bool json = false}) => runScoped(
+      () => h.run(command.run, json: json),
+      values: {browserRef.overrideWith(() => browser)},
+    );
+
+    test('sends them to the console, changing nothing', () async {
+      expect(await run(), ExitCode.success.code);
+      final message =
+          verify(() => h.logger.info(captureAny())).captured.single as String;
+      expect(
+        message,
+        allOf(
+          contains('remove bob@acme.com from "Acme"'),
+          contains('enterprise/people'),
+        ),
+      );
+      verifyNever(() => h.logger.confirm(any(), hint: any(named: 'hint')));
+    });
+
+    test('fails naming the console page when nobody can finish it', () async {
+      when(() => h.shorebirdEnv.canAcceptUserInput).thenReturn(false);
+      final (:exitCode, :json) = await captureJson(() => run(json: true));
+      expect(exitCode, ExitCode.unavailable.code);
+      expect((json['error'] as Map)['code'], 'console_required');
+    });
+
+    test('reports someone not in the directory', () async {
+      when(() => h.argResults.rest).thenReturn(['nobody@acme.com']);
+      expect(await run(), ExitCode.usage.code);
+      verify(
+        () => h.logger.err('"nobody@acme.com" is not a member of "Acme".'),
+      ).called(1);
+    });
+
+    test('rejects --org-id with --enterprise', () async {
+      when(() => h.argResults['org-id']).thenReturn('42');
+      expect(await run(), ExitCode.usage.code);
+      verify(
+        () => h.logger.err(
+          'Pass --org-id or --enterprise, not both: --enterprise '
+          'already covers every organization in the enterprise.',
+        ),
+      ).called(1);
     });
   });
 }

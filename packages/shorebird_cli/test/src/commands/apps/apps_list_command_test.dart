@@ -13,6 +13,8 @@ import 'package:test/test.dart';
 
 import '../../helpers.dart';
 import '../../mocks.dart';
+import '../enterprises/enterprise_fixtures.dart';
+import '../enterprises/enterprise_test_harness.dart';
 
 void main() {
   useTempWorkingDirectory();
@@ -226,6 +228,84 @@ void main() {
         final data = json['data'] as Map<String, dynamic>;
         expect(data['apps'], isEmpty);
       });
+    });
+  });
+
+  group('AppsListCommand --enterprise', () {
+    late EnterpriseHarness h;
+    late AppsListCommand command;
+
+    setUp(() {
+      h = EnterpriseHarness();
+      when(
+        () => h.codePushClientWrapper.getEnterpriseApps(enterpriseId: 7),
+      ).thenAnswer((_) async => [EnterpriseFixtures.app]);
+      command = h.run(AppsListCommand.new)..testArgResults = h.argResults;
+    });
+
+    test('lists every app with its organization', () async {
+      expect(await h.run(command.run), ExitCode.success.code);
+      final lines = verify(
+        () => h.logger.info(captureAny()),
+      ).captured.cast<String>();
+      expect(lines, [
+        allOf(
+          startsWith('app-1  '),
+          contains('Acme App'),
+          endsWith('42  Mobile'),
+        ),
+      ]);
+      verifyNever(h.codePushClientWrapper.getApps);
+    });
+
+    test('says when the enterprise has none', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseApps(enterpriseId: 7),
+      ).thenAnswer((_) async => []);
+      expect(await h.run(command.run), ExitCode.success.code);
+      verify(() => h.logger.info('"Acme" has no apps.')).called(1);
+    });
+
+    test("--json names each app's organization", () async {
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.success.code);
+      expect(json['data'], {
+        'enterprise_id': 7,
+        'apps': [
+          {
+            'app_id': 'app-1',
+            'display_name': 'Acme App',
+            'organization_id': 42,
+            'organization_name': 'Mobile',
+          },
+        ],
+      });
+    });
+
+    test('says when you are in no enterprise', () async {
+      when(h.codePushClientWrapper.getEnterprises).thenAnswer((_) async => []);
+      expect(await h.run(command.run), ExitCode.noPerm.code);
+      verifyNever(
+        () => h.codePushClientWrapper.getEnterpriseApps(
+          enterpriseId: any(named: 'enterpriseId'),
+        ),
+      );
+    });
+
+    test('reports a failed fetch', () async {
+      when(
+        () => h.codePushClientWrapper.getEnterpriseApps(enterpriseId: 7),
+      ).thenThrow(ProcessExit(ExitCode.software.code));
+      final (:exitCode, :json) = await captureJson(
+        () => h.run(command.run, json: true),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(
+        (json['error'] as Map)['message'],
+        'Failed to fetch the apps of "Acme".',
+      );
     });
   });
 }
