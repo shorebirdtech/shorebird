@@ -1256,8 +1256,12 @@ ${summary.join('\n')}
         releaseArtifact,
         message: 'Downloading ${releaseArtifact.arch}',
       );
-    } on Exception {
-      throw ProcessExit(ExitCode.software.code);
+    } on Exception catch (error) {
+      throw CommandError(
+        message: 'Could not download the release artifact: $error',
+        hint: 'Run the command again once that is fixed.',
+        exitCode: ExitCode.software,
+      );
     }
 
     return artifactFile;

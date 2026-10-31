@@ -564,9 +564,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.software.code));
         verify(
-          () => logger.err(
-            '''You do not have any organizations. This should never happen. Please contact us on Discord or send us an email at contact@shorebird.dev.''',
-          ),
+          () => logger.err('You are not a member of any organization.'),
+        ).called(1);
+        verify(
+          () => logger.info(any(that: contains('shorebird orgs create'))),
         ).called(1);
       });
     });

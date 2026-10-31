@@ -337,9 +337,15 @@ void main() {
 
           await expectLater(
             () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: 'No Shorebird account found for these credentials.',
+              hint: allOf(
+                contains('console.shorebird.dev'),
+                contains('SHOREBIRD_TOKEN'),
+              ),
+              exitCode: ExitCode.software,
+            ),
           );
-          verify(() => logger.err('Could not find current user.')).called(1);
         });
 
         test('returns the current user on success', () async {
@@ -778,15 +784,14 @@ void main() {
             () async => runWithOverrides(
               () => codePushClientWrapper.getApp(appId: appId),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: contains('Could not find app with id: "$appId"'),
+              hint: contains('shorebird apps list'),
+              exitCode: ExitCode.software,
+            ),
           );
 
           verify(() => progress.complete()).called(1);
-          verify(
-            () => logger.err(
-              any(that: contains('Could not find app with id: "$appId"')),
-            ),
-          ).called(1);
         });
 
         test('returns app when app exists', () async {
@@ -1989,15 +1994,14 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 releaseVersion: releaseVersion,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: contains('Release not found: "$releaseVersion"'),
+              hint: contains('shorebird releases list --app-id $appId'),
+              exitCode: ExitCode.software,
+            ),
           );
 
           verify(() => progress.complete()).called(1);
-          verify(
-            () => logger.err(
-              any(that: contains('Release not found: "$releaseVersion"')),
-            ),
-          ).called(1);
         });
 
         test('returns release when release exists', () async {

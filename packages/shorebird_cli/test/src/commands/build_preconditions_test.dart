@@ -112,16 +112,17 @@ void main() {
       );
     });
 
-    test('logs error and exits with config code when missing', () {
+    test('exits with a config error naming the fix when missing', () {
       when(() => shorebirdEnv.androidPackageName).thenReturn(null);
 
       expect(
         () => runWithOverrides(assertAndroidPackageNameConfigured),
-        exitsWithCode(ExitCode.config),
+        exitsWithError(
+          message: 'Could not find androidPackage in pubspec.yaml.',
+          hint: contains('androidPackage: com.example.my_module'),
+          exitCode: ExitCode.config,
+        ),
       );
-      verify(
-        () => logger.err('Could not find androidPackage in pubspec.yaml.'),
-      ).called(1);
     });
   });
 }
