@@ -913,6 +913,7 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             ),
           );
 
+          verify(() => aotTools.isLinkMetadataSupported()).called(1);
           verifyNever(
             () => aotTools.getLinkMetadata(
               debugDir: any(named: 'debugDir'),
