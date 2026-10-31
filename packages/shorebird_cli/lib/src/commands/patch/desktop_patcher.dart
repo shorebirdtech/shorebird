@@ -80,7 +80,7 @@ abstract class DesktopPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({required String releaseVersion}) async {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final builtDirectory = await buildApp(
       args: buildArgs,

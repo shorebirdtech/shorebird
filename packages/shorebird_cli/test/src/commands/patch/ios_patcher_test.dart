@@ -589,7 +589,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -610,7 +612,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -641,7 +645,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -707,7 +713,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
           test('forwards --split-debug-info to builder', () async {
             try {
-              await runWithOverrides(patcher.buildPatchArtifact);
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+              );
             } on Exception {
               // ignore
             }
@@ -751,7 +759,9 @@ This may indicate that the patch contains native changes, which cannot be applie
           });
 
           test('returns xcarchive zip', () async {
-            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+            final artifact = await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             expect(p.basename(artifact.path), endsWith('.zip'));
             verify(
               () => artifactBuilder.buildIpa(
@@ -783,7 +793,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(key.path);
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => artifactBuilder.buildIpa(
@@ -806,7 +818,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             when(
               () => codeSigner.runPublicKeyCmd('print-key'),
             ).thenAnswer((_) async => 'pem-from-cmd');
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
@@ -825,7 +839,9 @@ This may indicate that the patch contains native changes, which cannot be applie
         });
 
         test('returns xcarchive zip', () async {
-          final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+          final artifact = await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(p.basename(artifact.path), endsWith('.zip'));
         });
 
@@ -834,7 +850,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             p.join(projectRoot.path, 'build', 'app.dill'),
           );
           expect(copiedKernelFile.existsSync(), isFalse);
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(copiedKernelFile.existsSync(), isTrue);
         });
 
@@ -864,7 +882,9 @@ This may indicate that the patch contains native changes, which cannot be applie
                 '--extra-gen-snapshot-options=$loadMapOption',
                 '--split-debug-info=build/shorebird/symbols',
               ];
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             final captured = verify(
               () => artifactBuilder.buildIpa(
@@ -895,7 +915,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         group('when extraBuildArgs is empty', () {
           test('does not inject obfuscation flags', () async {
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             final captured = verify(
               () => artifactBuilder.buildIpa(

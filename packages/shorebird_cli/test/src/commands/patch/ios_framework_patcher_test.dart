@@ -317,7 +317,9 @@ void main() {
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -343,7 +345,9 @@ void main() {
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -397,7 +401,9 @@ void main() {
 
           test('forwards --split-debug-info to builder', () async {
             try {
-              await runWithOverrides(patcher.buildPatchArtifact);
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+              );
             } on Exception {
               // ignore
             }
@@ -437,7 +443,9 @@ void main() {
               patcher
                 ..obfuscate = true
                 ..obfuscationMapPath = obfuscationMapFile.path;
-              await runWithOverrides(patcher.buildPatchArtifact);
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+              );
 
               final captured = verify(
                 () => artifactBuilder.buildElfAotSnapshot(
@@ -466,7 +474,9 @@ void main() {
           });
 
           test('forwards --no-codesign to flutter', () async {
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             verify(
               () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
             ).called(1);
@@ -479,7 +489,9 @@ void main() {
           });
 
           test('returns zipped xcframework', () async {
-            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+            final artifact = await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             expect(p.basename(artifact.path), equals('App.xcframework.zip'));
             verify(
               () => artifactBuilder.buildIosFramework(args: ['--verbose']),
@@ -504,7 +516,9 @@ void main() {
           });
 
           test('forwards the target to buildIosFramework', () async {
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             verify(
               () => artifactBuilder.buildIosFramework(
                 target: 'lib/main_prod.dart',
@@ -542,7 +556,9 @@ void main() {
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(key.path);
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => artifactBuilder.buildIosFramework(
@@ -564,7 +580,9 @@ void main() {
               when(
                 () => codeSigner.runPublicKeyCmd('print-key'),
               ).thenAnswer((_) async => 'pem-from-cmd');
-              await runWithOverrides(patcher.buildPatchArtifact);
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+              );
 
               verify(
                 () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
@@ -581,7 +599,9 @@ void main() {
         });
 
         test('returns zipped xcframework', () async {
-          final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+          final artifact = await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(p.basename(artifact.path), equals('App.xcframework.zip'));
         });
 
@@ -590,7 +610,9 @@ void main() {
             p.join(projectRoot.path, 'build', 'app.dill'),
           );
           expect(copiedKernelFile.existsSync(), isFalse);
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(copiedKernelFile.existsSync(), isTrue);
         });
       });

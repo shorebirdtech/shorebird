@@ -53,7 +53,7 @@ class _TestApplePatcher extends Patcher
   }) => throw UnimplementedError();
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) =>
+  Future<File> buildPatchArtifact({required String releaseVersion}) =>
       throw UnimplementedError();
 
   @override

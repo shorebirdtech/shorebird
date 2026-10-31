@@ -64,7 +64,7 @@ class IosPatcher extends Patcher
       argResults.assertValidExportOptionsPlistArg();
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({required String releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,
       ...extraBuildArgs,

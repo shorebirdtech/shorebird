@@ -2353,42 +2353,80 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
 
       group('when it cannot prompt', () {
+        const usageMessage =
+            'Missing required argument: --release-version. Pass '
+            '--release-version=<version> (or --release-version=latest for the '
+            'most recent release) when running non-interactively.';
+
         setUp(() {
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
-        for (final releaseType in ReleaseType.values) {
-          test(
-            'is a usage error before building a ${releaseType.cliName} patch',
-            () async {
-              when(() => patcher.releaseType).thenReturn(releaseType);
-
-              await expectLater(
-                runWithOverrides(() => command.createPatch(patcher)),
-                throwsA(
-                  isA<UsageException>().having(
-                    (e) => e.message,
-                    'message',
-                    'Missing required argument: --release-version. Pass '
-                        '--release-version=<version> (or '
-                        '--release-version=latest for the most recent '
-                        'release) when running non-interactively.',
-                  ),
-                ),
-              );
-              verifyNever(
-                () => codePushClientWrapper.getReleases(
-                  appId: any(named: 'appId'),
-                ),
-              );
-              verifyNever(
-                () => patcher.buildPatchArtifact(
-                  releaseVersion: any(named: 'releaseVersion'),
-                ),
-              );
-            },
+        void verifyNothingRan(Patcher patcher) {
+          verifyNever(() => patcher.assertPreconditions());
+          verifyNever(() => patcher.assertArgsAreValid());
+          verifyNever(
+            () => shorebirdValidator.validateFlavors(
+              flavorArg: any(named: 'flavorArg'),
+              releasePlatform: any(named: 'releasePlatform'),
+            ),
+          );
+          verifyNever(() => logger.warn(any()));
+          verifyNever(cache.updateAll);
+          verifyNever(
+            () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+          );
+          verifyNever(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+            ),
+          );
+          verifyNever(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
           );
         }
+
+        test('is a usage error before any other work', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                usageMessage,
+              ),
+            ),
+          );
+          verifyNothingRan(patcher);
+        });
+
+        test('is a usage error before checking any platform', () async {
+          final iosPatcher = MockPatcher();
+          when(() => iosPatcher.releaseType).thenReturn(ReleaseType.ios);
+          when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+          command =
+              PatchCommand(
+                  resolvePatcher: (type) =>
+                      type == ReleaseType.ios ? iosPatcher : patcher,
+                )
+                ..testArgResults = argResults
+                ..testRunner = usageRunner();
+
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                usageMessage,
+              ),
+            ),
+          );
+          verifyNothingRan(patcher);
+          verifyNothingRan(iosPatcher);
+        });
       });
     });
 

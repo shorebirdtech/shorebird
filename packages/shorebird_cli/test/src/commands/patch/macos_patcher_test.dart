@@ -567,7 +567,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -598,7 +600,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -637,7 +641,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('exits with an error naming the snapshot', () async {
           await expectLater(
-            runWithOverrides(patcher.buildPatchArtifact),
+            runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(
               isCommandError(
                 message: 'Failed to build the arm64 AOT snapshot.',
@@ -682,7 +688,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('exits with an error naming the snapshot', () async {
           await expectLater(
-            runWithOverrides(patcher.buildPatchArtifact),
+            runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(
               isCommandError(
                 message: 'Failed to build the x64 AOT snapshot.',
@@ -740,7 +748,9 @@ This may indicate that the patch contains native changes, which cannot be applie
           expect(splitDebugInfo.existsSync(), isFalse);
 
           try {
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
           } on Exception catch (_) {
             // swallow exception
           }
@@ -796,7 +806,9 @@ This may indicate that the patch contains native changes, which cannot be applie
           });
 
           test('builds with flavor', () async {
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             verify(
               () => artifactBuilder.buildMacos(
                 codesign: any(named: 'codesign'),
@@ -851,7 +863,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(key.path);
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => artifactBuilder.buildMacos(
@@ -874,7 +888,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             when(
               () => codeSigner.runPublicKeyCmd('print-key'),
             ).thenAnswer((_) async => 'pem-from-cmd');
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
@@ -898,7 +914,9 @@ This may indicate that the patch contains native changes, which cannot be applie
           });
 
           test('returns app zip', () async {
-            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+            final artifact = await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             expect(p.basename(artifact.path), endsWith('.zip'));
             verify(
               () => artifactBuilder.buildMacos(
@@ -910,7 +928,9 @@ This may indicate that the patch contains native changes, which cannot be applie
         });
 
         test('returns app zip', () async {
-          final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+          final artifact = await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(p.basename(artifact.path), endsWith('.zip'));
         });
 
@@ -919,7 +939,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             p.join(projectRoot.path, 'build', 'app.dill'),
           );
           expect(copiedKernelFile.existsSync(), isFalse);
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(copiedKernelFile.existsSync(), isTrue);
         });
 
@@ -949,7 +971,9 @@ This may indicate that the patch contains native changes, which cannot be applie
                 '--extra-gen-snapshot-options=$loadMapOption',
                 '--split-debug-info=build/shorebird/symbols',
               ];
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             final captured = verify(
               () => artifactBuilder.buildMacos(
@@ -980,7 +1004,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         group('when extraBuildArgs is empty', () {
           test('does not inject obfuscation flags', () async {
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             final captured = verify(
               () => artifactBuilder.buildMacos(

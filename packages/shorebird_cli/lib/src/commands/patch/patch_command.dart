@@ -88,6 +88,7 @@ class PatchCommand extends ShorebirdCommand {
         CommonArguments.releaseVersionArg.name,
         help: '''
 The version of the associated release (e.g. "1.0.0").
+Required when shorebird can't prompt for it (e.g. on CI or with --json).
 If you are building an xcframework or aar, this number needs to match the host app's release version.
 To target the latest release (e.g. the release that was most recently updated) use --release-version=latest.''',
       )
@@ -296,6 +297,16 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return reportError(
         message: '--staging is no longer supported.',
         hint: 'Pass --track=staging instead.',
+      );
+    }
+
+    // Without a terminal (CI, --json) there's no way to pick the release.
+    if (!results.wasParsed(CommonArguments.releaseVersionArg.name) &&
+        !shorebirdEnv.canAcceptUserInput) {
+      usageException(
+        'Missing required argument: --release-version. Pass '
+        '--release-version=<version> (or --release-version=latest for the most '
+        'recent release) when running non-interactively.',
       );
     }
 
@@ -514,14 +525,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         releaseVersion: releaseVersion,
       );
     }
-    if (shorebirdEnv.canAcceptUserInput) {
-      return promptForRelease(patcher.releaseType);
-    }
-    usageException(
-      'Missing required argument: --release-version. Pass '
-      '--release-version=<version> (or --release-version=latest for the most '
-      'recent release) when running non-interactively.',
+    // run() has already rejected a missing --release-version when it can't
+    // prompt.
+    assert(
+      shorebirdEnv.canAcceptUserInput,
+      'run() requires --release-version when it cannot prompt',
     );
+    return promptForRelease(patcher.releaseType);
   }
 
   /// Downloads [release]'s primary artifact and, if the platform has one, its

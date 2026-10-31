@@ -76,7 +76,7 @@ class MacosPatcher extends Patcher
   String get podfileLockRelativePath => 'macos/Podfile.lock';
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({required String releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,
       ...extraBuildArgs,

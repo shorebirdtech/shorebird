@@ -252,7 +252,9 @@ void main() {
           final exception = Exception('Failed to build app');
           patcher.buildError = exception;
           await expectLater(
-            () => runWithOverrides(() => patcher.buildPatchArtifact()),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -264,7 +266,7 @@ void main() {
           File(p.join(appDirectory.path, 'app.txt')).createSync();
 
           final zip = await runWithOverrides(
-            () => patcher.buildPatchArtifact(),
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
           );
 
           expect(zip.path, endsWith('.zip'));
@@ -288,7 +290,9 @@ void main() {
             () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn('encoded-public-key');
 
-          await runWithOverrides(() => patcher.buildPatchArtifact());
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
 
           expect(patcher.builtWithPublicKey, equals('encoded-public-key'));
           verify(
@@ -312,7 +316,9 @@ void main() {
               () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
             ).thenReturn('encoded-from-cmd');
 
-            await runWithOverrides(() => patcher.buildPatchArtifact());
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             expect(patcher.builtWithPublicKey, equals('encoded-from-cmd'));
           },
@@ -322,7 +328,9 @@ void main() {
           when(
             () => argResults.rest,
           ).thenReturn(['--build-name=1.2.3', '--build-number=4']);
-          await runWithOverrides(() => patcher.buildPatchArtifact());
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(
             patcher.builtWithArgs,
             containsAll(['--build-name=1.2.3', '--build-number=4']),
@@ -334,7 +342,9 @@ void main() {
             '--obfuscate',
             '--split-debug-info=build/shorebird/symbols',
           ];
-          await runWithOverrides(() => patcher.buildPatchArtifact());
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(
             patcher.builtWithArgs,
             containsAll([

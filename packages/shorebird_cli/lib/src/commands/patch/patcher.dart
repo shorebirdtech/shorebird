@@ -133,7 +133,7 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  Future<File> buildPatchArtifact({String? releaseVersion});
+  Future<File> buildPatchArtifact({required String releaseVersion});
 
   /// Creates the patch artifacts required to apply a patch to a release.
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
@@ -381,9 +381,9 @@ More info: ${troubleshootingUrl.toLink()}.
   ///
   /// Context: https://github.com/shorebirdtech/shorebird/issues/2270
   List<String> buildNameAndNumberArgsFromReleaseVersion(
-    String? releaseVersion,
+    String releaseVersion,
   ) {
-    if (releaseVersion == null || !releaseVersion.contains('+')) {
+    if (!releaseVersion.contains('+')) {
       return [];
     }
 
