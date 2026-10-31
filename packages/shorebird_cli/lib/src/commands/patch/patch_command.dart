@@ -1067,8 +1067,9 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         'No ${releaseType.releasePlatform.displayName} releases found for '
         'app $appId.',
     hint:
-        'A patch needs a release to apply to (or pass --app-id / --flavor if '
-        'this is the wrong app). Run: ${releaseType.releaseCommand()}',
+        'A patch needs a release to apply to (if this is the wrong app, check '
+        'app_id in shorebird.yaml or pass --flavor). Run: '
+        '${releaseType.releaseCommand()}',
   );
 
   /// Asserts that the release contains a platform for the given [patcher].

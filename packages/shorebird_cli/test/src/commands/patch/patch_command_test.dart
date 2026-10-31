@@ -2158,9 +2158,9 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                   'No ${releasePlatform.displayName} releases found for app '
                   '$appId.',
               hint:
-                  'A patch needs a release to apply to (or pass --app-id / '
-                  '--flavor if this is the wrong app). Run: shorebird release '
-                  'android',
+                  'A patch needs a release to apply to (if this is the wrong '
+                  'app, check app_id in shorebird.yaml or pass --flavor). Run: '
+                  'shorebird release android',
             ),
           );
 
@@ -2322,9 +2322,9 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                   'No ${releasePlatform.displayName} releases found for app '
                   '$appId.',
               hint:
-                  'A patch needs a release to apply to (or pass --app-id / '
-                  '--flavor if this is the wrong app). Run: shorebird release '
-                  'android',
+                  'A patch needs a release to apply to (if this is the wrong '
+                  'app, check app_id in shorebird.yaml or pass --flavor). Run: '
+                  'shorebird release android',
             ),
           );
         });
