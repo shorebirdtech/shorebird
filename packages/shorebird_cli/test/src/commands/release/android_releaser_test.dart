@@ -628,6 +628,56 @@ void main() {
         ).called(1);
       });
 
+      group('when the version name has characters iOS versions cannot', () {
+        setUp(() {
+          when(
+            () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+              any(),
+            ),
+          ).thenAnswer((_) async => '1.0.0-stage+1');
+        });
+
+        test('explains it when the app has an iOS project', () async {
+          Directory(p.join(projectRoot.path, 'ios')).createSync();
+          await runWithOverrides(
+            () => androidReleaser.getReleaseVersion(
+              releaseArtifactRoot: Directory(''),
+            ),
+          );
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  "Android's version name 1.0.0-stage has characters iOS "
+                  "versions can't",
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('explains nothing when the app has no iOS project', () async {
+          await runWithOverrides(
+            () => androidReleaser.getReleaseVersion(
+              releaseArtifactRoot: Directory(''),
+            ),
+          );
+          verifyNever(() => logger.info(any(that: contains('version name'))));
+        });
+      });
+
+      group('when the version name is only digits and dots', () {
+        test('explains nothing', () async {
+          Directory(p.join(projectRoot.path, 'ios')).createSync();
+          await runWithOverrides(
+            () => androidReleaser.getReleaseVersion(
+              releaseArtifactRoot: Directory(''),
+            ),
+          );
+          verifyNever(() => logger.info(any(that: contains('version name'))));
+        });
+      });
+
       group('when artifactManager throws exception', () {
         setUp(() {
           when(

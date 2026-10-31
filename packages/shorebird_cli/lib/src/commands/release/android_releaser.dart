@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -13,6 +14,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template android_releaser}
@@ -127,7 +129,26 @@ class AndroidReleaser extends Releaser {
       );
     }
 
+    _explainVersionNameNotOnIos(releaseVersion);
     return releaseVersion;
+  }
+
+  /// Explains, for an app that also builds for iOS, that an Android version
+  /// name iOS can't have (a flavor's `versionNameSuffix`, a pre-release
+  /// version) makes this a different Shorebird release from any iOS build,
+  /// which customers otherwise find out from the console. iOS versions are
+  /// only digits and dots: Flutter drops everything else from the build name.
+  void _explainVersionNameNotOnIos(String releaseVersion) {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null ||
+        !Directory(p.join(projectRoot.path, 'ios')).existsSync()) {
+      return;
+    }
+    final versionName = releaseVersion.split('+').first;
+    if (RegExp(r'^[0-9.]+$').hasMatch(versionName)) return;
+    logger.info(
+      '''Android's version name $versionName has characters iOS versions can't (they are only digits and dots), so an iOS release of this build will be a different Shorebird release, and each needs its own patches. To share one release across platforms, drop the versionNameSuffix in android/app/build.gradle (or build.gradle.kts) and any pre-release part of the version.''',
+    );
   }
 
   @override
