@@ -354,8 +354,8 @@ Valid platforms: $validPlatformNames''',
   /// [reportApiError] does. A [CommandError] is reported with its own message
   /// and hint, which say more than [message]. The failure is reported here
   /// rather than in the command runner, so the runner never sees it and
-  /// doesn't emit a second envelope. Otherwise the [ProcessExit] is rethrown, and the error the
-  /// call already logged stands.
+  /// doesn't emit a second envelope. Otherwise the [ProcessExit] is
+  /// rethrown, and the error the call already logged stands.
   ///
   /// [body] typically assigns `late final` locals that the caller reads once
   /// this returns null.
