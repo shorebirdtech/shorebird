@@ -339,7 +339,10 @@ void main() {
             () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
             exitsWithError(
               message: 'No Shorebird account found for these credentials.',
-              hint: contains('console.shorebird.dev'),
+              hint: allOf(
+                contains('console.shorebird.dev'),
+                contains('SHOREBIRD_TOKEN'),
+              ),
               exitCode: ExitCode.software,
             ),
           );

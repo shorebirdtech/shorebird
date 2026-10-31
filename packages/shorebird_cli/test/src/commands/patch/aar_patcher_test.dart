@@ -607,7 +607,8 @@ void main() {
               ),
             ),
             exitsWithError(
-              message: 'Could not download the release artifact.',
+              message: startsWith('Could not download the release artifact: '),
+              hint: 'Run the command again once that is fixed.',
               exitCode: ExitCode.software,
             ),
           );

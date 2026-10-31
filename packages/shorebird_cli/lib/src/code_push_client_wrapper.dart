@@ -141,9 +141,9 @@ class CodePushClientWrapper {
       throw CommandError(
         message: 'No Shorebird account found for these credentials.',
         hint:
-            'Create an account at https://console.shorebird.dev, or run '
-            '`shorebird logout` and `shorebird login` with the account you '
-            'use for Shorebird.',
+            'Create an account at https://console.shorebird.dev, or use the '
+            'account you have: run `shorebird logout` and `shorebird login`, '
+            'or set SHOREBIRD_TOKEN to one of its API keys.',
         exitCode: ExitCode.software,
       );
     }
@@ -564,7 +564,8 @@ class CodePushClientWrapper {
             'Could not find app with id: "$appId". This app may not exist or '
             'you may not have permission to view it.',
         hint:
-            'Check the app ID (from --app-id or shorebird.yaml). Run '
+            "Check the app ID: app_id in shorebird.yaml (or the flavor's "
+            'entry under flavors:), or the one passed with --app-id. Run '
             '`shorebird apps list` to see the apps you can access.',
         exitCode: ExitCode.software,
       );

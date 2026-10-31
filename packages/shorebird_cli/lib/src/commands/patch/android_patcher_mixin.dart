@@ -108,12 +108,10 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
               message: 'Downloading release artifact ${i + 1}/$numArtifacts',
             );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
-      } on Exception {
+      } on Exception catch (error) {
         throw CommandError(
-          message: 'Could not download the release artifact.',
-          hint:
-              'Fix the cause above (often the network or disk space), then '
-              'run the command again.',
+          message: 'Could not download the release artifact: $error',
+          hint: 'Run the command again once that is fixed.',
           exitCode: ExitCode.software,
         );
       }

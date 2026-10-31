@@ -2797,7 +2797,8 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         await expectLater(
           () => runWithOverrides(command.run),
           exitsWithError(
-            message: 'Could not download the release artifact.',
+            message: startsWith('Could not download the release artifact: '),
+            hint: 'Run the command again once that is fixed.',
             exitCode: ExitCode.software,
           ),
         );
