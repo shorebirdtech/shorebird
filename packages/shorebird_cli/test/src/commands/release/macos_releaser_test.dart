@@ -753,6 +753,15 @@ void main() {
         );
       });
 
+      test('links to the notarization docs', () {
+        expect(
+          runWithOverrides(() => releaser.postReleaseInstructions),
+          contains(
+            'https://docs.shorebird.dev/code-push/release/#notarize-a-macos-app',
+          ),
+        );
+      });
+
       group(
         'when the engine publishes the macOS analyze_snapshot artifacts',
         () {
