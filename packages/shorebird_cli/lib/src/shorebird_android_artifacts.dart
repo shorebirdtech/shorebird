@@ -141,14 +141,25 @@ class ShorebirdAndroidArtifacts {
       flavor != null ? '${flavor}Release' : 'release',
     );
 
+    // Gradle writes each variant's bundle to its own directory, so a lone
+    // .aab there is the one just built, whatever `base.archivesName` named
+    // it. This matches how Flutter finds the bundle (by directory, not by
+    // file name).
+    final directory = Directory(buildDir);
+    if (directory.existsSync()) {
+      final bundles = directory
+          .listSync()
+          .whereType<File>()
+          .where((file) => p.extension(file.path) == '.aab')
+          .toList();
+      if (bundles.length == 1) return bundles.single;
+    }
+
     final artifactName = flavor == null
         ? 'app-release.aab'
         : 'app-$flavor-release.aab';
 
-    return _findArtifact(
-      directory: Directory(buildDir),
-      artifactName: artifactName,
-    );
+    return _findArtifact(directory: directory, artifactName: artifactName);
   }
 
   /// Find the apk in the provided [project] [Directory].

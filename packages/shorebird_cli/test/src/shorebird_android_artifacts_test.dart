@@ -210,6 +210,52 @@ void main() {
       });
     });
 
+    group('when base.archivesName renames the app bundle', () {
+      test('finds the lone app bundle in the variant directory', () {
+        final artifact = File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'app',
+            'outputs',
+            'bundle',
+            'tstRelease',
+            'shop-2390-tst-release.aab',
+          ),
+        )..createSync(recursive: true);
+
+        expect(
+          shorebirdAndroidArtifacts
+              .findAab(project: projectRoot, flavor: 'tst')
+              .path,
+          equals(artifact.path),
+        );
+      });
+
+      test('picks the default name when several bundles exist', () {
+        final bundleDir = p.join(
+          projectRoot.path,
+          'build',
+          'app',
+          'outputs',
+          'bundle',
+          'release',
+        );
+        File(
+          p.join(bundleDir, 'shop-1-release.aab'),
+        ).createSync(recursive: true);
+        final artifact = File(p.join(bundleDir, 'app-release.aab'))
+          ..createSync(recursive: true);
+
+        expect(
+          shorebirdAndroidArtifacts
+              .findAab(project: projectRoot, flavor: null)
+              .path,
+          equals(artifact.path),
+        );
+      });
+    });
+
     group('when using multi-dimensional flavors', () {
       test('finds the app bundle', () {
         final artifactPath = p.join(
