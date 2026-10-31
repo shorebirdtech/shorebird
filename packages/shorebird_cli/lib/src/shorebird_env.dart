@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/ci_provider.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -460,33 +461,6 @@ class ShorebirdEnv {
       stdin.hasTerminal && stdout.hasTerminal && !isRunningOnCI && !isJsonMode;
 
   /// Whether platform.environment indicates that we are running on a CI
-  /// platform. This implementation is intended to behave similar to the Flutter
-  /// tool's:
-  /// https://github.com/flutter/flutter/blob/0c10e1ca54ae74043909059e2ff56bf5dd0c3d23/packages/flutter_tools/lib/src/base/bot_detector.dart#L48-L69
-  bool get isRunningOnCI =>
-      platform.environment['BOT'] == 'true'
-      // https://docs.travis-ci.com/user/environment-variables/#Default-Environment-Variables
-      ||
-      platform.environment['TRAVIS'] == 'true' ||
-      platform.environment['CONTINUOUS_INTEGRATION'] == 'true' ||
-      platform.environment.containsKey('CI') // Travis and AppVeyor
-      // https://www.appveyor.com/docs/environment-variables/
-      ||
-      platform.environment.containsKey('APPVEYOR')
-      // https://cirrus-ci.org/guide/writing-tasks/#environment-variables
-      ||
-      platform.environment.containsKey('CIRRUS_CI')
-      // https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html
-      ||
-      (platform.environment.containsKey('AWS_REGION') &&
-          platform.environment.containsKey('CODEBUILD_INITIATOR'))
-      // https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables
-      ||
-      platform.environment.containsKey('JENKINS_URL')
-      // https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables
-      ||
-      platform.environment.containsKey('GITHUB_ACTIONS')
-      // https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
-      ||
-      platform.environment.containsKey('TF_BUILD');
+  /// platform. See [ciProvider].
+  bool get isRunningOnCI => ciProvider(platform.environment) != null;
 }

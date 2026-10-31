@@ -1,17 +1,21 @@
 import 'package:http/http.dart' as http;
+import 'package:shorebird_cli/src/ci_provider.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// The `User-Agent` the CLI sends with every request, such as
-/// `shorebird-cli/1.6.0 (macos; dart 3.9.0)`.
+/// `shorebird-cli/1.6.0 (macos; dart 3.9.0)`, followed on CI by
+/// `ci/<provider>` (see [ciProvider]), as npm does.
 ///
 /// Without it, requests carry `dart:io`'s default, `Dart/<version> (dart:io)`,
 /// which does not say which tool, version or operating system sent them.
 String get shorebirdUserAgent {
   // Platform.version reads like `3.9.0 (stable) (...) on "macos_arm64"`.
   final dartVersion = platform.version.split(' ').first;
+  final ci = ciProvider(platform.environment);
   return 'shorebird-cli/$packageVersion '
-      '(${platform.operatingSystem}; dart $dartVersion)';
+      '(${platform.operatingSystem}; dart $dartVersion)'
+      '${ci == null ? '' : ' ci/$ci'}';
 }
 
 /// An http client that sets [shorebirdUserAgent] as the `User-Agent` of each

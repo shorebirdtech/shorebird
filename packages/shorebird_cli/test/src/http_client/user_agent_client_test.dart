@@ -37,6 +37,7 @@ void main() {
         operatingSystem: NativePlatform.linux,
         version:
             '3.9.0 (stable) (Mon Aug 11 00:00:00 2025 +0000) on "linux_x64"',
+        environment: {},
       );
       userAgentClient = UserAgentClient(httpClient: httpClient);
 
@@ -49,6 +50,22 @@ void main() {
       expect(
         runWithOverrides(() => shorebirdUserAgent),
         equals('shorebird-cli/$packageVersion (linux; dart 3.9.0)'),
+      );
+    });
+
+    test('names the CI provider on CI', () {
+      platform = TestNativePlatform(
+        operatingSystem: NativePlatform.linux,
+        version:
+            '3.9.0 (stable) (Mon Aug 11 00:00:00 2025 +0000) on "linux_x64"',
+        environment: {'GITHUB_ACTIONS': 'true'},
+      );
+      expect(
+        runWithOverrides(() => shorebirdUserAgent),
+        equals(
+          'shorebird-cli/$packageVersion (linux; dart 3.9.0) '
+          'ci/github-actions',
+        ),
       );
     });
 
