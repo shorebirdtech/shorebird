@@ -266,7 +266,7 @@ void main() {
 
       // Create an Android patch.
       final shorebirdPatchResult = await runCommand(
-        'shorebird patch android --verbose',
+        'shorebird patch android --release-version=$releaseVersion --verbose',
         workingDirectory: cwd,
       );
       expect(shorebirdPatchResult.exitCode, equals(0));

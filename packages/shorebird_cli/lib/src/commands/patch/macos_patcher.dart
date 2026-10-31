@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
-import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -77,7 +76,7 @@ class MacosPatcher extends Patcher
   String get podfileLockRelativePath => 'macos/Podfile.lock';
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({required String releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,
       ...extraBuildArgs,
@@ -237,22 +236,5 @@ class MacosPatcher extends Patcher
         exitCode: ExitCode.software,
       );
     }
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    final appPath = artifactManager.getMacOSAppDirectory(flavor: flavor)?.path;
-    if (appPath == null) {
-      throw CommandError(
-        message: 'Unable to find the .app directory in the macOS build output.',
-        hint: 'Re-run with --verbose to see the build output.',
-        exitCode: ExitCode.software,
-      );
-    }
-
-    return readReleaseVersionFromInfoPlist(
-      File(p.join(appPath, 'Contents', 'Info.plist')),
-      hint: passReleaseVersionHint,
-    );
   }
 }

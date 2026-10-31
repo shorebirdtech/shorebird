@@ -161,20 +161,6 @@ void main() {
         when(() => argResults.options).thenReturn([]);
       });
 
-      group('when releaseVersion is not specified', () {
-        test('returns an empty list', () {
-          expect(
-            _TestPatcher(
-              argParser: MockArgParser(),
-              argResults: MockArgResults(),
-              flavor: null,
-              target: null,
-            ).buildNameAndNumberArgsFromReleaseVersion(null),
-            isEmpty,
-          );
-        });
-      });
-
       group('when an invalid --release-version is specified', () {
         test('returns an empty list', () {
           expect(
@@ -940,7 +926,7 @@ class _TestPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) {
+  Future<File> buildPatchArtifact({required String releaseVersion}) {
     throw UnimplementedError();
   }
 
@@ -951,11 +937,6 @@ class _TestPatcher extends Patcher {
     required File releaseArtifact,
     Directory? supplementDirectory,
   }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) {
     throw UnimplementedError();
   }
 

@@ -125,25 +125,5 @@ void main() {
         ).called(1);
       });
     });
-
-    group('versionFromAppDirectory', () {
-      test('reads the version from the bundle', () async {
-        final directory = Directory('bundle');
-        when(
-          () => linux.versionFromLinuxBundle(
-            bundleRoot: any(named: 'bundleRoot'),
-          ),
-        ).thenReturn('1.2.3');
-
-        final version = await runWithOverrides(
-          () => patcher.versionFromAppDirectory(directory),
-        );
-
-        expect(version, '1.2.3');
-        verify(
-          () => linux.versionFromLinuxBundle(bundleRoot: directory),
-        ).called(1);
-      });
-    });
   });
 }

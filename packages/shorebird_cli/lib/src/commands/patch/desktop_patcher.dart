@@ -58,9 +58,6 @@ abstract class DesktopPatcher extends Patcher {
     String? base64PublicKey,
   });
 
-  /// Reads the release version from an extracted release artifact.
-  Future<String> versionFromAppDirectory(Directory appDirectory);
-
   @override
   Future<void> assertPreconditions() => assertBuildPreconditions(
     validators: commandValidators,
@@ -83,7 +80,7 @@ abstract class DesktopPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({required String releaseVersion}) async {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final builtDirectory = await buildApp(
       args: buildArgs,
@@ -127,20 +124,6 @@ abstract class DesktopPatcher extends Patcher {
       return {Arch.x86_64: bundle};
     } finally {
       releaseDirectory.deleteTemporarySync();
-    }
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    final outputDirectory = Directory.systemTemp.createTempSync();
-    try {
-      await artifactManager.extractZip(
-        zipFile: artifact,
-        outputDirectory: outputDirectory,
-      );
-      return await versionFromAppDirectory(outputDirectory);
-    } finally {
-      outputDirectory.deleteTemporarySync();
     }
   }
 }

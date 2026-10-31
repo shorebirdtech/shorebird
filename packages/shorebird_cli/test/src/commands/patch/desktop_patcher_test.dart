@@ -50,7 +50,6 @@ class _TestDesktopPatcher extends DesktopPatcher {
   Exception? buildError;
   List<String>? builtWithArgs;
   String? builtWithPublicKey;
-  Directory? versionReadFrom;
 
   @override
   List<Validator> get commandValidators => validators;
@@ -73,12 +72,6 @@ class _TestDesktopPatcher extends DesktopPatcher {
     builtWithArgs = args;
     builtWithPublicKey = base64PublicKey;
     return builtDirectory;
-  }
-
-  @override
-  Future<String> versionFromAppDirectory(Directory appDirectory) async {
-    versionReadFrom = appDirectory;
-    return '1.2.3';
   }
 
   @override
@@ -259,7 +252,9 @@ void main() {
           final exception = Exception('Failed to build app');
           patcher.buildError = exception;
           await expectLater(
-            () => runWithOverrides(() => patcher.buildPatchArtifact()),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -271,7 +266,7 @@ void main() {
           File(p.join(appDirectory.path, 'app.txt')).createSync();
 
           final zip = await runWithOverrides(
-            () => patcher.buildPatchArtifact(),
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
           );
 
           expect(zip.path, endsWith('.zip'));
@@ -295,7 +290,9 @@ void main() {
             () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn('encoded-public-key');
 
-          await runWithOverrides(() => patcher.buildPatchArtifact());
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
 
           expect(patcher.builtWithPublicKey, equals('encoded-public-key'));
           verify(
@@ -319,7 +316,9 @@ void main() {
               () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
             ).thenReturn('encoded-from-cmd');
 
-            await runWithOverrides(() => patcher.buildPatchArtifact());
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             expect(patcher.builtWithPublicKey, equals('encoded-from-cmd'));
           },
@@ -329,7 +328,9 @@ void main() {
           when(
             () => argResults.rest,
           ).thenReturn(['--build-name=1.2.3', '--build-number=4']);
-          await runWithOverrides(() => patcher.buildPatchArtifact());
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(
             patcher.builtWithArgs,
             containsAll(['--build-name=1.2.3', '--build-number=4']),
@@ -341,7 +342,9 @@ void main() {
             '--obfuscate',
             '--split-debug-info=build/shorebird/symbols',
           ];
-          await runWithOverrides(() => patcher.buildPatchArtifact());
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(
             patcher.builtWithArgs,
             containsAll([
@@ -556,49 +559,6 @@ void main() {
             ).called(1);
           });
         });
-      });
-    });
-
-    group('extractReleaseVersionFromArtifact', () {
-      test('reads the version from the extracted release', () async {
-        Directory? extractedTo;
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer((invocation) async {
-          extractedTo =
-              invocation.namedArguments[#outputDirectory] as Directory;
-        });
-
-        final version = await runWithOverrides(
-          () => patcher.extractReleaseVersionFromArtifact(File('app.zip')),
-        );
-
-        expect(version, equals('1.2.3'));
-        expect(patcher.versionReadFrom, equals(extractedTo));
-      });
-
-      test('deletes the extracted release', () async {
-        Directory? extractedTo;
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer((invocation) async {
-          extractedTo =
-              (invocation.namedArguments[#outputDirectory] as Directory)
-                ..createSync(recursive: true);
-        });
-
-        await runWithOverrides(
-          () => patcher.extractReleaseVersionFromArtifact(File('app.zip')),
-        );
-
-        expect(extractedTo, isNotNull);
-        expect(extractedTo!.existsSync(), isFalse);
       });
     });
   });

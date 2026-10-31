@@ -50,9 +50,6 @@ class IosFrameworkPatcher extends Patcher
   List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
 
   @override
-  bool get requiresReleaseVersionArg => true;
-
-  @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
@@ -66,7 +63,7 @@ class IosFrameworkPatcher extends Patcher
   );
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({required String releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,
       ...extraBuildArgs,
@@ -141,13 +138,5 @@ class IosFrameworkPatcher extends Patcher
         fallbackSupplementDirectory.deleteTemporarySync();
       }
     }
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) {
-    // Not implemented - release version must be specified by the user.
-    throw UnimplementedError(
-      'Release version must be specified using --release-version.',
-    );
   }
 }

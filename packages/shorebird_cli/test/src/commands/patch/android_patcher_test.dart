@@ -343,7 +343,9 @@ void main() {
         });
 
         test('warns user of potential patch issues', () async {
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
 
           verify(
             () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
@@ -360,7 +362,9 @@ void main() {
         });
 
         test('does not warn user of potential patch issues', () async {
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
 
           verifyNever(
             () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
@@ -401,7 +405,7 @@ void main() {
         test('builds only the architectures the release has', () async {
           await runWithOverrides(() async {
             await patcher.prepareForRelease(appId: 'app-id', release: release);
-            await patcher.buildPatchArtifact();
+            await patcher.buildPatchArtifact(releaseVersion: '1.0.0');
           });
 
           expect(builtTargetPlatforms(), equals([Arch.arm64]));
@@ -409,7 +413,9 @@ void main() {
 
         test('builds the default architectures before the release is '
             'known', () async {
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
 
           expect(builtTargetPlatforms(), isNull);
         });
@@ -426,7 +432,7 @@ void main() {
                 appId: 'app-id',
                 release: release,
               );
-              await patcher.buildPatchArtifact();
+              await patcher.buildPatchArtifact(releaseVersion: '1.0.0');
             });
 
             expect(builtTargetPlatforms(), isNull);
@@ -446,7 +452,7 @@ void main() {
 
           await runWithOverrides(() async {
             await patcher.prepareForRelease(appId: 'app-id', release: release);
-            await patcher.buildPatchArtifact();
+            await patcher.buildPatchArtifact(releaseVersion: '1.0.0');
           });
 
           expect(builtTargetPlatforms(), isNull);
@@ -535,7 +541,9 @@ void main() {
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -557,7 +565,9 @@ void main() {
 
         test('exits with an accurate error', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             exitsWithError(
               message: contains(
                 'does not contain libapp.so for any architecture',
@@ -597,7 +607,9 @@ void main() {
           });
 
           test('returns the aab file', () async {
-            final result = await runWithOverrides(patcher.buildPatchArtifact);
+            final result = await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             expect(result, equals(aabFile));
             verify(
               () => artifactBuilder.buildAppBundle(args: ['--verbose']),
@@ -626,7 +638,9 @@ void main() {
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(key.path);
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => artifactBuilder.buildAppBundle(
@@ -650,7 +664,9 @@ void main() {
               when(
                 () => codeSigner.runPublicKeyCmd('print-key'),
               ).thenAnswer((_) async => 'pem-from-cmd');
-              await runWithOverrides(patcher.buildPatchArtifact);
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+              );
 
               verify(
                 () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
@@ -669,7 +685,9 @@ void main() {
         });
 
         test('returns the aab file', () async {
-          final result = await runWithOverrides(patcher.buildPatchArtifact);
+          final result = await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(result, equals(aabFile));
         });
       });
@@ -948,7 +966,7 @@ void main() {
 
         test('diffs the libapp.so extracted from the aab', () async {
           final result = await runWithOverrides(() async {
-            await patcher.buildPatchArtifact();
+            await patcher.buildPatchArtifact(releaseVersion: '1.0.0');
             return patcher.createPatchArtifacts(
               appId: 'appId',
               releaseId: 0,
@@ -971,7 +989,7 @@ void main() {
 
         test('deletes the extracted libapp.so files afterwards', () async {
           await runWithOverrides(() async {
-            await patcher.buildPatchArtifact();
+            await patcher.buildPatchArtifact(releaseVersion: '1.0.0');
             return patcher.createPatchArtifacts(
               appId: 'appId',
               releaseId: 0,
@@ -1134,28 +1152,6 @@ void main() {
       });
     });
 
-    group('extractReleaseVersionFromArtifact', () {
-      setUp(() {
-        when(
-          () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-            any(),
-          ),
-        ).thenAnswer((_) async => '1.0.0');
-      });
-
-      test(
-        '''returns value of shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle''',
-        () async {
-          expect(
-            await runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            equals('1.0.0'),
-          );
-        },
-      );
-    });
-
     group('updatedCreatePatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
@@ -1170,7 +1166,6 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
-          inferredReleaseVersion: false,
           isSigned: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,

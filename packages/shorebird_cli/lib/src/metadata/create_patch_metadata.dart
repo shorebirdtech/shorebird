@@ -24,7 +24,6 @@ class CreatePatchMetadata extends Equatable {
     required this.hasAssetChanges,
     required this.usedIgnoreNativeChangesFlag,
     required this.hasNativeChanges,
-    required this.inferredReleaseVersion,
     required this.environment,
     required this.isSigned,
     this.usedDefaultTrack = false,
@@ -42,7 +41,6 @@ class CreatePatchMetadata extends Equatable {
     bool hasAssetChanges = false,
     bool usedIgnoreNativeChangesFlag = false,
     bool hasNativeChanges = false,
-    bool inferredReleaseVersion = false,
     bool isSigned = false,
     bool usedDefaultTrack = false,
     double? linkPercentage,
@@ -57,7 +55,6 @@ class CreatePatchMetadata extends Equatable {
     hasNativeChanges: hasNativeChanges,
     isSigned: isSigned,
     usedDefaultTrack: usedDefaultTrack,
-    inferredReleaseVersion: inferredReleaseVersion,
     linkPercentage: linkPercentage,
     linkMetadata: linkMetadata,
     buildTraceSummary: buildTraceSummary,
@@ -80,7 +77,6 @@ class CreatePatchMetadata extends Equatable {
     bool? hasAssetChanges,
     bool? usedIgnoreNativeChangesFlag,
     bool? hasNativeChanges,
-    bool? inferredReleaseVersion,
     bool? isSigned,
     bool? usedDefaultTrack,
     double? linkPercentage,
@@ -95,8 +91,6 @@ class CreatePatchMetadata extends Equatable {
     usedIgnoreNativeChangesFlag:
         usedIgnoreNativeChangesFlag ?? this.usedIgnoreNativeChangesFlag,
     hasNativeChanges: hasNativeChanges ?? this.hasNativeChanges,
-    inferredReleaseVersion:
-        inferredReleaseVersion ?? this.inferredReleaseVersion,
     isSigned: isSigned ?? this.isSigned,
     usedDefaultTrack: usedDefaultTrack ?? this.usedDefaultTrack,
     linkPercentage: linkPercentage ?? this.linkPercentage,
@@ -133,10 +127,6 @@ class CreatePatchMetadata extends Equatable {
   /// knowing that native code changes were detected can help explain unexpected
   /// behavior in a patch.
   final bool hasNativeChanges;
-
-  /// Whether the release version had to be inferred by Shorebird because
-  /// it was not explicitly specified via the --release-version flag.
-  final bool inferredReleaseVersion;
 
   /// The percentage of code that was linked in the patch.
   /// Generally, the higher the percentage, the better the patch performance
@@ -184,7 +174,6 @@ class CreatePatchMetadata extends Equatable {
     hasNativeChanges,
     linkPercentage,
     linkMetadata,
-    inferredReleaseVersion,
     usedDefaultTrack,
     isSigned,
     environment,

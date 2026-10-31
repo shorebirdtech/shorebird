@@ -169,10 +169,6 @@ void main() {
       });
     });
 
-    test('requires --release-version', () {
-      expect(patcher.requiresReleaseVersionArg, isTrue);
-    });
-
     group('assertPreconditions', () {
       group('when validation succeeds', () {
         setUp(() {
@@ -341,7 +337,9 @@ void main() {
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -365,7 +363,9 @@ void main() {
           });
 
           test('returns the aar artifact file', () async {
-            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+            final artifact = await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             expect(artifact, isA<File>());
             expect(
@@ -418,7 +418,7 @@ void main() {
 
           await runWithOverrides(() async {
             await patcher.prepareForRelease(appId: 'app-id', release: release);
-            await patcher.buildPatchArtifact();
+            await patcher.buildPatchArtifact(releaseVersion: '1.0.0');
           });
 
           verify(
@@ -453,7 +453,9 @@ void main() {
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(key.path);
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => artifactBuilder.buildAar(
@@ -474,7 +476,9 @@ void main() {
             when(
               () => codeSigner.runPublicKeyCmd('print-key'),
             ).thenAnswer((_) async => 'pem-from-cmd');
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
@@ -491,7 +495,9 @@ void main() {
         });
 
         test('returns the aar artifact file', () async {
-          final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+          final artifact = await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
 
           expect(artifact, isA<File>());
           expect(
@@ -792,15 +798,6 @@ void main() {
       });
     });
 
-    group('extractReleaseVersionFromArtifact', () {
-      test('throws UnimplementedError', () {
-        expect(
-          () => patcher.extractReleaseVersionFromArtifact(File('')),
-          throwsUnimplementedError,
-        );
-      });
-    });
-
     group('updatedCreatePatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
@@ -815,7 +812,6 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
-          inferredReleaseVersion: false,
           isSigned: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,

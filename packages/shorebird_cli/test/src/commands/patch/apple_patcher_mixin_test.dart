@@ -53,7 +53,7 @@ class _TestApplePatcher extends Patcher
   }) => throw UnimplementedError();
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) =>
+  Future<File> buildPatchArtifact({required String releaseVersion}) =>
       throw UnimplementedError();
 
   @override
@@ -63,10 +63,6 @@ class _TestApplePatcher extends Patcher
     required File releaseArtifact,
     Directory? supplementDirectory,
   }) => throw UnimplementedError();
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) =>
-      throw UnimplementedError();
 }
 
 void main() {

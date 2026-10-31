@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
-import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -590,7 +589,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -611,7 +612,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -642,7 +645,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         test('throws exception', () async {
           await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
+            () => runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            ),
             throwsA(exception),
           );
         });
@@ -708,7 +713,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
           test('forwards --split-debug-info to builder', () async {
             try {
-              await runWithOverrides(patcher.buildPatchArtifact);
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+              );
             } on Exception {
               // ignore
             }
@@ -752,7 +759,9 @@ This may indicate that the patch contains native changes, which cannot be applie
           });
 
           test('returns xcarchive zip', () async {
-            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+            final artifact = await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
             expect(p.basename(artifact.path), endsWith('.zip'));
             verify(
               () => artifactBuilder.buildIpa(
@@ -784,7 +793,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(key.path);
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => artifactBuilder.buildIpa(
@@ -807,7 +818,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             when(
               () => codeSigner.runPublicKeyCmd('print-key'),
             ).thenAnswer((_) async => 'pem-from-cmd');
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             verify(
               () => codeSigner.base64PublicKeyFromPem('pem-from-cmd'),
@@ -826,7 +839,9 @@ This may indicate that the patch contains native changes, which cannot be applie
         });
 
         test('returns xcarchive zip', () async {
-          final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+          final artifact = await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(p.basename(artifact.path), endsWith('.zip'));
         });
 
@@ -835,7 +850,9 @@ This may indicate that the patch contains native changes, which cannot be applie
             p.join(projectRoot.path, 'build', 'app.dill'),
           );
           expect(copiedKernelFile.existsSync(), isFalse);
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+          );
           expect(copiedKernelFile.existsSync(), isTrue);
         });
 
@@ -865,7 +882,9 @@ This may indicate that the patch contains native changes, which cannot be applie
                 '--extra-gen-snapshot-options=$loadMapOption',
                 '--split-debug-info=build/shorebird/symbols',
               ];
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             final captured = verify(
               () => artifactBuilder.buildIpa(
@@ -896,7 +915,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         group('when extraBuildArgs is empty', () {
           test('does not inject obfuscation flags', () async {
-            await runWithOverrides(patcher.buildPatchArtifact);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0'),
+            );
 
             final captured = verify(
               () => artifactBuilder.buildIpa(
@@ -1289,135 +1310,6 @@ This may indicate that the patch contains native changes, which cannot be applie
       });
     });
 
-    group('extractReleaseVersionFromArtifact', () {
-      late File infoPlist;
-
-      setUp(() {
-        final xcarchiveDirectory = Directory(
-          p.join(
-            projectRoot.path,
-            'build',
-            'ios',
-            'archive',
-            'Runner.xcarchive',
-          ),
-        );
-        infoPlist = File(p.join(xcarchiveDirectory.path, 'Info.plist'));
-        when(
-          () => artifactManager.getXcarchiveDirectory(),
-        ).thenReturn(xcarchiveDirectory);
-      });
-
-      group('when xcarchive directory does not exist', () {
-        setUp(() {
-          when(() => artifactManager.getXcarchiveDirectory()).thenReturn(null);
-        });
-
-        test('exits with an error naming the expected archive path', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            exitsWithError(
-              message:
-                  'No .xcarchive found in '
-                  '${p.join(projectRoot.path, 'build', 'ios', 'archive')}, '
-                  'where `flutter build ipa` writes it.',
-              hint: 'Re-run with --verbose to see the build output.',
-              exitCode: ExitCode.software,
-            ),
-          );
-        });
-      });
-
-      group('when Info.plist does not exist', () {
-        test('exits with an error and the hint', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            exitsWithError(
-              message: 'No Info.plist file found at ${infoPlist.path}',
-              hint: passReleaseVersionHint,
-              exitCode: ExitCode.software,
-            ),
-          );
-        });
-      });
-
-      group('when empty Info.plist does exist', () {
-        setUp(() {
-          infoPlist
-            ..createSync(recursive: true)
-            ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict></dict>
-</plist>
-''');
-        });
-
-        test('exits with an error and the hint', () async {
-          await expectLater(
-            runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            exitsWithError(
-              message: startsWith('Failed to determine release version'),
-              hint: passReleaseVersionHint,
-              exitCode: ExitCode.software,
-            ),
-          );
-        });
-      });
-
-      group('when Info.plist does exist', () {
-        setUp(() {
-          infoPlist
-            ..createSync(recursive: true)
-            ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>ApplicationProperties</key>
-	<dict>
-		<key>ApplicationPath</key>
-		<string>Applications/Runner.app</string>
-		<key>Architectures</key>
-		<array>
-			<string>arm64</string>
-		</array>
-		<key>CFBundleIdentifier</key>
-		<string>com.shorebird.timeShift</string>
-		<key>CFBundleShortVersionString</key>
-		<string>1.2.3</string>
-		<key>CFBundleVersion</key>
-		<string>1</string>
-	</dict>
-	<key>ArchiveVersion</key>
-	<integer>2</integer>
-	<key>Name</key>
-	<string>Runner</string>
-	<key>SchemeName</key>
-	<string>Runner</string>
-</dict>
-</plist>
-''');
-        });
-
-        test('returns correct version', () async {
-          await expectLater(
-            runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            completion('1.2.3+1'),
-          );
-        });
-      });
-    });
-
     group('updatedCreatePatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
@@ -1438,7 +1330,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             hasAssetChanges: false,
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: true,
-            inferredReleaseVersion: false,
             isSigned: false,
             environment: BuildEnvironmentMetadata(
               flutterRevision: flutterRevision,
@@ -1461,7 +1352,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 hasAssetChanges: false,
                 usedIgnoreNativeChangesFlag: allowNativeDiffs,
                 hasNativeChanges: true,
-                inferredReleaseVersion: false,
                 isSigned: false,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
@@ -1495,7 +1385,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             hasAssetChanges: true,
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: false,
-            inferredReleaseVersion: false,
             isSigned: true,
             environment: BuildEnvironmentMetadata(
               flutterRevision: flutterRevision,
@@ -1518,7 +1407,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 hasAssetChanges: true,
                 usedIgnoreNativeChangesFlag: allowNativeDiffs,
                 hasNativeChanges: false,
-                inferredReleaseVersion: false,
                 linkPercentage: linkPercentage,
                 linkMetadata: linkMetadata,
                 isSigned: true,

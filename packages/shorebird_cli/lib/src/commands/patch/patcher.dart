@@ -116,15 +116,6 @@ More info: ${troubleshootingUrl.toLink()}.
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid() async {}
 
-  /// Whether `--release-version` must be passed when the version can't be
-  /// prompted for.
-  ///
-  /// True for release types whose version can't be read back out of a built
-  /// artifact ([extractReleaseVersionFromArtifact] is unimplemented). When
-  /// running interactively the user picks the release instead; otherwise the
-  /// patch command rejects a missing `--release-version` before building.
-  bool get requiresReleaseVersionArg => false;
-
   /// Compares the release and patch artifacts to determine if the patch can be
   /// cleanly applied to the release.
   Future<DiffStatus> assertUnpatchableDiffs({
@@ -134,9 +125,7 @@ More info: ${troubleshootingUrl.toLink()}.
   });
 
   /// Called by the patch command once it knows which [release] it is
-  /// patching, before it builds the patch for that release. (When the
-  /// release version must be read from a build, that first build runs before
-  /// this.)
+  /// patching, before it builds the patch for that release.
   Future<void> prepareForRelease({
     required String appId,
     required Release release,
@@ -144,10 +133,7 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  Future<File> buildPatchArtifact({String? releaseVersion});
-
-  /// Determines the release version from the provided app artifact.
-  Future<String> extractReleaseVersionFromArtifact(File artifact);
+  Future<File> buildPatchArtifact({required String releaseVersion});
 
   /// Creates the patch artifacts required to apply a patch to a release.
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
@@ -395,9 +381,9 @@ More info: ${troubleshootingUrl.toLink()}.
   ///
   /// Context: https://github.com/shorebirdtech/shorebird/issues/2270
   List<String> buildNameAndNumberArgsFromReleaseVersion(
-    String? releaseVersion,
+    String releaseVersion,
   ) {
-    if (releaseVersion == null || !releaseVersion.contains('+')) {
+    if (!releaseVersion.contains('+')) {
       return [];
     }
 
