@@ -221,6 +221,102 @@ void main() {
         ).thenReturn(File('app-release.aab'));
       });
 
+      group('restoring .dart_tool', () {
+        late File packageConfig;
+
+        void stubBuildWrites(List<File> files) {
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            for (final file in files) {
+              file
+                ..createSync(recursive: true)
+                ..writeAsStringSync('shorebird');
+            }
+            return ExitCode.success.code;
+          });
+        }
+
+        setUp(() {
+          packageConfig =
+              File(
+                  p.join(projectRoot.path, '.dart_tool', 'package_config.json'),
+                )
+                ..createSync(recursive: true)
+                ..writeAsStringSync('system');
+        });
+
+        test('keeps the modified time of the restored files', () async {
+          final modified = DateTime(2020);
+          packageConfig.setLastModifiedSync(modified);
+          stubBuildWrites([packageConfig]);
+
+          await runWithOverrides(() => builder.buildAppBundle());
+
+          expect(packageConfig.lastModifiedSync(), equals(modified));
+        });
+
+        test('deletes only the files that did not exist before', () async {
+          final version = File(
+            p.join(projectRoot.path, '.dart_tool', 'version'),
+          );
+          stubBuildWrites([packageConfig, version]);
+
+          await runWithOverrides(() => builder.buildAppBundle());
+
+          expect(packageConfig.readAsStringSync(), equals('system'));
+          expect(version.existsSync(), isFalse);
+        });
+
+        test('deletes a package config the build wrote in a nested project '
+            'that had none', () async {
+          final appRoot = Directory(p.join(projectRoot.path, 'app'))
+            ..createSync();
+          when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(appRoot);
+          final appPackageConfig = File(
+            p.join(appRoot.path, '.dart_tool', 'package_config.json'),
+          );
+          stubBuildWrites([appPackageConfig]);
+
+          await runWithOverrides(() => builder.buildAppBundle());
+
+          expect(appPackageConfig.existsSync(), isFalse);
+          expect(packageConfig.readAsStringSync(), equals('system'));
+        });
+
+        test('warns when the files cannot be restored', () async {
+          final dartTool = packageConfig.parent;
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            // A directory where the file was makes writing it back fail.
+            dartTool.deleteSync(recursive: true);
+            Directory(packageConfig.path).createSync(recursive: true);
+            return ExitCode.success.code;
+          });
+
+          await runWithOverrides(() => builder.buildAppBundle());
+
+          verify(
+            () => logger.warn(
+              any(that: startsWith('Could not restore .dart_tool')),
+            ),
+          ).called(1);
+        });
+      });
+
       test("restores a pub workspace root's package_config.json", () async {
         final workspaceConfig =
             File(

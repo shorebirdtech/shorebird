@@ -462,9 +462,10 @@ Reason: Exited with code $exitCode.''',
       // and Flutter skips `pub get` when this file matches its version, which
       // can be shared by several Flutter checkouts. The rest of .dart_tool
       // (build_runner and native asset caches) is kept.
-      final dartToolVersionFile = File(
-        p.join(projectRoot.path, '.dart_tool', 'version'),
-      );
+      final dartTool =
+          _findDartToolDirectory(projectRoot) ??
+          Directory(p.join(projectRoot.path, '.dart_tool'));
+      final dartToolVersionFile = File(p.join(dartTool.path, 'version'));
       if (dartToolVersionFile.existsSync()) {
         dartToolVersionFile.deleteSync();
       }
@@ -665,27 +666,57 @@ Reason: Exited with code $exitCode.''',
   Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final dartToolBefore = _findDartToolDirectory(projectRoot);
-    final contentsBefore = {
+    final filesBefore = {
       if (dartToolBefore != null)
         for (final name in _pubGetOutputs)
-          name: _readIfExists(File(p.join(dartToolBefore.path, name))),
+          if (File(p.join(dartToolBefore.path, name)) case final file
+              when file.existsSync())
+            name: (
+              bytes: file.readAsBytesSync(),
+              modified: file.lastModifiedSync(),
+            ),
     };
     try {
       await command();
     } finally {
-      // With no .dart_tool before the build, delete the files the build wrote,
-      // so the next tool to run resolves the project with its own Flutter.
-      final dartTool = dartToolBefore ?? _findDartToolDirectory(projectRoot);
-      if (dartTool != null) {
-        for (final name in _pubGetOutputs) {
-          final file = File(p.join(dartTool.path, name));
-          final bytes = contentsBefore[name];
-          if (bytes != null) {
-            file.writeAsBytesSync(bytes);
-          } else if (file.existsSync()) {
-            file.deleteSync();
-          }
+      try {
+        if (dartToolBefore != null) {
+          _restorePubGetOutputs(dartToolBefore, filesBefore);
         }
+        // Where the build wrote a package config that wasn't there before (a
+        // fresh clone), delete it, so the next tool to run resolves the
+        // project with its own Flutter.
+        final dartToolAfter = _findDartToolDirectory(projectRoot);
+        if (dartToolAfter != null &&
+            (dartToolBefore == null ||
+                !p.equals(dartToolAfter.path, dartToolBefore.path))) {
+          _restorePubGetOutputs(dartToolAfter, const {});
+        }
+      } on FileSystemException catch (error) {
+        logger.warn(
+          'Could not restore .dart_tool after the build ($error). If your IDE '
+          "uses Shorebird's Flutter, run `flutter pub get`.",
+        );
+      }
+    }
+  }
+
+  /// Makes each of [_pubGetOutputs] in [dartTool] what [files] holds for it,
+  /// with its modified time, so Flutter still sees a stale package config as
+  /// older than pubspec.yaml; deletes those [files] has no entry for.
+  void _restorePubGetOutputs(
+    Directory dartTool,
+    Map<String, ({List<int> bytes, DateTime modified})> files,
+  ) {
+    for (final name in _pubGetOutputs) {
+      final file = File(p.join(dartTool.path, name));
+      final before = files[name];
+      if (before != null) {
+        file
+          ..writeAsBytesSync(before.bytes)
+          ..setLastModifiedSync(before.modified);
+      } else if (file.existsSync()) {
+        file.deleteSync();
       }
     }
   }
@@ -712,9 +743,6 @@ Reason: Exited with code $exitCode.''',
       directory = parent;
     }
   }
-
-  List<int>? _readIfExists(File file) =>
-      file.existsSync() ? file.readAsBytesSync() : null;
 
   /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and
   /// returns the resulting file.
