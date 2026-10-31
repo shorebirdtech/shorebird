@@ -45,12 +45,29 @@ void main() {
       );
     });
 
-    group('clearAppData', () {
+    group('uninstallApp', () {
       const package = 'com.example.app';
+      const listArgs = ['shell', 'pm', 'list', 'packages', package];
+      const uninstallArgs = ['uninstall', package];
+
+      void stubList({
+        int exitCode = 0,
+        String stdout = '',
+        String stderr = '',
+      }) {
+        when(() => process.run(adbPath, listArgs)).thenAnswer(
+          (_) async => ShorebirdProcessResult(
+            exitCode: exitCode,
+            stdout: stdout,
+            stderr: stderr,
+          ),
+        );
+      }
+
       test('throws when unable to locate adb', () async {
         when(() => androidSdk.adbPath).thenReturn(null);
         await expectLater(
-          () => runWithOverrides(() => adb.clearAppData(package: package)),
+          () => runWithOverrides(() => adb.uninstallApp(package: package)),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
@@ -61,8 +78,42 @@ void main() {
         );
       });
 
-      test('throws process exits with non-zero exit code', () async {
-        when(() => process.run(any(), any())).thenAnswer(
+      test('throws when listing packages fails', () async {
+        stubList(exitCode: 1, stderr: 'oops');
+        await expectLater(
+          () => runWithOverrides(() => adb.uninstallApp(package: package)),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception()',
+              contains('Unable to list installed packages: oops'),
+            ),
+          ),
+        );
+      });
+
+      test('does not uninstall when the package is not installed', () async {
+        // `pm list packages` matches substrings.
+        stubList(stdout: 'package:$package.other\n');
+        await expectLater(
+          runWithOverrides(() => adb.uninstallApp(package: package)),
+          completes,
+        );
+        verifyNever(() => process.run(adbPath, uninstallArgs));
+      });
+
+      test('uninstalls when the package is installed', () async {
+        stubList(stdout: 'package:$package.other\npackage:$package\n');
+        await expectLater(
+          runWithOverrides(() => adb.uninstallApp(package: package)),
+          completes,
+        );
+        verify(() => process.run(adbPath, uninstallArgs)).called(1);
+      });
+
+      test('throws when uninstall exits with non-zero exit code', () async {
+        stubList(stdout: 'package:$package\n');
+        when(() => process.run(adbPath, uninstallArgs)).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
             stdout: '',
@@ -70,40 +121,59 @@ void main() {
           ),
         );
         await expectLater(
-          () => runWithOverrides(() => adb.clearAppData(package: package)),
+          () => runWithOverrides(() => adb.uninstallApp(package: package)),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
               'exception()',
-              contains('Unable to clear app data: oops'),
+              contains('Unable to uninstall app: oops'),
             ),
           ),
         );
       });
 
-      test('completes when process exits with 0', () async {
-        await expectLater(
-          runWithOverrides(() => adb.clearAppData(package: package)),
-          completes,
+      test('throws when uninstall reports failure with exit code 0', () async {
+        stubList(stdout: 'package:$package\n');
+        when(() => process.run(adbPath, uninstallArgs)).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: 'Failure [DELETE_FAILED_INTERNAL_ERROR]\n',
+            stderr: '',
+          ),
         );
-        verify(
-          () => process.run(adbPath, 'shell pm clear $package'.split(' ')),
-        ).called(1);
+        await expectLater(
+          () => runWithOverrides(() => adb.uninstallApp(package: package)),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'exception()',
+              contains(
+                'Unable to uninstall app: Failure [DELETE_FAILED_INTERNAL_ERROR]',
+              ),
+            ),
+          ),
+        );
       });
 
       test('forwards deviceId when provided', () async {
         const deviceId = '1234';
+        when(
+          () => process.run(adbPath, ['-s', deviceId, ...listArgs]),
+        ).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: 'package:$package\n',
+            stderr: '',
+          ),
+        );
         await expectLater(
           runWithOverrides(
-            () => adb.clearAppData(package: package, deviceId: deviceId),
+            () => adb.uninstallApp(package: package, deviceId: deviceId),
           ),
           completes,
         );
         verify(
-          () => process.run(
-            adbPath,
-            '-s $deviceId shell pm clear $package'.split(' '),
-          ),
+          () => process.run(adbPath, ['-s', deviceId, ...uninstallArgs]),
         ).called(1);
       });
     });
