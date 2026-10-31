@@ -327,6 +327,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     return _buildAppleKernel(
       command: 'macos',
       description: 'macOS app',
+      platformSubdir: 'macos',
       flags: [
         '--release',
         if (flavor != null) '--flavor=$flavor',
@@ -352,6 +353,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     return _buildAppleKernel(
       command: 'ipa',
       description: 'IPA',
+      platformSubdir: 'ios',
       flags: [
         '--release',
         if (flavor != null) '--flavor=$flavor',
@@ -377,6 +379,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     return _buildAppleKernel(
       command: 'ios-framework',
       description: 'iOS framework',
+      platformSubdir: 'ios',
       flags: [
         '--no-debug',
         '--no-profile',
@@ -444,25 +447,37 @@ Reason: Exited with code $exitCode.''',
   }
 
   /// Runs an Apple `flutter build [command]` (see [_runFlutterBuild]) and
-  /// returns the app.dill it produced.
+  /// returns the app.dill it produced. [platformSubdir] is the directory under
+  /// `build/` Flutter writes this platform's outputs to (e.g. 'ios').
   Future<AppleBuildResult> _buildAppleKernel({
     required String command,
     required String description,
+    required String platformSubdir,
     required List<String> flags,
     required List<String> args,
     required String? base64PublicKey,
     required int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete Flutter's build cache so every target re-runs. We look for a
+    // Delete Flutter's build cache so every target re-runs. On a Flutter that
+    // doesn't copy its kernel (see [_shorebirdKernelFile]) we look for a
     // recently modified app.dill, which a skipped kernel step would not write.
-    // A cached build would also be stale here: the SHOREBIRD_PUBLIC_KEY and
-    // (on iOS only; the macOS DD pass is skipped) SHOREBIRD_DD_MAX_BYTES
-    // environment variables change the build's output but are not inputs
-    // Flutter's build system tracks.
+    // A cached build would also be stale on older Flutters: there the
+    // SHOREBIRD_PUBLIC_KEY and (on iOS only; the macOS DD pass is skipped)
+    // SHOREBIRD_DD_MAX_BYTES environment variables change the build's output
+    // but are not inputs Flutter's build system tracks.
     final flutterBuildDir = _flutterBuildDirectory(projectRoot);
     if (flutterBuildDir.existsSync()) {
       flutterBuildDir.deleteSync(recursive: true);
+    }
+    // Delete the kernel copy a previous build left, so that a build with a
+    // Flutter that doesn't write one can't be handed an old kernel.
+    final shorebirdKernelFile = _shorebirdKernelFile(
+      projectRoot: projectRoot,
+      platformSubdir: platformSubdir,
+    );
+    if (shorebirdKernelFile.parent.existsSync()) {
+      shorebirdKernelFile.parent.deleteSync(recursive: true);
     }
     // Delete .dart_tool/version so `flutter build` runs `pub get` with
     // Shorebird's Flutter. After the previous build we reset
@@ -487,7 +502,9 @@ Reason: Exited with code $exitCode.''',
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
       );
-      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
+      appDillPath = shorebirdKernelFile.existsSync()
+          ? shorebirdKernelFile.path
+          : _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
     if (appDillPath == null) {
@@ -800,7 +817,25 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   Directory _flutterBuildDirectory(Directory projectRoot) =>
       Directory(p.join(projectRoot.path, '.dart_tool', 'flutter_build'));
 
-  /// Finds the app.dill file generated during the build process. Looks in the
+  /// The copy of the kernel an Apple AOT build compiled, which Shorebird's
+  /// Flutter writes to `build/<platformSubdir>/shorebird_kernel/app.dill`
+  /// (Flutter's `copyShorebirdKernel`). It is the exact app.dill passed to
+  /// gen_snapshot. Flutter versions from before it was added don't write it.
+  File _shorebirdKernelFile({
+    required Directory projectRoot,
+    required String platformSubdir,
+  }) => File(
+    p.join(
+      projectRoot.path,
+      'build',
+      platformSubdir,
+      'shorebird_kernel',
+      'app.dill',
+    ),
+  );
+
+  /// Finds the app.dill file generated during the build process, for Flutter
+  /// versions that don't write [_shorebirdKernelFile]. Looks in the
   /// .dart_tool/flutter_build directory of the provided [projectRoot] (Flutter
   /// writes it to `flutter_build/<build hash>/app.dill`) for app.dill files
   /// modified after [after] and returns the path of the earliest one, or null
