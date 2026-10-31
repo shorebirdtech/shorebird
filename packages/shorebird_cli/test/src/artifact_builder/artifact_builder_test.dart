@@ -165,6 +165,58 @@ void main() {
           ).called(1);
         });
 
+        group('when Pods/Manifest.lock exists', () {
+          late File iosManifestLock;
+          late File macosManifestLock;
+
+          setUp(() {
+            iosManifestLock =
+                File(
+                    p.join(projectRoot.path, 'ios', 'Pods', 'Manifest.lock'),
+                  )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('ios');
+            macosManifestLock =
+                File(
+                    p.join(projectRoot.path, 'macos', 'Pods', 'Manifest.lock'),
+                  )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('macos');
+            when(
+              () => shorebirdProcess.run('flutter', [
+                '--no-version-check',
+                'pub',
+                'get',
+                '--offline',
+              ], useVendedFlutter: false),
+            ).thenAnswer((_) async {
+              // The system Flutter's pub get deletes Manifest.lock when its
+              // plugin list differs from the one Shorebird's Flutter wrote.
+              iosManifestLock.deleteSync();
+              macosManifestLock.deleteSync();
+              return pubGetProcessResult;
+            });
+          });
+
+          test('restores Manifest.lock after system flutter pub get', () async {
+            await testCall();
+
+            expect(iosManifestLock.readAsStringSync(), equals('ios'));
+            expect(macosManifestLock.readAsStringSync(), equals('macos'));
+          });
+        });
+
+        test('does not create a Manifest.lock that did not exist', () async {
+          await testCall();
+
+          expect(
+            File(
+              p.join(projectRoot.path, 'macos', 'Pods', 'Manifest.lock'),
+            ).existsSync(),
+            isFalse,
+          );
+        });
+
         test('prints error message if system flutter pub get fails', () async {
           when(() => pubGetProcessResult.exitCode).thenReturn(1);
 

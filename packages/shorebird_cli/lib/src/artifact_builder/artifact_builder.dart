@@ -687,11 +687,35 @@ Reason: Exited with code $exitCode.''',
 
     final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
 
+    // When the plugin list the PATH Flutter computes differs from the one our
+    // Flutter wrote (as it does for plugins inside the Flutter SDK, such as
+    // integration_test, whose paths differ between the two SDKs), its
+    // `pub get` deletes Pods/Manifest.lock to make the next Flutter build run
+    // `pod install`. The pods our build just installed are still in sync with
+    // Podfile.lock, and without Manifest.lock an Xcode Archive fails with
+    // "The sandbox is not in sync with the Podfile.lock", so put it back.
+    // See https://github.com/shorebirdtech/shorebird/issues/3670.
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    final manifestLocks = [
+      if (projectRoot != null)
+        for (final platform in ['ios', 'macos'])
+          File(p.join(projectRoot.path, platform, 'Pods', 'Manifest.lock')),
+    ];
+    final manifestLockContents = {
+      for (final file in manifestLocks)
+        if (file.existsSync()) file: file.readAsBytesSync(),
+    };
+
     final result = await process.run(
       executable,
       arguments,
       useVendedFlutter: false,
     );
+
+    for (final MapEntry(key: file, value: bytes)
+        in manifestLockContents.entries) {
+      if (!file.existsSync()) file.writeAsBytesSync(bytes);
+    }
 
     if (result.exitCode != ExitCode.success.code) {
       logger.warn('''
