@@ -240,13 +240,45 @@ abstract class Releaser {
     return (parsed != null && parsed > 0) ? parsed : null;
   }
 
-  /// Path where the obfuscation map is saved during obfuscated builds.
-  String get obfuscationMapPath => p.join(
-    projectRoot.path,
-    'build',
-    'shorebird',
-    'obfuscation_map.json',
-  );
+  /// Path where the obfuscation map is saved during obfuscated builds: the
+  /// user's own `--save-obfuscation-map` path if they passed one (relative
+  /// paths are resolved against the project root, where Flutter builds), or
+  /// `build/shorebird/obfuscation_map.json` otherwise.
+  String get obfuscationMapPath {
+    final userPath = userObfuscationMapPath;
+    if (userPath != null) {
+      return p.normalize(p.join(projectRoot.path, userPath));
+    }
+    return p.join(
+      projectRoot.path,
+      'build',
+      'shorebird',
+      'obfuscation_map.json',
+    );
+  }
+
+  /// The path the user passed to gen_snapshot's `--save-obfuscation-map`
+  /// through `--extra-gen-snapshot-options`, or null if they didn't.
+  ///
+  /// Flutter splits `--extra-gen-snapshot-options` values on commas, and
+  /// gen_snapshot honors the last `--save-obfuscation-map`, so this returns
+  /// the last one.
+  String? get userObfuscationMapPath {
+    const extraOptionsPrefix = '--extra-gen-snapshot-options=';
+    const saveMapPrefix = '--save-obfuscation-map=';
+    String? path;
+    for (final arg in argResults.forwardedArgs) {
+      final value = arg.startsWith(extraOptionsPrefix)
+          ? arg.substring(extraOptionsPrefix.length)
+          : arg;
+      for (final option in value.split(',')) {
+        if (option.startsWith(saveMapPrefix)) {
+          path = option.substring(saveMapPrefix.length);
+        }
+      }
+    }
+    return path;
+  }
 
   /// Auto-adds --split-debug-info when --obfuscate is used without it.
   void addSplitDebugInfoDefault(List<String> buildArgs) {
@@ -262,7 +294,9 @@ abstract class Releaser {
   /// Adds obfuscation-related gen_snapshot options to [buildArgs].
   ///
   /// When obfuscation is enabled, passes --save-obfuscation-map to capture
-  /// the mapping. Conditionally passes --strip to remove unobfuscated DWARF
+  /// the mapping, unless the user passed their own (see
+  /// [userObfuscationMapPath]), which is kept and read from instead, since
+  /// gen_snapshot writes only one map. Conditionally passes --strip to remove unobfuscated DWARF
   /// debugging information from the compiled snapshot, since the DWARF
   /// sections would otherwise leak identifiers that obfuscation was meant
   /// to hide.
@@ -291,9 +325,12 @@ abstract class Releaser {
     if (!useObfuscation) return;
     final mapDir = Directory(p.dirname(obfuscationMapPath));
     if (!mapDir.existsSync()) mapDir.createSync(recursive: true);
-    buildArgs.add(
-      '--extra-gen-snapshot-options=--save-obfuscation-map=$obfuscationMapPath',
-    );
+    if (userObfuscationMapPath == null) {
+      buildArgs.add(
+        '--extra-gen-snapshot-options='
+        '--save-obfuscation-map=$obfuscationMapPath',
+      );
+    }
 
     final shouldPreStripInGenSnapshot = await shorebirdFlutter
         .shouldPreStripLibappInGenSnapshot(
