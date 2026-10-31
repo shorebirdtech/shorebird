@@ -42,6 +42,12 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Signature for a function that returns a [Patcher] for a given [ReleaseType].
 typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
 
+/// Added to the hint for a patch blocked by native changes.
+const _nativeCrashWarning =
+    "\nOnly do this if your Dart code doesn't depend on the native changes: "
+    "a mismatch between your Dart code and the release's native code can "
+    'crash your app.';
+
 /// {@template patch_command}
 /// A command that creates a shorebird patch for the provided target platforms.
 /// `shorebird patch --platforms=android,ios`
@@ -1144,16 +1150,24 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     } on UserCancelledException {
       logger.err('Aborting.');
       throw PromptDeclinedExit();
-    } on UnpatchableChangeException {
-      // The diff checker has already named the change and the flag that
-      // overrides it.
+    } on UnpatchableChangeException catch (e) {
+      // The diff checker has already listed the changes.
+      final changes = e.changes;
+      final native = changes.contains(UnpatchableChange.native);
+      final releaseCommand = patcher.releaseType.releaseCommand(
+        releaseVersion: '<new version>',
+      );
       throw CommandError(
         message:
-            'Not publishing: the patch changes native code or assets, which '
-            'a patch may not update safely.',
+            'Not publishing: '
+            '${changes.map((c) => c.description).join(' and ')} changed '
+            "since the release, and a patch can't include those changes.",
         hint:
-            'To publish anyway, pass --allow-native-diffs (native changes) '
-            'or --allow-asset-diffs (asset changes).',
+            'To ship these changes, create a new release. '
+            'Run: $releaseCommand\n'
+            'To publish the patch without them, pass '
+            '${changes.map((c) => c.flag).join(' ')}.'
+            '${native ? _nativeCrashWarning : ''}',
         exitCode: ExitCode.software,
       );
     }

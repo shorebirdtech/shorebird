@@ -347,7 +347,7 @@ void main() {
             () => logger.info(
               any(
                 that: contains(
-                  "If you don't know why you're seeing this error",
+                  "If you don't know why you're seeing this,",
                 ),
               ),
             ),
@@ -471,15 +471,26 @@ void main() {
                 allowNativeChanges: false,
               ),
             ),
-            throwsA(isA<UnpatchableChangeException>()),
+            throwsA(
+              isA<UnpatchableChangeException>().having(
+                (e) => e.changes,
+                'changes',
+                {UnpatchableChange.native},
+              ),
+            ),
           );
 
           verifyNever(
             () => logger.confirm(any(), hint: any(named: 'hint')),
           );
+          // The CLI can't prompt, so the change fails the patch: an error.
           verify(
-            () => logger.info(yellow.wrap(allowNativeDiffsHint)),
+            () => logger.err(
+              'Your app contains native changes, which cannot be applied with '
+              'a patch.',
+            ),
           ).called(1);
+          verifyNever(() => logger.warn(any()));
         });
       });
 
@@ -590,14 +601,78 @@ void main() {
                 allowNativeChanges: false,
               ),
             ),
-            throwsA(isA<UnpatchableChangeException>()),
+            throwsA(
+              isA<UnpatchableChangeException>().having(
+                (e) => e.changes,
+                'changes',
+                {UnpatchableChange.asset},
+              ),
+            ),
           );
 
           verifyNever(
             () => logger.confirm(any(), hint: any(named: 'hint')),
           );
-          verify(() => logger.info(yellow.wrap(allowAssetDiffsHint))).called(1);
+          // The CLI can't prompt, so the change fails the patch: an error.
+          verify(
+            () => logger.err(
+              'Your app contains asset changes, which will not be included in '
+              'the patch.',
+            ),
+          ).called(1);
+          verifyNever(() => logger.warn(any()));
         });
+      });
+
+      group('when native and asset diffs are detected', () {
+        setUp(() {
+          when(
+            () => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()),
+          ).thenReturn(true);
+          when(
+            () => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()),
+          ).thenReturn(true);
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        });
+
+        test('reports both changes when unable to prompt', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            ),
+            throwsA(
+              isA<UnpatchableChangeException>().having(
+                (e) => e.changes,
+                'changes',
+                {UnpatchableChange.native, UnpatchableChange.asset},
+              ),
+            ),
+          );
+        });
+
+        test(
+          'warns, not errs, about allowed changes when unable to prompt',
+          () async {
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: true,
+                allowNativeChanges: true,
+              ),
+            );
+
+            verify(() => logger.warn(any())).called(2);
+            verifyNever(() => logger.err(any()));
+          },
+        );
       });
 
       test(
