@@ -296,10 +296,10 @@ abstract class Releaser {
   /// When obfuscation is enabled, passes --save-obfuscation-map to capture
   /// the mapping, unless the user passed their own (see
   /// [userObfuscationMapPath]), which is kept and read from instead, since
-  /// gen_snapshot writes only one map. Conditionally passes --strip to remove unobfuscated DWARF
-  /// debugging information from the compiled snapshot, since the DWARF
-  /// sections would otherwise leak identifiers that obfuscation was meant
-  /// to hide.
+  /// gen_snapshot writes only one map. Conditionally passes --strip to
+  /// remove unobfuscated DWARF debugging information from the compiled
+  /// snapshot, since the DWARF sections would otherwise leak identifiers
+  /// that obfuscation was meant to hide.
   ///
   /// On Android, --strip is only passed for Flutter versions older than
   /// 3.44. From 3.44 onward, upstream Flutter PR

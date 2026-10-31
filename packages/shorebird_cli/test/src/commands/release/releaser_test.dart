@@ -286,7 +286,8 @@ void main() {
 
       group('when the user passes --save-obfuscation-map', () {
         const userArg =
-            '--extra-gen-snapshot-options=--save-obfuscation-map=build/map.json';
+            '--extra-gen-snapshot-options='
+            '--save-obfuscation-map=build/map.json';
 
         setUp(() {
           when(() => argResults.rest).thenReturn([userArg]);
