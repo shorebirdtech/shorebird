@@ -50,6 +50,12 @@ UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => $checkedCreate(
             ? null
             : StringContainer.fromJson(v as Map<String, dynamic>),
       ),
+      localizedRecoverySuggestion: $checkedConvert(
+        'NSLocalizedRecoverySuggestion',
+        (v) => v == null
+            ? null
+            : StringContainer.fromJson(v as Map<String, dynamic>),
+      ),
       underlyingError: $checkedConvert(
         'NSUnderlyingError',
         (v) => v == null
@@ -63,6 +69,7 @@ UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => $checkedCreate(
     'description': 'NSDescription',
     'localizedDescription': 'NSLocalizedDescription',
     'localizedFailureReason': 'NSLocalizedFailureReason',
+    'localizedRecoverySuggestion': 'NSLocalizedRecoverySuggestion',
     'underlyingError': 'NSUnderlyingError',
   },
 );
@@ -71,6 +78,8 @@ Map<String, dynamic> _$UserInfoToJson(UserInfo instance) => <String, dynamic>{
   'NSDescription': instance.description?.toJson(),
   'NSLocalizedDescription': instance.localizedDescription?.toJson(),
   'NSLocalizedFailureReason': instance.localizedFailureReason?.toJson(),
+  'NSLocalizedRecoverySuggestion': instance.localizedRecoverySuggestion
+      ?.toJson(),
   'NSUnderlyingError': instance.underlyingError?.toJson(),
 };
 

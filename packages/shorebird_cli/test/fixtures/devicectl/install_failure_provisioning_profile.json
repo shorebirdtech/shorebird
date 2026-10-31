@@ -1,0 +1,49 @@
+{
+  "error": {
+    "code": 3002,
+    "domain": "com.apple.dt.CoreDeviceError",
+    "userInfo": {
+      "NSLocalizedDescription": {
+        "string": "Failed to install the app on the device."
+      },
+      "NSUnderlyingError": {
+        "error": {
+          "code": 14,
+          "domain": "IXUserPresentableErrorDomain",
+          "userInfo": {
+            "NSLocalizedDescription": {
+              "string": "Unable to Install “Time To Grow”"
+            },
+            "NSLocalizedFailureReason": {
+              "string": "This app cannot be installed because its integrity could not be verified."
+            },
+            "NSLocalizedRecoverySuggestion": {
+              "string": "Failed to install embedded profile for dev.xyz.cherrybit.ttg : 0xe8008012 (This provisioning profile cannot be installed on this device.)"
+            },
+            "NSUnderlyingError": {
+              "error": {
+                "code": 13,
+                "domain": "MIInstallerErrorDomain",
+                "userInfo": {
+                  "FunctionName": {
+                    "string": "-[MIInstallableBundle _installEmbeddedProfilesWithError:]"
+                  },
+                  "LegacyErrorString": {
+                    "string": "ApplicationVerificationFailed"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "info": {
+    "arguments": ["devicectl", "device", "install", "app"],
+    "commandType": "devicectl.device.install.app",
+    "jsonVersion": 2,
+    "outcome": "failed",
+    "version": "397.24"
+  }
+}
