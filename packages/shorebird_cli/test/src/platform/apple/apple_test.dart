@@ -492,6 +492,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
         when(
           () => aotTools.isLinkDebugInfoSupported(),
         ).thenAnswer((_) async => false);
+        when(
+          () => aotTools.isLinkMetadataSupported(),
+        ).thenAnswer((_) async => true);
       });
 
       group('when aot snapshot does not exist', () {
@@ -886,6 +889,40 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           verify(() => progress.complete()).called(1);
           expect(result.exitCode, equals(0));
           expect(result.linkMetadata, equals({'error': 'Exception: oops'}));
+        });
+      });
+
+      group('when aot_tools has no link_metadata command', () {
+        setUp(() {
+          when(
+            () => aotTools.isLinkDebugInfoSupported(),
+          ).thenAnswer((_) async => true);
+          when(
+            () => aotTools.isLinkMetadataSupported(),
+          ).thenAnswer((_) async => false);
+        });
+
+        test('records no link metadata and does not warn', () async {
+          final result = await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+
+          verifyNever(
+            () => aotTools.getLinkMetadata(
+              debugDir: any(named: 'debugDir'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          );
+          verifyNever(() => logger.warn(any()));
+          verify(() => progress.complete()).called(1);
+          expect(result.exitCode, equals(0));
+          expect(result.linkMetadata, isNull);
         });
       });
     });

@@ -341,7 +341,10 @@ $error''');
       }
       Map<String, dynamic>? linkMetadata;
       try {
-        if (dumpDebugInfoDir != null) {
+        // Flutter versions before 3.29.3 have no link_metadata command, so
+        // their patches have no link details to record or warn about.
+        if (dumpDebugInfoDir != null &&
+            await aotTools.isLinkMetadataSupported()) {
           linkMetadata = await aotTools.getLinkMetadata(
             debugDir: dumpDebugInfoDir.path,
             workingDirectory: buildDirectory.path,
