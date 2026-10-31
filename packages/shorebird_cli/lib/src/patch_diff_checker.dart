@@ -48,9 +48,32 @@ class DiffStatus {
   final bool hasNativeChanges;
 }
 
+/// A kind of change a patch can't carry.
+enum UnpatchableChange {
+  /// Native code changed (Java/Kotlin, Swift/Objective-C, native libraries).
+  native(description: 'native code', flag: '--allow-native-diffs'),
+
+  /// Assets changed.
+  asset(description: 'assets', flag: '--allow-asset-diffs');
+
+  const UnpatchableChange({required this.description, required this.flag});
+
+  /// What changed, as a customer reads it ("native code", "assets").
+  final String description;
+
+  /// The flag that publishes the patch without this change.
+  final String flag;
+}
+
 /// Thrown when an unpatchable change is detected in an environment where the
 /// user cannot be prompted to continue.
-class UnpatchableChangeException implements Exception {}
+class UnpatchableChangeException implements Exception {
+  /// Creates an [UnpatchableChangeException] for [change].
+  const UnpatchableChangeException(this.change);
+
+  /// The change that blocked the patch.
+  final UnpatchableChange change;
+}
 
 /// Thrown when the user cancels after being prompted to continue.
 class UserCancelledException implements Exception {}
@@ -95,16 +118,24 @@ class PatchDiffChecker {
       ),
     );
 
+    // Where the CLI can't prompt, a change the user didn't allow fails the
+    // patch, so its message is an error, not a warning.
+    final canPrompt = shorebirdEnv.canAcceptUserInput;
+
     if (status.hasNativeChanges && confirmNativeChanges) {
-      logger
-        ..warn(
-          '''Your app contains native changes, which cannot be applied with a patch.''',
-        )
-        ..info(
-          yellow.wrap(
-            archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
-          ),
-        );
+      const nativeMessage =
+          'Your app contains native changes, which cannot be applied with a '
+          'patch.';
+      if (!allowNativeChanges && !canPrompt) {
+        logger.err(nativeMessage);
+      } else {
+        logger.warn(nativeMessage);
+      }
+      logger.info(
+        yellow.wrap(
+          archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
+        ),
+      );
 
       // Show detailed DEX diff information if available.
       var dexDetailWasHidden = false;
@@ -154,14 +185,13 @@ class PatchDiffChecker {
         yellow.wrap(
           '''
 
-If you don't know why you're seeing this error, visit our troubleshooting page at ${nativeChangesTroubleshootingUrl.toLink()}''',
+If you don't know why you're seeing this, visit our troubleshooting page at ${nativeChangesTroubleshootingUrl.toLink()}''',
         ),
       );
 
       if (!allowNativeChanges) {
-        if (!shorebirdEnv.canAcceptUserInput) {
-          logger.info(yellow.wrap(allowNativeDiffsHint));
-          throw UnpatchableChangeException();
+        if (!canPrompt) {
+          throw const UnpatchableChangeException(UnpatchableChange.native);
         }
 
         if (!logger.confirm(
@@ -174,15 +204,17 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
     }
 
     if (status.hasAssetChanges) {
-      logger
-        ..warn(
-          '''Your app contains asset changes, which will not be included in the patch.''',
-        )
-        ..info(
-          yellow.wrap(
-            archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString,
-          ),
-        );
+      const assetMessage =
+          'Your app contains asset changes, which will not be included in the '
+          'patch.';
+      if (!allowAssetChanges && !canPrompt) {
+        logger.err(assetMessage);
+      } else {
+        logger.warn(assetMessage);
+      }
+      logger.info(
+        yellow.wrap(archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString),
+      );
 
       final diffs = await archiveDiffer.availableAssetDiffs(
         fileSetDiff: contentDiffs,
@@ -197,14 +229,13 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
         yellow.wrap(
           '''
 
-If you don't know why you're seeing this error, visit our troubleshooting page at ${assetChangesTroubleshootingUrl.toLink()}''',
+If you don't know why you're seeing this, visit our troubleshooting page at ${assetChangesTroubleshootingUrl.toLink()}''',
         ),
       );
 
       if (!allowAssetChanges) {
-        if (!shorebirdEnv.canAcceptUserInput) {
-          logger.info(yellow.wrap(allowAssetDiffsHint));
-          throw UnpatchableChangeException();
+        if (!canPrompt) {
+          throw const UnpatchableChangeException(UnpatchableChange.asset);
         }
 
         if (!logger.confirm(

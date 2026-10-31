@@ -265,17 +265,19 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
 
     if (releaseArtifact.podfileLockHash != null &&
         localPodfileLockHash != releaseArtifact.podfileLockHash) {
-      logger.warn(
-        '''
+      final podfileLockMessage =
+          '''
 Your $podfileLockRelativePath is different from the one used to build the release.
-This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
-      );
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''';
+      // Where the CLI can't prompt, this fails the patch: an error, not a
+      // warning.
+      if (!allowNativeDiffs && !shorebirdEnv.canAcceptUserInput) {
+        logger.err(podfileLockMessage);
+        throw const UnpatchableChangeException(UnpatchableChange.native);
+      }
+      logger.warn(podfileLockMessage);
 
       if (!allowNativeDiffs) {
-        if (!shorebirdEnv.canAcceptUserInput) {
-          throw UnpatchableChangeException();
-        }
-
         if (!logger.confirm('Continue anyway?', hint: allowNativeDiffsHint)) {
           throw UserCancelledException();
         }

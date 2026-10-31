@@ -518,8 +518,24 @@ This may indicate that the patch contains native changes, which cannot be applie
                           patchArchive: File(''),
                         ),
                       ),
-                      throwsA(isA<UnpatchableChangeException>()),
+                      throwsA(
+                        isA<UnpatchableChangeException>().having(
+                          (e) => e.change,
+                          'change',
+                          UnpatchableChange.native,
+                        ),
+                      ),
                     );
+                    verify(
+                      () => logger.err(
+                        any(
+                          that: startsWith(
+                            'Your ios/Podfile.lock is different',
+                          ),
+                        ),
+                      ),
+                    ).called(1);
+                    verifyNever(() => logger.warn(any()));
                   });
                 },
               );

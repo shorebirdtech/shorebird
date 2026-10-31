@@ -2685,26 +2685,50 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
 
       group('when UnpatchableChangeException is thrown', () {
-        setUp(() {
+        void throwsChange(UnpatchableChange change) {
           when(
             () => patcher.assertUnpatchableDiffs(
               releaseArtifact: any(named: 'releaseArtifact'),
               releaseArchive: any(named: 'releaseArchive'),
               patchArchive: any(named: 'patchArchive'),
             ),
-          ).thenThrow(UnpatchableChangeException());
-        });
+          ).thenThrow(UnpatchableChangeException(change));
+        }
 
-        test('exits with an error saying it is not publishing', () async {
+        test('for assets, exits naming the release and the flag', () async {
+          throwsChange(UnpatchableChange.asset);
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithError(
               message:
-                  'Not publishing: the patch changes native code or assets, '
-                  'which a patch may not update safely.',
+                  'Not publishing: the patch changes assets, which a patch '
+                  "can't include.",
               hint:
-                  'To publish anyway, pass --allow-native-diffs (native '
-                  'changes) or --allow-asset-diffs (asset changes).',
+                  'To ship these changes, create a new release. '
+                  'Run: shorebird release android\n'
+                  'To publish the patch without them, pass '
+                  '--allow-asset-diffs.',
+              exitCode: ExitCode.software,
+            ),
+          );
+        });
+
+        test('for native code, also warns of crashes', () async {
+          throwsChange(UnpatchableChange.native);
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithError(
+              message:
+                  'Not publishing: the patch changes native code, which a '
+                  "patch can't include.",
+              hint:
+                  'To ship these changes, create a new release. '
+                  'Run: shorebird release android\n'
+                  'To publish the patch without them, pass '
+                  '--allow-native-diffs.\n'
+                  "Only do this if your Dart code doesn't depend on them: a "
+                  "mismatch between your Dart code and the release's native "
+                  'code can crash your app.',
               exitCode: ExitCode.software,
             ),
           );

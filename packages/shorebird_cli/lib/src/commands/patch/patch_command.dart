@@ -1114,16 +1114,22 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     } on UserCancelledException {
       logger.err('Aborting.');
       throw PromptDeclinedExit();
-    } on UnpatchableChangeException {
-      // The diff checker has already named the change and the flag that
-      // overrides it.
+    } on UnpatchableChangeException catch (e) {
+      // The diff checker has already listed the changes.
+      final change = e.change;
+      const crashWarning =
+          "\nOnly do this if your Dart code doesn't depend on them: a "
+          "mismatch between your Dart code and the release's native code can "
+          'crash your app.';
       throw CommandError(
         message:
-            'Not publishing: the patch changes native code or assets, which '
-            'a patch may not update safely.',
+            'Not publishing: the patch changes ${change.description}, which '
+            "a patch can't include.",
         hint:
-            'To publish anyway, pass --allow-native-diffs (native changes) '
-            'or --allow-asset-diffs (asset changes).',
+            'To ship these changes, create a new release. '
+            'Run: ${patcher.releaseType.releaseCommand()}\n'
+            'To publish the patch without them, pass ${change.flag}.'
+            '${change == UnpatchableChange.native ? crashWarning : ''}',
         exitCode: ExitCode.software,
       );
     }
