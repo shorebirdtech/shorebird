@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template android_releaser}
@@ -117,6 +118,7 @@ class AndroidReleaser extends Releaser {
       releaseVersion = await shorebirdAndroidArtifacts
           .extractReleaseVersionFromAppBundle(releaseArtifactRoot.path);
       releaseVersionProgress.complete('Release version: $releaseVersion');
+      _explainVersionNameChange(releaseVersion);
     } on Exception catch (error) {
       releaseVersionProgress.fail();
       throw CommandError(
@@ -128,6 +130,23 @@ class AndroidReleaser extends Releaser {
     }
 
     return releaseVersion;
+  }
+
+  /// Explains, when Gradle changed the version name Flutter built with (a
+  /// flavor's `versionNameSuffix`, or a `versionName` override), that this
+  /// release won't be the same Shorebird release as an iOS build of the same
+  /// version, which customers otherwise find out from the console.
+  void _explainVersionNameChange(String releaseVersion) {
+    final flutterBuildName =
+        argResults['build-name'] as String? ??
+        shorebirdEnv.getPubspecYaml()?.version?.toString().split('+').first;
+    if (flutterBuildName == null) return;
+    final [versionName, ...versionCode] = releaseVersion.split('+');
+    if (versionName == flutterBuildName) return;
+    final iosVersion = [flutterBuildName, ...versionCode].join('+');
+    logger.info(
+      '''Android's version name $versionName is not $flutterBuildName, the version Flutter built with: android/app/build.gradle changes it (versionNameSuffix or versionName). So this release is not the same Shorebird release as an iOS build of this version ($iosVersion), and each needs its own patches. To share one release across platforms, remove the suffix.''',
+    );
   }
 
   @override
