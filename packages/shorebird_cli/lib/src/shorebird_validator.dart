@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
 import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -306,7 +307,11 @@ To fix, update your pubspec.yaml to include the following:
       return;
     }
 
-    final flavorValidator = FlavorValidator(flavorArg: flavorArg);
+    final flavorValidator = FlavorValidator(
+      flavorArg: flavorArg,
+      platformName: releasePlatform.displayName,
+      platformFlavors: _appleFlavors(releasePlatform),
+    );
     final issues = await flavorValidator.validate();
     if (validationIssuesContainsError(issues)) {
       for (final issue in issues) {
@@ -322,6 +327,26 @@ To fix, update your pubspec.yaml to include the following:
       for (final issue in issues) {
         logger.warn(issue.message);
       }
+    }
+  }
+
+  /// The flavors (Xcode schemes) of the Apple project for [releasePlatform],
+  /// or null when it isn't an Apple platform or the schemes can't be read
+  /// (such as an add-to-app module, which has no `ios/Runner.xcodeproj`).
+  Set<String>? _appleFlavors(ReleasePlatform releasePlatform) {
+    final applePlatform = switch (releasePlatform) {
+      ReleasePlatform.ios => ApplePlatform.ios,
+      ReleasePlatform.macos => ApplePlatform.macos,
+      _ => null,
+    };
+    if (applePlatform == null) return null;
+    try {
+      return apple.flavors(
+        platform: applePlatform,
+        includeUserSchemes: true,
+      );
+    } on Exception {
+      return null;
     }
   }
 

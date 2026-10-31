@@ -304,6 +304,45 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           });
         });
 
+        group('when a scheme is only in xcuserdata', () {
+          setUp(() {
+            File(
+                p.join(
+                  projectRoot.path,
+                  'ios',
+                  'Runner.xcodeproj',
+                  'xcuserdata',
+                  'dev.xcuserdatad',
+                  'xcschemes',
+                  'qa.xcscheme',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('<Scheme></Scheme>');
+          });
+
+          test('ignores it by default', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              isNot(contains('qa')),
+            );
+          });
+
+          test('includes it with includeUserSchemes', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(
+                  platform: ApplePlatform.ios,
+                  includeUserSchemes: true,
+                ),
+              ),
+              {'internal', 'beta', 'stable', 'dev', 'qa'},
+            );
+          });
+        });
+
         group('when Runner has been renamed', () {
           setUp(() {
             Directory(

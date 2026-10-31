@@ -11,13 +11,27 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 ///     provided.
 ///  3. The project has flavors and a `--flavor` argument was provided, but
 ///     the flavor does not exist in the project.
+///  4. [platformFlavors] is given and has no flavor matching `--flavor`, such
+///     as an app with Android flavors whose Xcode project has no schemes.
 /// {@endtemplate}
 class FlavorValidator extends Validator {
   /// {@macro flavor_validator}
-  FlavorValidator({required this.flavorArg});
+  FlavorValidator({
+    required this.flavorArg,
+    this.platformName,
+    this.platformFlavors,
+  });
 
   /// The flavor argument provided by the user via `--flavor`.
   final String? flavorArg;
+
+  /// The name of the platform being built, as customers read it (`iOS`).
+  final String? platformName;
+
+  /// The flavors (lowercased) the platform's native project defines, or null
+  /// when unknown. Shorebird only knows these for Apple platforms, from the
+  /// Xcode schemes.
+  final Set<String>? platformFlavors;
 
   @override
   String get description => 'Flavor argument is valid for project flavors';
@@ -30,8 +44,28 @@ class FlavorValidator extends Validator {
       return [ValidationIssue.error(message: flavorError)];
     }
 
+    final flavor = flavorArg;
+    final nativeFlavors = platformFlavors;
+    if (flavor != null &&
+        nativeFlavors != null &&
+        !nativeFlavors.contains(flavor.toLowerCase())) {
+      final fix = nativeFlavors.isEmpty
+          ? 'or re-run without --flavor to use the default app id '
+                '${shorebirdYaml.appId}'
+          : 'or pass one of: ${nativeFlavors.join(', ')}';
+      return [
+        ValidationIssue.error(
+          message:
+              '''The $platformName project has no Xcode scheme for flavor "$flavor", so it cannot be built with --flavor=$flavor. Add a scheme named "$flavor" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), $fix.''',
+        ),
+      ];
+    }
+
     final projectFlavors = shorebirdYaml.flavors;
-    if (projectFlavors != null && flavorArg == null) {
+    // A platform with no flavors of its own can only use the default app id,
+    // so there is nothing to warn about.
+    final platformHasFlavors = nativeFlavors?.isNotEmpty ?? true;
+    if (projectFlavors != null && flavorArg == null && platformHasFlavors) {
       return [
         ValidationIssue.warning(
           message:

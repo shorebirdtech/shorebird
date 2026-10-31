@@ -116,6 +116,64 @@ void main() {
           });
         });
 
+        group('when the platform project has no matching flavor', () {
+          test('returns an error naming the default app id', () async {
+            validator = FlavorValidator(
+              flavorArg: 'flavorA',
+              platformName: 'iOS',
+              platformFlavors: {},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(
+              issues,
+              equals([
+                ValidationIssue.error(
+                  message:
+                      '''The iOS project has no Xcode scheme for flavor "flavorA", so it cannot be built with --flavor=flavorA. Add a scheme named "flavorA" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), or re-run without --flavor to use the default app id $appId.''',
+                ),
+              ]),
+            );
+          });
+
+          test('returns an error listing the schemes it has', () async {
+            validator = FlavorValidator(
+              flavorArg: 'flavorA',
+              platformName: 'iOS',
+              platformFlavors: {'flavorb'},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(
+              issues,
+              equals([
+                ValidationIssue.error(
+                  message:
+                      '''The iOS project has no Xcode scheme for flavor "flavorA", so it cannot be built with --flavor=flavorA. Add a scheme named "flavorA" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), or pass one of: flavorb.''',
+                ),
+              ]),
+            );
+          });
+
+          test('matches scheme names case-insensitively', () async {
+            validator = FlavorValidator(
+              flavorArg: 'flavorA',
+              platformName: 'iOS',
+              platformFlavors: {'flavora'},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(issues, isEmpty);
+          });
+
+          test('does not warn about a missing --flavor', () async {
+            validator = FlavorValidator(
+              flavorArg: null,
+              platformName: 'iOS',
+              platformFlavors: {},
+            );
+            final issues = await runWithOverrides(validator.validate);
+            expect(issues, isEmpty);
+          });
+        });
+
         group('when no flavor arg is provided', () {
           setUp(() {
             validator = FlavorValidator(flavorArg: null);
