@@ -169,6 +169,42 @@ void main() {
         expect(result, equals(ExitCode.software.code));
         verify(() => logger.warn('Patches are paused.')).called(1);
       });
+
+      test('writes them to stderr when the command reserves stdout, '
+          'as GitHub Actions annotations', () async {
+        platform = TestNativePlatform(
+          operatingSystem: NativePlatform.linux,
+          environment: {'GITHUB_ACTIONS': 'true'},
+        );
+        commandRunner.addCommand(
+          _ReservesStdoutCommand(exitCode: 0, notice: 'Patches are paused.'),
+        );
+        final stdoutLines = <String>[];
+        final stderrLines = <String>[];
+        final realStderr = stderr;
+        // A real logger, so a notice printed outside runWithStdoutOnStderr
+        // would show up on the captured stdout and fail the test.
+        logger = ShorebirdLogger();
+
+        await helpers.captureStdout(
+          () => IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => commandRunner.run(['reserves-stdout']),
+            ),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrLines,
+            ),
+          ),
+          captured: stdoutLines,
+        );
+
+        expect(stdoutLines, isEmpty);
+        expect(
+          stderrLines,
+          contains('::warning title=Shorebird::Patches are paused.'),
+        );
+      });
     });
 
     group('handles ProcessExit', () {
@@ -1806,9 +1842,12 @@ class _DeclinedCommand extends ShorebirdCommand {
 
 /// Returns [exitCode], and owns stdout the way `shorebird api` does.
 class _ReservesStdoutCommand extends ShorebirdCommand {
-  _ReservesStdoutCommand({required this.exitCode});
+  _ReservesStdoutCommand({required this.exitCode, this.notice});
 
   final int exitCode;
+
+  /// A server notice to record while running, if any.
+  final String? notice;
 
   @override
   String get name => 'reserves-stdout';
@@ -1823,7 +1862,10 @@ class _ReservesStdoutCommand extends ShorebirdCommand {
   bool get reservesStdout => true;
 
   @override
-  Future<int> run() async => exitCode;
+  Future<int> run() async {
+    if (notice case final notice?) serverNotices.add(notice);
+    return exitCode;
+  }
 }
 
 /// Writes a human line to stdout, then an envelope when in JSON mode.

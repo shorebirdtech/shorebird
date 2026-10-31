@@ -487,8 +487,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
       // After the command's own output and any error, so the notice is the
       // last thing read. In --json mode it goes to stderr with the rest of
-      // the human output.
-      serverNotices.printAll();
+      // the human output, as it does for a command that reserves stdout.
+      if (_reservesStdout(topLevelResults)) {
+        await runWithStdoutOnStderr(() async => serverNotices.printAll());
+      } else {
+        serverNotices.printAll();
+      }
       // Every --json run leaves exactly one envelope on stdout. A command
       // that succeeded without writing one (it has no JSON output, or it only
       // printed usage for --help, where the exit code is null) gets an empty
