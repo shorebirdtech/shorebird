@@ -1,3 +1,4 @@
+// cspell:words xcuserdata xcuserdatad
 import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';

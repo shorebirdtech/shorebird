@@ -139,7 +139,7 @@ void main() {
             validator = FlavorValidator(
               flavorArg: 'flavorA',
               platformName: 'iOS',
-              platformFlavors: {'flavorb'},
+              platformFlavors: {'staging'},
             );
             final issues = await runWithOverrides(validator.validate);
             expect(
@@ -147,17 +147,20 @@ void main() {
               equals([
                 ValidationIssue.error(
                   message:
-                      '''The iOS project has no Xcode scheme for flavor "flavorA", so it cannot be built with --flavor=flavorA. Add a scheme named "flavorA" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), or pass one of: flavorb.''',
+                      '''The iOS project has no Xcode scheme for flavor "flavorA", so it cannot be built with --flavor=flavorA. Add a scheme named "flavorA" (see https://docs.shorebird.dev/code-push/guides/flavors/ios/), or pass one of: staging.''',
                 ),
               ]),
             );
           });
 
           test('matches scheme names case-insensitively', () async {
+            when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+              const ShorebirdYaml(appId: appId, flavors: {'Staging': 'id'}),
+            );
             validator = FlavorValidator(
-              flavorArg: 'flavorA',
+              flavorArg: 'Staging',
               platformName: 'iOS',
-              platformFlavors: {'flavora'},
+              platformFlavors: {'staging'},
             );
             final issues = await runWithOverrides(validator.validate);
             expect(issues, isEmpty);
