@@ -380,9 +380,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
   }
 
-  /// The last built Flutter revision.
-  String? lastBuiltFlutterRevision;
-
   /// Creates a patch using the provided [patcher].
   ///
   /// Returns what was published. A dry run does not return: it exits the
@@ -395,8 +392,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    final resolved = await _resolveRelease(patcher);
-    final release = resolved.release;
+    final release = await _resolveRelease(patcher);
 
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
@@ -450,8 +446,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           patcher: patcher,
           app: app,
           release: release,
-          existingPatchArtifact: resolved.patchArtifactFile,
-          inferredReleaseVersion: resolved.inferredReleaseVersion,
           releaseArtifact: downloaded.releaseArtifact,
           releaseArchive: downloaded.releaseArchive,
           supplementDirectory: downloaded.supplementDirectory,
@@ -498,17 +492,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   }
 
   /// Determines which release to patch.
-  ///
-  /// When the release version can't be determined any other way, the patch
-  /// is built first to read the version from it, so the built artifact is
-  /// returned as well.
-  Future<
-    ({Release release, File? patchArtifactFile, bool inferredReleaseVersion})
-  >
-  _resolveRelease(Patcher patcher) async {
-    var inferredReleaseVersion = false;
-    File? patchArtifactFile;
-    final Release release;
+  Future<Release> _resolveRelease(Patcher patcher) async {
     final releasePlatform = patcher.releaseType.releasePlatform;
     if (useLatestRelease) {
       final releases = await codePushClientWrapper.getReleases(appId: appId);
@@ -521,56 +505,22 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         throw _noReleasesToPatch(patcher.releaseType);
       }
       // Use the most recently updated release for the specified platform.
-      release = releases.last;
-    } else if (results.wasParsed('release-version')) {
+      return releases.last;
+    }
+    if (results.wasParsed('release-version')) {
       final releaseVersion = results['release-version'] as String;
-      release = await codePushClientWrapper.getRelease(
-        appId: appId,
-        releaseVersion: releaseVersion,
-      );
-    } else if (shorebirdEnv.canAcceptUserInput) {
-      release = await promptForRelease(patcher.releaseType);
-    } else {
-      // Without a terminal to prompt in, the release version is guessed by
-      // building and reading it back out of the artifact, which some release
-      // types can't do.
-      if (patcher.requiresReleaseVersionArg) {
-        usageException(
-          'Missing required argument: --release-version. The release version '
-          "can't be determined from a ${patcher.releaseType.cliName} build, "
-          'so pass --release-version=<version> (or --release-version=latest) '
-          'when running non-interactively.',
-        );
-      }
-      final flutterVersionString = await shorebirdFlutter
-          .getVersionAndRevision();
-      logger.warn('''
-The release version to patch was not specified.
-Building with Flutter $flutterVersionString to determine the release version...
-+-------------------------------------------------------------------------------+
-| Specify a release version (e.g. --release-version=1.0.0+1)                    |
-| to avoid a speculative build with the latest Flutter version.                 |
-| Tip: Use --release-version=latest to target the most recent release.          |
-+-------------------------------------------------------------------------------+
-''');
-      lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
-      inferredReleaseVersion = true;
-      patchArtifactFile = await _tryBuildingArtifact<File>(
-        patcher.buildPatchArtifact,
-      );
-      final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
-        patchArtifactFile,
-      );
-      release = await codePushClientWrapper.getRelease(
+      return codePushClientWrapper.getRelease(
         appId: appId,
         releaseVersion: releaseVersion,
       );
     }
-
-    return (
-      release: release,
-      patchArtifactFile: patchArtifactFile,
-      inferredReleaseVersion: inferredReleaseVersion,
+    if (shorebirdEnv.canAcceptUserInput) {
+      return promptForRelease(patcher.releaseType);
+    }
+    usageException(
+      'Missing required argument: --release-version. Pass '
+      '--release-version=<version> (or --release-version=latest for the most '
+      'recent release) when running non-interactively.',
     );
   }
 
@@ -681,10 +631,6 @@ Building with Flutter $flutterVersionString to determine the release version...
       );
     }
     patcher.releaseManagedPublicKeyPem = publicKeyPem;
-
-    // A patch built to read the release version embedded no key, so it
-    // can't be compared with this release: build it again with the key.
-    lastBuiltFlutterRevision = null;
   }
 
   /// Configures [patcher] to build the patch with the same obfuscation as
@@ -742,11 +688,6 @@ Building with Flutter $flutterVersionString to determine the release version...
       loadObfuscationMap = false;
     }
 
-    // A patch built to read the release version was built without the
-    // release's obfuscation, so it can't be compared with this release:
-    // build it again obfuscated.
-    if (obfuscationMapFile != null) lastBuiltFlutterRevision = null;
-
     patcher
       ..obfuscate = obfuscationMapFile != null
       ..obfuscationMapPath = loadObfuscationMap
@@ -800,23 +741,19 @@ Building with Flutter $flutterVersionString to determine the release version...
     patcher.extraBuildArgs = extraBuildArgs;
   }
 
-  /// Builds the patch with [release]'s Flutter revision and settings (unless
-  /// [existingPatchArtifact] was already built with them, which
-  /// [lastBuiltFlutterRevision] says), checks it against the release, and
-  /// uploads it. Must run with the release's Flutter revision in scope.
+  /// Builds the patch with [release]'s Flutter revision and settings, checks
+  /// it against the release, and uploads it. Must run with the release's
+  /// Flutter revision in scope.
   ///
   /// A dry run exits the process with success once the patch is checked.
   Future<PublishedPatch> _buildAndPublishPatch({
     required Patcher patcher,
     required AppMetadata app,
     required Release release,
-    required File? existingPatchArtifact,
-    required bool inferredReleaseVersion,
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required Directory? supplementDirectory,
   }) async {
-    var patchArtifactFile = existingPatchArtifact;
     await cache.updateAll();
 
     // Set up build tracing before any flutter build / aot_tools /
@@ -827,24 +764,18 @@ Building with Flutter $flutterVersionString to determine the release version...
       platform: patcher.releaseType.releasePlatform.name,
     );
 
-    // Don't built the patch artifact twice with the same Flutter revision.
-    if (lastBuiltFlutterRevision != release.flutterRevision) {
-      final flutterVersionString = await shorebirdFlutter
-          .getVersionAndRevision();
-      logger.info('''
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+    logger.info('''
 Building patch with Flutter $flutterVersionString
 ''');
-      patchArtifactFile = await _tryBuildingArtifact<File>(
-        () => patcher.buildPatchArtifact(
-          releaseVersion: release.version,
-        ),
-      );
-    }
+    final patchArtifactFile = await _tryBuildingArtifact<File>(
+      () => patcher.buildPatchArtifact(releaseVersion: release.version),
+    );
 
     final diffStatus = await assertUnpatchableDiffs(
       releaseArtifact: releaseArtifact,
       releaseArchive: releaseArchive,
-      patchArchive: patchArtifactFile!,
+      patchArchive: patchArtifactFile,
       patcher: patcher,
     );
     final patchArtifactBundles = await patcher.createPatchArtifacts(
@@ -872,7 +803,6 @@ Building patch with Flutter $flutterVersionString
     final metadata = await _createPatchMetadata(
       patcher: patcher,
       diffStatus: diffStatus,
-      inferredReleaseVersion: inferredReleaseVersion,
     );
 
     final patch = await patcher.uploadPatchArtifacts(
@@ -1017,7 +947,6 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
   Future<CreatePatchMetadata> _createPatchMetadata({
     required Patcher patcher,
     required DiffStatus diffStatus,
-    required bool inferredReleaseVersion,
   }) {
     final baseMetadata = CreatePatchMetadata(
       releasePlatform: patcher.releaseType.releasePlatform,
@@ -1025,7 +954,6 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       hasAssetChanges: diffStatus.hasAssetChanges,
       usedIgnoreNativeChangesFlag: allowNativeDiffs,
       hasNativeChanges: diffStatus.hasNativeChanges,
-      inferredReleaseVersion: inferredReleaseVersion,
       usedDefaultTrack: _usedDefaultTrack,
       isSigned:
           results.wasParsed(CommonArguments.privateKeyArg.name) ||

@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
-import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -155,17 +154,6 @@ class IosPatcher extends Patcher
         fallbackSupplementDirectory.deleteTemporarySync();
       }
     }
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    final archivePath = artifactManager.getXcarchiveDirectory()?.path;
-    if (archivePath == null) _noXcarchiveFound();
-
-    return readReleaseVersionFromInfoPlist(
-      File(p.join(archivePath, 'Info.plist')),
-      hint: passReleaseVersionHint,
-    );
   }
 
   /// Logs that `flutter build ipa` left no .xcarchive where Shorebird looks

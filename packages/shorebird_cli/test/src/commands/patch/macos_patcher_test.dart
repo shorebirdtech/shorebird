@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
-import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -1408,143 +1407,6 @@ This may indicate that the patch contains native changes, which cannot be applie
       });
     });
 
-    group('extractReleaseVersionFromArtifact', () {
-      group('when app directory does not exist', () {
-        setUp(() {
-          when(() => artifactManager.getMacOSAppDirectory()).thenReturn(null);
-        });
-
-        test('exit with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-        });
-      });
-
-      group('when Info.plist does not exist', () {
-        test('exits with an error and the hint', () async {
-          final infoPlist = File(
-            p.join(appDirectory.path, 'Contents', 'Info.plist'),
-          );
-          expect(infoPlist.existsSync(), isFalse);
-
-          await expectLater(
-            () => runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            exitsWithError(
-              message: 'No Info.plist file found at ${infoPlist.path}',
-              hint: passReleaseVersionHint,
-              exitCode: ExitCode.software,
-            ),
-          );
-        });
-      });
-
-      group('when empty Info.plist does exist', () {
-        setUp(() {
-          File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
-            ..createSync(recursive: true)
-            ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict></dict>
-</plist>
-''');
-        });
-
-        test('exits with an error and the hint', () async {
-          await expectLater(
-            runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            exitsWithError(
-              message: startsWith('Failed to determine release version'),
-              hint: passReleaseVersionHint,
-              exitCode: ExitCode.software,
-            ),
-          );
-        });
-      });
-
-      group('when Info.plist does exist', () {
-        setUp(() {
-          File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
-            ..createSync(recursive: true)
-            ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>ApplicationProperties</key>
-	<dict>
-		<key>ApplicationPath</key>
-		<string>Applications/Runner.app</string>
-		<key>Architectures</key>
-		<array>
-			<string>arm64</string>
-		</array>
-		<key>CFBundleIdentifier</key>
-		<string>com.shorebird.timeShift</string>
-		<key>CFBundleShortVersionString</key>
-		<string>1.2.3</string>
-		<key>CFBundleVersion</key>
-		<string>1</string>
-	</dict>
-	<key>ArchiveVersion</key>
-	<integer>2</integer>
-	<key>Name</key>
-	<string>Runner</string>
-	<key>SchemeName</key>
-	<string>Runner</string>
-</dict>
-</plist>
-''');
-        });
-
-        test('returns correct version', () async {
-          await expectLater(
-            runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            completion('1.2.3+1'),
-          );
-        });
-
-        group('when flavor is provided', () {
-          const flavor = 'my-flavor';
-
-          setUp(() {
-            patcher = MacosPatcher(
-              argParser: argParser,
-              argResults: argResults,
-              flavor: flavor,
-              target: null,
-            );
-            when(
-              () => artifactManager.getMacOSAppDirectory(flavor: flavor),
-            ).thenReturn(appDirectory);
-          });
-
-          test('reads the version from the flavored app', () async {
-            await expectLater(
-              runWithOverrides(
-                () => patcher.extractReleaseVersionFromArtifact(File('')),
-              ),
-              completion('1.2.3+1'),
-            );
-            verify(
-              () => artifactManager.getMacOSAppDirectory(flavor: flavor),
-            ).called(1);
-          });
-        });
-      });
-    });
-
     group('updatedCreatePatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
@@ -1564,7 +1426,6 @@ This may indicate that the patch contains native changes, which cannot be applie
           hasAssetChanges: true,
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
-          inferredReleaseVersion: false,
           isSigned: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,
@@ -1585,7 +1446,6 @@ This may indicate that the patch contains native changes, which cannot be applie
               hasAssetChanges: true,
               usedIgnoreNativeChangesFlag: allowNativeDiffs,
               hasNativeChanges: false,
-              inferredReleaseVersion: false,
               isSigned: true,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: flutterRevision,

@@ -64,8 +64,4 @@ class LinuxPatcher extends DesktopPatcher {
     );
     return appDirectory;
   }
-
-  @override
-  Future<String> versionFromAppDirectory(Directory appDirectory) async =>
-      linux.versionFromLinuxBundle(bundleRoot: appDirectory);
 }

@@ -135,38 +135,5 @@ void main() {
         ).called(1);
       });
     });
-
-    group('versionFromAppDirectory', () {
-      test("reads the executable's product version", () async {
-        const projectName = 'my_app';
-        final directory = Directory('release');
-        final executable = File('my_app.exe');
-        final pubspec = MockPubspec();
-        when(() => pubspec.name).thenReturn(projectName);
-        when(() => shorebirdEnv.getPubspecYaml()).thenReturn(pubspec);
-        when(
-          () => windows.findExecutable(
-            releaseDirectory: any(named: 'releaseDirectory'),
-            projectName: any(named: 'projectName'),
-          ),
-        ).thenReturn(executable);
-        when(
-          () => powershell.getProductVersion(any()),
-        ).thenAnswer((_) async => '1.2.3');
-
-        final version = await runWithOverrides(
-          () => patcher.versionFromAppDirectory(directory),
-        );
-
-        expect(version, '1.2.3');
-        verify(
-          () => windows.findExecutable(
-            releaseDirectory: directory,
-            projectName: projectName,
-          ),
-        ).called(1);
-        verify(() => powershell.getProductVersion(executable)).called(1);
-      });
-    });
   });
 }

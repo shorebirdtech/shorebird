@@ -63,10 +63,6 @@ class _TestApplePatcher extends Patcher
     required File releaseArtifact,
     Directory? supplementDirectory,
   }) => throw UnimplementedError();
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) =>
-      throw UnimplementedError();
 }
 
 void main() {

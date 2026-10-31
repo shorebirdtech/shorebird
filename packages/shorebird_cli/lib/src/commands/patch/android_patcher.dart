@@ -17,7 +17,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -157,13 +156,6 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
           patchArchsDir: patchArchsBuildDir,
         );
       },
-    );
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    return shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-      artifact.path,
     );
   }
 }

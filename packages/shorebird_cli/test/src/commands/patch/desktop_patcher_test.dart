@@ -50,7 +50,6 @@ class _TestDesktopPatcher extends DesktopPatcher {
   Exception? buildError;
   List<String>? builtWithArgs;
   String? builtWithPublicKey;
-  Directory? versionReadFrom;
 
   @override
   List<Validator> get commandValidators => validators;
@@ -73,12 +72,6 @@ class _TestDesktopPatcher extends DesktopPatcher {
     builtWithArgs = args;
     builtWithPublicKey = base64PublicKey;
     return builtDirectory;
-  }
-
-  @override
-  Future<String> versionFromAppDirectory(Directory appDirectory) async {
-    versionReadFrom = appDirectory;
-    return '1.2.3';
   }
 
   @override
@@ -556,49 +549,6 @@ void main() {
             ).called(1);
           });
         });
-      });
-    });
-
-    group('extractReleaseVersionFromArtifact', () {
-      test('reads the version from the extracted release', () async {
-        Directory? extractedTo;
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer((invocation) async {
-          extractedTo =
-              invocation.namedArguments[#outputDirectory] as Directory;
-        });
-
-        final version = await runWithOverrides(
-          () => patcher.extractReleaseVersionFromArtifact(File('app.zip')),
-        );
-
-        expect(version, equals('1.2.3'));
-        expect(patcher.versionReadFrom, equals(extractedTo));
-      });
-
-      test('deletes the extracted release', () async {
-        Directory? extractedTo;
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer((invocation) async {
-          extractedTo =
-              (invocation.namedArguments[#outputDirectory] as Directory)
-                ..createSync(recursive: true);
-        });
-
-        await runWithOverrides(
-          () => patcher.extractReleaseVersionFromArtifact(File('app.zip')),
-        );
-
-        expect(extractedTo, isNotNull);
-        expect(extractedTo!.existsSync(), isFalse);
       });
     });
   });

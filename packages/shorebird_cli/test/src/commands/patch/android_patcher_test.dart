@@ -1134,28 +1134,6 @@ void main() {
       });
     });
 
-    group('extractReleaseVersionFromArtifact', () {
-      setUp(() {
-        when(
-          () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-            any(),
-          ),
-        ).thenAnswer((_) async => '1.0.0');
-      });
-
-      test(
-        '''returns value of shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle''',
-        () async {
-          expect(
-            await runWithOverrides(
-              () => patcher.extractReleaseVersionFromArtifact(File('')),
-            ),
-            equals('1.0.0'),
-          );
-        },
-      );
-    });
-
     group('updatedCreatePatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
@@ -1170,7 +1148,6 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
-          inferredReleaseVersion: false,
           isSigned: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,

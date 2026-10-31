@@ -7,10 +7,8 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/commands/patch/desktop_patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template windows_patcher}
@@ -64,14 +62,5 @@ class WindowsPatcher extends DesktopPatcher {
       args: args,
       base64PublicKey: base64PublicKey,
     );
-  }
-
-  @override
-  Future<String> versionFromAppDirectory(Directory appDirectory) {
-    final executable = windows.findExecutable(
-      releaseDirectory: appDirectory,
-      projectName: shorebirdEnv.getPubspecYaml()!.name,
-    );
-    return powershell.getProductVersion(executable);
   }
 }

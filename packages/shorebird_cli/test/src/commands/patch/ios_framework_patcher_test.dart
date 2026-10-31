@@ -259,10 +259,6 @@ void main() {
       });
     });
 
-    test('requires --release-version', () {
-      expect(patcher.requiresReleaseVersionArg, isTrue);
-    });
-
     group('assertUnpatchableDiffs', () {
       const diffStatus = DiffStatus(
         hasAssetChanges: false,
@@ -851,15 +847,6 @@ void main() {
       });
     });
 
-    group('extractReleaseVersionFromArtifact', () {
-      test('throws UnimplementedError', () {
-        expect(
-          () => patcher.extractReleaseVersionFromArtifact(File('')),
-          throwsUnimplementedError,
-        );
-      });
-    });
-
     group('updatedCreatePatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
@@ -880,7 +867,6 @@ void main() {
             hasAssetChanges: true,
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: true,
-            inferredReleaseVersion: false,
             isSigned: true,
             environment: BuildEnvironmentMetadata(
               flutterRevision: flutterRevision,
@@ -903,7 +889,6 @@ void main() {
                 hasAssetChanges: true,
                 usedIgnoreNativeChangesFlag: allowNativeDiffs,
                 hasNativeChanges: true,
-                inferredReleaseVersion: false,
                 isSigned: true,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
@@ -937,7 +922,6 @@ void main() {
             hasAssetChanges: false,
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: false,
-            inferredReleaseVersion: false,
             isSigned: false,
             environment: BuildEnvironmentMetadata(
               flutterRevision: flutterRevision,
@@ -960,7 +944,6 @@ void main() {
                 hasAssetChanges: false,
                 usedIgnoreNativeChangesFlag: allowNativeDiffs,
                 hasNativeChanges: false,
-                inferredReleaseVersion: false,
                 linkPercentage: linkPercentage,
                 linkMetadata: linkMetadata,
                 isSigned: false,

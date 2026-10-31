@@ -42,9 +42,6 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
-  bool get requiresReleaseVersionArg => true;
-
-  @override
   Future<void> assertPreconditions() async {
     await assertBuildPreconditions();
     assertAndroidPackageNameConfigured();
@@ -105,14 +102,6 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
     return createAndroidPatchArtifactBundles(
       releaseArtifactPaths: releaseArtifactPaths,
       patchArchsDir: Directory(p.join(extractedAarDirectory.path, 'jni')),
-    );
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) {
-    // Not implemented - release version must be specified by the user.
-    throw UnimplementedError(
-      'Release version must be specified using --release-version.',
     );
   }
 }
