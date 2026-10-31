@@ -62,7 +62,10 @@ void main() {
     setUp(() {
       cache = MockCache();
       logger = MockShorebirdLogger();
-      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
+      platform = TestNativePlatform(
+        operatingSystem: NativePlatform.linux,
+        environment: {},
+      );
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdVersion = MockShorebirdVersion();
