@@ -507,7 +507,9 @@ Reason: Exited with code $exitCode.''',
         logger.detail('Using the kernel Flutter copied: $appDillPath');
       } else {
         appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
-        logger.detail('Found the kernel by modification time: $appDillPath');
+        if (appDillPath != null) {
+          logger.detail('Found the kernel by modification time: $appDillPath');
+        }
       }
     });
 
