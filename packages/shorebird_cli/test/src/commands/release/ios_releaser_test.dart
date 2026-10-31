@@ -457,6 +457,65 @@ $body
           );
         });
 
+        test('checks the --obfuscate default directory', () async {
+          when(() => argResults.rest).thenReturn([]);
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
+          when(
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async {
+            File(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'shorebird',
+                  'obfuscation_map.json',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{}');
+            File(
+              p.join(fixturesDirectory, 'dsym', 'no_debug_info.dwarf'),
+            ).copySync(
+              (File(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'shorebird',
+                  'symbols',
+                  'app.ios-arm64.symbols',
+                ),
+              )..createSync(recursive: true)).path,
+            );
+            return AppleBuildResult(kernelFile: File('/path/to/app.dill'));
+          });
+
+          await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+
+          verify(
+            () => logger.warn(
+              any(
+                that: startsWith(
+                  '${p.join('build', 'shorebird', 'symbols')}'
+                  '${p.separator}app.ios-arm64.symbols has no Dart debug info',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
         test('does not warn when the build wrote no symbols file', () async {
           await runWithOverrides(iosReleaser.buildReleaseArtifacts);
 

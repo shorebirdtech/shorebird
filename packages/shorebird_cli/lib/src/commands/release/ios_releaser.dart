@@ -164,7 +164,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
       '''
 ${p.relative(symbolsFile.path, from: projectRoot.path)} has no Dart debug info (no __debug_info section), so Dart frames in this release's crash reports will have no function names.
 
-The likely cause is Xcode 27 with a Flutter version that predates the fix for https://github.com/shorebirdtech/shorebird/issues/4270. To get Dart symbols, build the release with Xcode 26, or with a Flutter version that has the fix.''',
+The likely cause is Xcode 27's linker with a Flutter version that doesn't support it yet. To get Dart symbols, run `flutter clean` and build the release with Xcode 26. https://github.com/shorebirdtech/shorebird/issues/4270 tracks the fix.''',
     );
   }
 

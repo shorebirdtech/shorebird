@@ -74,6 +74,7 @@ class MachO {
       final commandType = data.getUint32(offset, Endian.little);
       final commandLength = data.getUint32(offset + 4, Endian.little);
       if (commandType == _segment64LoadCommandType) {
+        if (offset + _segment64CommandSize > bytes.length) return null;
         final sectionCount = data.getUint32(offset + 64, Endian.little);
         for (var j = 0; j < sectionCount; j++) {
           final section = offset + _segment64CommandSize + j * _section64Size;

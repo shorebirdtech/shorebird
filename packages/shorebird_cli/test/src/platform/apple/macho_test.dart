@@ -31,7 +31,7 @@ void main() {
       test('returns null for a truncated Mach-O', () {
         final bytes = fixture('with_debug_info.dwarf').readAsBytesSync();
         final directory = Directory.systemTemp.createTempSync();
-        for (final length in [36, 200]) {
+        for (final length in [36, 160, 200]) {
           final file = File(p.join(directory.path, 'app.symbols'))
             ..writeAsBytesSync(bytes.sublist(0, length));
           expect(MachO.debugInfoSize(file), isNull, reason: '$length bytes');
