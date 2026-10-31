@@ -46,6 +46,7 @@ class ReleaseCommand extends ShorebirdCommand {
       ..addMultiOption(
         CommonArguments.dartDefineArg.name,
         abbr: 'D',
+        splitCommas: false,
         help: CommonArguments.dartDefineArg.description,
       )
       ..addMultiOption(

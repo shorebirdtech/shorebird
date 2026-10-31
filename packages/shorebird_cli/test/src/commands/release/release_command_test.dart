@@ -1536,12 +1536,12 @@ Did you mean --release-version=1.0.0+1?''',
       'android',
       '--no-tree-shake-icons',
       '-D',
-      'FOO=bar',
+      'FOO=a,b',
       '-P',
       'key=value',
     ]);
     expect(results.forwardedArgs, [
-      '--dart-define=FOO=bar',
+      '--dart-define=FOO=a,b',
       '--android-project-arg=key=value',
       '--no-tree-shake-icons',
     ]);

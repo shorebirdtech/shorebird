@@ -3034,12 +3034,12 @@ Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
       'android',
       '--no-tree-shake-icons',
       '-D',
-      'FOO=bar',
+      'FOO=a,b',
       '-P',
       'key=value',
     ]);
     expect(results.forwardedArgs, [
-      '--dart-define=FOO=bar',
+      '--dart-define=FOO=a,b',
       '--android-project-arg=key=value',
       '--no-tree-shake-icons',
     ]);

@@ -39,9 +39,9 @@ class FlutterBuildOption {
 /// Left out: options Shorebird registers itself (`--target`, `--flavor`,
 /// `--build-name`, `--dart-define`, `--obfuscate`, `--codesign`,
 /// `--target-platform`, `--split-per-abi` and the like), the build mode
-/// (`--debug`, `--release`), and options that change where or whether
-/// artifacts are written (`--output`, `--config-only`), since Shorebird reads
-/// the artifacts from where Flutter writes them by default.
+/// (`--debug`, `--release`), and options that change where, whether or which
+/// artifacts are written (`--output`, `--config-only`, `--cocoapods`), since
+/// Shorebird reads the artifacts from where Flutter writes them by default.
 ///
 /// Taken from the visible options of `flutter build apk`, `appbundle`,
 /// `aar`, `ipa`, `ios-framework`, `macos`, `linux` and `windows`.
@@ -60,7 +60,6 @@ const flutterBuildOptions = <FlutterBuildOption>[
     'android-skip-build-dependency-validation',
     FlutterBuildOptionKind.negatableFlag,
   ),
-  FlutterBuildOption('cocoapods', FlutterBuildOptionKind.negatableFlag),
   FlutterBuildOption('code-size-directory', FlutterBuildOptionKind.option),
   FlutterBuildOption('codesign-identity', FlutterBuildOptionKind.option),
   FlutterBuildOption(

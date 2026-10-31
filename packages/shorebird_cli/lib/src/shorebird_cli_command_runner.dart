@@ -627,9 +627,10 @@ ${currentRunLogFile.absolute.path}
   /// The hint to print under an unknown-option error.
   ///
   /// `shorebird patch --force` (or any override-shaped option) gets the
-  /// flags that actually bypass the patch safety checks; everything else
-  /// gets the `--` pass-through explanation.
-  String _unknownOptionHint(String option, List<String> args) {
+  /// flags that actually bypass the patch safety checks; other options on
+  /// release and patch get the `--` pass-through explanation, and other
+  /// commands get no hint.
+  String? _unknownOptionHint(String option, List<String> args) {
     final commandName = args.where((a) => !a.startsWith('-')).firstOrNull;
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
@@ -638,6 +639,9 @@ shorebird patch has no --$option flag. The patch safety checks are bypassed per 
   ${lightCyan.wrap('--allow-asset-diffs')}   publish even though assets changed
 The warning that fails the patch names the one that applies.''';
     }
+
+    // Only release and patch forward options to flutter build.
+    if (commandName != 'release' && commandName != 'patch') return null;
 
     final separator = platform.isWindows ? "'--'" : '--';
     // Move the option (as typed, with any `=value`) after the separator.
