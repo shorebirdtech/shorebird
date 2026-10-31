@@ -1,5 +1,7 @@
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform.dart';
 
 /// A reference to a [ServerNotices] instance.
 final serverNoticesRef = create(ServerNotices.new);
@@ -25,9 +27,28 @@ class ServerNotices {
   void add(String notice) => _pending.add(notice);
 
   /// Prints every recorded notice as a warning, then forgets them.
+  ///
+  /// On GitHub Actions each notice is a `::warning` workflow command instead,
+  /// which the log shows as a warning and the run's summary page lists as an
+  /// annotation, so it is seen without opening the job's log.
+  /// https://docs.github.com/actions/reference/workflows-and-actions/workflow-commands#setting-a-warning-message
   void printAll() {
-    _pending
-      ..forEach(logger.warn)
-      ..clear();
+    if (_pending.isEmpty) return;
+    final onGitHubActions = platform.environment[githubActionsEnvVar] == 'true';
+    for (final notice in _pending) {
+      if (onGitHubActions) {
+        logger.info('::warning title=Shorebird::${_escapeData(notice)}');
+      } else {
+        logger.warn(notice);
+      }
+    }
+    _pending.clear();
   }
+
+  /// Escapes a workflow command's message as the Actions runner expects.
+  /// https://github.com/actions/toolkit/blob/main/packages/core/src/command.ts
+  static String _escapeData(String message) => message
+      .replaceAll('%', '%25')
+      .replaceAll('\r', '%0D')
+      .replaceAll('\n', '%0A');
 }
