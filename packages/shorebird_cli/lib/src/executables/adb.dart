@@ -54,13 +54,12 @@ class Adb {
     final result = await _exec([...device, 'uninstall', package]);
     // Older devices exit 0 when uninstalling fails, so check the output too.
     final failure = RegExp(
-      '^Failure.*\$',
+      r'^Failure.*$',
       multiLine: true,
     ).stringMatch('${result.stdout}');
     if (result.exitCode != 0 || failure != null) {
-      throw Exception(
-        'Unable to uninstall app: ${failure ?? result.stderr}',
-      );
+      final reason = failure ?? '${result.stderr}${result.stdout}';
+      throw Exception('Unable to uninstall app: $reason');
     }
   }
 

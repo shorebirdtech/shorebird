@@ -3566,6 +3566,12 @@ channel: ${DeploymentTrack.staging.channel}
           expect(exitCode, equals(ExitCode.success.code));
 
           verify(
+            () => adb.uninstallApp(
+              package: androidPackageName,
+              deviceId: deviceId,
+            ),
+          ).called(1);
+          verify(
             () => bundletool.installApks(
               apks: any(named: 'apks'),
               deviceId: deviceId,
