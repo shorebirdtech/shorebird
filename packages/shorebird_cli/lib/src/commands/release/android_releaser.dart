@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -118,7 +119,6 @@ class AndroidReleaser extends Releaser {
       releaseVersion = await shorebirdAndroidArtifacts
           .extractReleaseVersionFromAppBundle(releaseArtifactRoot.path);
       releaseVersionProgress.complete('Release version: $releaseVersion');
-      _explainVersionNameChange(releaseVersion);
     } on Exception catch (error) {
       releaseVersionProgress.fail();
       throw CommandError(
@@ -129,23 +129,25 @@ class AndroidReleaser extends Releaser {
       );
     }
 
+    _explainVersionNameNotOnIos(releaseVersion);
     return releaseVersion;
   }
 
-  /// Explains, when Gradle changed the version name Flutter built with (a
-  /// flavor's `versionNameSuffix`, or a `versionName` override), that this
-  /// release won't be the same Shorebird release as an iOS build of the same
-  /// version, which customers otherwise find out from the console.
-  void _explainVersionNameChange(String releaseVersion) {
-    final flutterBuildName =
-        argResults['build-name'] as String? ??
-        shorebirdEnv.getPubspecYaml()?.version?.toString().split('+').first;
-    if (flutterBuildName == null) return;
-    final [versionName, ...versionCode] = releaseVersion.split('+');
-    if (versionName == flutterBuildName) return;
-    final iosVersion = [flutterBuildName, ...versionCode].join('+');
+  /// Explains, for an app that also builds for iOS, that an Android version
+  /// name iOS can't have (a flavor's `versionNameSuffix`, a pre-release
+  /// version) makes this a different Shorebird release from any iOS build,
+  /// which customers otherwise find out from the console. iOS versions are
+  /// only digits and dots: Flutter drops everything else from the build name.
+  void _explainVersionNameNotOnIos(String releaseVersion) {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null ||
+        !Directory(p.join(projectRoot.path, 'ios')).existsSync()) {
+      return;
+    }
+    final versionName = releaseVersion.split('+').first;
+    if (RegExp(r'^[0-9.]+$').hasMatch(versionName)) return;
     logger.info(
-      '''Android's version name $versionName is not $flutterBuildName, the version Flutter built with: android/app/build.gradle changes it (versionNameSuffix or versionName). So this release is not the same Shorebird release as an iOS build of this version ($iosVersion), and each needs its own patches. To share one release across platforms, remove the suffix.''',
+      '''Android's version name $versionName has characters iOS versions can't (they are only digits and dots), so an iOS release of this build will be a different Shorebird release, and each needs its own patches. To share one release across platforms, drop the versionNameSuffix in android/app/build.gradle (or build.gradle.kts) and any pre-release part of the version.''',
     );
   }
 

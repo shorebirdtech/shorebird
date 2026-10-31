@@ -5,7 +5,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
-import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -629,7 +628,7 @@ void main() {
         ).called(1);
       });
 
-      group('when Gradle changed the version name', () {
+      group('when the version name has characters iOS versions cannot', () {
         setUp(() {
           when(
             () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
@@ -638,10 +637,8 @@ void main() {
           ).thenAnswer((_) async => '1.0.0-stage+1');
         });
 
-        test('explains it, using the pubspec version', () async {
-          when(() => shorebirdEnv.getPubspecYaml()).thenReturn(
-            Pubspec('test', version: Version.parse('1.0.0+1')),
-          );
+        test('explains it when the app has an iOS project', () async {
+          Directory(p.join(projectRoot.path, 'ios')).createSync();
           await runWithOverrides(
             () => androidReleaser.getReleaseVersion(
               releaseArtifactRoot: Directory(''),
@@ -650,48 +647,34 @@ void main() {
           verify(
             () => logger.info(
               any(
-                that: allOf(
-                  contains("Android's version name 1.0.0-stage is not 1.0.0"),
-                  contains('iOS build of this version (1.0.0+1)'),
+                that: contains(
+                  "Android's version name 1.0.0-stage has characters iOS "
+                  "versions can't",
                 ),
               ),
             ),
           ).called(1);
         });
 
-        test('explains it, using --build-name', () async {
-          when(() => argResults['build-name']).thenReturn('1.0.0');
+        test('explains nothing when the app has no iOS project', () async {
           await runWithOverrides(
             () => androidReleaser.getReleaseVersion(
               releaseArtifactRoot: Directory(''),
             ),
           );
-          verify(
-            () => logger.info(
-              any(that: contains('version name 1.0.0-stage is not 1.0.0,')),
-            ),
-          ).called(1);
+          verifyNever(() => logger.info(any(that: contains('version name'))));
         });
       });
 
-      group('when the version name is the one Flutter built with', () {
+      group('when the version name is only digits and dots', () {
         test('explains nothing', () async {
-          when(() => shorebirdEnv.getPubspecYaml()).thenReturn(
-            Pubspec('test', version: Version.parse('1.0.0-beta+1')),
-          );
-          when(
-            () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-              any(),
-            ),
-          ).thenAnswer((_) async => '1.0.0-beta+1');
+          Directory(p.join(projectRoot.path, 'ios')).createSync();
           await runWithOverrides(
             () => androidReleaser.getReleaseVersion(
               releaseArtifactRoot: Directory(''),
             ),
           );
-          verifyNever(
-            () => logger.info(any(that: contains('version name'))),
-          );
+          verifyNever(() => logger.info(any(that: contains('version name'))));
         });
       });
 
