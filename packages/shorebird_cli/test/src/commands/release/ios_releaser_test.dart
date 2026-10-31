@@ -400,6 +400,72 @@ $body
         });
       });
 
+      group('when --split-debug-info is passed', () {
+        void buildWritesSymbols(String fixtureName) {
+          when(
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async {
+            File(
+              p.join(fixturesDirectory, 'dsym', fixtureName),
+            ).copySync(
+              (File(
+                p.join(projectRoot.path, 'symbols', 'app.ios-arm64.symbols'),
+              )..createSync(recursive: true)).path,
+            );
+            return AppleBuildResult(kernelFile: File('/path/to/app.dill'));
+          });
+        }
+
+        setUp(() {
+          when(
+            () => argResults.rest,
+          ).thenReturn(['--split-debug-info', 'symbols']);
+        });
+
+        test('warns when the dSYM has no __debug_info', () async {
+          buildWritesSymbols('no_debug_info.dwarf');
+
+          await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+
+          verify(
+            () => logger.warn(
+              any(
+                that: allOf(
+                  startsWith(
+                    '${p.join('symbols', 'app.ios-arm64.symbols')} has no '
+                    'Dart debug info',
+                  ),
+                  contains('Xcode 27'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('does not warn when the dSYM has __debug_info', () async {
+          buildWritesSymbols('with_debug_info.dwarf');
+
+          await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+
+          verifyNever(
+            () => logger.warn(any(that: contains('no Dart debug info'))),
+          );
+        });
+
+        test('does not warn when the build wrote no symbols file', () async {
+          await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+
+          verifyNever(
+            () => logger.warn(any(that: contains('no Dart debug info'))),
+          );
+        });
+      });
+
       group('when platform was specified via arg results rest', () {
         setUp(() {
           when(() => argResults.rest).thenReturn(['ios', '--verbose']);

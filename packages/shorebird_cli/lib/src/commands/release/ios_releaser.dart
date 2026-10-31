@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
+import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -15,6 +17,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -68,16 +71,19 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
         );
     }
 
-    await runReleaseBuild(
-      (buildArgs, base64PublicKey) => artifactBuilder.buildIpa(
+    String? splitDebugInfo;
+    await runReleaseBuild((buildArgs, base64PublicKey) {
+      splitDebugInfo = splitDebugInfoDirectory(buildArgs);
+      return artifactBuilder.buildIpa(
         codesign: argResults.appleCodesign,
         flavor: flavor,
         target: target,
         args: buildArgs,
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
-      ),
-    );
+      );
+    });
+    if (splitDebugInfo != null) warnIfDebugSymbolsHaveNoDwarf(splitDebugInfo!);
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
     if (xcarchiveDirectory == null) {
@@ -131,6 +137,35 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
     }
 
     return xcarchiveDirectory;
+  }
+
+  /// Warns when the `--split-debug-info` dSYM in [directory] has no
+  /// `__debug_info`. It is still a valid dSYM with a matching UUID, so symbol
+  /// uploads succeed, but Dart frames in crash reports have no names.
+  ///
+  /// Xcode 27's linker writes no debug map for Dart's snapshot on Flutter
+  /// versions whose Dart emits an empty `DW_AT_comp_dir`, so dsymutil makes
+  /// a dSYM with no DWARF. See
+  /// https://github.com/shorebirdtech/shorebird/issues/4270.
+  @visibleForTesting
+  void warnIfDebugSymbolsHaveNoDwarf(String directory) {
+    final symbolsFile = File(
+      p.join(
+        projectRoot.path,
+        directory,
+        ApplePatcherMixin.splitDebugInfoFileName,
+      ),
+    );
+    // Flutter versions before the Mach-O dSYM write an ELF here, which
+    // debugInfoSize returns null for.
+    if (!symbolsFile.existsSync()) return;
+    if (MachO.debugInfoSize(symbolsFile) != 0) return;
+    logger.warn(
+      '''
+${p.relative(symbolsFile.path, from: projectRoot.path)} has no Dart debug info (no __debug_info section), so Dart frames in this release's crash reports will have no function names.
+
+The likely cause is Xcode 27 with a Flutter version that predates the fix for https://github.com/shorebirdtech/shorebird/issues/4270. To get Dart symbols, build the release with Xcode 26, or with a Flutter version that has the fix.''',
+    );
   }
 
   @override
