@@ -32,10 +32,6 @@ env:
   # project id is a row in one environment's database, and AUTH_SERVICE_URL
   # has to name that environment's auth service, so none of these can be set
   # once for the whole workflow.
-  #
-  # Host toolchain for `flutter create` in the patch job's "default" leg, not
-  # the version under test.
-  FLUTTER_VERSION: 3.47.1
 
 permissions:
   contents: read
@@ -121,15 +117,12 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: 🎯 Set up Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
-        with:
-          channel: stable
-          flutter-version: ${{ matrix.flutter-version == 'default' && env.FLUTTER_VERSION || matrix.flutter-version }}
-          # 30 Flutter versions at 1-2 GB each overflow the repo's 10 GB
-          # Actions cache, evicting the cli job's entries. A Linux download
-          # costs about as much as a restore.
-          cache: false
+      # The Dart SDK of the Flutter the CLI pins, which `shorebird --version`
+      # installed above, runs the e2e scripts. No upstream Flutter or Dart is
+      # set up: the app is created with Shorebird's Flutter of the leg's
+      # version too (scripts/patch_e2e.dart), so CI only ever runs ours.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       # A bad download fails this step instead of `shorebird release`
       # mid-build. Unquoted so the list splits into one argument per package.
@@ -149,11 +142,10 @@ jobs:
       # The Gradle distribution and the Maven dependencies (Android Gradle
       # plugin, Kotlin, Flutter's engine jars) a Flutter version's app
       # template uses. For a pinned leg they depend only on its Flutter
-      # version; for the default leg also on the host Flutter (the template)
-      # and the pinned revision (the engine jars). No restore-keys: Gradle's
-      # cache cleanup runs when its daemon stops, which never happens before
-      # the save, so an old entry carried forward would only grow. A new key
-      # starts cold once instead. caches/<gradle version> (transforms,
+      # version; for the default leg on the pinned revision. No restore-keys:
+      # Gradle's cache cleanup runs when its daemon stops, which never happens
+      # before the save, so an old entry carried forward would only grow. A new
+      # key starts cold once instead. caches/<gradle version> (transforms,
       # compiled scripts) would save about another minute a leg, but at
       # ~1.3 GB a leg it puts the matrix over the repo's 10 GB cache limit.
       # The wrapper's zip is left out: it's already unpacked beside it. The
@@ -165,7 +157,7 @@ jobs:
             ~/.gradle/caches/modules-2
             ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
-          key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ matrix.flutter-version == 'default' && format('{0}-{1}', env.FLUTTER_VERSION, hashFiles('bin/internal/flutter.version')) || 'pinned' }}
+          key: gradle-${{ runner.os }}-${{ matrix.flutter-version }}-${{ matrix.flutter-version == 'default' && hashFiles('bin/internal/flutter.version') || 'pinned' }}
 
       # android-emulator-runner installs the API 30 system image on every run.
       # A bad download of it has failed a nightly ("Error on ZipFile unknown
@@ -204,10 +196,7 @@ jobs:
           # 40148213340). Without it 3.32 falls back to GLES, and 3.35 still
           # uses Vulkan inside the device but no longer takes the runner down.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
-          # Run with the Dart of the Flutter the CLI pins, which `shorebird`
-          # installed above: the repo's package config needs a newer language
-          # version than the Dart of older Flutter versions this matrix sets up.
-          script: ./scripts/no_android_sdk_downloads.sh bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
 
   # Patch signing end to end on Linux, macOS, Windows and Android: release and
   # patch with the real CLI against dev, then run the app and check which code
@@ -243,8 +232,9 @@ jobs:
       - name: 🐦 Install Shorebird
         run: shorebird --version
 
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run Linux Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart linux
@@ -277,8 +267,9 @@ jobs:
       - name: 🐦 Install Shorebird
         run: shorebird --version
 
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run macOS Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart macos
@@ -310,8 +301,10 @@ jobs:
       - name: 🐦 Install Shorebird
         run: shorebird --version
 
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin\cache\flutter\$((Get-Content bin\internal\flutter.version -Raw).Trim())\bin\cache\dart-sdk\bin"
 
       - name: 🧪 Run Windows Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart windows
@@ -348,8 +341,9 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
@@ -427,8 +421,9 @@ jobs:
       - name: 🐦 Install Shorebird
         run: shorebird --version
 
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run Linux Rollback E2E Tests
         run: dart scripts/patch_rollback_e2e.dart
@@ -465,8 +460,9 @@ jobs:
       - name: 🐦 Install Shorebird
         run: shorebird --version
 
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run Linux Boot E2E Tests
         run: dart scripts/boot_recovery_e2e.dart linux
@@ -504,8 +500,9 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
@@ -649,9 +646,17 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      # Only runs the test file; shorebird uses its own pinned Flutter.
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      # Runs only the test file; shorebird uses its own pinned Flutter. See the
+      # patch job.
+      - name: 🎯 Use Shorebird's Dart (macOS / Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      - name: 🎯 Use Shorebird's Dart (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin\cache\flutter\$((Get-Content bin\internal\flutter.version -Raw).Trim())\bin\cache\dart-sdk\bin"
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test

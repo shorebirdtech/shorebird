@@ -13,9 +13,11 @@
 //
 //   <flutter-version>  Flutter version to release with. "default" (or
 //                      nothing) uses the Flutter the CLI pins. The app is
-//                      created with the `flutter` on PATH, so use one whose
-//                      templates that version builds (CI installs the same
-//                      version).
+//                      created with Shorebird's Flutter of that version, so
+//                      its templates are ones that version builds: the
+//                      pinned one `shorebird --version` installs, or for
+//                      another version a clone of shorebirdtech/flutter's
+//                      flutter_release/<version> branch.
 //   --cli <path>       Shorebird checkout to test (the directory holding
 //                      bin/shorebird). Defaults to this checkout.
 //   --cli <version>    A released CLI, e.g. 1.4.0. Its tag is cloned once into
@@ -37,7 +39,7 @@
 // Server: $SHOREBIRD_HOSTED_URL, default https://api-dev.shorebird.dev. The
 // app made there is deleted at the end, pass or fail.
 //
-// Prerequisites: Flutter, the Android SDK with adb on PATH, Java, and a
+// Prerequisites: the Android SDK with adb on PATH, Java, git, and a
 // signed-in Shorebird account (CI signs in with OIDC). `shorebird init` and
 // the cleanup run with this checkout's CLI, which migrates and deletes the
 // login file older CLIs read, so for --cli <version> set SHOREBIRD_TOKEN, from
@@ -75,10 +77,27 @@ final hostedUrl =
     Platform.environment['SHOREBIRD_HOSTED_URL'] ??
     'https://api-dev.shorebird.dev';
 
+/// Where Shorebird's Flutter downloads its engine artifacts and Dart SDK, as
+/// the CLI tells the Flutter it runs (ShorebirdEnv.downloadUrl).
+/// Without a trailing '/': Flutter appends paths that begin with one.
+final downloadUrl =
+    (Platform.environment['SHOREBIRD_DOWNLOAD_URL'] ??
+            'https://download.shorebird.dev')
+        .replaceFirst(RegExp(r'/$'), '');
+
 /// The environment every command runs with. The CLI reads
 /// SHOREBIRD_HOSTED_URL (see ShorebirdEnv.hostedUri); adb reads
 /// ANDROID_SERIAL, set when this script boots its own emulator.
 final env = {'SHOREBIRD_HOSTED_URL': hostedUrl};
+
+/// [env] for the `flutter` that creates the app, pointed at [downloadUrl] as
+/// the CLI points the Flutter it runs. Only for that `flutter`: `shorebird`
+/// sets it itself, and setting it for `shorebird` would hide a CLI that
+/// forgot to.
+Map<String, String> get flutterEnv => {
+  ...env,
+  'FLUTTER_STORAGE_BASE_URL': downloadUrl,
+};
 
 /// The app this run made, to delete at the end.
 String? appId;
@@ -89,6 +108,9 @@ Process? emulator;
 /// This run's workspace, holding the app and its builds, to delete at the
 /// end.
 Directory? workspace;
+
+/// The Flutter this run cloned to create the app with, to delete at the end.
+Directory? flutterClone;
 
 Future<void> main(List<String> args) async {
   final options = Options.parse(args);
@@ -115,6 +137,8 @@ Future<void> main(List<String> args) async {
     await stopEmulator();
     workspace?.deleteSync(recursive: true);
     workspace = null;
+    flutterClone?.deleteSync(recursive: true);
+    flutterClone = null;
   }
 
   // A cancelled or timed-out job is signaled, which skips `finally`.
@@ -215,26 +239,24 @@ Future<void> run(Options options) async {
     'shorebird workspace-',
   );
 
-  // A released CLI's pinned Flutter may not build the templates a newer host
-  // Flutter writes, so create its app with that Flutter, which
-  // `shorebird --version` installed.
-  var createFlutter = 'flutter';
-  if (options.flutterVersion == null && cliDir != repoRoot) {
-    final revision = File(
-      '$cliDir/bin/internal/flutter.version',
-    ).readAsStringSync().trim();
-    final pinned = '$cliDir/bin/cache/flutter/$revision/bin/flutter';
-    if (File(pinned).existsSync()) createFlutter = pinned;
-  }
-  await sh(createFlutter, [
-    'create',
-    'e2e_test',
-    '--org',
-    'com.example.e2e_test',
-    '--empty',
-    '--platforms',
-    'android',
-  ], dir: work);
+  final createFlutter = await shorebirdFlutter(
+    cliDir: cliDir,
+    version: options.flutterVersion,
+  );
+  await sh(
+    createFlutter,
+    [
+      'create',
+      'e2e_test',
+      '--org',
+      'com.example.e2e_test',
+      '--empty',
+      '--platforms',
+      'android',
+    ],
+    dir: work,
+    environment: flutterEnv,
+  );
   final app = Directory('${work.path}/e2e_test');
   setMessage(app, 'hello world');
 
@@ -253,7 +275,12 @@ Future<void> run(Options options) async {
     mode: FileMode.append,
   );
 
-  await sh('flutter', ['doctor', '--verbose'], dir: app);
+  await sh(
+    createFlutter,
+    ['doctor', '--verbose'],
+    dir: app,
+    environment: flutterEnv,
+  );
   await sh(shorebird, ['doctor', '--verbose'], dir: app);
 
   // Android Studio creates this keystore; CI has to. bundletool signs the
@@ -367,6 +394,41 @@ void setMessage(Directory app, String message) {
   File(
     '${app.path}/lib/main.dart',
   ).writeAsStringSync("void main() { print('$message'); }\n");
+}
+
+/// The `flutter` to create the app with: Shorebird's Flutter of [version],
+/// whose templates that version builds. For the CLI's pinned Flutter (a null
+/// [version]) that's the one `shorebird --version` installed. Another version
+/// is cloned as the CLI clones it, from shorebirdtech/flutter's
+/// `flutter_release/<version>` branch; its first run downloads its Dart SDK
+/// from [downloadUrl].
+Future<String> shorebirdFlutter({
+  required String cliDir,
+  required String? version,
+}) async {
+  if (version == null) {
+    final revision = File(
+      '$cliDir/bin/internal/flutter.version',
+    ).readAsStringSync().trim();
+    return '$cliDir/bin/cache/flutter/$revision/bin/flutter';
+  }
+  // Not in the workspace: its path has a space, and Flutter doesn't support
+  // being installed under one.
+  final dir = flutterClone = Directory.systemTemp.createTempSync(
+    'shorebird_flutter_',
+  );
+  await sh('git', [
+    'clone',
+    '--filter=tree:0',
+    '--single-branch',
+    '--branch',
+    'flutter_release/$version',
+    '--config',
+    'core.longpaths=true',
+    'https://github.com/shorebirdtech/flutter.git',
+    dir.path,
+  ]);
+  return '${dir.path}/bin/flutter';
 }
 
 /// Resolves --cli to a checkout: a path is used as is, a version is cloned at
@@ -525,13 +587,18 @@ Future<String> adb(List<String> args) async {
 }
 
 /// Runs [executable], showing its output; throws if it fails.
-Future<void> sh(String executable, List<String> args, {Directory? dir}) async {
+Future<void> sh(
+  String executable,
+  List<String> args, {
+  Directory? dir,
+  Map<String, String>? environment,
+}) async {
   print('+ $executable ${args.join(' ')}');
   final process = await Process.start(
     executable,
     args,
     workingDirectory: dir?.path,
-    environment: env,
+    environment: environment ?? env,
     mode: ProcessStartMode.inheritStdio,
   );
   final code = await process.exitCode;
