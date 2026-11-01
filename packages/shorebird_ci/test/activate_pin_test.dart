@@ -45,6 +45,30 @@ jobs:
     expect(pins.hasUnpinned, isTrue);
   });
 
+  test('a quoted version is still the version', () {
+    final pins = findActivatePins(
+      '''      - run: dart pub global activate shorebird_ci "0.2.5"\n''',
+    );
+    expect(pins.versions, {'0.2.5'});
+    expect(pins.hasUnpinned, isFalse);
+  });
+
+  test('a constraint is not an exact pin', () {
+    final pins = findActivatePins(
+      '      - run: dart pub global activate shorebird_ci ^0.2.5\n',
+    );
+    expect(pins.versions, isEmpty);
+    expect(pins.hasUnpinned, isTrue);
+  });
+
+  test('a flag before the package name is skipped', () {
+    final pins = findActivatePins(
+      '      - run: dart pub global activate --overwrite shorebird_ci 0.2.5\n',
+    );
+    expect(pins.versions, {'0.2.5'});
+    expect(pins.hasUnpinned, isFalse);
+  });
+
   test('no activate line at all', () {
     final pins = findActivatePins('name: CI\non: [push]\n');
     expect(pins.versions, isEmpty);

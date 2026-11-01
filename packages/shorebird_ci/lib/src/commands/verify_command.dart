@@ -136,12 +136,16 @@ class VerifyCommand extends Command<int> with RepoRootOption {
           '$packageVersion.',
         );
       }
+      stderr.writeln(
+        'Nothing else was checked: coverage and `required` are reported '
+        'against the version CI runs, not this one.',
+      );
       return 1;
     }
     if (unpinned.isNotEmpty) {
       stdout.writeln(
-        'Note: ${unpinned.join(', ')} activates shorebird_ci with no '
-        'version, so CI runs whatever was published last rather than '
+        'Note: ${unpinned.join(', ')} activates shorebird_ci with no exact '
+        'version, so CI runs whatever that resolves to rather than '
         '$packageVersion. `shorebird_ci generate` pins it.',
       );
     }
