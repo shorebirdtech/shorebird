@@ -3,19 +3,21 @@ class ActivatePins {
   /// Creates an [ActivatePins].
   const ActivatePins({required this.versions, required this.hasUnpinned});
 
-  /// The versions named on activate lines, such as `0.2.5`.
+  /// The exact versions named on activate lines, such as `0.2.5`.
   final Set<String> versions;
 
-  /// Whether some activate line names no version at all, which leaves CI
-  /// on whatever was published last.
+  /// Whether some activate line names no exact version, which leaves CI on
+  /// whatever a constraint resolves to at the time the job runs.
   final bool hasUnpinned;
 }
 
-/// A version has to start with a digit, which is what keeps a flag such as
-/// `--overwrite` from reading as one.
-final _activateRegex = RegExp(
-  r'''dart\s+pub\s+global\s+activate\s+shorebird_ci\b\s*([0-9][^\s'"]*)?''',
-);
+final _activateRegex = RegExp(r'dart\s+pub\s+global\s+activate\s+(.*)$');
+
+/// An exact version, as `pub global activate` takes one. A constraint
+/// (`^0.2.5`) is deliberately not one: it leaves CI free to resolve to
+/// something the developer is not running, which is what the comparison
+/// exists to catch rather than to assert.
+final _exactVersionRegex = RegExp(r'^\d[\w.+-]*$');
 
 /// Reads the `dart pub global activate shorebird_ci <version>` lines out of
 /// a workflow YAML file.
@@ -31,12 +33,31 @@ ActivatePins findActivatePins(String workflowContent) {
     final code = line.split('#').first;
     final match = _activateRegex.firstMatch(code);
     if (match == null) continue;
-    final version = match.group(1);
-    if (version == null) {
-      hasUnpinned = true;
-    } else {
+
+    // Flags may sit on either side of the package name, and the version is
+    // whatever argument follows it. Quotes are the author's, not pub's.
+    final args = [
+      for (final arg in match.group(1)!.trim().split(RegExp(r'\s+')))
+        if (!arg.startsWith('-')) _unquote(arg),
+    ];
+    final at = args.indexOf('shorebird_ci');
+    if (at < 0) continue;
+
+    final version = at + 1 < args.length ? args[at + 1] : null;
+    if (version != null && _exactVersionRegex.hasMatch(version)) {
       versions.add(version);
+    } else {
+      hasUnpinned = true;
     }
   }
   return ActivatePins(versions: versions, hasUnpinned: hasUnpinned);
+}
+
+String _unquote(String arg) {
+  for (final quote in const ['"', "'"]) {
+    if (arg.length > 1 && arg.startsWith(quote) && arg.endsWith(quote)) {
+      return arg.substring(1, arg.length - 1);
+    }
+  }
+  return arg;
 }
