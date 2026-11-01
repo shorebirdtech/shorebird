@@ -40,8 +40,8 @@ dart_bin=""
 while read -r candidate; do
   [ -x "$candidate" ] || continue
   # Through the symlink: a `dart` a package manager installed sits in a bin
-  # directory holding every other formula's stubs, so only the real file's
-  # neighbours say which SDK it belongs to.
+  # directory holding every other formula's stubs, so only what sits beside
+  # the real file says which SDK it belongs to.
   resolved="$(realpath "$candidate" 2>/dev/null || echo "$candidate")"
   [ -x "${resolved%/dart}/flutter" ] && continue
   dart_bin="$candidate"
