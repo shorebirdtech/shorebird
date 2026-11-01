@@ -32,29 +32,38 @@ fi
 # resolves Flutter's. The two disagree about `dart format`, which is a verify
 # that passes here and fails CI's format step, and `--tool dart` puts the
 # version in every package's cache key, so the two also take turns rechecking
-# work the other already passed. Skipping any `dart` beside a `flutter` is the
-# whole rule, and the chosen one goes in front of PATH so agent_verify.dart,
-# the checks it starts and the key itself all name it rather than resolving
-# again.
-dart_bin=""
-while read -r candidate; do
-  [ -x "$candidate" ] || continue
-  # Through the symlink: a `dart` a package manager installed sits in a bin
-  # directory holding every other formula's stubs, so only what sits beside
-  # the real file says which SDK it belongs to.
-  resolved="$(realpath "$candidate" 2>/dev/null || echo "$candidate")"
-  [ -x "${resolved%/dart}/flutter" ] && continue
-  dart_bin="$candidate"
-  break
-done < <(type -ap dart)
+# work the other already passed.
+#
+# Skipping any `dart` with a `flutter` beside it is the whole rule, asked of
+# both the name on PATH and the file it resolves to. Either alone has a hole.
+# Only the resolved file misses a dispatcher install, where `dart` and
+# `flutter` are both symlinks to one binary somewhere else, and Flutter's Dart
+# is then chosen while the line below calls it standalone. Only the name
+# misses a `dart` symlinked straight into an SDK.
+#
+# The cost is a flat directory holding a shim per tool, which asdf and mise
+# both build: a standalone Dart there is indistinguishable from a bundled one
+# and gets skipped. That is the right way to be wrong, since a verdict from
+# the wrong SDK is worse than no verdict, and DART_BIN is the way through.
+dart_bin="${DART_BIN:-}"
+if [ -z "$dart_bin" ]; then
+  while read -r candidate; do
+    [ -x "$candidate" ] || continue
+    [ -x "$(dirname "$candidate")/flutter" ] && continue
+    resolved="$(realpath "$candidate" 2>/dev/null || echo "$candidate")"
+    [ -x "$(dirname "$resolved")/flutter" ] && continue
+    dart_bin="$candidate"
+    break
+  done < <(type -ap dart)
+fi
 
 # Without one nothing ran, which is not a pass.
 if [ -z "$dart_bin" ]; then
   echo 'error: no standalone dart found, so nothing was verified' >&2
-  echo 'Install it: https://dart.dev/get-dart' >&2
+  echo 'Install it: https://dart.dev/get-dart, or set DART_BIN to one' >&2
   exit 3
 fi
-export PATH="${dart_bin%/dart}:$PATH"
+export PATH="$(dirname "$dart_bin"):$PATH"
 # To stderr, because --plan's stdout is a list meant to be read by something
 # else.
 echo "agent-verify: $dart_bin, $(dart --version 2>&1)" >&2

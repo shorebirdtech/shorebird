@@ -34,15 +34,17 @@ If you're interested in contributing, please join us on
 
 ### Environment setup
 
-Working on Shorebird requires Dart.
+Working on Shorebird requires a standalone Dart SDK. The one bundled with a
+Flutter checkout is a different SDK that formats this tree differently, and
+the scripts below refuse it.
 
 `./scripts/bootstrap.sh` will run `pub get` all packages in the repository.
 
 ### Running tests
 
-`./tool/agent-verify.sh` runs format, analyze and test over every workspace
-package, the way CI does, and skips each package whose inputs already passed.
-A single package is `dart test` in that package's directory.
+`./tool/agent-verify.sh` runs the same format, analyze and test steps CI runs,
+over every workspace package, and skips each package whose inputs already
+passed. A single package is `dart test` in that package's directory.
 
 To generate a coverage report, install `lcov` and `very_good_cli`:
 
