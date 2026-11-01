@@ -107,6 +107,31 @@ patch_verification: install_only
       expect(shorebirdYaml.patchVerification, PatchVerification.installOnly);
     });
 
+    test('can be deserialized without hot_restart', () {
+      const yaml = '''
+app_id: test_app_id
+''';
+      final shorebirdYaml = checkedYamlDecode(
+        yaml,
+        (m) => ShorebirdYaml.fromJson(m!),
+      );
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.hotRestart, isNull);
+    });
+
+    test('can be deserialized with hot_restart', () {
+      const yaml = '''
+app_id: test_app_id
+hot_restart: false
+''';
+      final shorebirdYaml = checkedYamlDecode(
+        yaml,
+        (m) => ShorebirdYaml.fromJson(m!),
+      );
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.hotRestart, isFalse);
+    });
+
     test('throws when patch_verification has invalid value', () {
       const yaml = '''
 app_id: test_app_id
