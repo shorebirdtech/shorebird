@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/commands/commands.dart';
+import 'package:shorebird_ci/src/version.dart';
 import 'package:test/test.dart';
 
 import 'test_utils.dart';
@@ -147,6 +148,51 @@ jobs:
     initGitRepo(tempDir);
 
     expect(await runVerify(tempDir), 0);
+  });
+
+  group('the shorebird_ci a workflow activates', () {
+    // A package the workflow covers, so the only thing left to fail on is
+    // the pin.
+    void writeCoveredRepo(String activateLine) {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+$activateLine
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+''');
+      initGitRepo(tempDir);
+    }
+
+    test('another version → returns 1', () async {
+      writeCoveredRepo(
+        '      - run: dart pub global activate shorebird_ci 0.1.0',
+      );
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('this version → passes', () async {
+      writeCoveredRepo(
+        '      - run: dart pub global activate shorebird_ci $packageVersion',
+      );
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('no version → passes, since CI runs the newest release', () async {
+      writeCoveredRepo('      - run: dart pub global activate shorebird_ci');
+
+      expect(await runVerify(tempDir), 0);
+    });
   });
 
   test('static workflow missing a package → returns 1', () async {
