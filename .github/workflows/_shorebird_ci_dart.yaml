@@ -21,10 +21,25 @@ on:
         required: false
         default: false
         type: boolean
+      runners:
+        required: false
+        # A JSON array: workflow_call has no list input type, and a
+        # matrix needs one. shorebird_ci's generator still emits a bare
+        # `runs-on: ubuntu-latest`; keep this if the file is regenerated.
+        default: '["ubuntu-latest"]'
+        type: string
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ${{ fromJSON(inputs.runners) }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # Windows runners default to pwsh, which cannot read the bash
+        # loops and tests below.
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,14 +68,15 @@ jobs:
         # `dart test` keeps every suite's compiled kernel file in the temp
         # dir until it exits, so one run over a package with ~200 test files
         # fills the runner's disk ("Disk quota exceeded"). Running the files
-        # 50 at a time frees that dir between runs, as the dart_package
-        # action does (#4262). Each suite writes its own coverage file.
+        # 50 at a time frees that dir between runs (#4262). Each suite
+        # writes its own coverage file.
         # shorebird_ci's generator still emits a single `dart test`; keep
         # this batching if the file is regenerated.
-        shell: bash
         run: |
           dart pub global activate coverage 1.15.1
-          find test -name '*_test.dart' | sort | xargs -r -n 50 dart test --coverage=coverage
+          # BSD xargs has no -r, so guard the empty case instead.
+          files=$(find test -name '*_test.dart' | sort)
+          [ -z "$files" ] || printf '%s\n' "$files" | xargs -n 50 dart test --coverage=coverage
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
