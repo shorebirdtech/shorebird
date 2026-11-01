@@ -2,6 +2,7 @@
 library;
 
 export 'src/action_versions.dart';
+export 'src/activate_pin.dart';
 export 'src/dependency_resolver.dart';
 export 'src/dorny_filter.dart';
 export 'src/flutter_version_resolver.dart';
