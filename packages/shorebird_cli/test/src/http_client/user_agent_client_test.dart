@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -17,13 +18,17 @@ void main() {
   useTempWorkingDirectory();
   group(UserAgentClient, () {
     late http.Client httpClient;
+    late LocalAbi abi;
     late NativePlatform platform;
     late UserAgentClient userAgentClient;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
-        values: {platformRef.overrideWith(() => platform)},
+        values: {
+          abiRef.overrideWith(() => abi),
+          platformRef.overrideWith(() => platform),
+        },
       );
     }
 
@@ -32,6 +37,8 @@ void main() {
     });
 
     setUp(() {
+      abi = MockAbi();
+      when(() => abi.hostArchitecture).thenReturn('arm64');
       httpClient = MockHttpClient();
       platform = TestNativePlatform(
         operatingSystem: NativePlatform.linux,
@@ -45,12 +52,15 @@ void main() {
       );
     });
 
-    test('names the CLI version, operating system and Dart version', () {
-      expect(
-        runWithOverrides(() => shorebirdUserAgent),
-        equals('shorebird-cli/$packageVersion (linux; dart 3.9.0)'),
-      );
-    });
+    test(
+      'names the CLI version, OS, CPU architecture and Dart version',
+      () {
+        expect(
+          runWithOverrides(() => shorebirdUserAgent),
+          equals('shorebird-cli/$packageVersion (linux; arm64; dart 3.9.0)'),
+        );
+      },
+    );
 
     test('sets the User-Agent header', () async {
       final request = http.Request('GET', Uri.parse('https://example.com'));
@@ -62,7 +72,7 @@ void main() {
               as http.BaseRequest;
       expect(
         sent.headers['user-agent'],
-        equals('shorebird-cli/$packageVersion (linux; dart 3.9.0)'),
+        equals('shorebird-cli/$packageVersion (linux; arm64; dart 3.9.0)'),
       );
     });
 
