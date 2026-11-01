@@ -79,16 +79,23 @@ final hostedUrl =
 
 /// Where Shorebird's Flutter downloads its engine artifacts and Dart SDK, as
 /// the CLI tells the Flutter it runs (ShorebirdEnv.downloadUrl).
+/// Without a trailing '/': Flutter appends paths that begin with one.
 final downloadUrl =
-    Platform.environment['SHOREBIRD_DOWNLOAD_URL'] ??
-    'https://download.shorebird.dev';
+    (Platform.environment['SHOREBIRD_DOWNLOAD_URL'] ??
+            'https://download.shorebird.dev')
+        .replaceFirst(RegExp(r'/$'), '');
 
 /// The environment every command runs with. The CLI reads
 /// SHOREBIRD_HOSTED_URL (see ShorebirdEnv.hostedUri); adb reads
-/// ANDROID_SERIAL, set when this script boots its own emulator; the
-/// `flutter` that creates the app reads FLUTTER_STORAGE_BASE_URL.
-final env = {
-  'SHOREBIRD_HOSTED_URL': hostedUrl,
+/// ANDROID_SERIAL, set when this script boots its own emulator.
+final env = {'SHOREBIRD_HOSTED_URL': hostedUrl};
+
+/// [env] for the `flutter` that creates the app, pointed at [downloadUrl] as
+/// the CLI points the Flutter it runs. Only for that `flutter`: `shorebird`
+/// sets it itself, and setting it for `shorebird` would hide a CLI that
+/// forgot to.
+Map<String, String> get flutterEnv => {
+  ...env,
   'FLUTTER_STORAGE_BASE_URL': downloadUrl,
 };
 
@@ -236,15 +243,20 @@ Future<void> run(Options options) async {
     cliDir: cliDir,
     version: options.flutterVersion,
   );
-  await sh(createFlutter, [
-    'create',
-    'e2e_test',
-    '--org',
-    'com.example.e2e_test',
-    '--empty',
-    '--platforms',
-    'android',
-  ], dir: work);
+  await sh(
+    createFlutter,
+    [
+      'create',
+      'e2e_test',
+      '--org',
+      'com.example.e2e_test',
+      '--empty',
+      '--platforms',
+      'android',
+    ],
+    dir: work,
+    environment: flutterEnv,
+  );
   final app = Directory('${work.path}/e2e_test');
   setMessage(app, 'hello world');
 
@@ -263,7 +275,12 @@ Future<void> run(Options options) async {
     mode: FileMode.append,
   );
 
-  await sh(createFlutter, ['doctor', '--verbose'], dir: app);
+  await sh(
+    createFlutter,
+    ['doctor', '--verbose'],
+    dir: app,
+    environment: flutterEnv,
+  );
   await sh(shorebird, ['doctor', '--verbose'], dir: app);
 
   // Android Studio creates this keystore; CI has to. bundletool signs the
@@ -403,6 +420,7 @@ Future<String> shorebirdFlutter({
   await sh('git', [
     'clone',
     '--filter=tree:0',
+    '--single-branch',
     '--branch',
     'flutter_release/$version',
     '--config',
@@ -569,13 +587,18 @@ Future<String> adb(List<String> args) async {
 }
 
 /// Runs [executable], showing its output; throws if it fails.
-Future<void> sh(String executable, List<String> args, {Directory? dir}) async {
+Future<void> sh(
+  String executable,
+  List<String> args, {
+  Directory? dir,
+  Map<String, String>? environment,
+}) async {
   print('+ $executable ${args.join(' ')}');
   final process = await Process.start(
     executable,
     args,
     workingDirectory: dir?.path,
-    environment: env,
+    environment: environment ?? env,
     mode: ProcessStartMode.inheritStdio,
   );
   final code = await process.exitCode;
