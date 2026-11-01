@@ -34,30 +34,34 @@ If you're interested in contributing, please join us on
 
 ### Environment setup
 
-Working on Shorebird requires Dart.
+Working on Shorebird requires a standalone Dart SDK. The one bundled with a
+Flutter checkout is a different SDK that formats this tree differently, and
+the scripts below refuse it.
 
 `./scripts/bootstrap.sh` will run `pub get` all packages in the repository.
 
 ### Running tests
 
-We don't yet have a script to run tests locally. For now, we recommend using
-`very_good test -r` in the packages directory to run all shorebird tests.
+`./tool/agent-verify.sh` runs the same format, analyze and test steps CI runs,
+over every workspace package, and skips each package whose inputs already
+passed. A single package is `dart test` in that package's directory.
 
-(If you run it in the root, it will find packages in bin/cache/flutter and try
-to run tests there, some of which will fail.)
-
-To generate a coverage report install `lcov`:
+To generate a coverage report, install `lcov` and `very_good_cli`:
 
 ```
 brew install lcov
+dart pub global activate very_good_cli
 ```
 
-Then run tests with the `--coverage` flag:
+Then run tests with the `--coverage` flag, from the packages directory:
 
 ```
 very_good test -r --coverage
 genhtml coverage/lcov.info -o coverage
 ```
+
+(If you run it in the root, it will find packages in bin/cache/flutter and try
+to run tests there, some of which will fail.)
 
 You can view the generated coverage report via:
 
