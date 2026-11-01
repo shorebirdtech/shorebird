@@ -12,6 +12,8 @@ npx cspell <changed files>
 
 `agent-verify.sh` caches passes per package. A test reading a file outside its package must list it under `verify_cache: inputs:` in its pubspec. It skips coverage, the version check and `redis_client`'s tests.
 
+It runs the standalone Dart SDK, which is the one CI installs. A Dart bundled with a Flutter checkout is a different SDK that formats this tree differently, so it is skipped even where `PATH` answers with it first, and a machine holding only that one gets a `3` rather than a pass. Run `dart` through the wrapper rather than by hand, or the verdict can come from the other SDK.
+
 ## Conventions
 
 - Two files are named `shorebird.yaml`: the checked-in one, and the one generated into `flutter_assets` with extra keys such as `patch_public_key`. In code touching the bundled one, and in comments, PRs and issues, say "checked-in shorebird.yaml" or "generated (bundled) shorebird.yaml". Customer messages say `shorebird.yaml`.
