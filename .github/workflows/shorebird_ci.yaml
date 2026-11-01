@@ -49,26 +49,36 @@ jobs:
         with:
           filters: |
             dex:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
               - pubspec.lock
               - pubspec.yaml
             scoped_deps:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/scoped_deps/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_build_trace:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_build_trace/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_ci:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_ci/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_cli:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
               - packages/scoped_deps/**
@@ -79,22 +89,30 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_client:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_protocol:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_redis_client:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/redis_client/**
               - pubspec.lock
               - pubspec.yaml
             verify_cache:
+              - .github/codecov.yml
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/verify_cache/**
               - pubspec.lock
@@ -119,6 +137,7 @@ jobs:
       package_path: packages/scoped_deps
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
 
   shorebird_build_trace:
     needs: changes
@@ -139,6 +158,7 @@ jobs:
       package_path: packages/shorebird_ci
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
 
   shorebird_cli:
     needs: changes
@@ -149,6 +169,7 @@ jobs:
       package_path: packages/shorebird_cli
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
 
   shorebird_code_push_client:
     needs: changes
@@ -159,6 +180,7 @@ jobs:
       package_path: packages/shorebird_code_push_client
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
 
   shorebird_code_push_protocol:
     needs: changes
@@ -169,6 +191,7 @@ jobs:
       package_path: packages/shorebird_code_push_protocol
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
 
   shorebird_redis_client:
     needs: changes

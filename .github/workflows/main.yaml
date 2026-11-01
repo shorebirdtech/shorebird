@@ -39,8 +39,6 @@ jobs:
       pull-requests: read
 
     outputs:
-      needs_cross_platform_dart_build: ${{ steps.needs_cross_platform_dart_build.outputs.changes }}
-      needs_redis_build: ${{ steps.needs_redis_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
     name: 👀 Detect Changes
@@ -50,14 +48,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        name: Build Detection
-        id: needs_cross_platform_dart_build
+        name: Verify Detection
+        id: needs_verify
         with:
           filters: |
             shorebird_cli:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
+              - ./.github/actions/verify_version/action.yaml
               - packages/dex/**
               - packages/scoped_deps/**
               - packages/shorebird_build_trace/**
@@ -69,113 +67,11 @@ jobs:
             shorebird_code_push_client:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
+              - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
-            shorebird_code_push_protocol:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/shorebird_code_push_protocol/**
-              - pubspec.lock
-              - pubspec.yaml
-            scoped_deps:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/scoped_deps/**
-              - pubspec.lock
-              - pubspec.yaml
-            shorebird_ci:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/shorebird_ci/**
-              - pubspec.lock
-              - pubspec.yaml
-
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        name: Redis Detection
-        id: needs_redis_build
-        with:
-          filters: |
-            redis_client:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/dart_package/action.yaml
-              - packages/redis_client/**
-              - pubspec.lock
-              - pubspec.yaml
-
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        name: Verify Detection
-        id: needs_verify
-        with:
-          filters: |
-            shorebird_cli:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/verify_version/action.yaml
-              - packages/shorebird_cli/**
-            shorebird_code_push_client:
-              - ./.github/codecov.yml
-              - ./.github/workflows/main.yaml
-              - ./.github/actions/verify_version/action.yaml
-              - packages/shorebird_code_push_client/**
-
-  build_cross_platform_dart_packages:
-    needs: changes
-    if: ${{ needs.changes.outputs.needs_cross_platform_dart_build != '[]' }}
-
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-        package: ${{ fromJSON(needs.changes.outputs.needs_cross_platform_dart_build) }}
-
-    runs-on: ${{ matrix.os }}
-
-    name: 🎯 Build ${{ matrix.package }} (${{ matrix.os }})
-
-    steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: 🎯 Build ${{ matrix.package }}
-        uses: ./.github/actions/dart_package
-        with:
-          codecov_token: ${{ secrets.CODECOV_TOKEN }}
-          working_directory: packages/${{ matrix.package }}
-          workspace_root: ${{ github.workspace }}
-
-  build_redis:
-    needs: changes
-    if: ${{ needs.changes.outputs.needs_redis_build != '[]' }}
-
-    strategy:
-      matrix:
-        package: ${{ fromJSON(needs.changes.outputs.needs_redis_build) }}
-
-    runs-on: ubuntu-latest
-
-    name: 🎯 Build ${{ matrix.package }}
-
-    steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: 🐳 Run Redis
-        run: |
-          docker pull redis/redis-stack-server:latest
-          docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
-
-      - name: 🎯 Build ${{ matrix.package }}
-        uses: ./.github/actions/dart_package
-        with:
-          codecov_token: ${{ secrets.CODECOV_TOKEN }}
-          working_directory: packages/${{ matrix.package }}
-          workspace_root: ${{ github.workspace }}
 
   verify_packages:
     needs: changes
@@ -199,14 +95,7 @@ jobs:
           working_directory: packages/${{ matrix.package }}
 
   ci:
-    needs:
-      [
-        changes,
-        license_check,
-        build_cross_platform_dart_packages,
-        build_redis,
-        verify_packages,
-      ]
+    needs: [changes, license_check, verify_packages]
     # Not always(): that keeps this job alive through a run cancellation,
     # so a superseded push would report ci red on the stale commit. A
     # skipped required check reports success, which is the right answer
