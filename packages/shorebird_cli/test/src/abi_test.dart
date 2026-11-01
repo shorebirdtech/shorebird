@@ -25,8 +25,8 @@ void main() {
     group('hostArchitecture', () {
       test("is the Dart VM's architecture off Windows", () {
         expect(
-          _FakeLocalAbi(Abi.macosArm64, nativeMachine: 0xaa64).hostArchitecture,
-          equals('arm64'),
+          _FakeLocalAbi(Abi.macosX64, nativeMachine: 0xaa64).hostArchitecture,
+          equals('x64'),
         );
         expect(
           _FakeLocalAbi(Abi.linuxX64).hostArchitecture,
