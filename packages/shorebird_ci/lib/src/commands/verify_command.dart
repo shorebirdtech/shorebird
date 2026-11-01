@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_ci/src/activate_pin.dart';
 import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/dorny_filter.dart';
 import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
+import 'package:shorebird_ci/src/version.dart';
 import 'package:yaml/yaml.dart';
 
 /// Marker comment that the `generate` command writes into dynamic
@@ -33,6 +35,11 @@ const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 /// A dynamic workflow must also run `bloc lint` if any package has a
 /// `bloc_lint` dev dependency, since `generate` leaves the bloc steps
 /// out of repos where no package uses it.
+///
+/// Before any of that, every workflow's `dart pub global activate
+/// shorebird_ci` line must name the version running here. CI activates
+/// the pin and a developer activates whatever they last installed, so
+/// without this check a local pass says nothing about CI's.
 ///
 /// In addition, if any workflow file has a top-level job keyed
 /// `required`, every other top-level job in that file must appear in
@@ -90,10 +97,18 @@ class VerifyCommand extends Command<int> with RepoRootOption {
 
     final dynamicWorkflows = <String>[];
     var dynamicRunsBlocLint = false;
+    final otherPins = <String, List<String>>{};
+    final unpinned = <String>[];
 
     for (final file in workflowFiles) {
       final content = file.readAsStringSync();
       final fileName = p.basename(file.path);
+
+      final pins = findActivatePins(content);
+      final others = pins.versions.difference({packageVersion}).toList()
+        ..sort();
+      if (others.isNotEmpty) otherPins[fileName] = others;
+      if (pins.hasUnpinned) unpinned.add(fileName);
 
       if (_usesDynamicCoverage(content)) {
         dynamicWorkflows.add(fileName);
@@ -106,6 +121,29 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       for (final name in filters.keys) {
         coverageMap.putIfAbsent(name, () => []).add(fileName);
       }
+    }
+
+    // Ahead of the coverage checks, so their results are never reported as
+    // if the version CI runs had produced them.
+    if (otherPins.isNotEmpty) {
+      for (final MapEntry(key: fileName, value: versions)
+          in otherPins.entries) {
+        stderr.writeln(
+          'PIN: $fileName runs shorebird_ci ${versions.join(', ')}; this is '
+          '$packageVersion. A pass here would not be a pass in CI. Run '
+          '`dart pub global activate shorebird_ci ${versions.first}` to ask '
+          'what CI asks, or `shorebird_ci generate` to move CI to '
+          '$packageVersion.',
+        );
+      }
+      return 1;
+    }
+    if (unpinned.isNotEmpty) {
+      stdout.writeln(
+        'Note: ${unpinned.join(', ')} activates shorebird_ci with no '
+        'version, so CI runs whatever was published last rather than '
+        '$packageVersion. `shorebird_ci generate` pins it.',
+      );
     }
 
     final allPackages = repository.packages.toList()

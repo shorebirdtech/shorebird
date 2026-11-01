@@ -13,6 +13,9 @@ dart pub global activate shorebird_ci
 
 Generated workflows pin the shorebird_ci version that generated them,
 so a new release doesn't change your CI until you rerun `generate`.
+`verify` fails if the version you are running is not the one the
+workflow pins, so a local pass means a CI pass rather than a different
+tool's opinion.
 
 ## Quick Start
 
@@ -34,7 +37,7 @@ You run these locally:
 | Command | Purpose |
 |---|---|
 | `generate` | Write `.github/workflows/shorebird_ci.yaml` (plus reusable workflows in `--style static`) |
-| `verify` | Check that every package has CI coverage, and that any `required` aggregator stays in sync with the rest of the workflow |
+| `verify` | Check that every package has CI coverage, that any `required` aggregator stays in sync with the rest of the workflow, and that the running shorebird_ci is the one the workflow pins |
 | `update_actions` | Pin `uses:` refs in workflow files to each action's latest release by commit SHA (`owner/repo@<sha> # v1.2.3`). `generate` already calls this after writing; run it standalone to pin hand-maintained workflows |
 
 CI runs these inside the generated workflow. You don't usually invoke
