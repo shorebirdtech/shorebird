@@ -1,7 +1,6 @@
 // cspell:words Dorg
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -245,18 +244,20 @@ class Gradlew {
       }
     }
 
-    /// Iterate through all variants and compare them to each other. If one
-    /// variant is a prefix of another, then it is a product flavor.
-    /// For example, if the variants are:
-    /// `debug`, `developmentDebug`, and `productionDebug`,
-    /// then `development`, and `production` are product flavors.
-    final productFlavors = <String>{};
-    for (final variant in variants) {
-      final match = variants.firstWhereOrNull(
-        (v) => v.startsWith(variant) && v != variant,
-      );
-      if (match != null) productFlavors.add(variant);
-    }
+    // Every product flavor (with several flavor dimensions, every full
+    // combination, such as `internalGlobal`) has a `<flavor>Release` and a
+    // `<flavor>Debug` variant, and Flutter builds `<flavor>Release`. Gradle's
+    // aggregate tasks for one dimension's flavor (`assembleInternal`) aren't
+    // flavors Flutter can build, and have no such pair. Requiring both also
+    // keeps build types whose names end in `Release` (the baseline profile
+    // plugin's `benchmarkRelease`) from looking like flavors.
+    final productFlavors = <String>{
+      for (final variant in variants)
+        if (variant.endsWith('Release') && variant != 'release')
+          if (variant.substring(0, variant.length - 'Release'.length)
+              case final flavor when variants.contains('${flavor}Debug'))
+            flavor,
+    };
     return productFlavors;
   }
 }
