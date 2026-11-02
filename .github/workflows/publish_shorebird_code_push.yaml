@@ -16,6 +16,9 @@ jobs:
   publish:
     name: 📦 Publish packages/shorebird_code_push
     runs-on: ubuntu-latest
+    # pub.dev's automated publishing for this package names this environment
+    # (as it did in shorebirdtech/updater), so only its repository changes.
+    environment: pub.dev
     permissions:
       id-token: write
     defaults:

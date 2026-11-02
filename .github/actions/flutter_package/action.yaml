@@ -1,0 +1,77 @@
+name: Flutter Package Workflow
+description: Build and test your Flutter packages.
+
+inputs:
+  concurrency:
+    required: false
+    default: "4"
+    description: The value of the concurrency flag (-j) used when running tests
+  coverage_excludes:
+    required: false
+    default: ""
+    description: Globs to exclude from coverage
+  working_directory:
+    required: false
+    default: "."
+    description: The working directory for this workflow
+  min_coverage:
+    required: false
+    default: "100"
+    description: The minimum coverage percentage value
+  analyze_directories:
+    required: false
+    default: "lib test"
+    description: Directories to analyze
+  report_on:
+    required: false
+    default: "lib"
+    description: Directories to report on when collecting coverage
+  example_platform:
+    required: false
+    default: "web"
+    description: Platform to use when building example
+
+runs:
+  using: "composite"
+  steps:
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+
+    - name: Install Dependencies
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: flutter pub get
+
+    - name: Format
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: dart format --set-exit-if-changed .
+
+    - name: Analyze
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: dart analyze --fatal-warnings ${{inputs.analyze_directories}}
+
+    - name: Build Example
+      working-directory: ${{ inputs.working_directory }}/example
+      shell: ${{ inputs.shell }}
+      run: flutter build ${{ inputs.example_platform }}
+
+    - name: Test
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: flutter test --coverage
+
+    - name: Exclude Generated Code from Coverage
+      if: ${{ inputs.coverage_excludes != '' }}
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: |
+        mv coverage/lcov.info coverage/lcov.info.bak
+        sudo apt-get -y install lcov
+        lcov --remove coverage/lcov.info.bak "${{inputs.coverage_excludes}}" -o coverage/lcov.info
+
+    - uses: VeryGoodOpenSource/very_good_coverage@c953fca3e24a915e111cc6f55f03f756dcb3964c # v3.0.0
+      with:
+        path: ${{inputs.working_directory}}/coverage/lcov.info
+        exclude: ${{inputs.coverage_excludes}}
+        min_coverage: ${{inputs.min_coverage}}

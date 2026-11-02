@@ -11,8 +11,8 @@ Flutter engine) via FFI.
 
 The Updater's Rust code lives in shorebirdtech/flutter at
 [`engine/src/flutter/third_party/updater`](https://github.com/shorebirdtech/flutter/tree/shorebird/dev/engine/src/flutter/third_party/updater).
-Its history before the move is in the archived
-[shorebirdtech/updater](https://github.com/shorebirdtech/updater) repository.
+(It moved there from [shorebirdtech/updater](https://github.com/shorebirdtech/updater),
+which keeps its history.)
 
 For an Updater function to be visible to the Dart code, it must:
 

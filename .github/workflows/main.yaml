@@ -40,6 +40,7 @@ jobs:
 
     outputs:
       needs_cross_platform_dart_build: ${{ steps.needs_cross_platform_dart_build.outputs.changes }}
+      needs_flutter_build: ${{ steps.needs_flutter_build.outputs.changes }}
       needs_redis_build: ${{ steps.needs_redis_build.outputs.changes }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
 
@@ -97,6 +98,16 @@ jobs:
               - pubspec.yaml
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        name: Flutter Build Detection
+        id: needs_flutter_build
+        with:
+          filters: |
+            shorebird_code_push:
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/flutter_package/action.yaml
+              - packages/shorebird_code_push/**
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Redis Detection
         id: needs_redis_build
         with:
@@ -148,6 +159,30 @@ jobs:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
+
+  # Flutter packages outside the Dart workspace: format, analyze, build the
+  # example, and test with a 100% coverage gate (generated bindings excluded).
+  build_flutter_packages:
+    needs: changes
+    if: ${{ needs.changes.outputs.needs_flutter_build != '[]' }}
+
+    strategy:
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.needs_flutter_build) }}
+
+    runs-on: ubuntu-latest
+
+    name: 🐦 Build ${{ matrix.package }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: 🐦 Build ${{ matrix.package }}
+        uses: ./.github/actions/flutter_package
+        with:
+          coverage_excludes: "**/*.g.dart"
+          working_directory: packages/${{ matrix.package }}
 
   build_redis:
     needs: changes
@@ -204,6 +239,7 @@ jobs:
         changes,
         license_check,
         build_cross_platform_dart_packages,
+        build_flutter_packages,
         build_redis,
         verify_packages,
       ]
