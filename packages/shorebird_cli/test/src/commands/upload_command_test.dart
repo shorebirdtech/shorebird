@@ -342,6 +342,11 @@ void main() {
           message: any(named: 'message'),
         ),
       ).called(2);
+      verify(
+        () => logger.info(
+          any(that: contains('Patch Signing: Shorebird-managed key')),
+        ),
+      ).called(1);
     });
 
     test('names the flavor and target in the patch command', () async {

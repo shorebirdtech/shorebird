@@ -210,6 +210,15 @@ class ReleaseBundle {
         ),
       );
 
+      // A null signing means the build embeds no key; a missing one means the
+      // manifest was damaged, and uploading would record the build unsigned.
+      if (!manifest.containsKey('signing')) {
+        throw ReleaseBundleException(
+          '${file.path} does not say how the build is signed for patch '
+          'signing. Build the bundle again.',
+        );
+      }
+
       final supplementJson = manifest['supplement'] as Json?;
       final artifactsJson = [
         for (final artifact in manifest['artifacts'] as List<dynamic>)
