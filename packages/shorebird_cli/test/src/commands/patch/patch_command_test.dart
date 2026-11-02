@@ -1683,7 +1683,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
 
       group('when has link percentage', () {
-        const linkPercentage = 42.1337;
+        const linkPercentage = 62.1337;
         late Directory buildDirectory;
 
         setUp(() {
@@ -1719,6 +1719,28 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).called(1);
         });
 
+        group('when min-link-percentage is not specified', () {
+          test('exits with an error below the default of 20%', () async {
+            when(() => patcher.linkPercentage).thenReturn(12.3);
+            await expectLater(
+              runWithOverrides(
+                () => command.logPatchSummary(
+                  app: appMetadata,
+                  releaseVersion: releaseVersion,
+                  patcher: patcher,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              exitsWithError(
+                message:
+                    'The link percentage of this patch (12.3%) '
+                    'is below the minimum threshold (20%).',
+                exitCode: ExitCode.software,
+              ),
+            );
+          });
+        });
+
         group('when min-link-percentage is specified', () {
           group('when link percentage is higher than min', () {
             const minLinkPercentageArg = '40';
@@ -1745,7 +1767,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           });
 
           group('when link percentage is lower than min', () {
-            const minLinkPercentageArg = '50';
+            const minLinkPercentageArg = '70';
 
             setUp(() {
               when(
@@ -1769,7 +1791,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 exitsWithError(
                   message:
                       'The link percentage of this patch ($linkPercentage%) '
-                      'is below the minimum threshold (50%).',
+                      'is below the minimum threshold (70%).',
                   hint:
                       'Not publishing. Lower --min-link-percentage to accept '
                       'this patch, or see $debugInfoPath for what could not '
@@ -1827,6 +1849,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               when(
                 () => argResults[CommonArguments.minLinkPercentage.name],
               ).thenReturn('0');
+              when(() => patcher.linkPercentage).thenReturn(12.3);
               await expectLater(
                 runWithOverrides(
                   () => command.logPatchSummary(
