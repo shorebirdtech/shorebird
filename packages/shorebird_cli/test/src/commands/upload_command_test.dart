@@ -73,6 +73,7 @@ void main() {
       String? flavor,
       String? target,
       bool withSupplement = false,
+      ArtifactSigningRequest? signing,
     }) {
       File file(String name, String contents) =>
           File(p.join(tempDir.path, 'build', name))
@@ -113,6 +114,7 @@ void main() {
                 canSideload: false,
               )
             : null,
+        signing: signing,
       ).writeTo(bundleFile);
     }
 
@@ -321,6 +323,24 @@ void main() {
           message: 'Uploading supplement artifacts',
         ),
       );
+    });
+
+    test('records how the bundle was signed on its artifacts', () async {
+      const signing = ArtifactSigningRequest(
+        mode: ReleaseSigningMode.managed,
+        keyId: 7,
+      );
+      await writeBundle(withSupplement: true, signing: signing);
+      await runWithOverrides(command.run);
+      verify(
+        () => codePushClientWrapper.uploadReleaseArtifacts(
+          appId: appId,
+          releaseId: 42,
+          artifacts: any(named: 'artifacts'),
+          signing: signing,
+          message: any(named: 'message'),
+        ),
+      ).called(2);
     });
 
     test('names the flavor and target in the patch command', () async {

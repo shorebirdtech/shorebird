@@ -674,6 +674,20 @@ void main() {
         verify(artifactBuilder.writeBuildTraceSummary).called(1);
       });
 
+      test('records how the build is signed', () async {
+        const signing = ArtifactSigningRequest(
+          mode: ReleaseSigningMode.managed,
+          keyId: 7,
+        );
+        when(() => releaser.signing).thenReturn(signing);
+        await runWithOverrides(command.run);
+        final bundle = await ReleaseBundle.extract(
+          file: bundleAt('release-$releaseVersion-android.zip'),
+          directory: Directory.systemTemp.createTempSync(),
+        );
+        expect(bundle.signing, equals(signing));
+      });
+
       test(
         'records the target, and names the bundle after the release type',
         () async {

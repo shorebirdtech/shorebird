@@ -669,6 +669,7 @@ The version of the Android or iOS app that embeds this module
         metadata: await releaseMetadata(releaser),
         artifacts: artifacts,
         supplement: supplement,
+        signing: releaser.signing,
       );
       final progress = logger.progress('Saving release bundle');
       try {
