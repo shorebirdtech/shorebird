@@ -24,7 +24,7 @@ class InvitationsAcceptCommand extends InvitationResponseCommand {
       'Find the id with `shorebird invitations list`.\n\n'
       'Example output:\n'
       '  Accepted invitation 0b6c....\n'
-      '  See it with `shorebird account orgs` or `shorebird apps list`.\n\n'
+      '  See it with `shorebird orgs list` or `shorebird apps list`.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird invitations accept <id> --json',
       )}';
@@ -34,7 +34,7 @@ class InvitationsAcceptCommand extends InvitationResponseCommand {
 
   @override
   String get _nextStep =>
-      'See it with `shorebird account orgs` or `shorebird apps list`.';
+      'See it with `shorebird orgs list` or `shorebird apps list`.';
 
   @override
   Future<void> _respond(String invitationId) =>

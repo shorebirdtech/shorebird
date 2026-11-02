@@ -52,9 +52,7 @@ class ReleasesListCommand extends ShorebirdCommand with AppScopedCommand {
     if (fetchError != null) return fetchError;
 
     final filtered = platformFilter != null
-        ? releases
-              .where((r) => r.platformStatuses.containsKey(platformFilter))
-              .toList()
+        ? releases.where((r) => r.hasPlatform(platformFilter)).toList()
         : releases;
 
     if (isJsonMode) {
@@ -70,8 +68,8 @@ class ReleasesListCommand extends ShorebirdCommand with AppScopedCommand {
     }
 
     for (final release in filtered) {
-      final platforms = release.platformStatuses.entries
-          .map((e) => '${e.key.value}: ${e.value.value}')
+      final platforms = release.platforms.entries
+          .map((e) => '${e.key.value}: ${e.value.status.value}')
           .join(', ');
       final flutter = release.flutterVersion != null
           ? '  ${release.flutterVersion}'

@@ -82,10 +82,17 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      // Managed signing, the default, is covered in releaser_test.dart.
+      when(() => argResults['patch-signing']).thenReturn(false);
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       operatingSystemInterface = MockOperatingSystemInterface();
@@ -99,6 +106,7 @@ void main() {
       xcodeBuild = MockXcodeBuild();
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => argResults['flutter-version']).thenReturn('latest');
 
@@ -144,22 +152,35 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      group('when split-per-abi is true', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(false);
-        });
+      for (final (description, value) in [
+        ('was not provided', null),
+        ('is blank', '  '),
+        ('is latest', 'latest'),
+      ]) {
+        group('when release-version $description', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn(value);
+          });
 
-        test('exits with code 64', () async {
-          await expectLater(
-            () => runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
+          test('exits saying which version to pass', () async {
+            await expectLater(
+              () => runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
+              exitsWithError(
+                message:
+                    'An ios-framework release needs --release-version: the '
+                    'version of the iOS app that embeds this module.',
+                hint:
+                    'Run: shorebird release ios-framework '
+                    '--release-version=$releaseVersionExample',
+              ),
+            );
+          });
         });
-      });
+      }
 
       group('when arguments are valid', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0+1');
         });
 
         test('returns normally', () {
@@ -172,7 +193,7 @@ void main() {
 
       group('when --obfuscate is not passed', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0+1');
         });
 
         test('returns normally', () async {
@@ -313,6 +334,19 @@ void main() {
         );
       });
 
+      group('when --no-codesign is passed', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(false);
+        });
+
+        test('forwards --no-codesign to flutter', () async {
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+          verify(
+            () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+          ).called(1);
+        });
+      });
+
       group('when platform was specified via arg results rest', () {
         setUp(() {
           when(() => argResults.rest).thenReturn(['ios', '--verbose']);
@@ -374,6 +408,29 @@ void main() {
           );
         },
       );
+
+      test('forwards the target to buildIosFramework', () async {
+        when(
+          () => artifactBuilder.buildIosFramework(
+            target: any(named: 'target'),
+            args: any(named: 'args'),
+          ),
+        ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+        iosFrameworkReleaser = IosFrameworkReleaser(
+          argResults: argResults,
+          flavor: null,
+          target: 'lib/main_prod.dart',
+        );
+
+        await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+        verify(
+          () => artifactBuilder.buildIosFramework(
+            target: 'lib/main_prod.dart',
+            args: [],
+          ),
+        ).called(1);
+      });
 
       group('when --obfuscate is passed', () {
         setUp(() {
@@ -451,6 +508,16 @@ void main() {
           ),
         );
         expect(result, releaseVersion);
+      });
+
+      test('trims surrounding whitespace', () async {
+        when(() => argResults['release-version']).thenReturn(' 1.0.0 ');
+        final result = await runWithOverrides(
+          () => iosFrameworkReleaser.getReleaseVersion(
+            releaseArtifactRoot: Directory(''),
+          ),
+        );
+        expect(result, equals('1.0.0'));
       });
     });
 
@@ -559,9 +626,9 @@ Your next step is to add the .xcframework files found in the ${lightCyan.wrap(re
 
 To do this:
     1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
-    2. Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project.
+    2. Embed the App.xcframework and ShorebirdFlutter.xcframework in your Xcode project.
 
-Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
+Instructions for these steps can be found at https://docs.shorebird.dev/code-push/guides/add-to-app/ios/#embed-the-flutter-module-in-your-ios-app.
 '''),
         );
       });

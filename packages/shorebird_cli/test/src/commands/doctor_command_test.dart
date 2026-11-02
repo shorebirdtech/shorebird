@@ -101,6 +101,11 @@ void main() {
         () => shorebirdEnv.flutterRevision,
       ).thenReturn(shorebirdFlutterRevision);
       when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
+      when(() => shorebirdEnv.hostedUri).thenReturn(null);
+      when(
+        () => shorebirdEnv.authServiceUri,
+      ).thenReturn(Uri.parse(defaultAuthServiceUrl));
+      when(() => shorebirdEnv.downloadUrl).thenReturn(defaultDownloadUrl);
       when(() => doctor.initAndDoctorValidators).thenReturn([validator]);
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),

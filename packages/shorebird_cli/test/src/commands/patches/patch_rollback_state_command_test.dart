@@ -83,7 +83,11 @@ void main() {
       flutterRevision: 'flutter-revision',
       flutterVersion: 'flutter-version',
       displayName: releaseVersion,
-      platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+      platforms: const {
+        ReleasePlatform.android: ReleasePlatformDetails(
+          status: ReleaseStatus.active,
+        ),
+      },
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );

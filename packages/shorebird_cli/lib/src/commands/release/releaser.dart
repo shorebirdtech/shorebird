@@ -6,7 +6,10 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -64,19 +67,37 @@ abstract class Releaser {
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid();
 
+  /// Requires `--release-version` with a concrete version, for add-to-app
+  /// releases (aar, ios-framework), whose version cannot be read from the
+  /// built module: it is the version of the app that embeds the module.
+  /// Rejects a missing, blank or `latest` value.
+  void assertReleaseVersionProvided() {
+    final value = (argResults['release-version'] as String?)?.trim();
+    if (value != null && value.isNotEmpty && value != 'latest') return;
+
+    final hostPlatform = releaseType.releasePlatform.displayName;
+    throw CommandError(
+      message:
+          'An ${releaseType.cliName} release needs --release-version: the '
+          'version of the $hostPlatform app that embeds this module.',
+      hint: 'Run: ${releaseType.releaseCommand()}',
+    );
+  }
+
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).
   /// Call from [assertArgsAreValid] in releasers that read the version from
   /// the built app.
   void assertReleaseVersionFlagNotProvided() {
     if (argResults.wasParsed('release-version')) {
-      logger.err(
-        '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
+      throw CommandError(
+        message:
+            '--release-version is only supported for aar and ios-framework '
+            'releases.',
+        hint:
+            'Remove --release-version. This release takes its version from '
+            'your pubspec.yaml.',
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
   }
 
@@ -93,13 +114,14 @@ To change the version of this release, change your app's version in your pubspec
   /// supplement output. [build] receives the user's forwarded arguments plus
   /// the `--split-debug-info` default and obfuscation map options (see
   /// [addSplitDebugInfoDefault] and [addObfuscationMapArgs]), and the encoded
-  /// public key. Once it returns, [verifyObfuscationMap] checks that an
-  /// obfuscated build saved its obfuscation map.
+  /// public key (see [resolvePatchSigningKey]). Once it returns,
+  /// [verifyObfuscationMap] checks that an obfuscated build saved its
+  /// obfuscation map.
   Future<T> runReleaseBuild<T>(
     Future<T> Function(List<String> buildArgs, String? base64PublicKey) build,
   ) async {
     clearSupplementDirectory();
-    final base64PublicKey = await getEncodedPublicKey();
+    final base64PublicKey = await resolvePatchSigningKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
     await addObfuscationMapArgs(buildArgs);
@@ -135,6 +157,7 @@ To change the version of this release, change your app's version in your pubspec
         appId: appId,
         releaseId: release.id,
         artifacts: artifacts,
+        signing: signing,
       );
     } finally {
       stagingDirectory.deleteTemporarySync();
@@ -167,6 +190,54 @@ To change the version of this release, change your app's version in your pubspec
   /// Returns null if no public key is configured.
   Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
 
+  /// How this platform's build is signed for patch signing. Set by
+  /// [resolvePatchSigningKey]; null until the build runs.
+  ArtifactSigningRequest? signing;
+
+  /// Decides which public key this platform's build embeds, sets [signing]
+  /// to match, and returns the key base64-encoded, or null if the build
+  /// embeds none.
+  ///
+  /// A key passed with --public-key-path or --public-key-cmd is the
+  /// customer's, who signs every patch. Otherwise the build embeds the
+  /// managed key the server returns for the app, and Shorebird signs every
+  /// patch; a failed fetch fails the release, so it never silently goes
+  /// unsigned. With --no-patch-signing the build embeds no key.
+  Future<String?> resolvePatchSigningKey() async {
+    final customerKey = await getEncodedPublicKey();
+    if (customerKey != null) {
+      signing = const ArtifactSigningRequest(
+        mode: ReleaseSigningMode.customer,
+      );
+      return customerKey;
+    }
+    if (!argResults.patchSigningEnabled) {
+      signing = const ArtifactSigningRequest(
+        mode: ReleaseSigningMode.unsigned,
+      );
+      return null;
+    }
+    final SigningKey signingKey;
+    try {
+      signingKey = await codePushClientWrapper.getSigningKey(
+        appId: shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor),
+      );
+    } on ProcessExit {
+      // The fetch already said why it failed; say what the user can do.
+      logger.info(
+        'Releases embed a Shorebird-managed patch signing key by default. '
+        'To release without one (patches will be unsigned), pass '
+        '--no-${CommonArguments.patchSigningArg.name}.',
+      );
+      rethrow;
+    }
+    signing = ArtifactSigningRequest(
+      mode: ReleaseSigningMode.managed,
+      keyId: signingKey.id,
+    );
+    return codeSigner.base64PublicKeyFromPem(signingKey.publicKeyPem);
+  }
+
   /// Whether the user is building with obfuscation. Checks for `--obfuscate`
   /// both as a parsed flag and after the `--` separator, since it can be
   /// passed either to Shorebird directly or forwarded to Flutter.
@@ -195,13 +266,45 @@ To change the version of this release, change your app's version in your pubspec
     return (parsed != null && parsed > 0) ? parsed : null;
   }
 
-  /// Path where the obfuscation map is saved during obfuscated builds.
-  String get obfuscationMapPath => p.join(
-    projectRoot.path,
-    'build',
-    'shorebird',
-    'obfuscation_map.json',
-  );
+  /// Path where the obfuscation map is saved during obfuscated builds: the
+  /// user's own `--save-obfuscation-map` path if they passed one (relative
+  /// paths are resolved against the project root, where Flutter builds), or
+  /// `build/shorebird/obfuscation_map.json` otherwise.
+  String get obfuscationMapPath {
+    final userPath = userObfuscationMapPath;
+    if (userPath != null) {
+      return p.normalize(p.join(projectRoot.path, userPath));
+    }
+    return p.join(
+      projectRoot.path,
+      'build',
+      'shorebird',
+      'obfuscation_map.json',
+    );
+  }
+
+  /// The path the user passed to gen_snapshot's `--save-obfuscation-map`
+  /// through `--extra-gen-snapshot-options`, or null if they didn't.
+  ///
+  /// Flutter splits `--extra-gen-snapshot-options` values on commas, and
+  /// gen_snapshot honors the last `--save-obfuscation-map`, so this returns
+  /// the last one.
+  String? get userObfuscationMapPath {
+    const extraOptionsPrefix = '--extra-gen-snapshot-options=';
+    const saveMapPrefix = '--save-obfuscation-map=';
+    String? path;
+    for (final arg in argResults.forwardedArgs) {
+      final value = arg.startsWith(extraOptionsPrefix)
+          ? arg.substring(extraOptionsPrefix.length)
+          : arg;
+      for (final option in value.split(',')) {
+        if (option.startsWith(saveMapPrefix)) {
+          path = option.substring(saveMapPrefix.length);
+        }
+      }
+    }
+    return path;
+  }
 
   /// Auto-adds --split-debug-info when --obfuscate is used without it.
   void addSplitDebugInfoDefault(List<String> buildArgs) {
@@ -217,10 +320,12 @@ To change the version of this release, change your app's version in your pubspec
   /// Adds obfuscation-related gen_snapshot options to [buildArgs].
   ///
   /// When obfuscation is enabled, passes --save-obfuscation-map to capture
-  /// the mapping. Conditionally passes --strip to remove unobfuscated DWARF
-  /// debugging information from the compiled snapshot, since the DWARF
-  /// sections would otherwise leak identifiers that obfuscation was meant
-  /// to hide.
+  /// the mapping, unless the user passed their own (see
+  /// [userObfuscationMapPath]), which is kept and read from instead, since
+  /// gen_snapshot writes only one map. Conditionally passes --strip to
+  /// remove unobfuscated DWARF debugging information from the compiled
+  /// snapshot, since the DWARF sections would otherwise leak identifiers
+  /// that obfuscation was meant to hide.
   ///
   /// On Android, --strip is only passed for Flutter versions older than
   /// 3.44. From 3.44 onward, upstream Flutter PR
@@ -246,9 +351,12 @@ To change the version of this release, change your app's version in your pubspec
     if (!useObfuscation) return;
     final mapDir = Directory(p.dirname(obfuscationMapPath));
     if (!mapDir.existsSync()) mapDir.createSync(recursive: true);
-    buildArgs.add(
-      '--extra-gen-snapshot-options=--save-obfuscation-map=$obfuscationMapPath',
-    );
+    if (userObfuscationMapPath == null) {
+      buildArgs.add(
+        '--extra-gen-snapshot-options='
+        '--save-obfuscation-map=$obfuscationMapPath',
+      );
+    }
 
     final shouldPreStripInGenSnapshot = await shorebirdFlutter
         .shouldPreStripLibappInGenSnapshot(
@@ -357,6 +465,7 @@ To change the version of this release, change your app's version in your pubspec
         appId: appId,
         releaseId: releaseId,
         artifacts: [supplement],
+        signing: signing,
         message: 'Uploading supplement artifacts',
       );
     } finally {
@@ -369,11 +478,13 @@ To change the version of this release, change your app's version in your pubspec
     if (!useObfuscation) return;
     final mapFile = File(obfuscationMapPath);
     if (!mapFile.existsSync()) {
-      logger.err(
-        'Obfuscation was enabled but the obfuscation map was not '
-        'generated at $obfuscationMapPath',
+      throw CommandError(
+        message:
+            'Obfuscation was enabled but the obfuscation map was not '
+            'generated at $obfuscationMapPath.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
       );
-      throw ProcessExit(ExitCode.software.code);
     }
     logger.detail('Obfuscation map saved to $obfuscationMapPath');
   }

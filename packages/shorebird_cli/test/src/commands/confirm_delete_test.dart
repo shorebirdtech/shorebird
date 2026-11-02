@@ -5,10 +5,8 @@ import 'package:test/test.dart';
 import '../helpers.dart';
 
 class _TestCommand extends ShorebirdCommand with ConfirmDelete {
-  _TestCommand({
-    DeleteConfirmationStyle style = DeleteConfirmationStyle.yesNo,
-  }) {
-    addConfirmDeleteOptions(style: style, nameDescription: 'The thing');
+  _TestCommand() {
+    addConfirmDeleteOptions();
   }
 
   @override
@@ -41,19 +39,6 @@ void main() {
         command.argParser.parse(['--confirm-name', 'x'])[confirmNameArgName],
         'x',
       );
-    });
-
-    group('typeName', () {
-      setUp(
-        () => command = _TestCommand(style: DeleteConfirmationStyle.typeName),
-      );
-
-      test('adds a visible --confirm-name and no --yes', () {
-        final option = command.argParser.options[confirmNameArgName]!;
-        expect(option.hide, isFalse);
-        expect(option.help, startsWith('The thing, to confirm'));
-        expect(command.argParser.options.containsKey(yesArgName), isFalse);
-      });
     });
   });
 }

@@ -226,12 +226,14 @@ ${bundle.flavor == null ? '' : '🍧 Flavor: ${lightCyan.wrap(bundle.flavor)}\n'
       appId: appId,
       releaseId: release.id,
       artifacts: bundle.artifacts,
+      signing: bundle.signing,
     );
     if (bundle.supplement case final supplement?) {
       await codePushClientWrapper.uploadReleaseArtifacts(
         appId: appId,
         releaseId: release.id,
         artifacts: [supplement],
+        signing: bundle.signing,
         message: 'Uploading supplement artifacts',
       );
     }

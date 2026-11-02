@@ -283,6 +283,31 @@ void main() {
 
       expect(affected.map((p) => p.name), equals({'foo', 'bar'}));
     });
+
+    test('a workspace lockfile change affects every member', () async {
+      createPackage(tempDir, 'packages/foo', 'foo', useWorkspace: true);
+      createPackage(tempDir, 'packages/bar', 'bar', useWorkspace: true);
+      createPackage(tempDir, 'tools/solo', 'solo');
+      createWorkspaceRoot(
+        tempDir,
+        members: ['packages/foo', 'packages/bar'],
+      );
+      File(p.join(tempDir.path, 'pubspec.lock')).writeAsStringSync('a');
+      initGitRepo(tempDir);
+
+      File(p.join(tempDir.path, 'pubspec.lock')).writeAsStringSync('b');
+      commitAll(tempDir, 'bump');
+
+      final analyzer = RepositoryAnalyzer();
+      final repo = analyzer.analyze(repositoryRoot: tempDir);
+      final affected = analyzer.affectedPackages(
+        repository: repo,
+        baseRef: 'HEAD~1',
+        headRef: 'HEAD',
+      );
+
+      expect(affected.map((p) => p.name), equals({'foo', 'bar'}));
+    });
   });
 
   group('RepositoryAnalyzer static helpers', () {

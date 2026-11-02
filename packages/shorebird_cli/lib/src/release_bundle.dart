@@ -50,6 +50,7 @@ class ReleaseBundle {
     this.flavor,
     this.target,
     this.supplement,
+    this.signing,
   });
 
   /// The version of the bundle format this CLI writes and reads. Bump it when
@@ -96,6 +97,11 @@ class ReleaseBundle {
   /// The supplement artifact (e.g. obfuscation map), if the build made one.
   final ReleaseArtifactUpload? supplement;
 
+  /// How the build is signed for patch signing (the managed key it embeds,
+  /// customer-signed, or unsigned), recorded on each artifact when the bundle
+  /// is uploaded. Null for a build that predates patch signing.
+  final ArtifactSigningRequest? signing;
+
   /// The platform of the release.
   ReleasePlatform get platform => releaseType.releasePlatform;
 
@@ -131,6 +137,7 @@ class ReleaseBundle {
       'flutter_version': flutterVersion,
       'shorebird_version': shorebirdVersion,
       'metadata': metadata,
+      'signing': signing?.toJson(),
       'artifacts': [
         for (final (index, artifact) in artifacts.indexed)
           await describe(artifact, index),
@@ -271,6 +278,9 @@ class ReleaseBundle {
         supplement: supplementJson == null
             ? null
             : await readArtifact(supplementJson),
+        signing: ArtifactSigningRequest.maybeFromJson(
+          manifest['signing'] as Json?,
+        ),
       );
     } on ReleaseBundleException {
       rethrow;

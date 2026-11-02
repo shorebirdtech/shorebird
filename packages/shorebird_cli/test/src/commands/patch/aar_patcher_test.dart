@@ -107,6 +107,11 @@ void main() {
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       patchDiffChecker = MockPatchDiffChecker();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -390,6 +395,43 @@ void main() {
           });
         });
 
+        test('builds only the architectures the release has', () async {
+          final release = MockRelease();
+          when(() => release.id).thenReturn(42);
+          when(
+            () => codePushClientWrapper.getReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              architectures: any(named: 'architectures'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => {Arch.arm64: FakeReleaseArtifact()});
+          when(
+            () => artifactBuilder.buildAar(
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(() async {
+            await patcher.prepareForRelease(appId: 'app-id', release: release);
+            await patcher.buildPatchArtifact();
+          });
+
+          verify(
+            () => artifactBuilder.buildAar(
+              buildNumber: buildNumber,
+              targetPlatforms: [Arch.arm64],
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).called(1);
+        });
+
         group('when the key pair is provided', () {
           setUp(() {
             when(
@@ -501,7 +543,7 @@ void main() {
       setUp(() {
         releaseArtifactFile = File('');
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),
@@ -548,7 +590,7 @@ void main() {
       group('when release artifact download fails', () {
         setUp(() {
           when(
-            () => artifactManager.downloadWithProgressUpdates(
+            () => artifactManager.downloadReleaseArtifact(
               any(),
               message: any(named: 'message'),
             ),
@@ -616,7 +658,7 @@ void main() {
           }
         });
 
-        test('fails progress and exits with code 70', () async {
+        test('fails progress and exits with an error', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.createPatchArtifacts(
@@ -625,14 +667,14 @@ void main() {
                 releaseArtifact: releaseArtifactFile,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: startsWith('No patch artifacts produced'),
+              hint: 'Re-run with --verbose to see the build output.',
+              exitCode: ExitCode.software,
+            ),
           );
 
-          verify(
-            () => progress.fail(
-              any(that: contains('No patch artifacts produced')),
-            ),
-          ).called(1);
+          verify(() => progress.fail()).called(1);
         });
       });
 
@@ -646,7 +688,7 @@ void main() {
           ).thenThrow(Exception('error'));
         });
 
-        test('logs error and exits with code 70', () async {
+        test('fails progress and exits with the error', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.createPatchArtifacts(
@@ -655,10 +697,13 @@ void main() {
                 releaseArtifact: releaseArtifactFile,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: 'Failed to create the patch diff: Exception: error',
+              exitCode: ExitCode.software,
+            ),
           );
 
-          verify(() => progress.fail('Exception: error')).called(1);
+          verify(() => progress.fail()).called(1);
         });
       });
 

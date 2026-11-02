@@ -148,6 +148,11 @@ void main() {
       argResults = MockArgResults();
       artifactManager = MockArtifactManager();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       engineConfig = MockEngineConfig();
       logger = MockShorebirdLogger();
       progress = MockProgress();
@@ -442,13 +447,18 @@ void main() {
               ).thenThrow(Exception('oops'));
             });
 
-            test('fails progress and exits with code 70', () async {
+            test('fails progress and exits with the error', () async {
               await expectLater(
                 linkAndBundle,
-                exitsWithCode(ExitCode.software),
+                exitsWithError(
+                  message:
+                      'Failed to generate the patch diff base: '
+                      'Exception: oops',
+                  exitCode: ExitCode.software,
+                ),
               );
 
-              verify(() => progress.fail('Exception: oops')).called(1);
+              verify(() => progress.fail()).called(1);
               verifyNever(
                 () => artifactManager.createDiff(
                   releaseArtifactPath: any(named: 'releaseArtifactPath'),

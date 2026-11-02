@@ -119,4 +119,36 @@ jobs:
       );
     });
   });
+
+  group('extractDornyFilters', () {
+    test('maps each filter to its paths, across blocks', () {
+      const workflow = '''
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+              - './packages/shared/**'
+            bar:
+              - "packages/bar/**" # the bar package
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+              - packages/extra/**
+''';
+
+      expect(
+        extractDornyFilters(workflow),
+        equals({
+          'foo': {
+            'packages/foo/**',
+            './packages/shared/**',
+            'packages/extra/**',
+          },
+          'bar': {'packages/bar/**'},
+        }),
+      );
+    });
+  });
 }

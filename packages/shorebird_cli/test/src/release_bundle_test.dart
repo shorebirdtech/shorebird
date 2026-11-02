@@ -26,7 +26,10 @@ void main() {
         ..writeAsStringSync(contents);
     }
 
-    ReleaseBundle androidBundle({ReleaseArtifactUpload? supplement}) {
+    ReleaseBundle androidBundle({
+      ReleaseArtifactUpload? supplement,
+      ArtifactSigningRequest? signing,
+    }) {
       return ReleaseBundle(
         appId: 'app-id',
         flavor: 'internal',
@@ -62,6 +65,7 @@ void main() {
           ),
         ],
         supplement: supplement,
+        signing: signing,
       );
     }
 
@@ -122,6 +126,7 @@ void main() {
       expect(read.shorebirdVersion, equals('1.6.0'));
       expect(read.metadata, equals(bundle.metadata));
       expect(read.supplement, isNull);
+      expect(read.signing, isNull);
       expect(
         [for (final a in read.artifacts) (a.name, a.arch, a.canSideload)],
         equals([
@@ -155,6 +160,16 @@ void main() {
       final read = await extract();
       expect(read.supplement!.arch, equals('android_supplement'));
       expect(read.supplement!.file.readAsStringSync(), equals('supplement'));
+    });
+
+    test('round-trips how the build is signed', () async {
+      const signing = ArtifactSigningRequest(
+        mode: ReleaseSigningMode.managed,
+        keyId: 7,
+      );
+      await androidBundle(signing: signing).writeTo(bundleFile);
+      final read = await extract();
+      expect(read.signing, equals(signing));
     });
 
     test('replaces a file already at the destination', () async {

@@ -7,23 +7,29 @@
 // per-operation directory, domain models land in `lib/src/models/`,
 // shared messages stay flat in `lib/src/messages/`.
 //
-// Usage (from the repo root):
-//   dart run packages/shorebird_code_push_protocol/tool/gen.dart \
-//     -i https://api.shorebird.dev/openapi.json \
-//     -o packages/shorebird_code_push_protocol
+// Generates from this package's copy of the public API spec,
+// `openapi.yaml`. Usage (from anywhere, no arguments):
+//   dart run packages/shorebird_code_push_protocol/tool/gen.dart
+// Extra arguments are passed through to space_gen and win over the
+// defaults, so `-i <spec>` generates from another spec instead.
 //
-// The generator does not touch `lib/extensions/` or
+// The generator does not touch `lib/extensions/`, `test/src/` or
 // `lib/shorebird_code_push_protocol.dart`; those are hand-written and
 // re-export the generated types.
 //
-// That safety comes from `--no-clear`, injected below. From space_gen
-// 1.4.0 the generator otherwise empties the `-o` directory before each
-// run — which here, where generated and hand-written code share the
-// package, would delete `lib/extensions/`, the barrel, `test/src/`,
-// this pubspec and the README. `--no-clear` disables that; removing
-// stale generated output (a renamed schema's old file) is then this
-// package's own responsibility.
-// See https://github.com/eseidel/space_gen/pull/310.
+// Each run deletes the directories named in [generatedDirs] before it
+// writes, so a renamed or removed schema leaves no stale file behind.
+// Those directories hold only generated output; hand-written code must
+// never go in them. (gen.dart used to pass `--no-clear`, because
+// space_gen's default [generatedDirs] don't match this layout, and
+// stale files survived regeneration.)
+//
+// The barrel is not regenerated: add an export there for each new
+// generated file before running, so the run's `dart fix` resolves the
+// new types. Without it, fix strips the `!` from their round-trip
+// tests and only a second run puts it back.
+
+import 'dart:io';
 
 import 'package:space_gen/space_gen.dart';
 
@@ -61,6 +67,15 @@ class ShorebirdFileRenderer extends FileRenderer {
     return 'test/generated/$withSuffix';
   }
 
+  /// The directories [modelPath] and [testPath] write into, emptied
+  /// before each run. Only generated output lives here.
+  @override
+  Set<String> get generatedDirs => {
+    'lib/src/models',
+    'lib/src/messages',
+    'test/generated',
+  };
+
   /// Tests import the hand-maintained top-level barrel, not the
   /// generator's `api.dart` (which we don't emit — see below).
   @override
@@ -69,7 +84,9 @@ class ShorebirdFileRenderer extends FileRenderer {
   // Everything below is a no-op override: this package hand-maintains
   // its pubspec, analysis config, HTTP client, auth, and top-level
   // barrel. space_gen is only on the hook for models/messages/tests
-  // and the `model_helpers.dart` runtime library.
+  // and the `model_helpers.dart` and `api_exception.dart` runtime
+  // libraries (the latter holds the `validate` extensions that models
+  // with `pattern`/`maxLength` constraints call).
 
   @override
   void renderPubspec() {}
@@ -79,9 +96,6 @@ class ShorebirdFileRenderer extends FileRenderer {
 
   @override
   void renderGitignore() {}
-
-  @override
-  void renderApiException() {}
 
   @override
   void renderAuth() {}
@@ -119,12 +133,13 @@ class ShorebirdFileRenderer extends FileRenderer {
   }
 }
 
-Future<int> main(List<String> arguments) =>
-    // `--no-clear` is appended, not left to the caller: this package must
-    // never have its output directory emptied (see the file header), and
-    // a forgotten flag would delete the hand-written half of it. Appended
-    // last so it wins over anything passed on the command line.
-    runCli([
-      ...arguments,
-      '--no-clear',
-    ], fileRendererBuilder: ShorebirdFileRenderer.new);
+/// This package's directory, found from this script's location.
+final _package = File.fromUri(Platform.script).parent.parent.path;
+
+Future<int> main(List<String> arguments) => runCli([
+  '-i',
+  '$_package/openapi.yaml',
+  '-o',
+  _package,
+  ...arguments,
+], fileRendererBuilder: ShorebirdFileRenderer.new);

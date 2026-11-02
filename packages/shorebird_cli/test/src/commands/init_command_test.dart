@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -43,9 +44,11 @@ environment:
   sdk: ">=2.19.0 <3.0.0"''';
     const organizationId = 123;
 
+    late AndroidSdk androidSdk;
     late ArgResults argResults;
     late Doctor doctor;
     late Gradlew gradlew;
+    late Java java;
     late CodePushClientWrapper codePushClientWrapper;
     late File shorebirdYamlFile;
     late ShorebirdYaml shorebirdYaml;
@@ -64,11 +67,13 @@ environment:
       return runScoped(
         body,
         values: {
+          androidSdkRef.overrideWith(() => androidSdk),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           gradlewRef.overrideWith(() => gradlew),
           appleRef.overrideWith(() => apple),
           isJsonModeRef.overrideWith(() => false),
+          javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
@@ -85,9 +90,11 @@ environment:
     });
 
     setUp(() {
+      androidSdk = MockAndroidSdk();
       argResults = MockArgResults();
       doctor = MockDoctor();
       gradlew = MockGradlew();
+      java = MockJava();
       codePushClientWrapper = MockCodePushClientWrapper();
       apple = MockApple();
       shorebirdYaml = MockShorebirdYaml();
@@ -110,6 +117,17 @@ environment:
         ],
       );
       when(
+        () => codePushClientWrapper.findAppOrganization(
+          appId: any(named: 'appId'),
+          memberships: any(named: 'memberships'),
+        ),
+      ).thenAnswer(
+        (_) async => OrganizationMembership(
+          role: Role.owner,
+          organization: organizationForTest(id: organizationId),
+        ),
+      );
+      when(
         () => codePushClientWrapper.createApp(
           appName: any(named: 'appName'),
           organizationId: any(named: 'organizationId'),
@@ -119,6 +137,8 @@ environment:
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
       when(() => doctor.initAndDoctorValidators).thenReturn([]);
+      when(() => androidSdk.path).thenReturn('/android/sdk');
+      when(() => java.version).thenReturn('openjdk version "17.0.1"');
       when(
         () => gradlew.isDaemonAvailable(any()),
       ).thenAnswer((_) async => true);
@@ -222,6 +242,35 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     });
 
     test(
+      'reports an up-to-date shorebird.yaml before checking roles',
+      () async {
+        when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+        when(
+          () => codePushClientWrapper.getOrganizationMemberships(),
+        ).thenAnswer(
+          (_) async => [
+            OrganizationMembership(
+              role: Role.viewer,
+              organization: organizationForTest(id: organizationId),
+            ),
+          ],
+        );
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.software.code);
+        verify(
+          () => logger.err(
+            'A "shorebird.yaml" file already exists and seems up-to-date.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => logger.err(
+            'You cannot create apps in any of your organizations.',
+          ),
+        );
+      },
+    );
+
+    test(
       'shows up-to-date error when yaml exists without flavors '
       'and no flavors detected',
       () async {
@@ -321,6 +370,99 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verifyNever(() => gradlew.startDaemon(any()));
+    });
+
+    group('when the project has an android directory', () {
+      setUp(() {
+        Directory(p.join(projectRoot.path, 'android')).createSync();
+      });
+
+      test('detects android flavors when the SDK and Java are found', () async {
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenAnswer((_) async => {'dev'});
+        when(() => argResults['force']).thenReturn(true);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+        verifyNever(() => logger.warn(any()));
+      });
+
+      test('skips android flavor detection without an Android SDK', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.warn(
+            any(
+              that: allOf(
+                contains(
+                  'Skipping Android flavor detection: '
+                  'no Android SDK found (set ANDROID_HOME if you have one).',
+                ),
+                contains('shorebird init'),
+              ),
+            ),
+          ),
+        ).called(1);
+        verifyNever(() => gradlew.isDaemonAvailable(any()));
+        verifyNever(() => gradlew.startDaemon(any()));
+        verifyNever(() => gradlew.productFlavors(any()));
+      });
+
+      test('uses the SDK in local.properties', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        final sdkDir = Directory.systemTemp.createTempSync();
+        File(
+          p.join(projectRoot.path, 'android', 'local.properties'),
+        ).writeAsStringSync('flutter.sdk=/flutter\nsdk.dir=${sdkDir.path}\n');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.warn(any()));
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+      });
+
+      test('skips android flavors when local.properties has no SDK', () async {
+        when(() => androidSdk.path).thenReturn(null);
+        File(
+          p.join(projectRoot.path, 'android', 'local.properties'),
+        ).writeAsStringSync('sdk.dir=${p.join(projectRoot.path, 'nope')}\n');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(() => logger.warn(any())).called(1);
+        verifyNever(() => gradlew.productFlavors(any()));
+      });
+
+      test('leaves a JAVA_HOME without java to gradlew', () async {
+        when(() => java.version).thenThrow(const ProcessException('java', []));
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verifyNever(() => logger.warn(any()));
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+      });
+
+      test('skips android flavor detection when Java does not run', () async {
+        when(() => java.version).thenReturn(null);
+        when(
+          () => apple.flavors(platform: ApplePlatform.ios),
+        ).thenReturn({'dev'});
+        when(() => argResults['force']).thenReturn(true);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.warn(
+            any(
+              that: contains(
+                'Skipping Android flavor detection: no Java runtime found.',
+              ),
+            ),
+          ),
+        ).called(1);
+        verifyNever(() => gradlew.isDaemonAvailable(any()));
+        verifyNever(() => gradlew.productFlavors(any()));
+        // iOS flavors are still detected.
+        verify(() => logger.info('  - dev')).called(1);
+      });
     });
 
     test('throws when unable to initialize gradle wrapper', () async {
@@ -1646,7 +1788,8 @@ flavors:
           when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
           when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
           when(() => shorebirdYaml.appId).thenReturn(appId);
-          when(() => shorebirdYaml.flavors).thenReturn(existingFlavors);
+          // A copy, since init adds the new flavors to the map it reads.
+          when(() => shorebirdYaml.flavors).thenReturn({...existingFlavors});
         });
 
         test('names the fix when the existing app is gone', () async {
@@ -1683,6 +1826,267 @@ flavors:
               '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
             ),
           );
+        });
+
+        group('when the existing app is in another organization', () {
+          final appOrg = organizationForTest(name: 'team', id: 77);
+          final personalOrg = organizationForTest(name: 'personal', id: 1);
+          final existingApp = AppMetadata(
+            appId: appId,
+            displayName: 'my-app',
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          );
+
+          void stubAppIn(Role role) {
+            final memberships = [
+              OrganizationMembership(
+                role: Role.owner,
+                organization: personalOrg,
+              ),
+              OrganizationMembership(role: role, organization: appOrg),
+            ];
+            when(
+              () => codePushClientWrapper.getOrganizationMemberships(),
+            ).thenAnswer((_) async => memberships);
+            when(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: appId,
+                memberships: memberships,
+              ),
+            ).thenAnswer((_) async => memberships.last);
+          }
+
+          setUp(() {
+            when(
+              () => codePushClientWrapper.maybeGetApp(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer((_) async => existingApp);
+            when(
+              () => codePushClientWrapper.createApp(
+                appName: any(named: 'appName'),
+                organizationId: any(named: 'organizationId'),
+              ),
+            ).thenAnswer(
+              (invocation) async => App(
+                id: 'new-app-id',
+                displayName: invocation.namedArguments[#appName] as String,
+              ),
+            );
+          });
+
+          test('creates the flavor apps there without prompting', () async {
+            stubAppIn(Role.admin);
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verify(
+              () => codePushClientWrapper.createApp(
+                appName: 'my-app (c)',
+                organizationId: appOrg.id,
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClientWrapper.createApp(
+                appName: any(named: 'appName'),
+                organizationId: personalOrg.id,
+              ),
+            );
+            verifyNever(
+              () => logger.chooseOne<Organization>(
+                any(),
+                choices: any(named: 'choices'),
+                display: any(named: 'display'),
+                hint: any(named: 'hint'),
+              ),
+            );
+          });
+
+          test("passes along the app's organization id", () async {
+            stubAppIn(Role.admin);
+            final appWithOrg = AppMetadata(
+              appId: appId,
+              displayName: 'my-app',
+              organizationId: appOrg.id,
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+            );
+            when(
+              () => codePushClientWrapper.maybeGetApp(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer((_) async => appWithOrg);
+            when(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: appId,
+                organizationId: appOrg.id,
+                memberships: any(named: 'memberships'),
+              ),
+            ).thenAnswer(
+              (_) async => OrganizationMembership(
+                role: Role.admin,
+                organization: appOrg,
+              ),
+            );
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verify(
+              () => codePushClientWrapper.findAppOrganization(
+                appId: appId,
+                organizationId: appOrg.id,
+                memberships: any(named: 'memberships'),
+              ),
+            ).called(1);
+            verify(
+              () => codePushClientWrapper.createApp(
+                appName: 'my-app (c)',
+                organizationId: appOrg.id,
+              ),
+            ).called(1);
+          });
+
+          test(
+            'exits when the app is in an organization you are not in',
+            () async {
+              stubAppIn(Role.admin);
+              when(
+                () => codePushClientWrapper.maybeGetApp(
+                  appId: any(named: 'appId'),
+                ),
+              ).thenAnswer(
+                (_) async => AppMetadata(
+                  appId: appId,
+                  displayName: 'my-app',
+                  organizationId: 99,
+                  createdAt: DateTime(2023),
+                  updatedAt: DateTime(2023),
+                ),
+              );
+              when(
+                () => codePushClientWrapper.findAppOrganization(
+                  appId: appId,
+                  organizationId: 99,
+                  memberships: any(named: 'memberships'),
+                ),
+              ).thenAnswer((_) async => null);
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, equals(ExitCode.noPerm.code));
+              verify(
+                () => logger.err(
+                  'App "my-app" ($appId) is in organization 99, which you '
+                  'are not a member of.',
+                ),
+              ).called(1);
+              verifyNever(
+                () => codePushClientWrapper.createApp(
+                  appName: any(named: 'appName'),
+                  organizationId: any(named: 'organizationId'),
+                ),
+              );
+            },
+          );
+
+          test('does not warn when --org-id names its organization', () async {
+            stubAppIn(Role.admin);
+            when(() => argResults['org-id']).thenReturn('${appOrg.id}');
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verifyNever(() => logger.warn(any()));
+          });
+
+          test('rejects an --org-id naming no organization of yours', () async {
+            stubAppIn(Role.admin);
+            when(() => argResults['org-id']).thenReturn('999');
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(isA<UsageException>()),
+            );
+            verifyNever(
+              () => codePushClientWrapper.createApp(
+                appName: any(named: 'appName'),
+                organizationId: any(named: 'organizationId'),
+              ),
+            );
+          });
+
+          test('warns that a different --org-id is ignored', () async {
+            stubAppIn(Role.admin);
+            when(() => argResults['org-id']).thenReturn('${personalOrg.id}');
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verify(
+              () => logger.warn(
+                'Ignoring --org-id: new flavors go in team (id: 77) with '
+                '"my-app".',
+              ),
+            ).called(1);
+            verify(
+              () => codePushClientWrapper.createApp(
+                appName: 'my-app (c)',
+                organizationId: appOrg.id,
+              ),
+            ).called(1);
+          });
+
+          test(
+            'exits with noPerm when the user cannot create apps there',
+            () async {
+              stubAppIn(Role.developer);
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, equals(ExitCode.noPerm.code));
+              verify(
+                () => logger.err(
+                  'You cannot create apps in team (id: 77), which "my-app" is '
+                  'in: your role is developer.',
+                ),
+              ).called(1);
+              verify(
+                () => logger.info(
+                  'Ask an owner or admin of the organization to make you an '
+                  'admin.',
+                ),
+              ).called(1);
+              verifyNever(
+                () => logger.progress('Adding flavors to shorebird.yaml'),
+              );
+              verifyNever(
+                () => codePushClientWrapper.createApp(
+                  appName: any(named: 'appName'),
+                  organizationId: any(named: 'organizationId'),
+                ),
+              );
+            },
+          );
+        });
+
+        test('exits when no organization lists the existing app', () async {
+          when(
+            () => codePushClientWrapper.maybeGetApp(
+              appId: any(named: 'appId'),
+            ),
+          ).thenAnswer(
+            (_) async => AppMetadata(
+              appId: appId,
+              displayName: 'my-app',
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+            ),
+          );
+          when(
+            () => codePushClientWrapper.findAppOrganization(
+              appId: any(named: 'appId'),
+              memberships: any(named: 'memberships'),
+            ),
+          ).thenAnswer((_) async => null);
+
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => logger.err(
+              'Could not find which of your organizations app "my-app" '
+              '($appId) is in.',
+            ),
+          ).called(1);
         });
 
         test('creates new flavor entries in shorebird.yaml', () async {

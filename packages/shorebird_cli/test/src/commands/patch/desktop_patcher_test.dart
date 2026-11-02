@@ -128,6 +128,11 @@ void main() {
       argResults = MockArgResults();
       artifactManager = MockArtifactManager();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       logger = MockShorebirdLogger();
       patchDiffChecker = MockPatchDiffChecker();
       progress = MockProgress();

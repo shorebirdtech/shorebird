@@ -35,10 +35,10 @@ class OrganizationUser {
     return OrganizationUser.fromJson(json);
   }
 
-  /// A Shorebird user with non-sensitive information only.
+  /// The user that is a member of the organization.
   final PublicUser user;
 
-  /// A role that a user can have relative to an Organization or App.
+  /// The role [user] has in the organization.
   final Role role;
 
   /// Converts an [OrganizationUser] to a `Map<String, dynamic>`.

@@ -2,15 +2,17 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// Lightweight, privacy-safe snapshot of the build environment that's
-/// emitted into the build trace summary. Only booleans, small integer
-/// counts, and a categorical CI-provider enum — no paths, no project or
-/// user identifiers, no URLs.
+/// A small snapshot of the build environment, sent with the build trace
+/// summary as part of the performance metrics Shorebird collects about
+/// builds. It holds only booleans, small integer counts and a categorical
+/// CI-provider name: no paths, URLs, or user, project or job identifiers.
 ///
-/// Field-data goal: with this we can tell apart "build was slow because
-/// no caching is configured" from "build was slow despite caching being
-/// on", which is the question that decides whether Shorebird should
-/// invest in build-caching products.
+/// It answers two questions:
+/// - Was a slow build slow because no caching is configured, or slow
+///   despite caching? This decides where Shorebird invests in build
+///   caching.
+/// - Which CI providers do our customers build on? This lets Shorebird
+///   best support the CI providers our customers use.
 class BuildEnvironment {
   /// Creates a [BuildEnvironment] directly from already-detected fields.
   /// Tests use this; production code uses [BuildEnvironment.detect].
@@ -88,7 +90,8 @@ class BuildEnvironment {
   /// CI environment indicator. Aggregated; we don't care which run.
   final bool isCi;
 
-  /// Categorical CI provider — null when not on CI or unknown.
+  /// Categorical CI provider name: `other` on a CI we don't recognize,
+  /// null when not on CI.
   final String? ciProvider;
 
   /// `org.gradle.caching=true` present in user-global or project-level
@@ -134,6 +137,12 @@ class BuildEnvironment {
   };
 
   /// CI vendor → presence-indicator env var, ordered by specificity.
+  ///
+  /// We record which CI provider a build ran on so Shorebird can best
+  /// support the CI providers our customers use. Only the categorical
+  /// provider name below is recorded. The variable's value, and any path,
+  /// URL, job or project identifier, is never read into the snapshot.
+  ///
   /// Presence-check (rather than value-compare) to stay robust against
   /// case/quoting variation across vendors — e.g. Azure's `TF_BUILD`
   /// is documented as "True" with a leading capital, GitHub's
@@ -141,8 +150,9 @@ class BuildEnvironment {
   ///
   /// Specific providers come first; the generic `CI` marker is last
   /// so it only matches when no vendor-specific var is set. Order
-  /// among the specific providers doesn't matter — they're mutually
-  /// exclusive in practice.
+  /// among the specific providers mostly doesn't matter, since they're
+  /// mutually exclusive in practice. The exception is Harness, whose
+  /// Drone-based runner also sets Drone's variables, so it comes first.
   static const _ciProviders = <(String envVar, String provider)>[
     // https://docs.github.com/actions/learn-github-actions/variables#default-environment-variables
     ('GITHUB_ACTIONS', 'github'),
@@ -168,13 +178,32 @@ class BuildEnvironment {
     ('TRAVIS', 'travis'),
     // https://www.appveyor.com/docs/environment-variables/
     ('APPVEYOR', 'appveyor'),
+    // https://docs.codemagic.io/yaml-basic-configuration/environment-variables/
+    ('CM_BUILD_ID', 'codemagic'),
+    // https://developer.apple.com/documentation/xcode/environment-variable-reference
+    ('CI_XCODE_CLOUD', 'xcode_cloud'),
+    // https://docs.appcircle.io/environment-variables/appcircle-specific-environment-variables
+    ('AC_APPCIRCLE', 'appcircle'),
+    // https://docs.semaphore.io/reference/env-vars
+    ('SEMAPHORE', 'semaphore'),
+    // https://developer.harness.io/docs/continuous-integration/use-ci/optimize-and-more/ci-env-var
+    // Before Drone: Harness CI also sets `DRONE=true`. Not
+    // `HARNESS_ACCOUNT_ID`, which Harness's Terraform provider has users
+    // export on their own machines.
+    ('HARNESS_BUILD_ID', 'harness'),
+    // https://docs.drone.io/pipeline/environment/reference/drone/
+    ('DRONE', 'drone'),
     // Generic CI indicator set by GitHub Actions, GitLab, CircleCI,
-    // Travis, Bitbucket, Buildkite, Drone, and others — catches the
+    // Travis, Bitbucket, Buildkite, and others — catches the
     // long tail without enumerating every vendor.
     ('CI', 'other'),
   ];
 
   static String? _detectCiProvider(Map<String, String> env) {
+    // Woodpecker sets no variable of its own, only generic names with
+    // its name as the value, so it is matched by value.
+    // https://woodpecker-ci.org/docs/usage/environment
+    if (env['CI_SYSTEM_NAME'] == 'woodpecker') return 'woodpecker';
     for (final (envVar, provider) in _ciProviders) {
       if (env[envVar] != null) return provider;
     }

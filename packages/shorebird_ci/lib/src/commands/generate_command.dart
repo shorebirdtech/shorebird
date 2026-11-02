@@ -10,14 +10,15 @@ import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
 import 'package:shorebird_ci/src/repository_description.dart';
+import 'package:shorebird_ci/src/version.dart';
 
 /// Generates a GitHub Actions CI workflow for a Dart/Flutter repository.
 class GenerateCommand extends Command<int> with RepoRootOption {
-  /// Creates a [GenerateCommand]. The optional [resolveLatestMajor] is
+  /// Creates a [GenerateCommand]. The optional [resolveLatestRelease] is
   /// exposed for tests so they don't have to hit the live GitHub API
   /// when verifying the `--update-actions` path.
-  GenerateCommand({LatestMajorResolver? resolveLatestMajor})
-    : _resolveLatestMajor = resolveLatestMajor {
+  GenerateCommand({LatestReleaseResolver? resolveLatestRelease})
+    : _resolveLatestRelease = resolveLatestRelease {
     addRepoRootOption();
     argParser
       ..addOption(
@@ -41,9 +42,10 @@ class GenerateCommand extends Command<int> with RepoRootOption {
       ..addFlag(
         'no-update-actions',
         help: '''
-Skip the post-generate step that queries GitHub for current action
-versions and bumps pins in place. By default, generate auto-bumps
-action versions to current latest. Pass this flag in offline
+Skip the post-generate step that queries GitHub for each action's
+latest release and pins it in place. Without it, generate writes the
+commit pins built into this version of shorebird_ci. Either way every
+action is pinned to a commit SHA. Pass this flag in offline
 environments.''',
         negatable: false,
       )
@@ -74,7 +76,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
       );
   }
 
-  final LatestMajorResolver? _resolveLatestMajor;
+  final LatestReleaseResolver? _resolveLatestRelease;
 
   @override
   String get name => 'generate';
@@ -143,8 +145,8 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
     // Dynamic returns a single entry; static returns a main workflow
     // plus one or two reusable workflows.
     //
-    // Action versions are emitted as the hardcoded defaults below;
-    // run `shorebird_ci update_actions` to bump them.
+    // Actions are emitted at the commit pins in action_versions.dart;
+    // the update step below moves them to each action's latest release.
     final files = style == 'static'
         ? _buildStaticFiles(
             repository,
@@ -191,7 +193,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
     return 0;
   }
 
-  /// Rewrites each file in place w/ latest-major action pins. Best-effort:
+  /// Rewrites each file in place w/ latest-release action pins. Best-effort:
   /// network failures leave the file untouched (handled by
   /// [updateActionVersions], which returns null per-action on lookup
   /// failure).
@@ -201,7 +203,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
       final before = file.readAsStringSync();
       final after = await updateActionVersions(
         before,
-        resolveLatestMajor: _resolveLatestMajor,
+        resolveLatestRelease: _resolveLatestRelease,
       );
       if (before != after) file.writeAsStringSync(after);
     }
@@ -276,6 +278,7 @@ updates:
     if (hasDart) {
       files['.github/workflows/_shorebird_ci_dart.yaml'] =
           _buildDartReusableWorkflow(
+            hasBlocLint: _anyDependsOnBlocLint(packages, isFlutter: false),
             hasCodecov: repository.hasCodecov,
             codecovTokenSecret: codecovTokenSecret,
           );
@@ -283,6 +286,7 @@ updates:
     if (hasFlutter) {
       files['.github/workflows/_shorebird_ci_flutter.yaml'] =
           _buildFlutterReusableWorkflow(
+            hasBlocLint: _anyDependsOnBlocLint(packages, isFlutter: true),
             hasCodecov: repository.hasCodecov,
             codecovTokenSecret: codecovTokenSecret,
           );
@@ -338,15 +342,15 @@ jobs:
     // a changed `path:` dependency would silently go uncovered.
     buffer.write('''
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@v1
-      - run: dart pub global activate shorebird_ci
+      - uses: $setupDartAction
+      - run: dart pub global activate shorebird_ci $packageVersion
       - name: Verify CI coverage
         run: shorebird_ci verify
-      - uses: dorny/paths-filter@v4
+      - uses: $pathsFilterAction
         id: filter
         with:
           filters: |
@@ -363,6 +367,11 @@ jobs:
       buffer.writeln('            $slug:');
       for (final dep in sortedDeps) {
         buffer.writeln('              - $dep/**');
+      }
+      final workspaceFiles = resolver.workspaceFiles(packageDir).toList()
+        ..sort();
+      for (final file in workspaceFiles) {
+        buffer.writeln('              - $file');
       }
     }
     buffer.writeln();
@@ -393,10 +402,16 @@ jobs:
     with:
       package_name: ${package.name}
       package_path: $packageDir
-      has_bloc_lint: ${RepositoryAnalyzer.dependsOnBlocLint(root: package.root)}
       has_unit_tests: ${RepositoryAnalyzer.hasUnitTests(root: package.root)}
       subpackages: "${subpackages.join(' ')}"
 ''');
+
+      // The reusable workflow declares `has_bloc_lint` only when some
+      // package of its SDK uses bloc_lint, and it defaults to false, so
+      // pass it only where it's true.
+      if (RepositoryAnalyzer.dependsOnBlocLint(root: package.root)) {
+        buffer.writeln('      has_bloc_lint: true');
+      }
 
       if (isFlutter) {
         final version = resolveFlutterVersion(
@@ -434,6 +449,7 @@ jobs:
   }
 
   String _buildDartReusableWorkflow({
+    required bool hasBlocLint,
     required bool hasCodecov,
     required String? codecovTokenSecret,
   }) {
@@ -448,7 +464,7 @@ jobs:
           dart test --coverage=coverage && \\
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
-        uses: codecov/codecov-action@v5
+        uses: $codecovAction
         with:
           flags: \${{ inputs.package_name }}
           working-directory: \${{ inputs.package_path }}
@@ -471,11 +487,7 @@ on:
       package_path:
         required: true
         type: string
-      has_bloc_lint:
-        required: false
-        default: false
-        type: boolean
-      has_unit_tests:
+${hasBlocLint ? _staticBlocLintInput : ''}      has_unit_tests:
         required: false
         default: true
         type: boolean
@@ -488,14 +500,11 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
-      - uses: dart-lang/setup-dart@v1
-      - name: Setup Bloc Tools
-        if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
-      - name: Install Dependencies
+      - uses: $setupDartAction
+${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
         run: |
           dart pub get --no-example
@@ -506,14 +515,11 @@ jobs:
         run: dart format --set-exit-if-changed .
       - working-directory: \${{ inputs.package_path }}
         run: dart analyze --fatal-warnings .
-      - name: Bloc Lint
-        if: inputs.has_bloc_lint
-        working-directory: \${{ inputs.package_path }}
-        run: bloc lint .
-$testStep''';
+${hasBlocLint ? _staticBlocLintStep : ''}$testStep''';
   }
 
   String _buildFlutterReusableWorkflow({
+    required bool hasBlocLint,
     required bool hasCodecov,
     required String? codecovTokenSecret,
   }) {
@@ -523,7 +529,7 @@ $testStep''';
         working-directory: \${{ inputs.package_path }}
         run: flutter test --coverage
       - if: inputs.has_unit_tests
-        uses: codecov/codecov-action@v5
+        uses: $codecovAction
         with:
           flags: \${{ inputs.package_name }}
           working-directory: \${{ inputs.package_path }}
@@ -550,11 +556,7 @@ on:
         required: false
         default: ""
         type: string
-      has_bloc_lint:
-        required: false
-        default: false
-        type: boolean
-      has_integration_tests:
+${hasBlocLint ? _staticBlocLintInput : ''}      has_integration_tests:
         required: false
         default: false
         type: boolean
@@ -571,18 +573,15 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: $flutterAction
         with:
           flutter-version: \${{ inputs.flutter_version || '' }}
           channel: \${{ inputs.flutter_version && '' || 'stable' }}
-      - name: Setup Bloc Tools
-        if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
-      - name: Install Dependencies
+${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
         run: |
           flutter pub get --no-example
@@ -593,16 +592,46 @@ jobs:
         run: dart format --set-exit-if-changed .
       - working-directory: \${{ inputs.package_path }}
         run: flutter analyze .
-      - name: Bloc Lint
-        if: inputs.has_bloc_lint
-        working-directory: \${{ inputs.package_path }}
-        run: bloc lint .
-$testStep      - name: Integration Tests
+${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Tests
         if: inputs.has_integration_tests
         working-directory: \${{ inputs.package_path }}
         run: flutter test integration_test
 ''';
   }
+
+  /// Whether any of the [packages] built with Flutter (or, when
+  /// [isFlutter] is false, with plain Dart) has a bloc_lint dev
+  /// dependency. Repos with none get no bloc input or steps, so their
+  /// workflows don't pull in felangel/setup-bloc-tools at all.
+  static bool _anyDependsOnBlocLint(
+    Iterable<PackageDescription> packages, {
+    required bool isFlutter,
+  }) => packages.any(
+    (pkg) =>
+        RepositoryAnalyzer.dependsOnFlutter(root: pkg.root) == isFlutter &&
+        RepositoryAnalyzer.dependsOnBlocLint(root: pkg.root),
+  );
+
+  static const _staticBlocLintInput = '''
+      has_bloc_lint:
+        required: false
+        default: false
+        type: boolean
+''';
+
+  static const _staticBlocToolsSetupStep =
+      '''
+      - name: Setup Bloc Tools
+        if: inputs.has_bloc_lint
+        uses: $setupBlocToolsAction
+''';
+
+  static const _staticBlocLintStep = r'''
+      - name: Bloc Lint
+        if: inputs.has_bloc_lint
+        working-directory: ${{ inputs.package_path }}
+        run: bloc lint .
+''';
 
   // ── Dynamic (affected_packages + matrix) ─────────────────────────
 
@@ -651,6 +680,10 @@ jobs:
       _writeCiJob(
         buffer,
         jobId: 'dart_ci',
+        hasBlocLint: _anyDependsOnBlocLint(
+          repository.packages,
+          isFlutter: false,
+        ),
         outputKey: 'dart_packages',
         sdk: 'dart',
         hasCodecov: repository.hasCodecov,
@@ -662,6 +695,10 @@ jobs:
       _writeCiJob(
         buffer,
         jobId: 'flutter_ci',
+        hasBlocLint: _anyDependsOnBlocLint(
+          repository.packages,
+          isFlutter: true,
+        ),
         outputKey: 'flutter_packages',
         sdk: 'flutter',
         hasCodecov: repository.hasCodecov,
@@ -708,17 +745,22 @@ jobs:
       );
     }
 
-    buffer.write(r'''
+    buffer
+      ..write('''
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
           # affected_packages diffs against origin/main, which isn't in
           # the default shallow checkout. Full history is needed for the
           # diff to resolve.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@v1
-      - run: dart pub global activate shorebird_ci
+      - uses: $setupDartAction
+''')
+      ..writeln(
+        '      - run: dart pub global activate shorebird_ci $packageVersion',
+      )
+      ..write(r'''
       # Verify first so we fail fast if CI coverage is broken and
       # don't waste time computing affected packages.
       - name: Verify CI coverage
@@ -763,6 +805,7 @@ jobs:
   void _writeCiJob(
     StringBuffer buffer, {
     required String jobId,
+    required bool hasBlocLint,
     required String outputKey,
     required String sdk,
     required bool hasCodecov,
@@ -774,9 +817,10 @@ jobs:
     buffer
       ..write(_ciJobHeader(jobId: jobId, outputKey: outputKey))
       ..write(_sdkSetupStep(isFlutter: isFlutter))
-      ..write(_blocToolsSetupStep)
+      ..write(hasBlocLint ? _blocToolsSetupStep : '')
       ..write(_installDependenciesStep(executable: executable))
       ..write(_formatAndAnalyzeSteps(executable: executable))
+      ..write(hasBlocLint ? _blocLintStep : '')
       ..write(
         _testStep(
           isFlutter: isFlutter,
@@ -809,7 +853,7 @@ jobs:
       run:
         working-directory: \${{ matrix.path }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
 ''';
@@ -818,20 +862,21 @@ jobs:
   // For Flutter, use `flutter_version` from the matrix if the pubspec
   // pins an exact version; otherwise fall back to `channel: stable`.
   String _sdkSetupStep({required bool isFlutter}) {
-    if (!isFlutter) return '      - uses: dart-lang/setup-dart@v1\n';
-    return r'''
+    if (!isFlutter) return '      - uses: $setupDartAction\n';
+    return '''
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: $flutterAction
         with:
-          flutter-version: ${{ matrix.flutter_version || '' }}
-          channel: ${{ matrix.flutter_version && '' || 'stable' }}
+          flutter-version: \${{ matrix.flutter_version || '' }}
+          channel: \${{ matrix.flutter_version && '' || 'stable' }}
 ''';
   }
 
-  static const _blocToolsSetupStep = '''
+  static const _blocToolsSetupStep =
+      '''
       - name: Setup Bloc Tools
         if: matrix.has_bloc_lint == true
-        uses: felangel/setup-bloc-tools@v0
+        uses: $setupBlocToolsAction
 ''';
 
   String _installDependenciesStep({required String executable}) {
@@ -857,11 +902,14 @@ jobs:
     return '''
       - run: dart format --set-exit-if-changed .
       - run: $analyzeCmd
+''';
+  }
+
+  static const _blocLintStep = '''
       - name: Bloc Lint
         if: matrix.has_bloc_lint == true
         run: bloc lint .
 ''';
-  }
 
   String _testStep({
     required bool isFlutter,
@@ -888,7 +936,7 @@ jobs:
 
   String _codecovUploadStep({required String? codecovTokenSecret}) {
     return '''
-      - uses: codecov/codecov-action@v5
+      - uses: $codecovAction
         with:
           flags: \${{ matrix.name }}
 ${_codecovTokenLine(codecovTokenSecret)}''';
@@ -902,10 +950,7 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
     return '          token: \${{ secrets.$secret }}\n';
   }
 
-  void _writeCspellJob(
-    StringBuffer buffer,
-    RepositoryDescription repository,
-  ) {
+  void _writeCspellJob(StringBuffer buffer, RepositoryDescription repository) {
     final configPath = posixRelative(
       repository.cspellConfig!.path,
       from: repository.root.path,
@@ -916,10 +961,10 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
     name: CSpell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: $checkoutAction
         with:
           submodules: recursive
-      - uses: streetsidesoftware/cspell-action@v6
+      - uses: $cspellAction
         with:
           incremental_files_only: false
           config: $configPath
