@@ -301,8 +301,9 @@ abstract class Releaser {
   /// snapshot, since the DWARF sections would otherwise leak identifiers
   /// that obfuscation was meant to hide.
   ///
-  /// On Android, --strip is only passed for Flutter versions older than
-  /// 3.44. From 3.44 onward, upstream Flutter PR
+  /// On Android (APK/AAB and AAR, which both build through Gradle), --strip
+  /// is only passed for Flutter versions older than 3.44. From 3.44 onward,
+  /// upstream Flutter PR
   /// https://github.com/flutter/flutter/pull/181275 (merged 2026-01-26)
   /// made AGP responsible for stripping `libapp.so` and emitting the
   /// matching `.sym` companion into the AAB's BUNDLE-METADATA. Passing
@@ -318,9 +319,9 @@ abstract class Releaser {
   /// strips before delivery to end-user devices, so the only readers are
   /// the developer's own Play Console crash dashboard.
   ///
-  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework,
-  /// AAR), AGP is not in the pipeline, so --strip is always passed
-  /// regardless of Flutter version.
+  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework),
+  /// AGP is not in the pipeline, so --strip is always passed regardless of
+  /// Flutter version.
   Future<void> addObfuscationMapArgs(List<String> buildArgs) async {
     if (!useObfuscation) return;
     final mapDir = Directory(p.dirname(obfuscationMapPath));
