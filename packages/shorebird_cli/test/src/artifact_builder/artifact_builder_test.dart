@@ -11,11 +11,9 @@ import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -32,13 +30,11 @@ void main() {
     late Apple apple;
     late ArtifactManager artifactManager;
     late ShorebirdLogger logger;
-    late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
-    late ShorebirdProcessResult pubGetProcessResult;
     late ArtifactBuilder builder;
 
     R runWithOverrides<R>(R Function() body) {
@@ -51,7 +47,6 @@ void main() {
             () => BuildTraceSession(commandStartedAt: DateTime.now()),
           ),
           loggerRef.overrideWith(() => logger),
-          osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -74,8 +69,6 @@ void main() {
       apple = MockApple();
       artifactManager = MockArtifactManager();
       logger = MockShorebirdLogger();
-      operatingSystemInterface = MockOperatingSystemInterface();
-      pubGetProcessResult = MockProcessResult();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
@@ -89,17 +82,6 @@ void main() {
         () => shorebirdFlutter.resolveFlutterVersion(any()),
       ).thenAnswer((_) async => Version(3, 0, 0));
 
-      when(
-        () => shorebirdProcess.run('flutter', [
-          '--no-version-check',
-          'pub',
-          'get',
-          '--offline',
-        ], useVendedFlutter: false),
-      ).thenAnswer((_) async => pubGetProcessResult);
-      when(
-        () => pubGetProcessResult.exitCode,
-      ).thenReturn(ExitCode.success.code);
       // Default stub for the `flutter build <command> -h` probe used by
       // `_supportsTraceFlag`. Returns help text that includes
       // `--shorebird-trace` so that trace tests pass when tracing is enabled.
@@ -131,9 +113,6 @@ void main() {
 
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
-      when(
-        () => operatingSystemInterface.which('flutter'),
-      ).thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
       when(
         () => shorebirdEnv.buildDirectory,
@@ -144,61 +123,20 @@ void main() {
       builder = ArtifactBuilder();
     });
 
-    void verifyCorrectFlutterPubGet(Future<void> Function() testCall) {
-      group('when flutter is installed', () {
-        setUp(() {
-          when(
-            () => operatingSystemInterface.which('flutter'),
-          ).thenReturn('/path/to/flutter');
-        });
+    void verifyNoSystemFlutterPubGet(Future<void> Function() testCall) {
+      test('does not run pub get with the system Flutter', () async {
+        await testCall();
 
-        test('runs flutter pub get with system flutter', () async {
-          await testCall();
-
-          verify(
-            () => shorebirdProcess.run('flutter', [
-              '--no-version-check',
-              'pub',
-              'get',
-              '--offline',
-            ], useVendedFlutter: false),
-          ).called(1);
-        });
-
-        test('prints error message if system flutter pub get fails', () async {
-          when(() => pubGetProcessResult.exitCode).thenReturn(1);
-
-          await testCall();
-
-          verify(
-            () => logger.warn('''
-After the build, `flutter pub get` with the Flutter on your PATH failed. You may see unexpected behavior in VS Code.
-
-Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCodeUrl.toLink()}.
-'''),
-          ).called(1);
-        });
-      });
-
-      group('when flutter is not installed', () {
-        setUp(() {
-          when(
-            () => operatingSystemInterface.which('flutter'),
-          ).thenReturn(null);
-        });
-
-        test('does not attempt to run flutter pub get', () async {
-          await testCall();
-
-          verifyNever(
-            () => shorebirdProcess.run(
-              'flutter',
-              ['--no-version-check', 'pub', 'get', '--offline'],
-              useVendedFlutter: false,
-              runInShell: any(named: 'runInShell'),
-            ),
-          );
-        });
+        verifyNever(
+          () => shorebirdProcess.run(
+            'flutter',
+            any(that: containsAllInOrder(['pub', 'get'])),
+            useVendedFlutter: any(named: 'useVendedFlutter'),
+            runInShell: any(named: 'runInShell'),
+            environment: any(named: 'environment'),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
       });
     }
 
@@ -624,7 +562,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
-          verifyCorrectFlutterPubGet(
+          verifyNoSystemFlutterPubGet(
             () => runWithOverrides(() => builder.buildAppBundle()),
           );
 
@@ -640,7 +578,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyNoSystemFlutterPubGet(
               () => expectLater(
                 () => runWithOverrides(() => builder.buildAppBundle()),
                 throwsA(
@@ -1026,7 +964,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
-          verifyCorrectFlutterPubGet(
+          verifyNoSystemFlutterPubGet(
             () => runWithOverrides(() => builder.buildApk()),
           );
 
@@ -1042,7 +980,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyNoSystemFlutterPubGet(
               () => expectLater(
                 () => runWithOverrides(() => builder.buildApk()),
                 throwsA(
@@ -1201,7 +1139,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
-          verifyCorrectFlutterPubGet(
+          verifyNoSystemFlutterPubGet(
             () async => runWithOverrides(
               () => builder.buildAar(buildNumber: buildNumber),
             ),
@@ -1219,7 +1157,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyNoSystemFlutterPubGet(
               () async => expectLater(
                 () async => runWithOverrides(
                   () => builder.buildAar(buildNumber: buildNumber),
@@ -1745,7 +1683,7 @@ Reason: Exited with code 70.'''),
 
       group('after a build', () {
         group('when the build is successful', () {
-          verifyCorrectFlutterPubGet(
+          verifyNoSystemFlutterPubGet(
             () async =>
                 runWithOverrides(() => builder.buildMacos(codesign: false)),
           );
@@ -1762,7 +1700,7 @@ Reason: Exited with code 70.'''),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyNoSystemFlutterPubGet(
               () async => expectLater(
                 () async =>
                     runWithOverrides(() => builder.buildMacos(codesign: false)),
@@ -2260,7 +2198,7 @@ Reason: Exited with code 70.'''),
 
       group('after a build', () {
         group('when the build is successful', () {
-          verifyCorrectFlutterPubGet(
+          verifyNoSystemFlutterPubGet(
             () async =>
                 runWithOverrides(() => builder.buildIpa(codesign: false)),
           );
@@ -2277,7 +2215,7 @@ Reason: Exited with code 70.'''),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyNoSystemFlutterPubGet(
               () async => expectLater(
                 () async =>
                     runWithOverrides(() => builder.buildIpa(codesign: false)),
@@ -2652,7 +2590,7 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
 
       group('after a build', () {
         group('when the build is successful', () {
-          verifyCorrectFlutterPubGet(
+          verifyNoSystemFlutterPubGet(
             () => runWithOverrides(builder.buildIosFramework),
           );
 
@@ -2700,7 +2638,7 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
-            verifyCorrectFlutterPubGet(
+            verifyNoSystemFlutterPubGet(
               () => expectLater(
                 () => runWithOverrides(builder.buildIosFramework),
                 throwsA(
