@@ -1,8 +1,76 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
+
+## 1.6.135 (November 2, 2026)
+
+- 🐦 Flutter 3.47.9 / Dart 3.13.7 support
+  - Exit cleanly with an actionable error when a Windows path exceeds MAX_PATH
+  - Fix the StateError when native assets compile under pub workspaces,
+    monorepos or symlinked directories
+  - Add the extensible ContextMenuButtonKind so packages can add selection
+    menu actions without breaking exhaustive switches
+- 🔧 Apple patches now fail when they link below 20%. Pass
+  `--min-link-percentage=0` to accept any link percentage, as before
+- 🔧 `shorebird apps delete` opens the app's settings in the console instead of
+  deleting the app
+- 🔧 `shorebird auth token` rejects arguments and points key verbs at
+  `shorebird tokens`
+- 🔧 `shorebird preview` uninstalls the Android app instead of clearing its
+  data, so anything the app kept outside its data paths goes too
+- ✨ Manage organizations from the CLI: `shorebird orgs list`, `get`, `create`
+  and `update`
+- ✨ Manage members from the CLI: `shorebird members list`, `add`, `set-role`
+  and `remove`
+- ✨ Add `shorebird service-accounts`, including `trust`
+- ✨ Add `shorebird audit-log` and `shorebird usage`, with `audit-log --since`
+  taking how long ago (7d, 24h)
+- ✨ `shorebird tokens` and `shorebird account sessions` print the list;
+  `tokens`, `account sessions`, `account delete` and `logout --all` open the
+  console
+- ✨ Print the server's notices after patch and release, as GitHub Actions
+  warning annotations when running there
+- ✨ Ask for the track when `shorebird patch` has no `--track`
+- ✨ Warn when patching a release built on a Flutter revision with a known
+  problem
+- ✨ Warn when the iOS `--split-debug-info` dSYM has no DWARF
+- ✨ Name the canonical command when a run goes through an alias
+- ✨ Add the host CPU architecture to the User-Agent
+- ✨ Route updater HTTP through the platform stack: NSURLSession on iOS and
+  macOS, HttpURLConnection on Android, with BoringSSL signature checks
+  everywhere
+- ✨ Send every patch event through one queue, removed only once the server
+  has it
+- 🐛 Use the app.dill Flutter copied for Apple builds, and pick the build's
+  own kernel when another build runs
+- 🐛 Report blocked asset and native diffs as errors when the CLI can't prompt
+- 🐛 Check every platform before patching any
+- 🐛 Honor a user-provided `--save-obfuscation-map`
+- 🐛 Fail patch early when a signed release gets no key
+- 🐛 Find the app bundle when `base.archivesName` renames it
+- 🐛 Catch an Apple `--flavor` with no Xcode scheme before building
+- 🐛 `shorebird upgrade` sets up the new version before it exits, on Windows too
+- 🐛 `shorebird init` detects only buildable flavors with several flavor
+  dimensions
+- 🐛 Show the macOS re-signing note only for engines without the fix, and point
+  macOS release output at the notarization docs
+- 🐛 Say that `shorebird preview` can't use iOS simulators, say why the device
+  rejected the app, and tell apart apps with the same name
+- 🐛 Explain when an Android version name can't match any iOS release
+- 🐛 Name the next step for missing apps, releases and failed downloads
+- 🐛 Don't suggest `--app-id` in `shorebird patch`'s no-releases hint
+- 🐛 Don't warn about link details on Flutter versions without aot_tools
+  link_metadata
+- 🐛 Report release and patch errors in the CLI's newer error style
+- 🐛 Install the CLI's dependencies with `pub get --enforce-lockfile`
+- 🐛 Don't report the launch start when iOS configures the updater
+- 🐛 Hold the resolved base VM snapshot instead of re-resolving
+- 🐛 Build the updater for aarch64-apple-ios-sim on arm64 simulator engines
+- 🐛 Report a download cut off mid-body as a network failure, keeping the
+  underlying network error
+- 🐛 Roll zip to 9.0.5 for GHSA-m665-v7pm-7grj
 
 ## 1.6.134 (October 27, 2026)
 
