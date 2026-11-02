@@ -41,7 +41,10 @@ void main() {
       flutterRevision: revision,
       flutterVersion: '3.35.0',
       displayName: releaseVersion,
-      platformStatuses: statuses,
+      platforms: {
+        for (final MapEntry(:key, :value) in statuses.entries)
+          key: ReleasePlatformDetails(status: value),
+      },
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
@@ -182,6 +185,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           artifacts: any(named: 'artifacts'),
+          signing: any(named: 'signing'),
           message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});

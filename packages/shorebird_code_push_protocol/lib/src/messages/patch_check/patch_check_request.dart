@@ -54,7 +54,7 @@ class PatchCheckRequest {
   /// number. If omitted, the server returns the latest available.
   final int? patchNumber;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the app.
   final ReleasePlatform platform;
 
   /// The architecture of the app.

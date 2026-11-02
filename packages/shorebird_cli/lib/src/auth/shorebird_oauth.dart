@@ -62,17 +62,24 @@ Uri _endpoint(Uri authBaseUrl, String path) =>
 /// 4. Waits for the auth service to redirect back, then hands the callback's
 ///    parameters to the grant, which checks `state`, rejects an `error`, and
 ///    exchanges the code and code verifier at the token endpoint.
-/// 5. Tells the browser how the login went and returns the credentials.
+/// 5. Calls [completeLogin], if given, with the credentials, so the caller
+///    can finish the login (look up the user, save the credentials) before
+///    the browser is told how it went.
+/// 6. Sends the browser to the auth service's page for how the login went
+///    (see [_loginResultPage]) and returns the credentials. The browser is
+///    told the login succeeded only when every step, [completeLogin]
+///    included, did.
 ///
 /// Throws [oauth2.AuthorizationException] when the auth service answered with
 /// an OAuth error, [FormatException] when the callback or the token response
 /// is not a valid one, and [ShorebirdAuthException] when no callback arrives
-/// within [timeout].
+/// within [timeout]. Whatever [completeLogin] throws is rethrown.
 Future<oauth2.Credentials> obtainCredentialsViaLoopbackLogin({
   required http.Client httpClient,
   required Uri authBaseUrl,
   required void Function(String) userPrompt,
   Duration timeout = const Duration(minutes: 5),
+  Future<void> Function(oauth2.Credentials credentials)? completeLogin,
 }) async {
   HttpServer server;
   try {
@@ -111,11 +118,16 @@ Future<oauth2.Credentials> obtainCredentialsViaLoopbackLogin({
       client = await grant.handleAuthorizationResponse(
         request.uri.queryParameters,
       );
-    } on Exception {
-      await _respondToBrowser(request, succeeded: false);
+      await completeLogin?.call(client.credentials);
+    } on Object {
+      await _respondToBrowser(
+        request,
+        authBaseUrl: authBaseUrl,
+        succeeded: false,
+      );
       rethrow;
     }
-    await _respondToBrowser(request, succeeded: true);
+    await _respondToBrowser(request, authBaseUrl: authBaseUrl, succeeded: true);
     return client.credentials;
   } finally {
     await server.close();
@@ -425,24 +437,34 @@ Future<HttpRequest> _waitForCallback(
   }
 }
 
-/// Answers the browser's callback [request] with a page saying whether the
-/// login [succeeded].
+/// Answers the browser's callback [request] by sending it to the auth
+/// service's page for how the login went, which says whether it [succeeded]
+/// and what to do next.
+///
+/// The page lives on the auth service rather than in this response so it can
+/// be styled like the rest of sign-in and its next steps can change without a
+/// CLI release. It carries only whether the login succeeded: the reason for a
+/// failure is printed in the terminal, which the page points back to.
 Future<void> _respondToBrowser(
   HttpRequest request, {
+  required Uri authBaseUrl,
   required bool succeeded,
 }) async {
   request.response
-    ..statusCode = HttpStatus.ok
-    ..headers.contentType = ContentType.html
-    ..write(
-      succeeded
-          ? '<html><body><h1>Authentication complete.</h1> '
-                '<p>You can close this window.</p></body></html>'
-          : '<html><body><h1>Authentication failed.</h1> '
-                '<p>Return to the terminal for details.</p></body></html>',
+    ..statusCode = HttpStatus.seeOther
+    ..headers.set(
+      HttpHeaders.locationHeader,
+      _loginResultPage(authBaseUrl, succeeded: succeeded).toString(),
     );
   await request.response.close();
 }
+
+/// The auth service's page the browser is sent to once the loopback login
+/// has [succeeded], or not.
+Uri _loginResultPage(Uri authBaseUrl, {required bool succeeded}) => _endpoint(
+  authBaseUrl,
+  'cli/login-result',
+).replace(queryParameters: {'status': succeeded ? 'success' : 'failed'});
 
 /// Revokes [refreshToken] at the auth service's /revoke endpoint (RFC 7009),
 /// ending the session it belongs to. `package:oauth2` does not implement

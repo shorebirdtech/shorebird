@@ -10,6 +10,8 @@ class GetOrganizationsResponse {
   /// {@macro get_organizations_response}
   const GetOrganizationsResponse({
     required this.organizations,
+    this.nextCursor,
+    this.totalCount,
   });
 
   /// Converts a `Map<String, dynamic>` to a [GetOrganizationsResponse].
@@ -23,6 +25,8 @@ class GetOrganizationsResponse {
               (e) => OrganizationMembership.fromJson(e as Map<String, dynamic>),
             )
             .toList(),
+        nextCursor: json['next_cursor'] as String?,
+        totalCount: json['total_count'] as int?,
       ),
     );
   }
@@ -40,20 +44,39 @@ class GetOrganizationsResponse {
   /// in each organization.
   final List<OrganizationMembership> organizations;
 
+  /// The opaque cursor of the next page; send it back as `cursor`
+  /// to get that page.
+  /// Present only when the request was paginated (sent `per_page`,
+  /// `cursor` or `page`) and another page follows. Absent on the last
+  /// page and on unpaginated responses.
+  final String? nextCursor;
+
+  /// How many items the whole list holds. Present only when the
+  /// request was paginated.
+  final int? totalCount;
+
   /// Converts a [GetOrganizationsResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'organizations': organizations.map((e) => e.toJson()).toList(),
+      'next_cursor': ?nextCursor,
+      'total_count': ?totalCount,
     };
   }
 
   @override
-  int get hashCode => listHash(organizations).hashCode;
+  int get hashCode => Object.hashAll([
+    listHash(organizations),
+    nextCursor,
+    totalCount,
+  ]);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is GetOrganizationsResponse &&
-        listsEqual(organizations, other.organizations);
+        listsEqual(organizations, other.organizations) &&
+        nextCursor == other.nextCursor &&
+        totalCount == other.totalCount;
   }
 }

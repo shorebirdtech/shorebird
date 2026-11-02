@@ -6,76 +6,39 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 /// The name of the flag that skips the delete confirmation prompt.
 const yesArgName = 'yes';
 
-/// The name of the option that confirms a delete by giving the resource's
-/// name. Required for [DeleteConfirmationStyle.typeName] deletes when not
-/// running interactively; a hidden, deprecated alternative to `--yes`
-/// otherwise.
+/// The name of the hidden, deprecated alternative to `--yes`, which confirms
+/// a delete by giving the resource's name.
 const confirmNameArgName = 'confirm-name';
 
 /// The message reported when a delete needs confirmation but cannot prompt.
 const yesRequiredMessage =
     '--$yesArgName required when not running interactively';
 
-/// The message reported when a [DeleteConfirmationStyle.typeName] delete
-/// needs the resource's name but cannot prompt.
-const confirmNameRequiredMessage =
-    '--$confirmNameArgName required when not running interactively';
-
-/// How a delete is confirmed.
-enum DeleteConfirmationStyle {
-  /// Ask a y/N question, like `gh release delete`. `-y, --yes` skips it.
-  yesNo,
-
-  /// Make the user type the resource's name, like `gh repo delete`. There is
-  /// no `--yes`: scripts pass the name with `--confirm-name`, so nothing is
-  /// deleted without naming it.
-  typeName,
-}
-
 /// Shared confirmation for commands that delete something irreversibly.
 ///
-/// Follows the GitHub CLI's convention: in a terminal the user is prompted;
-/// without one (stdin or stdout not a terminal, CI, or `--json`) the command
-/// fails rather than waiting for input. A [DeleteConfirmationStyle.yesNo]
-/// delete is confirmed non-interactively with `-y, --yes`; a
-/// [DeleteConfirmationStyle.typeName] delete only with `--confirm-name` set to
-/// the resource's name.
+/// Follows the GitHub CLI's convention: in a terminal the user is asked a y/N
+/// question, like `gh release delete`; without one (stdin or stdout not a
+/// terminal, CI, or `--json`) the command fails rather than waiting for
+/// input, and `-y, --yes` confirms the delete instead.
+///
+/// Deletes that ADR-0026 keeps out of the CLI (apps, accounts, teams) use
+/// `FinishInConsole` instead.
 mixin ConfirmDelete on ShorebirdCommand {
-  late final DeleteConfirmationStyle _deleteConfirmationStyle;
-
-  /// Adds the options that confirm a delete in [style].
-  ///
-  /// [DeleteConfirmationStyle.yesNo] adds `-y, --yes` and a hidden, deprecated
-  /// `--confirm-name`. [DeleteConfirmationStyle.typeName] adds only
-  /// `--confirm-name`, which [nameDescription] describes (e.g. "The app's
-  /// display name").
-  void addConfirmDeleteOptions({
-    DeleteConfirmationStyle style = DeleteConfirmationStyle.yesNo,
-    String nameDescription = 'The name',
-  }) {
-    _deleteConfirmationStyle = style;
-    switch (style) {
-      case DeleteConfirmationStyle.yesNo:
-        argParser
-          ..addFlag(
-            yesArgName,
-            abbr: 'y',
-            negatable: false,
-            help: 'Skip the confirmation prompt.',
-          )
-          ..addOption(
-            confirmNameArgName,
-            hide: true,
-            help: 'Deprecated: use --$yesArgName.',
-          );
-      case DeleteConfirmationStyle.typeName:
-        argParser.addOption(
-          confirmNameArgName,
-          valueHelp: 'name',
-          help:
-              '$nameDescription, to confirm the delete without a prompt. '
-              'Required when not running interactively.',
-        );
+  /// Adds `-y, --yes` and, unless [deprecatedConfirmName] is false (as for
+  /// commands that never had it), a hidden, deprecated `--confirm-name`.
+  void addConfirmDeleteOptions({bool deprecatedConfirmName = true}) {
+    argParser.addFlag(
+      yesArgName,
+      abbr: 'y',
+      negatable: false,
+      help: 'Skip the confirmation prompt.',
+    );
+    if (deprecatedConfirmName) {
+      argParser.addOption(
+        confirmNameArgName,
+        hide: true,
+        help: 'Deprecated: use --$yesArgName.',
+      );
     }
   }
 
@@ -86,6 +49,10 @@ mixin ConfirmDelete on ShorebirdCommand {
   /// so the user always sees it. With `--json` it is not printed, so stdout
   /// stays a single envelope.
   ///
+  /// [verb] starts the y/N question and its hint (e.g. "Remove" asks
+  /// "Remove bob@acme.com from "Acme"?"), for deletes that don't destroy
+  /// anything.
+  ///
   /// Returns `null` when the caller may proceed, or an exit code after
   /// reporting why it may not. Throws [PromptDeclinedExit] when the user
   /// declines the prompt.
@@ -93,24 +60,13 @@ mixin ConfirmDelete on ShorebirdCommand {
     required String name,
     required String description,
     required String consequence,
+    String verb = 'Delete',
   }) {
-    return switch (_deleteConfirmationStyle) {
-      DeleteConfirmationStyle.yesNo => _confirmYesNo(
-        name,
-        description,
-        consequence,
-      ),
-      DeleteConfirmationStyle.typeName => _confirmTypeName(
-        name,
-        description,
-        consequence,
-      ),
-    };
-  }
-
-  int? _confirmYesNo(String name, String description, String consequence) {
-    final hint = 'Re-run with --$yesArgName to delete $description.';
-    final confirmName = results[confirmNameArgName] as String?;
+    final hint =
+        'Re-run with --$yesArgName to ${verb.toLowerCase()} $description.';
+    final confirmName = argParser.options.containsKey(confirmNameArgName)
+        ? results[confirmNameArgName] as String?
+        : null;
     if (confirmName != null) {
       logger.warn(
         '--$confirmNameArgName is deprecated and will be removed; use '
@@ -125,42 +81,13 @@ mixin ConfirmDelete on ShorebirdCommand {
 
     if (results[yesArgName] == true) return _announce(consequence);
 
-    if (!_canPrompt) {
+    if (!shorebirdEnv.canAcceptUserInput) {
       return reportError(message: yesRequiredMessage, hint: hint);
     }
 
     _announce(consequence);
-    if (logger.confirm('Delete $description?', hint: hint)) return null;
+    if (logger.confirm('$verb $description?', hint: hint)) return null;
     logger.err('Nothing was deleted.');
-    throw PromptDeclinedExit();
-  }
-
-  int? _confirmTypeName(
-    String name,
-    String description,
-    String consequence,
-  ) {
-    final hint =
-        'Re-run with --$confirmNameArgName "$name" to delete $description.';
-    final confirmName = results[confirmNameArgName] as String?;
-    if (confirmName != null) {
-      if (confirmName == name) return _announce(consequence);
-      return reportError(
-        message: '--$confirmNameArgName "$confirmName" does not match "$name".',
-        hint: hint,
-      );
-    }
-
-    if (!_canPrompt) {
-      return reportError(message: confirmNameRequiredMessage, hint: hint);
-    }
-
-    _announce(consequence);
-    final typed = logger
-        .prompt('Type $name to confirm deletion:', hint: hint)
-        .trim();
-    if (typed == name) return null;
-    logger.err('"$typed" does not match "$name". Nothing was deleted.');
     throw PromptDeclinedExit();
   }
 
@@ -170,8 +97,4 @@ mixin ConfirmDelete on ShorebirdCommand {
     if (!isJsonMode) logger.info(consequence);
     return null;
   }
-
-  // Every case where the CLI cannot prompt gets the same message, before
-  // anything is printed.
-  bool get _canPrompt => shorebirdEnv.canAcceptUserInput;
 }

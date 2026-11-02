@@ -1,0 +1,123 @@
+name: windows_wrapper
+
+# bin/shorebird.bat is what cmd.exe users and `shell: cmd` CI steps run.
+# Nothing else exercises it: `shell: pwsh` picks bin/shorebird.ps1 instead.
+#
+# Both jobs also install the CLI the way customers do: pub get
+# --enforce-lockfile with the pinned Flutter's Dart, so a pubspec.lock that
+# Dart can't install from (one written by a newer Dart) fails here, not on
+# customers' machines.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - bin/**
+      - third_party/flutter/bin/**
+      - pubspec.lock
+      - "**/pubspec.yaml"
+      - packages/shorebird_cli/lib/src/commands/upgrade_command.dart
+      - packages/shorebird_cli/lib/src/shorebird_version.dart
+      - .github/workflows/windows_wrapper.yaml
+  push:
+    branches:
+      - main
+    paths:
+      - bin/**
+      - third_party/flutter/bin/**
+      - pubspec.lock
+      - "**/pubspec.yaml"
+      - packages/shorebird_cli/lib/src/commands/upgrade_command.dart
+      - packages/shorebird_cli/lib/src/shorebird_version.dart
+      - .github/workflows/windows_wrapper.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  shorebird_sh:
+    name: 🐧 bin/shorebird
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v7
+
+      - name: 🧪 Install and run shorebird
+        run: bin/shorebird --version
+
+  shorebird_bat:
+    name: 🪟 shorebird.bat
+    runs-on: windows-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: 🧪 Run shorebird through cmd.exe
+        shell: cmd
+        run: |
+          call bin\shorebird.bat --version || exit /b 1
+
+          call bin\shorebird.bat no-such-command
+          if not errorlevel 1 (
+            echo Expected a non-zero exit code from an unknown command.
+            exit /b 1
+          )
+
+          REM The 12th argument, after --, has = , ; and a colon, which the
+          REM old wrapper dropped, split or (with powershell -File) cut.
+          call bin\shorebird.bat -v -v -v -v -v -v -v -v flutter versions -- --k=C:/x,y;z > out.txt 2>&1
+          type out.txt
+          findstr /L /C:"named \"--k=C:/x,y;z\"" out.txt || exit /b 1
+
+      # Dart's Process.run(runInShell: true), and so the e2e tests, start
+      # `cmd /c shorebird ...` with no CALL. That path exits 0 on a bare
+      # `EXIT /B` even when dart failed, which the step above can't see.
+      - name: 🧪 Run shorebird through cmd /c, without CALL
+        shell: pwsh
+        run: |
+          cmd /c "bin\shorebird.bat no-such-command"
+          if ($LASTEXITCODE -ne 64) {
+            Write-Error "Expected exit code 64 (usage) from an unknown command, got $LASTEXITCODE."
+            exit 1
+          }
+          cmd /c "bin\shorebird.bat --version"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Expected exit code 0 from --version, got $LASTEXITCODE."
+            exit 1
+          }
+
+      # `shorebird upgrade` sets up the new version by running bin\shorebird.bat
+      # while the running CLI still has the old snapshot mapped, so the rebuild
+      # has to move it aside rather than overwrite it. Upgrade to an empty
+      # commit on a local upstream branch.
+      - name: 🧪 Upgrade sets up the new version
+        shell: pwsh
+        run: |
+          git checkout -q -B upgrade-test
+          git -c user.name=ci -c user.email=ci@example.com commit -q --allow-empty -m "upgrade target"
+          git branch -f upgrade-target HEAD
+          git reset -q --hard HEAD~1
+          git branch -q --set-upstream-to=upgrade-target
+          cmd /c "bin\shorebird.bat upgrade"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Expected exit code 0 from upgrade, got $LASTEXITCODE."
+            exit 1
+          }
+          $head = git rev-parse HEAD
+          if ($head -ne (git rev-parse upgrade-target)) {
+            Write-Error "upgrade didn't move HEAD to upgrade-target."
+            exit 1
+          }
+          $stamp = (Get-Content bin\cache\shorebird.stamp).Trim()
+          if ($stamp -ne $head) {
+            Write-Error "upgrade didn't rebuild the CLI: stamp is $stamp, HEAD is $head."
+            exit 1
+          }
+          cmd /c "bin\shorebird.bat --version"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Expected exit code 0 from --version after upgrade, got $LASTEXITCODE."
+            exit 1
+          }

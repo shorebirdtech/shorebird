@@ -144,7 +144,7 @@ void main() {
         if (name == 'accept') {
           verify(
             () => logger.info(
-              'See it with `shorebird account orgs` or `shorebird apps list`.',
+              'See it with `shorebird orgs list` or `shorebird apps list`.',
             ),
           ).called(1);
         } else {

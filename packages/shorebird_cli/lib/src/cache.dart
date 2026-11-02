@@ -1,6 +1,7 @@
 import 'dart:ffi' show Abi;
 import 'dart:io' hide Platform;
 
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -288,13 +289,51 @@ class Cache {
     return Directory(p.join(shorebirdCacheDirectory.path, 'artifacts'));
   }
 
+  /// Where release artifacts downloaded by `shorebird patch` are kept between
+  /// runs (see [ArtifactManager.downloadReleaseArtifact]).
+  static Directory get shorebirdReleaseArtifactsDirectory {
+    return Directory(p.join(shorebirdCacheDirectory.path, 'release_artifacts'));
+  }
+
+  /// Prefix of the temporary directory each release artifact download is
+  /// written to before it moves into place.
+  static const releaseArtifactDownloadPrefix = 'download-';
+
+  /// How long a release artifact download's temporary directory is kept. One
+  /// older than this was left by a run that stopped mid-download.
+  static const releaseArtifactDownloadMaxAge = Duration(days: 1);
+
+  /// Removes cached release artifacts not used within [unusedCacheMaxAge],
+  /// and downloads left behind by runs that stopped, and returns the paths
+  /// removed. A pruned release artifact is downloaded again by the next patch
+  /// that needs it.
+  List<String> pruneUnusedReleaseArtifacts() {
+    final directory = shorebirdReleaseArtifactsDirectory;
+    if (!directory.existsSync()) return const [];
+    final downloadCutoff = clock.now().subtract(releaseArtifactDownloadMaxAge);
+    final removed = <String>[];
+    // Removing another run's download directory breaks the rule that only
+    // the function that created a temporary directory deletes it, but a run
+    // that stopped mid-download leaves one behind with nobody to delete it,
+    // and a live download is never this old.
+    for (final entry in directory.listSync()) {
+      final modified = entry.statSync().modified;
+      final isStale =
+          p.basename(entry.path).startsWith(releaseArtifactDownloadPrefix)
+          ? !modified.isAfter(downloadCutoff)
+          : isUnusedSince(modified);
+      if (isStale && deleteIgnoringErrors(entry)) removed.add(entry.path);
+    }
+    return removed;
+  }
+
   final List<CachedArtifact> _artifacts = [];
 
-  /// The storage base url.
-  String get storageBaseUrl => 'https://storage.googleapis.com';
-
-  /// The storage bucket host.
-  String get storageBucket => 'download.shorebird.dev';
+  /// Where the Shorebird tools for the current engine revision are
+  /// downloaded from: `shorebird/<engine revision>/` under
+  /// [ShorebirdEnv.downloadUrl].
+  String get shorebirdToolsBaseUrl =>
+      '${shorebirdEnv.downloadUrl}/shorebird/${shorebirdEnv.shorebirdEngineRevision}';
 
   /// Clear the cache.
   Future<void> clear() async {
@@ -400,7 +439,7 @@ allowed to access $url.''');
 
       updateProgress.fail();
       throw CacheUpdateFailure(
-        '''Failed to download $fileName: ${response.statusCode} ${response.reasonPhrase}''',
+        '''Failed to download $fileName from $url: ${response.statusCode} ${response.reasonPhrase}''',
       );
     }
 
@@ -426,7 +465,7 @@ allowed to access $url.''');
       // be re-downloaded.
       artifactDirectory.deleteSync(recursive: true);
       throw CacheUpdateFailure(
-        '''Failed to download $fileName: checksum mismatch''',
+        '''Failed to download $fileName from $url: checksum mismatch''',
       );
     }
 
@@ -492,7 +531,7 @@ class AotToolsArtifact extends CachedArtifact {
 
   @override
   Future<String> get storageUrl async =>
-      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
+      '${cache.shorebirdToolsBaseUrl}/$fileName';
 
   @override
   String? get checksum => null;
@@ -543,7 +582,7 @@ class AnalyzeSnapshotMacosArtifact extends CachedArtifact {
 
   @override
   Future<String> get storageUrl async =>
-      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
+      '${cache.shorebirdToolsBaseUrl}/$fileName';
 
   @override
   String? get checksum => null;
@@ -594,7 +633,7 @@ class PatchArtifact extends CachedArtifact {
       artifactName += 'windows-x64.zip';
     }
 
-    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
+    return '${cache.shorebirdToolsBaseUrl}/$artifactName';
   }
 
   Future<bool> _supportsArm64Patch() async {
@@ -618,6 +657,16 @@ class BundleToolArtifact extends CachedArtifact {
   /// {@macro bundle_tool_artifact}
   BundleToolArtifact({required super.cache, required super.platform});
 
+  /// The pinned bundletool release.
+  ///
+  /// Bump this and [sha256] together with `scripts/update_bundletool.sh`,
+  /// which the weekly `update_bundletool` workflow runs for us.
+  static const version = '1.18.3';
+
+  /// SHA-256 checksum of `bundletool-all-<version>.jar`.
+  static const sha256 =
+      'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29';
+
   @override
   String get fileName => 'bundletool.jar';
 
@@ -625,17 +674,8 @@ class BundleToolArtifact extends CachedArtifact {
   bool get isExecutable => false;
 
   @override
-  Future<String> get storageUrl async {
-    return 'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar';
-  }
+  Future<String> get storageUrl async => shorebirdEnv.bundletoolUrl;
 
   @override
-  String? get checksum =>
-      // SHA-256 checksum of the bundletool.jar file.
-      // When updating the bundletool version, be sure to update this checksum.
-      // This can be done by running the following command:
-      // ```shell
-      // shasum --algorithm 256 /path/to/file
-      // ```
-      '''675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c''';
+  String? get checksum => sha256;
 }

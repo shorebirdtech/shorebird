@@ -6,7 +6,9 @@ import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
 import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -185,14 +187,15 @@ class ShorebirdValidator {
         platform.environment[githubActionsEnvVar] == 'true') {
       // Neither SHOREBIRD_TOKEN nor the ID token request variables GitHub
       // sets for a job granted `permissions: id-token: write`.
-      const oidcHint =
+      final console = ShorebirdWebConsole.baseUri;
+      final oidcHint =
           'To sign in from GitHub Actions without a stored secret, grant the '
           'job `permissions: id-token: write`, set $shorebirdProjectIdEnvVar '
           'to the id of your project, and add a GitHub Actions trust rule for '
-          'this workflow at https://console.shorebird.dev.';
-      const apiKeyHint =
+          'this workflow at $console.';
+      final apiKeyHint =
           'Or set $shorebirdTokenEnvVar to a Shorebird API key from '
-          'https://console.shorebird.dev.';
+          '$console.';
       logger
         ..err('You must be logged in to run this command.')
         ..info(oidcHint)
@@ -304,7 +307,11 @@ To fix, update your pubspec.yaml to include the following:
       return;
     }
 
-    final flavorValidator = FlavorValidator(flavorArg: flavorArg);
+    final flavorValidator = FlavorValidator(
+      flavorArg: flavorArg,
+      platform: releasePlatform,
+      platformFlavors: _appleFlavors(releasePlatform),
+    );
     final issues = await flavorValidator.validate();
     if (validationIssuesContainsError(issues)) {
       for (final issue in issues) {
@@ -320,6 +327,26 @@ To fix, update your pubspec.yaml to include the following:
       for (final issue in issues) {
         logger.warn(issue.message);
       }
+    }
+  }
+
+  /// The flavors (Xcode schemes) of the Apple project for [releasePlatform],
+  /// or null when it isn't an Apple platform or the schemes can't be read
+  /// (such as an add-to-app module, which has no `ios/Runner.xcodeproj`).
+  Set<String>? _appleFlavors(ReleasePlatform releasePlatform) {
+    final applePlatform = switch (releasePlatform) {
+      ReleasePlatform.ios => ApplePlatform.ios,
+      ReleasePlatform.macos => ApplePlatform.macos,
+      _ => null,
+    };
+    if (applePlatform == null) return null;
+    try {
+      return apple.flavors(
+        platform: applePlatform,
+        includeUserSchemes: true,
+      );
+    } on Exception {
+      return null;
     }
   }
 

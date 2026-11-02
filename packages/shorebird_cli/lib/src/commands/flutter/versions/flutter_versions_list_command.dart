@@ -36,7 +36,7 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
     final List<String> versions;
     try {
       versions = await shorebirdFlutter.getVersions();
-      progress?.cancel();
+      progress?.complete();
     } on Exception catch (error) {
       if (isJsonMode) {
         emitJsonError(

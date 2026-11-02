@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -67,6 +68,7 @@ typedef ObtainCredentialsViaLoopbackLogin =
       required Uri authBaseUrl,
       required void Function(String) userPrompt,
       Duration timeout,
+      Future<void> Function(oauth2.Credentials credentials)? completeLogin,
     });
 
 /// Callback for obtaining Shorebird access credentials via the device
@@ -175,10 +177,16 @@ class StoredLoginSource extends CredentialSource {
     final error = challenge?.parameters['error'];
     if (error == null) return;
 
-    final uri = challenge!.parameters['error_uri'];
+    // A token from an auth service the server does not trust is refused
+    // like an expired one, so say which to set when that may be why.
+    final description = [
+      ?challenge!.parameters['error_description'],
+      ?shorebirdEnv.authServiceMismatch,
+    ].join(' ');
+    final uri = challenge.parameters['error_uri'];
     throw oauth2.AuthorizationException(
       error,
-      challenge.parameters['error_description'],
+      description.isEmpty ? null : description,
       uri == null ? null : Uri.parse(uri),
     );
   }
@@ -485,10 +493,11 @@ class Auth {
   /// Logs in the user via the Shorebird loopback OAuth flow.
   Future<void> login({required void Function(String) prompt}) {
     return _login(
-      (client) => _obtainCredentialsViaLoopbackLogin(
+      (client, completeLogin) => _obtainCredentialsViaLoopbackLogin(
         httpClient: client,
         authBaseUrl: _authServiceUri,
         userPrompt: prompt,
+        completeLogin: completeLogin,
       ),
     );
   }
@@ -503,16 +512,26 @@ class Auth {
     required void Function(shorebird_oauth.DeviceAuthorization) prompt,
   }) {
     return _login(
-      (client) => _obtainCredentialsViaDeviceLogin(
-        httpClient: client,
-        authBaseUrl: _authServiceUri,
-        userPrompt: prompt,
+      (client, completeLogin) async => completeLogin(
+        await _obtainCredentialsViaDeviceLogin(
+          httpClient: client,
+          authBaseUrl: _authServiceUri,
+          userPrompt: prompt,
+        ),
       ),
     );
   }
 
+  /// Runs [obtainCredentials], which must call the `completeLogin` it is
+  /// given with the credentials it obtains. `completeLogin` looks up the
+  /// user and stores the credentials, so a loopback login can tell the
+  /// browser how the whole login went, not only the token exchange.
   Future<void> _login(
-    Future<oauth2.Credentials> Function(http.Client client) obtainCredentials,
+    Future<void> Function(
+      http.Client client,
+      Future<void> Function(oauth2.Credentials credentials) completeLogin,
+    )
+    obtainCredentials,
   ) async {
     if (isAuthenticated) {
       throw UserAlreadyLoggedInException(email: _email);
@@ -520,20 +539,21 @@ class Auth {
 
     final client = UserAgentClient(httpClient: http.Client());
     try {
-      final credentials = await obtainCredentials(client);
-      final oauthClient = _clientFor(credentials);
+      await obtainCredentials(client, (credentials) async {
+        final oauthClient = _clientFor(credentials);
 
-      final codePushClient = _buildCodePushClient(
-        httpClient: oauthClient,
-        hostedUri: shorebirdEnv.hostedUri,
-      );
+        final codePushClient = _buildCodePushClient(
+          httpClient: oauthClient,
+          hostedUri: shorebirdEnv.hostedUri,
+        );
 
-      final user = await codePushClient.getCurrentUser();
-      if (user == null) throw UserNotFoundException();
+        final user = await codePushClient.getCurrentUser();
+        if (user == null) throw UserNotFoundException();
 
-      _oauthClient = oauthClient;
-      _email = user.email;
-      _flushCredentials(oauthClient.credentials);
+        _oauthClient = oauthClient;
+        _email = user.email;
+        _flushCredentials(oauthClient.credentials);
+      });
     } finally {
       client.close();
     }
@@ -697,7 +717,7 @@ class Auth {
         // In --json mode, info goes to stderr, never into the envelope.
         logger.info(
           'This job can sign in with GitHub Actions OIDC instead: add a '
-          'GitHub Actions trust rule at https://console.shorebird.dev, set '
+          'GitHub Actions trust rule at ${ShorebirdWebConsole.baseUri}, set '
           '$shorebirdProjectIdEnvVar to the id of its project, and remove '
           '$shorebirdTokenEnvVar to stop storing a long-lived secret.',
         );

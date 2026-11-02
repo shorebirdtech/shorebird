@@ -22,6 +22,9 @@ class ArgumentDescriber {
   final String? defaultValue;
 }
 
+/// Example value for `--release-version` in help and error messages.
+const releaseVersionExample = '1.0.0+1';
+
 /// A class that houses the name of arguments that are shared between different
 /// commands and layers.
 class CommonArguments {
@@ -110,6 +113,17 @@ The path for a public key .pem file that will be used to validate patch signatur
 ''',
   );
 
+  /// Whether a release signs its patches. On by default: with no key of the
+  /// customer's, the build embeds a key Shorebird manages.
+  static const patchSigningArg = ArgumentDescriber(
+    name: 'patch-signing',
+    description: '''
+Sign every patch to this release, so apps install only patches signed with its key.
+On by default: the build embeds a key Shorebird manages for your organization.
+To sign patches with your own key, pass --public-key-path or --public-key-cmd.
+--no-patch-signing builds a release whose patches are unsigned.''',
+  );
+
   /// An argument that allows the user to specify a private key file that will
   /// be used to sign the patch artifact.
   static const privateKeyArg = ArgumentDescriber(
@@ -143,7 +157,7 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
   /// more thoroughly explains what the release version is used for.
   static const releaseVersionArg = ArgumentDescriber(
     name: 'release-version',
-    description: 'The version of the release (e.g. "1.0.0+1").',
+    description: 'The version of the release (e.g. "$releaseVersionExample").',
   );
 
   /// An argument that identifies a patch by its number within a release.
@@ -161,7 +175,8 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
   /// Help text for release version arguments in patch commands, where the
   /// version identifies which release the patch belongs to.
   static const patchReleaseVersionDescription =
-      'The version of the release the patch belongs to (e.g. "1.0.0+1").';
+      'The version of the release the patch belongs to '
+      '(e.g. "$releaseVersionExample").';
 
   /// The Flutter --obfuscate argument.
   static const obfuscateArg = ArgumentDescriber(

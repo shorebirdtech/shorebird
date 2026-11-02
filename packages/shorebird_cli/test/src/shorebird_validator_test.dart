@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/auth/github_actions_oidc.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -20,6 +21,7 @@ import 'mocks.dart';
 void main() {
   useTempWorkingDirectory();
   group(ShorebirdValidator, () {
+    late Apple apple;
     late Auth auth;
     late ShorebirdLogger logger;
     late TestNativePlatform platform;
@@ -31,6 +33,7 @@ void main() {
       return runScoped(
         () => body(),
         values: {
+          appleRef.overrideWith(() => apple),
           authRef.overrideWith(() => auth),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
@@ -40,6 +43,7 @@ void main() {
     }
 
     setUp(() {
+      apple = MockApple();
       auth = MockAuth();
       logger = MockShorebirdLogger();
       platform = TestNativePlatform(
@@ -550,6 +554,71 @@ The default app id test will be used. Pass --flavor=<name> to target a flavor.''
             });
           });
 
+          group('when the Xcode project has no scheme for the flavor', () {
+            setUp(() {
+              when(
+                () => apple.flavors(
+                  platform: ApplePlatform.ios,
+                  includeUserSchemes: true,
+                ),
+              ).thenReturn({});
+            });
+
+            test('fails validation before building', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: 'flavorA',
+                    releasePlatform: ReleasePlatform.ios,
+                  ),
+                ),
+                throwsA(
+                  isA<ValidationFailedException>().having(
+                    (e) => e.message,
+                    'message',
+                    contains('The iOS project has no Xcode scheme'),
+                  ),
+                ),
+              );
+            });
+
+            test('does not warn when no flavor is given', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: null,
+                    releasePlatform: ReleasePlatform.ios,
+                  ),
+                ),
+                completes,
+              );
+              verifyNever(() => logger.warn(any()));
+            });
+          });
+
+          group('when the Xcode schemes cannot be read', () {
+            setUp(() {
+              when(
+                () => apple.flavors(
+                  platform: ApplePlatform.ios,
+                  includeUserSchemes: true,
+                ),
+              ).thenThrow(Exception('no schemes'));
+            });
+
+            test('passes validation', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: 'flavorA',
+                    releasePlatform: ReleasePlatform.ios,
+                  ),
+                ),
+                completes,
+              );
+            });
+          });
+
           group('when a flavor arg is provided that exists in the project', () {
             test('passes validation', () async {
               await expectLater(
@@ -561,6 +630,7 @@ The default app id test will be used. Pass --flavor=<name> to target a flavor.''
                 ),
                 completes,
               );
+              verifyZeroInteractions(apple);
             });
           });
         });

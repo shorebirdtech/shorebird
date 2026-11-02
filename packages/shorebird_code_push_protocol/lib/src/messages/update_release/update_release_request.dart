@@ -39,10 +39,12 @@ class UpdateReleaseRequest {
     return UpdateReleaseRequest.fromJson(json);
   }
 
-  /// The status of a release.
+  /// The desired status of the release. If provided, [platform] must also be
+  /// provided If null, the status will not be updated.
   final ReleaseStatus? status;
 
-  /// A platform to which a Shorebird release can be deployed.
+  /// The platform of the release. If provided, [status] must also be
+  /// provided.
   final ReleasePlatform? platform;
 
   /// Additional information about the command that was run to

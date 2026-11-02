@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:test/test.dart';
@@ -60,43 +61,39 @@ $body
       verifyNever(() => logger.err(any()));
     });
 
-    test('logs error and hint and exits when the file is missing', () {
+    test('exits with an error and the hint when the file is missing', () {
       final plistFile = File(p.join(tempDir.path, 'Info.plist'));
 
       expect(
         () => runWithOverrides(
           () => readReleaseVersionFromInfoPlist(plistFile, hint: hint),
         ),
-        exitsWithCode(ExitCode.software),
+        exitsWithError(
+          message: 'No Info.plist file found at ${plistFile.path}',
+          hint: hint,
+          exitCode: ExitCode.software,
+        ),
       );
-      verify(
-        () => logger.err('No Info.plist file found at ${plistFile.path}'),
-      ).called(1);
-      verify(() => logger.info(hint)).called(1);
     });
 
-    test('logs error and hint and exits when there is no version', () {
+    test('exits with an error and the hint when there is no version', () {
       final plistFile = writePlist('');
 
       expect(
         () => runWithOverrides(
           () => readReleaseVersionFromInfoPlist(plistFile, hint: hint),
         ),
-        exitsWithCode(ExitCode.software),
-      );
-      verify(
-        () => logger.err(
-          any(
-            that: startsWith(
-              'Failed to determine release version from ${plistFile.path}',
-            ),
+        exitsWithError(
+          message: startsWith(
+            'Failed to determine release version from ${plistFile.path}',
           ),
+          hint: hint,
+          exitCode: ExitCode.software,
         ),
-      ).called(1);
-      verify(() => logger.info(hint)).called(1);
+      );
     });
 
-    test('logs error and exits when the file cannot be parsed', () {
+    test('exits with an error and no hint when the file cannot be parsed', () {
       final plistFile = File(p.join(tempDir.path, 'Info.plist'))
         ..writeAsBytesSync([0xff, 0xfe, 0xfd]);
 
@@ -104,18 +101,18 @@ $body
         () => runWithOverrides(
           () => readReleaseVersionFromInfoPlist(plistFile),
         ),
-        exitsWithCode(ExitCode.software),
-      );
-      verify(
-        () => logger.err(
-          any(
-            that: startsWith(
-              'Failed to determine release version from ${plistFile.path}',
+        throwsA(
+          allOf(
+            isCommandError(
+              message: startsWith(
+                'Failed to determine release version from ${plistFile.path}',
+              ),
+              exitCode: ExitCode.software,
             ),
+            isA<CommandError>().having((e) => e.hint, 'hint', isNull),
           ),
         ),
-      ).called(1);
-      verifyNever(() => logger.info(any()));
+      );
     });
   });
 }

@@ -1,4 +1,5 @@
 import 'package:args/args.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -21,6 +22,39 @@ void main() {
       expect(ReleaseType.iosFramework.releasePlatform, ReleasePlatform.ios);
       expect(ReleaseType.aar.releasePlatform, ReleasePlatform.android);
       expect(ReleaseType.windows.releasePlatform, ReleasePlatform.windows);
+    });
+
+    test('isAddToApp', () {
+      expect(ReleaseType.aar.isAddToApp, isTrue);
+      expect(ReleaseType.iosFramework.isAddToApp, isTrue);
+      expect(ReleaseType.android.isAddToApp, isFalse);
+      expect(ReleaseType.ios.isAddToApp, isFalse);
+      expect(ReleaseType.windows.isAddToApp, isFalse);
+    });
+
+    group('releaseCommand', () {
+      test('is the bare command for an app release', () {
+        expect(ReleaseType.ios.releaseCommand(), 'shorebird release ios');
+        expect(
+          ReleaseType.android.releaseCommand(releaseVersion: '2.0.0+3'),
+          'shorebird release android',
+        );
+      });
+
+      test('passes the given --release-version for add-to-app', () {
+        expect(
+          ReleaseType.aar.releaseCommand(releaseVersion: '2.0.0+3'),
+          'shorebird release aar --release-version=2.0.0+3',
+        );
+      });
+
+      test('passes an example --release-version for add-to-app', () {
+        expect(
+          ReleaseType.iosFramework.releaseCommand(),
+          'shorebird release ios-framework '
+          '--release-version=$releaseVersionExample',
+        );
+      });
     });
 
     group('releaseTypes', () {
@@ -61,28 +95,213 @@ void main() {
         });
       });
 
-      group('when the platforms is provided as a raw arg', () {
-        test('throws an ArgumentError if the platform is invalid', () {
+      group('when the platform is provided as a raw arg', () {
+        test('throws if the platform is invalid, listing valid platforms', () {
           expect(
-            () => parser.parse(['foo']).releaseTypes.toList(),
-            throwsArgumentError,
+            () => parser.parse(['rollback']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Invalid platform: "rollback".
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+              ),
+            ),
           );
         });
 
         test('parses the release types', () {
-          expect(parser.parse(['android', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['android']).releaseTypes.toList(), [
             ReleaseType.android,
           ]);
-          expect(parser.parse(['ios', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['ios']).releaseTypes.toList(), [
             ReleaseType.ios,
           ]);
-          expect(parser.parse(['ios-framework', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['ios-framework']).releaseTypes.toList(), [
             ReleaseType.iosFramework,
           ]);
-          expect(parser.parse(['aar', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['aar']).releaseTypes.toList(), [
             ReleaseType.aar,
           ]);
         });
+
+        test('accepts options before the platform', () {
+          parser.addOption('release-version');
+          expect(
+            parser
+                .parse(['--release-version=1.0.0+1', 'android'])
+                .releaseTypes
+                .toList(),
+            [ReleaseType.android],
+          );
+        });
+
+        test('ignores arguments after --', () {
+          expect(
+            parser
+                .parse(['android', '--', '--no-pub', 'lib/main.dart'])
+                .releaseTypes
+                .toList(),
+            [ReleaseType.android],
+          );
+        });
+
+        test('throws on a second positional that looks like a version', () {
+          expect(
+            () => parser.parse(['android', '1.0.0+1']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "1.0.0+1".
+Did you mean --release-version=1.0.0+1?''',
+              ),
+            ),
+          );
+        });
+
+        test('throws on a second platform, suggesting --platforms', () {
+          expect(
+            () => parser.parse(['android', 'ios']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "ios".
+Did you mean --platforms=android,ios?''',
+              ),
+            ),
+          );
+        });
+
+        test('throws on any other second positional', () {
+          expect(
+            () => parser.parse(['android', 'staging']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "staging".
+Arguments for Flutter go after --.''',
+              ),
+            ),
+          );
+        });
+
+        test('accepts a .dart second positional as the target', () {
+          expect(
+            parser
+                .parse(['android', 'lib/main_prod.dart'])
+                .releaseTypes
+                .toList(),
+            [ReleaseType.android],
+          );
+        });
+
+        test('throws on a third positional after a .dart target', () {
+          expect(
+            () => parser
+                .parse(['android', 'lib/main_prod.dart', '1.0.0+1'])
+                .releaseTypes
+                .toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "1.0.0+1".
+Did you mean --release-version=1.0.0+1?''',
+              ),
+            ),
+          );
+        });
+        test('throws on a .dart positional for aar', () {
+          expect(
+            () => parser
+                .parse(['aar', 'lib/main_prod.dart'])
+                .releaseTypes
+                .toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "lib/main_prod.dart".
+aar builds always use lib/main.dart. Remove "lib/main_prod.dart".''',
+              ),
+            ),
+          );
+        });
+      });
+
+      group('positionalTarget', () {
+        test('is the .dart second positional after a platform', () {
+          expect(
+            parser.parse(['android', 'lib/main_prod.dart']).positionalTarget,
+            equals('lib/main_prod.dart'),
+          );
+        });
+
+        test('is null without a second positional', () {
+          expect(parser.parse(['android']).positionalTarget, isNull);
+        });
+
+        test('is null when the second positional is not .dart', () {
+          expect(parser.parse(['android', 'staging']).positionalTarget, isNull);
+        });
+
+        test('is null when the .dart path comes after --', () {
+          expect(
+            parser.parse(['android', '--', 'lib/main.dart']).positionalTarget,
+            isNull,
+          );
+        });
+
+        test('is null when --platforms is given', () {
+          expect(
+            parser.parse([
+              '--platforms',
+              'android',
+              'lib/main_prod.dart',
+            ]).positionalTarget,
+            isNull,
+          );
+        });
+
+        test('is null for aar, which takes no target', () {
+          expect(
+            parser.parse(['aar', 'lib/main_prod.dart']).positionalTarget,
+            isNull,
+          );
+        });
+
+        test('is the .dart second positional for ios-framework', () {
+          expect(
+            parser.parse([
+              'ios-framework',
+              'lib/main_prod.dart',
+            ]).positionalTarget,
+            equals('lib/main_prod.dart'),
+          );
+        });
+
+        test('is null when the first positional is not a platform', () {
+          expect(
+            parser.parse(['web', 'lib/main_prod.dart']).positionalTarget,
+            isNull,
+          );
+        });
+      });
+
+      test('PlatformArgumentException.toString is the message', () {
+        expect(
+          const PlatformArgumentException('nope').toString(),
+          equals('nope'),
+        );
       });
     });
   });

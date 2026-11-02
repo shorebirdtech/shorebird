@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/codecov.dart';
 import 'package:shorebird_ci/src/cspell.dart';
+import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/git.dart';
 import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/pubspec.dart';
@@ -178,7 +179,21 @@ class RepositoryAnalyzer {
         )
         .toSet();
 
-    final targets = {...directlyChanged};
+    // A workspace member has no lockfile of its own: a change to the
+    // workspace root's pubspec.yaml or pubspec.lock can change what it
+    // resolves to.
+    final resolver = DependencyResolver(repository.root.path);
+    final changedSet = changedFiles.map(p.posix.normalize).toSet();
+    final targets = {
+      ...directlyChanged,
+      for (final package in packages)
+        if (resolver
+            .workspaceFiles(
+              posixRelative(package.rootPath, from: repository.root.path),
+            )
+            .any(changedSet.contains))
+          package,
+    };
     for (final package in packages) {
       final deps = _recursivePackageDependencies(
         repository: repository,

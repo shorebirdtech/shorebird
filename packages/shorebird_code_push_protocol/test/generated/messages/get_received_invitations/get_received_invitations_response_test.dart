@@ -19,7 +19,7 @@ void main() {
       );
       final parsed = GetReceivedInvitationsResponse.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

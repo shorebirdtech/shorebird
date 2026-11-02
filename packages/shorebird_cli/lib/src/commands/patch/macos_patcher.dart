@@ -6,6 +6,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -18,7 +19,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template macos_patcher}
@@ -101,7 +101,11 @@ class MacosPatcher extends Patcher
     );
 
     if (!File(_arm64AotOutputPath).existsSync()) {
-      throw Exception('Failed to build arm64 AOT snapshot');
+      throw CommandError(
+        message: 'Failed to build the arm64 AOT snapshot.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     await buildAppleElfAotSnapshot(
@@ -111,7 +115,11 @@ class MacosPatcher extends Patcher
     );
 
     if (!File(_x64AotOutputPath).existsSync()) {
-      throw Exception('Failed to build x64 AOT snapshot');
+      throw CommandError(
+        message: 'Failed to build the x64 AOT snapshot.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     // Copy the kernel file to the build directory so that it can be used
@@ -223,8 +231,11 @@ class MacosPatcher extends Patcher
       progress.complete();
       return diffBase;
     } on Exception catch (error) {
-      progress.fail('$error');
-      throw ProcessExit(ExitCode.software.code);
+      progress.fail();
+      throw CommandError(
+        message: 'Failed to generate the patch diff base: $error',
+        exitCode: ExitCode.software,
+      );
     }
   }
 
@@ -232,8 +243,11 @@ class MacosPatcher extends Patcher
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
     final appPath = artifactManager.getMacOSAppDirectory(flavor: flavor)?.path;
     if (appPath == null) {
-      logger.err('Unable to find .app directory');
-      throw ProcessExit(ExitCode.software.code);
+      throw CommandError(
+        message: 'Unable to find the .app directory in the macOS build output.',
+        hint: 'Re-run with --verbose to see the build output.',
+        exitCode: ExitCode.software,
+      );
     }
 
     return readReleaseVersionFromInfoPlist(

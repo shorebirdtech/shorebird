@@ -1,6 +1,8 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/flutter_revision_issue.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform_details.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
 /// {@template release}
@@ -15,12 +17,14 @@ class Release {
     required this.appId,
     required this.version,
     required this.flutterRevision,
-    required this.platformStatuses,
+    required this.platforms,
     required this.createdAt,
     required this.updatedAt,
     this.flutterVersion,
     this.displayName,
+    @deprecated this.platformStatuses,
     this.notes,
+    this.flutterRevisionIssue,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Release].
@@ -35,16 +39,25 @@ class Release {
         flutterRevision: json['flutter_revision'] as String,
         flutterVersion: json['flutter_version'] as String?,
         displayName: json['display_name'] as String?,
-        platformStatuses: (json['platform_statuses'] as Map<String, dynamic>)
-            .map(
+        platformStatuses: (json['platform_statuses'] as Map<String, dynamic>?)
+            ?.map(
               (key, value) => MapEntry(
                 ReleasePlatform.fromJson(key),
                 ReleaseStatus.fromJson(value as String),
               ),
             ),
+        platforms: (json['platforms'] as Map<String, dynamic>).map(
+          (key, value) => MapEntry(
+            ReleasePlatform.fromJson(key),
+            ReleasePlatformDetails.fromJson(value as Map<String, dynamic>),
+          ),
+        ),
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         notes: json['notes'] as String?,
+        flutterRevisionIssue: FlutterRevisionIssue.maybeFromJson(
+          json['flutter_revision_issue'] as Map<String, dynamic>?,
+        ),
       ),
     );
   }
@@ -77,8 +90,15 @@ class Release {
   /// The display name for the release.
   final String? displayName;
 
-  /// The status of the release for each platform.
-  final Map<ReleasePlatform, ReleaseStatus> platformStatuses;
+  /// The status of the release for each platform. Deprecated: read
+  /// `platforms`, which carries the same statuses with each platform's
+  /// signing. Still sent, for CLIs that predate `platforms`.
+  @deprecated
+  final Map<ReleasePlatform, ReleaseStatus>? platformStatuses;
+
+  /// The release on each platform it has been released to: that
+  /// platform's status and signing.
+  final Map<ReleasePlatform, ReleasePlatformDetails> platforms;
 
   /// The date and time the release was created.
   final DateTime createdAt;
@@ -89,6 +109,12 @@ class Release {
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
+  /// A known problem with the Flutter revision a release was built on,
+  /// which Shorebird marked bad. Absent from a release whose revision has
+  /// no mark. A mark names the platforms it affects; a release on none of
+  /// them is not affected.
+  final FlutterRevisionIssue? flutterRevisionIssue;
+
   /// Converts a [Release] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -98,12 +124,16 @@ class Release {
       'flutter_revision': flutterRevision,
       'flutter_version': ?flutterVersion,
       'display_name': ?displayName,
-      'platform_statuses': platformStatuses.map(
+      'platform_statuses': ?platformStatuses?.map(
+        (key, value) => MapEntry(key.toJson(), value.toJson()),
+      ),
+      'platforms': platforms.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
       'notes': ?notes,
+      'flutter_revision_issue': ?flutterRevisionIssue?.toJson(),
     };
   }
 
@@ -116,9 +146,11 @@ class Release {
     flutterVersion,
     displayName,
     mapHash(platformStatuses),
+    mapHash(platforms),
     createdAt,
     updatedAt,
     notes,
+    flutterRevisionIssue,
   ]);
 
   @override
@@ -132,8 +164,10 @@ class Release {
         flutterVersion == other.flutterVersion &&
         displayName == other.displayName &&
         mapsEqual(platformStatuses, other.platformStatuses) &&
+        mapsEqual(platforms, other.platforms) &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
-        notes == other.notes;
+        notes == other.notes &&
+        flutterRevisionIssue == other.flutterRevisionIssue;
   }
 }

@@ -257,14 +257,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.2"
-  hotreloader:
-    dependency: transitive
-    description:
-      name: hotreloader
-      sha256: "66871df468fc24eee81f1a0a7cb98acc104716f9b7376d355437b48d633c4ebf"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.4.0"
   http:
     dependency: transitive
     description:
@@ -305,14 +297,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
-  iregexp:
-    dependency: transitive
-    description:
-      name: iregexp
-      sha256: c79119931b7ae9c0b6327adaa4495811813fcae7e6236ac68c15f45ca857d38b
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.0"
   json_annotation:
     dependency: transitive
     description:
@@ -321,14 +305,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.12.0"
-  json_path:
-    dependency: transitive
-    description:
-      name: json_path
-      sha256: "99cef94ca7b604ad85b9442bc8852e55396f559c08c0ab961d10b90b730c326f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.9.0"
   json_serializable:
     dependency: transitive
     description:
@@ -361,14 +337,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.12.19"
-  maybe_just_nothing:
-    dependency: transitive
-    description:
-      name: maybe_just_nothing
-      sha256: "57af3cacbbe57d5889a4479983755b76551db3c8862aa6335f57f50657945054"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.0"
   meta:
     dependency: transitive
     description:
@@ -505,14 +473,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
-  quiver:
-    dependency: transitive
-    description:
-      name: quiver
-      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.2"
   resp_client:
     dependency: transitive
     description:
@@ -529,14 +489,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
-  rfc_6901:
-    dependency: transitive
-    description:
-      name: rfc_6901
-      sha256: "6a43b1858dca2febaf93e15639aa6b0c49ccdfd7647775f15a499f872b018154"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.1"
   shelf:
     dependency: transitive
     description:
@@ -545,14 +497,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.2"
-  shelf_hotreload:
-    dependency: transitive
-    description:
-      name: shelf_hotreload
-      sha256: "449f68ce2d087a030c2bfbb40e6925c63fac3dcb502a67388a7139ce72102e7a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   shelf_packages_handler:
     dependency: transitive
     description:
@@ -621,10 +565,10 @@ packages:
     dependency: transitive
     description:
       name: space_gen
-      sha256: "7f4f9d751b1821343733320e339d7b2751082c4035a567700ec35b80168e1902"
+      sha256: a6b48632bac7f9d475d0bd23f734fc26d52014831409a4c4f3fac0d2e9f9ba01
       url: "https://pub.dev"
     source: hosted
-    version: "1.5.0"
+    version: "1.6.0"
   stack_trace:
     dependency: transitive
     description:

@@ -20,7 +20,7 @@ class MetricsUsersCommand extends MetricsSubcommand<GetUniqueUsersResponse> {
     );
     argParser.addOption(
       'group-by',
-      allowed: GetUniqueUsersParameter3.values.map((g) => g.value),
+      allowed: GetUniqueUsersGroupBy.values.map((g) => g.value),
       help:
           'Break the total down by a dimension. With release_version, '
           'devices too old to report one are grouped as "(unknown)".',

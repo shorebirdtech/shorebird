@@ -97,6 +97,8 @@ class MockCodePushClientWrapper extends Mock implements CodePushClientWrapper {}
 
 class MockCodeSigner extends Mock implements CodeSigner {}
 
+class MockCommand extends Mock implements Command<int> {}
+
 class MockDevicectl extends Mock implements Devicectl {}
 
 class MockDiff extends Mock implements Diff {}
