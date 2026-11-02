@@ -1,8 +1,43 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked aarch
  -->
+
+## 1.6.135 (November 2, 2026)
+
+- 🐦 Flutter 3.47.9 / Dart 3.13.7 support
+  - Exit cleanly with an actionable error when a Windows path exceeds MAX_PATH
+  - Fix the StateError when native assets compile under pub workspaces,
+    monorepos or symlinked directories
+  - Add the extensible ContextMenuButtonKind so packages can add selection
+    menu actions without breaking exhaustive switches
+- ✨ Route updater HTTP through the platform stack: NSURLSession on iOS and
+  macOS, HttpURLConnection on Android, with BoringSSL signature checks
+  everywhere
+- ✨ Send every patch event through one queue, removed only once the server
+  has it
+- ✨ Add the host CPU architecture to the User-Agent
+- ✨ Warn when the iOS --split-debug-info dSYM has no DWARF
+- 🐛 Fail Apple patches that link below 20% by default
+- 🐛 Use the app.dill Flutter copied for Apple builds, and pick the build's
+  own kernel when another build runs
+- 🐛 Report blocked asset and native diffs as errors when the CLI can't prompt
+- 🐛 Show the macOS re-signing note only for engines without the fix
+- 🐛 Point macOS release output at the notarization docs
+- 🐛 Say that shorebird preview can't use iOS simulators
+- 🐛 Say why the device rejected the app in shorebird preview
+- 🐛 Tell apart apps with the same name in shorebird preview
+- 🐛 Name the next step for missing apps, releases and failed downloads
+- 🐛 Explain when an Android version name can't match any iOS release
+- 🐛 shorebird init detects only buildable flavors with several flavor
+  dimensions
+- 🐛 Don't report the launch start when iOS configures the updater
+- 🐛 Hold the resolved base VM snapshot instead of re-resolving
+- 🐛 Build the updater for aarch64-apple-ios-sim on arm64 simulator engines
+- 🐛 Report a download cut off mid-body as a network failure, keeping the
+  underlying network error
+- 🐛 Roll zip to 9.0.5 for GHSA-m665-v7pm-7grj
 
 ## 1.6.134 (October 27, 2026)
 
