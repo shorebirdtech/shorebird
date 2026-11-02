@@ -3,6 +3,7 @@ export 'android_patcher.dart';
 export 'desktop_patcher.dart';
 export 'ios_framework_patcher.dart';
 export 'ios_patcher.dart';
+export 'kernel_build_folder.dart';
 export 'linux_patcher.dart';
 export 'macos_patcher.dart';
 export 'patch_command.dart';

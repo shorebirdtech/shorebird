@@ -41,6 +41,9 @@ class IosFrameworkPatcher extends Patcher
   String? get supplementaryReleaseArtifactArch => 'ios_framework_supplement';
 
   @override
+  KernelBuildPlatform get kernelBuildPlatform => KernelBuildPlatform.ios;
+
+  @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
   @override
@@ -79,6 +82,8 @@ class IosFrameworkPatcher extends Patcher
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );
+
+    assertKernelBuiltForPlatform(buildResult.kernelFile);
 
     await buildAppleElfAotSnapshot(
       appDillPath: buildResult.kernelFile.path,

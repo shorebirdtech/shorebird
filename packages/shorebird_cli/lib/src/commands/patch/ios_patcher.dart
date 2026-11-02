@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
+import 'package:shorebird_cli/src/commands/patch/kernel_build_folder.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -38,6 +39,9 @@ class IosPatcher extends Patcher
     required super.flavor,
     required super.target,
   });
+
+  @override
+  KernelBuildPlatform get kernelBuildPlatform => KernelBuildPlatform.ios;
 
   @override
   ReleaseType get releaseType => ReleaseType.ios;
@@ -81,6 +85,8 @@ class IosPatcher extends Patcher
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );
+
+    assertKernelBuiltForPlatform(ipaBuildResult.kernelFile);
 
     await buildAppleElfAotSnapshot(
       appDillPath: ipaBuildResult.kernelFile.path,

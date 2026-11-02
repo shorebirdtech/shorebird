@@ -664,6 +664,50 @@ This may indicate that the patch contains native changes, which cannot be applie
         });
       });
 
+      group('when the kernel comes from an Android build', () {
+        late File kernelFile;
+        setUp(() {
+          final buildFolder = Directory(
+            p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'abc123'),
+          )..createSync(recursive: true);
+          File(
+            p.join(buildFolder.path, 'android_aot_release_android-arm64.stamp'),
+          ).writeAsStringSync('{}');
+          kernelFile = File(p.join(buildFolder.path, 'app.dill'))
+            ..writeAsStringSync('dill');
+          when(
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              args: any(named: 'args'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
+        });
+
+        test('fails before building the patch snapshot', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            exitsWithError(
+              message:
+                  'The kernel built for this patch (${kernelFile.path}) was '
+                  'compiled for Android, not iOS.',
+              exitCode: ExitCode.software,
+            ),
+          );
+          verifyNever(
+            () => artifactBuilder.buildElfAotSnapshot(
+              appDillPath: any(named: 'appDillPath'),
+              outFilePath: any(named: 'outFilePath'),
+              genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+              additionalArgs: any(named: 'additionalArgs'),
+            ),
+          );
+        });
+      });
+
       group('when build succeeds', () {
         late File kernelFile;
         setUp(() {

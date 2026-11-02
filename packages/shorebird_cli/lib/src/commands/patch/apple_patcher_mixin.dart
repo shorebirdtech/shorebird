@@ -58,6 +58,48 @@ mixin ApplePatcherMixin on Patcher {
   String get appDillCopyPath =>
       p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
 
+  /// The platform this patch's kernel must have been compiled for.
+  KernelBuildPlatform get kernelBuildPlatform;
+
+  /// Throws a [CommandError] if [kernelFile] is in a Flutter build folder
+  /// that has no record of a [kernelBuildPlatform] AOT build.
+  ///
+  /// A kernel compiled for another OS (e.g. by a `shorebird patch android`
+  /// running in the same project at the same time) has that OS's
+  /// `Platform.isX` checks folded to constants, so a patch built from it links
+  /// poorly and takes the wrong platform branches at runtime. See
+  /// [KernelBuildFolder] for how the folder is read. Kernels outside
+  /// `.dart_tool/flutter_build/` (Shorebird's Flutter copies the one its
+  /// Apple AOT step used to `build/<platform>/shorebird_kernel/`) aren't
+  /// checked.
+  void assertKernelBuiltForPlatform(File kernelFile) {
+    final buildFolder = KernelBuildFolder.forKernel(kernelFile);
+    if (buildFolder == null) return;
+    final aotPlatforms = buildFolder.aotPlatforms;
+    logger.detail(
+      'Kernel build folder ${buildFolder.folder.path} records AOT builds for: '
+      '${aotPlatforms.map((p) => p.displayName).join(', ')}',
+    );
+    if (aotPlatforms.contains(kernelBuildPlatform)) return;
+
+    final expected = kernelBuildPlatform.displayName;
+    final kernel = 'The kernel built for this patch (${kernelFile.path})';
+    throw CommandError(
+      message: aotPlatforms.isEmpty
+          ? "$kernel doesn't come from an $expected build: its Flutter build "
+                'folder has no record of the $expected AOT step.'
+          : '$kernel was compiled for '
+                '${aotPlatforms.map((p) => p.displayName).join(' and ')}, '
+                'not $expected.',
+      hint:
+          'This usually means another build (such as `shorebird patch '
+          'android` or `flutter build apk`) ran in this project at the same '
+          'time. Wait for other builds in this project to finish, then run '
+          'this command again.',
+      exitCode: ExitCode.software,
+    );
+  }
+
   /// The gen_snapshot arguments for `--split-debug-info` and obfuscation,
   /// shared by the ELF snapshot build and the linker.
   List<String> get appleGenSnapshotArgs => [

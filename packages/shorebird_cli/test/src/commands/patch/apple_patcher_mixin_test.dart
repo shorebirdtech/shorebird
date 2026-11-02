@@ -40,6 +40,9 @@ class _TestApplePatcher extends Patcher
   List<Validator> get applePlatformValidators => const [];
 
   @override
+  KernelBuildPlatform get kernelBuildPlatform => KernelBuildPlatform.ios;
+
+  @override
   String get primaryReleaseArtifactArch => 'test';
 
   @override
@@ -213,6 +216,95 @@ void main() {
       test('is the last build link percentage', () {
         patcher.lastBuildLinkPercentage = 42.1337;
         expect(patcher.linkPercentage, equals(42.1337));
+      });
+    });
+
+    group('assertKernelBuiltForPlatform', () {
+      late Directory projectRoot;
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+        addTearDown(() => projectRoot.deleteSync(recursive: true));
+      });
+
+      File kernelInBuildFolder(List<String> stamps) {
+        final folder = Directory(
+          p.join(projectRoot.path, '.dart_tool', 'flutter_build', 'abc123'),
+        )..createSync(recursive: true);
+        for (final stamp in stamps) {
+          File(p.join(folder.path, '$stamp.stamp')).writeAsStringSync('{}');
+        }
+        return File(p.join(folder.path, 'app.dill'))..writeAsStringSync('dill');
+      }
+
+      test("passes for a kernel from this platform's AOT build", () {
+        final kernel = kernelInBuildFolder([
+          'kernel_snapshot_program',
+          'aot_assembly_release',
+        ]);
+        expect(
+          () => runWithOverrides(
+            () => patcher.assertKernelBuiltForPlatform(kernel),
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('passes for a kernel outside .dart_tool/flutter_build', () {
+        final kernel = File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'shorebird_kernel',
+            'app.dill',
+          ),
+        )..createSync(recursive: true);
+        expect(
+          () => runWithOverrides(
+            () => patcher.assertKernelBuiltForPlatform(kernel),
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('fails for a kernel from an Android build', () {
+        final kernel = kernelInBuildFolder([
+          'kernel_snapshot_program',
+          'android_aot_release_android-arm64',
+        ]);
+        expect(
+          () => runWithOverrides(
+            () => patcher.assertKernelBuiltForPlatform(kernel),
+          ),
+          exitsWithError(
+            message:
+                'The kernel built for this patch (${kernel.path}) was '
+                'compiled for Android, not iOS.',
+            hint:
+                'This usually means another build (such as `shorebird patch '
+                'android` or `flutter build apk`) ran in this project at the '
+                'same time. Wait for other builds in this project to finish, '
+                'then run this command again.',
+            exitCode: ExitCode.software,
+          ),
+        );
+      });
+
+      test('fails for a kernel whose folder has no AOT build', () {
+        final kernel = kernelInBuildFolder(['kernel_snapshot_program']);
+        expect(
+          () => runWithOverrides(
+            () => patcher.assertKernelBuiltForPlatform(kernel),
+          ),
+          exitsWithError(
+            message:
+                'The kernel built for this patch (${kernel.path}) '
+                "doesn't come from an iOS build: its Flutter build folder "
+                'has no record of the iOS AOT step.',
+            exitCode: ExitCode.software,
+          ),
+        );
       });
     });
 

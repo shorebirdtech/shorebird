@@ -56,6 +56,9 @@ class MacosPatcher extends Patcher
       p.join(shorebirdEnv.buildDirectory.path, 'out.x64.aot');
 
   @override
+  KernelBuildPlatform get kernelBuildPlatform => KernelBuildPlatform.macos;
+
+  @override
   ReleaseType get releaseType => ReleaseType.macos;
 
   @override
@@ -93,6 +96,8 @@ class MacosPatcher extends Patcher
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );
+
+    assertKernelBuiltForPlatform(macosBuildResult.kernelFile);
 
     await buildAppleElfAotSnapshot(
       appDillPath: macosBuildResult.kernelFile.path,
