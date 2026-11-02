@@ -202,15 +202,15 @@ void main() {
             when(() => shorebirdEnv.androidPackageName).thenReturn(null);
           });
 
-          test('logs error and exits with code 64', () async {
+          test('exits with a config error naming the fix', () async {
             await expectLater(
               () => runWithOverrides(patcher.assertPreconditions),
-              exitsWithCode(ExitCode.config),
+              exitsWithError(
+                message: 'Could not find androidPackage in pubspec.yaml.',
+                hint: contains('androidPackage:'),
+                exitCode: ExitCode.config,
+              ),
             );
-            verify(
-              () =>
-                  logger.err('Could not find androidPackage in pubspec.yaml.'),
-            ).called(1);
           });
         });
       });
@@ -597,7 +597,7 @@ void main() {
           ).thenThrow(Exception('error'));
         });
 
-        test('logs error and exits with code 70', () async {
+        test('exits naming the failed download', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.createPatchArtifacts(
@@ -606,7 +606,11 @@ void main() {
                 releaseArtifact: releaseArtifactFile,
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: startsWith('Could not download the release artifact: '),
+              hint: 'Run the command again once that is fixed.',
+              exitCode: ExitCode.software,
+            ),
           );
 
           verifyNever(

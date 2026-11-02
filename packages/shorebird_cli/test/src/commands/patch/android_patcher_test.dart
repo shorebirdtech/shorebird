@@ -721,7 +721,7 @@ void main() {
           ).thenThrow(Exception('error'));
         });
 
-        test('logs error and exits with code 70', () async {
+        test('exits naming the failed download', () async {
           await expectLater(
             () => runWithOverrides(
               () => patcher.createPatchArtifacts(
@@ -730,7 +730,11 @@ void main() {
                 releaseArtifact: File('release.aab'),
               ),
             ),
-            exitsWithCode(ExitCode.software),
+            exitsWithError(
+              message: startsWith('Could not download the release artifact: '),
+              hint: 'Run the command again once that is fixed.',
+              exitCode: ExitCode.software,
+            ),
           );
         });
       });
