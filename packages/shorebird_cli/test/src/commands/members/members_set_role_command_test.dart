@@ -348,10 +348,8 @@ void main() {
       );
     });
 
-    test('rejects --org-id', () async {
-      when(() => h.argResults['org-id']).thenReturn('42');
-      expect(await h.run(command.run), ExitCode.usage.code);
-      verifyNever(h.codePushClientWrapper.getEnterprises);
+    test('has no --org-id', () {
+      expect(command.argParser.options, isNot(contains('org-id')));
     });
   });
 }

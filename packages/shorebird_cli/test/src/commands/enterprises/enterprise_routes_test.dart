@@ -81,16 +81,6 @@ void main() {
       ).called(1);
     });
 
-    test('members list --guests reads the guests', () async {
-      expect(
-        await run(['enterprise', 'members', 'list', '--guests']),
-        ExitCode.success.code,
-      );
-      verify(
-        () => h.codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
-      ).called(1);
-    });
-
     test('guests list reads the guests', () async {
       expect(
         await run(['enterprises', 'guests', 'list']),
@@ -193,12 +183,6 @@ void main() {
           'enterprise, so it takes no organization id.',
         ),
       ).called(1);
-      verify(
-        () => h.logger.info(
-          'Drop `enterprise`: run `shorebird usage --org-id <id>` for one '
-          'organization.',
-        ),
-      ).called(1);
       verifyNever(
         () => h.codePushClientWrapper.getEnterpriseBilling(
           enterpriseId: any(named: 'enterpriseId'),
@@ -224,12 +208,6 @@ void main() {
               'your enterprise, so it takes no organization id.',
             ),
           ).called(1);
-          verify(
-            () => h.logger.info(
-              'Drop `enterprise`: run `shorebird $line --org-id <id>` for '
-              'one organization.',
-            ),
-          ).called(1);
         });
       }
 
@@ -245,32 +223,8 @@ void main() {
               'in your enterprise, so it takes no organization id.',
             ),
           ).called(1);
-          verify(
-            () => h.logger.info(
-              'Drop `enterprise`: run `shorebird $noun list` for the ones '
-              'you can access.',
-            ),
-          ).called(1);
         });
       }
-
-      test('given as --org-id', () async {
-        expect(
-          await run(['enterprise', 'members', 'list', '--org-id', '42']),
-          ExitCode.usage.code,
-        );
-        verify(
-          () => h.logger.err(
-            '`shorebird enterprise members list` covers every organization '
-            'in your enterprise, so it takes no --org-id.',
-          ),
-        ).called(1);
-        verifyNever(
-          () => h.codePushClientWrapper.getEnterpriseMembers(
-            enterpriseId: any(named: 'enterpriseId'),
-          ),
-        );
-      });
     });
 
     test('a missing member names the enterprise command', () async {
@@ -328,7 +282,7 @@ void main() {
         'asc',
       ];
       for (final args in [
-        ['members', 'list', '--guests'],
+        ['members', 'list'],
         ['guests', 'list'],
         ['orgs', 'list'],
         ['apps', 'list'],

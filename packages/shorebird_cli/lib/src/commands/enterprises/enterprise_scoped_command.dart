@@ -2,7 +2,6 @@ import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -17,28 +16,15 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// true`, which is always enterprise-scoped. There is no `--enterprise`
 /// flag: one way to do each thing.
 ///
-/// An account is in at most one enterprise, so the copy takes no id. Call
-/// [addEnterpriseScope] from the command's constructor, then
+/// An account is in at most one enterprise, so the copy takes no id. Set
+/// [isEnterpriseRoute] from the command's constructor, then call
 /// [rejectConflictingScope] first in `run`, then check [isEnterpriseRoute]
 /// and call [resolveEnterprise] when it is set.
 mixin EnterpriseScopedCommand on ShorebirdCommand {
-  bool _enterpriseRoute = false;
-
   /// Whether this is the command's copy under `shorebird enterprise`, which
-  /// always acts on the enterprise.
-  bool get isEnterpriseRoute => _enterpriseRoute;
-
-  /// Makes the command its copy under `shorebird enterprise` when [route]
-  /// is set.
-  ///
-  /// The copy takes a hidden `--org-id`, which [rejectConflictingScope]
-  /// answers by naming the command for one organization. It exists only
-  /// because agents sometimes wrongly carry `--org-id` over from the
-  /// one-organization command; it redirects them.
-  void addEnterpriseScope({required bool route}) {
-    _enterpriseRoute = route;
-    if (route) argParser.addOption(CommonArguments.orgIdArg.name, hide: true);
-  }
+  /// always acts on the enterprise and has no `--org-id`. Set it from the
+  /// command's constructor.
+  bool isEnterpriseRoute = false;
 
   /// The command's words after `shorebird`, leaving out `enterprise`, such
   /// as `members list`.
@@ -68,37 +54,18 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
   String get commandLine =>
       isEnterpriseRoute ? enterpriseCommandLine : organizationCommandLine;
 
-  /// Reports an organization named alongside enterprise scope and returns
-  /// the exit code; null when there is no conflict.
-  ///
-  /// An organization is named by `--org-id` or, unless the command's
-  /// positional arguments mean something else ([takesUserArgument], as for
-  /// `members remove bob@acme.com`), by a positional id
-  /// (`shorebird usage 42`).
+  /// Reports a positional organization id (`shorebird enterprise usage
+  /// 42`) under enterprise scope and returns the exit code; null when there
+  /// is none. Commands whose positional arguments mean something else
+  /// ([takesUserArgument], as for `members remove bob@acme.com`) skip it.
   int? rejectConflictingScope({bool takesUserArgument = false}) {
-    if (!isEnterpriseRoute) return null;
-    final hasOrgIdOption = argParser.options.containsKey(
-      CommonArguments.orgIdArg.name,
-    );
-    final orgId = hasOrgIdOption
-        ? results[CommonArguments.orgIdArg.name] as String?
-        : null;
-    final positional = !takesUserArgument && results.rest.isNotEmpty;
-    if (orgId == null && !positional) return null;
-    final named = orgId != null
-        ? '--${CommonArguments.orgIdArg.name}'
-        : 'organization id';
-    // `orgs list` and `apps list` have no one-organization form: without
-    // `enterprise` they list what you can access.
-    final organizationCommand = this is OrganizationScopedCommand
-        ? '`$organizationCommandLine --${CommonArguments.orgIdArg.name} '
-              '<id>` for one organization'
-        : '`$organizationCommandLine` for the ones you can access';
+    if (!isEnterpriseRoute || takesUserArgument || results.rest.isEmpty) {
+      return null;
+    }
     return reportError(
       message:
           '`$enterpriseCommandLine` covers every organization in your '
-          'enterprise, so it takes no $named.',
-      hint: 'Drop `enterprise`: run $organizationCommand.',
+          'enterprise, so it takes no organization id.',
     );
   }
 

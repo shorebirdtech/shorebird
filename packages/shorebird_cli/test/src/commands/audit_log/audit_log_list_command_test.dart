@@ -460,10 +460,8 @@ void main() {
       verifyNever(h.codePushClientWrapper.getEnterprises);
     });
 
-    test('rejects --org-id', () async {
-      parse(['--org-id', '42']);
-      expect(await h.run(command.run), ExitCode.usage.code);
-      verifyNever(h.codePushClientWrapper.getEnterprises);
+    test('has no --org-id', () {
+      expect(command.argParser.options, isNot(contains('org-id')));
     });
 
     test('says when you are in no enterprise', () async {

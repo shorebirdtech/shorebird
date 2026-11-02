@@ -18,7 +18,7 @@ class OrgsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   ///
   /// With [enterpriseRoute], it is `shorebird enterprise orgs list`.
   OrgsListCommand({bool enterpriseRoute = false}) {
-    addEnterpriseScope(route: enterpriseRoute);
+    isEnterpriseRoute = enterpriseRoute;
   }
 
   @override

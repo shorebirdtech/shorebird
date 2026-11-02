@@ -28,9 +28,9 @@ class EnterpriseMembersCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      "List your enterprise's directory, change enterprise roles, and remove "
-      'people from the enterprise. With no subcommand, lists them (the same '
-      'as `shorebird enterprise members list`).';
+      "List your enterprise's directory, change enterprise roles, and open "
+      'the console to remove people from the enterprise. With no subcommand, '
+      'lists them (the same as `shorebird enterprise members list`).';
 
   @override
   String get defaultSubcommand => 'list';

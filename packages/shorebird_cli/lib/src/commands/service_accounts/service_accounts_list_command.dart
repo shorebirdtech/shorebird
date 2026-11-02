@@ -20,7 +20,7 @@ class ServiceAccountsListCommand extends ShorebirdCommand
   /// `shorebird enterprise service-accounts list`.
   ServiceAccountsListCommand({bool enterpriseRoute = false}) {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScope(route: enterpriseRoute);
+    isEnterpriseRoute = enterpriseRoute;
   }
 
   @override
@@ -35,8 +35,10 @@ class ServiceAccountsListCommand extends ShorebirdCommand
       'Needs an owner or admin of the enterprise.\n\n'
       'Example output (space-separated: id  name  role  last signed in):\n'
       '  383  release-bot  developer  2026-10-20\n\n'
-      'They stay owned by their organization: create, change or delete '
-      'one with `shorebird service-accounts ... --org-id <id>`.\n\n'
+      'Each stays owned by its organization, which this list does not '
+      'show: create, change or delete one with `shorebird service-accounts '
+      '... --org-id <id>` (find it with `shorebird service-accounts list '
+      '--org-id <id>`).\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird enterprise service-accounts list --json',
       )}';

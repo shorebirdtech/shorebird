@@ -20,7 +20,7 @@ class UsageCommand extends ShorebirdCommand
   /// With [enterpriseRoute], it is `shorebird enterprise usage`.
   UsageCommand({bool enterpriseRoute = false}) {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScope(route: enterpriseRoute);
+    isEnterpriseRoute = enterpriseRoute;
   }
 
   @override

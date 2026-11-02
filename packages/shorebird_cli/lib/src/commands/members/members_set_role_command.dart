@@ -28,7 +28,7 @@ class MembersSetRoleCommand extends ShorebirdCommand
       mandatory: true,
     );
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScope(route: enterpriseRoute);
+    isEnterpriseRoute = enterpriseRoute;
   }
 
   @override

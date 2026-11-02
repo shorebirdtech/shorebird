@@ -32,7 +32,7 @@ class MembersRemoveCommand extends ShorebirdCommand
       addConfirmDeleteOptions();
       addOrganizationScopeOption();
     }
-    addEnterpriseScope(route: enterpriseRoute);
+    isEnterpriseRoute = enterpriseRoute;
   }
 
   @override

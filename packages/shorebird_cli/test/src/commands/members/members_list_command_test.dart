@@ -209,8 +209,11 @@ void main() {
       verify(() => h.logger.info('"Acme" has no members.')).called(1);
     });
 
-    group('--guests', () {
-      setUp(() => when(() => h.argResults['guests']).thenReturn(true));
+    group('guests', () {
+      setUp(() {
+        command = h.run(MembersListCommand.enterpriseGuests)
+          ..testArgResults = h.argResults;
+      });
 
       test('lists the guests', () async {
         expect(await h.run(command.run), ExitCode.success.code);
@@ -255,19 +258,6 @@ void main() {
         });
       });
 
-      test('points at shorebird enterprise guests without it', () async {
-        when(() => h.argResults['org-id']).thenReturn('42');
-        final command = h.run(MembersListCommand.new)
-          ..testArgResults = h.argResults;
-        expect(await h.run(command.run), ExitCode.usage.code);
-        verify(
-          () => h.logger.err(
-            "--guests lists an enterprise's guests; run "
-            '`shorebird enterprise guests`.',
-          ),
-        ).called(1);
-      });
-
       test('reports a failed fetch', () async {
         when(
           () => h.codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
@@ -283,10 +273,8 @@ void main() {
       });
     });
 
-    test('rejects --org-id', () async {
-      when(() => h.argResults['org-id']).thenReturn('42');
-      expect(await h.run(command.run), ExitCode.usage.code);
-      verifyNever(h.codePushClientWrapper.getEnterprises);
+    test('has no --org-id', () {
+      expect(command.argParser.options, isNot(contains('org-id')));
     });
 
     test('reports a failed fetch', () async {

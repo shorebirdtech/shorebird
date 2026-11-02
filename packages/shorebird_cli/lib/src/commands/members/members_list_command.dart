@@ -30,24 +30,8 @@ class MembersListCommand extends ShorebirdCommand
     required bool guestsRoute,
   }) : _guestsRoute = guestsRoute {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScope(route: enterpriseRoute);
-    if (!guestsRoute) {
-      // Hidden on `shorebird members list`, where it exists only because
-      // agents sometimes wrongly guess `--guests` there; run then
-      // redirects them to `shorebird enterprise guests`.
-      argParser.addFlag(
-        _guestsFlag,
-        negatable: false,
-        hide: !enterpriseRoute,
-        help:
-            "List the enterprise's guests instead: people in its "
-            "organizations who aren't in its directory (the same as "
-            '`shorebird enterprise guests`).',
-      );
-    }
+    isEnterpriseRoute = enterpriseRoute;
   }
-
-  static const _guestsFlag = 'guests';
 
   final bool _guestsRoute;
 
@@ -71,8 +55,8 @@ class MembersListCommand extends ShorebirdCommand
           'Example output (space-separated: id  email  enterprise_role  '
           'organizations):\n'
           '  12  alice@acme.com  admin  3 organizations\n\n'
-          'Add --guests (or run `shorebird enterprise guests`) for the people '
-          'in its organizations who are not in its directory.\n\n'
+          'Run `shorebird enterprise guests` for the people in its '
+          'organizations who are not in its directory.\n\n'
           '${ShorebirdCommand.jsonHint(
             'shorebird enterprise members list --json',
           )}';
@@ -99,16 +83,8 @@ class MembersListCommand extends ShorebirdCommand
   Future<int> run() async {
     final scopeError = rejectConflictingScope();
     if (scopeError != null) return scopeError;
-    final guests = _guestsRoute || results[_guestsFlag] == true;
     if (isEnterpriseRoute) {
-      return guests ? _listEnterpriseGuests() : _listEnterpriseMembers();
-    }
-    if (guests) {
-      return reportError(
-        message:
-            "--$_guestsFlag lists an enterprise's guests; run "
-            '`shorebird enterprise guests`.',
-      );
+      return _guestsRoute ? _listEnterpriseGuests() : _listEnterpriseMembers();
     }
 
     final (:membership, :errorCode) = await resolveOrganization();

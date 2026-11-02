@@ -106,10 +106,10 @@ mixin AuditLogFilterOptions
 
   /// Adds `--org-id` and the filter options [parseFilters] reads; for the
   /// `shorebird enterprise audit-log` copy ([enterpriseRoute]), the filter
-  /// options and the hidden `--org-id` of [addEnterpriseScope].
+  /// options alone.
   void addFilterOptions({bool enterpriseRoute = false}) {
     if (!enterpriseRoute) addOrganizationScopeOption();
-    addEnterpriseScope(route: enterpriseRoute);
+    isEnterpriseRoute = enterpriseRoute;
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')
       ..addOption(

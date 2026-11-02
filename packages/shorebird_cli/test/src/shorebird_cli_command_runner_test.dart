@@ -664,10 +664,6 @@ Engine • revision $shorebirdEngineRevision'''),
         for (final (args, expanded) in [
           (['enterprise'], ['enterprise', 'get']),
           (['enterprise', 'members'], ['enterprise', 'members', 'list']),
-          (
-            ['enterprise', 'members', '--guests'],
-            ['enterprise', 'members', 'list', '--guests'],
-          ),
           (['enterprise', 'guests'], ['enterprise', 'guests', 'list']),
           (['enterprise', 'orgs'], ['enterprise', 'orgs', 'list']),
           (['enterprise', 'teams'], ['enterprise', 'teams', 'list']),

@@ -17,7 +17,7 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   ///
   /// With [enterpriseRoute], it is `shorebird enterprise apps list`.
   AppsListCommand({bool enterpriseRoute = false}) {
-    addEnterpriseScope(route: enterpriseRoute);
+    isEnterpriseRoute = enterpriseRoute;
   }
 
   @override

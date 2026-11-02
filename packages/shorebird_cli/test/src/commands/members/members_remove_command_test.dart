@@ -284,22 +284,8 @@ void main() {
       ).called(1);
     });
 
-    test('rejects --org-id', () async {
-      when(() => h.argResults['org-id']).thenReturn('42');
-      expect(await run(), ExitCode.usage.code);
-      verify(
-        () => h.logger.err(
-          any(
-            that: allOf(
-              startsWith('`shorebird enterprise '),
-              endsWith(
-                'covers every organization in your enterprise, so '
-                'it takes no --org-id.',
-              ),
-            ),
-          ),
-        ),
-      ).called(1);
+    test('has no --org-id', () {
+      expect(command.argParser.options, isNot(contains('org-id')));
     });
   });
 }
