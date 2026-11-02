@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -538,6 +539,32 @@ void main() {
             equals({
               'code': 'fetch_failed',
               'message': 'Failed to fetch things.',
+            }),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('reports a CommandError with its own message and hint', () async {
+          final result = await captureJson(
+            () async => (await runWithOverrides<Future<int?>>(
+              () => guard(
+                () async => throw CommandError(
+                  message: 'Release not found: "9.9.9".',
+                  hint: 'Run `shorebird releases list`.',
+                  exitCode: ExitCode.software,
+                ),
+              ),
+              jsonMode: true,
+            ))!,
+          );
+
+          expect(result.exitCode, equals(ExitCode.software.code));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'process_exit',
+              'message': 'Release not found: "9.9.9".',
+              'hint': 'Run `shorebird releases list`.',
             }),
           );
           verifyNever(() => logger.err(any()));

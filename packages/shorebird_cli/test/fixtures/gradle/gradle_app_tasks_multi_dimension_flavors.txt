@@ -1,0 +1,68 @@
+
+> Task :app:tasks
+
+------------------------------------------------------------
+Tasks runnable from project ':app'
+------------------------------------------------------------
+
+Build tasks
+-----------
+assemble - Assemble main outputs for all the variants.
+assembleAndroidTest - Assembles all the Test applications.
+assembleDebug - Assembles main outputs for all Debug variants.
+assembleProfile - Assembles main outputs for all Profile variants.
+assembleRelease - Assembles main outputs for all Release variants.
+assembleInternal - Assembles main outputs for all Internal variants.
+assembleStable - Assembles main outputs for all Stable variants.
+assembleGlobal - Assembles main outputs for all Global variants.
+assemblePlayStore - Assembles main outputs for all PlayStore variants.
+assembleLocal - Assembles main outputs for all Local variants.
+assembleInternalGlobal - Assembles main outputs for all InternalGlobal variants.
+assembleInternalPlayStore - Assembles main outputs for all InternalPlayStore variants.
+assembleInternalLocal - Assembles main outputs for all InternalLocal variants.
+assembleStableGlobal - Assembles main outputs for all StableGlobal variants.
+assembleStablePlayStore - Assembles main outputs for all StablePlayStore variants.
+assembleStableLocal - Assembles main outputs for all StableLocal variants.
+assembleInternalGlobalDebug - Assembles main output for variant internalGlobalDebug
+assembleInternalGlobalDebugAndroidTest - Assembles main output for variant internalGlobalDebugAndroidTest
+assembleInternalGlobalDebugUnitTest - Assembles main output for variant internalGlobalDebugUnitTest
+assembleInternalGlobalProfile - Assembles main output for variant internalGlobalProfile
+assembleInternalGlobalProfileUnitTest - Assembles main output for variant internalGlobalProfileUnitTest
+assembleInternalGlobalRelease - Assembles main output for variant internalGlobalRelease
+assembleInternalGlobalReleaseUnitTest - Assembles main output for variant internalGlobalReleaseUnitTest
+assembleInternalPlayStoreDebug - Assembles main output for variant internalPlayStoreDebug
+assembleInternalPlayStoreDebugAndroidTest - Assembles main output for variant internalPlayStoreDebugAndroidTest
+assembleInternalPlayStoreDebugUnitTest - Assembles main output for variant internalPlayStoreDebugUnitTest
+assembleInternalPlayStoreProfile - Assembles main output for variant internalPlayStoreProfile
+assembleInternalPlayStoreProfileUnitTest - Assembles main output for variant internalPlayStoreProfileUnitTest
+assembleInternalPlayStoreRelease - Assembles main output for variant internalPlayStoreRelease
+assembleInternalPlayStoreReleaseUnitTest - Assembles main output for variant internalPlayStoreReleaseUnitTest
+assembleInternalLocalDebug - Assembles main output for variant internalLocalDebug
+assembleInternalLocalDebugAndroidTest - Assembles main output for variant internalLocalDebugAndroidTest
+assembleInternalLocalDebugUnitTest - Assembles main output for variant internalLocalDebugUnitTest
+assembleInternalLocalProfile - Assembles main output for variant internalLocalProfile
+assembleInternalLocalProfileUnitTest - Assembles main output for variant internalLocalProfileUnitTest
+assembleInternalLocalRelease - Assembles main output for variant internalLocalRelease
+assembleInternalLocalReleaseUnitTest - Assembles main output for variant internalLocalReleaseUnitTest
+assembleStableGlobalDebug - Assembles main output for variant stableGlobalDebug
+assembleStableGlobalDebugAndroidTest - Assembles main output for variant stableGlobalDebugAndroidTest
+assembleStableGlobalDebugUnitTest - Assembles main output for variant stableGlobalDebugUnitTest
+assembleStableGlobalProfile - Assembles main output for variant stableGlobalProfile
+assembleStableGlobalProfileUnitTest - Assembles main output for variant stableGlobalProfileUnitTest
+assembleStableGlobalRelease - Assembles main output for variant stableGlobalRelease
+assembleStableGlobalReleaseUnitTest - Assembles main output for variant stableGlobalReleaseUnitTest
+assembleStablePlayStoreDebug - Assembles main output for variant stablePlayStoreDebug
+assembleStablePlayStoreDebugAndroidTest - Assembles main output for variant stablePlayStoreDebugAndroidTest
+assembleStablePlayStoreDebugUnitTest - Assembles main output for variant stablePlayStoreDebugUnitTest
+assembleStablePlayStoreProfile - Assembles main output for variant stablePlayStoreProfile
+assembleStablePlayStoreProfileUnitTest - Assembles main output for variant stablePlayStoreProfileUnitTest
+assembleStablePlayStoreRelease - Assembles main output for variant stablePlayStoreRelease
+assembleStablePlayStoreReleaseUnitTest - Assembles main output for variant stablePlayStoreReleaseUnitTest
+assembleStableLocalDebug - Assembles main output for variant stableLocalDebug
+assembleStableLocalDebugAndroidTest - Assembles main output for variant stableLocalDebugAndroidTest
+assembleStableLocalDebugUnitTest - Assembles main output for variant stableLocalDebugUnitTest
+assembleStableLocalProfile - Assembles main output for variant stableLocalProfile
+assembleStableLocalProfileUnitTest - Assembles main output for variant stableLocalProfileUnitTest
+assembleStableLocalRelease - Assembles main output for variant stableLocalRelease
+assembleStableLocalReleaseUnitTest - Assembles main output for variant stableLocalReleaseUnitTest
+build - Assembles and tests this project.

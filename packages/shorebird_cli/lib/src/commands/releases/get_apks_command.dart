@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
@@ -15,7 +16,6 @@ import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template get_apk_command}
@@ -211,8 +211,10 @@ class GetApksCommand extends ShorebirdCommand with AppScopedCommand {
     );
 
     if (releases.isEmpty) {
-      logger.err('No releases found for app $appId');
-      throw ProcessExit(ExitCode.usage.code);
+      throw CommandError(
+        message: 'No Android releases found for app $appId.',
+        hint: 'Run: shorebird release android',
+      );
     }
 
     return chooseRelease(
@@ -232,8 +234,12 @@ class GetApksCommand extends ShorebirdCommand with AppScopedCommand {
         message: 'Downloading aab',
         outputPath: outputPath,
       );
-    } on Exception catch (_) {
-      throw ProcessExit(ExitCode.software.code);
+    } on Exception catch (error) {
+      throw CommandError(
+        message: 'Could not download the release artifact: $error',
+        hint: 'Run the command again once that is fixed.',
+        exitCode: ExitCode.software,
+      );
     }
 
     return artifactFile;

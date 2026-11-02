@@ -20,6 +20,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../helpers.dart';
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -392,15 +393,13 @@ void main() {
         ).thenThrow(exception);
       });
 
-      test('exits with code 70', () async {
+      test('exits naming the failed download', () async {
         await expectLater(
           () => runWithOverrides(command.run),
-          throwsA(
-            isA<ProcessExit>().having(
-              (e) => e.exitCode,
-              'exitCode',
-              ExitCode.software.code,
-            ),
+          exitsWithError(
+            message: startsWith('Could not download the release artifact: '),
+            hint: 'Run the command again once that is fixed.',
+            exitCode: ExitCode.software,
           ),
         );
       });
@@ -416,15 +415,12 @@ void main() {
         ).thenAnswer((_) async => []);
       });
 
-      test('exits with code 70', () async {
+      test('exits with a usage error naming the fix', () async {
         await expectLater(
           () => runWithOverrides(command.run),
-          throwsA(
-            isA<ProcessExit>().having(
-              (e) => e.exitCode,
-              'exitCode',
-              ExitCode.usage.code,
-            ),
+          exitsWithError(
+            message: 'No Android releases found for app $appId.',
+            hint: 'Run: shorebird release android',
           ),
         );
         verify(
@@ -433,7 +429,6 @@ void main() {
             sideloadableOnly: true,
           ),
         ).called(1);
-        verify(() => logger.err('No releases found for app $appId')).called(1);
       });
     });
 

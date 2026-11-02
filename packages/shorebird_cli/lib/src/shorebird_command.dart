@@ -351,10 +351,11 @@ Valid platforms: $validPlatformNames''',
   /// [code] and [message], and its exit code is returned for the caller to
   /// return from `run`. A failed API call ([ApiErrorExit]) adds the server's
   /// message to [message] and reports its error code and details, as
-  /// [reportApiError] does. The failure is reported here rather than in the
-  /// command runner, so the runner never sees it and doesn't emit a second
-  /// envelope. Otherwise the [ProcessExit] is rethrown, and the error the
-  /// call already logged stands.
+  /// [reportApiError] does. A [CommandError] is reported with its own message
+  /// and hint, which say more than [message]. The failure is reported here
+  /// rather than in the command runner, so the runner never sees it and
+  /// doesn't emit a second envelope. Otherwise the [ProcessExit] is
+  /// rethrown, and the error the call already logged stands.
   ///
   /// [body] typically assigns `late final` locals that the caller reads once
   /// this returns null.
@@ -373,6 +374,10 @@ Valid platforms: $validPlatformNames''',
     } on ApiErrorExit catch (e) {
       if (!isJsonMode) rethrow;
       return reportApiError(e.error, message: message, code: code);
+    } on CommandError catch (e) {
+      if (!isJsonMode) rethrow;
+      e.report(command: fullCommandName);
+      return e.exitCode;
     } on ProcessExit catch (e) {
       if (!isJsonMode) rethrow;
       emitJsonError(code: code, message: message);
