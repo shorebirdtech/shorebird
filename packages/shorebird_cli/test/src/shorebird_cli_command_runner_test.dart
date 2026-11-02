@@ -359,8 +359,8 @@ The warning that fails the patch names the one that applies.''';
 
     group('--enterprise', () {
       const general =
-          'Commands that act on every organization in your enterprise '
-          'are under `shorebird enterprise`. Run: shorebird enterprise --help';
+          'Commands for your whole enterprise are under '
+          '`shorebird enterprise`. Run: shorebird enterprise --help';
 
       Future<void> expectHint(List<String> args, String hint) async {
         final result = await runWithOverrides(() => commandRunner.run(args));
@@ -371,9 +371,7 @@ The warning that fails the patch names the one that applies.''';
         );
       }
 
-      String suggests(String command) =>
-          'To act on every organization in your enterprise, run '
-          '`$command`.';
+      String suggests(String command) => 'Run `$command`.';
 
       test('points at the shorebird enterprise command', () async {
         await expectHint(
@@ -415,12 +413,13 @@ The warning that fails the patch names the one that applies.''';
         );
       });
 
-      test('says to drop the flag under shorebird enterprise', () async {
-        await expectHint(
-          ['enterprise', 'members', 'list', '--enterprise'],
-          '`shorebird enterprise` commands already act on your whole '
-          'enterprise. Drop --enterprise.',
-        );
+      test('points at --help under shorebird enterprise', () async {
+        await expectHint([
+          'enterprise',
+          'members',
+          'list',
+          '--enterprise',
+        ], general);
       });
 
       test('reads aliases as their command', () async {
@@ -434,13 +433,6 @@ The warning that fails the patch names the one that applies.''';
         await expectHint(
           ['members', 'list', '--no-enterprise'],
           suggests('shorebird enterprise members list'),
-        );
-      });
-
-      test('keeps the options the enterprise command takes', () async {
-        await expectHint(
-          ['members', 'list', '--guests', '--enterprise'],
-          suggests('shorebird enterprise members list --guests'),
         );
       });
 

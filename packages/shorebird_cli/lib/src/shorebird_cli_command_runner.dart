@@ -641,91 +641,31 @@ Example:
 ${lightCyan.wrap("shorebird release android $separator --no-pub lib/main.dart")}''';
   }
 
-  /// The hint for `--enterprise` on a command: enterprise scope is the
-  /// `shorebird enterprise` group, not a flag.
+  /// The hint for `--enterprise` (or `--enterprise-id`) on any command.
   ///
-  /// Names the command's copy under `shorebird enterprise` when it has one,
-  /// with the options that copy takes, and `shorebird enterprise --help`
-  /// otherwise, so the hint never names a command that would fail.
+  /// It exists only to make agents' wrong guesses land: 12 of 30 agents in
+  /// a blind test (2026-10-28) guessed `--enterprise`, so this is a cheap
+  /// redirect to the command's copy under `shorebird enterprise` (or to
+  /// `shorebird enterprise --help` when it has none). Safe to remove any
+  /// time.
   String _enterpriseOptionHint(List<String> args) {
-    const general =
-        'Commands that act on every organization in your enterprise '
-        'are under `shorebird enterprise`. Run: shorebird enterprise --help';
-    final path = _commandPath(commands, args);
-    if (path.isEmpty) return general;
-    final enterprise = commands['enterprise']!;
-    if (path.first == enterprise) {
-      return '`shorebird enterprise` commands already act on your whole '
-          'enterprise. Drop --enterprise.';
-    }
-
-    var target = enterprise;
-    for (final command in path) {
-      final copy = target.subcommands[command.name];
-      if (copy == null) return general;
-      target = copy;
-    }
-    // The command that runs, for a group run without a subcommand.
-    var leaf = target;
-    while (leaf.subcommands.isNotEmpty) {
-      final name = leaf is ShorebirdCommand ? leaf.defaultSubcommand : null;
-      final next = name == null ? null : leaf.subcommands[name];
-      if (next == null) return general;
-      leaf = next;
-    }
-
-    final words = [
-      'shorebird',
-      'enterprise',
-      for (final command in path) command.name,
-      ..._optionsTakenBy(leaf, args),
-    ];
-    return 'To act on every organization in your enterprise, run '
-        '`${words.join(' ')}`.';
-  }
-
-  /// The commands [args] names, from the top: canonical, so an alias such
-  /// as `teams` reads as `orgs`. Options and positional arguments are
-  /// skipped; the path ends at the first word that isn't a subcommand.
-  static List<Command<int>> _commandPath(
-    Map<String, Command<int>> commands,
-    List<String> args,
-  ) {
-    final path = <Command<int>>[];
+    final names = <String>[];
+    var target = commands['enterprise'];
     var level = commands;
     for (final arg in args) {
       if (arg == '--') break;
       if (arg.startsWith('-')) continue;
       final command = level[arg];
       if (command == null) break;
-      path.add(command);
+      names.add(command.name);
+      target = target?.subcommands[command.name];
       level = command.subcommands;
     }
-    return path;
-  }
-
-  /// The options in [args] that [command] takes and shows in its help,
-  /// with their values, such as `--guests` for `enterprise members list`.
-  static List<String> _optionsTakenBy(Command<int> command, List<String> args) {
-    final kept = <String>[];
-    for (var i = 0; i < args.length; i++) {
-      final arg = args[i];
-      if (arg == '--') break;
-      if (!arg.startsWith('--')) continue;
-      final equals = arg.indexOf('=');
-      final name = arg.substring(2, equals == -1 ? null : equals);
-      final option =
-          command.argParser.options[name] ??
-          (name.startsWith('no-')
-              ? command.argParser.options[name.substring(3)]
-              : null);
-      if (option == null || option.hide) continue;
-      kept.add(arg);
-      if (!option.isFlag && equals == -1 && i + 1 < args.length) {
-        kept.add(args[++i]);
-      }
+    if (names.isEmpty || target == null) {
+      return 'Commands for your whole enterprise are under '
+          '`shorebird enterprise`. Run: shorebird enterprise --help';
     }
-    return kept;
+    return 'Run `shorebird enterprise ${names.join(' ')}`.';
   }
 
   /// If this version of shorebird is on the `stable` branch, checks to see if

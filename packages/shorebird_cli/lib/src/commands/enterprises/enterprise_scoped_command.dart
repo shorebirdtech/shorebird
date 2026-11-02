@@ -32,7 +32,9 @@ mixin EnterpriseScopedCommand on ShorebirdCommand {
   /// is set.
   ///
   /// The copy takes a hidden `--org-id`, which [rejectConflictingScope]
-  /// answers by naming the command for one organization.
+  /// answers by naming the command for one organization. It exists only
+  /// because agents sometimes wrongly carry `--org-id` over from the
+  /// one-organization command; it redirects them.
   void addEnterpriseScope({required bool route}) {
     _enterpriseRoute = route;
     if (route) argParser.addOption(CommonArguments.orgIdArg.name, hide: true);

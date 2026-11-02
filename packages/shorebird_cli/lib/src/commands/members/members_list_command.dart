@@ -32,6 +32,9 @@ class MembersListCommand extends ShorebirdCommand
     if (!enterpriseRoute) addOrganizationScopeOption();
     addEnterpriseScope(route: enterpriseRoute);
     if (!guestsRoute) {
+      // Hidden on `shorebird members list`, where it exists only because
+      // agents sometimes wrongly guess `--guests` there; run then
+      // redirects them to `shorebird enterprise guests`.
       argParser.addFlag(
         _guestsFlag,
         negatable: false,
