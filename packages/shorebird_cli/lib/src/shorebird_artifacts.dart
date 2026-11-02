@@ -49,6 +49,28 @@ abstract class ShorebirdArtifacts {
   String getArtifactPath({required ShorebirdArtifact artifact});
 }
 
+/// Which optional Shorebird artifacts the current engine publishes.
+extension PublishedShorebirdArtifacts on ShorebirdArtifacts {
+  /// The path to [artifact], or null when the current engine doesn't
+  /// publish it.
+  String? publishedArtifactPath(ShorebirdArtifact artifact) {
+    final path = getArtifactPath(artifact: artifact);
+    return File(path).existsSync() ? path : null;
+  }
+
+  /// Whether patches to a macOS release built with the current engine still
+  /// install after the app is re-signed.
+  ///
+  /// Engines that publish the macOS analyze_snapshot executables apply
+  /// patches to just the Dart snapshot regions of the installed binary, which
+  /// re-signing doesn't change. Older engines apply patches to the whole
+  /// binary.
+  bool get macosPatchesSurviveResigning => [
+    ShorebirdArtifact.analyzeSnapshotMacosArm64,
+    ShorebirdArtifact.analyzeSnapshotMacosX64,
+  ].every((artifact) => publishedArtifactPath(artifact) != null);
+}
+
 /// {@template shorebird_cached_artifacts}
 /// A class that provides access to cached Shorebird artifacts.
 /// {@endtemplate}

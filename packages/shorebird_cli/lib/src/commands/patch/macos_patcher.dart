@@ -216,10 +216,10 @@ class MacosPatcher extends Patcher
     required ShorebirdArtifact analyzeSnapshot,
     required Directory outputDirectory,
   }) async {
-    final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-      artifact: analyzeSnapshot,
+    final analyzeSnapshotPath = shorebirdArtifacts.publishedArtifactPath(
+      analyzeSnapshot,
     );
-    if (!File(analyzeSnapshotPath).existsSync()) return releaseArtifact;
+    if (analyzeSnapshotPath == null) return releaseArtifact;
 
     final progress = logger.progress('Generating patch diff base');
     try {
