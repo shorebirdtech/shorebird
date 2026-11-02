@@ -318,9 +318,9 @@ abstract class Releaser {
   /// strips before delivery to end-user devices, so the only readers are
   /// the developer's own Play Console crash dashboard.
   ///
-  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework,
-  /// AAR), AGP is not in the pipeline, so --strip is always passed
-  /// regardless of Flutter version.
+  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework),
+  /// AGP is not in the pipeline, so --strip is always passed regardless of
+  /// Flutter version. AAR is Android: its module build runs AGP's strip.
   Future<void> addObfuscationMapArgs(List<String> buildArgs) async {
     if (!useObfuscation) return;
     final mapDir = Directory(p.dirname(obfuscationMapPath));

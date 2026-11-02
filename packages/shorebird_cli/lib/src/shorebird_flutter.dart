@@ -745,10 +745,10 @@ class ShorebirdFlutter {
   ///
   /// On Android (APK, app bundle and AAR, whose module build also runs AGP),
   /// the answer depends on the Flutter version: from 3.44 onward AGP performs
-  /// the strip and emits the matching `.sym` companion; pre-stripping in
-  /// gen_snapshot on those versions leaves AGP with nothing to strip and
-  /// trips flutter_tools' post-build verification. See
-  /// [libappStrippedByAgpConstraint].
+  /// the strip. For app bundles it also emits the matching `.sym` companion,
+  /// and pre-stripping in gen_snapshot leaves AGP with nothing to strip and
+  /// trips flutter_tools' post-build verification; for AAR, pre-stripping is
+  /// only redundant. See [libappStrippedByAgpConstraint].
   ///
   /// An unresolvable [flutterRevision] (e.g. a development branch) is treated
   /// as satisfying the constraint, since the alternative — pre-stripping —
