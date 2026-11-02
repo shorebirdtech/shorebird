@@ -147,12 +147,11 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     if (_traceSupport.containsKey(command)) return _traceSupport[command]!;
 
     try {
-      final result = await process.run('flutter', [
-        'build',
-        command,
-        '-h',
-        '-v',
-      ], runInShell: false);
+      final result = await process.run(
+        'flutter',
+        ['build', command, '-h', '-v'],
+        runInShell: false,
+      );
       final supported = result.stdout.toString().contains('--shorebird-trace');
       _traceSupport[command] = supported;
       return supported;
@@ -172,9 +171,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     return ['--shorebird-trace=${traceFile.path}'];
   }
 
-  /// Builds an aab using `flutter build appbundle`. Runs `flutter pub get` with
-  /// the system installation of Flutter to reset
-  /// `.dart_tool/package_config.json` after the build completes or fails.
+  /// Builds an aab using `flutter build appbundle`.
   Future<File> buildAppBundle({
     String? flavor,
     String? target,
@@ -209,9 +206,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     );
   }
 
-  /// Builds an APK using `flutter build apk`. Runs `flutter pub get` with the
-  /// system installation of Flutter to reset `.dart_tool/package_config.json`
-  /// after the build completes or fails.
+  /// Builds an APK using `flutter build apk`.
   Future<File> buildApk({
     String? flavor,
     String? target,
@@ -252,9 +247,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     );
   }
 
-  /// Builds an AAR using `flutter build aar`. Runs `flutter pub get` with the
-  /// system installation of Flutter to reset `.dart_tool/package_config.json`
-  /// after the build completes or fails.
+  /// Builds an AAR using `flutter build aar`.
   Future<void> buildAar({
     required String buildNumber,
     Iterable<Arch>? targetPlatforms,
@@ -297,9 +290,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     );
   }
 
-  /// Builds a macOS app using `flutter build macos`. Runs `flutter pub get`
-  /// with the system installation of Flutter to reset
-  /// `.dart_tool/package_config.json` after the build completes or fails.
+  /// Builds a macOS app using `flutter build macos`.
   Future<AppleBuildResult> buildMacos({
     bool codesign = true,
     String? flavor,

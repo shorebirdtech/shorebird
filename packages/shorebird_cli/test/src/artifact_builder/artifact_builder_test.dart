@@ -131,8 +131,10 @@ void main() {
           () => shorebirdProcess.run(
             'flutter',
             any(that: containsAllInOrder(['pub', 'get'])),
-            useVendedFlutter: false,
+            useVendedFlutter: any(named: 'useVendedFlutter'),
             runInShell: any(named: 'runInShell'),
+            environment: any(named: 'environment'),
+            workingDirectory: any(named: 'workingDirectory'),
           ),
         );
       });
