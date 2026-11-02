@@ -5,8 +5,7 @@
 
 [![Discord](https://img.shields.io/discord/1030243211995791380?style=for-the-badge&logo=discord&color=blue)](https://discord.gg/shorebird)
 
-[![ci](https://github.com/shorebirdtech/updater/actions/workflows/main.yaml/badge.svg)](https://github.com/shorebirdtech/updater/actions/workflows/main.yaml)
-[![codecov](https://codecov.io/gh/shorebirdtech/updater/branch/main/graph/badge.svg)](https://codecov.io/gh/shorebirdtech/updater)
+[![ci](https://github.com/shorebirdtech/shorebird/actions/workflows/shorebird_ci.yaml/badge.svg)](https://github.com/shorebirdtech/shorebird/actions/workflows/shorebird_ci.yaml)
 [![License: MIT][license_badge]][license_link]
 
 <p align=center> Instantly push updates to your Flutter app without lengthy app store review cycles. </p>

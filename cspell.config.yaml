@@ -1,7 +1,20 @@
 $schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
 version: "0.2"
 ignorePaths:
-  ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures"]
+  [
+    "coverage",
+    "bin/cache",
+    "third_party",
+    "build",
+    "*.xcscheme",
+    "fixtures",
+    "packages/shorebird_code_push/lib/src/generated",
+    "packages/shorebird_code_push/example/android",
+    "packages/shorebird_code_push/example/ios",
+    "packages/shorebird_code_push/example/linux",
+    "packages/shorebird_code_push/example/macos",
+    "packages/shorebird_code_push/example/windows",
+  ]
 words:
   - aabs
   - aapt
@@ -30,7 +43,9 @@ words:
   - Dalvik # Android Dalvik VM / DEX file format
   - canvaskit
   - carryforward
+  - cbindgen
   - ccache
+  - cdylib
   - cipd
   - codegen
   - codemagic
@@ -50,6 +65,7 @@ words:
   - exitcode
   - exportoptions
   - felangel
+  - ffigen
   - FLUSHALL
   - fvm # Flutter Version Management
   - fvmrc # fvm's per-project config file

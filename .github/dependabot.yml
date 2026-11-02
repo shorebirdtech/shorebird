@@ -20,6 +20,18 @@ updates:
       dart-deps:
         patterns:
           - "*"
+  # shorebird_code_push isn't in the workspace: it supports Dart 3.5
+  # (Flutter 3.24), older than pub workspaces allow.
+  - package-ecosystem: "pub"
+    directory: "/packages/shorebird_code_push"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 5
+    groups:
+      shorebird_code_push-deps:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directories:
       - "/"

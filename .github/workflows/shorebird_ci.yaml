@@ -31,6 +31,8 @@ jobs:
       shorebird_build_trace: ${{ steps.filter.outputs.shorebird_build_trace }}
       shorebird_ci: ${{ steps.filter.outputs.shorebird_ci }}
       shorebird_cli: ${{ steps.filter.outputs.shorebird_cli }}
+      shorebird_code_push: ${{ steps.filter.outputs.shorebird_code_push }}
+      shorebird_code_push_example: ${{ steps.filter.outputs.shorebird_code_push_example }}
       shorebird_code_push_client: ${{ steps.filter.outputs.shorebird_code_push_client }}
       shorebird_code_push_protocol: ${{ steps.filter.outputs.shorebird_code_push_protocol }}
       shorebird_redis_client: ${{ steps.filter.outputs.shorebird_redis_client }}
@@ -78,6 +80,12 @@ jobs:
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
+            shorebird_code_push:
+              - .github/workflows/_shorebird_ci_flutter.yaml
+              - packages/shorebird_code_push/**
+            shorebird_code_push_example:
+              - .github/workflows/_shorebird_ci_flutter.yaml
+              - packages/shorebird_code_push/**
             shorebird_code_push_client:
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_client/**
@@ -150,6 +158,30 @@ jobs:
       has_unit_tests: true
       subpackages: ""
 
+  shorebird_code_push:
+    needs: changes
+    if: needs.changes.outputs.shorebird_code_push == 'true'
+    uses: ./.github/workflows/_shorebird_ci_flutter.yaml
+    with:
+      package_name: shorebird_code_push
+      package_path: packages/shorebird_code_push
+      has_unit_tests: true
+      subpackages: "example"
+      flutter_version: ""
+      has_integration_tests: false
+
+  shorebird_code_push_example:
+    needs: changes
+    if: needs.changes.outputs.shorebird_code_push_example == 'true'
+    uses: ./.github/workflows/_shorebird_ci_flutter.yaml
+    with:
+      package_name: shorebird_code_push_example
+      package_path: packages/shorebird_code_push/example
+      has_unit_tests: false
+      subpackages: ""
+      flutter_version: ""
+      has_integration_tests: false
+
   shorebird_code_push_client:
     needs: changes
     if: needs.changes.outputs.shorebird_code_push_client == 'true'
@@ -213,6 +245,8 @@ jobs:
       - shorebird_build_trace
       - shorebird_ci
       - shorebird_cli
+      - shorebird_code_push
+      - shorebird_code_push_example
       - shorebird_code_push_client
       - shorebird_code_push_protocol
       - shorebird_redis_client
