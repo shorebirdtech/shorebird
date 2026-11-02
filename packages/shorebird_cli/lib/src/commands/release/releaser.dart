@@ -301,9 +301,10 @@ abstract class Releaser {
   /// snapshot, since the DWARF sections would otherwise leak identifiers
   /// that obfuscation was meant to hide.
   ///
-  /// On Android (APK/AAB and AAR, which both build through Gradle), --strip
-  /// is only passed for Flutter versions older than 3.44. From 3.44 onward,
-  /// upstream Flutter PR
+  /// On Android, --strip is only passed for Flutter versions older than
+  /// 3.44. AAR follows this rule too, since its release platform is Android;
+  /// the reasoning below is about app bundles. From 3.44 onward, upstream
+  /// Flutter PR
   /// https://github.com/flutter/flutter/pull/181275 (merged 2026-01-26)
   /// made AGP responsible for stripping `libapp.so` and emitting the
   /// matching `.sym` companion into the AAB's BUNDLE-METADATA. Passing
