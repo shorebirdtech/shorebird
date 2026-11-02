@@ -20,11 +20,6 @@ const troubleshootingUrl = '$docsUrl/code-push/troubleshooting';
 const unsupportedClassFileVersionUrl =
     '$troubleshootingUrl#unsupported-class-file-major-version-65';
 
-/// Link to the troubleshooting section which covers the
-/// not being able to run the app in VS Code after installing Shorebird.
-const cannotRunInVSCodeUrl =
-    '''$troubleshootingUrl#cant-run-my-app-in-vs-code''';
-
 /// Link to the troubleshooting section which provides more information about
 /// what causes the asset changes warning and what to do about it.
 const assetChangesTroubleshootingUrl =

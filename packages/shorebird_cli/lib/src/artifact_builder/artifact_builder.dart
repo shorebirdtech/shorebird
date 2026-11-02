@@ -15,12 +15,10 @@ import 'package:shorebird_cli/src/artifact_builder/legacy_flutter_jar.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart' as scoped_platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -38,10 +36,6 @@ class ArtifactBuildException implements Exception {
   /// An optional tip to help the user fix the build failure.
   final String? fixRecommendation;
 }
-
-/// Used to wrap code that invokes `flutter build` with Shorebird's fork of
-/// Flutter.
-typedef ShorebirdBuildCommand = Future<void> Function();
 
 /// {@template apple_build_result}
 /// Metadata about the result of a `flutter build` invocation for an apple
@@ -153,11 +147,12 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     if (_traceSupport.containsKey(command)) return _traceSupport[command]!;
 
     try {
-      final result = await process.run(
-        'flutter',
-        ['build', command, '-h', '-v'],
-        runInShell: false,
-      );
+      final result = await process.run('flutter', [
+        'build',
+        command,
+        '-h',
+        '-v',
+      ], runInShell: false);
       final supported = result.stdout.toString().contains('--shorebird-trace');
       _traceSupport[command] = supported;
       return supported;
@@ -189,22 +184,19 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     int? ddMaxBytes,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-    await _runShorebirdBuildCommand(
-      () => _runFlutterBuild(
-        command: 'appbundle',
-        description: 'AAB',
-        flags: [
-          '--release',
-          if (flavor != null) '--flavor=$flavor',
-          if (target != null) '--target=$target',
-          if (targetPlatformArgs != null)
-            '--target-platform=$targetPlatformArgs',
-        ],
-        args: args,
-        base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
-        fixRecommendation: _androidBuildFixRecommendation,
-      ),
+    await _runFlutterBuild(
+      command: 'appbundle',
+      description: 'AAB',
+      flags: [
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
+      ],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
+      fixRecommendation: _androidBuildFixRecommendation,
     );
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
@@ -230,27 +222,24 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     int? ddMaxBytes,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-    await _runShorebirdBuildCommand(
-      () => _runFlutterBuild(
-        command: 'apk',
-        description: 'APK',
-        flags: [
-          '--release',
-          if (flavor != null) '--flavor=$flavor',
-          if (target != null) '--target=$target',
-          if (targetPlatformArgs != null)
-            '--target-platform=$targetPlatformArgs',
-          // TODO(bryanoltman): reintroduce coverage when we can support this.
-          // See https://github.com/shorebirdtech/shorebird/issues/1141.
-          // coverage:ignore-start
-          if (splitPerAbi) '--split-per-abi',
-          // coverage:ignore-end
-        ],
-        args: args,
-        base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
-        fixRecommendation: _androidBuildFixRecommendation,
-      ),
+    await _runFlutterBuild(
+      command: 'apk',
+      description: 'APK',
+      flags: [
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
+        // TODO(bryanoltman): reintroduce coverage when we can support this.
+        // See https://github.com/shorebirdtech/shorebird/issues/1141.
+        // coverage:ignore-start
+        if (splitPerAbi) '--split-per-abi',
+        // coverage:ignore-end
+      ],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
+      fixRecommendation: _androidBuildFixRecommendation,
     );
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
@@ -274,22 +263,19 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     int? ddMaxBytes,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-    await _runShorebirdBuildCommand(
-      () => _runFlutterBuild(
-        command: 'aar',
-        description: 'AAR',
-        flags: [
-          '--no-debug',
-          '--no-profile',
-          '--build-number=$buildNumber',
-          if (targetPlatformArgs != null)
-            '--target-platform=$targetPlatformArgs',
-        ],
-        args: args,
-        base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
-        fixRecommendation: _androidBuildFixRecommendation,
-      ),
+    await _runFlutterBuild(
+      command: 'aar',
+      description: 'AAR',
+      flags: [
+        '--no-debug',
+        '--no-profile',
+        '--build-number=$buildNumber',
+        if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
+      ],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
+      fixRecommendation: _androidBuildFixRecommendation,
     );
   }
 
@@ -301,15 +287,13 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     String? base64PublicKey,
     int? ddMaxBytes,
   }) async {
-    await _runShorebirdBuildCommand(
-      () => _runFlutterBuild(
-        command: 'linux',
-        description: 'linux app',
-        flags: ['--release', if (target != null) '--target=$target'],
-        args: args,
-        base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
-      ),
+    await _runFlutterBuild(
+      command: 'linux',
+      description: 'linux app',
+      flags: ['--release', if (target != null) '--target=$target'],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
   }
 
@@ -489,10 +473,10 @@ Reason: Exited with code $exitCode.''',
       shorebirdKernelFile.parent.deleteSync(recursive: true);
     }
     // Delete .dart_tool/version so `flutter build` runs `pub get` with
-    // Shorebird's Flutter. After the previous build we reset
-    // package_config.json with the system Flutter (see
-    // [_runShorebirdBuildCommand]), and Flutter skips `pub get` when this file
-    // matches its version, which can be shared by several Flutter checkouts.
+    // Shorebird's Flutter. The developer's own Flutter (from an IDE or the
+    // terminal) may have resolved packages last, and Flutter skips `pub get`
+    // when this file matches its version, which can be shared by several
+    // Flutter checkouts.
     // The rest of .dart_tool (build_runner and native asset caches) is kept.
     final dartToolVersionFile = File(
       p.join(projectRoot.path, '.dart_tool', 'version'),
@@ -502,30 +486,28 @@ Reason: Exited with code $exitCode.''',
     }
 
     String? appDillPath;
-    await _runShorebirdBuildCommand(() async {
-      final buildStart = await _runFlutterBuild(
-        command: command,
+    final buildStart = await _runFlutterBuild(
+      command: command,
+      description: description,
+      flags: flags,
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
+    );
+    if (shorebirdKernelFile.existsSync()) {
+      appDillPath = shorebirdKernelFile.path;
+      logger.detail('Using the kernel Flutter copied: $appDillPath');
+    } else {
+      appDillPath = _findAppDill(
+        projectRoot: projectRoot,
+        aotTargetName: aotTargetName,
         description: description,
-        flags: flags,
-        args: args,
-        base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
+        after: buildStart,
       );
-      if (shorebirdKernelFile.existsSync()) {
-        appDillPath = shorebirdKernelFile.path;
-        logger.detail('Using the kernel Flutter copied: $appDillPath');
-      } else {
-        appDillPath = _findAppDill(
-          projectRoot: projectRoot,
-          aotTargetName: aotTargetName,
-          description: description,
-          after: buildStart,
-        );
-        if (appDillPath != null) {
-          logger.detail('Found the kernel $aotTargetName used: $appDillPath');
-        }
+      if (appDillPath != null) {
+        logger.detail('Found the kernel $aotTargetName used: $appDillPath');
       }
-    });
+    }
 
     if (appDillPath == null) {
       throw ArtifactBuildException(
@@ -535,7 +517,7 @@ Reason: Exited with code $exitCode.''',
       );
     }
 
-    return AppleBuildResult(kernelFile: File(appDillPath!));
+    return AppleBuildResult(kernelFile: File(appDillPath));
   }
 
   /// Returns the artifact found by [find], turning a missing or ambiguous
@@ -697,48 +679,6 @@ Reason: Exited with code $exitCode.''',
     logger.detail('Build trace summary written to $summaryPath');
   }
 
-  /// A wrapper around [command] (which runs a `flutter build` command with
-  /// Shorebird's fork of Flutter) with a try/finally that runs
-  /// `flutter pub get` with the system installation of Flutter to reset
-  /// `.dart_tool/package_config.json` to the system Flutter.
-  Future<void> _runShorebirdBuildCommand(ShorebirdBuildCommand command) async {
-    try {
-      await command();
-    } finally {
-      await _systemFlutterPubGet();
-    }
-  }
-
-  /// This is a hack to reset `.dart_tool/package_config.json` to point to the
-  /// Flutter SDK on the user's PATH. This is necessary because Flutter commands
-  /// run by shorebird update the package_config.json file to point to
-  /// shorebird's version of Flutter, which confuses VS Code. See
-  /// https://github.com/shorebirdtech/shorebird/issues/1101 for more info.
-  Future<void> _systemFlutterPubGet() async {
-    const executable = 'flutter';
-    if (osInterface.which(executable) == null) {
-      // If the user doesn't have Flutter on their PATH, then we can't run
-      // `flutter pub get` with the system Flutter.
-      return;
-    }
-
-    final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
-
-    final result = await process.run(
-      executable,
-      arguments,
-      useVendedFlutter: false,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      logger.warn('''
-After the build, `flutter pub get` with the Flutter on your PATH failed. You may see unexpected behavior in VS Code.
-
-Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCodeUrl.toLink()}.
-''');
-    }
-  }
-
   /// Creates an AOT snapshot of the given [appDillPath] at [outFilePath] and
   /// returns the resulting file.
   Future<File> buildElfAotSnapshot({
@@ -785,15 +725,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     String? base64PublicKey,
     int? ddMaxBytes,
   }) async {
-    await _runShorebirdBuildCommand(
-      () => _runFlutterBuild(
-        command: 'windows',
-        description: 'windows app',
-        flags: ['--release', if (target != null) '--target=$target'],
-        args: args,
-        base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
-      ),
+    await _runFlutterBuild(
+      command: 'windows',
+      description: 'windows app',
+      flags: ['--release', if (target != null) '--target=$target'],
+      args: args,
+      base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
 
     return artifactManager.getWindowsReleaseDirectory();
@@ -803,8 +741,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   /// `flutter_export_environment.sh` when they name a Flutter other than
   /// Shorebird's, so `flutter build ios-framework` writes them again.
   ///
-  /// Another Flutter that runs in the project (the system Flutter's `pub get`
-  /// after our build, see [_runShorebirdBuildCommand], or an IDE's) writes its
+  /// Another Flutter that runs in the project (such as an IDE's) writes its
   /// own FLUTTER_ROOT there. Flutter only rewrites these files when they are
   /// older than its own flutter_tools stamp, so Shorebird's Flutter keeps the
   /// other Flutter's files and `pod install` builds against that Flutter's
