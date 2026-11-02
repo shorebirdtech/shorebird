@@ -511,6 +511,52 @@ void main() {
           verify(
             () => progress.fail(any(that: contains('Operation timed out'))),
           ).called(1);
+          verifyNever(
+            () => logger.info(Devicectl.provisioningProfileFixInstructions),
+          );
+        });
+      });
+
+      group('when the device rejects the provisioning profile', () {
+        setUp(() {
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput = File(
+            '$fixturesPath/install_failure_provisioning_profile.json',
+          ).readAsStringSync();
+        });
+
+        test('reports the cause and how to fix it', () async {
+          expect(
+            await runWithOverrides(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                device: device,
+              ),
+            ),
+            equals(ExitCode.software.code),
+          );
+
+          verify(
+            () => progress.fail(
+              any(
+                that: allOf(
+                  contains(
+                    'This app cannot be installed because its integrity '
+                    'could not be verified.',
+                  ),
+                  contains(
+                    'This provisioning profile cannot be installed on this '
+                    'device.',
+                  ),
+                ),
+              ),
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(Devicectl.provisioningProfileFixInstructions),
+          ).called(1);
         });
       });
 

@@ -56,6 +56,7 @@ class UserInfo extends Equatable {
     this.description,
     this.localizedDescription,
     this.localizedFailureReason,
+    this.localizedRecoverySuggestion,
     this.underlyingError,
   });
 
@@ -70,6 +71,10 @@ class UserInfo extends Equatable {
   /// A localized description of the failure reason.
   @JsonKey(name: 'NSLocalizedFailureReason')
   final StringContainer? localizedFailureReason;
+
+  /// A localized suggestion for how to recover from the error.
+  @JsonKey(name: 'NSLocalizedRecoverySuggestion')
+  final StringContainer? localizedRecoverySuggestion;
 
   /// The underlying error, if any.
   @JsonKey(name: 'NSUnderlyingError')
@@ -88,6 +93,7 @@ UserInfo(
   description: $description,
   localizedDescription: $localizedDescription,
   localizedFailureReason: $localizedFailureReason,
+  localizedRecoverySuggestion: $localizedRecoverySuggestion,
   underlyingError: $underlyingError
 )''';
 
@@ -96,6 +102,7 @@ UserInfo(
     description,
     localizedDescription,
     localizedFailureReason,
+    localizedRecoverySuggestion,
     underlyingError,
   ];
 }

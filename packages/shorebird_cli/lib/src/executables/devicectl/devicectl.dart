@@ -177,6 +177,19 @@ class Devicectl {
   /// CoreDevices starting with Xcode 26.
   static const minimumConsoleLoggingXcodeVersion = 26;
 
+  static final _profileError = RegExp(
+    '(provisioning|embedded) profile',
+    caseSensitive: false,
+  );
+
+  /// Printed when the device rejects the provisioning profile the release
+  /// was signed with.
+  static const provisioningProfileFixInstructions = '''
+The device rejected the provisioning profile this release was signed with.
+Usually the device was added to the profile after the release was built; the profile may also have expired or not match the app's bundle ID or entitlements.
+
+Fix the profile (for example, make sure it includes this device), then create a new release with `shorebird release ios` and preview that release.''';
+
   /// The line devicectl prints once the app has launched and its console is
   /// attached.
   static const consoleAttachedMarker =
@@ -227,6 +240,11 @@ class Devicectl {
       );
     } on Exception catch (error) {
       installProgress.fail('Failed to install app: $error');
+      // "embedded profile" covers installer errors that don't say
+      // "provisioning", such as a beta profile without its entitlement.
+      if (_profileError.hasMatch('$error')) {
+        logger.info(provisioningProfileFixInstructions);
+      }
       return ExitCode.software.code;
     }
     installProgress.complete();
@@ -521,16 +539,35 @@ class Devicectl {
     }
 
     // NSErrors can have infinitely nested underlying errors, and the original
-    // error is usually the most useful, so we find the root error and use that
-    // to get the error message.
-    var rootError = NSError.fromJson(maybeErrorJson);
-    while (rootError.userInfo.underlyingError?.error != null) {
-      rootError = rootError.userInfo.underlyingError!.error!;
+    // error is usually the most useful, so messages are taken from the root
+    // error first. Not every error carries a message (an installer error can
+    // carry only codes), so the next one up is used when it doesn't.
+    final chain = <NSError>[NSError.fromJson(maybeErrorJson)];
+    while (chain.last.userInfo.underlyingError?.error != null) {
+      chain.add(chain.last.userInfo.underlyingError!.error!);
     }
+    final rootFirst = chain.reversed.map((error) => error.userInfo);
 
-    return rootError.userInfo.localizedFailureReason?.string ??
-        rootError.userInfo.localizedDescription?.string ??
-        rootError.userInfo.description?.string ??
+    final message =
+        rootFirst
+            .map(
+              (info) =>
+                  info.localizedFailureReason?.string ??
+                  info.localizedDescription?.string ??
+                  info.description?.string,
+            )
+            .nonNulls
+            .firstOrNull ??
         'unknown failure reason';
+    // The recovery suggestion often names the actual cause, e.g. "Failed to
+    // install embedded profile ... (This provisioning profile cannot be
+    // installed on this device.)".
+    final suggestion = rootFirst
+        .map((info) => info.localizedRecoverySuggestion?.string)
+        .nonNulls
+        .firstOrNull;
+    return suggestion == null || suggestion == message
+        ? message
+        : '$message\n$suggestion';
   }
 }
