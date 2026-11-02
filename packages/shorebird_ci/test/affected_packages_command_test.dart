@@ -214,8 +214,8 @@ void main() {
   // The two tests below exercise the --repo-root autodiscovery path
   // (`git rev-parse --show-toplevel`) by setting Directory.current.
   // Save+restore in try/finally so subsequent tests in this file see
-  // the original cwd. Test isolation across files is fine because each
-  // test file runs in its own isolate w/ isolate-local cwd.
+  // the original cwd. Directory.current is shared by every isolate in
+  // the test process, so other suites must not rely on the cwd.
   test('repoRoot autodiscovers via git rev-parse when not passed', () async {
     initGitRepo(tempDir);
     createPackage(tempDir, 'packages/foo', 'foo');

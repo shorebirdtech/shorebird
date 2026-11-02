@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/commands.dart';
+import 'package:shorebird_ci/src/version.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
@@ -56,6 +58,23 @@ void main() {
           ),
         ).existsSync(),
         isFalse,
+      );
+    });
+
+    test('pins shorebird_ci to the version that generated it', () async {
+      // Unpinned, every shorebird_ci release changes every generated
+      // workflow the moment it's published.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+
+      expect(
+        _readMain(tempDir),
+        contains(
+          '      - run: dart pub global activate shorebird_ci '
+          '$packageVersion\n',
+        ),
       );
     });
 
@@ -276,6 +295,47 @@ void main() {
       expect(
         File(p.join(workflows, '_shorebird_ci_flutter.yaml')).existsSync(),
         isFalse,
+      );
+    });
+
+    test('static filters include the workspace root pubspec files', () async {
+      createWorkspaceRoot(tempDir, members: ['packages/foo']);
+      createPackage(tempDir, 'packages/foo', 'foo', useWorkspace: true);
+      createPackage(tempDir, 'tools/solo', 'solo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final content = File(
+        p.join(tempDir.path, '.github', 'workflows', 'shorebird_ci.yaml'),
+      ).readAsStringSync();
+      expect(
+        content,
+        contains(
+          '            foo:\n'
+          '              - packages/foo/**\n'
+          '              - pubspec.lock\n'
+          '              - pubspec.yaml\n',
+        ),
+      );
+      expect(
+        content,
+        contains('            solo:\n              - tools/solo/**\n'),
+      );
+    });
+
+    test('static workflow pins shorebird_ci to its version', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        _readMain(tempDir),
+        contains(
+          '      - run: dart pub global activate shorebird_ci '
+          '$packageVersion\n',
+        ),
       );
     });
 
@@ -657,6 +717,108 @@ void main() {
     );
   });
 
+  group('bloc lint', () {
+    /// Gives the package at [relativePath] a bloc_lint dev dependency.
+    void addBlocLint(String relativePath) {
+      File(
+        p.join(tempDir.path, relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'dev_dependencies:\n  bloc_lint: ^0.3.0\n',
+        mode: FileMode.append,
+      );
+    }
+
+    String readWorkflow(String name) => File(
+      p.join(tempDir.path, '.github', 'workflows', name),
+    ).readAsStringSync();
+
+    test('dynamic: no bloc steps when no package uses bloc_lint', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+
+      final yaml = _readMain(tempDir);
+      expect(yaml, isNot(contains('bloc')));
+    });
+
+    test('dynamic: bloc steps only in the job whose SDK uses it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      addBlocLint('packages/bar');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+
+      final yaml = loadYaml(_readMain(tempDir)) as YamlMap;
+      final jobs = yaml['jobs'] as YamlMap;
+      List<Object?> stepNames(String job) => [
+        for (final step in (jobs[job] as YamlMap)['steps'] as YamlList)
+          (step as YamlMap)['name'],
+      ];
+      expect(stepNames('flutter_ci'), contains('Setup Bloc Tools'));
+      expect(stepNames('flutter_ci'), contains('Bloc Lint'));
+      expect(stepNames('dart_ci'), isNot(contains('Setup Bloc Tools')));
+      expect(stepNames('dart_ci'), isNot(contains('Bloc Lint')));
+    });
+
+    test('static: no bloc input or steps when no package uses it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), isNot(contains('bloc')));
+      expect(readWorkflow('_shorebird_ci_dart.yaml'), isNot(contains('bloc')));
+      expect(
+        readWorkflow('_shorebird_ci_flutter.yaml'),
+        isNot(contains('bloc')),
+      );
+    });
+
+    test('static: passes has_bloc_lint only to packages that use it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/baz', 'baz');
+      addBlocLint('packages/baz');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final jobs = (loadYaml(_readMain(tempDir)) as YamlMap)['jobs'] as YamlMap;
+      YamlMap withOf(String job) => (jobs[job] as YamlMap)['with'] as YamlMap;
+      expect(withOf('baz')['has_bloc_lint'], isTrue);
+      expect(withOf('foo').containsKey('has_bloc_lint'), isFalse);
+
+      final dart = readWorkflow('_shorebird_ci_dart.yaml');
+      expect(dart, contains('has_bloc_lint:'));
+      expect(dart, contains('felangel/setup-bloc-tools'));
+      expect(dart, contains('run: bloc lint .'));
+      expect(
+        readWorkflow('_shorebird_ci_flutter.yaml'),
+        isNot(contains('bloc')),
+      );
+    });
+
+    test('static: Flutter-only bloc goes to the Flutter reusable', () async {
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      addBlocLint('packages/bar');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final flutter = readWorkflow('_shorebird_ci_flutter.yaml');
+      final inputs =
+          ((loadYaml(flutter) as YamlMap)['on'] as YamlMap)['workflow_call']
+              as YamlMap;
+      expect((inputs['inputs'] as YamlMap).containsKey('has_bloc_lint'), true);
+      expect(flutter, contains('felangel/setup-bloc-tools'));
+      expect(flutter, contains('run: bloc lint .'));
+    });
+  });
+
   group('dependabot.yml', () {
     test('creates dependabot.yml when missing', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
@@ -693,16 +855,19 @@ void main() {
   });
 
   group('--update-actions (auto-bump)', () {
-    test('rewrites action pins in place when enabled', () async {
-      // Inject a resolver that bumps every action to v99 so we can
+    // cspell:disable-next-line
+    const sha99 = 'abcdefabcdefabcdefabcdefabcdefabcdef9999';
+    Future<ActionRelease?> resolve99(String _) async =>
+        const ActionRelease(tag: 'v99.0.0', sha: sha99);
+
+    test('pins each action to its latest release when enabled', () async {
+      // Inject a resolver that reports v99 for every action so we can
       // confirm the post-write step actually runs and mutates the file.
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
 
       final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(
-          GenerateCommand(resolveLatestMajor: (_) async => 'v99'),
-        );
+        ..addCommand(GenerateCommand(resolveLatestRelease: resolve99));
       final code = await runner.run([
         'generate',
         '--repo-root',
@@ -712,22 +877,18 @@ void main() {
 
       expect(code, 0);
       final yaml = _readMain(tempDir);
-      // setup-dart and checkout were emitted at @v1/@v6 by the generator;
-      // resolver bumps them both to @v99.
-      expect(yaml, contains('actions/checkout@v99'));
-      expect(yaml, contains('dart-lang/setup-dart@v99'));
+      expect(yaml, contains('uses: actions/checkout@$sha99 # v99.0.0'));
+      expect(yaml, contains('uses: dart-lang/setup-dart@$sha99 # v99.0.0'));
     });
 
-    test('--no-update-actions skips the bump', () async {
+    test('--no-update-actions writes the built-in SHA pins', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
 
       // Resolver would bump to v99 if called; --no-update-actions should
-      // prevent that, leaving the generator's @v6/@v1 pins untouched.
+      // prevent that, leaving the generator's built-in pins untouched.
       final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(
-          GenerateCommand(resolveLatestMajor: (_) async => 'v99'),
-        );
+        ..addCommand(GenerateCommand(resolveLatestRelease: resolve99));
       final code = await runner.run([
         'generate',
         '--repo-root',
@@ -737,8 +898,68 @@ void main() {
 
       expect(code, 0);
       final yaml = _readMain(tempDir);
-      expect(yaml, isNot(contains('@v99')));
-      expect(yaml, contains('actions/checkout@v6'));
+      expect(yaml, isNot(contains('v99')));
+      expect(yaml, contains('uses: $checkoutAction'));
+    });
+
+    test('every generated uses: ref is pinned to a commit SHA', () async {
+      // Covers both styles, Flutter and Dart, codecov, bloc and cspell,
+      // so every action the templates can emit is checked.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      for (final pkg in ['foo', 'bar']) {
+        File(
+          p.join(tempDir.path, 'packages', pkg, 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'dev_dependencies:\n  bloc_lint: ^0.3.0\n',
+          mode: FileMode.append,
+        );
+      }
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      File(p.join(tempDir.path, 'cspell.config.yaml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      final usesLine = RegExp(r'uses:\s+(\S+)(.*)');
+      final pinned = RegExp(r'^[\w.-]+/[\w.-]+@[0-9a-f]{40}$');
+      for (final style in ['dynamic', 'static']) {
+        final runner = CommandRunner<int>('test', 'test')
+          ..addCommand(GenerateCommand());
+        final code = await runner.run([
+          'generate',
+          '--repo-root',
+          tempDir.path,
+          '--style',
+          style,
+          '--no-update-actions',
+        ]);
+        expect(code, 0);
+        final dir = Directory(p.join(tempDir.path, '.github', 'workflows'));
+        final repos = <String>{};
+        for (final file in dir.listSync().whereType<File>()) {
+          for (final m in usesLine.allMatches(file.readAsStringSync())) {
+            final ref = m.group(1)!;
+            if (ref.startsWith('./')) continue;
+            repos.add(ref.split('@').first);
+            expect(ref, matches(pinned), reason: '${file.path}: $ref');
+            expect(m.group(2), matches(RegExp(r'^ # v\d+\.\d+\.\d+$')));
+          }
+        }
+        expect(unpinnedActionRefs(_readAll(dir)), isEmpty);
+        // Every action the templates can emit showed up, so each was
+        // checked.
+        expect(
+          repos,
+          containsAll([
+            'actions/checkout',
+            'dart-lang/setup-dart',
+            'codecov/codecov-action',
+            'subosito/flutter-action',
+            'felangel/setup-bloc-tools',
+            'streetsidesoftware/cspell-action',
+            if (style == 'static') 'dorny/paths-filter',
+          ]),
+        );
+      }
     });
   });
 
@@ -807,7 +1028,7 @@ void main() {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
       final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(GenerateCommand(resolveLatestMajor: (_) async => null));
+        ..addCommand(GenerateCommand(resolveLatestRelease: (_) async => null));
       await runner.run([
         'generate',
         '--repo-root',
@@ -1005,3 +1226,7 @@ String _readMain(Directory repoRoot) {
     p.join(repoRoot.path, '.github', 'workflows', 'shorebird_ci.yaml'),
   ).readAsStringSync();
 }
+
+String _readAll(Directory dir) => [
+  for (final f in dir.listSync().whereType<File>()) f.readAsStringSync(),
+].join('\n');

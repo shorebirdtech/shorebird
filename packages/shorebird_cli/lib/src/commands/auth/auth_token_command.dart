@@ -58,6 +58,25 @@ class AuthTokenCommand extends ShorebirdCommand {
   }
 
   Future<int> _run(IOSink output) async {
+    // `auth token create` and the like are guesses at making a CI key. Don't
+    // print a short-lived session token for those: it would fail in CI later.
+    if (results.rest.isNotEmpty) {
+      final verb = results.rest.first;
+      final tokensCommand =
+          const {'create', 'delete', 'list', 'revoke'}.contains(verb)
+          ? 'shorebird tokens $verb'
+          : 'shorebird tokens';
+      return reportError(
+        message:
+            'shorebird auth token takes no arguments; it prints the token '
+            'this session sends, which is short-lived unless it is an API '
+            'key.',
+        hint:
+            'API keys (for $shorebirdTokenEnvVar in CI) are managed with '
+            '`$tokensCommand`.',
+      );
+    }
+
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,

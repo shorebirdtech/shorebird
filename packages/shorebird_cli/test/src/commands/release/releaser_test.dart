@@ -7,11 +7,15 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -77,9 +81,15 @@ class _TestReleaser extends Releaser {
 void main() {
   useTempWorkingDirectory();
   group(Releaser, () {
+    const appId = 'test-app-id';
+    const managedPem = 'managed-public-key-pem';
+    const managedKeyBase64 = 'bWFuYWdlZA==';
+    const signingKey = SigningKey(id: 7, publicKeyPem: managedPem);
+
     late ArgResults argResults;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -92,6 +102,7 @@ void main() {
         values: {
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -117,6 +128,7 @@ void main() {
       argResults = MockArgResults();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -129,6 +141,15 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+      when(
+        () => shorebirdEnv.getShorebirdYaml(),
+      ).thenReturn(const ShorebirdYaml(appId: appId));
+      when(
+        () => codePushClientWrapper.getSigningKey(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => signingKey);
+      when(
+        () => codeSigner.base64PublicKeyFromPem(managedPem),
+      ).thenReturn(managedKeyBase64);
 
       releaser = _TestReleaser(argResults: argResults);
     });
@@ -141,22 +162,25 @@ void main() {
         );
       });
 
-      test('logs error and exits with usage code when passed', () {
-        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+      test(
+        'exits with an error saying the flag is unsupported when passed',
+        () {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
 
-        expect(
-          () => runWithOverrides(releaser.assertReleaseVersionFlagNotProvided),
-          exitsWithCode(ExitCode.usage),
-        );
-        verify(
-          () => logger.err(
-            '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
-          ),
-        ).called(1);
-      });
+          expect(
+            () =>
+                runWithOverrides(releaser.assertReleaseVersionFlagNotProvided),
+            exitsWithError(
+              message:
+                  '--release-version is only supported for aar and '
+                  'ios-framework releases.',
+              hint:
+                  'Remove --release-version. This release takes its version '
+                  'from your pubspec.yaml.',
+            ),
+          );
+        },
+      );
     });
 
     group('useObfuscation', () {
@@ -273,6 +297,149 @@ To change the version of this release, change your app's version in your pubspec
         await runWithOverrides(() => releaser.addObfuscationMapArgs(buildArgs));
 
         expect(buildArgs, equals([saveMapArg()]));
+      });
+
+      group('when the user passes --save-obfuscation-map', () {
+        const userArg =
+            '--extra-gen-snapshot-options='
+            '--save-obfuscation-map=build/map.json';
+
+        setUp(() {
+          when(() => argResults.rest).thenReturn([userArg]);
+        });
+
+        test('keeps theirs and reads the map from their path', () async {
+          setObfuscate(enabled: true);
+          stubPreStrip(preStrip: false);
+
+          final buildArgs = [userArg];
+          await runWithOverrides(
+            () => releaser.addObfuscationMapArgs(buildArgs),
+          );
+
+          expect(buildArgs, equals([userArg]));
+          expect(
+            runWithOverrides(() => releaser.obfuscationMapPath),
+            equals(p.join(projectRoot.path, 'build', 'map.json')),
+          );
+        });
+
+        test('finds it among comma-separated options', () {
+          // An absolute path in this platform's style.
+          final absolutePath = p.join(Directory.systemTemp.path, 'b.json');
+          when(() => argResults.rest).thenReturn([
+            '--extra-gen-snapshot-options=--foo,--save-obfuscation-map=a.json',
+            '--extra-gen-snapshot-options',
+            '--save-obfuscation-map=$absolutePath',
+          ]);
+          expect(
+            runWithOverrides(() => releaser.userObfuscationMapPath),
+            equals(absolutePath),
+          );
+          expect(
+            runWithOverrides(() => releaser.obfuscationMapPath),
+            equals(p.normalize(absolutePath)),
+          );
+        });
+
+        test('verifies the map at their path', () {
+          setObfuscate(enabled: true);
+          File(
+            p.join(projectRoot.path, 'build', 'map.json'),
+          ).createSync(recursive: true);
+
+          runWithOverrides(releaser.verifyObfuscationMap);
+        });
+      });
+    });
+
+    group('resolvePatchSigningKey', () {
+      test('embeds the managed key by default', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(true);
+
+        final key = await runWithOverrides(releaser.resolvePatchSigningKey);
+
+        expect(key, equals(managedKeyBase64));
+        expect(
+          releaser.signing,
+          equals(
+            const ArtifactSigningRequest(
+              mode: ReleaseSigningMode.managed,
+              keyId: 7,
+            ),
+          ),
+        );
+        verify(
+          () => codePushClientWrapper.getSigningKey(appId: appId),
+        ).called(1);
+      });
+
+      test('says how to release without a key when the fetch fails', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(true);
+        when(
+          () => codePushClientWrapper.getSigningKey(appId: appId),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+
+        await expectLater(
+          runWithOverrides(releaser.resolvePatchSigningKey),
+          throwsA(isA<ProcessExit>()),
+        );
+        verify(
+          () => logger.info(
+            'Releases embed a Shorebird-managed patch signing key by '
+            'default. To release without one (patches will be unsigned), '
+            'pass --no-patch-signing.',
+          ),
+        ).called(1);
+      });
+
+      test('embeds no key with --no-patch-signing', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(false);
+        final key = await runWithOverrides(releaser.resolvePatchSigningKey);
+
+        expect(key, isNull);
+        expect(
+          releaser.signing,
+          equals(
+            const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
+          ),
+        );
+        verifyNever(
+          () => codePushClientWrapper.getSigningKey(appId: any(named: 'appId')),
+        );
+      });
+
+      test('embeds the customer key from --public-key-path', () async {
+        final publicKeyFile = File(p.join(projectRoot.path, 'public.pem'))
+          ..writeAsStringSync('customer-pem');
+        when(
+          () => argResults[CommonArguments.publicKeyArg.name],
+        ).thenReturn(publicKeyFile.path);
+        when(
+          () => codeSigner.canonicalPublicKeyPem('customer-pem'),
+        ).thenReturn('customer-pem');
+        when(
+          () => codeSigner.base64PublicKeyFromPem('customer-pem'),
+        ).thenReturn('Y3VzdG9tZXI=');
+
+        final key = await runWithOverrides(releaser.resolvePatchSigningKey);
+
+        expect(key, equals('Y3VzdG9tZXI='));
+        expect(
+          releaser.signing,
+          equals(
+            const ArtifactSigningRequest(mode: ReleaseSigningMode.customer),
+          ),
+        );
+        verifyNever(
+          () => codePushClientWrapper.getSigningKey(appId: any(named: 'appId')),
+        );
       });
     });
 
@@ -410,22 +577,19 @@ To change the version of this release, change your app's version in your pubspec
         ).called(1);
       });
 
-      test('logs error and exits when the map was not generated', () {
+      test('exits with an error when the map was not generated', () {
         setObfuscate(enabled: true);
 
         expect(
           () => runWithOverrides(releaser.verifyObfuscationMap),
-          exitsWithCode(ExitCode.software),
-        );
-        verify(
-          () => logger.err(
-            any(
-              that: contains(
-                'Obfuscation was enabled but the obfuscation map was not',
-              ),
+          exitsWithError(
+            message: contains(
+              'Obfuscation was enabled but the obfuscation map was not',
             ),
+            hint: 'Re-run with --verbose to see the build output.',
+            exitCode: ExitCode.software,
           ),
-        ).called(1);
+        );
       });
     });
 
@@ -538,6 +702,35 @@ To change the version of this release, change your app's version in your pubspec
             appId: appId,
             releaseId: 42,
             artifacts: artifacts,
+          ),
+        ).called(1);
+      });
+
+      test('records how the build is signed', () async {
+        const signing = ArtifactSigningRequest(
+          mode: ReleaseSigningMode.managed,
+          keyId: 7,
+        );
+        releaser.signing = signing;
+        when(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            artifacts: any(named: 'artifacts'),
+            signing: any(named: 'signing'),
+          ),
+        ).thenAnswer((_) async {});
+
+        await runWithOverrides(
+          () => releaser.uploadReleaseArtifacts(release: release, appId: appId),
+        );
+
+        verify(
+          () => codePushClientWrapper.uploadReleaseArtifacts(
+            appId: appId,
+            releaseId: 42,
+            artifacts: artifacts,
+            signing: signing,
           ),
         ).called(1);
       });

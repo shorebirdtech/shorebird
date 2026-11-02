@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The bucket sizes the metrics API accepts for `granularity`.
-final metricsGranularityValues = GetUniqueUsersParameter2.values
+final metricsGranularityValues = GetUniqueUsersGranularity.values
     .map((g) => g.value)
     .toList();
 

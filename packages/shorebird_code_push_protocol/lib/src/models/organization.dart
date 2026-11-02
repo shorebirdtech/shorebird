@@ -49,8 +49,7 @@ class Organization {
   /// The name of the organization.
   final String name;
 
-  /// Distinguishes personal organizations (single-user) from team
-  /// organizations (multi-user).
+  /// The type of organization.
   final OrganizationType organizationType;
 
   /// When this organization was created.

@@ -1,7 +1,8 @@
-/// Distinguishes personal organizations (single-user) from team
-/// organizations (multi-user).
+/// Distinguishes the personal organization created with each user
+/// account from team organizations.
 enum OrganizationType {
-  /// A single-user organization implicitly created with each user account.
+  /// The organization implicitly created with each user account. Its owner
+  /// can invite members.
   personal._('personal'),
 
   /// A multi-user organization with collaborators.

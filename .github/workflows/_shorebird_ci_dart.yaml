@@ -9,10 +9,6 @@ on:
       package_path:
         required: true
         type: string
-      has_bloc_lint:
-        required: false
-        default: false
-        type: boolean
       has_unit_tests:
         required: false
         default: true
@@ -30,7 +26,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
       - name: 🐳 Run Redis
@@ -38,10 +34,7 @@ jobs:
         run: |
           docker pull redis/redis-stack-server:latest
           docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
-      - uses: dart-lang/setup-dart@v1
-      - name: Setup Bloc Tools
-        if: inputs.has_bloc_lint
-        uses: felangel/setup-bloc-tools@v0
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
       - name: Install Dependencies
         working-directory: ${{ inputs.package_path }}
         run: |
@@ -53,20 +46,24 @@ jobs:
         run: dart format --set-exit-if-changed .
       - working-directory: ${{ inputs.package_path }}
         run: dart analyze --fatal-warnings .
-      - name: Bloc Lint
-        if: inputs.has_bloc_lint
-        working-directory: ${{ inputs.package_path }}
-        run: bloc lint .
       - name: Run Tests
         if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
         # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
+        # `dart test` keeps every suite's compiled kernel file in the temp
+        # dir until it exits, so one run over a package with ~200 test files
+        # fills the runner's disk ("Disk quota exceeded"). Running the files
+        # 50 at a time frees that dir between runs, as the dart_package
+        # action does (#4262). Each suite writes its own coverage file.
+        # shorebird_ci's generator still emits a single `dart test`; keep
+        # this batching if the file is regenerated.
+        shell: bash
         run: |
-          dart pub global activate coverage 1.15.1 && \
-          dart test --coverage=coverage && \
+          dart pub global activate coverage 1.15.1
+          find test -name '*_test.dart' | sort | xargs -r -n 50 dart test --coverage=coverage
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           flags: ${{ inputs.package_name }}
           working-directory: ${{ inputs.package_path }}

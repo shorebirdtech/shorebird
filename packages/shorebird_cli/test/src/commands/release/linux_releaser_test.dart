@@ -76,10 +76,17 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      // Managed signing, the default, is covered in releaser_test.dart.
+      when(() => argResults['patch-signing']).thenReturn(false);
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      when(
+        () => codeSigner.canonicalPublicKeyPem(any()),
+      ).thenAnswer(
+        (invocation) => invocation.positionalArguments.single as String,
+      );
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       linux = MockLinux();
@@ -147,20 +154,18 @@ void main() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
         });
 
-        test('logs error and exits with usage err', () async {
+        test('exits with an error saying the flag is unsupported', () async {
           await expectLater(
             () => runWithOverrides(releaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(
-            () => logger.err(
-              '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
+            exitsWithError(
+              message:
+                  '--release-version is only supported for aar and '
+                  'ios-framework releases.',
+              hint:
+                  'Remove --release-version. This release takes its version '
+                  'from your pubspec.yaml.',
             ),
-          ).called(1);
+          );
         });
       });
 

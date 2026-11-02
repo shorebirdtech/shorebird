@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
@@ -115,15 +116,26 @@ class PatchArtifactBundle extends Equatable {
 }
 
 /// A reference to a [CodePushClientWrapper] instance.
-ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
+ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(
+  buildCodePushClientWrapper,
+);
+
+/// Builds the [CodePushClientWrapper] for the current environment, its client
+/// handing the server's notices to [serverNotices].
+///
+/// [codePushClientWrapperRef] holds the one instance; tests that need a fresh
+/// one call this.
+@visibleForTesting
+CodePushClientWrapper buildCodePushClientWrapper() {
   return CodePushClientWrapper(
     codePushClient: CodePushClient(
       httpClient: auth.client,
       hostedUri: shorebirdEnv.hostedUri,
       customHeaders: {'x-cli-version': packageVersion},
+      onNotice: serverNotices.add,
     ),
   );
-});
+}
 
 /// The [CodePushClientWrapper] instance available in the current zone.
 CodePushClientWrapper get codePushClientWrapper =>
@@ -211,6 +223,344 @@ class CodePushClientWrapper {
       'Fetching organizations',
       codePushClient.getOrganizationMemberships,
     );
+  }
+
+  /// Creates an organization named [name].
+  Future<Organization> createOrganization({required String name}) {
+    return _withProgress(
+      'Creating organization',
+      () => codePushClient.createOrganization(name: name),
+    );
+  }
+
+  /// Renames organization [organizationId] to [name].
+  Future<void> updateOrganization({
+    required int organizationId,
+    required String name,
+  }) {
+    return _withProgress(
+      'Updating organization',
+      () => codePushClient.updateOrganization(
+        organizationId: organizationId,
+        name: name,
+      ),
+    );
+  }
+
+  /// Fetches the members of organization [organizationId].
+  Future<List<OrganizationUser>> getOrganizationUsers({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching members',
+      () => codePushClient.getOrganizationUsers(organizationId: organizationId),
+    );
+  }
+
+  /// Fetches the pending invitations to organization [organizationId], or
+  /// null if the user's role can't see them (the `auditor` role can't).
+  Future<List<InvitationSummary>?> maybeGetOrganizationInvitations({
+    required int organizationId,
+  }) async {
+    final progress = logger.progress('Fetching invitations');
+    try {
+      final invitations = await codePushClient.getOrganizationInvitations(
+        organizationId: organizationId,
+      );
+      progress.complete();
+      return invitations;
+    } on CodePushForbiddenException {
+      progress.complete();
+      return null;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
+  /// Invites [email] to organization [organizationId] with [role].
+  Future<CreateOrganizationInvitation201Response> createOrganizationInvitation({
+    required int organizationId,
+    required String email,
+    required Role role,
+  }) {
+    return _withProgress(
+      'Inviting $email',
+      () => codePushClient.createOrganizationInvitation(
+        organizationId: organizationId,
+        email: email,
+        role: role,
+      ),
+    );
+  }
+
+  /// Cancels the pending invitation [invitationId] to organization
+  /// [organizationId].
+  Future<void> revokeOrganizationInvitation({
+    required int organizationId,
+    required String invitationId,
+  }) {
+    return _withProgress(
+      'Cancelling invitation',
+      () => codePushClient.revokeOrganizationInvitation(
+        organizationId: organizationId,
+        invitationId: invitationId,
+      ),
+    );
+  }
+
+  /// Sets member [userId]'s role in organization [organizationId] to [role].
+  Future<void> updateOrganizationUser({
+    required int organizationId,
+    required int userId,
+    required Role role,
+  }) {
+    return _withProgress(
+      'Updating role',
+      () => codePushClient.updateOrganizationUser(
+        organizationId: organizationId,
+        userId: userId,
+        role: role,
+      ),
+    );
+  }
+
+  /// Removes member [userId] from organization [organizationId].
+  Future<void> removeOrganizationUser({
+    required int organizationId,
+    required int userId,
+  }) {
+    return _withProgress(
+      'Removing member',
+      () => codePushClient.removeOrganizationUser(
+        organizationId: organizationId,
+        userId: userId,
+      ),
+    );
+  }
+
+  /// Fetches one page of organization [organizationId]'s audit log. See
+  /// [CodePushClient.getOrganizationAuditLogs] for the arguments.
+  Future<GetOrganizationAuditLogsResponse> getOrganizationAuditLogs({
+    required int organizationId,
+    int? perPage,
+    String? cursor,
+    AuditLogOrder? order,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? appId,
+    int? actorId,
+    String? operation,
+  }) {
+    return _withProgress(
+      'Fetching audit log',
+      () => codePushClient.getOrganizationAuditLogs(
+        organizationId: organizationId,
+        perPage: perPage,
+        cursor: cursor,
+        order: order,
+        startDate: startDate,
+        endDate: endDate,
+        appId: appId,
+        actorId: actorId,
+        operation: operation,
+      ),
+    );
+  }
+
+  /// Fetches patch-install usage for the account that owns organization
+  /// [organizationId].
+  Future<GetUsageResponse> getOrganizationUsage({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching usage',
+      () => codePushClient.getOrganizationUsage(organizationId: organizationId),
+    );
+  }
+
+  /// Fetches usage as [getOrganizationUsage] does, or null when the user's
+  /// role may not see it (the auditor role).
+  Future<GetUsageResponse?> maybeGetOrganizationUsage({
+    required int organizationId,
+  }) {
+    return _withProgress('Fetching usage', () async {
+      try {
+        return await codePushClient.getOrganizationUsage(
+          organizationId: organizationId,
+        );
+      } on CodePushForbiddenException {
+        return null;
+      }
+    });
+  }
+
+  /// Fetches the service accounts organization [organizationId] owns.
+  Future<List<ServiceAccount>> getServiceAccounts({
+    required int organizationId,
+  }) {
+    return _withProgress(
+      'Fetching service accounts',
+      () => codePushClient.getServiceAccounts(organizationId: organizationId),
+    );
+  }
+
+  /// Creates service account [name] in organization [organizationId].
+  Future<ServiceAccount> createServiceAccount({
+    required int organizationId,
+    required String name,
+    ServiceAccountRole? role,
+  }) {
+    return _withProgress(
+      'Creating service account',
+      () => codePushClient.createServiceAccount(
+        organizationId: organizationId,
+        name: name,
+        role: role,
+      ),
+    );
+  }
+
+  /// Sets the role of service account [serviceAccountId] to [role].
+  Future<ServiceAccount> updateServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+    required ServiceAccountRole role,
+  }) {
+    return _withProgress(
+      'Updating service account',
+      () => codePushClient.updateServiceAccount(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        role: role,
+      ),
+    );
+  }
+
+  /// Deletes service account [serviceAccountId].
+  Future<void> deleteServiceAccount({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Deleting service account',
+      () => codePushClient.deleteServiceAccount(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Fetches the unrevoked keys of service account [serviceAccountId].
+  Future<List<ServiceAccountKey>> getServiceAccountKeys({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Fetching service account keys',
+      () => codePushClient.getServiceAccountKeys(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Revokes key [keyId] of service account [serviceAccountId].
+  Future<void> revokeServiceAccountKey({
+    required int organizationId,
+    required int serviceAccountId,
+    required int keyId,
+  }) {
+    return _withProgress(
+      'Revoking service account key',
+      () => codePushClient.revokeServiceAccountKey(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        keyId: keyId,
+      ),
+    );
+  }
+
+  /// Fetches the trust rules of service account [serviceAccountId].
+  Future<List<ServiceAccountTrustRule>> getServiceAccountTrustRules({
+    required int organizationId,
+    required int serviceAccountId,
+  }) {
+    return _withProgress(
+      'Fetching trust rules',
+      () => codePushClient.getServiceAccountTrustRules(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+      ),
+    );
+  }
+
+  /// Adds trust rule [rule] to service account [serviceAccountId].
+  Future<ServiceAccountTrustRule> createServiceAccountTrustRule({
+    required int organizationId,
+    required int serviceAccountId,
+    required CreateServiceAccountTrustRuleRequest rule,
+  }) {
+    return _withProgress(
+      'Adding trust rule',
+      () => codePushClient.createServiceAccountTrustRule(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        rule: rule,
+      ),
+    );
+  }
+
+  /// Deletes trust rule [ruleId] of service account [serviceAccountId].
+  Future<void> deleteServiceAccountTrustRule({
+    required int organizationId,
+    required int serviceAccountId,
+    required int ruleId,
+  }) {
+    return _withProgress(
+      'Removing trust rule',
+      () => codePushClient.deleteServiceAccountTrustRule(
+        organizationId: organizationId,
+        serviceAccountId: serviceAccountId,
+        ruleId: ruleId,
+      ),
+    );
+  }
+
+  /// Finds which of [memberships]' organizations app [appId] is in, or null
+  /// if none of them lists it.
+  ///
+  /// Pass the app metadata's [organizationId] when it has one: that names
+  /// the organization outright. Servers that predate the field leave it out,
+  /// so without it this lists each organization's apps in turn, stopping at
+  /// the first that has it. An organization whose listing fails is skipped;
+  /// the failure is reported only if no other organization has the app.
+  Future<OrganizationMembership?> findAppOrganization({
+    required String appId,
+    required List<OrganizationMembership> memberships,
+    int? organizationId,
+  }) async {
+    if (organizationId != null) {
+      return memberships.firstWhereOrNull(
+        (m) => m.organization.id == organizationId,
+      );
+    }
+    return _withProgress("Finding the app's organization", () async {
+      CodePushException? failure;
+      for (final membership in memberships) {
+        final List<AppMetadata> apps;
+        try {
+          apps = await codePushClient.getOrganizationApps(
+            organizationId: membership.organization.id,
+          );
+        } on CodePushException catch (error) {
+          failure = error;
+          continue;
+        }
+        if (apps.any((app) => app.appId == appId)) return membership;
+      }
+      if (failure != null) throw failure;
+      return null;
+    });
   }
 
   /// Fetches the pending invitations sent to the current user.
@@ -334,15 +684,6 @@ This app may not exist or you may not have permission to view it.''');
     );
   }
 
-  /// Deletes the app with the provided [appId], along with every release and
-  /// patch belonging to it.
-  Future<void> deleteApp({required String appId}) {
-    return _withProgress(
-      'Deleting app',
-      () => codePushClient.deleteApp(appId: appId),
-    );
-  }
-
   /// Deletes the release with the provided [releaseId], along with every
   /// platform's artifacts and every patch belonging to it.
   Future<void> deleteRelease({required String appId, required int releaseId}) {
@@ -389,7 +730,7 @@ This app may not exist or you may not have permission to view it.''');
     required Release release,
     required ReleasePlatform platform,
   }) {
-    if (release.platformStatuses[platform] == ReleaseStatus.active) {
+    if (release.isActiveOn(platform)) {
       final uri = ShorebirdWebConsole.appReleaseUri(release.appId, release.id);
       logger.err(
         '''
@@ -512,6 +853,13 @@ Please create a release using "shorebird release" and try again.
       ),
     );
   }
+
+  /// Fetches the managed patch-signing key a new build of [appId] embeds,
+  /// exiting if the server can't provide one.
+  Future<SigningKey> getSigningKey({required String appId}) => _withProgress(
+    'Fetching patch signing key',
+    () => codePushClient.getSigningKey(appId: appId),
+  );
 
   /// Returns release artifacts for the given [appId], [releaseId],
   /// [architectures], and [platform]. Not all architectures may have artifacts,
@@ -815,11 +1163,13 @@ to the architectures your project actually builds.''',
     required String appId,
     required int releaseId,
     required List<ReleaseArtifactUpload> artifacts,
+    ArtifactSigningRequest? signing,
     String message = 'Uploading artifacts',
   }) async {
     final progress = logger.progress(message);
     for (final artifact in artifacts) {
       await _uploadReleaseArtifact(
+        signing: signing,
         appId: appId,
         releaseId: releaseId,
         artifact: artifact,
@@ -841,6 +1191,7 @@ to the architectures your project actually builds.''',
     required int releaseId,
     required ReleaseArtifactUpload artifact,
     required Progress progress,
+    ArtifactSigningRequest? signing,
   }) async {
     final name = artifact.name;
     final file = artifact.file;
@@ -855,6 +1206,7 @@ to the architectures your project actually builds.''',
         hash: sha256.convert(await file.readAsBytes()).toString(),
         canSideload: artifact.canSideload,
         podfileLockHash: artifact.podfileLockHash,
+        signing: signing,
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
@@ -1027,7 +1379,7 @@ $name artifact already exists, continuing...''');
 
   /// Creates a patch for the given [appId], [releaseId], and [metadata].
   @visibleForTesting
-  Future<Patch> createPatch({
+  Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1046,7 +1398,7 @@ $name artifact already exists, continuing...''');
   @visibleForTesting
   Future<void> createPatchArtifacts({
     required String appId,
-    required Patch patch,
+    required CreatePatchResponse patch,
     required ReleasePlatform platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
@@ -1153,7 +1505,7 @@ $name artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].
-  Future<Patch> publishPatch({
+  Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1222,11 +1574,20 @@ $name artifact already exists, continuing...''');
   }) {
     if (error is CodePushUpgradeRequiredException) {
       progress?.fail();
-      logger
-        ..err('Your version of shorebird is out of date.')
-        ..info(
+      // The server says which version it requires and why; a 426 without a
+      // parseable error body gets the generic line.
+      if (error.response == null) {
+        logger.err('Your version of shorebird is out of date.');
+      } else {
+        logger.err(error.message);
+        if (error.details case final details?) logger.info(details);
+        if (error.documentationUrl case final url?) logger.info('See: $url');
+      }
+      if (!'${error.message} ${error.details}'.contains('shorebird upgrade')) {
+        logger.info(
           '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
         );
+      }
     } else if (progress != null) {
       progress.fail(message ?? '$error');
     }

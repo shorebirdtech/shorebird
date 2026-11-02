@@ -14,6 +14,7 @@ words:
   - ANDROIDD
   - Apks
   - appbundle
+  - appcircle # Appcircle CI platform
   - appex # Apple app extension bundle
   - archs
   - armeabi
@@ -39,6 +40,7 @@ words:
   - deflavored
   - develocity
   - devicectl
+  - DLRT # Prefix on the Dart VM's runtime entry points, as in DLRT_ExitSafepoint
   - dorny # From .github dir, doesn't show up in "**" check?
   - dyld
   - dylib
@@ -76,6 +78,7 @@ words:
   - libusbmuxd
   - lldb
   - LOCALAPPDATA
+  - lockfiles
   - logcat
   - longpaths
   - lookback # active-hours "best time to release" lookback window
@@ -91,10 +94,12 @@ words:
   - mocktail
   - mset # From ./packages/redis_client
   - multioption
+  - newtype # space_gen's term for a wrapper type, in generated protocol docs
   - noaudio # From .github dir, doesn't show up in "**" check?
   - NOAUTH
   - nonobvious # From analysis_options.yaml
   - nserror
+  - OCSF # Open Cybersecurity Schema Framework, the audit log format
   - Oltman
   - orri # Arm64 instruction, Or Register with Immediate
   - parseable
@@ -130,6 +135,7 @@ words:
   - spawnee
   - Retryable
   - RSAPKCS
+  - Safepoint # Dart VM thread state, as in DLRT_ExitSafepoint
   - sdcard # From .github/workflows/e2e.yaml
   - sgit # From .github/license_check/action.yaml
   - shorebirdtech
@@ -150,11 +156,13 @@ words:
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
   - timebase # Mach timebase (mach_timebase_info)
+  - toplevel # git rev-parse --show-toplevel
   - ttfb
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unanalyzed
   - unawaited
+  - unheld
   - unmockable
   - unobfuscated
   - unpadded
@@ -185,4 +193,5 @@ words:
   - xcschemes
   - xcshareddata
   - xcworkspace
+  - xlarge # GitHub runner labels (macos-latest-xlarge)
   - xlink

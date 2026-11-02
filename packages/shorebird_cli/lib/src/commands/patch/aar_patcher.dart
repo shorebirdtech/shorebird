@@ -69,6 +69,7 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
+      targetPlatforms: releaseTargetPlatforms,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
     );

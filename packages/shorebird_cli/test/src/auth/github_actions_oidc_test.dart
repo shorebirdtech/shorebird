@@ -181,7 +181,35 @@ void main() {
               .having(
                 (e) => e.hint,
                 'hint',
-                contains('permissions: id-token: write'),
+                allOf(
+                  contains("didn't accept ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
+                  isNot(contains('permissions')),
+                ),
+              ),
+        ),
+      );
+    });
+
+    test('reports when GitHub fails to issue an ID token', () async {
+      answerIdTokenRequestWith(
+        () => http.Response('Gateway Timeout', HttpStatus.gatewayTimeout),
+      );
+      await expectLater(
+        supplier.subjectToken(),
+        throwsA(
+          isA<CredentialSourceException>()
+              .having(
+                (e) => e.message,
+                'message',
+                'GitHub Actions failed to issue an OIDC token (504).',
+              )
+              .having(
+                (e) => e.hint,
+                'hint',
+                allOf(
+                  contains("error on GitHub's side"),
+                  isNot(contains('permissions')),
+                ),
               ),
         ),
       );

@@ -302,12 +302,13 @@ void main() {
         );
       }
 
-      const fullError = CodePushException(
+      final fullError = CodePushException(
         message: 'The account requires an upgraded plan.',
         details: 'Some details.',
         response: ErrorResponse(
           code: 'shorebird_plan_insufficient_tier',
           message: 'The account requires an upgraded plan.',
+          documentationUrl: Uri.parse('https://docs.shorebird.dev/plans'),
         ),
       );
 
@@ -352,7 +353,8 @@ void main() {
       });
 
       group('when in JSON mode', () {
-        test('emits the API code and details in the envelope', () async {
+        test('emits the API code, details and documentation in the '
+            'envelope', () async {
           final result = await captureJson(
             () async => runWithOverrides(
               () => command.reportApiError(
@@ -373,6 +375,7 @@ void main() {
                   'The account requires an upgraded plan.',
               'api_code': 'shorebird_plan_insufficient_tier',
               'details': 'Some details.',
+              'documentation_url': 'https://docs.shorebird.dev/plans',
             }),
           );
           verifyNever(() => logger.err(any()));

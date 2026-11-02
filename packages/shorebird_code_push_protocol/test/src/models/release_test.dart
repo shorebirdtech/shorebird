@@ -11,7 +11,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+          ),
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -30,7 +34,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+          ),
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -42,7 +50,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+          ),
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -54,7 +66,11 @@ void main() {
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
-        platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+          ),
+        },
         notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
@@ -62,6 +78,54 @@ void main() {
 
       expect(release1, equals(release1Copy));
       expect(release1, isNot(equals(release2)));
+    });
+
+    group('platforms', () {
+      Map<String, dynamic> releaseJson({Object? platforms}) => {
+        'id': 1,
+        'app_id': 'app-id',
+        'version': '1.0.0',
+        'flutter_revision': '83305b5088e6fe327fb3334a73ff190828d85713',
+        'platform_statuses': {'android': 'active', 'ios': 'draft'},
+        'platforms': ?platforms,
+        'created_at': '2023-01-01T00:00:00.000Z',
+        'updated_at': '2023-01-01T00:00:00.000Z',
+      };
+
+      test('reads each platform with its status and signing', () {
+        final release = Release.fromJson(
+          releaseJson(
+            platforms: {
+              'android': {'status': 'active', 'signing_mode': 'managed'},
+              'ios': {'status': 'draft'},
+            },
+          ),
+        );
+        expect(release.platforms, const {
+          ReleasePlatform.android: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+            signingMode: 'managed',
+          ),
+          ReleasePlatform.ios: ReleasePlatformDetails(
+            status: ReleaseStatus.draft,
+          ),
+        });
+        expect(Release.fromJson(release.toJson()), equals(release));
+      });
+
+      test('reads a signing mode added later as an unknown string', () {
+        final release = Release.fromJson(
+          releaseJson(
+            platforms: {
+              'android': {'status': 'active', 'signing_mode': 'quantum'},
+            },
+          ),
+        );
+        expect(
+          release.platforms[ReleasePlatform.android]!.signingMode,
+          equals('quantum'),
+        );
+      });
     });
   });
 }

@@ -1,8 +1,109 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl
  -->
+
+## 1.6.134 (October 27, 2026)
+
+- ✨ Warn when patching an install_only release whose Flutter skips signature
+  checks
+- ✨ Detect more CI providers (Codemagic, Xcode Cloud, Appcircle, Semaphore,
+  Harness, Drone, Woodpecker)
+- ✨ Reuse release artifacts downloaded by earlier patches
+- ✨ Build Android patches only for the release's architectures
+- ✨ Report boot-time patch validation failures, signature refusals as
+  invalid_signature
+- ✨ Reserve a trailing cid window on popular rows
+- ✨ Count base dispatch table offsets kept on a patch
+- 🐛 Clone Flutter with core.longpaths on Windows
+- 🐛 Don't say the build succeeded when the post-build pub get fails
+- 🐛 Say a GitHub OIDC 5xx is GitHub's error, not a permissions problem
+- 🐛 Say a GitHub OIDC refusal is a rejected request token, not missing
+  permissions
+- 🐛 Activate DD only where the base already did
+- 🐛 Skip PcOffsetOf's bound for discarded code in every build
+- 🐛 Match test names exactly; 'Prefix*' selects a group
+- 🐛 Restore the native snapshot loader; attribute the arm64 AOT status skips
+- 🐛 Call DLRT_ExitSafepoint on the clang stack
+- 🐛 Read the simulator's registers only while the thread simulates
+- 🐛 Keep future-listener frames whose closure Code was discarded
+- 🐛 Drop the fork's disassembler_mutex_
+
+Flutter 3.47.8 and Dart 3.13.7 are unchanged from 1.6.133.
+
+## 1.6.133 (October 25, 2026)
+
+- 🐦 Flutter 3.47.8 / Dart 3.13.7 support
+- 🐛 Trust Android 14+'s updatable root certificates in dart:io
+- 🐛 Roll BoringSSL to block compromised intermediate certificates and fix
+  X.509 path validation
+- 🐛 Boot the release when a desktop patch fails to load
+- 🐛 Pass Windows patch paths as UTF-8
+- 🐛 Always regenerate Generated.xcconfig in flutter build ios-framework
+- 🐛 Handle broken symlinks and existing files when creating plugin symlinks
+- 🐛 Guard against a missing VM service in debugDumpFocusTree and
+  debugDumpLayerTree
+
+## 1.6.132 (October 25, 2026)
+
+- ✨ Refuse install_only on Flutter builds that skip its signature check
+- ✨ Add --managed-signing to sign patches with a Shorebird-managed key
+- ✨ Add Release.platforms keyed by platform, deprecate platformStatuses, and
+  move the CLI to it
+- ✨ Sign patches with a Shorebird-managed key by default
+- ✨ Derive the auth service and console from the code push server
+- 🐛 Refuse a private key passed as the public key, without printing it
+- 🐛 Link the console for the API host in OIDC sign-in hints
+- 🐛 Don't print 'Cancelled' when flutter versions list succeeds
+- 🐛 Show the app's startup logs in shorebird preview on Android
+- 🐛 Pass shorebird's exit code through the Windows launcher
+- 🐛 Forward all arguments through bin/shorebird.bat
+- 🐛 Keep -- when PowerShell runs shorebird.ps1
+- 🐛 Return dart's exit code from shorebird.bat under cmd /c
+- 🐛 Bump rustls, rustls-webpki and rand for security advisories
+- 🐛 Report updater paths relative to its directories in failure events
+- 🐛 Verify patch signatures at install time in install_only mode
+- 🐛 Skip Android flavor detection in init when the Android SDK or Java is
+  missing
+- 🐛 Forward --no-codesign to flutter build ios-framework
+- 🐛 Regenerate the module's Xcode properties when they name another Flutter
+
+Flutter 3.47.7 and Dart 3.13.5 are unchanged from 1.6.131.
+
+## 1.6.131 (October 23, 2026)
+
+- ✨ `shorebird login` sends your browser to a styled page once the login
+  completes.
+- ✨ `SHOREBIRD_DOWNLOAD_URL` points Flutter and engine tool downloads at a
+  mirror, with separate overrides for the Flutter git URL and bundletool.
+- ✨ New Android and iOS releases require Flutter 3.24.0 or later.
+- ✨ When the server returns 426, the CLI prints the server's message instead
+  of a fixed line.
+- 🐛 Options before the platform now parse, so
+  `shorebird patch --release-version=1.0.0+1 android` works instead of failing
+  with `Invalid argument(s)`. `shorebird patch rollback` points at
+  `shorebird patches rollback`, and a version passed where a target belongs is
+  reported as a usage error.
+- 🐛 `shorebird release ios-framework --target` is honored instead of silently
+  building `lib/main.dart`.
+- 🐛 `shorebird preview` waits for a paired iOS device to become reachable
+  instead of exiting when the screen is locked.
+- 🐛 `shorebird init` only offers organizations you can create apps in, and a
+  new flavor is created in the existing app's organization.
+- 🐛 `shorebird doctor` probes the hosts the CLI actually uses.
+- 🐛 A yes/no prompt asks again when the answer is not recognized.
+- 🐛 Releasing an iOS framework into `release/` keeps the AAR.
+- 🐛 The temp directory `libapp.so` is extracted into from an `.aab` is cleaned
+  up.
+- 🐛 The `ios-framework` release instructions point at a section that exists.
+- 🔧 `patches`, `releases`, `apps` and `releases get-apks` carry example
+  invocations in their help.
+- 🔧 The per-install `client_id` no longer appears in the patch check log line.
+- 🔧 Refreshed the TLS root certificates the updater trusts.
+- 🔧 bundletool updated to 1.18.3, with a weekly check for new versions.
+
+Flutter 3.47.7 and Dart 3.13.5 are unchanged from 1.6.130.
 
 ## 1.6.130 (October 17, 2026)
 

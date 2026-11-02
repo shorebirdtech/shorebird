@@ -57,6 +57,51 @@ jobs:
     expect(await runVerify(tempDir), 0);
   });
 
+  group('dynamic workflow and bloc_lint', () {
+    const workflow = '''
+# shorebird_ci-managed: dynamic
+name: CI
+on: [push]
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shorebird_ci affected_packages --sdk dart
+''';
+
+    void addBlocLint(String relativePath) {
+      File(
+        p.join(tempDir.path, relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'dev_dependencies:\n  bloc_lint: ^0.3.0\n',
+        mode: FileMode.append,
+      );
+    }
+
+    test('fails when a package uses bloc_lint and nothing runs it', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      addBlocLint('packages/foo');
+      _writeWorkflow(tempDir, 'ci.yaml', workflow);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('passes when the workflow runs bloc lint', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      addBlocLint('packages/foo');
+      _writeWorkflow(
+        tempDir,
+        'ci.yaml',
+        '$workflow      - run: bloc lint .\n',
+      );
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+  });
+
   test('mention without marker does not count as dynamic coverage', () async {
     // Regression: an earlier version substring-searched for the call,
     // so any YAML comment, run-string, or commented-out step that
@@ -123,6 +168,129 @@ jobs:
     initGitRepo(tempDir);
 
     expect(await runVerify(tempDir), 1);
+  });
+
+  group('dep graph drift', () {
+    void writeFooFilter(List<String> paths) {
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+${paths.map((path) => '              - $path').join('\n')}
+            bar:
+              - packages/bar/**
+''');
+    }
+
+    setUp(() {
+      createPackage(tempDir, 'packages/bar', 'bar');
+      createPackage(
+        tempDir,
+        'packages/foo',
+        'foo',
+        dependencies: {'bar': '../bar'},
+      );
+    });
+
+    test('filter missing a dependency → returns 1', () async {
+      writeFooFilter(['packages/foo/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('filter covering every dependency → passes', () async {
+      writeFooFilter(['packages/foo/**', './packages/bar/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('an ancestor glob covers the dependency', () async {
+      writeFooFilter(['packages/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('a ! pattern does not cover the dependency', () async {
+      writeFooFilter(['packages/foo/**', '!packages/bar/**']);
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    group('with bar a workspace member depended on by name', () {
+      setUp(() {
+        createWorkspaceRoot(
+          tempDir,
+          members: ['packages/foo', 'packages/bar'],
+        );
+        File(
+          p.join(tempDir.path, 'packages', 'foo', 'pubspec.yaml'),
+        ).writeAsStringSync('''
+name: foo
+resolution: workspace
+environment:
+  sdk: ^3.0.0
+dependencies:
+  bar: ^1.0.0
+''');
+      });
+
+      test('filter missing it → returns 1', () async {
+        writeFooFilter(['packages/foo/**', 'pubspec.lock', 'pubspec.yaml']);
+        initGitRepo(tempDir);
+
+        expect(await runVerify(tempDir), 1);
+      });
+
+      test('filter missing the workspace lockfile → returns 1', () async {
+        writeFooFilter(['packages/foo/**', 'packages/bar/**', 'pubspec.yaml']);
+        initGitRepo(tempDir);
+
+        expect(await runVerify(tempDir), 1);
+      });
+
+      test('filter covering it → passes', () async {
+        writeFooFilter([
+          'packages/foo/**',
+          'packages/bar/**',
+          'pubspec.lock',
+          './pubspec.yaml',
+        ]);
+        initGitRepo(tempDir);
+
+        expect(await runVerify(tempDir), 0);
+      });
+    });
+
+    test('each workflow filter must cover the dependency', () async {
+      writeFooFilter(['packages/foo/**', 'packages/bar/**']);
+      _writeWorkflow(tempDir, 'other.yaml', '''
+name: Other
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
   });
 
   test(

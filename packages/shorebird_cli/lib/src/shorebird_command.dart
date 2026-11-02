@@ -2,15 +2,19 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
@@ -66,6 +70,12 @@ abstract class ShorebirdCommand extends Command<int> {
   /// usual.
   String? get defaultSubcommand => null;
 
+  /// Whether this command reads positional arguments, such as the org id
+  /// of `shorebird audit-log list 42`. The runner adds a default
+  /// subcommand before a positional argument only when the subcommand takes
+  /// one, so a mistyped subcommand name stays an error.
+  bool get takesPositionalArguments => false;
+
   /// Whether the `--json` global flag was passed.
   ///
   /// Reads from the [isJsonModeRef] scoped dependency, which is set by the
@@ -83,6 +93,69 @@ abstract class ShorebirdCommand extends Command<int> {
   /// See [interactive_mode.isInteractive].
   bool get isInteractive => interactive_mode.isInteractive;
   // coverage:ignore-end
+
+  /// The release types named by the positional platform or `--platforms`.
+  ///
+  /// Throws a [UsageException] when no platform was given, the platform is
+  /// not valid, or an extra positional argument was passed. When the invalid
+  /// platform is a subcommand of [siblingCommand] (e.g. `rollback` under
+  /// `patches`), the message points there. When the extra positional looks
+  /// like a version, [versionHint] may replace the default
+  /// `--release-version` hint by returning non-null.
+  Iterable<ReleaseType> releaseTypesOrUsageError({
+    required String siblingCommand,
+    String? Function(String version)? versionHint,
+  }) {
+    final List<ReleaseType> types;
+    try {
+      types = results.releaseTypes.toList();
+    } on PlatformArgumentException catch (e) {
+      final positional = results.rest.firstOrNull;
+      final sibling = runner!.commands[siblingCommand];
+      if (positional != null &&
+          (sibling?.subcommands.containsKey(positional) ?? false)) {
+        usageException(
+          '''
+${e.message}
+Did you mean "shorebird $siblingCommand $positional"?''',
+        );
+      }
+      final version = e.unexpectedVersion;
+      final hint = version == null ? null : versionHint?.call(version);
+      if (hint != null) {
+        usageException('''
+Unexpected argument: "$version".
+$hint''');
+      }
+      usageException(e.message);
+    }
+    if (types.isEmpty) {
+      usageException(
+        '''
+No platform was provided.
+Valid platforms: $validPlatformNames''',
+      );
+    }
+    return types;
+  }
+
+  /// The Flutter target: `--target`/`-t`, or a `.dart` positional after the
+  /// platform (`shorebird release android lib/main_prod.dart`).
+  ///
+  /// Throws a [UsageException] when both are given.
+  String? resolveTarget() {
+    final explicit = results.findOption('target', argParser: argParser);
+    final positional = results.positionalTarget;
+    if (positional == null) return explicit;
+    if (explicit != null) {
+      usageException(
+        'Both --target $explicit and the positional $positional name a '
+        'target. Pass only one.',
+      );
+    }
+    logger.info('Using $positional as the target (--target $positional).');
+    return positional;
+  }
 
   /// The full command name including parent commands (e.g. "releases list").
   String get fullCommandName {
@@ -188,6 +261,7 @@ abstract class ShorebirdCommand extends Command<int> {
     String? hint,
     String? apiCode,
     String? details,
+    Uri? documentationUrl,
   }) {
     JsonResult.error(
       code: code,
@@ -195,6 +269,7 @@ abstract class ShorebirdCommand extends Command<int> {
       hint: hint,
       apiCode: apiCode,
       details: details,
+      documentationUrl: documentationUrl,
       command: fullCommandName,
     ).write();
   }
@@ -211,12 +286,12 @@ abstract class ShorebirdCommand extends Command<int> {
     JsonErrorCode code = JsonErrorCode.usageError,
     int? exitCode,
   }) {
-    if (isJsonMode) {
-      emitJsonError(code: code, message: message, hint: hint);
-    } else {
-      logger.err(message);
-      if (hint != null) logger.info(hint);
-    }
+    reportCommandError(
+      command: fullCommandName,
+      message: message,
+      hint: hint,
+      code: code,
+    );
     return exitCode ?? ExitCode.usage.code;
   }
 
@@ -241,6 +316,7 @@ abstract class ShorebirdCommand extends Command<int> {
         message: fullMessage,
         apiCode: error.code,
         details: error.details,
+        documentationUrl: error.documentationUrl,
       );
     } else {
       logger.err(fullMessage);

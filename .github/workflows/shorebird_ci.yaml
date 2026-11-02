@@ -15,11 +15,17 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # dorny/paths-filter lists a pull request's changed files through the API.
+      pull-requests: read
     outputs:
-      artifact_proxy: ${{ steps.filter.outputs.artifact_proxy }}
       dex: ${{ steps.filter.outputs.dex }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
       shorebird_build_trace: ${{ steps.filter.outputs.shorebird_build_trace }}
@@ -28,53 +34,71 @@ jobs:
       shorebird_code_push_client: ${{ steps.filter.outputs.shorebird_code_push_client }}
       shorebird_code_push_protocol: ${{ steps.filter.outputs.shorebird_code_push_protocol }}
       shorebird_redis_client: ${{ steps.filter.outputs.shorebird_redis_client }}
+      verify_cache: ${{ steps.filter.outputs.verify_cache }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@v1
-      - run: dart pub global activate shorebird_ci
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      - run: dart pub global activate shorebird_ci 0.2.5
       - name: Verify CI coverage
         run: shorebird_ci verify
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
-            artifact_proxy:
-              - packages/artifact_proxy/**
             dex:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
+              - pubspec.lock
+              - pubspec.yaml
             scoped_deps:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/scoped_deps/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_build_trace:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_build_trace/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_ci:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_ci/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_cli:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
+              - packages/scoped_deps/**
               - packages/shorebird_build_trace/**
               - packages/shorebird_cli/**
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_code_push_client:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_code_push_protocol:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_protocol/**
+              - pubspec.lock
+              - pubspec.yaml
             shorebird_redis_client:
+              - .github/workflows/_shorebird_ci_dart.yaml
               - packages/redis_client/**
-
-  artifact_proxy:
-    needs: changes
-    if: needs.changes.outputs.artifact_proxy == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
-    with:
-      package_name: artifact_proxy
-      package_path: packages/artifact_proxy
-      has_bloc_lint: false
-      has_unit_tests: true
-      subpackages: ""
+              - pubspec.lock
+              - pubspec.yaml
+            verify_cache:
+              - .github/workflows/_shorebird_ci_dart.yaml
+              - packages/verify_cache/**
+              - pubspec.lock
+              - pubspec.yaml
 
   dex:
     needs: changes
@@ -83,7 +107,6 @@ jobs:
     with:
       package_name: dex
       package_path: packages/dex
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -94,7 +117,6 @@ jobs:
     with:
       package_name: scoped_deps
       package_path: packages/scoped_deps
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -105,7 +127,6 @@ jobs:
     with:
       package_name: shorebird_build_trace
       package_path: packages/shorebird_build_trace
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -116,7 +137,6 @@ jobs:
     with:
       package_name: shorebird_ci
       package_path: packages/shorebird_ci
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -127,7 +147,6 @@ jobs:
     with:
       package_name: shorebird_cli
       package_path: packages/shorebird_cli
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -138,7 +157,6 @@ jobs:
     with:
       package_name: shorebird_code_push_client
       package_path: packages/shorebird_code_push_client
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -149,7 +167,6 @@ jobs:
     with:
       package_name: shorebird_code_push_protocol
       package_path: packages/shorebird_code_push_protocol
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
 
@@ -160,19 +177,28 @@ jobs:
     with:
       package_name: shorebird_redis_client
       package_path: packages/redis_client
-      has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
       needs_redis: true
+
+  verify_cache:
+    needs: changes
+    if: needs.changes.outputs.verify_cache == 'true'
+    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    with:
+      package_name: verify_cache
+      package_path: packages/verify_cache
+      has_unit_tests: true
+      subpackages: ""
 
   cspell:
     name: CSpell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
-      - uses: streetsidesoftware/cspell-action@v9
+      - uses: streetsidesoftware/cspell-action@ce1816e4ce36532956ac6e983737392774b6e169 # v9.2.0
         with:
           incremental_files_only: false
           config: cspell.config.yaml
@@ -182,7 +208,6 @@ jobs:
     if: ${{ always() }}
     needs:
       - changes
-      - artifact_proxy
       - dex
       - scoped_deps
       - shorebird_build_trace
@@ -191,6 +216,7 @@ jobs:
       - shorebird_code_push_client
       - shorebird_code_push_protocol
       - shorebird_redis_client
+      - verify_cache
       - cspell
     runs-on: ubuntu-latest
     steps:

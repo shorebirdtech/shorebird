@@ -154,8 +154,10 @@ void main() {
                 required Uri authBaseUrl,
                 required void Function(String) userPrompt,
                 Duration timeout = const Duration(minutes: 5),
+                Future<void> Function(oauth2.Credentials)? completeLogin,
               }) async {
                 loginHttpClient = httpClient;
+                await completeLogin?.call(accessCredentials);
                 return accessCredentials;
               },
           obtainCredentialsViaDeviceLogin:
@@ -733,6 +735,25 @@ void main() {
                     'uri',
                     Uri.parse('https://example.com/errors'),
                   ),
+            ),
+          );
+        });
+
+        test('says which auth service the server accepts', () async {
+          when(() => shorebirdEnv.authServiceMismatch).thenReturn('Set it.');
+          answerApiRequestsWith(
+            status: HttpStatus.unauthorized,
+            headers: {'www-authenticate': invalidTokenChallenge},
+          );
+
+          await expectLater(
+            sendRequest(),
+            throwsA(
+              isA<oauth2.AuthorizationException>().having(
+                (e) => e.description,
+                'description',
+                'The access token is invalid or expired. Set it.',
+              ),
             ),
           );
         });

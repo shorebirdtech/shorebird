@@ -30,6 +30,18 @@ Uri _redirectTo(Uri loginUri, Map<String, String> params) {
   );
 }
 
+/// Sends the browser's GET to [uri] without following the redirect the CLI
+/// answers with, so a test never leaves the loopback server.
+Future<http.Response> _getWithoutFollowing(Uri uri) async {
+  final client = http.Client();
+  try {
+    final request = http.Request('GET', uri)..followRedirects = false;
+    return await http.Response.fromStream(await client.send(request));
+  } finally {
+    client.close();
+  }
+}
+
 /// The `redirect_uri` the authorization request at [loginUri] names.
 Uri _redirectUri(Uri loginUri) =>
     Uri.parse(loginUri.queryParameters['redirect_uri']!);
@@ -77,13 +89,12 @@ void main() {
     /// Logs in, with the browser following the auth service's redirect to
     /// the callback with [params] once the CLI prompts with the login URL.
     ///
-    /// Completes [browserPage] with the page the CLI answered the browser
-    /// with.
+    /// Completes [browserPage] with the CLI's answer to the browser.
     Future<oauth2.Credentials> loginRedirectingWith(
       Map<String, String> params, {
       Uri? authBaseUrlOverride,
       void Function(Uri loginUri)? onPrompt,
-      Completer<String>? browserPage,
+      Completer<http.Response>? browserPage,
     }) {
       return obtainCredentialsViaLoopbackLogin(
         httpClient: httpClient,
@@ -91,15 +102,26 @@ void main() {
         userPrompt: (url) {
           final loginUri = Uri.parse(url);
           onPrompt?.call(loginUri);
-          final page = http
-              .get(_redirectTo(loginUri, params))
-              .then((response) => response.body);
+          final page = _getWithoutFollowing(_redirectTo(loginUri, params));
           if (browserPage != null) {
             unawaited(page.then(browserPage.complete));
           } else {
             page.ignore();
           }
         },
+      );
+    }
+
+    /// Expects [response] to send the browser to the auth service's login
+    /// result page for [status].
+    void expectLoginResultPage(
+      http.Response response, {
+      required String status,
+    }) {
+      expect(response.statusCode, equals(HttpStatus.seeOther));
+      expect(
+        response.headers['location'],
+        equals('$authBaseUrl/cli/login-result?status=$status'),
       );
     }
 
@@ -112,7 +134,7 @@ void main() {
 
       late Uri loginUri;
       final before = DateTime.now();
-      final browserPage = Completer<String>();
+      final browserPage = Completer<http.Response>();
       final credentials = await loginRedirectingWith(
         {'code': 'test_code'},
         onPrompt: (uri) => loginUri = uri,
@@ -133,7 +155,7 @@ void main() {
         ),
         isTrue,
       );
-      expect(await browserPage.future, contains('Authentication complete.'));
+      expectLoginResultPage(await browserPage.future, status: 'success');
 
       final captured = verify(
         () => httpClient.post(
@@ -168,10 +190,9 @@ void main() {
       answerTokenRequestsWith(_json(tokenJson));
 
       late Uri loginUri;
-      await loginRedirectingWith(
-        {'code': 'test_code'},
-        onPrompt: (uri) => loginUri = uri,
-      );
+      await loginRedirectingWith({
+        'code': 'test_code',
+      }, onPrompt: (uri) => loginUri = uri);
 
       expect(loginUri.host, equals('auth.shorebird.dev'));
       expect(loginUri.path, equals('/login'));
@@ -191,10 +212,7 @@ void main() {
       expect(loginUri.queryParameters['client_id'], equals('shorebird-cli'));
       expect(loginUri.queryParameters['scope'], equals('api'));
       expect(loginUri.queryParameters['state'], hasLength(43));
-      expect(
-        loginUri.queryParameters['code_challenge_method'],
-        equals('S256'),
-      );
+      expect(loginUri.queryParameters['code_challenge_method'], equals('S256'));
       // The registered loopback redirect, on whatever port the CLI bound, with
       // no query: the auth service compares path and query exactly.
       final redirectUri = _redirectUri(loginUri);
@@ -209,13 +227,19 @@ void main() {
       answerTokenRequestsWith(_json(tokenJson));
 
       late Uri loginUri;
+      final browserPage = Completer<http.Response>();
       final credentials = await loginRedirectingWith(
         {'code': 'test_code'},
         authBaseUrlOverride: Uri.parse('https://auth.shorebird.dev/v1/'),
         onPrompt: (uri) => loginUri = uri,
+        browserPage: browserPage,
       );
 
       expect(loginUri.path, equals('/v1/login'));
+      expect(
+        (await browserPage.future).headers['location'],
+        equals('https://auth.shorebird.dev/v1/cli/login-result?status=success'),
+      );
       expect(
         credentials.tokenEndpoint,
         equals(Uri.parse('https://auth.shorebird.dev/v1/token')),
@@ -232,10 +256,12 @@ void main() {
           final loginUri = Uri.parse(url);
           final callbackUri = _redirectUri(loginUri);
           // Use .ignore() because the server may close before responding.
-          http
-              .get(callbackUri.replace(path: '/favicon.ico', query: ''))
-              .ignore();
-          unawaited(http.get(_redirectTo(loginUri, {'code': 'test_code'})));
+          _getWithoutFollowing(
+            callbackUri.replace(path: '/favicon.ico', query: ''),
+          ).ignore();
+          unawaited(
+            _getWithoutFollowing(_redirectTo(loginUri, {'code': 'test_code'})),
+          );
         },
       );
 
@@ -246,10 +272,9 @@ void main() {
       final loginUris = <Uri>[];
       for (var i = 0; i < 2; i++) {
         await expectLater(
-          loginRedirectingWith(
-            {'error': 'access_denied'},
-            onPrompt: loginUris.add,
-          ),
+          loginRedirectingWith({
+            'error': 'access_denied',
+          }, onPrompt: loginUris.add),
           throwsA(isA<oauth2.AuthorizationException>()),
         );
       }
@@ -264,7 +289,7 @@ void main() {
     });
 
     test('throws the error a callback carries', () async {
-      final browserPage = Completer<String>();
+      final browserPage = Completer<http.Response>();
       await expectLater(
         loginRedirectingWith({
           'error': 'access_denied',
@@ -280,7 +305,7 @@ void main() {
               ),
         ),
       );
-      expect(await browserPage.future, contains('Authentication failed.'));
+      expectLoginResultPage(await browserPage.future, status: 'failed');
       verifyNoTokenRequest();
     });
 
@@ -289,19 +314,20 @@ void main() {
       ('is missing', null),
     ]) {
       test('throws when the callback state $description', () async {
+        final browserPage = Completer<http.Response>();
         await expectLater(
           obtainCredentialsViaLoopbackLogin(
             httpClient: httpClient,
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final callbackUri = _redirectUri(Uri.parse(url));
-              http
-                  .get(
-                    callbackUri.replace(
-                      queryParameters: {'code': 'test_code', 'state': ?state},
-                    ),
-                  )
-                  .ignore();
+              unawaited(
+                _getWithoutFollowing(
+                  callbackUri.replace(
+                    queryParameters: {'code': 'test_code', 'state': ?state},
+                  ),
+                ).then(browserPage.complete),
+              );
             },
           ),
           throwsA(
@@ -312,9 +338,57 @@ void main() {
             ),
           ),
         );
+        expectLoginResultPage(await browserPage.future, status: 'failed');
         verifyNoTokenRequest();
       });
     }
+
+    test('completes the login before telling the browser it succeeded', () {
+      answerTokenRequestsWith(_json(tokenJson));
+      final browserPage = Completer<http.Response>();
+      final completed = <oauth2.Credentials>[];
+
+      return obtainCredentialsViaLoopbackLogin(
+        httpClient: httpClient,
+        authBaseUrl: authBaseUrl,
+        userPrompt: (url) => unawaited(
+          _getWithoutFollowing(
+            _redirectTo(Uri.parse(url), {'code': 'test_code'}),
+          ).then(browserPage.complete),
+        ),
+        completeLogin: (credentials) async {
+          expect(browserPage.isCompleted, isFalse);
+          completed.add(credentials);
+        },
+      ).then((credentials) async {
+        expect(completed.single.refreshToken, equals('sb_rt_test'));
+        expectLoginResultPage(await browserPage.future, status: 'success');
+      });
+    });
+
+    test(
+      'tells the browser the login failed when completing it fails',
+      () async {
+        answerTokenRequestsWith(_json(tokenJson));
+        final browserPage = Completer<http.Response>();
+        final error = Exception('no Shorebird account');
+
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) => unawaited(
+              _getWithoutFollowing(
+                _redirectTo(Uri.parse(url), {'code': 'test_code'}),
+              ).then(browserPage.complete),
+            ),
+            completeLogin: (_) async => throw error,
+          ),
+          throwsA(same(error)),
+        );
+        expectLoginResultPage(await browserPage.future, status: 'failed');
+      },
+    );
 
     test('throws when the callback has no code', () async {
       await expectLater(
@@ -338,7 +412,7 @@ void main() {
         }, status: HttpStatus.badRequest),
       );
 
-      final browserPage = Completer<String>();
+      final browserPage = Completer<http.Response>();
       await expectLater(
         loginRedirectingWith({'code': 'test_code'}, browserPage: browserPage),
         throwsA(
@@ -347,13 +421,11 @@ void main() {
               .having((e) => e.description, 'description', 'Code already used'),
         ),
       );
-      expect(await browserPage.future, contains('Authentication failed.'));
+      expectLoginResultPage(await browserPage.future, status: 'failed');
     });
 
     test('throws when the exchange gets no OAuth answer', () async {
-      answerTokenRequestsWith(
-        http.Response('', HttpStatus.tooManyRequests),
-      );
+      answerTokenRequestsWith(http.Response('', HttpStatus.tooManyRequests));
 
       await expectLater(
         loginRedirectingWith({'code': 'test_code'}),
