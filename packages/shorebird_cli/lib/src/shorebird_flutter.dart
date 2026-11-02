@@ -740,13 +740,14 @@ class ShorebirdFlutter {
   /// Whether `gen_snapshot` should be invoked with `--strip` for a build
   /// targeting [platform] on the Flutter pin identified by [flutterRevision].
   ///
-  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework,
-  /// AAR), AGP is not in the pipeline, so we always pre-strip in gen_snapshot.
+  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework),
+  /// AGP is not in the pipeline, so we always pre-strip in gen_snapshot.
   ///
-  /// On Android, the answer depends on the Flutter version: from 3.44 onward
-  /// AGP performs the strip and emits the matching `.sym` companion;
-  /// pre-stripping in gen_snapshot on those versions leaves AGP with nothing
-  /// to strip and trips flutter_tools' post-build verification. See
+  /// On Android (APK, app bundle and AAR, whose module build also runs AGP),
+  /// the answer depends on the Flutter version: from 3.44 onward AGP performs
+  /// the strip and emits the matching `.sym` companion; pre-stripping in
+  /// gen_snapshot on those versions leaves AGP with nothing to strip and
+  /// trips flutter_tools' post-build verification. See
   /// [libappStrippedByAgpConstraint].
   ///
   /// An unresolvable [flutterRevision] (e.g. a development branch) is treated
