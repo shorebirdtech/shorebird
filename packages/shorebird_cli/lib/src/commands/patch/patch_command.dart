@@ -855,6 +855,8 @@ Building patch with Flutter $flutterVersionString
       supplementDirectory: supplementDirectory,
     );
 
+    await assertMinLinkPercentage(patcher);
+
     _exitIfDryRun(patcher: patcher, release: release);
 
     await logPatchSummary(
@@ -993,6 +995,39 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
   }
 
   /// Reports a successful check and exits with success if this is a dry run.
+  /// Exits with an error when [patcher]'s link percentage is below
+  /// `--min-link-percentage`. Runs before `--dry-run` exits, so a dry run
+  /// fails the same way the real run would.
+  @visibleForTesting
+  Future<void> assertMinLinkPercentage(Patcher patcher) async {
+    final linkPercentage = patcher.linkPercentage;
+    final minLinkPercentageRaw =
+        results[CommonArguments.minLinkPercentage.name] as String;
+    final minLinkPercentage = int.tryParse(minLinkPercentageRaw);
+    if (minLinkPercentage == null ||
+        minLinkPercentage < CommonArguments.minLinkPercentageMin ||
+        minLinkPercentage > CommonArguments.minLinkPercentageMax) {
+      usageException(
+        '--min-link-percentage must be an integer between '
+        '${CommonArguments.minLinkPercentageMin} and '
+        '${CommonArguments.minLinkPercentageMax} '
+        '(got $minLinkPercentageRaw).',
+      );
+    }
+    if (linkPercentage != null && linkPercentage < minLinkPercentage) {
+      throw CommandError(
+        message:
+            'The link percentage of this patch ($linkPercentage%) is below '
+            'the minimum threshold ($minLinkPercentage%).',
+        hint:
+            'Not publishing. Lower --min-link-percentage to accept this '
+            'patch, or see ${Patcher.debugInfoFile.path} for what could not '
+            'be linked.',
+        exitCode: ExitCode.software,
+      );
+    }
+  }
+
   void _exitIfDryRun({required Patcher patcher, required Release release}) {
     final dryRun = results['dry-run'] == true;
     if (!dryRun) return;
@@ -1228,32 +1263,6 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     })();
 
     final linkPercentage = patcher.linkPercentage;
-    final minLinkPercentageRaw =
-        results[CommonArguments.minLinkPercentage.name] as String;
-    final minLinkPercentage = int.tryParse(minLinkPercentageRaw);
-    if (minLinkPercentage == null ||
-        minLinkPercentage < CommonArguments.minLinkPercentageMin ||
-        minLinkPercentage > CommonArguments.minLinkPercentageMax) {
-      usageException(
-        '--min-link-percentage must be an integer between '
-        '${CommonArguments.minLinkPercentageMin} and '
-        '${CommonArguments.minLinkPercentageMax} '
-        '(got $minLinkPercentageRaw).',
-      );
-    }
-    if (linkPercentage != null && linkPercentage < minLinkPercentage) {
-      throw CommandError(
-        message:
-            'The link percentage of this patch ($linkPercentage%) is below '
-            'the minimum threshold ($minLinkPercentage%).',
-        hint:
-            'Not publishing. Lower --min-link-percentage to accept this '
-            'patch, or see ${Patcher.debugInfoFile.path} for what could not '
-            'be linked.',
-        exitCode: ExitCode.software,
-      );
-    }
-
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',

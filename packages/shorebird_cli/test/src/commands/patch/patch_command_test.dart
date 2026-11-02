@@ -1724,12 +1724,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             when(() => patcher.linkPercentage).thenReturn(12.3);
             await expectLater(
               runWithOverrides(
-                () => command.logPatchSummary(
-                  app: appMetadata,
-                  releaseVersion: releaseVersion,
-                  patcher: patcher,
-                  patchArtifactBundles: patchArtifactBundles,
-                ),
+                () => command.assertMinLinkPercentage(patcher),
               ),
               exitsWithError(
                 message:
@@ -1754,12 +1749,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             test('completes, does not print error message', () async {
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 completes,
               );
@@ -1781,12 +1771,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               );
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 exitsWithError(
                   message:
@@ -1813,12 +1798,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               setMinLinkPercentage(value);
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 throwsA(
                   isA<UsageException>().having(
@@ -1852,12 +1832,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               when(() => patcher.linkPercentage).thenReturn(12.3);
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 completes,
               );
@@ -1870,12 +1845,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               when(() => patcher.linkPercentage).thenReturn(100);
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 completes,
               );
@@ -2676,6 +2646,21 @@ A patch cannot change the Flutter version a release was built with. To fix this,
     group('when dry-run is specified', () {
       setUp(() {
         when(() => argResults['dry-run']).thenReturn(true);
+      });
+
+      test('fails when the link percentage is below the minimum', () async {
+        when(() => patcher.linkPercentage).thenReturn(12.3);
+        when(
+          () => shorebirdEnv.buildDirectory,
+        ).thenReturn(Directory.systemTemp.createTempSync());
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithError(
+            message: contains('below the minimum threshold (20%)'),
+            exitCode: ExitCode.software,
+          ),
+        );
+        verifyNever(() => logger.info('No issues detected.'));
       });
 
       test('does not publish patch', () async {
