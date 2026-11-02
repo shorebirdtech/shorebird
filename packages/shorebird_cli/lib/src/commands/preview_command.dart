@@ -54,7 +54,7 @@ class PreviewCommand extends ShorebirdCommand {
         abbr: 'd',
         help:
             'The ID of the device or Android emulator to preview the release '
-            'on. iOS simulators are not supported.',
+            "on. iOS simulators aren't supported yet.",
       )
       ..addOption(
         CommonArguments.appIdArg.name,
@@ -890,9 +890,9 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
   /// expect a running simulator to be used.
   @visibleForTesting
   static const iosSimulatorNotSupportedMessage =
-      '`shorebird preview` runs on physical iPhones and iPads only. '
-      'Shorebird releases are release builds, which the iOS simulator cannot '
-      'run.';
+      "`shorebird preview` doesn't support the iOS simulator yet: Shorebird "
+      "releases are release builds, which Flutter doesn't build for the "
+      'simulator. Use a physical iPhone or iPad.';
 
   /// Returns a paired iOS 17+ device that devicectl knows about but cannot
   /// currently reach (e.g. locked, screen off, off Wi-Fi while wireless
