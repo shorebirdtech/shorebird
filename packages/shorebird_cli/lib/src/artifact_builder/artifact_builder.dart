@@ -328,6 +328,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       command: 'macos',
       description: 'macOS app',
       platformSubdir: 'macos',
+      aotTargetName: 'compile_macos_framework',
       flags: [
         '--release',
         if (flavor != null) '--flavor=$flavor',
@@ -354,6 +355,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       command: 'ipa',
       description: 'IPA',
       platformSubdir: 'ios',
+      aotTargetName: 'aot_assembly_release',
       flags: [
         '--release',
         if (flavor != null) '--flavor=$flavor',
@@ -380,6 +382,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       command: 'ios-framework',
       description: 'iOS framework',
       platformSubdir: 'ios',
+      aotTargetName: 'aot_assembly_release',
       flags: [
         '--no-debug',
         '--no-profile',
@@ -448,28 +451,34 @@ Reason: Exited with code $exitCode.''',
 
   /// Runs an Apple `flutter build [command]` (see [_runFlutterBuild]) and
   /// returns the app.dill it produced. [platformSubdir] is the directory under
-  /// `build/` Flutter writes this platform's outputs to (e.g. 'ios').
+  /// `build/` Flutter writes this platform's outputs to (e.g. 'ios'), which is
+  /// also the platform's name in Flutter's build target names.
+  /// [aotTargetName] is the Flutter build target that compiles this
+  /// platform's release app.dill to machine code (see [_findAppDill]).
+  ///
+  /// Another build may be running in the same project at the same time (e.g.
+  /// `shorebird patch android` next to `shorebird patch ios`), so this only
+  /// touches the parts of `.dart_tool/flutter_build` that belong to this
+  /// platform's builds.
   Future<AppleBuildResult> _buildAppleKernel({
     required String command,
     required String description,
     required String platformSubdir,
+    required String aotTargetName,
     required List<String> flags,
     required List<String> args,
     required String? base64PublicKey,
     required int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete Flutter's build cache so every target re-runs. On a Flutter that
-    // doesn't copy its kernel (see [_shorebirdKernelFile]) we look for a
-    // recently modified app.dill, which a skipped kernel step would not write.
-    // A cached build would also be stale on older Flutters: there the
+    // Make every target of this platform's builds re-run. On a Flutter that
+    // doesn't copy its kernel (see [_shorebirdKernelFile]) we find the kernel
+    // by the AOT target's stamp, which a skipped target would not rewrite. A
+    // cached build would also be stale on older Flutters: there the
     // SHOREBIRD_PUBLIC_KEY and (on iOS only; the macOS DD pass is skipped)
     // SHOREBIRD_DD_MAX_BYTES environment variables change the build's output
     // but are not inputs Flutter's build system tracks.
-    final flutterBuildDir = _flutterBuildDirectory(projectRoot);
-    if (flutterBuildDir.existsSync()) {
-      flutterBuildDir.deleteSync(recursive: true);
-    }
+    _deleteBuildStamps(projectRoot: projectRoot, platform: platformSubdir);
     // Delete the kernel copy a previous build left, so that a build with a
     // Flutter that doesn't write one can't be handed an old kernel.
     final shorebirdKernelFile = _shorebirdKernelFile(
@@ -506,9 +515,14 @@ Reason: Exited with code $exitCode.''',
         appDillPath = shorebirdKernelFile.path;
         logger.detail('Using the kernel Flutter copied: $appDillPath');
       } else {
-        appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
+        appDillPath = _findAppDill(
+          projectRoot: projectRoot,
+          aotTargetName: aotTargetName,
+          description: description,
+          after: buildStart,
+        );
         if (appDillPath != null) {
-          logger.detail('Found the kernel by modification time: $appDillPath');
+          logger.detail('Found the kernel $aotTargetName used: $appDillPath');
         }
       }
     });
@@ -840,33 +854,96 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     ),
   );
 
-  /// Finds the app.dill file generated during the build process, for Flutter
-  /// versions that don't write [_shorebirdKernelFile]. Looks in the
-  /// .dart_tool/flutter_build directory of the provided [projectRoot] (Flutter
-  /// writes it to `flutter_build/<build hash>/app.dill`) for app.dill files
-  /// modified after [after] and returns the path of the earliest one, or null
-  /// if there is none.
+  /// Deletes the stamp files in the `flutter_build` hash folders of [platform]
+  /// builds (e.g. 'ios'), so that Flutter re-runs every target there. Flutter
+  /// always re-runs a target whose stamp is missing.
   ///
-  /// The earliest is the first one the build produced. A build can produce
-  /// more than one (e.g. `ios-framework` builds more than one target), and
-  /// this matches the behavior from before app.dill was found on disk, when
-  /// the first `gen_snapshot ... app.dill` line in the build output was used.
+  /// Flutter keeps each build configuration in its own hash folder. A folder
+  /// belongs to [platform] when one of its stamps names a target of that
+  /// platform: Flutter's iOS targets have `ios` in their name (e.g.
+  /// `release_unpack_ios`), macOS ones `macos`. Other platforms' folders are
+  /// left alone, because a build for another platform may be using them right
+  /// now. A folder of this platform without such a stamp has no stamp for the
+  /// targets the untracked environment variables affect either (the AOT target
+  /// depends on the unpack target, and the asset bundle target has the
+  /// platform in its name), so those targets re-run anyway.
+  ///
+  /// Only stamps are deleted; Flutter overwrites the outputs when it re-runs.
+  void _deleteBuildStamps({
+    required Directory projectRoot,
+    required String platform,
+  }) {
+    final flutterBuildDir = _flutterBuildDirectory(projectRoot);
+    if (!flutterBuildDir.existsSync()) return;
+    for (final hashDir in flutterBuildDir.listSync().whereType<Directory>()) {
+      final stamps = hashDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => p.extension(file.path) == '.stamp')
+          .toList();
+      final isPlatformBuild = stamps.any(
+        (stamp) => p
+            .basenameWithoutExtension(stamp.path)
+            .split('_')
+            .contains(platform),
+      );
+      if (!isPlatformBuild) continue;
+      for (final stamp in stamps) {
+        stamp.deleteSync();
+      }
+    }
+  }
+
+  /// Finds the app.dill this build compiled, for Flutter versions that don't
+  /// write [_shorebirdKernelFile].
+  ///
+  /// The kernel is the input of [aotTargetName] (`aot_assembly_release` for
+  /// iOS, `compile_macos_framework` for macOS), the target that compiles it to
+  /// machine code, which reads it from its own `flutter_build/<hash>/app.dill`.
+  /// Flutter writes `<hash>/<aotTargetName>.stamp` each time that target runs,
+  /// so the hash folder whose stamp was modified after [after] is this
+  /// build's. Returns null if there is none.
+  ///
+  /// The app.dill's own modification time can't tell builds apart: a build
+  /// for another platform running at the same time (e.g. Android) writes its
+  /// app.dill to its own hash folder, and picking that kernel ships a patch
+  /// compiled for the wrong OS. Debug kernels (e.g. the simulator slice of
+  /// `ios-framework`) are skipped as well, because no AOT target runs for
+  /// them.
+  ///
+  /// Throws an [ArtifactBuildException] naming [description] when more than
+  /// one folder has a new stamp, which means another build for this platform
+  /// ran in the project at the same time.
   String? _findAppDill({
     required Directory projectRoot,
+    required String aotTargetName,
+    required String description,
     required DateTime after,
   }) {
     final flutterBuildDir = _flutterBuildDirectory(projectRoot);
     if (!flutterBuildDir.existsSync()) return null;
-    return flutterBuildDir
-        .listSync(recursive: true)
+    final stamps = flutterBuildDir
+        .listSync()
+        .whereType<Directory>()
+        .map((dir) => File(p.join(dir.path, '$aotTargetName.stamp')))
         .where(
-          (e) =>
-              e is File &&
-              p.basename(e.path) == 'app.dill' &&
-              e.statSync().modified.isAfter(after),
+          (stamp) =>
+              stamp.existsSync() && stamp.statSync().modified.isAfter(after),
         )
-        .sortedBy((e) => e.statSync().modified)
-        .firstOrNull
-        ?.path;
+        .toList();
+    if (stamps.length > 1) {
+      throw ArtifactBuildException(
+        'Found kernels from more than one $description build in '
+        '${flutterBuildDir.path}: '
+        '${stamps.map((stamp) => p.basename(stamp.parent.path)).join(', ')}.',
+        fixRecommendation:
+            'Another build for this platform ran in this project at the same '
+            'time. Wait for it to finish, then run this command again.',
+      );
+    }
+    final stamp = stamps.singleOrNull;
+    if (stamp == null) return null;
+    final appDill = File(p.join(stamp.parent.path, 'app.dill'));
+    return appDill.existsSync() ? appDill.path : null;
   }
 }

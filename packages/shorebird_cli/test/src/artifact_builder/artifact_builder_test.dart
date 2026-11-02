@@ -202,6 +202,54 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       });
     }
 
+    /// Writes what an Apple build leaves in `.dart_tool/flutter_build/[hash]`
+    /// when [aotTargetName] compiles its kernel to machine code: an app.dill
+    /// and the target's stamp, modified [after] now. Returns the app.dill.
+    File writeAppleKernel({
+      required String hash,
+      required String aotTargetName,
+      Duration after = const Duration(seconds: 10),
+    }) {
+      final hashDir = p.join(
+        projectRoot.path,
+        '.dart_tool',
+        'flutter_build',
+        hash,
+      );
+      final modified = DateTime.now().add(after);
+      File(p.join(hashDir, '$aotTargetName.stamp'))
+        ..createSync(recursive: true)
+        ..setLastModifiedSync(modified);
+      return File(p.join(hashDir, 'app.dill'))
+        ..createSync(recursive: true)
+        ..setLastModifiedSync(modified);
+    }
+
+    /// Writes an app.dill to `.dart_tool/flutter_build/[hash]` as a build
+    /// that doesn't AOT compile it for an Apple platform would (another
+    /// platform's build, or a debug build), modified [after] now.
+    File writeOtherKernel({
+      required String hash,
+      required List<String> stampNames,
+      Duration after = const Duration(seconds: 5),
+    }) {
+      final hashDir = p.join(
+        projectRoot.path,
+        '.dart_tool',
+        'flutter_build',
+        hash,
+      );
+      final modified = DateTime.now().add(after);
+      for (final name in stampNames) {
+        File(p.join(hashDir, '$name.stamp'))
+          ..createSync(recursive: true)
+          ..setLastModifiedSync(modified);
+      }
+      return File(p.join(hashDir, 'app.dill'))
+        ..createSync(recursive: true)
+        ..setLastModifiedSync(modified);
+    }
+
     group('buildAppBundle', () {
       setUp(() {
         when(
@@ -1387,20 +1435,10 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill =
-              File(
-                  p.join(
-                    projectRoot.path,
-                    '.dart_tool',
-                    'flutter_build',
-                    'h',
-                    'app.dill',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(
-                  DateTime.now().add(const Duration(seconds: 10)),
-                );
+          appDill = writeAppleKernel(
+            hash: 'h',
+            aotTargetName: 'compile_macos_framework',
+          );
 
           return ExitCode.success.code;
         });
@@ -1451,7 +1489,9 @@ Reason: Exited with code 70.'''),
         late File packageConfig;
         late File buildRunnerCache;
         late File versionFile;
-        late File buildCache;
+        late List<File> platformStamps;
+        late File platformKernel;
+        late List<File> otherBuildFiles;
         setUp(() {
           File dartToolFile(List<String> parts) => File(
             p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
@@ -1463,12 +1503,49 @@ Reason: Exited with code 70.'''),
             'build.dart',
           ]);
           versionFile = dartToolFile(['version']);
-          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
+          platformStamps = [
+            dartToolFile([
+              'flutter_build',
+              'old',
+              'release_unpack_macos.stamp',
+            ]),
+            dartToolFile([
+              'flutter_build',
+              'old',
+              'kernel_snapshot_program.stamp',
+            ]),
+          ];
+          platformKernel = dartToolFile(['flutter_build', 'old', 'app.dill']);
+          otherBuildFiles = [
+            dartToolFile([
+              'flutter_build',
+              'android',
+              'android_aot_release_android-arm64.stamp',
+            ]),
+            dartToolFile([
+              'flutter_build',
+              'android',
+              'kernel_snapshot_program.stamp',
+            ]),
+            dartToolFile(['flutter_build', 'android', 'app.dill']),
+            dartToolFile(['flutter_build', 'ios', 'release_unpack_ios.stamp']),
+            dartToolFile(['flutter_build', 'ios', 'app.dill']),
+          ];
         });
 
-        test('deletes the flutter_build cache before building', () async {
+        test("deletes the stamps of this platform's builds", () async {
           await runWithOverrides(builder.buildMacos);
-          expect(buildCache.existsSync(), isFalse);
+          for (final stamp in platformStamps) {
+            expect(stamp.existsSync(), isFalse, reason: stamp.path);
+          }
+          expect(platformKernel.existsSync(), isTrue);
+        });
+
+        test("keeps other platforms' builds", () async {
+          await runWithOverrides(builder.buildMacos);
+          for (final file in otherBuildFiles) {
+            expect(file.existsSync(), isTrue, reason: file.path);
+          }
         });
 
         test('deletes .dart_tool/version so pub get re-runs', () async {
@@ -1504,19 +1581,10 @@ Reason: Exited with code 70.'''),
               onStart: any(named: 'onStart'),
             ),
           ).thenAnswer((_) async {
-            File(
-                p.join(
-                  projectRoot.path,
-                  '.dart_tool',
-                  'flutter_build',
-                  'h',
-                  'app.dill',
-                ),
-              )
-              ..createSync(recursive: true)
-              ..setLastModifiedSync(
-                DateTime.now().add(const Duration(seconds: 10)),
-              );
+            writeAppleKernel(
+              hash: 'h',
+              aotTargetName: 'compile_macos_framework',
+            );
             kernelCopy().createSync(recursive: true);
             return ExitCode.success.code;
           });
@@ -1718,20 +1786,10 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill =
-              File(
-                  p.join(
-                    projectRoot.path,
-                    '.dart_tool',
-                    'flutter_build',
-                    'h',
-                    'app.dill',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(
-                  DateTime.now().add(const Duration(seconds: 10)),
-                );
+          appDill = writeAppleKernel(
+            hash: 'h',
+            aotTargetName: 'aot_assembly_release',
+          );
 
           return ExitCode.success.code;
         });
@@ -1741,7 +1799,9 @@ Reason: Exited with code 70.'''),
         late File packageConfig;
         late File buildRunnerCache;
         late File versionFile;
-        late File buildCache;
+        late List<File> platformStamps;
+        late File platformKernel;
+        late List<File> otherBuildFiles;
         setUp(() {
           File dartToolFile(List<String> parts) => File(
             p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
@@ -1753,12 +1813,49 @@ Reason: Exited with code 70.'''),
             'build.dart',
           ]);
           versionFile = dartToolFile(['version']);
-          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
+          platformStamps = [
+            dartToolFile(['flutter_build', 'old', 'release_unpack_ios.stamp']),
+            dartToolFile([
+              'flutter_build',
+              'old',
+              'kernel_snapshot_program.stamp',
+            ]),
+          ];
+          platformKernel = dartToolFile(['flutter_build', 'old', 'app.dill']);
+          otherBuildFiles = [
+            dartToolFile([
+              'flutter_build',
+              'android',
+              'android_aot_release_android-arm64.stamp',
+            ]),
+            dartToolFile([
+              'flutter_build',
+              'android',
+              'kernel_snapshot_program.stamp',
+            ]),
+            dartToolFile(['flutter_build', 'android', 'app.dill']),
+            dartToolFile([
+              'flutter_build',
+              'macos',
+              'release_unpack_macos.stamp',
+            ]),
+            dartToolFile(['flutter_build', 'macos', 'app.dill']),
+          ];
         });
 
-        test('deletes the flutter_build cache before building', () async {
+        test("deletes the stamps of this platform's builds", () async {
           await runWithOverrides(builder.buildIpa);
-          expect(buildCache.existsSync(), isFalse);
+          for (final stamp in platformStamps) {
+            expect(stamp.existsSync(), isFalse, reason: stamp.path);
+          }
+          expect(platformKernel.existsSync(), isTrue);
+        });
+
+        test("keeps other platforms' builds", () async {
+          await runWithOverrides(builder.buildIpa);
+          for (final file in otherBuildFiles) {
+            expect(file.existsSync(), isTrue, reason: file.path);
+          }
         });
 
         test('deletes .dart_tool/version so pub get re-runs', () async {
@@ -1824,19 +1921,7 @@ Reason: Exited with code 70.'''),
               onStart: any(named: 'onStart'),
             ),
           ).thenAnswer((_) async {
-            File(
-                p.join(
-                  projectRoot.path,
-                  '.dart_tool',
-                  'flutter_build',
-                  'h',
-                  'app.dill',
-                ),
-              )
-              ..createSync(recursive: true)
-              ..setLastModifiedSync(
-                DateTime.now().add(const Duration(seconds: 10)),
-              );
+            writeAppleKernel(hash: 'h', aotTargetName: 'aot_assembly_release');
             kernelCopy().createSync(recursive: true);
             return ExitCode.success.code;
           });
@@ -1863,6 +1948,140 @@ Reason: Exited with code 70.'''),
             ),
           );
         });
+      });
+
+      group('when another build runs at the same time', () {
+        test(
+          "ignores the kernel another platform's build wrote first",
+          () async {
+            late File iosKernel;
+            when(
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                environment: any(named: 'environment'),
+                runInShell: any(named: 'runInShell'),
+                onStart: any(named: 'onStart'),
+              ),
+            ).thenAnswer((_) async {
+              writeOtherKernel(
+                hash: 'android',
+                stampNames: [
+                  'kernel_snapshot_program',
+                  'android_aot_release_android-arm64',
+                ],
+              );
+              iosKernel = writeAppleKernel(
+                hash: 'ios',
+                aotTargetName: 'aot_assembly_release',
+              );
+              return ExitCode.success.code;
+            });
+
+            final result = await runWithOverrides(builder.buildIpa);
+
+            expect(result.kernelFile.path, equals(iosKernel.path));
+          },
+        );
+
+        test('throws when another iOS build compiled a kernel', () async {
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            writeAppleKernel(hash: 'a', aotTargetName: 'aot_assembly_release');
+            writeAppleKernel(hash: 'b', aotTargetName: 'aot_assembly_release');
+            return ExitCode.success.code;
+          });
+
+          await expectLater(
+            () => runWithOverrides(builder.buildIpa),
+            throwsA(
+              isA<ArtifactBuildException>()
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    allOf(
+                      startsWith(
+                        'Found kernels from more than one IPA build in ',
+                      ),
+                      contains('a, b'),
+                    ),
+                  )
+                  .having(
+                    (e) => e.fixRecommendation,
+                    'fixRecommendation',
+                    'Another build for this platform ran in this project at '
+                        'the same time. Wait for it to finish, then run this '
+                        'command again.',
+                  ),
+            ),
+          );
+        });
+      });
+
+      group('when no AOT target ran during the build', () {
+        test('ignores a kernel from an earlier build', () async {
+          writeAppleKernel(
+            hash: 'h',
+            aotTargetName: 'aot_assembly_release',
+            after: const Duration(seconds: -10),
+          );
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+
+          await expectLater(
+            () => runWithOverrides(builder.buildIpa),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                'Unable to find app.dill file.',
+              ),
+            ),
+          );
+        });
+      });
+
+      test('throws when the AOT target left no app.dill', () async {
+        when(
+          () => shorebirdProcess.stream(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+            onStart: any(named: 'onStart'),
+          ),
+        ).thenAnswer((_) async {
+          writeAppleKernel(
+            hash: 'h',
+            aotTargetName: 'aot_assembly_release',
+          ).deleteSync();
+          return ExitCode.success.code;
+        });
+
+        await expectLater(
+          () => runWithOverrides(builder.buildIpa),
+          throwsA(
+            isA<ArtifactBuildException>().having(
+              (e) => e.message,
+              'message',
+              'Unable to find app.dill file.',
+            ),
+          ),
+        );
       });
 
       group('with default arguments', () {
@@ -2092,20 +2311,10 @@ Reason: Exited with code 70.'''),
             onStart: any(named: 'onStart'),
           ),
         ).thenAnswer((_) async {
-          appDill =
-              File(
-                  p.join(
-                    projectRoot.path,
-                    '.dart_tool',
-                    'flutter_build',
-                    'h',
-                    'app.dill',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(
-                  DateTime.now().add(const Duration(seconds: 10)),
-                );
+          appDill = writeAppleKernel(
+            hash: 'h',
+            aotTargetName: 'aot_assembly_release',
+          );
 
           return ExitCode.success.code;
         });
@@ -2157,7 +2366,9 @@ Reason: Exited with code 70.'''),
         late File packageConfig;
         late File buildRunnerCache;
         late File versionFile;
-        late File buildCache;
+        late List<File> platformStamps;
+        late File platformKernel;
+        late List<File> otherBuildFiles;
         setUp(() {
           File dartToolFile(List<String> parts) => File(
             p.joinAll([projectRoot.path, '.dart_tool', ...parts]),
@@ -2169,12 +2380,49 @@ Reason: Exited with code 70.'''),
             'build.dart',
           ]);
           versionFile = dartToolFile(['version']);
-          buildCache = dartToolFile(['flutter_build', 'a.stamp']);
+          platformStamps = [
+            dartToolFile(['flutter_build', 'old', 'release_unpack_ios.stamp']),
+            dartToolFile([
+              'flutter_build',
+              'old',
+              'kernel_snapshot_program.stamp',
+            ]),
+          ];
+          platformKernel = dartToolFile(['flutter_build', 'old', 'app.dill']);
+          otherBuildFiles = [
+            dartToolFile([
+              'flutter_build',
+              'android',
+              'android_aot_release_android-arm64.stamp',
+            ]),
+            dartToolFile([
+              'flutter_build',
+              'android',
+              'kernel_snapshot_program.stamp',
+            ]),
+            dartToolFile(['flutter_build', 'android', 'app.dill']),
+            dartToolFile([
+              'flutter_build',
+              'macos',
+              'release_unpack_macos.stamp',
+            ]),
+            dartToolFile(['flutter_build', 'macos', 'app.dill']),
+          ];
         });
 
-        test('deletes the flutter_build cache before building', () async {
+        test("deletes the stamps of this platform's builds", () async {
           await runWithOverrides(builder.buildIosFramework);
-          expect(buildCache.existsSync(), isFalse);
+          for (final stamp in platformStamps) {
+            expect(stamp.existsSync(), isFalse, reason: stamp.path);
+          }
+          expect(platformKernel.existsSync(), isTrue);
+        });
+
+        test("keeps other platforms' builds", () async {
+          await runWithOverrides(builder.buildIosFramework);
+          for (final file in otherBuildFiles) {
+            expect(file.existsSync(), isTrue, reason: file.path);
+          }
         });
 
         test('deletes .dart_tool/version so pub get re-runs', () async {
@@ -2279,19 +2527,7 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
               onStart: any(named: 'onStart'),
             ),
           ).thenAnswer((_) async {
-            File(
-                p.join(
-                  projectRoot.path,
-                  '.dart_tool',
-                  'flutter_build',
-                  'h',
-                  'app.dill',
-                ),
-              )
-              ..createSync(recursive: true)
-              ..setLastModifiedSync(
-                DateTime.now().add(const Duration(seconds: 10)),
-              );
+            writeAppleKernel(hash: 'h', aotTargetName: 'aot_assembly_release');
             kernelCopy().createSync(recursive: true);
             return ExitCode.success.code;
           });
@@ -2320,53 +2556,36 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
         });
       });
 
-      test('uses the first app.dill the build produced', () async {
-        late File firstAppDill;
-        late File secondAppDill;
-        when(
-          () => shorebirdProcess.stream(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-            runInShell: any(named: 'runInShell'),
-            onStart: any(named: 'onStart'),
-          ),
-        ).thenAnswer((_) async {
-          final now = DateTime.now();
-          // The earlier file sorts second by name, so the test can't pass on
-          // directory listing order alone.
-          secondAppDill =
-              File(
-                  p.join(
-                    projectRoot.path,
-                    '.dart_tool',
-                    'flutter_build',
-                    'a',
-                    'app.dill',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(now.add(const Duration(seconds: 20)));
-          firstAppDill =
-              File(
-                  p.join(
-                    projectRoot.path,
-                    '.dart_tool',
-                    'flutter_build',
-                    'b',
-                    'app.dill',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(now.add(const Duration(seconds: 10)));
-          return ExitCode.success.code;
-        });
+      test(
+        'uses the release kernel, not the debug simulator kernel',
+        () async {
+          late File releaseKernel;
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((_) async {
+            releaseKernel = writeAppleKernel(
+              hash: 'release',
+              aotTargetName: 'aot_assembly_release',
+              after: const Duration(seconds: 20),
+            );
+            writeOtherKernel(
+              hash: 'debug',
+              stampNames: ['debug_unpack_ios', 'debug_universal_framework'],
+            );
+            return ExitCode.success.code;
+          });
 
-        final result = await runWithOverrides(builder.buildIosFramework);
+          final result = await runWithOverrides(builder.buildIosFramework);
 
-        expect(result.kernelFile.path, equals(firstAppDill.path));
-        expect(result.kernelFile.path, isNot(equals(secondAppDill.path)));
-      });
+          expect(result.kernelFile.path, equals(releaseKernel.path));
+        },
+      );
 
       test('forward arguments to flutter build', () async {
         await runWithOverrides(
