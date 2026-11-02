@@ -26,7 +26,7 @@ Explore this [interactive demo](https://docs.shorebird.dev/code-push/?utm_source
 ## Getting Started
 
 If your Flutter app does not already use Shorebird, follow our
-[Getting Started Guide]([https://docs.shorebird.dev/getting-started/?utm_source=pubdev]) to add code push to your
+[Getting Started Guide](https://docs.shorebird.dev/getting-started/?utm_source=pubdev) to add code push to your
 app.
 
 ## Installation
