@@ -474,10 +474,11 @@ Reason: Exited with code $exitCode.''',
     // Make every target of this platform's builds re-run. On a Flutter that
     // doesn't copy its kernel (see [_shorebirdKernelFile]) we find the kernel
     // by the AOT target's stamp, which a skipped target would not rewrite. A
-    // cached build would also be stale on older Flutters: there the
-    // SHOREBIRD_PUBLIC_KEY and (on iOS only; the macOS DD pass is skipped)
-    // SHOREBIRD_DD_MAX_BYTES environment variables change the build's output
-    // but are not inputs Flutter's build system tracks.
+    // cached build would also be stale on Flutters from before
+    // shorebirdtech/flutter#174: there the SHOREBIRD_PUBLIC_KEY and (on iOS
+    // only; the macOS DD pass is skipped) SHOREBIRD_DD_MAX_BYTES environment
+    // variables change the build's output but are not inputs Flutter's build
+    // system tracks. Later Flutters rerun the build when either changes.
     _deleteBuildStamps(projectRoot: projectRoot, platform: platformSubdir);
     // Delete the kernel copy a previous build left, so that a build with a
     // Flutter that doesn't write one can't be handed an old kernel.
