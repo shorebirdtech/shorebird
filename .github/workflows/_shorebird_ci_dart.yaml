@@ -62,8 +62,3 @@ jobs:
           dart pub global activate coverage 1.15.1
           find test -name '*_test.dart' | sort | xargs -r -n 50 dart test --coverage=coverage
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
-      - if: inputs.has_unit_tests
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          flags: ${{ inputs.package_name }}
-          working-directory: ${{ inputs.package_path }}

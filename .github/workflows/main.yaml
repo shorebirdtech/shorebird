@@ -55,7 +55,6 @@ jobs:
         with:
           filters: |
             shorebird_cli:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/dex/**
@@ -67,7 +66,6 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_client:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_client/**
@@ -75,21 +73,18 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_protocol:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
             scoped_deps:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/scoped_deps/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_ci:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/shorebird_ci/**
@@ -102,7 +97,6 @@ jobs:
         with:
           filters: |
             redis_client:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/redis_client/**
@@ -115,12 +109,10 @@ jobs:
         with:
           filters: |
             shorebird_cli:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_cli/**
             shorebird_code_push_client:
-              - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
               - ./.github/actions/verify_version/action.yaml
               - packages/shorebird_code_push_client/**
@@ -145,7 +137,6 @@ jobs:
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
         with:
-          codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
 
@@ -173,7 +164,6 @@ jobs:
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
         with:
-          codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
 
