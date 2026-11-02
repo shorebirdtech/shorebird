@@ -210,6 +210,75 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the enterprises the user belongs to, with their role in each.
+  Future<List<EnterpriseMembership>> getEnterprises() {
+    return _withProgress('Fetching enterprises', codePushClient.getEnterprises);
+  }
+
+  /// Fetches enterprise [enterpriseId].
+  Future<Enterprise> getEnterprise({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching enterprise',
+      () => codePushClient.getEnterprise(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches every organization in enterprise [enterpriseId].
+  Future<List<EnterpriseTeam>> getEnterpriseOrganizations({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching organizations',
+      () => codePushClient.getEnterpriseOrganizations(
+        enterpriseId: enterpriseId,
+      ),
+    );
+  }
+
+  /// Fetches every app in enterprise [enterpriseId].
+  Future<List<EnterpriseApp>> getEnterpriseApps({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching apps',
+      () => codePushClient.getEnterpriseApps(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches enterprise [enterpriseId]'s directory.
+  Future<List<EnterpriseMember>> getEnterpriseMembers({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching members',
+      () => codePushClient.getEnterpriseMembers(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches enterprise [enterpriseId]'s guests.
+  Future<List<EnterpriseGuest>> getEnterpriseGuests({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching guests',
+      () => codePushClient.getEnterpriseGuests(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Sets member [userId]'s role in enterprise [enterpriseId] to [role].
+  Future<void> setEnterpriseMemberRole({
+    required int enterpriseId,
+    required int userId,
+    required EnterpriseRole role,
+  }) {
+    return _withProgress(
+      'Changing role',
+      () => codePushClient.setEnterpriseMemberRole(
+        enterpriseId: enterpriseId,
+        userId: userId,
+        role: role,
+      ),
+    );
+  }
+
   /// Fetches the members of organization [organizationId].
   Future<List<OrganizationUser>> getOrganizationUsers({
     required int organizationId,
@@ -326,6 +395,67 @@ class CodePushClientWrapper {
         appId: appId,
         actorId: actorId,
         operation: operation,
+      ),
+    );
+  }
+
+  /// Fetches the service accounts of every organization in enterprise
+  /// [enterpriseId].
+  Future<List<EnterpriseServiceAccount>> getEnterpriseServiceAccounts({
+    required int enterpriseId,
+  }) {
+    return _withProgress(
+      'Fetching service accounts',
+      () => codePushClient.getEnterpriseServiceAccounts(
+        enterpriseId: enterpriseId,
+      ),
+    );
+  }
+
+  /// [CodePushClient.getEnterpriseAuditLogs] for the arguments.
+  Future<GetOrganizationAuditLogsResponse> getEnterpriseAuditLogs({
+    required int enterpriseId,
+    int? perPage,
+    String? cursor,
+    AuditLogOrder? order,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? appId,
+    int? actorId,
+    String? operation,
+  }) {
+    return _withProgress(
+      'Fetching audit log',
+      () => codePushClient.getEnterpriseAuditLogs(
+        enterpriseId: enterpriseId,
+        perPage: perPage,
+        cursor: cursor,
+        order: order,
+        startDate: startDate,
+        endDate: endDate,
+        appId: appId,
+        actorId: actorId,
+        operation: operation,
+      ),
+    );
+  }
+
+  /// Fetches enterprise [enterpriseId]'s plan and its installs this period.
+  Future<EnterpriseBilling> getEnterpriseBilling({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching usage',
+      () => codePushClient.getEnterpriseBilling(enterpriseId: enterpriseId),
+    );
+  }
+
+  /// Fetches each organization on enterprise [enterpriseId]'s plan with its
+  /// installs this period.
+  Future<List<EnterpriseBillingOrganization>>
+  getEnterpriseBillingOrganizations({required int enterpriseId}) {
+    return _withProgress(
+      'Fetching usage by organization',
+      () => codePushClient.getEnterpriseBillingOrganizations(
+        enterpriseId: enterpriseId,
       ),
     );
   }

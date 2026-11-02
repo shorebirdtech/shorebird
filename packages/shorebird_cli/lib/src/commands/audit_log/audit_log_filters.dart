@@ -2,6 +2,7 @@ import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/enterprises/enterprise_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -21,6 +22,42 @@ String? auditLogErrorHint(String? apiCode) => switch (apiCode) {
         'https://shorebird.dev/pricing.',
   _ => null,
 };
+
+/// Whose audit log a run reads: one organization's, or an enterprise's,
+/// which covers every organization in it.
+class AuditLogScope {
+  /// Organization [id]'s log.
+  const AuditLogScope.organization(this.id) : isEnterprise = false, name = null;
+
+  /// The log of enterprise [id], called [name].
+  const AuditLogScope.enterprise(this.id, {required String this.name})
+    : isEnterprise = true;
+
+  /// The organization or enterprise id.
+  final int id;
+
+  /// Whether [id] names an enterprise.
+  final bool isEnterprise;
+
+  /// The enterprise's name; null for an organization.
+  final String? name;
+
+  /// The command that reads this scope's log, before its subcommand. The
+  /// user is in at most one enterprise, so its command names no id.
+  String get command =>
+      isEnterprise ? 'shorebird enterprise audit-log' : 'shorebird audit-log';
+
+  /// The options that name this scope after the subcommand: none for the
+  /// enterprise, whose [command] already says it.
+  List<String> get options =>
+      isEnterprise ? const [] : ['--${CommonArguments.orgIdArg.name} $id'];
+
+  /// This scope in a sentence, such as "organization 42" or `"Acme"`.
+  String get label => isEnterprise ? '"$name"' : 'organization $id';
+
+  /// The `--json` key that holds [id].
+  String get jsonKey => isEnterprise ? 'enterprise_id' : 'organization_id';
+}
 
 /// The audit log filters a run was given, parsed.
 class AuditLogFilters {
@@ -55,7 +92,8 @@ class AuditLogFilters {
 
 /// The filter options `shorebird audit-log list` and `export` share,
 /// and the fetch and error reporting around them.
-mixin AuditLogFilterOptions on OrganizationScopedCommand {
+mixin AuditLogFilterOptions
+    on OrganizationScopedCommand, EnterpriseScopedCommand {
   /// The filter options, in the order a resume hint repeats them.
   static const _filterOptions = [
     'app-id',
@@ -66,9 +104,12 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     'order',
   ];
 
-  /// Adds `--org-id` and the filter options [parseFilters] reads.
-  void addFilterOptions() {
-    addOrganizationScopeOption();
+  /// Adds `--org-id` and the filter options [parseFilters] reads; for the
+  /// `shorebird enterprise audit-log` copy ([enterpriseRoute]), the filter
+  /// options and the hidden `--org-id` of [addEnterpriseScope].
+  void addFilterOptions({bool enterpriseRoute = false}) {
+    if (!enterpriseRoute) addOrganizationScopeOption();
+    addEnterpriseScope(route: enterpriseRoute);
     argParser
       ..addOption('app-id', help: 'Only entries about this app.')
       ..addOption(
@@ -80,7 +121,9 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
       ..addOption(
         'event',
         aliases: const ['operation'],
-        help: 'Only entries of this event (e.g. "organization.rename").',
+        help: enterpriseRoute
+            ? 'Only entries of this event (e.g. "enterprise_member.remove").'
+            : 'Only entries of this event (e.g. "organization.rename").',
       )
       ..addOption(
         'start',
@@ -205,16 +248,48 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
     );
   }
 
-  /// The command that runs [subcommand] again with this run's organization
-  /// and filters, starting at [cursor], plus [extra] options.
+  /// Picks whose log to read: your enterprise under `shorebird
+  /// enterprise`, else the organization as
+  /// [resolveOrganizationFromArguments] picks it.
+  /// [example] is the command with `<org-id>` where the id goes.
+  ///
+  /// Returns the scope, or an exit code once the failure is reported.
+  Future<({AuditLogScope? scope, int? errorCode})> resolveScope({
+    required String example,
+  }) async {
+    if (isEnterpriseRoute) {
+      final scopeError = rejectConflictingScope();
+      if (scopeError != null) return (scope: null, errorCode: scopeError);
+      final (:membership, :errorCode) = await resolveEnterprise();
+      if (errorCode != null) return (scope: null, errorCode: errorCode);
+      return (
+        scope: AuditLogScope.enterprise(
+          membership!.id,
+          name: membership.name,
+        ),
+        errorCode: null,
+      );
+    }
+    final (:membership, :errorCode) = await resolveOrganizationFromArguments(
+      example: example,
+    );
+    if (errorCode != null) return (scope: null, errorCode: errorCode);
+    return (
+      scope: AuditLogScope.organization(membership!.organization.id),
+      errorCode: null,
+    );
+  }
+
+  /// The command that runs [subcommand] again with this run's scope and
+  /// filters, starting at [cursor], plus [extra] options.
   String commandFrom(
     String subcommand, {
-    required int organizationId,
+    required AuditLogScope scope,
     required String cursor,
     List<String> extra = const [],
   }) {
     final options = [
-      '--${CommonArguments.orgIdArg.name} $organizationId',
+      ...scope.options,
       for (final option in _filterOptions)
         if (_timesFromDurations[option] case final time?)
           '--$option ${_formatTime(time)}'
@@ -223,18 +298,31 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
       ...extra,
       '--cursor ${_quote(cursor)}',
     ];
-    return 'shorebird audit-log $subcommand ${options.join(' ')}';
+    return '${scope.command} $subcommand ${options.join(' ')}';
   }
 
-  /// Fetches one page of [organizationId]'s audit log matching [filters].
+  /// Fetches one page of [scope]'s audit log matching [filters].
   Future<GetOrganizationAuditLogsResponse> fetchPage(
-    int organizationId,
+    AuditLogScope scope,
     AuditLogFilters filters, {
     required int? perPage,
     required String? cursor,
   }) {
+    if (scope.isEnterprise) {
+      return codePushClientWrapper.getEnterpriseAuditLogs(
+        enterpriseId: scope.id,
+        perPage: perPage,
+        cursor: cursor,
+        order: filters.order,
+        startDate: filters.start,
+        endDate: filters.end,
+        appId: filters.appId,
+        actorId: filters.actorId,
+        operation: filters.event,
+      );
+    }
     return codePushClientWrapper.getOrganizationAuditLogs(
-      organizationId: organizationId,
+      organizationId: scope.id,
       perPage: perPage,
       cursor: cursor,
       order: filters.order,
@@ -251,11 +339,10 @@ mixin AuditLogFilterOptions on OrganizationScopedCommand {
   /// partway (a function, since [body] decides where it stopped).
   Future<int?> guardFetch(
     Future<void> Function() body, {
-    required int organizationId,
+    required AuditLogScope scope,
     String? Function()? resumeHint,
   }) async {
-    final message =
-        'Failed to fetch the audit log of organization $organizationId.';
+    final message = 'Failed to fetch the audit log of ${scope.label}.';
     try {
       await body();
       return null;
