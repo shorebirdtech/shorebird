@@ -97,6 +97,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(ChannelsCommand());
     addCommand(CreateCommand());
     addCommand(DoctorCommand());
+    addCommand(EnterpriseCommand());
     addCommand(FlutterCommand());
     addCommand(InitCommand());
     addCommand(InvitationsCommand());
@@ -635,6 +636,11 @@ ${currentRunLogFile.absolute.path}
   /// gets the `--` pass-through explanation.
   String _unknownOptionHint(String option, List<String> args) {
     final commandName = args.where((a) => !a.startsWith('-')).firstOrNull;
+    if (option == 'enterprise' ||
+        option == 'no-enterprise' ||
+        option.startsWith('enterprise-')) {
+      return _enterpriseOptionHint(args);
+    }
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
 shorebird patch has no --$option flag. The patch safety checks are bypassed per check:
@@ -650,6 +656,33 @@ To proxy an option to the flutter command, use the $separator --<option> syntax.
 Example:
 
 ${lightCyan.wrap("shorebird release android $separator --no-pub lib/main.dart")}''';
+  }
+
+  /// The hint for `--enterprise` (or `--enterprise-id`) on any command.
+  ///
+  /// It exists only to make agents' wrong guesses land: 12 of 30 agents in
+  /// a blind test (2026-10-28) guessed `--enterprise`, so this is a cheap
+  /// redirect to the command's copy under `shorebird enterprise` (or to
+  /// `shorebird enterprise --help` when it has none). Safe to remove any
+  /// time.
+  String _enterpriseOptionHint(List<String> args) {
+    final names = <String>[];
+    var target = commands['enterprise'];
+    var level = commands;
+    for (final arg in args) {
+      if (arg == '--') break;
+      if (arg.startsWith('-')) continue;
+      final command = level[arg];
+      if (command == null) break;
+      names.add(command.name);
+      target = target?.subcommands[command.name];
+      level = command.subcommands;
+    }
+    if (names.isEmpty || target == null) {
+      return 'Commands for your whole enterprise are under '
+          '`shorebird enterprise`. Run: shorebird enterprise --help';
+    }
+    return 'Run `shorebird enterprise ${names.join(' ')}`.';
   }
 
   /// If this version of shorebird is on the `stable` branch, checks to see if

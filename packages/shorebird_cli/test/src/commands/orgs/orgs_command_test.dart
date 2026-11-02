@@ -58,7 +58,7 @@ void main() {
         codePushClientWrapper.getOrganizationMemberships,
       ).thenAnswer((_) async => []);
       final result = await runScoped(
-        () => AccountOrgsCommand().run(),
+        () => (AccountOrgsCommand()..testArgResults = MockArgResults()).run(),
         values: {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           isJsonModeRef.overrideWith(() => false),

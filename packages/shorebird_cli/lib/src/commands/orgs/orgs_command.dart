@@ -34,7 +34,9 @@ class OrgsCommand extends ShorebirdCommand {
   @override
   String get description =>
       'List, create, inspect and rename your organizations. With no '
-      'subcommand, lists them (the same as `shorebird orgs list`).';
+      'subcommand, lists them (the same as `shorebird orgs list`).\n\n'
+      'For every organization in your enterprise, run '
+      '`shorebird enterprise orgs`.';
 
   @override
   String get defaultSubcommand => 'list';

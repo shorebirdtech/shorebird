@@ -24,6 +24,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import 'commands/enterprises/enterprise_fixtures.dart';
 import 'fakes.dart';
 import 'helpers.dart';
 import 'matchers.dart';
@@ -1328,6 +1329,71 @@ void main() {
           verify(() => progress.complete()).called(7);
         });
 
+        test('enterprise calls pass through and complete progress', () async {
+          final member = EnterpriseFixtures.member();
+          when(
+            () => codePushClient.getEnterprises(),
+          ).thenAnswer((_) async => [EnterpriseFixtures.acme]);
+          when(
+            () => codePushClient.getEnterprise(enterpriseId: 7),
+          ).thenAnswer((_) async => EnterpriseFixtures.acmeEnterprise);
+          when(
+            () => codePushClient.getEnterpriseOrganizations(enterpriseId: 7),
+          ).thenAnswer((_) async => [EnterpriseFixtures.mobile]);
+          when(
+            () => codePushClient.getEnterpriseApps(enterpriseId: 7),
+          ).thenAnswer((_) async => [EnterpriseFixtures.app]);
+          when(
+            () => codePushClient.getEnterpriseMembers(enterpriseId: 7),
+          ).thenAnswer((_) async => [member]);
+          when(
+            () => codePushClient.getEnterpriseGuests(enterpriseId: 7),
+          ).thenAnswer((_) async => [EnterpriseFixtures.guest]);
+          when(
+            () => codePushClient.setEnterpriseMemberRole(
+              enterpriseId: 7,
+              userId: 9,
+              role: EnterpriseRole.admin,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(() async {
+            expect(await codePushClientWrapper.getEnterprises(), [
+              EnterpriseFixtures.acme,
+            ]);
+            expect(
+              await codePushClientWrapper.getEnterprise(enterpriseId: 7),
+              EnterpriseFixtures.acmeEnterprise,
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseOrganizations(
+                enterpriseId: 7,
+              ),
+              [EnterpriseFixtures.mobile],
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseApps(enterpriseId: 7),
+              [EnterpriseFixtures.app],
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseMembers(
+                enterpriseId: 7,
+              ),
+              [member],
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseGuests(enterpriseId: 7),
+              [EnterpriseFixtures.guest],
+            );
+            await codePushClientWrapper.setEnterpriseMemberRole(
+              enterpriseId: 7,
+              userId: 9,
+              role: EnterpriseRole.admin,
+            );
+          });
+          verify(() => progress.complete()).called(7);
+        });
+
         test('getOrganizationAuditLogs passes the filters through', () async {
           const page = GetOrganizationAuditLogsResponse(data: []);
           when(
@@ -1419,6 +1485,78 @@ void main() {
             completion(equals(usage)),
           );
           verify(() => progress.complete()).called(1);
+        });
+
+        test('getEnterpriseServiceAccounts passes through', () async {
+          when(
+            () => codePushClient.getEnterpriseServiceAccounts(enterpriseId: 7),
+          ).thenAnswer((_) async => []);
+          await expectLater(
+            runWithOverrides(
+              () => codePushClientWrapper.getEnterpriseServiceAccounts(
+                enterpriseId: 7,
+              ),
+            ),
+            completion(isEmpty),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('enterprise audit log and billing pass through', () async {
+          const page = GetOrganizationAuditLogsResponse(data: []);
+          final billing = EnterpriseBilling.fromJson(const {
+            'has_billing_account': false,
+            'plan': null,
+            'position': null,
+          });
+          when(
+            () => codePushClient.getEnterpriseAuditLogs(
+              enterpriseId: 7,
+              perPage: 100,
+              cursor: 'c2',
+              order: AuditLogOrder.asc,
+              startDate: DateTime.utc(2026, 10),
+              endDate: DateTime.utc(2026, 11),
+              appId: 'app-1',
+              actorId: 9,
+              operation: 'app.create',
+            ),
+          ).thenAnswer((_) async => page);
+          when(
+            () => codePushClient.getEnterpriseBilling(enterpriseId: 7),
+          ).thenAnswer((_) async => billing);
+          when(
+            () => codePushClient.getEnterpriseBillingOrganizations(
+              enterpriseId: 7,
+            ),
+          ).thenAnswer((_) async => []);
+          await runWithOverrides(() async {
+            expect(
+              await codePushClientWrapper.getEnterpriseAuditLogs(
+                enterpriseId: 7,
+                perPage: 100,
+                cursor: 'c2',
+                order: AuditLogOrder.asc,
+                startDate: DateTime.utc(2026, 10),
+                endDate: DateTime.utc(2026, 11),
+                appId: 'app-1',
+                actorId: 9,
+                operation: 'app.create',
+              ),
+              page,
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseBilling(enterpriseId: 7),
+              billing,
+            );
+            expect(
+              await codePushClientWrapper.getEnterpriseBillingOrganizations(
+                enterpriseId: 7,
+              ),
+              isEmpty,
+            );
+          });
+          verify(() => progress.complete()).called(3);
         });
 
         test('updateCurrentUser sends the display name', () async {
