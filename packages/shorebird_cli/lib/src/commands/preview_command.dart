@@ -470,10 +470,18 @@ This is only applicable when previewing Android releases.''',
   Future<String?> promptForApp() async {
     final apps = await codePushClientWrapper.getApps();
     if (apps.isEmpty) return null;
+    // Apps can share a display name, so tell those apart by their id.
+    final seenNames = <String>{};
+    final sharedNames = {
+      for (final app in apps)
+        if (!seenNames.add(app.displayName)) app.displayName,
+    };
     final app = logger.chooseOne(
       'Which app would you like to preview?',
       choices: apps,
-      display: (app) => app.displayName,
+      display: (app) => sharedNames.contains(app.displayName)
+          ? '${app.displayName} (${app.appId})'
+          : app.displayName,
       hint:
           'Pass --app-id=<app-id> to preview a specific app without '
           'prompting.',
