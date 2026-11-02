@@ -233,6 +233,12 @@ void main() {
         );
       });
 
+      test('a manifest that does not say how the build is signed', () async {
+        await androidBundle().writeTo(bundleFile);
+        editManifest((m) => m.remove('signing'));
+        expect(extract, throwsBundleError('how the build is signed'));
+      });
+
       test('an artifact the manifest lists but the zip lacks', () async {
         await androidBundle().writeTo(bundleFile);
         editManifest(

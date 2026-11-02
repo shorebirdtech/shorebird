@@ -140,7 +140,12 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a release!'))}
 ${bundle.flavor == null ? '' : '🍧 Flavor: ${lightCyan.wrap(bundle.flavor)}\n'}📦 Release Version: ${lightCyan.wrap(bundle.releaseVersion)}
 🕹️  Platform: ${lightCyan.wrap(platform.name)}
 🐦 Flutter Revision: ${lightCyan.wrap(bundle.flutterRevision)}
-''');
+${switch (bundle.signing?.mode) {
+      ReleaseSigningMode.managed => '🔏 Patch Signing: ${lightCyan.wrap('Shorebird-managed key')}\n',
+      ReleaseSigningMode.customer => '🔏 Patch Signing: ${lightCyan.wrap('your key')}\n',
+      ReleaseSigningMode.unsigned => '🔏 Patch Signing: ${yellow.wrap('off')}\n',
+      null => '',
+    }}''');
 
     final release =
         existingRelease ??
