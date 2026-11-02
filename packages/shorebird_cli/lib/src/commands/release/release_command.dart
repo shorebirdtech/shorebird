@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
@@ -13,6 +14,7 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -20,6 +22,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_verification.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_bundle.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -79,6 +82,15 @@ class ReleaseCommand extends ShorebirdCommand {
         abbr: 'n',
         negatable: false,
         help: 'Validate but do not upload the release.',
+      )
+      ..addFlag(
+        'upload',
+        defaultsTo: true,
+        help:
+            'Upload the release to Shorebird once it is built. With '
+            '--no-upload, the release is built and checked, then saved as a '
+            'bundle under build/shorebird/ for `shorebird upload` to publish '
+            'later (e.g. after QA or signing, or from another machine).',
       )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
@@ -199,7 +211,28 @@ The version of the Android or iOS app that embeds this module
     final releases = <int, Release>{};
     for (final releaseType in releaseTypes) {
       final release = await createRelease(_resolveReleaser(releaseType));
-      releases[release.id] = release;
+      if (release != null) releases[release.id] = release;
+    }
+
+    if (!upload) {
+      if (isJsonMode) {
+        emitJsonSuccess({
+          'app_id': appId,
+          'platforms': [
+            for (final type in results.releaseTypes) type.releasePlatform.name,
+          ],
+          'bundles': [
+            for (final bundle in _savedBundles)
+              {
+                'platform': bundle.platform.name,
+                'release_type': bundle.releaseType.cliName,
+                'release_version': bundle.version,
+                'path': bundle.file.path,
+              },
+          ],
+        });
+      }
+      return ExitCode.success.code;
     }
 
     if (isJsonMode) {
@@ -344,6 +377,21 @@ The version of the Android or iOS app that embeds this module
       'Pass a version with --flutter-version=<version> instead. '
       'Run: shorebird flutter versions list';
 
+  /// Whether to upload the release once it is built (false with
+  /// `--no-upload`).
+  bool get upload => results['upload'] != false;
+
+  /// The bundles saved by this run, when [upload] is false.
+  final _savedBundles =
+      <
+        ({
+          ReleaseType releaseType,
+          ReleasePlatform platform,
+          String version,
+          File file,
+        })
+      >[];
+
   /// The build name specified via `--build-name`.
   String? get buildName =>
       results[CommonArguments.buildNameArg.name] as String?;
@@ -354,8 +402,9 @@ The version of the Android or iOS app that embeds this module
 
   /// The workflow to create a new release for a Shorebird app.
   ///
-  /// Returns the published [Release]. A dry run does not return: it exits
-  /// the process with success once the build has been checked.
+  /// Returns the published [Release], or null when [upload] is false and the
+  /// release was saved as a bundle instead. A dry run does not return: it
+  /// exits the process with success once the build has been checked.
   ///
   /// Expectations for methods invoked by this command:
   ///  - They clean up their own [Progress]es when they fail.
@@ -363,7 +412,7 @@ The version of the Android or iOS app that embeds this module
   ///    [ProcessExit] when a callee already reported it), never another
   ///    exception.
   @visibleForTesting
-  Future<Release> createRelease(Releaser releaser) async {
+  Future<Release?> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
     await assertArgsAreValid(releaser);
     await _validateFlavors(releaser);
@@ -433,9 +482,10 @@ The version of the Android or iOS app that embeds this module
     );
   }
 
-  /// Builds the release with [flutterRevision] and publishes it. Runs with
-  /// [shorebirdEnv] scoped to [flutterRevision].
-  Future<Release> _buildAndPublishRelease({
+  /// Builds the release with [flutterRevision] and publishes it, or saves it
+  /// as a bundle when [upload] is false. Runs with [shorebirdEnv] scoped to
+  /// [flutterRevision].
+  Future<Release?> _buildAndPublishRelease({
     required Releaser releaser,
     required AppMetadata app,
     required String flutterRevision,
@@ -470,6 +520,15 @@ The version of the Android or iOS app that embeds this module
         releaseVersion: releaseVersion,
         flutterRevision: flutterRevision,
       );
+    }
+
+    if (!upload) {
+      await _saveReleaseBundle(
+        releaser: releaser,
+        releaseVersion: releaseVersion,
+        flutterRevision: flutterRevision,
+      );
+      return null;
     }
 
     await printReleaseSummary(
@@ -567,6 +626,93 @@ The version of the Android or iOS app that embeds this module
     throw ProcessExit(ExitCode.success.code);
   }
 
+  /// Saves the release that was built as a [ReleaseBundle] under
+  /// `build/shorebird/`, and tells the user how to publish it.
+  Future<void> _saveReleaseBundle({
+    required Releaser releaser,
+    required String releaseVersion,
+    required String flutterRevision,
+  }) async {
+    final platform = releaser.releaseType.releasePlatform;
+    final bundleFile = File(
+      p.join(
+        releaser.projectRoot.path,
+        'build',
+        'shorebird',
+        [
+          'release',
+          releaseVersion,
+          releaser.releaseType.cliName,
+          ?flavor,
+        ].join('-').replaceAll(RegExp('[^A-Za-z0-9.+_-]'), '_'),
+      ),
+    ).absolute;
+    final stagingDirectory = Directory.systemTemp.createTempSync();
+    try {
+      final artifacts = await releaser.prepareReleaseArtifacts(
+        stagingDirectory: stagingDirectory,
+      );
+      final supplement = await releaser.prepareSupplementArtifact(
+        stagingDirectory: stagingDirectory,
+      );
+      final bundle = ReleaseBundle(
+        appId: appId,
+        flavor: flavor,
+        target: target,
+        releaseType: releaser.releaseType,
+        releaseVersion: releaseVersion,
+        flutterRevision: flutterRevision,
+        flutterVersion: await shorebirdFlutter.getVersionForRevision(
+          flutterRevision: flutterRevision,
+        ),
+        shorebirdVersion: packageVersion,
+        metadata: await releaseMetadata(releaser),
+        artifacts: artifacts,
+        supplement: supplement,
+        signing: releaser.signing,
+      );
+      final progress = logger.progress('Saving release bundle');
+      try {
+        await bundle.writeTo(File('${bundleFile.path}.zip'));
+      } on Exception catch (error) {
+        progress.fail('Failed to save the release bundle: $error');
+        throw ProcessExit(ExitCode.software.code);
+      }
+      progress.complete();
+    } finally {
+      stagingDirectory.deleteTemporarySync();
+    }
+
+    final bundlePath = '${bundleFile.path}.zip';
+    _savedBundles.add((
+      releaseType: releaser.releaseType,
+      platform: platform,
+      version: releaseVersion,
+      file: File(bundlePath),
+    ));
+    logger
+      ..success('''
+
+✅ Built release $releaseVersion (${platform.displayName}). It is not on Shorebird yet.''')
+      ..info(releaser.postReleaseInstructions)
+      ..info(
+        'To publish it to Shorebird, run '
+        '${lightCyan.wrap('shorebird upload ${_shellQuote(bundlePath)}')}\n'
+        'Patches can be made once it is published.',
+      );
+  }
+
+  /// [path], quoted for the user's shell if it needs to be: in double quotes
+  /// on Windows (where paths can't contain them), in single quotes elsewhere.
+  static String _shellQuote(String path) {
+    final safe = platform.isWindows
+        ? RegExp(r'^[A-Za-z0-9_./\\:~+=@%-]+$')
+        : RegExp(r'^[A-Za-z0-9_./:~+=@%-]+$');
+    if (safe.hasMatch(path)) return path;
+    if (platform.isWindows) return '"$path"';
+    return "'${path.replaceAll("'", r"'\''")}'";
+  }
+
   /// Creates or reuses the release for [releaseVersion], uploads its
   /// artifacts, marks it active, and tells the user how to patch it.
   Future<Release> _publishRelease({
@@ -629,6 +775,14 @@ The version of the Android or iOS app that embeds this module
 
   /// Validates arguments that are common to all release types.
   Future<void> assertArgsAreValid(Releaser releaser) async {
+    if (results['dry-run'] == true && !upload) {
+      logger.err(
+        '--dry-run and --no-upload cannot be used together: --no-upload '
+        'already checks the build without uploading it, and saves it.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
     assertPublicKeyArgsValid();
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
@@ -858,9 +1012,21 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
-    // Write the build-trace summary now, after the release artifact has been
-    // uploaded, so aggregate timings reflect the full command. No-op when
-    // tracing wasn't set up (older Flutter pin).
+    await codePushClientWrapper.updateReleaseStatus(
+      appId: appId,
+      releaseId: release.id,
+      platform: releaser.releaseType.releasePlatform,
+      status: ReleaseStatus.active,
+      metadata: await releaseMetadata(releaser),
+    );
+  }
+
+  /// The metadata recorded on the release when it is marked active.
+  ///
+  /// Writes the build-trace summary first, so its aggregate timings reflect
+  /// the command up to this point (the upload, or saving the bundle).
+  Future<Json> releaseMetadata(Releaser releaser) async {
+    // No-op when tracing wasn't set up (older Flutter pin).
     artifactBuilder.writeBuildTraceSummary();
 
     final hasPublicKey =
@@ -884,13 +1050,7 @@ ${summary.join('\n')}
       buildTraceSummary: buildTraceSession.summary?.toJson(),
     );
     final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);
-    await codePushClientWrapper.updateReleaseStatus(
-      appId: appId,
-      releaseId: release.id,
-      platform: releaser.releaseType.releasePlatform,
-      status: ReleaseStatus.active,
-      metadata: updatedMetadata.toJson(),
-    );
+    return updatedMetadata.toJson();
   }
 
   /// Instructions explaining how to patch the release that was just created.
