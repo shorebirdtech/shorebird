@@ -964,6 +964,37 @@ void main() {
           expect(stagingDirectory!.existsSync(), isFalse);
         });
 
+        test('records how the build is signed', () async {
+          const signing = ArtifactSigningRequest(
+            mode: ReleaseSigningMode.managed,
+            keyId: 7,
+          );
+          releaser.signing = signing;
+          when(
+            () => codePushClientWrapper.uploadReleaseArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              artifacts: any(named: 'artifacts'),
+              signing: any(named: 'signing'),
+              message: any(named: 'message'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => releaser.uploadSupplementArtifact(appId: 'app', releaseId: 1),
+          );
+
+          verify(
+            () => codePushClientWrapper.uploadReleaseArtifacts(
+              appId: 'app',
+              releaseId: 1,
+              artifacts: [supplement],
+              signing: signing,
+              message: 'Uploading supplement artifacts',
+            ),
+          ).called(1);
+        });
+
         test('deletes the staging directory when uploading fails', () async {
           when(
             () => codePushClientWrapper.uploadReleaseArtifacts(
