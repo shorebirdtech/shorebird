@@ -260,12 +260,12 @@ symbolize" command with the right program symbol file is required to obtain a hu
   /// threshold.
   static const minLinkPercentage = ArgumentDescriber(
     name: 'min-link-percentage',
-    defaultValue: '0',
+    defaultValue: '20',
     description:
         '''
 The minimum link percentage ($minLinkPercentageMin-$minLinkPercentageMax) required in order to generate a patch (Apple platforms only).
 
-Patches with a lower link percentage than what is provided here will fail.
+Patches with a lower link percentage than what is provided here will fail. Pass 0 to accept any link percentage.
 ''',
   );
 }

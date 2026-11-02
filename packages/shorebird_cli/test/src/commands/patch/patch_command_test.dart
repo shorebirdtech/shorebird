@@ -1683,7 +1683,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
 
       group('when has link percentage', () {
-        const linkPercentage = 42.1337;
+        const linkPercentage = 62.1337;
         late Directory buildDirectory;
 
         setUp(() {
@@ -1719,6 +1719,23 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).called(1);
         });
 
+        group('when min-link-percentage is not specified', () {
+          test('exits with an error below the default of 20%', () async {
+            when(() => patcher.linkPercentage).thenReturn(12.3);
+            await expectLater(
+              runWithOverrides(
+                () => command.assertMinLinkPercentage(patcher),
+              ),
+              exitsWithError(
+                message:
+                    'The link percentage of this patch (12.3%) '
+                    'is below the minimum threshold (20%).',
+                exitCode: ExitCode.software,
+              ),
+            );
+          });
+        });
+
         group('when min-link-percentage is specified', () {
           group('when link percentage is higher than min', () {
             const minLinkPercentageArg = '40';
@@ -1732,12 +1749,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             test('completes, does not print error message', () async {
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 completes,
               );
@@ -1745,7 +1757,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           });
 
           group('when link percentage is lower than min', () {
-            const minLinkPercentageArg = '50';
+            const minLinkPercentageArg = '70';
 
             setUp(() {
               when(
@@ -1759,17 +1771,12 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               );
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 exitsWithError(
                   message:
                       'The link percentage of this patch ($linkPercentage%) '
-                      'is below the minimum threshold (50%).',
+                      'is below the minimum threshold (70%).',
                   hint:
                       'Not publishing. Lower --min-link-percentage to accept '
                       'this patch, or see $debugInfoPath for what could not '
@@ -1791,12 +1798,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               setMinLinkPercentage(value);
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 throwsA(
                   isA<UsageException>().having(
@@ -1827,14 +1829,10 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               when(
                 () => argResults[CommonArguments.minLinkPercentage.name],
               ).thenReturn('0');
+              when(() => patcher.linkPercentage).thenReturn(12.3);
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 completes,
               );
@@ -1847,12 +1845,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               when(() => patcher.linkPercentage).thenReturn(100);
               await expectLater(
                 runWithOverrides(
-                  () => command.logPatchSummary(
-                    app: appMetadata,
-                    releaseVersion: releaseVersion,
-                    patcher: patcher,
-                    patchArtifactBundles: patchArtifactBundles,
-                  ),
+                  () => command.assertMinLinkPercentage(patcher),
                 ),
                 completes,
               );
@@ -2653,6 +2646,21 @@ A patch cannot change the Flutter version a release was built with. To fix this,
     group('when dry-run is specified', () {
       setUp(() {
         when(() => argResults['dry-run']).thenReturn(true);
+      });
+
+      test('fails when the link percentage is below the minimum', () async {
+        when(() => patcher.linkPercentage).thenReturn(12.3);
+        when(
+          () => shorebirdEnv.buildDirectory,
+        ).thenReturn(Directory.systemTemp.createTempSync());
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithError(
+            message: contains('below the minimum threshold (20%)'),
+            exitCode: ExitCode.software,
+          ),
+        );
+        verifyNever(() => logger.info('No issues detected.'));
       });
 
       test('does not publish patch', () async {
