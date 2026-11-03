@@ -86,7 +86,16 @@ runs:
         # doesn't: every shard still compiles every suite). Each suite writes
         # its own coverage file, merged below. xargs exits non-zero if any
         # run fails.
-        find test -name '*_test.dart' | sort | xargs -r -n 50 dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}}
+        #
+        # The coverage dir is absolute because package:test joins it onto
+        # each suite's output file only when that suite finishes, and the cwd
+        # is shared by every suite in the process: a test that changes
+        # Directory.current (shorebird_ci's affected_packages_command_test
+        # does) makes suites finishing meanwhile write their coverage into its
+        # temp dir, where it is lost. Git Bash's `pwd -W` gives the Windows
+        # path (D:/a/...) Dart can open; elsewhere it fails and pwd is used.
+        COVERAGE_DIR="$(pwd -W 2>/dev/null || pwd)/coverage"
+        find test -name '*_test.dart' | sort | xargs -r -n 50 dart test -j ${{inputs.concurrency}} --coverage="$COVERAGE_DIR" --platform=${{inputs.platform}}
         dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="$WORKSPACE_ROOT/.dart_tool/package_config.json" --report-on=${{inputs.report_on}} --check-ignore
 
     - name: 📏 Check Coverage
