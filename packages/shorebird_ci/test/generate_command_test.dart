@@ -358,7 +358,7 @@ void main() {
       await runGenerate(tempDir, extra: ['--style', 'static']);
 
       final yaml = _readMain(tempDir);
-      expect(yaml, contains(_concurrencyBeforeOn));
+      _expectPrOnlyConcurrency(yaml);
     });
 
     test('emits main + both reusables for mixed repo', () async {
@@ -989,7 +989,7 @@ void main() {
       initGitRepo(tempDir);
       await runGenerate(tempDir);
       final yaml = _readMain(tempDir);
-      expect(yaml, contains(_concurrencyBeforeOn));
+      _expectPrOnlyConcurrency(yaml);
     });
 
     test('dynamic workflow has workflow_dispatch trigger', () async {
@@ -1103,8 +1103,9 @@ void main() {
           ),
         ),
       );
-      // Always-run and treats skipped sub-jobs as success.
-      expect(yaml, contains(r'if: ${{ always() }}'));
+      // Runs unless the run was cancelled (a superseded PR head), and
+      // treats skipped sub-jobs as success.
+      expect(yaml, contains(r'if: ${{ !cancelled() }}'));
       expect(yaml, contains("contains(needs.*.result, 'failure')"));
       expect(yaml, contains("contains(needs.*.result, 'cancelled')"));
     });
@@ -1249,11 +1250,17 @@ String _readAll(Directory dir) => [
   for (final f in dir.listSync().whereType<File>()) f.readAsStringSync(),
 ].join('\n');
 
-/// The PR-only cancel-in-progress block, right before the triggers.
-const _concurrencyBeforeOn = r'''
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
-
-on:
-''';
+/// The main workflow cancels a superseded PR run, and only PR runs share a
+/// group.
+void _expectPrOnlyConcurrency(String yaml) {
+  final doc = loadYaml(yaml) as YamlMap;
+  final concurrency = doc['concurrency'] as YamlMap;
+  expect(
+    concurrency['group'],
+    [
+      r'${{ github.workflow }}',
+      r'${{ github.event.pull_request.number || github.run_id }}',
+    ].join('-'),
+  );
+  expect(concurrency['cancel-in-progress'], isTrue);
+}
