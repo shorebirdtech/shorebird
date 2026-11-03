@@ -10,8 +10,8 @@
 //
 //   1.0.0+1  with the customer's key A, then three patch attempts:
 //            signed with key B   -> wrong_key
-//            unsigned            -> the CLI refuses to make it (#4298)
 //            signed with key A   -> valid
+//            unsigned            -> the CLI refuses to make it (#4298)
 //   1.0.0+2  with the default, a Shorebird-managed key, then one patch
 //            signed by Shorebird -> managed
 //
@@ -220,6 +220,7 @@ Future<void> checkUnsignedRefused(
     workingDirectory: app.path,
     runInShell: Platform.isWindows,
   );
+  timings.add('patch_unsigned ${stopwatch.elapsed.inSeconds}s');
   final output = '${result.stdout}${result.stderr}';
   final refused =
       result.exitCode == 64 && output.contains('was signed with your own key');
