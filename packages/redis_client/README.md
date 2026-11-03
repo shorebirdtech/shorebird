@@ -4,7 +4,6 @@
 
 [![pub package][pub_badge]][pub_link]
 [![ci][ci_badge]][ci_link]
-[![codecov][codecov_badge]][codecov_link]
 [![License: MIT][license_badge]][license_link]
 
 A Dart library for interacting with a [Redis][redis_link] server.
@@ -64,8 +63,6 @@ See our [license philosophy](https://github.com/shorebirdtech/handbook/blob/main
 [apache_link]: https://www.apache.org/licenses/LICENSE-2.0
 [ci_badge]: https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml/badge.svg
 [ci_link]: https://github.com/shorebirdtech/shorebird/actions/workflows/main.yaml
-[codecov_badge]: https://codecov.io/gh/shorebirdtech/shorebird/branch/main/graph/badge.svg
-[codecov_link]: https://codecov.io/gh/shorebirdtech/shorebird
 [discord_badge]: https://dcbadge.vercel.app/api/server/shorebird
 [discord_link]: https://discord.gg/shorebird
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg

@@ -2,9 +2,6 @@ name: Dart Package Workflow
 description: Build and test your Dart packages.
 
 inputs:
-  codecov_token:
-    required: true
-    description: The Codecov token used to upload coverage
   concurrency:
     required: false
     default: "4"
@@ -87,17 +84,3 @@ runs:
         # run fails.
         find test -name '*_test.dart' | sort | xargs -r -n 50 dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}}
         dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="$WORKSPACE_ROOT/.dart_tool/package_config.json" --report-on=${{inputs.report_on}} --check-ignore
-
-    # Per https://stackoverflow.com/questions/73402042/github-action-expressions-split-string
-    - name: 🔗 Split package name
-      env:
-        PACKAGE_PATH: ${{ inputs.working_directory}}
-      id: split
-      shell: ${{ inputs.shell }}
-      run: echo "package_name=${PACKAGE_PATH##*/}" >> $GITHUB_OUTPUT
-
-    - name: 📊 Upload Coverage
-      uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-      with:
-        flags: ${{ steps.split.outputs.package_name }}
-        token: ${{ inputs.codecov_token }}

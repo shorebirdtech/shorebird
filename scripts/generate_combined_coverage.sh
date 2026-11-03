@@ -7,10 +7,6 @@
 # directory if you've opened a single package or a directory above 'shorebird'
 # in your editor.
 
-# Our GitHub actions build coverage and upload it to Codecov, so you
-# don't need to run this script to see coverage on GitHub.
-# https://app.codecov.io/gh/shorebirdtech/shorebird
-
 # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
 dart pub global activate coverage 1.15.1
 dart pub global activate combine_coverage
