@@ -107,7 +107,9 @@ class MembersListCommand extends ShorebirdCommand
     );
     if (fetchError != null) return fetchError;
 
-    // The auditor role can't see invitations; list the members anyway.
+    // A role that can see the members but not the invitations still gets
+    // the members. No role is granted that split today: the auditor role
+    // sees neither, so its members request above fails first.
     const invitationsHiddenMessage =
         'Pending invitations are not shown: your role in this organization '
         "can't see them.";
