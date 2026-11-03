@@ -48,7 +48,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
-          FLUTTER_REF: ${{ inputs.flutter_ref || 'updater-import' }}
+          FLUTTER_REF: ${{ inputs.flutter_ref || 'shorebird/dev' }}
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = push ] &&
