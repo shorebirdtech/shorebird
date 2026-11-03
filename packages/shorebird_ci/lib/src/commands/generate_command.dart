@@ -313,6 +313,7 @@ updates:
 # Run `shorebird_ci verify` to check for dep graph drift.
 name: Shorebird CI
 
+$_concurrencyBlock
 on:
   pull_request:
     branches:
@@ -654,6 +655,7 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
 # shorebird_ci-managed: dynamic
 name: Shorebird CI
 
+$_concurrencyBlock
 on:
   pull_request:
     branches:
@@ -1001,3 +1003,16 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
       ..writeln();
   }
 }
+
+/// Emitted ahead of `on:` in the main workflow. A PR's runs share a group
+/// keyed on its number, so a new push cancels the run still going on the
+/// older head. Push-to-main and merge-queue runs fall back to their own run
+/// id, so they never cancel or queue behind each other.
+const _concurrencyBlock = r'''
+# A new push to a PR cancels that PR's run still going on the older head.
+# Other events (push to main, merge_group) group by run id, so they never
+# cancel or queue behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+''';

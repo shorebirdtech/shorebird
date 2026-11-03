@@ -351,6 +351,16 @@ void main() {
       expect(yaml, contains('  merge_group:\n    types: [checks_requested]'));
     });
 
+    test('static workflow cancels a superseded PR run', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains(_concurrencyBeforeOn));
+    });
+
     test('emits main + both reusables for mixed repo', () async {
       createPackage(tempDir, 'packages/dart_pkg', 'dart_pkg');
       createPackage(
@@ -974,6 +984,14 @@ void main() {
       expect(yaml, contains('  merge_group:\n    types: [checks_requested]'));
     });
 
+    test('dynamic workflow cancels a superseded PR run', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains(_concurrencyBeforeOn));
+    });
+
     test('dynamic workflow has workflow_dispatch trigger', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
@@ -1230,3 +1248,12 @@ String _readMain(Directory repoRoot) {
 String _readAll(Directory dir) => [
   for (final f in dir.listSync().whereType<File>()) f.readAsStringSync(),
 ].join('\n');
+
+/// The PR-only cancel-in-progress block, right before the triggers.
+const _concurrencyBeforeOn = r'''
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+on:
+''';

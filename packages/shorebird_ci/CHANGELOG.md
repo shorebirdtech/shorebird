@@ -6,6 +6,7 @@
 - `update_actions` pins `owner/repo@vN` refs to the action's latest release by SHA, and moves `owner/repo@<sha> # vN.N.N` pins to a newer release when there is one. It doesn't follow a tag that was moved under the same version, never moves a pin to an older release, and leaves SHA pins without a version comment alone. Breaking for library users: `LatestMajorResolver` is now `LatestReleaseResolver`, returning an `ActionRelease` (tag and SHA), and the `resolveLatestMajor:` parameters are `resolveLatestRelease:`.
 
 - `generate` pins `dart pub global activate shorebird_ci` to the version that generated the workflow. Before, generated workflows activated whatever shorebird_ci was newest, so each release changed every user's CI the moment it was published, and a new `verify` check could fail a merge queue that hadn't changed. To move to a new shorebird_ci, run `generate` again (or bump the version in the workflow).
+- `generate` adds a `concurrency` block to the main workflow, so a new push to a pull request cancels that PR's run still going on the older head. The group is the PR number, with `github.run_id` as the fallback, so push-to-main and merge-queue runs each get their own group and are never cancelled or queued.
 
 # 0.2.5
 
