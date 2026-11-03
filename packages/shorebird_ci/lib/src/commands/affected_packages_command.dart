@@ -23,8 +23,11 @@ import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 /// }
 /// ```
 class AffectedPackagesCommand extends Command<int> with RepoRootOption {
-  /// Creates an [AffectedPackagesCommand].
-  AffectedPackagesCommand() {
+  /// Creates an [AffectedPackagesCommand]. [workingDirectory] is where
+  /// `--repo-root` is discovered from when not passed; null means the
+  /// process's working directory.
+  AffectedPackagesCommand({String? workingDirectory}) {
+    this.workingDirectory = workingDirectory;
     addRepoRootOption();
     argParser
       ..addOption(
