@@ -6,13 +6,15 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.136 (November 2, 2026)
 
-- ✨ Add `shorebird enterprise` for enterprise owners and admins: `get`,
-  `members`, `guests`, `orgs list`, `apps list`, `audit-log`, `usage` and
-  `service-accounts list`
+- ✨ Add `shorebird enterprise` for enterprise owners, admins and billing
+  managers: `get`, `members`, `guests`, `orgs list`, `apps list`,
+  `audit-log`, `usage` and `service-accounts list`
 - 🐛 Stop running `flutter pub get` with the Flutter on your PATH after builds.
-  This fixes Xcode's Product > Archive failing after `shorebird release`, a
-  wrong Flutter path in add-to-app iOS modules, and concurrent builds picking
-  up each other's kernel
+  This fixes Xcode's Product > Archive failing after `shorebird release`, and
+  concurrent builds on the same Flutter picking up each other's kernel
+- 🔧 With a Dart-Code (VS Code) extension older than v3.140, VS Code can pick
+  Shorebird's Flutter after a Shorebird build; run `flutter pub get` to switch
+  back
 
 ## 1.6.135 (November 2, 2026)
 
