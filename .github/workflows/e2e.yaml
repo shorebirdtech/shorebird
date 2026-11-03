@@ -15,9 +15,13 @@ on:
         description: >-
           Ref the cli job checks out, for verifying a fix before it lands.
           Defaults to each matrix branch. Setting it skips the patch matrix
-          and pins the cli job to the dev API, so a dispatch never writes to
-          production. Dispatch from main (`--ref main`): the GitHub Actions
-          trust rule on the dev Shorebird E2E project (437) admits only main.
+          and pins the cli job to the dev API, so such a dispatch never
+          writes to production. To test a change to this workflow or its
+          scripts, dispatch from its branch with cli_ref set to that branch
+          (`gh workflow run e2e.yaml --ref <branch> -f cli_ref=<branch>`):
+          the dev Shorebird E2E project's (437) trust rule admits every
+          branch, while the prod project's (60197), which the stable cli leg
+          uses, admits only main.
         required: false
         type: string
   schedule:
@@ -28,10 +32,10 @@ env:
   # Credentials are set per job, next to the SHOREBIRD_HOSTED_URL they have to
   # match. Every job signs in with GitHub Actions OIDC as the `e2e` service
   # account of a "Shorebird E2E" project (SHOREBIRD_PROJECT_ID), whose trust
-  # rule admits this workflow on main: project 437 on dev, 60197 on prod. A
-  # project id is a row in one environment's database, and AUTH_SERVICE_URL
-  # has to name that environment's auth service, so none of these can be set
-  # once for the whole workflow.
+  # rule admits this workflow: project 437 on dev from any branch, 60197 on
+  # prod from main only. A project id is a row in one environment's database,
+  # and AUTH_SERVICE_URL has to name that environment's auth service, so none
+  # of these can be set once for the whole workflow.
   #
   # Host toolchain for `flutter create` in the patch job's "default" leg, not
   # the version under test.
