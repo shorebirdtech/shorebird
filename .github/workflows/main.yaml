@@ -142,7 +142,12 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        # Ubuntu only on pull requests; all three OSes on pushes to main and
+        # in the merge queue. GitHub bills macOS at ~10x and Windows at ~2x
+        # Linux, and from 2026-10-15 to 11-03 these legs cost ~$660 on PR
+        # runs while catching no test failure ubuntu missed (691 runs). A
+        # platform-only break now shows on main's push run instead.
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["macos-latest", "windows-latest", "ubuntu-latest"]') }}
         package: ${{ fromJSON(needs.changes.outputs.needs_cross_platform_dart_build) }}
 
     runs-on: ${{ matrix.os }}
@@ -158,11 +163,11 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
-          # Checked on macOS only: shorebird_cli's iOS and macOS tests run
-          # only there, so Linux reads ~4 points lower (94.7% vs 98.7% on
-          # 2026-11-03), and one OS's check is enough.
-          check_coverage: ${{ matrix.os == 'macos-latest' }}
-          # Each package's line coverage on 2026-11-02, rounded down, as a
+          # Checked on ubuntu, the one OS every run has (PRs run no other).
+          # shorebird_cli's iOS and macOS tests run only on macOS, so its
+          # Linux number is ~4 points below macOS's; the floor is Linux's.
+          check_coverage: ${{ matrix.os == 'ubuntu-latest' }}
+          # Each package's Linux line coverage, rounded down, as a
           # floor. Raise it as coverage rises; lower it only in a PR that says
           # why (deleting well-tested code lowers the percentage). A package
           # not listed needs 100.
