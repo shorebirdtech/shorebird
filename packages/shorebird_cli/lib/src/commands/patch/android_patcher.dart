@@ -34,14 +34,14 @@ class AndroidPatcher extends Patcher with AndroidPatcherMixin {
   });
 
   /// Android versions prior to 3.24.2 have a bug that can cause patches to
-  /// be erroneously uninstalled.
-  /// https://github.com/shorebirdtech/updater/issues/211 was fixed in 3.24.2
+  /// be erroneously uninstalled. See the November 17, 2025 note at
+  /// https://docs.shorebird.dev/getting-started/flutter-version/#flutter-version-notes
   static final updaterPatchErrorWarning =
       '''
 Your version of flutter contains a known issue that can cause patches to be erroneously uninstalled in apps that use package:flutter_foreground_task or other plugins that start their own Flutter engines.
-This issue was fixed in Flutter 3.24.2. Please upgrade to a newer version of Flutter to avoid this issue.
+This issue was fixed in Flutter 3.24.2, and in Flutter 3.24.1 for releases created with Shorebird 1.3.1 or later. Please upgrade to a newer version of Flutter to avoid this issue.
 
-See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebirdtech/updater/issues/211'), message: 'on Github')}
+See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/getting-started/flutter-version/#flutter-version-notes'), message: 'in the Shorebird docs')}
 ''';
 
   /// The patch AAB built by [buildPatchArtifact], which
@@ -81,8 +81,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final flutterVersion = await shorebirdFlutter.getVersion();
     // Android versions prior to 3.24.2 have a bug that can cause patches to
-    // be erroneously uninstalled.
-    // https://github.com/shorebirdtech/updater/issues/211 was fixed in 3.24.2
+    // be erroneously uninstalled. See [updaterPatchErrorWarning].
     if (flutterVersion != null && flutterVersion < Version(3, 24, 2)) {
       logger.warn(updaterPatchErrorWarning);
     }
