@@ -33,8 +33,8 @@ class AndroidPatcher extends Patcher with AndroidPatcherMixin {
     required super.target,
   });
 
-  /// Android versions prior to 3.24.2 have a bug that can cause patches to
-  /// be erroneously uninstalled. See the November 17, 2025 note at
+  /// Flutter versions prior to 3.24.2 have a bug that can cause patches to
+  /// be erroneously uninstalled on Android. See the November 17, 2025 note at
   /// https://docs.shorebird.dev/getting-started/flutter-version/#flutter-version-notes
   static final updaterPatchErrorWarning =
       '''
@@ -80,8 +80,8 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final flutterVersion = await shorebirdFlutter.getVersion();
-    // Android versions prior to 3.24.2 have a bug that can cause patches to
-    // be erroneously uninstalled. See [updaterPatchErrorWarning].
+    // Flutter versions prior to 3.24.2 have a bug that can cause patches to
+    // be erroneously uninstalled on Android. See [updaterPatchErrorWarning].
     if (flutterVersion != null && flutterVersion < Version(3, 24, 2)) {
       logger.warn(updaterPatchErrorWarning);
     }
