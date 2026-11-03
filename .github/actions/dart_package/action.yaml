@@ -98,7 +98,9 @@ runs:
         find test -name '*_test.dart' | sort | xargs -r -n 50 dart test -j ${{inputs.concurrency}} --coverage="$COVERAGE_DIR" --platform=${{inputs.platform}}
         # A wrong COVERAGE_DIR would leave nothing for format_coverage to read
         # and report an empty lcov on legs that don't gate coverage.
-        if ! find coverage -name '*.json' | grep -q .; then
+        # (Not `find | grep -q`: under pipefail, find's SIGPIPE once grep
+        # quits fails the pipe whenever there are many files.)
+        if [ -z "$(find coverage -name '*.json' -print -quit)" ]; then
           echo "::error::dart test wrote no coverage files to coverage/"
           exit 1
         fi
