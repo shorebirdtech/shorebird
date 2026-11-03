@@ -10,8 +10,8 @@ import 'package:args/command_runner.dart';
 /// When `--repo-root` is not provided, the value is auto-discovered via
 /// `git rev-parse --show-toplevel`, so commands work from any
 /// subdirectory of a git checkout — same convention as `git` itself.
-/// Falls back to `'.'` if git is unavailable or the cwd is not inside a
-/// git repo.
+/// Falls back to [workingDirectory] (default `'.'`) if git is unavailable
+/// or that directory is not inside a git repo.
 mixin RepoRootOption on Command<int> {
   /// Call from the command's constructor to register the option.
   void addRepoRootOption() {
@@ -23,15 +23,23 @@ mixin RepoRootOption on Command<int> {
     );
   }
 
+  /// The directory `--repo-root` is discovered from; null means the
+  /// process's working directory.
+  String? workingDirectory;
+
   /// The resolved repo root.
   String get repoRoot {
     final explicit = argResults!['repo-root'] as String?;
     if (explicit != null) return explicit;
-    final result = Process.runSync('git', ['rev-parse', '--show-toplevel']);
+    final result = Process.runSync(
+      'git',
+      ['rev-parse', '--show-toplevel'],
+      workingDirectory: workingDirectory,
+    );
     if (result.exitCode == 0) {
       final stdout = (result.stdout as String).trim();
       if (stdout.isNotEmpty) return stdout;
     }
-    return '.';
+    return workingDirectory ?? '.';
   }
 }

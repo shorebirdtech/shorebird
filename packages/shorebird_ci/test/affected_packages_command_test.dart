@@ -212,42 +212,32 @@ void main() {
   });
 
   // The two tests below exercise the --repo-root autodiscovery path
-  // (`git rev-parse --show-toplevel`) by setting Directory.current.
-  // Save+restore in try/finally so subsequent tests in this file see
-  // the original cwd. Directory.current is shared by every isolate in
-  // the test process, so other suites must not rely on the cwd.
+  // (`git rev-parse --show-toplevel`) from tempDir. They pass it as the
+  // command's working directory rather than setting Directory.current,
+  // which every suite in the test process shares.
   test('repoRoot autodiscovers via git rev-parse when not passed', () async {
     initGitRepo(tempDir);
     createPackage(tempDir, 'packages/foo', 'foo');
 
-    final original = Directory.current;
-    Directory.current = tempDir;
-    try {
-      final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(AffectedPackagesCommand());
-      final code = await runner.run(['affected_packages', '--all']);
-      expect(code, 0);
-    } finally {
-      Directory.current = original;
-    }
+    final runner = CommandRunner<int>('test', 'test')
+      ..addCommand(AffectedPackagesCommand(workingDirectory: tempDir.path));
+    final code = await runner.run(['affected_packages', '--all']);
+    expect(code, 0);
   });
 
-  test('repoRoot falls back to "." when not inside a git repo', () async {
-    // tempDir is intentionally NOT a git repo. The autodiscovery
-    // `git rev-parse` will exit non-zero → mixin returns '.', which
-    // resolves to tempDir (our cwd) — confirmed by the friendly-error
-    // exit 1 from running git diff in a non-git tree.
-    createPackage(tempDir, 'packages/foo', 'foo');
+  test(
+    'repoRoot falls back to the working directory outside a git repo',
+    () async {
+      // tempDir is intentionally NOT a git repo. The autodiscovery
+      // `git rev-parse` exits non-zero, so the mixin returns the working
+      // directory (tempDir), confirmed by the friendly-error exit 1 from
+      // running git diff in a non-git tree.
+      createPackage(tempDir, 'packages/foo', 'foo');
 
-    final original = Directory.current;
-    Directory.current = tempDir;
-    try {
       final runner = CommandRunner<int>('test', 'test')
-        ..addCommand(AffectedPackagesCommand());
+        ..addCommand(AffectedPackagesCommand(workingDirectory: tempDir.path));
       final code = await runner.run(['affected_packages']);
       expect(code, 1);
-    } finally {
-      Directory.current = original;
-    }
-  });
+    },
+  );
 }
