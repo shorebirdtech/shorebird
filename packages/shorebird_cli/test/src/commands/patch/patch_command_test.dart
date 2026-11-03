@@ -1936,7 +1936,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
 
           expect(exitCode, equals(ExitCode.success.code));
           // The release comes from the release picker, not from guessing the
-          // version out of a speculative build.
+          // version out of a build.
           verify(
             () => codePushClientWrapper.getReleases(appId: appId),
           ).called(1);
@@ -2574,7 +2574,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           });
 
           test(
-            'builds app twice if release flutter version is not default',
+            'builds the patch with the release flutter version',
             () async {
               final exitCode = await runWithOverrides(command.run);
               expect(exitCode, equals(ExitCode.success.code));
@@ -2624,22 +2624,26 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               );
             });
 
-            test('exits with an error after the speculative build', () async {
-              await expectLater(
-                () => runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithError(
-                  message: contains('patching with `android` needs at least'),
-                  hint: contains('Run: shorebird release android'),
-                  exitCode: ExitCode.software,
-                ),
-              );
+            test(
+              'exits with an error after the build that guesses the version',
+              () async {
+                await expectLater(
+                  () => runWithOverrides(() => command.createPatch(patcher)),
+                  exitsWithError(
+                    message: contains('patching with `android` needs at least'),
+                    hint: contains('Run: shorebird release android'),
+                    exitCode: ExitCode.software,
+                  ),
+                );
 
-              verify(() => patcher.buildPatchArtifact()).called(1);
-              verifyNever(
-                () =>
-                    patcher.buildPatchArtifact(releaseVersion: releaseVersion),
-              );
-            });
+                verify(() => patcher.buildPatchArtifact()).called(1);
+                verifyNever(
+                  () => patcher.buildPatchArtifact(
+                    releaseVersion: releaseVersion,
+                  ),
+                );
+              },
+            );
           });
 
           test(
