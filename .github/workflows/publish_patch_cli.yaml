@@ -1,0 +1,101 @@
+# cspell:words taiki endswith
+name: Publish patch CLI
+
+# The `patch` CLI (packages Shorebird patches; the shorebird CLI downloads and
+# runs) is built from the updater's Rust workspace in shorebirdtech/flutter
+# (engine/src/flutter/third_party/updater/patch) and released here, next to
+# the CLI that uses it, on patch-v* tags. The fork never carries these tags:
+# `git describe --match '*.*.*'` there (flutter_tools' version, the release
+# tooling's base engine lookup) would pick them up. _build_engine's finalize
+# mirrors each release's zips to the download bucket per engine.
+on:
+  push:
+    tags:
+      - "patch-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  create-draft:
+    runs-on: ubuntu-latest
+    name: 📝 Create Draft Release
+    outputs:
+      flutter_sha: ${{ steps.draft.outputs.flutter_sha }}
+      skip: ${{ steps.draft.outputs.skip }}
+    steps:
+      # One flutter commit for every job, so all four binaries come from the
+      # same source even if shorebird/dev moves meanwhile. A tag whose release
+      # is already published (patch-v0.3.0, copied over from the archived
+      # shorebirdtech/updater) is left alone.
+      - id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null)" = "false" ]; then
+            echo "$TAG is already published; nothing to build."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sha=$(gh api repos/shorebirdtech/flutter/commits/shorebird/dev --jq .sha)
+          echo "flutter_sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft \
+              --verify-tag --latest=false --title "patch ${TAG#patch-v}" \
+              --notes "The updater's patch CLI, built from shorebirdtech/flutter@$sha (engine/src/flutter/third_party/updater/patch)."
+
+  upload-artifacts:
+    needs: create-draft
+    if: needs.create-draft.outputs.skip != 'true'
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - os: windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    name: 🦀 Upload Artifacts
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: shorebirdtech/flutter
+          ref: ${{ needs.create-draft.outputs.flutter_sha }}
+          path: flutter
+          sparse-checkout: engine/src/flutter/third_party/updater
+      - uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
+        with:
+          bin: "patch"
+          manifest-path: flutter/engine/src/flutter/third_party/updater/Cargo.toml
+          target: ${{ matrix.target }}
+          tar: none
+          zip: all
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: [create-draft, upload-artifacts]
+    if: needs.create-draft.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    name: 🚀 Publish Release
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          count=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '[.assets[].name | select(endswith(".zip"))] | length')
+          if [ "$count" != 4 ]; then
+            echo "Expected 4 zips on the draft, found $count" >&2
+            exit 1
+          fi
+          # Never "latest": that's the CLI's release, which the release
+          # tooling reads (releases/latest).
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
