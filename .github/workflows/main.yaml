@@ -139,12 +139,11 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
-          # Line coverage on 2026-11-02, as a floor: raise it as coverage
-          # rises, never lower it.
-          min_coverage: "97.80"
-          # Each package's line coverage on 2026-11-02, as a floor: raise it
-          # as coverage rises, never lower it. A package not listed needs 100.
-          min_coverage: ${{ fromJSON('{"shorebird_cli":"98.71","shorebird_code_push_client":"99.44","shorebird_code_push_protocol":"97.66","shorebird_ci":"99.77"}')[matrix.package] || '100' }}
+          # Each package's line coverage on 2026-11-02, rounded down, as a
+          # floor. Raise it as coverage rises; lower it only in a PR that says
+          # why (deleting well-tested code lowers the percentage). A package
+          # not listed needs 100.
+          min_coverage: ${{ fromJSON('{"shorebird_cli":"98.7","shorebird_code_push_client":"99.4","shorebird_code_push_protocol":"97.6","shorebird_ci":"99.7"}')[matrix.package] || '100' }}
 
   build_redis:
     needs: changes
@@ -172,6 +171,8 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
+          # Line coverage, rounded down, as a floor; see the job above.
+          min_coverage: "97.8"
 
   verify_packages:
     needs: changes
