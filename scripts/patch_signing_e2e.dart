@@ -8,9 +8,9 @@
 //
 // It makes two releases of a fresh app:
 //
-//   1.0.0+1  with the customer's key A, then three patches:
+//   1.0.0+1  with the customer's key A, then three patch attempts:
 //            signed with key B   -> wrong_key
-//            unsigned            -> unsigned
+//            unsigned            -> the CLI refuses to make it (#4298)
 //            signed with key A   -> valid
 //   1.0.0+2  with the default, a Shorebird-managed key, then one patch
 //            signed by Shorebird -> managed
@@ -147,7 +147,6 @@ Future<void> run(Target target, Directory work, String? flutter) async {
       '--public-key-path=${key('key_b.pub.pem')}',
       '--private-key-path=${key('key_b.pem')}',
     ],
-    'unsigned': <String>[],
     'valid': [
       '--public-key-path=${key('key_a.pub.pem')}',
       '--private-key-path=${key('key_a.pem')}',
@@ -170,6 +169,7 @@ Future<void> run(Target target, Directory work, String? flutter) async {
       await check(patch, install, flutter);
     }
   }
+  await checkUnsignedRefused(app, target.name, patchArgs);
 
   // Release 1.0.0+2 with the default: a Shorebird-managed key.
   setLabel(app, 'release');
@@ -202,6 +202,38 @@ Future<void> run(Target target, Directory work, String? flutter) async {
   for (final install in managed) {
     await check('managed', install, flutter);
   }
+}
+
+/// Checks that `shorebird patch` refuses to make an unsigned patch for a
+/// release signed with the customer's key (#4298): devices running the
+/// release would reject it.
+Future<void> checkUnsignedRefused(
+  Directory app,
+  String platform,
+  List<String> patchArgs,
+) async {
+  setLabel(app, 'unsigned');
+  final stopwatch = Stopwatch()..start();
+  final result = await Process.run(
+    'shorebird',
+    ['patch', platform, '--release-version=1.0.0+1', ...patchArgs],
+    workingDirectory: app.path,
+    runInShell: Platform.isWindows,
+  );
+  final output = '${result.stdout}${result.stderr}';
+  final refused =
+      result.exitCode == 64 && output.contains('was signed with your own key');
+  final verdict = refused ? 'PASS' : 'FAIL';
+  if (!refused) failed = true;
+  results.add(
+    '| unsigned | refused by the CLI | exit ${result.exitCode} | $verdict '
+    '| ${stopwatch.elapsed.inSeconds}s |',
+  );
+  print(
+    'unsigned: expected the CLI to refuse, exit ${result.exitCode}: '
+    '$verdict',
+  );
+  if (!refused) print(output);
 }
 
 /// A platform this test runs on: how to build, install and launch the app.
