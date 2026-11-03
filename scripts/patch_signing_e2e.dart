@@ -169,7 +169,12 @@ Future<void> run(Target target, Directory work, String? flutter) async {
       await check(patch, install, flutter);
     }
   }
-  await checkUnsignedRefused(app, target.name, patchArgs);
+  if (await checkUnsignedRefused(app, target.name, patchArgs)) {
+    // The CLI published it anyway: check that the updater refuses it.
+    for (final install in customer) {
+      await check('unsigned', install, flutter);
+    }
+  }
 
   // Release 1.0.0+2 with the default: a Shorebird-managed key.
   setLabel(app, 'release');
@@ -206,8 +211,8 @@ Future<void> run(Target target, Directory work, String? flutter) async {
 
 /// Checks that `shorebird patch` refuses to make an unsigned patch for a
 /// release signed with the customer's key (#4298): devices running the
-/// release would reject it.
-Future<void> checkUnsignedRefused(
+/// release would reject it. Returns whether the CLI published it anyway.
+Future<bool> checkUnsignedRefused(
   Directory app,
   String platform,
   List<String> patchArgs,
@@ -235,6 +240,7 @@ Future<void> checkUnsignedRefused(
     '$verdict',
   );
   if (!refused) print(output);
+  return result.exitCode == 0;
 }
 
 /// A platform this test runs on: how to build, install and launch the app.
