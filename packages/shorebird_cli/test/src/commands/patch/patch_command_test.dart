@@ -1936,7 +1936,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
 
           expect(exitCode, equals(ExitCode.success.code));
           // The release comes from the release picker, not from guessing the
-          // version out of a speculative build.
+          // version out of a build.
           verify(
             () => codePushClientWrapper.getReleases(appId: appId),
           ).called(1);
@@ -2420,6 +2420,92 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
+        test('warns, then builds the patch again with the release settings '
+            'even on the same Flutter', () async {
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          verifyInOrder([
+            () => logger.warn(
+              any(
+                that: allOf(
+                  contains('removed in a release after 2027-01-01'),
+                  contains('slower and less accurate'),
+                  contains('shorebirdtech/shorebird/issues/4354'),
+                  contains('--release-version=latest'),
+                ),
+              ),
+            ),
+            () => patcher.buildPatchArtifact(),
+            () => patcher.extractReleaseVersionFromArtifact(any()),
+            () => patcher.extraBuildArgs = any(),
+            () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+          ]);
+        });
+
+        test(
+          'builds an obfuscated release\'s patch with its obfuscation map',
+          () async {
+            when(
+              () => codePushClientWrapper.getRelease(
+                appId: any(named: 'appId'),
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer(
+              (_) async => Release(
+                id: 0,
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+                flutterVersion: '3.41.2',
+                displayName: releaseVersion,
+                platforms: const {
+                  releasePlatform: ReleasePlatformDetails(
+                    status: ReleaseStatus.active,
+                  ),
+                },
+                createdAt: DateTime(2023),
+                updatedAt: DateTime(2023),
+              ),
+            );
+            when(
+              () => patcher.supplementaryReleaseArtifactArch,
+            ).thenReturn('supplement');
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenAnswer((invocation) async {
+              final outputDirectory =
+                  invocation.namedArguments[#outputDirectory] as Directory;
+              File(
+                p.join(outputDirectory.path, 'obfuscation_map.json'),
+              ).writeAsStringSync('{}');
+            });
+            when(
+              () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                platform: any(named: 'platform'),
+                flutterRevision: any(named: 'flutterRevision'),
+              ),
+            ).thenAnswer((_) async => false);
+
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyInOrder([
+              () => patcher.buildPatchArtifact(),
+              () => patcher.obfuscationMapPath = any(that: isNotNull),
+              () => patcher.extraBuildArgs = any(
+                that: contains(
+                  startsWith(
+                    '--extra-gen-snapshot-options=--load-obfuscation-map=',
+                  ),
+                ),
+              ),
+              () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+            ]);
+          },
+        );
+
         test(
           'builds again with the key when the release embeds a managed key',
           () async {
@@ -2488,7 +2574,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           });
 
           test(
-            'builds app twice if release flutter version is not default',
+            'builds the patch with the release flutter version',
             () async {
               final exitCode = await runWithOverrides(command.run);
               expect(exitCode, equals(ExitCode.success.code));
@@ -2497,7 +2583,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 () => logger.warn(
                   any(
                     that: startsWith(
-                      'The release version to patch was not specified.',
+                      'Guessing the release version is deprecated',
                     ),
                   ),
                 ),
@@ -2538,22 +2624,26 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               );
             });
 
-            test('exits with an error after the speculative build', () async {
-              await expectLater(
-                () => runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithError(
-                  message: contains('patching with `android` needs at least'),
-                  hint: contains('Run: shorebird release android'),
-                  exitCode: ExitCode.software,
-                ),
-              );
+            test(
+              'exits with an error after the build that guesses the version',
+              () async {
+                await expectLater(
+                  () => runWithOverrides(() => command.createPatch(patcher)),
+                  exitsWithError(
+                    message: contains('patching with `android` needs at least'),
+                    hint: contains('Run: shorebird release android'),
+                    exitCode: ExitCode.software,
+                  ),
+                );
 
-              verify(() => patcher.buildPatchArtifact()).called(1);
-              verifyNever(
-                () =>
-                    patcher.buildPatchArtifact(releaseVersion: releaseVersion),
-              );
-            });
+                verify(() => patcher.buildPatchArtifact()).called(1);
+                verifyNever(
+                  () => patcher.buildPatchArtifact(
+                    releaseVersion: releaseVersion,
+                  ),
+                );
+              },
+            );
           });
 
           test(
