@@ -139,6 +139,12 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
+          # Line coverage on 2026-11-02, as a floor: raise it as coverage
+          # rises, never lower it.
+          min_coverage: "97.80"
+          # Each package's line coverage on 2026-11-02, as a floor: raise it
+          # as coverage rises, never lower it. A package not listed needs 100.
+          min_coverage: ${{ fromJSON('{"shorebird_cli":"98.71","shorebird_code_push_client":"99.44","shorebird_code_push_protocol":"97.66","shorebird_ci":"99.77"}')[matrix.package] || '100' }}
 
   build_redis:
     needs: changes
