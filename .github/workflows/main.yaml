@@ -31,6 +31,20 @@ jobs:
         with:
           working_directory: ${{ github.workspace }}
 
+  actionlint:
+    name: 🔍 Lint Workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Catches a workflow GitHub would refuse to start (it fails such a
+      # workflow's runs with no jobs and no error on the PR), plus shellcheck
+      # over every run: script. The image bundles shellcheck; config is in
+      # .github/actionlint.yaml.
+      - name: 🔍 Run actionlint
+        run: docker run --rm -v "${GITHUB_WORKSPACE}:/repo" --workdir /repo rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color # 1.7.12
+
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -203,6 +217,7 @@ jobs:
   ci:
     needs:
       [
+        actionlint,
         changes,
         license_check,
         build_cross_platform_dart_packages,

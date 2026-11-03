@@ -28,14 +28,13 @@ on:
     # At the end of every day
     - cron: "0 0 * * *"
 
-env:
-  # Credentials are set per job, next to the SHOREBIRD_HOSTED_URL they have to
-  # match. Every job signs in with GitHub Actions OIDC as the `e2e` service
-  # account of a "Shorebird E2E" project (SHOREBIRD_PROJECT_ID), whose trust
-  # rule admits this workflow: project 437 on dev from any branch, 60197 on
-  # prod from main only. A project id is a row in one environment's database,
-  # and AUTH_SERVICE_URL has to name that environment's auth service, so none
-  # of these can be set once for the whole workflow.
+# Credentials are set per job, next to the SHOREBIRD_HOSTED_URL they have to
+# match. Every job signs in with GitHub Actions OIDC as the `e2e` service
+# account of a "Shorebird E2E" project (SHOREBIRD_PROJECT_ID), whose trust
+# rule admits this workflow: project 437 on dev from any branch, 60197 on
+# prod from main only. A project id is a row in one environment's database,
+# and AUTH_SERVICE_URL has to name that environment's auth service, so none
+# of these can be set once for the whole workflow.
 
 permissions:
   contents: read
@@ -103,7 +102,7 @@ jobs:
 
       - name: 🖥️ Add Shorebird to PATH
         shell: bash
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐦 Verify Shorebird Installation
         run: |
@@ -134,7 +133,9 @@ jobs:
         timeout-minutes: 10
         env:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
-        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install $ANDROID_PACKAGES
+        run: |
+          # shellcheck disable=SC2086
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -228,7 +229,7 @@ jobs:
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐧 Install Linux Build Dependencies
         uses: ./.github/actions/linux_build_deps
@@ -266,7 +267,7 @@ jobs:
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -334,7 +335,7 @@ jobs:
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -353,7 +354,8 @@ jobs:
       # patch job's android-packages.
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 10
-        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.2.13676358"
+        run: |
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -417,7 +419,7 @@ jobs:
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐧 Install Linux Build Dependencies
         uses: ./.github/actions/linux_build_deps
@@ -456,7 +458,7 @@ jobs:
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐧 Install Linux Build Dependencies
         uses: ./.github/actions/linux_build_deps
@@ -493,7 +495,7 @@ jobs:
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -512,7 +514,8 @@ jobs:
       # patch job's android-packages.
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 10
-        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;28.2.13676358"
+        run: |
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -592,7 +595,7 @@ jobs:
       - name: 🖥️ Add Shorebird to macOS/Linux PATH
         shell: bash
         if: runner.os != 'Windows'
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🖥️ Add Shorebird to Windows PATH
         shell: pwsh
