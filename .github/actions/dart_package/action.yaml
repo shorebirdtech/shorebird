@@ -22,6 +22,10 @@ inputs:
     required: false
     default: "100"
     description: The minimum coverage percentage value
+  check_coverage:
+    required: false
+    default: "true"
+    description: Whether to fail when coverage is below min_coverage
   analyze_directories:
     required: false
     default: "lib test"
@@ -85,10 +89,8 @@ runs:
         find test -name '*_test.dart' | sort | xargs -r -n 50 dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}}
         dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="$WORKSPACE_ROOT/.dart_tool/package_config.json" --report-on=${{inputs.report_on}} --check-ignore
 
-    # One OS is enough: each OS skips the others' platform branches, so
-    # their totals differ, and Linux runs every package.
     - name: 📏 Check Coverage
-      if: runner.os == 'Linux'
+      if: inputs.check_coverage == 'true'
       uses: VeryGoodOpenSource/very_good_coverage@c953fca3e24a915e111cc6f55f03f756dcb3964c # v3.0.0
       with:
         path: ${{ inputs.working_directory }}/coverage/lcov.info
