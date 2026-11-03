@@ -4,6 +4,16 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.136 (November 2, 2026)
+
+- ✨ Add `shorebird enterprise` for enterprise owners and admins: `get`,
+  `members`, `guests`, `orgs list`, `apps list`, `audit-log`, `usage` and
+  `service-accounts list`
+- 🐛 Stop running `flutter pub get` with the Flutter on your PATH after builds.
+  This fixes Xcode's Product > Archive failing after `shorebird release`, a
+  wrong Flutter path in add-to-app iOS modules, and concurrent builds picking
+  up each other's kernel
+
 ## 1.6.135 (November 2, 2026)
 
 - 🐦 Flutter 3.47.9 / Dart 3.13.7 support
