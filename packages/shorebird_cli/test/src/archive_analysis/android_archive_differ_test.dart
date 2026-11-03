@@ -170,9 +170,12 @@ void main() {
               File(path).readAsBytesSync(),
             );
             final copy = Archive();
+            // Adding the decoded entries as they are lets ZipEncoder copy
+            // their compressed bytes, rather than inflate and deflate tens of
+            // megabytes per test, which timed out on Windows CI.
             for (final file in source.files) {
               if (file.name == bundleDependenciesPath) continue;
-              copy.addFile(ArchiveFile(file.name, file.size, file.content));
+              copy.addFile(file);
             }
             if (dependencies != null) {
               copy.addFile(
