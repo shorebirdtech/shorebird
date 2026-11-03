@@ -28,13 +28,14 @@ on:
     # At the end of every day
     - cron: "0 0 * * *"
 
-# Credentials are set per job, next to the SHOREBIRD_HOSTED_URL they have to
-# match. Every job signs in with GitHub Actions OIDC as the `e2e` service
-# account of a "Shorebird E2E" project (SHOREBIRD_PROJECT_ID), whose trust
-# rule admits this workflow: project 437 on dev from any branch, 60197 on
-# prod from main only. A project id is a row in one environment's database,
-# and AUTH_SERVICE_URL has to name that environment's auth service, so none
-# of these can be set once for the whole workflow.
+# No workflow-level env: credentials are set per job, next to the
+# SHOREBIRD_HOSTED_URL they have to match. Every job signs in with GitHub
+# Actions OIDC as the `e2e` service account of a "Shorebird E2E" project
+# (SHOREBIRD_PROJECT_ID), whose trust rule admits this workflow: project 437
+# on dev from any branch, 60197 on prod from main only. A project id is a row
+# in one environment's database, and AUTH_SERVICE_URL has to name that
+# environment's auth service, so none of these can be set once for the whole
+# workflow.
 
 permissions:
   contents: read

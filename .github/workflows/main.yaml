@@ -34,9 +34,14 @@ jobs:
   actionlint:
     name: 🔍 Lint Workflows
     runs-on: ubuntu-latest
+    # The image pull from Docker Hub is the only network step; bound it so a
+    # Docker Hub stall fails fast instead of holding the required check.
+    timeout-minutes: 5
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Catches a workflow GitHub would refuse to start (it fails such a
       # workflow's runs with no jobs and no error on the PR), plus shellcheck
