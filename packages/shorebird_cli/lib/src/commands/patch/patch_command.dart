@@ -550,7 +550,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         '--release-version=latest for the most recently updated release). '
         'Without it, shorebird builds your app an extra time with Flutter '
         '$flutterVersionString to guess which release to patch, which is '
-        'slower and less accurate.',
+        'slower and less accurate. See '
+        'https://github.com/shorebirdtech/shorebird/issues/4354',
       );
       inferredReleaseVersion = true;
       final versionArtifact = await _tryBuildingArtifact<File>(

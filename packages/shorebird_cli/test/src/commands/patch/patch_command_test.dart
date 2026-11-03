@@ -2430,6 +2430,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 that: allOf(
                   contains('removed in a release after 2027-01-01'),
                   contains('slower and less accurate'),
+                  contains('shorebirdtech/shorebird/issues/4354'),
                   contains('--release-version=latest'),
                 ),
               ),
