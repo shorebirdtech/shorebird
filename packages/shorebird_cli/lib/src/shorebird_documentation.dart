@@ -15,6 +15,11 @@ const supportedFlutterVersionsUrl =
 /// Link to the troubleshooting page on the Shorebird documentation.
 const troubleshootingUrl = '$docsUrl/code-push/troubleshooting';
 
+/// Link to the performance page section which explains what the link
+/// percentage is and why a low one makes a patch run slower.
+const linkPercentageUrl =
+    '$docsUrl/code-push/performance/#link-percentage-and-slow-patches';
+
 /// Link to the troubleshooting section which covers the
 /// Unsupported class file major version
 const unsupportedClassFileVersionUrl =
