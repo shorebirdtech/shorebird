@@ -1550,7 +1550,7 @@ void main() {
           const hint =
               'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
               'https://console.shorebird.dev, or set SHOREBIRD_TOKEN to a '
-              'Shorebird API key.';
+              'service account key.';
 
           setUp(() {
             platform = platform.copyWith(

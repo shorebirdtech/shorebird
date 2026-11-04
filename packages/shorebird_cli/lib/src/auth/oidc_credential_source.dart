@@ -126,7 +126,7 @@ class OidcCredentialSource extends CredentialSource {
       hint:
           'Set $shorebirdProjectIdEnvVar to the id of your project shown at '
           '${ShorebirdWebConsole.baseUri}, or set $shorebirdTokenEnvVar to a '
-          'Shorebird API key.',
+          'service account key.',
     );
   }
 

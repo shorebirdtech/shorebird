@@ -96,7 +96,7 @@ class GitHubActionsSubjectTokenSupplier implements SubjectTokenSupplier {
         '(${response.statusCode}).',
         hint:
             "This is an error on GitHub's side. Re-run the job, or set "
-            '$shorebirdTokenEnvVar to a Shorebird API key.',
+            '$shorebirdTokenEnvVar to a service account key.',
       );
     }
 
@@ -110,7 +110,7 @@ class GitHubActionsSubjectTokenSupplier implements SubjectTokenSupplier {
         hint:
             "GitHub didn't accept $actionsIdTokenRequestTokenEnvVar; it may "
             'have expired or come from another job. Re-run the job, or set '
-            '$shorebirdTokenEnvVar to a Shorebird API key.',
+            '$shorebirdTokenEnvVar to a service account key.',
       );
     }
 
