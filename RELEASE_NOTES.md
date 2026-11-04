@@ -130,8 +130,8 @@ Flutter 3.47.8 and Dart 3.13.7 are unchanged from 1.6.133.
 - ✨ Refuse install_only on Flutter builds that skip its signature check
 - ✨ Add Release.platforms keyed by platform, deprecate platformStatuses, and
   move the CLI to it
-- ✨ Sign patches with a Shorebird-managed key by default (--patch-signing);
-  pass --no-patch-signing to release with unsigned patches
+- ✨ Sign patches with a Shorebird-managed key by default; pass
+  --no-patch-signing to release with unsigned patches
 - ✨ Derive the auth service and console from the code push server
 - 🐛 Refuse a private key passed as the public key, without printing it
 - 🐛 Link the console for the API host in OIDC sign-in hints
