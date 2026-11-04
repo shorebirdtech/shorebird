@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 
 /// Set by GitHub Actions to `true` in every workflow run.
 const githubActionsEnvVar = 'GITHUB_ACTIONS';
@@ -96,7 +97,8 @@ class GitHubActionsSubjectTokenSupplier implements SubjectTokenSupplier {
         '(${response.statusCode}).',
         hint:
             "This is an error on GitHub's side. Re-run the job, or set "
-            '$shorebirdTokenEnvVar to a service account key.',
+            '$shorebirdTokenEnvVar to a service account key: '
+            '$serviceAccountsUrl',
       );
     }
 
@@ -110,7 +112,8 @@ class GitHubActionsSubjectTokenSupplier implements SubjectTokenSupplier {
         hint:
             "GitHub didn't accept $actionsIdTokenRequestTokenEnvVar; it may "
             'have expired or come from another job. Re-run the job, or set '
-            '$shorebirdTokenEnvVar to a service account key.',
+            '$shorebirdTokenEnvVar to a service account key: '
+            '$serviceAccountsUrl',
       );
     }
 

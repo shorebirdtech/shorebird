@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/auth/credential_source.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 
 /// The `grant_type` of an OAuth 2.0 token exchange (RFC 8693 section 2.1).
@@ -126,7 +127,7 @@ class OidcCredentialSource extends CredentialSource {
       hint:
           'Set $shorebirdProjectIdEnvVar to the id of your project shown at '
           '${ShorebirdWebConsole.baseUri}, or set $shorebirdTokenEnvVar to a '
-          'service account key.',
+          'service account key: $serviceAccountsUrl',
     );
   }
 

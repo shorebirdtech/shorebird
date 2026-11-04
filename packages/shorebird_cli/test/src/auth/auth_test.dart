@@ -1119,7 +1119,8 @@ void main() {
               any(
                 that: contains(
                   'CI tokens from `shorebird login:ci` are no longer '
-                  'supported.',
+                  'supported. Create a service account key '
+                  '(https://docs.shorebird.dev/account/service-accounts/)',
                 ),
               ),
             ),
@@ -1550,7 +1551,8 @@ void main() {
           const hint =
               'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
               'https://console.shorebird.dev, or set SHOREBIRD_TOKEN to a '
-              'service account key.';
+              'service account key: '
+              'https://docs.shorebird.dev/account/service-accounts/';
 
           setUp(() {
             platform = platform.copyWith(

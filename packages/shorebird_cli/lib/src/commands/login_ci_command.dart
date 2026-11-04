@@ -18,7 +18,7 @@ class LoginCiCommand extends ShorebirdCommand {
   Future<int> run() async {
     logger.err(
       '''
-shorebird login:ci has been replaced by service account keys.
+shorebird login:ci has been replaced by API keys. For CI, use a service account key.
 
 Create a service account key and set it as your ${lightCyan.wrap('SHOREBIRD_TOKEN')} environment variable.
 

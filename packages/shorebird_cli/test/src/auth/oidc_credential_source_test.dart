@@ -145,7 +145,8 @@ void main() {
     const hint =
         'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
         'https://console.shorebird.dev, or set SHOREBIRD_TOKEN to a '
-        'service account key.';
+        'service account key: '
+        'https://docs.shorebird.dev/account/service-accounts/';
 
     OidcCredentialSource sourceFor(String? projectId) => runWithOverrides(
       () => OidcCredentialSource(
@@ -220,7 +221,8 @@ void main() {
         equals(
           'Set SHOREBIRD_PROJECT_ID to the id of your project shown at '
           'https://console-dev.shorebird.dev, or set SHOREBIRD_TOKEN to a '
-          'service account key.',
+          'service account key: '
+          'https://docs.shorebird.dev/account/service-accounts/',
         ),
       );
     });
