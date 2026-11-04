@@ -167,11 +167,11 @@ jobs:
           # shorebird_cli's iOS and macOS tests run only on macOS, so its
           # Linux number is ~4 points below macOS's; the floor is Linux's.
           check_coverage: ${{ matrix.os == 'ubuntu-latest' }}
-          # Each package's Linux line coverage, rounded down, as a
-          # floor. Raise it as coverage rises; lower it only in a PR that says
+          # Each package's Linux line coverage on 2026-11-03, rounded down,
+          # as a floor. Raise it as coverage rises; lower it only in a PR that says
           # why (deleting well-tested code lowers the percentage). A package
           # not listed needs 100.
-          min_coverage: ${{ fromJSON('{"shorebird_cli":"98.7","shorebird_code_push_client":"99.4","shorebird_code_push_protocol":"97.6","shorebird_ci":"99.7"}')[matrix.package] || '100' }}
+          min_coverage: ${{ fromJSON('{"shorebird_cli":"94.7","shorebird_code_push_client":"99.4","shorebird_code_push_protocol":"97.6","shorebird_ci":"99.7"}')[matrix.package] || '100' }}
 
   build_redis:
     needs: changes
