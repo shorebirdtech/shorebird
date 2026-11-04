@@ -2,7 +2,10 @@ name: ci
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PRs only. A push run on main is the only place a commit's macOS and
+  # Windows legs run, and Detect Changes diffs only against the previous
+  # commit, so a cancelled main run would skip them for good.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
   pull_request:
@@ -142,7 +145,12 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        # Ubuntu only on pull requests; all three OSes on pushes to main and
+        # in the merge queue. GitHub bills macOS at ~10x and Windows at ~2x
+        # Linux, and from 2026-10-15 to 11-03 these legs cost ~$660 on PR
+        # runs while catching no test failure ubuntu missed (691 runs). A
+        # platform-only break now shows on main's push run instead.
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["macos-latest", "windows-latest", "ubuntu-latest"]') }}
         package: ${{ fromJSON(needs.changes.outputs.needs_cross_platform_dart_build) }}
 
     runs-on: ${{ matrix.os }}
@@ -158,15 +166,15 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
-          # Checked on macOS only: shorebird_cli's iOS and macOS tests run
-          # only there, so Linux reads ~4 points lower (94.7% vs 98.7% on
-          # 2026-11-03), and one OS's check is enough.
-          check_coverage: ${{ matrix.os == 'macos-latest' }}
-          # Each package's line coverage on 2026-11-02, rounded down, as a
-          # floor. Raise it as coverage rises; lower it only in a PR that says
-          # why (deleting well-tested code lowers the percentage). A package
-          # not listed needs 100.
-          min_coverage: ${{ fromJSON('{"shorebird_cli":"98.7","shorebird_code_push_client":"99.4","shorebird_code_push_protocol":"97.6","shorebird_ci":"99.7"}')[matrix.package] || '100' }}
+          # Checked on ubuntu, the one OS every run has (PRs run no other).
+          # shorebird_cli's iOS and macOS tests run only on macOS, so its
+          # Linux number is ~4 points below macOS's; the floor is Linux's.
+          check_coverage: ${{ matrix.os == 'ubuntu-latest' }}
+          # Each package's Linux line coverage on 2026-11-03, rounded down,
+          # as a floor. Raise it as coverage rises; lower it only in a PR
+          # that says why (deleting well-tested code lowers the percentage).
+          # A package not listed needs 100.
+          min_coverage: ${{ fromJSON('{"shorebird_cli":"94.7","shorebird_code_push_client":"99.4","shorebird_code_push_protocol":"97.6","shorebird_ci":"99.7"}')[matrix.package] || '100' }}
 
   build_redis:
     needs: changes
