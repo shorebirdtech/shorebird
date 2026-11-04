@@ -1,14 +1,15 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 
 /// {@template login_ci_command}
 /// `shorebird login:ci`
-/// Removed — directs users to API keys instead.
+/// Removed — directs users to service account keys instead.
 /// {@endtemplate}
 class LoginCiCommand extends ShorebirdCommand {
   @override
-  String get description => 'Removed — use API keys instead.';
+  String get description => 'Removed — use a service account key instead.';
 
   @override
   String get name => 'login:ci';
@@ -17,11 +18,11 @@ class LoginCiCommand extends ShorebirdCommand {
   Future<int> run() async {
     logger.err(
       '''
-shorebird login:ci has been replaced by API keys.
+shorebird login:ci has been replaced by API keys. For CI, use a service account key.
 
-Create an API key at ${link(uri: Uri.parse('https://console.shorebird.dev'))} and set it as your ${lightCyan.wrap('SHOREBIRD_TOKEN')} environment variable.
+Create a service account key and set it as your ${lightCyan.wrap('SHOREBIRD_TOKEN')} environment variable.
 
-Learn more: ${link(uri: Uri.parse('https://docs.shorebird.dev/account/api-keys/'))}''',
+Learn more: ${serviceAccountsUrl.toLink()}''',
     );
     return ExitCode.usage.code;
   }
