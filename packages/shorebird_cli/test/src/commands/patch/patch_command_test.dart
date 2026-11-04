@@ -1719,7 +1719,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).called(1);
         });
 
-        test('rounds the link percentage to one decimal place', () async {
+        test('shows the link percentage to one decimal place', () async {
           when(() => patcher.linkPercentage).thenReturn(12.345678901234567);
           await expectLater(
             runWithOverrides(
@@ -1727,6 +1727,19 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             ),
             exitsWithError(
               message: contains('this patch (12.3%) is below'),
+              exitCode: ExitCode.software,
+            ),
+          );
+        });
+
+        test('shows a value just under the threshold below it', () async {
+          when(() => patcher.linkPercentage).thenReturn(19.97);
+          await expectLater(
+            runWithOverrides(
+              () => command.assertMinLinkPercentage(patcher),
+            ),
+            exitsWithError(
+              message: contains('this patch (19.9%) is below'),
               exitCode: ExitCode.software,
             ),
           );

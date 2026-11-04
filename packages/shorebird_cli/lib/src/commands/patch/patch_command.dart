@@ -999,10 +999,14 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       );
     }
     if (linkPercentage != null && linkPercentage < minLinkPercentage) {
+      // Truncate rather than round, so a value just under the integer
+      // threshold (19.97) never reads as the threshold itself (20.0).
+      final shownLinkPercentage = ((linkPercentage * 10).floorToDouble() / 10)
+          .toStringAsFixed(1);
       throw CommandError(
         message:
             'The link percentage of this patch '
-            '(${linkPercentage.toStringAsFixed(1)}%) is below '
+            '($shownLinkPercentage%) is below '
             'the minimum threshold ($minLinkPercentage%).',
         hint:
             'Not publishing. Lower --min-link-percentage to accept this '
