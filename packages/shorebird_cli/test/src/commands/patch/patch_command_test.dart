@@ -544,6 +544,381 @@ void main() {
             );
           },
         );
+
+        Release releaseWith(
+          int id,
+          String version,
+          Set<ReleasePlatform> platforms, {
+          Set<ReleasePlatform> drafts = const {},
+        }) => Release(
+          id: id,
+          appId: appId,
+          version: version,
+          flutterRevision: flutterRevision,
+          flutterVersion: flutterVersion,
+          displayName: version,
+          platforms: {
+            for (final platform in platforms)
+              platform: ReleasePlatformDetails(
+                status: drafts.contains(platform)
+                    ? ReleaseStatus.draft
+                    : ReleaseStatus.active,
+              ),
+          },
+          createdAt: DateTime(2023),
+          updatedAt: DateTime(2023),
+        );
+
+        final stopIos = Exception('ios patch started');
+
+        setUp(() {
+          when(() => iosPatcher.assertPreconditions()).thenAnswer((_) async {});
+          when(() => iosPatcher.assertArgsAreValid()).thenAnswer((_) async {});
+          when(
+            () => iosPatcher.prepareForRelease(
+              appId: any(named: 'appId'),
+              release: any(named: 'release'),
+            ),
+          ).thenThrow(stopIos);
+        });
+
+        void verifyNothingBuilt() {
+          verifyNever(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          );
+          verifyNever(
+            () => patcher.uploadPatchArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              metadata: any(named: 'metadata'),
+              track: any(named: 'track'),
+              artifacts: any(named: 'artifacts'),
+            ),
+          );
+        }
+
+        group('when prompting for the release', () {
+          setUp(() {
+            when(
+              () => argResults.wasParsed('release-version'),
+            ).thenReturn(false);
+          });
+
+          test(
+            'asks once and patches every platform with that release',
+            () async {
+              final older = releaseWith(1, '1.0.0+1', {
+                ReleasePlatform.android,
+                ReleasePlatform.ios,
+              });
+              final chosen = releaseWith(2, releaseVersion, {
+                ReleasePlatform.android,
+                ReleasePlatform.ios,
+              });
+              when(
+                () => codePushClientWrapper.getReleases(
+                  appId: any(named: 'appId'),
+                ),
+              ).thenAnswer((_) async => [older, chosen]);
+              when(
+                () => logger.chooseOne<Release>(
+                  any(),
+                  choices: any(named: 'choices'),
+                  display: any(named: 'display'),
+                  hint: any(named: 'hint'),
+                ),
+              ).thenReturn(chosen);
+
+              await expectLater(
+                runWithOverrides(command.run),
+                throwsA(stopIos),
+              );
+
+              verify(
+                () => logger.chooseOne<Release>(
+                  any(),
+                  choices: any(named: 'choices'),
+                  display: any(named: 'display'),
+                  hint: any(named: 'hint'),
+                ),
+              ).called(1);
+              verify(
+                () =>
+                    patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+              ).called(1);
+              verify(
+                () =>
+                    iosPatcher.prepareForRelease(appId: appId, release: chosen),
+              ).called(1);
+            },
+          );
+
+          test(
+            'only offers releases with a build for every platform',
+            () async {
+              final androidOnly = releaseWith(1, '1.0.0+1', {
+                ReleasePlatform.android,
+              });
+              final both = releaseWith(2, releaseVersion, {
+                ReleasePlatform.android,
+                ReleasePlatform.ios,
+              });
+              when(
+                () => codePushClientWrapper.getReleases(
+                  appId: any(named: 'appId'),
+                ),
+              ).thenAnswer((_) async => [androidOnly, both]);
+
+              await expectLater(
+                runWithOverrides(command.run),
+                throwsA(stopIos),
+              );
+
+              verifyNever(
+                () => logger.chooseOne<Release>(
+                  any(),
+                  choices: any(named: 'choices'),
+                  display: any(named: 'display'),
+                  hint: any(named: 'hint'),
+                ),
+              );
+              verify(
+                () => iosPatcher.prepareForRelease(appId: appId, release: both),
+              ).called(1);
+            },
+          );
+
+          test(
+            'errors before building when no release has every platform',
+            () async {
+              when(
+                () => codePushClientWrapper.getReleases(
+                  appId: any(named: 'appId'),
+                ),
+              ).thenAnswer(
+                (_) async => [
+                  releaseWith(1, '1.0.0+1', {ReleasePlatform.android}),
+                  releaseWith(2, releaseVersion, {ReleasePlatform.ios}),
+                ],
+              );
+
+              await expectLater(
+                () => runWithOverrides(command.run),
+                exitsWithError(
+                  message:
+                      'No release of app $appId has a build for every '
+                      'platform being patched (Android, iOS).',
+                  hint:
+                      'Patch each platform separately (for example '
+                      '--platforms=android), or create a release that '
+                      'includes all of them.',
+                ),
+              );
+
+              verifyNever(
+                () => patcher.buildPatchArtifact(
+                  releaseVersion: any(named: 'releaseVersion'),
+                ),
+              );
+            },
+          );
+        });
+
+        test(
+          'errors before building when --release-version lacks a platform',
+          () async {
+            when(
+              () => codePushClientWrapper.getRelease(
+                appId: any(named: 'appId'),
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer(
+              (_) async => releaseWith(1, releaseVersion, {
+                ReleasePlatform.android,
+              }),
+            );
+
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithError(
+                message: 'Release $releaseVersion has no iOS build.',
+                exitCode: ExitCode.software,
+              ),
+            );
+
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+            verifyNever(
+              () => patcher.uploadPatchArtifacts(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                metadata: any(named: 'metadata'),
+                track: any(named: 'track'),
+                artifacts: any(named: 'artifacts'),
+              ),
+            );
+          },
+        );
+
+        test('looks up --release-version once for every platform', () async {
+          when(
+            () => codePushClientWrapper.getRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer(
+            (_) async => releaseWith(1, releaseVersion, {
+              ReleasePlatform.android,
+              ReleasePlatform.ios,
+            }),
+          );
+
+          await expectLater(runWithOverrides(command.run), throwsA(stopIos));
+
+          verify(
+            () => codePushClientWrapper.getRelease(
+              appId: appId,
+              releaseVersion: releaseVersion,
+            ),
+          ).called(1);
+        });
+
+        test(
+          "errors before building when the release's iOS build is incomplete",
+          () async {
+            when(
+              () => codePushClientWrapper.getRelease(
+                appId: any(named: 'appId'),
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer(
+              (_) async => releaseWith(
+                1,
+                releaseVersion,
+                {ReleasePlatform.android, ReleasePlatform.ios},
+                drafts: {ReleasePlatform.ios},
+              ),
+            );
+
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithError(
+                message:
+                    'Release $releaseVersion is incomplete: the release '
+                    'command that created it was stopped or failed.',
+                exitCode: ExitCode.software,
+              ),
+            );
+
+            verifyNothingBuilt();
+          },
+        );
+
+        test(
+          'errors before building when the latest iOS release is incomplete',
+          () async {
+            when(() => argResults['release-version']).thenReturn('latest');
+            when(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer(
+              (_) async => [
+                releaseWith(1, releaseVersion, {ReleasePlatform.android}),
+                releaseWith(
+                  2,
+                  '2.0.0+1',
+                  {ReleasePlatform.ios},
+                  drafts: {ReleasePlatform.ios},
+                ),
+              ],
+            );
+
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithError(
+                message:
+                    'Release 2.0.0+1 is incomplete: the release command that '
+                    'created it was stopped or failed.',
+                exitCode: ExitCode.software,
+              ),
+            );
+
+            verifyNothingBuilt();
+          },
+        );
+
+        test(
+          'names the platform with no releases when prompting',
+          () async {
+            when(
+              () => argResults.wasParsed('release-version'),
+            ).thenReturn(false);
+            when(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer(
+              (_) async => [
+                releaseWith(1, releaseVersion, {ReleasePlatform.android}),
+              ],
+            );
+
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithError(
+                message: 'No iOS releases found for app $appId.',
+              ),
+            );
+
+            verifyNothingBuilt();
+          },
+        );
+
+        test(
+          'resolves each platform on its own without a terminal or '
+          '--release-version',
+          () async {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+            when(
+              () => argResults.wasParsed('release-version'),
+            ).thenReturn(false);
+            when(() => iosPatcher.requiresReleaseVersionArg).thenReturn(false);
+            when(
+              () => iosPatcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer((_) async => File(''));
+            when(
+              () => iosPatcher.extractReleaseVersionFromArtifact(any()),
+            ).thenAnswer((_) async => releaseVersion);
+            when(
+              () => codePushClientWrapper.getRelease(
+                appId: any(named: 'appId'),
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).thenAnswer(
+              (_) async => releaseWith(1, releaseVersion, {
+                ReleasePlatform.android,
+                ReleasePlatform.ios,
+              }),
+            );
+
+            await expectLater(runWithOverrides(command.run), throwsA(stopIos));
+
+            verify(
+              () => patcher.extractReleaseVersionFromArtifact(any()),
+            ).called(1);
+            verify(
+              () => iosPatcher.extractReleaseVersionFromArtifact(any()),
+            ).called(1);
+          },
+        );
       });
     });
 
