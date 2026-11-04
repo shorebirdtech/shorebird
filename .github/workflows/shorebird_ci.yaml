@@ -2,6 +2,13 @@
 # Run `shorebird_ci verify` to check for dep graph drift.
 name: Shorebird CI
 
+# A new push to a PR cancels that PR's run still going on the older head.
+# Other events (push to main, merge_group) group by run id, so they never
+# cancel or queue behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
