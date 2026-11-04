@@ -2,7 +2,10 @@ name: ci
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PRs only. A push run on main is the only place a commit's macOS and
+  # Windows legs run, and Detect Changes diffs only against the previous
+  # commit, so a cancelled main run would skip them for good.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
   pull_request:
@@ -168,9 +171,9 @@ jobs:
           # Linux number is ~4 points below macOS's; the floor is Linux's.
           check_coverage: ${{ matrix.os == 'ubuntu-latest' }}
           # Each package's Linux line coverage on 2026-11-03, rounded down,
-          # as a floor. Raise it as coverage rises; lower it only in a PR that says
-          # why (deleting well-tested code lowers the percentage). A package
-          # not listed needs 100.
+          # as a floor. Raise it as coverage rises; lower it only in a PR
+          # that says why (deleting well-tested code lowers the percentage).
+          # A package not listed needs 100.
           min_coverage: ${{ fromJSON('{"shorebird_cli":"94.7","shorebird_code_push_client":"99.4","shorebird_code_push_protocol":"97.6","shorebird_ci":"99.7"}')[matrix.package] || '100' }}
 
   build_redis:
