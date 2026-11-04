@@ -212,7 +212,7 @@ jobs:
 
   required:
     name: required
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     needs:
       - changes
       - dex

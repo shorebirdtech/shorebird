@@ -313,6 +313,7 @@ updates:
 # Run `shorebird_ci verify` to check for dep graph drift.
 name: Shorebird CI
 
+$_concurrencyBlock
 on:
   pull_request:
     branches:
@@ -654,6 +655,7 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
 # shorebird_ci-managed: dynamic
 name: Shorebird CI
 
+$_concurrencyBlock
 on:
   pull_request:
     branches:
@@ -977,11 +979,17 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
   /// protection: per-package jobs only run on touched paths, so we
   /// need a job that succeeds when its dependencies are either
   /// `success` or `skipped`, and fails on `failure` or `cancelled`.
+  ///
+  /// `!cancelled()`, not `always()`: a superseded PR run is cancelled by
+  /// the workflow's `concurrency` block, and `always()` would keep this job
+  /// alive through that and report `required` red on the stale commit. A
+  /// skipped required check reports success, the right answer for a run
+  /// nothing is waiting on.
   void _writeRequiredJob(StringBuffer buffer, List<String> needs) {
     buffer
       ..writeln('  required:')
       ..writeln('    name: required')
-      ..writeln(r'    if: ${{ always() }}')
+      ..writeln(r'    if: ${{ !cancelled() }}')
       ..writeln('    needs:');
     for (final need in needs) {
       buffer.writeln('      - $need');
@@ -1001,3 +1009,13 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
       ..writeln();
   }
 }
+
+/// Emitted ahead of `on:` in the main workflow.
+const _concurrencyBlock = r'''
+# A new push to a PR cancels that PR's run still going on the older head.
+# Other events (push to main, merge_group) group by run id, so they never
+# cancel or queue behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+''';

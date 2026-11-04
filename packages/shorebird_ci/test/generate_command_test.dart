@@ -351,6 +351,16 @@ void main() {
       expect(yaml, contains('  merge_group:\n    types: [checks_requested]'));
     });
 
+    test('static workflow cancels a superseded PR run', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final yaml = _readMain(tempDir);
+      _expectPrOnlyConcurrency(yaml);
+    });
+
     test('emits main + both reusables for mixed repo', () async {
       createPackage(tempDir, 'packages/dart_pkg', 'dart_pkg');
       createPackage(
@@ -974,6 +984,14 @@ void main() {
       expect(yaml, contains('  merge_group:\n    types: [checks_requested]'));
     });
 
+    test('dynamic workflow cancels a superseded PR run', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      _expectPrOnlyConcurrency(yaml);
+    });
+
     test('dynamic workflow has workflow_dispatch trigger', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
@@ -1085,8 +1103,9 @@ void main() {
           ),
         ),
       );
-      // Always-run and treats skipped sub-jobs as success.
-      expect(yaml, contains(r'if: ${{ always() }}'));
+      // Runs unless the run was cancelled (a superseded PR head), and
+      // treats skipped sub-jobs as success.
+      expect(yaml, contains(r'if: ${{ !cancelled() }}'));
       expect(yaml, contains("contains(needs.*.result, 'failure')"));
       expect(yaml, contains("contains(needs.*.result, 'cancelled')"));
     });
@@ -1230,3 +1249,18 @@ String _readMain(Directory repoRoot) {
 String _readAll(Directory dir) => [
   for (final f in dir.listSync().whereType<File>()) f.readAsStringSync(),
 ].join('\n');
+
+/// The main workflow cancels a superseded PR run, and only PR runs share a
+/// group.
+void _expectPrOnlyConcurrency(String yaml) {
+  final doc = loadYaml(yaml) as YamlMap;
+  final concurrency = doc['concurrency'] as YamlMap;
+  expect(
+    concurrency['group'],
+    [
+      r'${{ github.workflow }}',
+      r'${{ github.event.pull_request.number || github.run_id }}',
+    ].join('-'),
+  );
+  expect(concurrency['cancel-in-progress'], isTrue);
+}

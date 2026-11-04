@@ -7,6 +7,8 @@
 
 - `generate` pins `dart pub global activate shorebird_ci` to the version that generated the workflow. Before, generated workflows activated whatever shorebird_ci was newest, so each release changed every user's CI the moment it was published, and a new `verify` check could fail a merge queue that hadn't changed. To move to a new shorebird_ci, run `generate` again (or bump the version in the workflow).
 
+- `generate` adds a `concurrency` block to the main workflow, so a new push to a pull request cancels that PR's run still going on the older head. The group is the PR number, with `github.run_id` as the fallback, so push-to-main and merge-queue runs each get their own group and are never cancelled or queued. The `required` aggregator now runs on `!cancelled()` instead of `always()`, so a cancelled superseded run shows as cancelled rather than reporting `required` red on the old commit.
+
 # 0.2.5
 
 - The dependency graph behind `generate`'s static filters and `verify`'s suggestions now follows Dart workspace members referenced by name alone. In a workspace, `foo: ^1.0.0` resolves to the member named `foo`, but only `path:` dependencies were followed, so a package's filter left out such a member and a change to it skipped the package's job.
