@@ -25,29 +25,32 @@ that `stable` is moved to.
 - Every leg must pass. If the most recent nightly failed, find out why before
   releasing.
 - Run the device e2e in `shorebirdtech/shorebird_e2e` against the same commit.
-  Both run on Namespace runners, so no local device is needed:
+  All three run on Namespace runners, so no local device is needed:
 
   ```sh
   git fetch origin
   SHA=$(git rev-parse origin/main)
   gh workflow run macos_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
   gh workflow run android_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
+  gh workflow run ios_test_lab_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
   # Each run is named for the SHA it tests:
-  gh run list --repo shorebirdtech/shorebird_e2e --event workflow_dispatch --limit 4
+  gh run list --repo shorebirdtech/shorebird_e2e --event workflow_dispatch --limit 6
   ```
 
   - `macos_e2e` releases, patches and UI-tests the standalone macOS app,
     obfuscated and not.
   - `android_e2e` does the same for the standalone and add-to-app Android
     apps on an x86_64 emulator.
-  - Both sign in with GitHub Actions OIDC. Leave `flutter_revision` empty to
+  - `ios_test_lab_e2e` does the same for the standalone and add-to-app iOS
+    apps on a cloud iPhone.
+  - All three sign in with GitHub Actions OIDC. Leave `flutter_revision` empty to
     test the Flutter pinned by the commit.
-  - Both must pass.
+  - All three must pass.
 - Manually check each change from step 1 that these runs do not cover, using a
-  local checkout of the commit being released. They do not cover iOS (it needs
-  a physical device), interactive `shorebird login`, or `--json` output. On a Mac with an iOS
-  device, Shorebird staff can run the `release-smoke-test` agent skill in
-  `shorebirdtech/_shorebird`, which covers iOS, `--json` and login.
+  local checkout of the commit being released. They do not cover interactive
+  `shorebird login` or `--json` output. On a Mac with an iOS device, Shorebird
+  staff can run the `release-smoke-test` agent skill in
+  `shorebirdtech/_shorebird`, which covers both.
 
 ## 3. Prepare the release commit
 
