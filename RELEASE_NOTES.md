@@ -18,7 +18,7 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 Show xcodebuild output on --no-codesign iOS build failures
 - 🐛 Carry the public key and DD setting into Xcode rebuilds
 - 🐛 Load CanvasKit from the build output by default on web
-- 🐛 Leave gclient's download out of the prebuilt Dart SDK copy
+- 🐛 Leave a stray download out of the prebuilt Dart SDK copy
 - 🐛 Pass upstream's analyze, tool and Gradle plugin checks
 - 🐛 Clear clang-tidy findings in the fork's engine sources
 - 🐛 ShorebirdHttpClientTest compiles against android.jar
@@ -38,8 +38,7 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 Write a non-empty DW_AT_comp_dir on Apple targets so Xcode 27 keeps the
   debug map
 - 🐛 Upload by file name from its directory, for Windows gcloud
-- 🐛 Unwind stack resources before the arm32 and riscv simulators jump to a
-  handler
+- 🐛 Unwind stack resources before the simulators jump to a handler
 - 🐛 Never define SIMULATOR_FFI; an arm64 forced simulator needs
   shorebird_runtime
 - 🐛 Keep platform/globals.h out of elf_loader.h and macho_loader.h
