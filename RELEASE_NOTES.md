@@ -4,6 +4,28 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.137 (November 4, 2026)
+
+- ✨ `shorebird release` and `shorebird patch` accept common `flutter build`
+  options without `--`, such as `--no-tree-shake-icons`, `--no-pub`,
+  `-P`/`--android-project-arg` and `--enable-experiment`. `--` still works for
+  everything, and an unknown option's error shows your command with it moved
+  after `--`
+- ✨ `-D` works as the short form of `--dart-define`
+- 🐛 Obfuscated iOS and iOS framework patches built without
+  `--split-debug-info` now save the patch's own symbols to the default
+  directory, `build/shorebird/symbols`
+- 🐛 `shorebird patch` with no `--release-version` that can't prompt (CI,
+  `--json`) always rebuilds with the release's settings, so an obfuscated release no longer gets
+  an unobfuscated patch
+- 🔧 `--dart-define` values keep their commas, as in `flutter build`.
+  `--dart-define=A=1,B=2` used to set `A` and `B`; it now sets `A` to `1,B=2`.
+  Repeat the flag to pass several defines
+- 🔧 Guessing the release version in `shorebird patch` is deprecated and will be
+  removed in a release after January 1, 2027. Pass `--release-version=<version>`
+  or `--release-version=latest`. Until then, guessing takes an extra build
+- 🔧 CI sign-in hints point at service account keys instead of personal API keys
+
 ## 1.6.136 (November 2, 2026)
 
 - ✨ Add `shorebird enterprise` for enterprise owners, admins and billing

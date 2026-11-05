@@ -212,8 +212,8 @@ void main() {
             'to the id of your project, and add a GitHub Actions trust rule '
             'for this workflow at https://console.shorebird.dev.';
         const apiKeyHint =
-            'Or set SHOREBIRD_TOKEN to a Shorebird API key from '
-            'https://console.shorebird.dev.';
+            'Or set SHOREBIRD_TOKEN to a service account key: '
+            'https://docs.shorebird.dev/account/service-accounts/';
         await expectLater(
           runWithOverrides(
             () => shorebirdValidator.validatePreconditions(

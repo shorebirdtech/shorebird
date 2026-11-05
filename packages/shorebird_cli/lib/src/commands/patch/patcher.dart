@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -365,12 +366,15 @@ More info: ${linkPercentageUrl.toLink()}.
     return value == null ? null : int.tryParse(value);
   }
 
-  /// The value of `--split-debug-info-path` if specified.
+  /// Where the patch's Dart symbols go: the `--split-debug-info` directory the
+  /// user passed, or the default added to [extraBuildArgs] for an obfuscated
+  /// patch.
   String? get splitDebugInfoPath {
     return argResults.findOption(
-      CommonArguments.splitDebugInfoArg.name,
-      argParser: argParser,
-    );
+          CommonArguments.splitDebugInfoArg.name,
+          argParser: argParser,
+        ) ??
+        splitDebugInfoDirectory(extraBuildArgs);
   }
 
   /// The path to the output file for the debug info.
