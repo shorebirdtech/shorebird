@@ -405,6 +405,65 @@ To pass --fast to flutter build, put it after --:
         ).called(1);
       });
 
+      test("moves the option's value along with it", () async {
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android', '--foo', 'bar']),
+        );
+        verify(
+          () => logger.err('''
+To pass --foo to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird release android -- --foo bar')}'''),
+        ).called(1);
+      });
+
+      test('leaves the platform and a .dart target in place', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['release', '--foo', 'android']),
+        );
+        verify(
+          () => logger.err('''
+To pass --foo to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird release android -- --foo')}'''),
+        ).called(1);
+        await runWithOverrides(
+          () => commandRunner.run([
+            'release',
+            'android',
+            '--foo',
+            'lib/main.dart',
+          ]),
+        );
+        verify(
+          () => logger.err('''
+To pass --foo to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird release android lib/main.dart -- --foo')}'''),
+        ).called(1);
+      });
+
+      test('hints short options too', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android', '-Q', 'bar']),
+        );
+        verify(
+          () => logger.err('''
+To pass -Q to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird release android -- -Q bar')}'''),
+        ).called(1);
+        await runWithOverrides(
+          () => commandRunner.run(['patch', 'android', '-Q1']),
+        );
+        verify(
+          () => logger.err('''
+To pass -Q to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird patch android -- -Q1')}'''),
+        ).called(1);
+      });
+
       test('commands that do not build get no pass-through hint', () async {
         await runWithOverrides(() => commandRunner.run(['doctor', '--fast']));
         verify(

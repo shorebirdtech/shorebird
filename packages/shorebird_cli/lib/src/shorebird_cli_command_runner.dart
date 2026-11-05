@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -615,11 +616,13 @@ ${currentRunLogFile.absolute.path}
     }
   }
 
-  /// The option name (without leading dashes) from an args-package
-  /// "Could not find an option named" message, or null for other messages.
+  /// The unknown option with its dashes (`--foo` or `-x`) from an
+  /// args-package "Could not find an option ..." message, or null for other
+  /// messages.
   static String? _unknownOptionName(String message) {
     final match = RegExp(
-      'Could not find an option named "(?:--)?([^"]+)"',
+      'Could not find an option (?:named|or flag|with short name) '
+      '"(-[^"]+)"',
     ).firstMatch(message);
     return match?.group(1);
   }
@@ -635,16 +638,19 @@ ${currentRunLogFile.absolute.path}
   /// flags that actually bypass the patch safety checks; other options on
   /// release and patch get the `--` pass-through explanation, and other
   /// commands get no hint.
-  String? _unknownOptionHint(String option, List<String> args) {
+  String? _unknownOptionHint(String typedOption, List<String> args) {
     final commandName = args.where((a) => !a.startsWith('-')).firstOrNull;
-    if (option == 'enterprise' ||
-        option == 'no-enterprise' ||
-        option.startsWith('enterprise-')) {
+    final option = typedOption.replaceFirst(RegExp('^--?'), '');
+    final isLong = typedOption.startsWith('--');
+    if (isLong &&
+        (option == 'enterprise' ||
+            option == 'no-enterprise' ||
+            option.startsWith('enterprise-'))) {
       return _enterpriseOptionHint(args);
     }
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
-shorebird patch has no --$option flag. The patch safety checks are bypassed per check:
+shorebird patch has no $typedOption flag. The patch safety checks are bypassed per check:
   ${lightCyan.wrap('--allow-native-diffs')}  publish even though native code changed
   ${lightCyan.wrap('--allow-asset-diffs')}   publish even though assets changed
 The warning that fails the patch names the one that applies.''';
@@ -654,29 +660,49 @@ The warning that fails the patch names the one that applies.''';
     if (commandName != 'release' && commandName != 'patch') return null;
 
     final separator = platform.isWindows ? "'--'" : '--';
-    // Move the option (as typed, with any `=value`) after the separator.
-    final index = args.indexWhere(
-      (a) => a == '--$option' || a.startsWith('--$option='),
+    final separatorIndex = args.indexOf('--');
+    final beforeSeparator = separatorIndex == -1
+        ? args
+        : args.take(separatorIndex).toList();
+    // The token as typed: `--foo`, `--foo=bar`, `-x`, or a cluster or
+    // attached value such as `-xyz`.
+    final index = beforeSeparator.indexWhere(
+      (a) => isLong
+          ? a == typedOption || a.startsWith('$typedOption=')
+          : !a.startsWith('--') && a.startsWith(typedOption),
     );
-    final typed = index == -1 ? '--$option' : args[index];
+    final moved = index == -1 ? [typedOption] : [args[index]];
+    // A bare option may take the next token as its value, so move that too.
+    // The next token stays put when it is the release platform or a `.dart`
+    // target, which shorebird reads itself; any other non-option token is
+    // forwarded to flutter build either way.
+    if (index != -1 && args[index] == typedOption) {
+      final next = beforeSeparator.elementAtOrNull(index + 1);
+      if (next != null &&
+          !next.startsWith('-') &&
+          !next.endsWith('.dart') &&
+          !ReleaseType.values.any((type) => type.cliName == next)) {
+        moved.add(next);
+      }
+    }
     final others = [...args];
-    if (index != -1) others.removeAt(index);
-    final separatorIndex = others.indexOf('--');
+    if (index != -1) others.removeRange(index, index + moved.length);
+    final othersSeparatorIndex = others.indexOf('--');
     final example = [
       'shorebird',
-      if (separatorIndex == -1) ...[
+      if (othersSeparatorIndex == -1) ...[
         ...others,
         separator,
-        typed,
+        ...moved,
       ] else ...[
-        ...others.take(separatorIndex),
+        ...others.take(othersSeparatorIndex),
         separator,
-        typed,
-        ...others.skip(separatorIndex + 1),
+        ...moved,
+        ...others.skip(othersSeparatorIndex + 1),
       ],
     ].join(' ');
     return '''
-To pass --$option to flutter build, put it after $separator:
+To pass $typedOption to flutter build, put it after $separator:
 
   ${lightCyan.wrap(example)}''';
   }
