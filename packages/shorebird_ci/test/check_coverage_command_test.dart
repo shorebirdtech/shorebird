@@ -172,7 +172,12 @@ void main() {
       expect(CheckCoverageCommand().description, isNotEmpty);
     });
 
-    for (final min in ['abc', '-1', '101']) {
+    test('fails on a file with no source records', () async {
+      final lcov = write('lcov.info', 'TN:\n');
+      expect(await run([lcov, '--min', '0']), 1);
+    });
+
+    for (final min in ['abc', '-1', '101', 'NaN']) {
       test('rejects --min $min', () async {
         final lcov = write('lcov.info', record('lib/a.dart', [1]));
         expect(run([lcov, '--min', min]), throwsA(isA<UsageException>()));

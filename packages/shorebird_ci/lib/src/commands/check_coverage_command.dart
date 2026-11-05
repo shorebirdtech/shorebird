@@ -38,7 +38,7 @@ class CheckCoverageCommand extends Command<int> {
   Future<int> run() async {
     final args = argResults!;
     final min = double.tryParse(args['min'] as String);
-    if (min == null || min < 0 || min > 100) {
+    if (min == null || min.isNaN || min < 0 || min > 100) {
       usageException('--min must be a number from 0 to 100.');
     }
     final excludes = [
@@ -66,7 +66,12 @@ class CheckCoverageCommand extends Command<int> {
 
     final LcovReport report;
     try {
-      report = LcovReport.parse(tracefiles).exclude(excludes);
+      final parsed = LcovReport.parse(tracefiles);
+      if (parsed.files.isEmpty) {
+        stderr.writeln('No source files in ${paths.join(', ')}.');
+        return 1;
+      }
+      report = parsed.exclude(excludes);
     } on FormatException catch (e) {
       stderr.writeln('Could not parse lcov: ${e.message}: ${e.source}');
       return 1;

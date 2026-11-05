@@ -45,12 +45,13 @@ class LcovReport {
 
   /// A report without the files matching any of [globs].
   ///
-  /// Globs match the path as the tracefile wrote it, with `/` separators. A
-  /// relative glob matches anywhere below the root, so `**/*.g.dart` matches
-  /// both `lib/a.g.dart` and `/home/runner/work/x/lib/a.g.dart`.
+  /// Globs match the path as the tracefile wrote it, with `/` separators.
+  /// Paths are resolved against `/`, so `**/*.g.dart` matches both
+  /// `lib/a.g.dart` and `/home/runner/work/x/lib/a.g.dart`, while
+  /// `lib/**/*.g.dart` matches only paths starting with `lib/`.
   LcovReport exclude(Iterable<String> globs) {
-    // Resolving against '/' makes a relative glob match a path at any depth,
-    // absolute (Dart's format_coverage) or relative (flutter test).
+    // Resolving against '/' lets one glob match both absolute paths (Dart's
+    // format_coverage) and relative ones (flutter test).
     final context = p.Context(style: p.Style.posix, current: '/');
     final matchers = [for (final g in globs) Glob(g, context: context)];
     return LcovReport._({
