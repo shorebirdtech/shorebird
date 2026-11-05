@@ -464,6 +464,45 @@ To pass -Q to flutter build, put it after --:
         ).called(1);
       });
 
+      test('gives no example for a short option in a cluster', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android', '-vQ']),
+        );
+        verify(
+          () => logger.err('To pass -Q to flutter build, put it after --.'),
+        ).called(1);
+      });
+
+      test('moves an option and its value before an existing --', () async {
+        await runWithOverrides(
+          () => commandRunner.run([
+            'patch',
+            'android',
+            '--foo',
+            'bar',
+            '--',
+            '--no-pub',
+          ]),
+        );
+        verify(
+          () => logger.err('''
+To pass --foo to flutter build, put it after --:
+
+  ${lightCyan.wrap('shorebird patch android -- --foo bar --no-pub')}'''),
+        ).called(1);
+      });
+
+      test('short override options get the safety-check hint', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['patch', 'android', '-y']),
+        );
+        verify(
+          () => logger.err(
+            any(that: startsWith('shorebird patch has no -y flag')),
+          ),
+        ).called(1);
+      });
+
       test('commands that do not build get no pass-through hint', () async {
         await runWithOverrides(() => commandRunner.run(['doctor', '--fast']));
         verify(

@@ -671,12 +671,17 @@ The warning that fails the patch names the one that applies.''';
           ? a == typedOption || a.startsWith('$typedOption=')
           : !a.startsWith('--') && a.startsWith(typedOption),
     );
-    final moved = index == -1 ? [typedOption] : [args[index]];
+    // Not found as its own token: a short option clustered with shorebird's
+    // own flags (`-vQ`), which can't be moved whole.
+    if (index == -1) {
+      return 'To pass $typedOption to flutter build, put it after $separator.';
+    }
+    final moved = [args[index]];
     // A bare option may take the next token as its value, so move that too.
     // The next token stays put when it is the release platform or a `.dart`
     // target, which shorebird reads itself; any other non-option token is
     // forwarded to flutter build either way.
-    if (index != -1 && args[index] == typedOption) {
+    if (args[index] == typedOption) {
       final next = beforeSeparator.elementAtOrNull(index + 1);
       if (next != null &&
           !next.startsWith('-') &&
@@ -685,8 +690,7 @@ The warning that fails the patch names the one that applies.''';
         moved.add(next);
       }
     }
-    final others = [...args];
-    if (index != -1) others.removeRange(index, index + moved.length);
+    final others = [...args]..removeRange(index, index + moved.length);
     final othersSeparatorIndex = others.indexOf('--');
     final example = [
       'shorebird',
