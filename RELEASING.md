@@ -84,7 +84,7 @@ waits, say in the prepare PR when it will ship.
 VERSION=x.y.z
 SHA=$(git rev-parse origin/main)  # the prepare commit
 gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --generate-notes
-git push origin "$SHA:stable"
+git push origin "${SHA}:stable"
 ```
 
 - `stable` must fast-forward. It is protected (linear history, no force
