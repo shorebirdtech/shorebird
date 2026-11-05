@@ -1,7 +1,7 @@
 $schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
 version: "0.2"
 ignorePaths:
-  ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures"]
+  ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures", "RELEASE_NOTES.md"]
 words:
   - aabs
   - aapt
