@@ -36,6 +36,7 @@ You run these locally:
 | `generate` | Write `.github/workflows/shorebird_ci.yaml` (plus reusable workflows in `--style static`) |
 | `verify` | Check that every package has CI coverage, and that any `required` aggregator stays in sync with the rest of the workflow |
 | `update_actions` | Pin `uses:` refs in workflow files to each action's latest release by commit SHA (`owner/repo@<sha> # v1.2.3`). `generate` already calls this after writing; run it standalone to pin hand-maintained workflows |
+| `check_coverage` | Fail when line coverage in lcov tracefiles (default `coverage/lcov.info`) is below `--min` (default 100). `--exclude "**/*.g.dart"` leaves out generated sources; several tracefiles, as from test shards, are merged |
 
 CI runs these inside the generated workflow. You don't usually invoke
 them by hand:

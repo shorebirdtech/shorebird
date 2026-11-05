@@ -108,8 +108,10 @@ runs:
 
     - name: 📏 Check Coverage
       if: inputs.check_coverage == 'true'
-      uses: VeryGoodOpenSource/very_good_coverage@c953fca3e24a915e111cc6f55f03f756dcb3964c # v3.0.0
-      with:
-        path: ${{ inputs.working_directory }}/coverage/lcov.info
-        exclude: ${{ inputs.coverage_excludes }}
-        min_coverage: ${{ inputs.min_coverage }}
+      working-directory: ${{ inputs.working_directory }}
+      shell: bash
+      env:
+        EXCLUDES: ${{ inputs.coverage_excludes }}
+        MIN_COVERAGE: ${{ inputs.min_coverage }}
+      # shorebird_ci from this checkout, a member of the workspace.
+      run: dart run shorebird_ci:shorebird_ci check_coverage coverage/lcov.info --min "$MIN_COVERAGE" --exclude "$EXCLUDES"
