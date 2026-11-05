@@ -30,6 +30,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -737,6 +738,35 @@ This may indicate that the patch contains native changes, which cannot be applie
                   '--dwarf-stack-traces',
                   '--resolve-dwarf-paths',
                   '--save-debugging-info=${splitDebugInfoFile.path}',
+                ],
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when the default --split-debug-info is added', () {
+          test('saves the patch snapshot symbols there', () async {
+            patcher.extraBuildArgs = [
+              '--split-debug-info=$defaultSplitDebugInfoPath',
+            ];
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception {
+              // ignore
+            }
+            final symbolsPath = p.join(
+              p.absolute(defaultSplitDebugInfoPath),
+              'app.ios-arm64.symbols',
+            );
+            verify(
+              () => artifactBuilder.buildElfAotSnapshot(
+                appDillPath: any(named: 'appDillPath'),
+                outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                additionalArgs: [
+                  '--dwarf-stack-traces',
+                  '--resolve-dwarf-paths',
+                  '--save-debugging-info=$symbolsPath',
                 ],
               ),
             ).called(1);
