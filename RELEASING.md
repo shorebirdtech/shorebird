@@ -33,10 +33,10 @@ that `stable` is moved to.
   gh workflow run macos_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
   gh workflow run android_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
   gh workflow run ios_test_lab_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
-  # Each run is named for the SHA it tests:
   gh run list --repo shorebirdtech/shorebird_e2e --event workflow_dispatch --limit 6
   ```
 
+  - Each run is named for the SHA it tests.
   - `macos_e2e` releases, patches and UI-tests the standalone macOS app,
     obfuscated and not.
   - `android_e2e` does the same for the standalone and add-to-app Android
@@ -78,13 +78,17 @@ the release notes.
 Publish only when a maintainer can watch for problems for the next few
 hours, so not late at night or before a weekend, unless the release is
 urgent. Landing the prepare commit is fine at any hour; if publishing
-waits, say in the prepare PR when it will ship.
+waits, say in the prepare PR when it will ship. `SHA` is the prepare
+commit.
+
+<!-- No # comments in these blocks: zsh, macOS's default shell, runs them
+as commands at the prompt, and on a `SHA=` line that leaves SHA unset. -->
 
 ```sh
 VERSION=x.y.z
-SHA=$(git rev-parse origin/main)  # the prepare commit
+SHA=$(git rev-parse origin/main)
 gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --generate-notes
-git push origin "$SHA:stable"
+git push origin "${SHA}:stable"
 ```
 
 - `stable` must fast-forward. It is protected (linear history, no force
