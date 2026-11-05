@@ -333,8 +333,8 @@ void main() {
         ).thenAnswer((_) async => aabFile);
       });
 
-      // See https://github.com/shorebirdtech/updater/issues/211
-      group('when flutter version contains updater issue 211', () {
+      // See https://docs.shorebird.dev/getting-started/flutter-version/#flutter-version-notes
+      group('when flutter version has the patch uninstall issue', () {
         setUp(() {
           setUpProjectRootArtifacts();
           when(
@@ -351,7 +351,7 @@ void main() {
         });
       });
 
-      group('when flutter version does not contain updater issue 211', () {
+      group('when flutter version does not have the patch uninstall issue', () {
         setUp(() {
           setUpProjectRootArtifacts();
           when(
