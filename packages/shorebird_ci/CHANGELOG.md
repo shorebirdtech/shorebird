@@ -1,6 +1,6 @@
 <!-- cspell:words toplevel -->
 
-# Unreleased
+# 0.2.6
 
 - New `check_coverage` command: fails when line coverage in lcov tracefiles is below `--min` (default 100), leaving out sources matching `--exclude` globs. Several tracefiles are merged by summing hits per line, as test shards need. It replaces `VeryGoodOpenSource/very_good_coverage`, whose repository is archived, with the same rule: lines hit over lines found, and an empty or missing tracefile fails.
 - `generate` pins every action to a commit SHA, with its release tag in a trailing comment (`actions/checkout@<sha> # v7.0.1`), the form GitHub's hardening guide recommends and Dependabot keeps updating. Before, generated workflows used major tags (`@v6`), which whoever controls the action's repo can move to new code that then runs with the job's token and secrets. `--no-update-actions` writes the pins built into this version of shorebird_ci; otherwise `generate` pins each action's latest release.
