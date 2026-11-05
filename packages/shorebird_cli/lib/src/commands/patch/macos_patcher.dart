@@ -76,6 +76,13 @@ class MacosPatcher extends Patcher
   @override
   String get podfileLockRelativePath => 'macos/Podfile.lock';
 
+  /// The names `flutter build macos` gives each architecture's split debug
+  /// info, so a patch's symbols sit beside the release's under the same name.
+  static const arm64SplitDebugInfoFileName = 'app.darwin-arm64.symbols';
+
+  /// See [arm64SplitDebugInfoFileName].
+  static const x64SplitDebugInfoFileName = 'app.darwin-x86_64.symbols';
+
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [
@@ -98,6 +105,7 @@ class MacosPatcher extends Patcher
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _arm64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
+      splitDebugInfoFileName: arm64SplitDebugInfoFileName,
     );
 
     if (!File(_arm64AotOutputPath).existsSync()) {
@@ -112,6 +120,7 @@ class MacosPatcher extends Patcher
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _x64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
+      splitDebugInfoFileName: x64SplitDebugInfoFileName,
     );
 
     if (!File(_x64AotOutputPath).existsSync()) {
