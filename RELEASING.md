@@ -43,14 +43,15 @@ that `stable` is moved to.
     apps on an x86_64 emulator.
   - `ios_test_lab_e2e` does the same for the standalone and add-to-app iOS
     apps on a cloud iPhone.
-  - All three sign in with GitHub Actions OIDC. Leave `flutter_revision` empty to
-    test the Flutter pinned by the commit.
+  - All three sign in with GitHub Actions OIDC. Leave `flutter_revision` empty
+    to test the Flutter pinned by the commit.
   - All three must pass.
 - Manually check each change from step 1 that these runs do not cover, using a
-  local checkout of the commit being released. They do not cover interactive
-  `shorebird login` or `--json` output. On a Mac with an iOS device, Shorebird
-  staff can run the `release-smoke-test` agent skill in
-  `shorebirdtech/_shorebird`, which covers both.
+  local checkout of the commit being released. They do not cover signed iOS
+  builds (the iOS runs use `--no-codesign`, so no `.ipa` export or
+  `shorebird preview`), interactive `shorebird login`, or `--json` output. On
+  a Mac with an iOS device, Shorebird staff can run the `release-smoke-test`
+  agent skill in `shorebirdtech/_shorebird`, which covers all three.
 
 ## 3. Prepare the release commit
 
