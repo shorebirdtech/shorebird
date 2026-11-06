@@ -21,14 +21,46 @@ on:
         required: false
         default: false
         type: boolean
+      runners:
+        required: false
+        default: '["ubuntu-latest"]'
+        type: string
+      min_coverage:
+        required: false
+        default: ""
+        type: string
+      coverage_excludes:
+        required: false
+        default: ""
+        type: string
+      report_on:
+        required: false
+        default: ""
+        type: string
+      total_shards:
+        required: false
+        default: 1
+        type: number
+      shard_index:
+        required: false
+        default: 0
+        type: number
+
+permissions:
+  contents: read
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || inputs.runners) }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
       - name: 🐳 Run Redis
         if: inputs.needs_redis
         run: |
@@ -40,21 +72,70 @@ jobs:
         run: |
           dart pub get --no-example
           for sub in ${{ inputs.subpackages }}; do
-            dart pub get --no-example -C $sub
+            dart pub get --no-example -C "$sub"
           done
       - working-directory: ${{ inputs.package_path }}
-        run: dart format --set-exit-if-changed .
+        run: |
+          dart format --set-exit-if-changed .
+          if [ -d routes/.well-known ]; then
+            dart format --set-exit-if-changed routes/.well-known
+          fi
       - working-directory: ${{ inputs.package_path }}
-        run: dart analyze --fatal-warnings .
+        run: |
+          dart analyze --fatal-warnings .
+          if [ -d routes/.well-known ]; then
+            dart analyze --fatal-warnings routes/.well-known
+          fi
       - name: Run Tests
         if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
-        # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
-        # `dart test` keeps every suite's compiled kernel file in the temp
-        # dir until it exits, so one run over a package with ~200 test files
-        # fills the runner's disk ("Disk quota exceeded"). Running the files
-        # 50 at a time frees that dir between runs, as the dart_package
-        # action does (#4262). shorebird_ci's generator still emits a single
-        # `dart test`; keep this batching if the file is regenerated.
-        shell: bash
-        run: find test -name '*_test.dart' | sort | xargs -r -n 50 dart test
+        env:
+          MIN_COVERAGE: ${{ inputs.min_coverage }}
+          PACKAGE_NAME: ${{ inputs.package_name }}
+          REPORT_ON: ${{ inputs.report_on }}
+          RUNNER_OS_NAME: ${{ matrix.os }}
+          SHARD_INDEX: ${{ inputs.shard_index }}
+          TOTAL_SHARDS: ${{ inputs.total_shards }}
+          WORKSPACE_ROOT: ${{ github.workspace }}
+        run: |
+          set -f
+          files=$(find test -name '*_test.dart' | sort | awk -v n="${TOTAL_SHARDS:-1}" -v i="${SHARD_INDEX:-0}" 'NR % n == i')
+          if [ -z "$files" ]; then
+            exit 0
+          fi
+          if [ -n "$MIN_COVERAGE" ] && [ "$MIN_COVERAGE" != "0" ] && [ "$RUNNER_OS_NAME" = "ubuntu-latest" ]; then
+            # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
+            dart pub global activate coverage 1.15.1
+            COVERAGE_DIR="$(pwd -W 2>/dev/null || pwd)/coverage"
+            printf '%s\n' "$files" | xargs -n 50 dart test --coverage="$COVERAGE_DIR"
+            if [ -z "$(find coverage -name '*.json' -print -quit)" ]; then
+              echo "::error::dart test wrote no coverage files to coverage/"
+              exit 1
+            fi
+            if [ -z "$REPORT_ON" ]; then
+              if [ -d routes ]; then
+                REPORT_ON="lib,routes"
+              else
+                REPORT_ON="lib"
+              fi
+            fi
+            if [ -f .dart_tool/package_config.json ]; then
+              PACKAGE_CONFIG=".dart_tool/package_config.json"
+            else
+              PACKAGE_CONFIG="$WORKSPACE_ROOT/.dart_tool/package_config.json"
+            fi
+            SCOPED_CONFIG="$(dirname "$PACKAGE_CONFIG")/package_config_scoped.json"
+            jq --arg name "$PACKAGE_NAME" '.packages |= map(select(.name == $name))' "$PACKAGE_CONFIG" > "$SCOPED_CONFIG"
+            dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="$SCOPED_CONFIG" --report-on="$REPORT_ON" --check-ignore
+          else
+            printf '%s\n' "$files" | xargs -n 50 dart test
+          fi
+      - name: Check Coverage
+        if: inputs.has_unit_tests && inputs.min_coverage != '' && inputs.min_coverage != '0' && matrix.os == 'ubuntu-latest'
+        working-directory: ${{ inputs.package_path }}
+        env:
+          EXCLUDES: ${{ inputs.coverage_excludes }}
+          MIN_COVERAGE: ${{ inputs.min_coverage }}
+        run: |
+          dart pub global activate shorebird_ci 0.3.0
+          shorebird_ci check_coverage coverage/lcov.info --min "$MIN_COVERAGE" --exclude "$EXCLUDES"
