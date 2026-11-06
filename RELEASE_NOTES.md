@@ -14,7 +14,6 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 macOS apps no longer crash when `shorebird.yaml` can't be read
 - 🐛 `--no-codesign` iOS build failures show xcodebuild's output
 - 🐛 Xcode rebuilds keep the public key used to sign patches
-- 🐛 The updater no longer starts in iOS debug builds
 - 🐛 Installed patches are kept when the updater's state file can't be read
 - 🐛 The updater's state files are safe across processes
 - 🐛 Update failure messages lead with the root cause, and failed requests keep
