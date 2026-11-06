@@ -24,8 +24,8 @@
 //      launches and a patch's: the updater hashes a signed patch at every
 //      launch
 //
-// Step 5 is a known failure on engines in [bootCrashNotRecovered], as long
-// as the app crashes again there.
+// Step 5 is a known failure on every engine not in [bootCrashRecovered], as
+// long as the app crashes again there.
 //
 // In steps 2 and 6 the patch's third-fastest launch may take at most
 // [maxBootRatio] times the release's. The app only prints, so step 2 times the
@@ -45,12 +45,13 @@ import 'dart:typed_data';
 
 import 'e2e_helpers.dart';
 
-/// Flutter versions whose engine reports a successful launch before it
-/// builds the root isolate from the snapshot, so a patch that crashes there is
-/// never marked bad and every launch crashes. null is the Flutter the CLI
-/// pins. Measured on 2026-10-24 on Linux (e2e run 40133607074) and Android
-/// (e2e run 40141450017).
-const bootCrashNotRecovered = {null};
+/// Flutter versions whose engine marks a patch that crashes building the root
+/// isolate as bad, so the next launch runs the last good patch. null is the
+/// Flutter the CLI pins. Every other version is expected to crash again: the
+/// engine reports a successful launch from the Shell constructor, before it
+/// builds the root isolate, so the patch is never marked bad. Empty until the
+/// fix (flutter#226, updater#425) ships in an engine.
+const bootCrashRecovered = <String?>{};
 
 /// Launches timed for each release and patch.
 const timedLaunches = 10;
@@ -189,14 +190,14 @@ Future<void> checkCrashRecovery(
   final next = await install.run(until: labelPattern, timeout: bootTimeout);
   final recovered = labelIn(next.log) == 'good';
   final String verdict;
-  switch ((recovered, bootCrashNotRecovered.contains(flutter))) {
-    case (true, false):
+  switch ((recovered, bootCrashRecovered.contains(flutter))) {
+    case (true, true):
       verdict = 'PASS';
     // Only the known bug, the same crash again, is expected.
-    case (false, true) when next.crashed:
+    case (false, false) when next.crashed:
       verdict = 'XFAIL (known bug: crashes again)';
-    case (true, true):
-      verdict = 'XPASS: now recovers; update bootCrashNotRecovered';
+    case (true, false):
+      verdict = 'XPASS: now recovers; add it to bootCrashRecovered';
       failed = true;
     case _:
       verdict = 'FAIL';
