@@ -17,7 +17,8 @@ pin.
   `git log --oneline --no-merges v<last version>..origin/main`
 - Note any change that the gate does not exercise (auth, `--json` output,
   platform specific fixes). Those need a manual check before you approve.
-- To ship a new Flutter, run a Flutter release instead.
+- A Flutter change ships through `release_flutter.yaml`, which releases the
+  CLI too.
 
 ## 2. Dispatch the release
 
@@ -32,23 +33,30 @@ default) prints every write and makes none.
 The run:
 
 - `branch`: cuts `release/v<version>-rc<n>` from `main` with the
-  `chore: prepare for release <version>` commit (version, pubspec and a
-  `RELEASE_NOTES.md` section drafted from the commits since the last
-  release).
+  `chore: prepare for release <version>` commit: a `RELEASE_NOTES.md`
+  section drafted from the commits since the last release, and the version
+  and pubspec when `main` isn't at the version already.
 - `gate`: runs e2e (signing, rollback, boot and the patch matrix across the
   supported Flutter versions), shorebird_e2e Android on an emulator and on
   arm64 and 32-bit phones, macOS, and the iOS check on cloud iPhones, all
   against the branch's head. Every leg must pass.
-- `cli_pr`: opens the PR from the branch into `main` and waits for its
-  required checks.
+- `cli_pr`: runs again the iOS cells that didn't pass, then opens the PR
+  from the branch into `main` and waits for its required checks.
+
+A failed job says why in the run's summary. Re-run it for a flake. A real
+fix lands on `main` first: cancel the run
+(`gh run cancel <id> -R shorebirdtech/_build_engine`; a new one waits behind
+it) and dispatch again, which cuts the next rc and closes the earlier one's
+PR and branch when it promotes. An iOS cell that keeps failing on cloud
+iPhones can run on a plugged-in iPhone with the command in the gate job's
+summary; then re-run `cli_pr`.
 
 ## 3. Review the notes and approve
 
 On the PR, edit `RELEASE_NOTES.md` to user-facing changes only: make each
-❓ entry ✨ or 🐛, or delete it. Edits to `.md` files keep the gate's
-results; any other change needs a fix on `main` and a new run, which cuts
-the next rc. `RELEASE_NOTES.md` is spell checked: add new words to the
-`cspell:words` comment at the top of the file.
+❓ entry ✨ or 🐛, or delete it, and delete 🔧 entries users wouldn't see.
+Edits to `.md` files keep the gate's results; any other change needs a fix
+on `main` and a new run, as above.
 
 Check each change from step 1 that the gate does not cover with a checkout
 of the PR's head. The gate does not cover signed iOS builds (the iOS runs
@@ -59,10 +67,15 @@ device, Shorebird staff can run the `release-smoke-test` agent skill in
 
 Approve only when a maintainer can watch for problems for the next few
 hours, so not late at night or before a weekend, unless the release is
-urgent. An approver's (`approvers` in `_build_engine`'s
-`release_flutter/release.yaml`) approving review of the PR's head is the
-release approval: `promote` then tags `v<version>` on that head, moves
-`stable` to it, and lands the PR on `main` through the merge queue. The
+urgent; dispatch early enough that the PR opens while someone can. The
+release approval is an approving review of the PR's head by an approver
+(today `eseidel`: `approvers` in `_build_engine`'s
+`release_flutter/release.yaml`); anyone else's approval satisfies the merge
+queue but not the release. `promote` then tags `v<version>` on that head,
+moves `stable` to it, and lands the PR on `main` through the merge queue.
+It waits 6 hours for the approval. After that, or when it refuses an
+approved head (a ❓ left in, a red check on an edited head), approve or fix
+and re-run the run's `promote` job. The
 tag and `stable` are what users see. If the queue won't take the PR, the
 release is out anyway and the run warns: land it by hand.
 
