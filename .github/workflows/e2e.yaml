@@ -3,10 +3,12 @@
 name: e2e
 
 concurrency:
-  # A cli_ref dispatch tests one CLI ref and skips the patch matrix, so it
-  # gets its own group: sharing main's would cancel a full run in progress.
-  # A cli_version dispatch likewise, per candidate it tests.
-  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}-${{ inputs.cli_version }}-${{ inputs.flutter_version }}
+  # A cli_ref dispatch tests one CLI ref (with the patch matrix only when
+  # patch_matrix is set, so that's in its group too), so it gets its own
+  # group: sharing main's would cancel a full run in progress. A cli_version
+  # dispatch likewise, per candidate it tests. patch_matrix counts only with
+  # cli_ref, so a plain dispatch still shares the nightly's group.
+  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}-${{ inputs.cli_ref && inputs.patch_matrix && 'matrix' || '' }}-${{ inputs.cli_version }}-${{ inputs.flutter_version }}
   cancel-in-progress: true
 
 on:
@@ -16,6 +18,7 @@ on:
         description: >-
           Ref the cli job checks out, for verifying a fix before it lands.
           Defaults to each matrix branch. Setting it skips the patch matrix
+          (unless patch_matrix is set)
           and pins the cli job to the dev API, so such a dispatch never
           writes to production. To test a change to this workflow or its
           scripts, dispatch from its branch with cli_ref set to that branch
@@ -25,6 +28,16 @@ on:
           uses, admits only main.
         required: false
         type: string
+      patch_matrix:
+        description: >-
+          Run the patch matrix on cli_ref too. The release gate
+          (_build_engine release_flutter.yaml and release_cli.yaml) sets it,
+          so a release candidate is patched on every supported Flutter. The
+          matrix (Flutter versions, Android packages) is the dispatch ref's;
+          the scripts and the default leg's Flutter are cli_ref's.
+        required: false
+        type: boolean
+        default: false
       cli_version:
         description: >-
           A released CLI (e.g. 1.6.135) to run instead of every other job,
@@ -65,8 +78,9 @@ jobs:
     # included.
     name: patch (${{ matrix.flutter-version }})
     # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
-    # unrelated jobs that would only burn runner time.
-    if: ${{ !inputs.cli_ref && !inputs.cli_version }}
+    # unrelated jobs that would only burn runner time, unless patch_matrix
+    # asks for it (a release candidate).
+    if: ${{ !inputs.cli_version && (!inputs.cli_ref || inputs.patch_matrix) }}
     strategy:
       fail-fast: false
       matrix:
@@ -119,6 +133,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
         shell: bash
@@ -175,8 +191,11 @@ jobs:
       # ~1.3 GB a leg it puts the matrix over the repo's 10 GB cache limit.
       # The wrapper's zip is left out: it's already unpacked beside it. The
       # glob names each dist's entries so the negation has the zip to drop.
+      # A cli_ref dispatch (a release candidate) only restores: saving one
+      # default-leg entry per candidate pin would fill the repo's cache.
       - name: 🐘 Gradle Cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: gradle-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.gradle/caches/modules-2
@@ -222,6 +241,17 @@ jobs:
           # uses Vulkan inside the device but no longer takes the runner down.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
           script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
+
+      # What actions/cache's post step did: save a passing leg's miss.
+      - name: 🐘 Save Gradle Cache
+        if: ${{ success() && !inputs.cli_ref && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
 
   # The patch job's release, patch and boot, run with a released CLI
   # (cli_version) on another Flutter (flutter_version), and nothing else.
