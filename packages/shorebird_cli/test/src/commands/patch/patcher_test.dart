@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -43,6 +44,14 @@ void main() {
           ).linkPercentage,
           isNull,
         );
+      });
+    });
+
+    group('lowLinkPercentageWarning', () {
+      test('rounds the percentage and links to the performance docs', () {
+        final warning = Patcher.lowLinkPercentageWarning(12.345678901234567);
+        expect(warning, contains('share 12.3% of Dart code'));
+        expect(warning, contains(linkPercentageUrl));
       });
     });
 
