@@ -6,7 +6,7 @@ concurrency:
   # A cli_ref dispatch tests one CLI ref and skips the patch matrix, so it
   # gets its own group: sharing main's would cancel a full run in progress.
   # A cli_version dispatch likewise, per candidate it tests.
-  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}-${{ inputs.cli_version }}-${{ inputs.flutter_version }}
+  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}-${{ inputs.patch_matrix }}-${{ inputs.cli_version }}-${{ inputs.flutter_version }}
   cancel-in-progress: true
 
 on:
@@ -16,6 +16,7 @@ on:
         description: >-
           Ref the cli job checks out, for verifying a fix before it lands.
           Defaults to each matrix branch. Setting it skips the patch matrix
+          (unless patch_matrix is set)
           and pins the cli job to the dev API, so such a dispatch never
           writes to production. To test a change to this workflow or its
           scripts, dispatch from its branch with cli_ref set to that branch
@@ -25,6 +26,14 @@ on:
           uses, admits only main.
         required: false
         type: string
+      patch_matrix:
+        description: >-
+          Run the patch matrix on cli_ref too. The release gate
+          (_build_engine release_flutter.yaml and release_cli.yaml) sets it,
+          so a release candidate is patched on every supported Flutter.
+        required: false
+        type: boolean
+        default: false
       cli_version:
         description: >-
           A released CLI (e.g. 1.6.135) to run instead of every other job,
@@ -65,8 +74,9 @@ jobs:
     # included.
     name: patch (${{ matrix.flutter-version }})
     # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
-    # unrelated jobs that would only burn runner time.
-    if: ${{ !inputs.cli_ref && !inputs.cli_version }}
+    # unrelated jobs that would only burn runner time, unless patch_matrix
+    # asks for it (a release candidate).
+    if: ${{ !inputs.cli_version && (!inputs.cli_ref || inputs.patch_matrix) }}
     strategy:
       fail-fast: false
       matrix:
@@ -119,6 +129,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
         shell: bash
