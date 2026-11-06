@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.7
+
+- Generated workflows no longer use `felangel/setup-bloc-tools` or `streetsidesoftware/cspell-action`. Bloc lint installs `bloc_tools` 0.1.0-dev.25 with `dart pub global activate`, and the `cspell` job runs `npx cspell@10.4.0`, each pinned to the version that generated the workflow. `setup-bloc-tools` also ran `dart-lang/setup-dart@v1` on a tag inside it, which a SHA pin on the outer action doesn't cover.
+
 # 0.2.6
 
 - New `check_coverage` command: fails when line coverage in lcov tracefiles is below `--min` (default 100), leaving out sources matching `--exclude` globs. Several tracefiles are merged by summing hits per line, as test shards need. It replaces `VeryGoodOpenSource/very_good_coverage`, whose repository is archived, with the same rule: lines hit over lines found, and an empty or missing tracefile fails.

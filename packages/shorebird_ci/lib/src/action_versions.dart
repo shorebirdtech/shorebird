@@ -43,14 +43,6 @@ const codecovAction =
 const flutterAction =
     'subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0';
 
-/// See [checkoutAction].
-const setupBlocToolsAction =
-    'felangel/setup-bloc-tools@7be2b47e63c845e5a92032c6ff2243f42cda65f3 # v0.1.1';
-
-/// See [checkoutAction].
-const cspellAction =
-    'streetsidesoftware/cspell-action@ce1816e4ce36532956ac6e983737392774b6e169 # v9.2.0';
-
 /// An action release: its tag (e.g. `'v5.1.0'`) and the commit [sha] the
 /// tag points at.
 class ActionRelease {

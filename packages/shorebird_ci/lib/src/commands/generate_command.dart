@@ -603,7 +603,7 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
   /// Whether any of the [packages] built with Flutter (or, when
   /// [isFlutter] is false, with plain Dart) has a bloc_lint dev
   /// dependency. Repos with none get no bloc input or steps, so their
-  /// workflows don't pull in felangel/setup-bloc-tools at all.
+  /// workflows don't install bloc_tools at all.
   static bool _anyDependsOnBlocLint(
     Iterable<PackageDescription> packages, {
     required bool isFlutter,
@@ -624,7 +624,7 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
       '''
       - name: Setup Bloc Tools
         if: inputs.has_bloc_lint
-        uses: $setupBlocToolsAction
+        run: dart pub global activate bloc_tools $_blocToolsVersion
 ''';
 
   static const _staticBlocLintStep = r'''
@@ -878,7 +878,7 @@ jobs:
       '''
       - name: Setup Bloc Tools
         if: matrix.has_bloc_lint == true
-        uses: $setupBlocToolsAction
+        run: dart pub global activate bloc_tools $_blocToolsVersion
 ''';
 
   String _installDependenciesStep({required String executable}) {
@@ -966,10 +966,7 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
       - uses: $checkoutAction
         with:
           submodules: recursive
-      - uses: $cspellAction
-        with:
-          incremental_files_only: false
-          config: $configPath
+      - run: npx --yes cspell@$_cspellVersion --config $configPath --no-progress "**"
 ''')
       ..writeln();
   }
@@ -1011,6 +1008,14 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
 }
 
 /// Emitted ahead of `on:` in the main workflow.
+/// The bloc_tools release `bloc lint` runs from, pinned so a new release
+/// can't change a repo's CI until it regenerates.
+const _blocToolsVersion = '0.1.0-dev.25';
+
+/// The cspell release the `cspell` job runs with `ubuntu-latest`'s own
+/// Node.js, pinned like [_blocToolsVersion].
+const _cspellVersion = '10.4.0';
+
 const _concurrencyBlock = r'''
 # A new push to a PR cancels that PR's run still going on the older head.
 # Other events (push to main, merge_group) group by run id, so they never

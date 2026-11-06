@@ -154,7 +154,8 @@ void main() {
       final yaml = _readMain(tempDir);
 
       expect(yaml, contains('cspell:'));
-      expect(yaml, contains('streetsidesoftware/cspell-action'));
+      expect(yaml, contains('npx --yes cspell@'));
+      expect(yaml, isNot(contains('cspell-action')));
     });
 
     test('returns 1 when no packages discovered', () async {
@@ -537,7 +538,8 @@ void main() {
       final yaml = _readMain(tempDir);
 
       expect(yaml, contains('cspell:'));
-      expect(yaml, contains('streetsidesoftware/cspell-action'));
+      expect(yaml, contains('npx --yes cspell@'));
+      expect(yaml, isNot(contains('cspell-action')));
     });
 
     test(
@@ -804,7 +806,7 @@ void main() {
 
       final dart = readWorkflow('_shorebird_ci_dart.yaml');
       expect(dart, contains('has_bloc_lint:'));
-      expect(dart, contains('felangel/setup-bloc-tools'));
+      expect(dart, contains('dart pub global activate bloc_tools'));
       expect(dart, contains('run: bloc lint .'));
       expect(
         readWorkflow('_shorebird_ci_flutter.yaml'),
@@ -824,7 +826,7 @@ void main() {
           ((loadYaml(flutter) as YamlMap)['on'] as YamlMap)['workflow_call']
               as YamlMap;
       expect((inputs['inputs'] as YamlMap).containsKey('has_bloc_lint'), true);
-      expect(flutter, contains('felangel/setup-bloc-tools'));
+      expect(flutter, contains('dart pub global activate bloc_tools'));
       expect(flutter, contains('run: bloc lint .'));
     });
   });
@@ -964,8 +966,6 @@ void main() {
             'dart-lang/setup-dart',
             'codecov/codecov-action',
             'subosito/flutter-action',
-            'felangel/setup-bloc-tools',
-            'streetsidesoftware/cspell-action',
             if (style == 'static') 'dorny/paths-filter',
           ]),
         );
