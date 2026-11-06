@@ -201,10 +201,15 @@ jobs:
   cspell:
     name: CSpell
     runs-on: ubuntu-latest
+    # npx installs cspell's dependencies unpinned, so the job gets a
+    # read-only token and checkout doesn't leave it in .git/config.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
+          persist-credentials: false
       - run: npx --yes cspell@10.4.0 --config cspell.config.yaml --no-progress "**"
 
   required:

@@ -154,7 +154,16 @@ void main() {
       final yaml = _readMain(tempDir);
 
       expect(yaml, contains('cspell:'));
-      expect(yaml, contains('npx --yes cspell@'));
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            r'run: npx --yes cspell@\d+\.\d+\.\d+ '
+            r'--config \.cspell\.json --no-progress "\*\*"\n',
+          ),
+        ),
+      );
+      expect(yaml, contains('persist-credentials: false'));
       expect(yaml, isNot(contains('cspell-action')));
     });
 
@@ -538,7 +547,16 @@ void main() {
       final yaml = _readMain(tempDir);
 
       expect(yaml, contains('cspell:'));
-      expect(yaml, contains('npx --yes cspell@'));
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            r'run: npx --yes cspell@\d+\.\d+\.\d+ '
+            r'--config \.cspell\.json --no-progress "\*\*"\n',
+          ),
+        ),
+      );
+      expect(yaml, contains('persist-credentials: false'));
       expect(yaml, isNot(contains('cspell-action')));
     });
 
@@ -806,7 +824,14 @@ void main() {
 
       final dart = readWorkflow('_shorebird_ci_dart.yaml');
       expect(dart, contains('has_bloc_lint:'));
-      expect(dart, contains('dart pub global activate bloc_tools'));
+      expect(
+        dart,
+        matches(
+          RegExp(
+            r'run: dart pub global activate bloc_tools \d+\.\d+\.\d+\S*\n',
+          ),
+        ),
+      );
       expect(dart, contains('run: bloc lint .'));
       expect(
         readWorkflow('_shorebird_ci_flutter.yaml'),
@@ -826,7 +851,14 @@ void main() {
           ((loadYaml(flutter) as YamlMap)['on'] as YamlMap)['workflow_call']
               as YamlMap;
       expect((inputs['inputs'] as YamlMap).containsKey('has_bloc_lint'), true);
-      expect(flutter, contains('dart pub global activate bloc_tools'));
+      expect(
+        flutter,
+        matches(
+          RegExp(
+            r'run: dart pub global activate bloc_tools \d+\.\d+\.\d+\S*\n',
+          ),
+        ),
+      );
       expect(flutter, contains('run: bloc lint .'));
     });
   });
