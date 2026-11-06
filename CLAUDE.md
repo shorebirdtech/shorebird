@@ -5,12 +5,14 @@ When you work around something (a silent command, a surprising default, an unhel
 ## Commands
 
 ```bash
-dart pub get              # once, at the repo root
+scripts/bootstrap.sh      # once, resolves the workspace
 tool/agent-verify.sh      # format, analyze, test every package as CI does; --force skips the cache
 npx cspell <changed files>
 ```
 
 `agent-verify.sh` caches passes per package. A test reading a file outside its package must list it under `verify_cache: inputs:` in its pubspec. It skips coverage, the version check and `redis_client`'s tests.
+
+It runs the standalone Dart SDK, which is the one CI installs. A Dart bundled with a Flutter checkout is a different SDK that formats this tree differently, so it is skipped even where `PATH` answers with it first, and a machine holding only that one gets a `3` rather than a pass. Both scripts above pick it, so run them rather than a bare `dart`, or the verdict can come from the other SDK. On an install whose shims all sit in one directory, where a standalone Dart cannot be told from a bundled one, both refuse and `DART_BIN` names the one to use.
 
 ## Conventions
 
