@@ -208,15 +208,35 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
       final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
       final deps = resolver.resolve(packageDir);
-      final files = resolver.workspaceFiles(packageDir);
+      final files = {
+        ...resolver.workspaceFiles(packageDir),
+        ...resolver.extraInputs(packageDir),
+      };
       var covered = true;
       for (final workflow in workflows) {
         final patterns = filtersByWorkflow[workflow]![slug]!;
         final uncovered = [
           for (final dep in deps)
-            if (!_covers(patterns, dep, isDirectory: true)) '$dep/**',
+            if (resolver.isSubmodule(dep))
+              if (!_covers(patterns, dep, isDirectory: false) &&
+                  !_covers(patterns, dep, isDirectory: true))
+                dep
+              else
+                ...const <String>[]
+            else if (!_covers(patterns, dep, isDirectory: true))
+              '$dep/**',
           for (final file in files)
-            if (!_covers(patterns, file, isDirectory: false)) file,
+            if (file.endsWith('/**'))
+              if (!_covers(
+                patterns,
+                file.substring(0, file.length - 3),
+                isDirectory: true,
+              ))
+                file
+              else
+                ...const <String>[]
+            else if (!_covers(patterns, file, isDirectory: false))
+              file,
         ]..sort();
         if (uncovered.isNotEmpty) {
           covered = false;
@@ -262,8 +282,7 @@ class VerifyCommand extends Command<int> with RepoRootOption {
 
     for (final pkg in missing) {
       final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
-      final deps = resolver.resolve(packageDir);
-      final sortedDeps = deps.toList()..sort();
+      final entries = resolver.filterPaths(packageDir);
       final slug = slugs[pkg]!;
       final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
 
@@ -271,11 +290,8 @@ class VerifyCommand extends Command<int> with RepoRootOption {
         ..writeln('MISSING: $label')
         ..writeln('  Add this entry to a dorny paths-filter block:')
         ..writeln('            $slug:');
-      for (final dep in sortedDeps) {
-        stdout.writeln('              - $dep/**');
-      }
-      for (final file in resolver.workspaceFiles(packageDir).toList()..sort()) {
-        stdout.writeln('              - $file');
+      for (final entry in entries) {
+        stdout.writeln('              - $entry');
       }
       stdout.writeln();
     }

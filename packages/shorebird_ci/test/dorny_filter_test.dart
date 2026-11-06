@@ -151,4 +151,149 @@ jobs:
       );
     });
   });
+
+  group('updateDornyFilters', () {
+    test('returns null when workflow has no filters block', () {
+      const workflow = '''
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+''';
+      expect(
+        updateDornyFilters(workflow, {
+          'foo': ['packages/foo/**'],
+        }),
+        isNull,
+      );
+    });
+
+    test(
+      'updates package filters in place and adds missing packages in a '
+      'single-block workflow',
+      () {
+        const workflow = '''
+jobs:
+  changes:
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            # initial comment
+            foo:
+              - .github/workflows/custom.yaml
+              - packages/foo/**
+
+  custom_job:
+    runs-on: ubuntu-latest
+''';
+
+        final updated = updateDornyFilters(workflow, {
+          'foo': ['packages/bar/**', 'packages/foo/**'],
+          'bar': ['packages/bar/**'],
+        });
+
+        expect(
+          updated,
+          equals('''
+jobs:
+  changes:
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            bar:
+              - packages/bar/**
+            foo:
+              - .github/workflows/custom.yaml
+              - packages/bar/**
+              - packages/foo/**
+
+  custom_job:
+    runs-on: ubuntu-latest
+'''),
+        );
+      },
+    );
+
+    test(
+      'preserves non-package filter blocks and custom filter entries in '
+      'multi-block workflows',
+      () {
+        const workflow = '''
+jobs:
+  changes:
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: docs_only
+        with:
+          filters: |
+            all:
+              - '**'
+            docs:
+              - '*.md'
+      - uses: dorny/paths-filter@v4
+        id: server_build
+        with:
+          filters: |
+            # server comment
+            server_a:
+              - ./.github/actions/custom/**
+              - packages/server_a/**
+            # custom entry comment
+            custom_non_pkg:
+              - tools/custom/**
+      - uses: dorny/paths-filter@v4
+        id: lib_build
+        with:
+          filters: |
+            lib_b:
+              - packages/lib_b/**
+''';
+
+        final updated = updateDornyFilters(workflow, {
+          'server_a': ['packages/lib_b/**', 'packages/server_a/**'],
+          'lib_b': ['packages/lib_b/**', 'pubspec.lock'],
+        });
+
+        expect(
+          updated,
+          equals('''
+jobs:
+  changes:
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: docs_only
+        with:
+          filters: |
+            all:
+              - '**'
+            docs:
+              - '*.md'
+      - uses: dorny/paths-filter@v4
+        id: server_build
+        with:
+          filters: |
+            server_a:
+              - ./.github/actions/custom/**
+              - packages/lib_b/**
+              - packages/server_a/**
+            # custom entry comment
+            custom_non_pkg:
+              - tools/custom/**
+      - uses: dorny/paths-filter@v4
+        id: lib_build
+        with:
+          filters: |
+            lib_b:
+              - packages/lib_b/**
+              - pubspec.lock
+'''),
+        );
+      },
+    );
+  });
 }
