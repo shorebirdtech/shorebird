@@ -66,6 +66,23 @@ class BuildFlags {
     target: json['target'] as String?,
   );
 
+  /// Reads [BuildFlags] from [source], the contents of a [fileName], or
+  /// null if it's of a [version] this CLI doesn't know or doesn't parse, as
+  /// from a later CLI that records them differently.
+  static BuildFlags? tryParse(String source) {
+    try {
+      final json = jsonDecode(source) as Map<String, dynamic>;
+      if (json['version'] != version) return null;
+      return BuildFlags.fromJson(json);
+    } on Object {
+      return null;
+    }
+  }
+
+  /// The version of the [fileName] format this CLI writes and reads. A CLI
+  /// that changes how flags are recorded writes a new one.
+  static const version = 1;
+
   /// The name of the file in the release supplement.
   static const fileName = 'build_flags.json';
 
@@ -78,6 +95,7 @@ class BuildFlags {
 
   /// This as JSON.
   Map<String, dynamic> toJson() => {
+    'version': version,
     'dart_defines': dartDefines,
     'target': ?target,
   };
@@ -117,18 +135,24 @@ class BuildFlags {
   /// null for Flutter's default entrypoint.
   static String? _relativeTarget(String? target) {
     if (target == null) return null;
+    // Resolve symlinks on both sides, so a /tmp path matches a current
+    // directory macOS reports as /private/tmp.
+    final cwd = Directory.current.resolveSymbolicLinksSync();
+    final file = File(p.isAbsolute(target) ? target : p.join(cwd, target));
+    final resolved = file.existsSync()
+        ? file.resolveSymbolicLinksSync()
+        : file.path;
     final relative = p.posix.joinAll(
-      p.split(p.normalize(p.relative(target))),
+      p.split(p.normalize(p.relative(resolved, from: cwd))),
     );
     return relative == 'lib/main.dart' ? null : relative;
   }
 
-  /// Every value of the multi-option [name], whether parsed or passed after
-  /// `--` as `--name=value` or `--name value`.
+  /// Every value of the multi-option [name], whether passed after `--` as
+  /// `--name=value` or `--name value` or parsed, in the order Flutter sees
+  /// them.
   static List<String> _optionValues(ArgResults results, String name) {
-    final values = <String>[
-      if (results.wasParsed(name)) ...results[name] as List<String>,
-    ];
+    final values = <String>[];
     final rest = results.rest;
     for (var i = 0; i < rest.length; i++) {
       if (rest[i] == '--$name' && i + 1 < rest.length) {
@@ -137,6 +161,9 @@ class BuildFlags {
         values.add(rest[i].substring('--$name='.length));
       }
     }
+    // Shorebird forwards the parsed options after [rest], so Flutter lets
+    // them win, as here.
+    if (results.wasParsed(name)) values.addAll(results[name] as List<String>);
     return values;
   }
 }

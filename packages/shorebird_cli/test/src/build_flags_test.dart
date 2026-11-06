@@ -40,6 +40,16 @@ void main() {
         expect(result.dartDefines, {'A': hash('1'), 'B': hash('2')});
       });
 
+      test('lets a parsed define win over one after --, as Flutter does', () {
+        final result = flags([
+          '--dart-define=A=named',
+          '--',
+          '--dart-define=A=rest',
+        ]);
+
+        expect(result.dartDefines, {'A': hash('named')});
+      });
+
       test('reads a JSON file, with --dart-define taking precedence', () {
         File('defines.json').writeAsStringSync(
           json.encode({'A': 'file', 'N': 3, 'B': true}),
@@ -85,6 +95,7 @@ EMPTY=
 
       test('hashes a target relative to the project, null for the '
           'default', () {
+        File('lib/main_prod.dart').createSync(recursive: true);
         expect(flags([], target: 'lib/main.dart').target, isNull);
         expect(flags([], target: './lib/main.dart').target, isNull);
         expect(
@@ -98,6 +109,28 @@ EMPTY=
           ).target,
           equals(hash('lib/main_prod.dart')),
         );
+      });
+    });
+
+    group('tryParse', () {
+      test('reads what toJson wrote', () {
+        final original = flags(['--dart-define=A=1']);
+
+        expect(
+          BuildFlags.tryParse(json.encode(original.toJson()))?.dartDefines,
+          original.dartDefines,
+        );
+      });
+
+      test('is null for another version or a malformed file', () {
+        expect(
+          BuildFlags.tryParse(
+            json.encode({'version': 2, 'dart_defines': <String, String>{}}),
+          ),
+          isNull,
+        );
+        expect(BuildFlags.tryParse('not json'), isNull);
+        expect(BuildFlags.tryParse('{"version": 1}'), isNull);
       });
     });
 

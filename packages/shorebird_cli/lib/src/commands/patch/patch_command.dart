@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -695,7 +694,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     patcher.releaseManagedPublicKeyPem = publicKeyPem;
   }
 
-  /// Stops before building when the patch's dart-defines or target differ
+  /// Stops before the patch build when its dart-defines or target differ
   /// from those [release] recorded in its supplement, which would fail to
   /// link or change code the release runs. In a terminal the user may go on
   /// anyway; a define the code never reads changes nothing. Releases from a
@@ -708,9 +707,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     if (supplementDirectory == null) return;
     final file = File(p.join(supplementDirectory.path, BuildFlags.fileName));
     if (!file.existsSync()) return;
-    final releaseFlags = BuildFlags.fromJson(
-      json.decode(file.readAsStringSync()) as Map<String, dynamic>,
-    );
+    final releaseFlags = BuildFlags.tryParse(file.readAsStringSync());
+    if (releaseFlags == null) {
+      logger.detail(
+        'Not checking build flags: ${BuildFlags.fileName} is '
+        'from a newer CLI or unreadable.',
+      );
+      return;
+    }
     final BuildFlags patchFlags;
     try {
       patchFlags = BuildFlags.fromArgs(results, target: patcher.target);
