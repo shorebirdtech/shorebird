@@ -17,7 +17,7 @@
 //                      its templates are ones that version builds: the
 //                      pinned one `shorebird --version` installs, or for
 //                      another version a clone of shorebirdtech/flutter's
-//                      flutter_release/<version> branch. A full commit SHA
+//                      flutter_release/<version> branch. A commit SHA
 //                      works too, as `--flutter-version` takes one: the
 //                      release gate tests a candidate before any
 //                      flutter_release branch points at it.
@@ -422,7 +422,8 @@ Future<String> shorebirdFlutter({
   );
   // A commit is reached through whichever branch holds it, as the CLI's own
   // clone of every branch reaches it.
-  final isCommit = RegExp(r'^[0-9a-f]{40}$').hasMatch(version);
+  // The CLI's own test for a hash (ShorebirdFlutter._gitHashPattern).
+  final isCommit = RegExp(r'^[0-9a-fA-F]{4,40}$').hasMatch(version);
   await sh('git', [
     'clone',
     '--filter=tree:0',

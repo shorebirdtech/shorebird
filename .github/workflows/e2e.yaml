@@ -27,7 +27,8 @@ on:
         type: string
       cli_version:
         description: >-
-          A released CLI (e.g. 1.6.135) to run instead of every other job:
+          A released CLI (e.g. 1.6.135) to run instead of every other job,
+          cli_ref's included:
           scripts/patch_e2e.dart --cli releases, patches and boots an Android
           app with it, on flutter_version, against the dev API. The Flutter
           release gate sets both to test a respin with the first CLI that
@@ -37,8 +38,9 @@ on:
         type: string
       flutter_version:
         description: >-
-          The Flutter version or full commit SHA the cli_version job releases
-          with; the release gate passes the candidate's commit.
+          The Flutter version or commit SHA the cli_version job releases
+          with; the release gate passes the candidate's commit. Read only
+          with cli_version: without it the dispatch is a full run.
         required: false
         type: string
   schedule:
@@ -227,7 +229,7 @@ jobs:
   # today's dev API, while the CLI under test is the old one. Set up as the
   # patch job's "default" leg.
   cli_version:
-    name: patch (CLI ${{ inputs.cli_version }}, Flutter ${{ inputs.flutter_version }})
+    name: patch (CLI ${{ inputs.cli_version }}, Flutter ${{ inputs.flutter_version || 'pinned' }})
     if: ${{ inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -264,6 +266,9 @@ jobs:
       - name: 🎯 Use Shorebird's Dart
         run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
+      # The patch matrix's default entry's packages: the current version
+      # line's, the only one the release gate releases. Move them with that
+      # entry when the line moves.
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 10
         run: |
@@ -277,7 +282,9 @@ jobs:
 
       # The default patch leg's entry, restored only: a candidate is a new
       # Flutter each time, so saving one per candidate would only fill the
-      # repo's cache. Its version line's dependencies are mostly these.
+      # repo's cache. It holds the dependencies of the Flutter this ref pins,
+      # which match a candidate on the same version line; on another line it
+      # just restores less.
       - name: 🐘 Gradle Cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
