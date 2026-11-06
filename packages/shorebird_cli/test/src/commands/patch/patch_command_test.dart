@@ -1000,6 +1000,88 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         });
       });
 
+      group("when the app's enterprise requires patch signing", () {
+        Release releaseSignedWith(ReleaseSigningMode? mode) => Release(
+          id: release.id,
+          appId: release.appId,
+          version: release.version,
+          flutterRevision: release.flutterRevision,
+          flutterVersion: release.flutterVersion,
+          displayName: release.displayName,
+          platforms: {
+            releasePlatform: ReleasePlatformDetails(
+              status: ReleaseStatus.active,
+              signingMode: mode?.value,
+            ),
+          },
+          createdAt: release.createdAt,
+          updatedAt: release.updatedAt,
+        );
+
+        void releaseIs(Release release) {
+          when(
+            () => codePushClientWrapper.getRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer((_) async => release);
+        }
+
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+          ).thenAnswer(
+            (_) async => AppMetadata(
+              appId: appId,
+              displayName: appDisplayName,
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+              patchSigningRequired: true,
+              enterpriseName: 'Acme Corp',
+            ),
+          );
+        });
+
+        for (final mode in [ReleaseSigningMode.unsigned, null]) {
+          test('refuses a release with signing mode ${mode?.value} before '
+              'building', () async {
+            releaseIs(releaseSignedWith(mode));
+            await expectLater(
+              () => runWithOverrides(() => command.createPatch(patcher)),
+              exitsWithError(
+                message:
+                    'Acme Corp requires patch signing, and release '
+                    '${release.version} (${releasePlatform.displayName}) '
+                    "wasn't built with signing, so its devices can't verify "
+                    'a patch.',
+                hint: 'Ship a new release and patch that.',
+                exitCode: ExitCode.noPerm,
+              ),
+            );
+            verifyNever(
+              () => shorebirdFlutter.installRevision(
+                revision: any(named: 'revision'),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          });
+        }
+
+        test('patches a release signed with a managed key', () async {
+          releaseIs(releaseSignedWith(ReleaseSigningMode.managed));
+          await runWithOverrides(() => command.createPatch(patcher));
+          verify(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).called(1);
+        });
+      });
+
       group("when the release embeds the customer's key", () {
         final signedRelease = Release(
           id: release.id,

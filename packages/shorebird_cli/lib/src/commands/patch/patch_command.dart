@@ -426,6 +426,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
     _assertCanSignForRelease(release: release, patcher: patcher);
+    _assertReleaseSignedForPolicy(app: app, release: release, patcher: patcher);
     _warnIfFlutterRevisionHasKnownIssue(release: release, patcher: patcher);
 
     try {
@@ -1254,6 +1255,32 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       'patches must be too. Pass the same public key as the release, with '
       '--$publicKeyPath and --$privateKeyPath, or --$publicKeyCmd and '
       '--$signCmd.',
+    );
+  }
+
+  /// Exits before building if [app]'s enterprise requires patch signing and
+  /// [release]'s build for [patcher]'s platform checks no signature: built
+  /// with `--no-patch-signing`, or by a CLI that predates release signing.
+  /// The server refuses every patch to such a release.
+  void _assertReleaseSignedForPolicy({
+    required AppMetadata app,
+    required Release release,
+    required Patcher patcher,
+  }) {
+    if (app.patchSigningRequired != true) return;
+    final platform = patcher.releaseType.releasePlatform;
+    final signingMode = release.platforms[platform]?.signingMode;
+    if (signingMode == ReleaseSigningMode.managed.value ||
+        signingMode == ReleaseSigningMode.customer.value) {
+      return;
+    }
+    throw CommandError(
+      message:
+          '${app.enterpriseName ?? 'Your enterprise'} requires patch '
+          "signing, and release ${release.version} (${platform.displayName}) "
+          "wasn't built with signing, so its devices can't verify a patch.",
+      hint: 'Ship a new release and patch that.',
+      exitCode: ExitCode.noPerm,
     );
   }
 
