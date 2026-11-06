@@ -703,5 +703,67 @@ jobs:
 
       expect(await runVerify(tempDir), 1);
     });
+
+    test(
+      'checks submodule mount-point collapse and extraInputs in static filters',
+      () async {
+        File(p.join(tempDir.path, '.gitmodules')).writeAsStringSync('''
+[submodule "vendor/sdk"]
+\tpath = vendor/sdk
+\turl = https://example.com/sdk.git
+''');
+        createPackage(tempDir, 'vendor/sdk/packages/helper', 'helper');
+        final fooDir = Directory(p.join(tempDir.path, 'packages/foo'))
+          ..createSync(recursive: true);
+        File(p.join(fooDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: foo
+environment:
+  sdk: ^3.0.0
+dependencies:
+  helper:
+    path: ../../vendor/sdk/packages/helper
+shorebird_ci:
+  inputs:
+    - ../../openapi.yaml
+    - scripts/**
+''');
+        initGitRepo(tempDir);
+
+        // Missing vendor/sdk, openapi.yaml, and scripts/** -> fails with drift
+        _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+''');
+        expect(await runVerify(tempDir), 1);
+
+        // Including vendor/sdk, openapi.yaml, and scripts/** -> passes
+        _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            foo:
+              - openapi.yaml
+              - packages/foo/**
+              - scripts/**
+              - vendor/sdk
+''');
+        expect(await runVerify(tempDir), 0);
+      },
+    );
   });
 }

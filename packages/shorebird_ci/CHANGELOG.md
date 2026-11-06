@@ -1,5 +1,15 @@
 <!-- cspell:words toplevel -->
 
+# 0.3.0
+
+- `DependencyResolver` now parses `.gitmodules` and collapses any dependency inside a submodule to the submodule's mount point, since `git diff` reports submodule updates at the mount point rather than paths beneath it.
+- `DependencyResolver` now reads extra input globs from `shorebird_ci: inputs:` and `verify_cache: inputs:` in `pubspec.yaml`, and static package filters include the reusable workflow file (`.github/workflows/_shorebird_ci_{dart,flutter}.yaml`).
+- New `--filters-only` flag on `generate` updates `dorny/paths-filter` `filters: |` blocks in place without overwriting surrounding jobs, services, or matrix strategies.
+- `generate --style static` reads declarative per-package `shorebird_ci:` configuration from `pubspec.yaml` (`min_coverage`, `runners`, `needs_redis`, `report_on`, `coverage_excludes`, `total_shards`).
+- Static reusable workflows (`_shorebird_ci_dart.yaml` and `_shorebird_ci_flutter.yaml`) now run an OS matrix (`ubuntu-latest` on pull requests, `inputs.runners` on `main` and `merge_group`), batch test files 50 at a time under `set -f` with optional `total_shards`/`shard_index` partitioning, use an absolute `COVERAGE_DIR` so tests that change `Directory.current` do not lose coverage, auto-detect `routes/` and `routes/.well-known`, scope `.dart_tool/package_config_scoped.json` to the active package before `coverage:format_coverage --check-ignore`, and gate `min_coverage` with `shorebird_ci check_coverage`.
+- New `--fatal-infos` flag on `generate` passes `--fatal-infos` to `dart analyze` and `flutter analyze`.
+- Generated workflows now emit `base: ${{ github.event.merge_group.base_ref || '' }}` on `dorny/paths-filter` and emit `submodules: recursive` on `actions/checkout` only when `.gitmodules` is present.
+
 # 0.2.8
 
 - Generated workflows now declare least-privilege `permissions:`, so regenerating no longer drops them from a repo that added them by hand, and a repo whose default `GITHUB_TOKEN` can write doesn't hand that to `pub get` and test steps. The dynamic workflow and the static main and reusable workflows set `contents: read` at the top level. The static `changes` job adds `pull-requests: read`, which `dorny/paths-filter` needs to list a pull request's files. A step you add to a generated workflow that needs more must be granted it on its job and, in a reusable workflow, on the job calling it too.
