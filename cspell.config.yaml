@@ -157,6 +157,8 @@ words:
   - temurin # From .github dir, doesn't show up in "**" check?
   - timebase # Mach timebase (mach_timebase_info)
   - toplevel # git rev-parse --show-toplevel
+  - tracefile # lcov coverage file
+  - tracefiles
   - ttfb
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
