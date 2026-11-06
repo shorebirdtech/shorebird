@@ -19,7 +19,6 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template ios_releaser}
 /// Functions to build and publish an iOS release.
@@ -177,21 +176,18 @@ The likely cause is Xcode 27's linker with a Flutter version that doesn't suppor
   );
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) {
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
-    await codePushClientWrapper.createIosReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+    return codePushClientWrapper.prepareIosReleaseArtifacts(
       xcarchivePath: xcarchiveDirectory.path,
       runnerPath: artifactManager
           .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
           .path,
       isCodesigned: argResults.appleCodesign,
       podfileLockHash: shorebirdEnv.iosPodfileLockHash,
-      signing: signing,
+      stagingDirectory: stagingDirectory,
     );
   }
 

@@ -13,7 +13,6 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_releaser}
 /// Functions to create a Windows release.
@@ -71,10 +70,9 @@ class WindowsReleaser extends Releaser {
   }
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) {
     final releaseDir = artifactManager.getWindowsReleaseDirectory();
 
     if (!releaseDir.existsSync()) {
@@ -85,11 +83,9 @@ class WindowsReleaser extends Releaser {
       );
     }
 
-    await codePushClientWrapper.createWindowsReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+    return codePushClientWrapper.prepareWindowsReleaseArtifacts(
       releaseDirectory: releaseDir,
-      signing: signing,
+      stagingDirectory: stagingDirectory,
     );
   }
 

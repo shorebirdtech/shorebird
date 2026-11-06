@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -131,6 +132,16 @@ abstract class Releaser {
     return result;
   }
 
+  /// Returns the artifacts to upload for the release that was built, writing
+  /// any file it has to create (e.g. a zip of a directory) into
+  /// [stagingDirectory].
+  ///
+  /// The supplement artifact is prepared separately, by
+  /// [prepareSupplementArtifact].
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  });
+
   /// Uploads the release artifacts to the CodePush server.
   ///
   /// The supplement artifact is uploaded separately, by
@@ -138,7 +149,22 @@ abstract class Releaser {
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
-  });
+  }) async {
+    final stagingDirectory = Directory.systemTemp.createTempSync();
+    try {
+      final artifacts = await prepareReleaseArtifacts(
+        stagingDirectory: stagingDirectory,
+      );
+      await codePushClientWrapper.uploadReleaseArtifacts(
+        appId: appId,
+        releaseId: release.id,
+        artifacts: artifacts,
+        signing: signing,
+      );
+    } finally {
+      stagingDirectory.deleteTemporarySync();
+    }
+  }
 
   /// Creates a copy of [metadata] with releaser-specific fields updated.
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
@@ -405,6 +431,21 @@ abstract class Releaser {
     return supplementDir;
   }
 
+  /// Returns the supplement artifact (e.g. obfuscation map), zipped into
+  /// [stagingDirectory], or null if the build has no supplement.
+  Future<ReleaseArtifactUpload?> prepareSupplementArtifact({
+    required Directory stagingDirectory,
+  }) async {
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir == null) return null;
+    return codePushClientWrapper.prepareSupplementReleaseArtifact(
+      platform: releaseType.releasePlatform,
+      supplementDirectoryPath: supplementDir.path,
+      arch: supplementArtifactArch,
+      stagingDirectory: stagingDirectory,
+    );
+  }
+
   /// Uploads the supplement artifact (e.g. obfuscation map) if one was
   /// assembled. `shorebird release` calls this right after
   /// [uploadReleaseArtifacts].
@@ -418,16 +459,21 @@ abstract class Releaser {
     required String appId,
     required int releaseId,
   }) async {
-    final supplementDir = assembleSupplementDirectory();
-    if (supplementDir != null) {
-      await codePushClientWrapper.createSupplementReleaseArtifact(
+    final stagingDirectory = Directory.systemTemp.createTempSync();
+    try {
+      final supplement = await prepareSupplementArtifact(
+        stagingDirectory: stagingDirectory,
+      );
+      if (supplement == null) return;
+      await codePushClientWrapper.uploadReleaseArtifacts(
         appId: appId,
         releaseId: releaseId,
-        platform: releaseType.releasePlatform,
-        supplementDirectoryPath: supplementDir.path,
-        arch: supplementArtifactArch,
+        artifacts: [supplement],
         signing: signing,
+        message: 'Uploading supplement artifacts',
       );
+    } finally {
+      stagingDirectory.deleteTemporarySync();
     }
   }
 

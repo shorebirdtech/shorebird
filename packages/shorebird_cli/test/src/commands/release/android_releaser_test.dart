@@ -706,41 +706,34 @@ void main() {
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const releaseVersion = '1.0.0';
-      const appId = 'appId';
-      const flutterRevision = 'deadbeef';
-      const flutterVersion = '3.22.1';
-
-      final release = Release(
-        id: 42,
-        appId: appId,
-        version: releaseVersion,
-        flutterRevision: flutterRevision,
-        flutterVersion: flutterVersion,
-        displayName: '1.2.3+1',
-        platforms: const {},
-        createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
-      );
-
+    group('prepareReleaseArtifacts', () {
       late File aabFile;
+      late Directory stagingDirectory;
+      late List<ReleaseArtifactUpload> artifacts;
 
       setUp(() {
         aabFile = File(p.join(projectRoot.path, 'app.aab'))..createSync();
+        stagingDirectory = Directory.systemTemp.createTempSync();
+        artifacts = [
+          ReleaseArtifactUpload(
+            file: aabFile,
+            name: 'aab',
+            arch: 'aab',
+            platform: ReleasePlatform.android,
+            canSideload: true,
+          ),
+        ];
 
         when(
-          () => codePushClientWrapper.createAndroidReleaseArtifacts(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
+          () => codePushClientWrapper.prepareAndroidReleaseArtifacts(
             projectRoot: any(named: 'projectRoot'),
             aabPath: any(named: 'aabPath'),
             platform: any(named: 'platform'),
             architectures: any(named: 'architectures'),
+            stagingDirectory: any(named: 'stagingDirectory'),
             flavor: any(named: 'flavor'),
-            signing: any(named: 'signing'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenAnswer((_) async => artifacts);
         when(
           () => shorebirdAndroidArtifacts.findAab(
             project: any(named: 'project'),
@@ -749,54 +742,25 @@ void main() {
         ).thenReturn(aabFile);
       });
 
-      test('records how the build is signed on its artifacts', () async {
-        const signing = ArtifactSigningRequest(
-          mode: ReleaseSigningMode.managed,
-          keyId: 7,
-        );
-        androidReleaser.signing = signing;
-        await runWithOverrides(
-          () => androidReleaser.uploadReleaseArtifacts(
-            appId: appId,
-            release: release,
+      test('returns the prepared android artifacts', () async {
+        final result = await runWithOverrides(
+          () => androidReleaser.prepareReleaseArtifacts(
+            stagingDirectory: stagingDirectory,
           ),
         );
+
+        expect(result, equals(artifacts));
         verify(
-          () => codePushClientWrapper.createAndroidReleaseArtifacts(
-            appId: appId,
-            releaseId: release.id,
+          () => codePushClientWrapper.prepareAndroidReleaseArtifacts(
             projectRoot: projectRoot.path,
             aabPath: aabFile.path,
             platform: ReleasePlatform.android,
             architectures: Arch.values,
+            stagingDirectory: stagingDirectory,
             flavor: androidReleaser.flavor,
-            signing: signing,
           ),
         ).called(1);
       });
-
-      test(
-        'calls codePushClientWrapper.createAndroidReleaseArtifacts',
-        () async {
-          await runWithOverrides(
-            () => androidReleaser.uploadReleaseArtifacts(
-              appId: appId,
-              release: release,
-            ),
-          );
-          verify(
-            () => codePushClientWrapper.createAndroidReleaseArtifacts(
-              appId: appId,
-              releaseId: release.id,
-              projectRoot: projectRoot.path,
-              aabPath: aabFile.path,
-              platform: ReleasePlatform.android,
-              architectures: Arch.values,
-              flavor: androidReleaser.flavor,
-            ),
-          ).called(1);
-        },
-      );
     });
 
     group('updatedReleaseMetadata', () {

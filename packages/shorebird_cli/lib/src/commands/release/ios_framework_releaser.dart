@@ -13,7 +13,6 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template ios_framework_releaser}
 /// Functions to create an iOS framework release.
@@ -101,15 +100,12 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
   }
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required Release release,
-    required String appId,
-  }) async {
-    await codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) {
+    return codePushClientWrapper.prepareIosFrameworkReleaseArtifacts(
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
-      signing: signing,
+      stagingDirectory: stagingDirectory,
     );
   }
 
