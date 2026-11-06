@@ -391,6 +391,57 @@ void main() {
       ]);
     });
 
+    group("when the app's enterprise requires patch signing", () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+        ).thenAnswer(
+          (_) async => AppMetadata(
+            appId: appId,
+            displayName: appDisplayName,
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+            patchSigningRequired: true,
+            enterpriseName: 'Acme Corp',
+          ),
+        );
+      });
+
+      test('refuses --no-patch-signing before building', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(false);
+        for (final arg in [
+          CommonArguments.publicKeyArg.name,
+          CommonArguments.publicKeyCmd.name,
+        ]) {
+          when(() => argResults.wasParsed(arg)).thenReturn(false);
+        }
+
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithError(
+            message:
+                "Acme Corp requires patch signing, so a release can't be "
+                'built without it.',
+            hint: 'Release again without --no-patch-signing.',
+            exitCode: ExitCode.noPerm,
+          ),
+        );
+        verifyNever(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
+        );
+        verifyNever(() => releaser.buildReleaseArtifacts());
+      });
+
+      test('releases when patches are signed', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+      });
+    });
+
     group('when build fails', () {
       setUp(() {
         when(
