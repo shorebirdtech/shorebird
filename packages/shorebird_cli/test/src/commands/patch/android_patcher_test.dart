@@ -150,6 +150,9 @@ void main() {
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
+      when(
+        () => shorebirdEnv.flutterRevision,
+      ).thenReturn('83305b5088e6fe327fb3334a73ff190828d85713');
 
       patcher = AndroidPatcher(
         argParser: argParser,
@@ -340,6 +343,9 @@ void main() {
           when(
             () => shorebirdFlutter.getVersion(),
           ).thenAnswer((_) async => Version(3, 24, 1));
+          when(
+            () => shorebirdEnv.flutterRevision,
+          ).thenReturn('4150b0d8ee6354ee56dbc667bf5aee3e9d5eb1ca');
         });
 
         test('warns user of potential patch issues', () async {
@@ -352,19 +358,41 @@ void main() {
       });
 
       group('when flutter version does not contain updater issue 211', () {
-        setUp(() {
-          setUpProjectRootArtifacts();
-          when(
-            () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 24, 2));
+        setUp(setUpProjectRootArtifacts);
+
+        group('when on the fixed Flutter 3.24.1 revision', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => Version(3, 24, 1));
+            when(
+              () => shorebirdEnv.flutterRevision,
+            ).thenReturn('a25b7cdfb9ef79f7d6dae48a6334a415f024a0a8');
+          });
+
+          test('does not warn user of potential patch issues', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verifyNever(
+              () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
+            );
+          });
         });
 
-        test('does not warn user of potential patch issues', () async {
-          await runWithOverrides(patcher.buildPatchArtifact);
+        group('when on Flutter 3.24.2 or newer', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => Version(3, 24, 2));
+          });
 
-          verifyNever(
-            () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
-          );
+          test('does not warn user of potential patch issues', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verifyNever(
+              () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
+            );
+          });
         });
       });
 
