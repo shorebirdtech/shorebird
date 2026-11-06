@@ -18,7 +18,8 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - 🐛 The updater's state files are safe across processes
 - 🐛 Update failure messages lead with the root cause, and failed requests keep
   the server's error code and message
-- 🐛 No more updater issue 211 warning on the fixed Flutter 3.24.1 revision
+- 🐛 Android `shorebird patch` no longer warns that patches may be uninstalled
+  on the Flutter 3.24.1 revision that already has the fix
 - 🔧 `patch_verification` now defaults to `install_only`
 
 The fixes outside the CLI also reach anyone building with
