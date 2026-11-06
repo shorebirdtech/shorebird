@@ -11,7 +11,6 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - ✨ Updates can run once iOS unlocks protected data
 - 🐛 Xcode 27 keeps the debug map for Shorebird iOS builds
 - 🐛 Android Gradle Plugin can strip `libapp.so` again
-- 🐛 Web builds load CanvasKit from the build output by default
 - 🐛 macOS apps no longer crash when `shorebird.yaml` can't be read
 - 🐛 `--no-codesign` iOS build failures show xcodebuild's output
 - 🐛 Xcode rebuilds keep the public key used to sign patches
