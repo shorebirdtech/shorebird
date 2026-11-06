@@ -4,6 +4,51 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.138 (November 6, 2026)
+
+- ✨ Copy the Apple AOT build's app.dill to build/<platform>/shorebird_kernel
+- ✨ Build linux-arm64 and windows-arm64 host artifacts from our Dart
+- ✨ Tell the updater when iOS unlocks protected data
+- ✨ Keep the server's error code and message when a request fails
+- ✨ Default patch_verification to install_only
+- ✨ Report launches that couldn't read updater state
+- ✨ Publish analyze_snapshot readers to the private release buckets (ADR-0057)
+- 🐛 Skip updater issue 211 warning on fixed Flutter 3.24.1 revision
+- 🐛 Let AGP strip libapp.so on Android again
+- 🐛 Don't crash on macOS when shorebird.yaml can't be read
+- 🐛 Show xcodebuild output on --no-codesign iOS build failures
+- 🐛 Carry the public key and DD setting into Xcode rebuilds
+- 🐛 Load CanvasKit from the build output by default on web
+- 🐛 Leave gclient's download out of the prebuilt Dart SDK copy
+- 🐛 Pass upstream's analyze, tool and Gradle plugin checks
+- 🐛 Clear clang-tidy findings in the fork's engine sources
+- 🐛 ShorebirdHttpClientTest compiles against android.jar
+- 🐛 Find the fake base snapshot through the fixtures path
+- 🐛 Match the fake base snapshot's image by file, not name
+- 🐛 Build the updater for linux-arm64 and windows-arm64 hosts
+- 🐛 Fork-build darwin-arm64 font-subset and restore the arm64 prebuilt Dart
+- 🐛 Build x64 hosts on our prebuilt Dart and fork-build their font-subset
+- 🐛 Boot the patch in a second engine in the same process
+- 🐛 Each worktree runs its own githooks
+- 🐛 Make #243 build on iOS
+- 🐛 Lead update failure messages with the root cause
+- 🐛 Keep installed patches when state.json can't be read
+- 🐛 Make state files safe across processes
+- 🐛 Reset arm64 native call wrapper offset in app-jit snapshots
+- 🐛 Build the CPU profile's code table correctly in mixed mode
+- 🐛 Write a non-empty DW_AT_comp_dir on Apple targets so Xcode 27 keeps the
+  debug map
+- 🐛 Upload by file name from its directory, for Windows gcloud
+- 🐛 Unwind stack resources before the arm32 and riscv simulators jump to a
+  handler
+- 🐛 Never define SIMULATOR_FFI; an arm64 forced simulator needs
+  shorebird_runtime
+- 🐛 Keep platform/globals.h out of elf_loader.h and macho_loader.h
+- 🐛 Emit the arm64 is_simulating checks only under SHOREBIRD_SNAPSHOT
+- 🐛 Keep the object pool pair bit under one SHOREBIRD_SNAPSHOT guard
+
+Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.137.
+
 ## 1.6.137 (November 4, 2026)
 
 - ✨ `shorebird release` and `shorebird patch` accept common `flutter build`
