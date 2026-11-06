@@ -327,9 +327,14 @@ on:
     branches:
       - main
 
+$_readOnlyPermissionsBlock
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # dorny/paths-filter lists a pull request's changed files through the API.
+      pull-requests: read
     outputs:
 ''');
 
@@ -497,6 +502,7 @@ ${hasBlocLint ? _staticBlocLintInput : ''}      has_unit_tests:
         default: ""
         type: string
 
+$_readOnlyPermissionsBlock
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -570,6 +576,7 @@ ${hasBlocLint ? _staticBlocLintInput : ''}      has_integration_tests:
         default: ""
         type: string
 
+$_readOnlyPermissionsBlock
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -673,6 +680,7 @@ on:
   # there's no diff base) or when you want to force a full re-check.
   workflow_dispatch:
 
+$_readOnlyPermissionsBlock
 jobs:
 ''');
 
@@ -1032,4 +1040,13 @@ const _concurrencyBlock = r'''
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
+''';
+
+/// Sets the workflow's `GITHUB_TOKEN` to read-only, whatever the repo's
+/// default is: pub and test steps run third-party code. Reusable workflows
+/// carry this too, so they stay read-only when a hand-written caller grants
+/// more. A job that needs more declares its own `permissions:`.
+const _readOnlyPermissionsBlock = '''
+permissions:
+  contents: read
 ''';

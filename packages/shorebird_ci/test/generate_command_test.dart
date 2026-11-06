@@ -371,6 +371,50 @@ void main() {
       _expectPrOnlyConcurrency(yaml);
     });
 
+    test('every workflow gets a read-only token', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final workflows = Directory(p.join(tempDir.path, '.github', 'workflows'));
+      for (final name in [
+        'shorebird_ci.yaml',
+        '_shorebird_ci_dart.yaml',
+        '_shorebird_ci_flutter.yaml',
+      ]) {
+        final doc =
+            loadYaml(File(p.join(workflows.path, name)).readAsStringSync())
+                as YamlMap;
+        expect(doc['permissions'], {'contents': 'read'}, reason: name);
+      }
+    });
+
+    test('only the changes job can read pull requests', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static', '--required']);
+
+      final doc = loadYaml(_readMain(tempDir)) as YamlMap;
+      final jobs = doc['jobs'] as YamlMap;
+      expect((jobs['changes'] as YamlMap)['permissions'], {
+        'contents': 'read',
+        'pull-requests': 'read',
+      });
+      final others = jobs.keys.where((job) => job != 'changes');
+      for (final job in others) {
+        final permissions = (jobs[job] as YamlMap)['permissions'] as YamlMap?;
+        expect(
+          permissions?.containsKey('pull-requests') ?? false,
+          isFalse,
+          reason: '$job',
+        );
+      }
+    });
+
     test('emits main + both reusables for mixed repo', () async {
       createPackage(tempDir, 'packages/dart_pkg', 'dart_pkg');
       createPackage(
@@ -1022,6 +1066,14 @@ void main() {
       await runGenerate(tempDir);
       final yaml = _readMain(tempDir);
       _expectPrOnlyConcurrency(yaml);
+    });
+
+    test('dynamic workflow gets a read-only token', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final doc = loadYaml(_readMain(tempDir)) as YamlMap;
+      expect(doc['permissions'], {'contents': 'read'});
     });
 
     test('dynamic workflow has workflow_dispatch trigger', () async {
