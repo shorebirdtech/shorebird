@@ -17,7 +17,10 @@
 //                      its templates are ones that version builds: the
 //                      pinned one `shorebird --version` installs, or for
 //                      another version a clone of shorebirdtech/flutter's
-//                      flutter_release/<version> branch.
+//                      flutter_release/<version> branch. A commit SHA
+//                      works too, as `--flutter-version` takes one: the
+//                      release gate tests a candidate before any
+//                      flutter_release branch points at it.
 //   --cli <path>       Shorebird checkout to test (the directory holding
 //                      bin/shorebird). Defaults to this checkout.
 //   --cli <version>    A released CLI, e.g. 1.4.0. Its tag is cloned once into
@@ -400,8 +403,8 @@ void setMessage(Directory app, String message) {
 /// whose templates that version builds. For the CLI's pinned Flutter (a null
 /// [version]) that's the one `shorebird --version` installed. Another version
 /// is cloned as the CLI clones it, from shorebirdtech/flutter's
-/// `flutter_release/<version>` branch; its first run downloads its Dart SDK
-/// from [downloadUrl].
+/// `flutter_release/<version>` branch, or at a commit SHA; its first run
+/// downloads its Dart SDK from [downloadUrl].
 Future<String> shorebirdFlutter({
   required String cliDir,
   required String? version,
@@ -417,17 +420,26 @@ Future<String> shorebirdFlutter({
   final dir = flutterClone = Directory.systemTemp.createTempSync(
     'shorebird_flutter_',
   );
+  // A commit is reached through whichever branch holds it, as the CLI's own
+  // clone of every branch reaches it.
+  // The CLI's own test for a hash (ShorebirdFlutter._gitHashPattern).
+  final isCommit = RegExp(r'^[0-9a-fA-F]{4,40}$').hasMatch(version);
   await sh('git', [
     'clone',
     '--filter=tree:0',
-    '--single-branch',
-    '--branch',
-    'flutter_release/$version',
+    if (isCommit)
+      '--no-checkout'
+    else ...[
+      '--single-branch',
+      '--branch',
+      'flutter_release/$version',
+    ],
     '--config',
     'core.longpaths=true',
     'https://github.com/shorebirdtech/flutter.git',
     dir.path,
   ]);
+  if (isCommit) await sh('git', ['-C', dir.path, 'checkout', version]);
   return '${dir.path}/bin/flutter';
 }
 

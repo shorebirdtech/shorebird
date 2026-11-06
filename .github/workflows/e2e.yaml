@@ -5,7 +5,8 @@ name: e2e
 concurrency:
   # A cli_ref dispatch tests one CLI ref and skips the patch matrix, so it
   # gets its own group: sharing main's would cancel a full run in progress.
-  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}
+  # A cli_version dispatch likewise, per candidate it tests.
+  group: ${{ github.workflow }}-${{ github.ref }}-e2e-${{ inputs.cli_ref }}-${{ inputs.cli_version }}-${{ inputs.flutter_version }}
   cancel-in-progress: true
 
 on:
@@ -22,6 +23,24 @@ on:
           the dev Shorebird E2E project's (437) trust rule admits every
           branch, while the prod project's (60197), which the stable cli leg
           uses, admits only main.
+        required: false
+        type: string
+      cli_version:
+        description: >-
+          A released CLI (e.g. 1.6.135) to run instead of every other job,
+          cli_ref's included:
+          scripts/patch_e2e.dart --cli releases, patches and boots an Android
+          app with it, on flutter_version, against the dev API. The Flutter
+          release gate sets both to test a respin with the first CLI that
+          pinned its version, which reaches it through --flutter-version once
+          the respin ships.
+        required: false
+        type: string
+      flutter_version:
+        description: >-
+          The Flutter version or commit SHA the cli_version job releases
+          with; the release gate passes the candidate's commit. Read only
+          with cli_version: without it the dispatch is a full run.
         required: false
         type: string
   schedule:
@@ -47,7 +66,7 @@ jobs:
     name: patch (${{ matrix.flutter-version }})
     # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
     # unrelated jobs that would only burn runner time.
-    if: ${{ !inputs.cli_ref }}
+    if: ${{ !inputs.cli_ref && !inputs.cli_version }}
     strategy:
       fail-fast: false
       matrix:
@@ -204,6 +223,96 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
           script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
 
+  # The patch job's release, patch and boot, run with a released CLI
+  # (cli_version) on another Flutter (flutter_version), and nothing else.
+  # This checkout's scripts drive it, so its checks are today's against
+  # today's dev API, while the CLI under test is the old one. Set up as the
+  # patch job's "default" leg.
+  cli_version:
+    name: patch (CLI ${{ inputs.cli_version }}, Flutter ${{ inputs.flutter_version || 'pinned' }})
+    if: ${{ inputs.cli_version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+      # Read by the test step as variables, never interpolated into it.
+      CLI_VERSION: ${{ inputs.cli_version }}
+      FLUTTER_VERSION: ${{ inputs.flutter_version }}
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      # The patch matrix's default entry's packages: the current version
+      # line's, the only one the release gate releases. Move them with that
+      # entry when the line moves.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        run: |
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+
+      - name: 🚀 Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The default patch leg's entry, restored only: a candidate is a new
+      # Flutter each time, so saving one per candidate would only fill the
+      # repo's cache. It holds the dependencies of the Flutter this ref pins,
+      # which match a candidate on the same version line; on another line it
+      # just restores less.
+      - name: 🐘 Gradle Cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-default-${{ hashFiles('bin/internal/flutter.version') }}
+
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
+
+      # The patch job's emulator and options.
+      - name: 🧪 Run Patch E2E Tests
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 30
+          arch: x86_64
+          target: default
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart --cli "$CLI_VERSION" ${FLUTTER_VERSION:+"$FLUTTER_VERSION"}
+
   # Patch signing end to end on Linux, macOS, Windows and Android: release and
   # patch with the real CLI against dev, then run the app and check which code
   # it runs. One leg per platform, on the Flutter the CLI pins; pass a version to
@@ -211,6 +320,7 @@ jobs:
   # and unlike the patch job also on a cli_ref dispatch, testing that ref.
   linux_signing:
     name: linux signing
+    if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -247,6 +357,7 @@ jobs:
 
   macos_signing:
     name: macos signing
+    if: ${{ !inputs.cli_version }}
     # The release gate waits on this workflow's slowest job, and this one's
     # six serial builds took 9 minutes on macos-latest's 3 vCPUs.
     runs-on: macos-latest-xlarge
@@ -282,6 +393,7 @@ jobs:
 
   windows_signing:
     name: windows signing
+    if: ${{ !inputs.cli_version }}
     runs-on: windows-latest
     timeout-minutes: 20
 
@@ -317,6 +429,7 @@ jobs:
 
   android_signing:
     name: android signing
+    if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -401,6 +514,7 @@ jobs:
   # dispatch, like linux_signing.
   linux_rollback:
     name: linux rollback
+    if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -440,6 +554,7 @@ jobs:
   # (scripts/boot_recovery_e2e.dart). Runs when linux_signing does.
   linux_boot:
     name: linux boot
+    if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -477,6 +592,7 @@ jobs:
   # The same checks on an Android emulator, set up as in android_signing.
   android_boot:
     name: android boot
+    if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -554,6 +670,7 @@ jobs:
           script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
   cli:
+    if: ${{ !inputs.cli_version }}
     strategy:
       fail-fast: false
       matrix:
