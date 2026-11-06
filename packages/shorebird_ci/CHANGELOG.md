@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.8
+
+- Generated workflows now declare least-privilege `permissions:`, so regenerating no longer drops them from a repo that added them by hand, and a repo whose default `GITHUB_TOKEN` can write doesn't hand that to `pub get` and test steps. The dynamic workflow and the static main and reusable workflows set `contents: read` at the top level. The static `changes` job adds `pull-requests: read`, which `dorny/paths-filter` needs to list a pull request's files. A step you add to a generated workflow that needs more must be granted it on its job and, in a reusable workflow, on the job calling it too.
+
 # 0.2.7
 
 - Generated workflows no longer use `felangel/setup-bloc-tools` or `streetsidesoftware/cspell-action`. Bloc lint installs `bloc_tools` 0.1.0-dev.25 with `dart pub global activate`, and the `cspell` job runs `npx cspell@10.4.0`, each at the version that generated the workflow (their own dependencies still resolve fresh on each run). The `cspell` job runs with a read-only token that checkout doesn't persist. Flutter jobs with bloc lint now run `dart format` on Flutter's own Dart: `setup-bloc-tools` also ran `dart-lang/setup-dart@v1` on a tag inside it, which a SHA pin on the outer action doesn't cover.
