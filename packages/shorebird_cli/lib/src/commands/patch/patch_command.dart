@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -7,6 +8,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/build_flags.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -454,6 +456,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         release: release,
         obfuscationMapFile: downloaded.obfuscationMapFile,
       );
+      _assertBuildFlagsMatchRelease(
+        patcher: patcher,
+        release: release,
+        supplementDirectory: downloaded.supplementDirectory,
+      );
 
       return await runScoped(
         () => _buildAndPublishPatch(
@@ -686,6 +693,49 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       );
     }
     patcher.releaseManagedPublicKeyPem = publicKeyPem;
+  }
+
+  /// Stops before building when the patch's dart-defines or target differ
+  /// from those [release] recorded in its supplement, which would fail to
+  /// link or change code the release runs. In a terminal the user may go on
+  /// anyway; a define the code never reads changes nothing. Releases from a
+  /// CLI that recorded no flags aren't checked.
+  void _assertBuildFlagsMatchRelease({
+    required Patcher patcher,
+    required Release release,
+    required Directory? supplementDirectory,
+  }) {
+    if (supplementDirectory == null) return;
+    final file = File(p.join(supplementDirectory.path, BuildFlags.fileName));
+    if (!file.existsSync()) return;
+    final releaseFlags = BuildFlags.fromJson(
+      json.decode(file.readAsStringSync()) as Map<String, dynamic>,
+    );
+    final BuildFlags patchFlags;
+    try {
+      patchFlags = BuildFlags.fromArgs(results, target: patcher.target);
+    } on FormatException catch (error) {
+      usageException(error.message);
+    }
+    final differences = patchFlags.differencesFrom(releaseFlags);
+    if (differences.isEmpty) return;
+
+    final platform = patcher.releaseType.releasePlatform.displayName;
+    logger.warn(
+      '''
+This patch isn't built with the same flags as release ${release.version} ($platform):
+${differences.map((line) => '  $line').join('\n')}
+A patch must be built with the --dart-define values and --target of its release, or it may fail to link or change code the release runs.''',
+    );
+    if (shorebirdEnv.canAcceptUserInput && logger.confirm('Continue anyway?')) {
+      return;
+    }
+    throw CommandError(
+      message: "This patch's flags don't match release ${release.version}.",
+      hint:
+          'Pass the same --dart-define, --dart-define-from-file and '
+          '--target values as the release, or create a new release.',
+    );
   }
 
   /// Configures [patcher] to build the patch with the same obfuscation as
