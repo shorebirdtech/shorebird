@@ -6,51 +6,25 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.138 (November 6, 2026)
 
-- ✨ Patch stops when its dart-defines or target differ from the release's
-- ✨ Copy the Apple AOT build's app.dill to build/<platform>/shorebird_kernel
-- ✨ Build linux-arm64 and windows-arm64 host artifacts from our Dart
-- ✨ Tell the updater when iOS unlocks protected data
-- ✨ Keep the server's error code and message when a request fails
-- ✨ Default patch_verification to install_only
-- ✨ Report launches that couldn't read updater state
-- ✨ Publish analyze_snapshot readers to the private release buckets (ADR-0057)
-- 🐛 Skip updater issue 211 warning on fixed Flutter 3.24.1 revision
-- 🐛 Let AGP strip libapp.so on Android again
-- 🐛 Don't crash on macOS when shorebird.yaml can't be read
-- 🐛 Show xcodebuild output on --no-codesign iOS build failures
-- 🐛 Carry the public key and DD setting into Xcode rebuilds
-- 🐛 Load CanvasKit from the build output by default on web
-- 🐛 Leave gclient's download out of the prebuilt Dart SDK copy
-- 🐛 Pass upstream's analyze, tool and Gradle plugin checks
-- 🐛 Clear clang-tidy findings in the fork's engine sources
-- 🐛 ShorebirdHttpClientTest compiles against android.jar
-- 🐛 Find the fake base snapshot through the fixtures path
-- 🐛 Match the fake base snapshot's image by file, not name
-- 🐛 Build the updater for linux-arm64 and windows-arm64 hosts
-- 🐛 Fork-build darwin-arm64 font-subset and restore the arm64 prebuilt Dart
-- 🐛 Build x64 hosts on our prebuilt Dart and fork-build their font-subset
-- 🐛 Boot the patch in a second engine in the same process
-- 🐛 Each worktree runs its own githooks
-- 🐛 Make #243 build on iOS
-- 🐛 Don't start the updater in iOS debug builds
-- 🐛 Link flutter_windows.dll after its .def is copied
-- 🐛 Lead update failure messages with the root cause
-- 🐛 Keep installed patches when state.json can't be read
-- 🐛 Make state files safe across processes
-- 🐛 Reset arm64 native call wrapper offset in app-jit snapshots
-- 🐛 Build the CPU profile's code table correctly in mixed mode
-- 🐛 Write a non-empty DW_AT_comp_dir on Apple targets so Xcode 27 keeps the
-  debug map
-- 🐛 Upload by file name from its directory, for Windows gcloud
-- 🐛 Unwind stack resources before the arm32 and riscv simulators jump to a
-  handler
-- 🐛 Never define SIMULATOR_FFI; an arm64 forced simulator needs
-  shorebird_runtime
-- 🐛 Keep platform/globals.h out of elf_loader.h and macho_loader.h
-- 🐛 Emit the arm64 is_simulating checks only under SHOREBIRD_SNAPSHOT
-- 🐛 Keep the object pool pair bit under one SHOREBIRD_SNAPSHOT guard
+- ✨ `shorebird patch` stops when its dart-defines or target differ from the
+  release's
+- ✨ Updates can run once iOS unlocks protected data
+- 🐛 Xcode 27 keeps the debug map for Shorebird iOS builds
+- 🐛 Android Gradle Plugin can strip `libapp.so` again
+- 🐛 Web builds load CanvasKit from the build output by default
+- 🐛 macOS apps no longer crash when `shorebird.yaml` can't be read
+- 🐛 `--no-codesign` iOS build failures show xcodebuild's output
+- 🐛 Xcode rebuilds keep the public key used to sign patches
+- 🐛 The updater no longer starts in iOS debug builds
+- 🐛 Installed patches are kept when the updater's state file can't be read
+- 🐛 The updater's state files are safe across processes
+- 🐛 Update failure messages lead with the root cause, and failed requests keep
+  the server's error code and message
+- 🐛 No more updater issue 211 warning on the fixed Flutter 3.24.1 revision
+- 🔧 `patch_verification` now defaults to `install_only`
 
-Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.137.
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
 
 ## 1.6.137 (November 4, 2026)
 
