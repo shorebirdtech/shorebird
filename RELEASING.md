@@ -3,112 +3,83 @@
 # Releasing the Shorebird CLI
 
 Users get a new CLI version through `shorebird upgrade`, which resets their
-checkout to the tip of the `stable` branch. A release is a commit on `main`
-that `stable` is moved to.
+checkout to the tip of the `stable` branch. A release is a tag, `v<version>`,
+on a release branch cut from `main`; `stable` is moved to the tag.
+
+A release runs as `release_cli.yaml` in `shorebirdtech/_build_engine`
+(described in its `release_skill/release-workflow.md`). A Flutter release
+(`release_flutter.yaml`) releases the CLI the same way, with a new Flutter
+pin.
 
 ## 1. Pick the commit
 
 - Diff what users have against `main`:
-  `git log --oneline --no-merges origin/stable..origin/main`
-- Note any change that e2e does not exercise (auth, `--json` output, platform
-  specific fixes). Those need a manual check in step 2.
-- If the release should ship a new Flutter, update
-  `bin/internal/flutter.version` in its own commit
-  (`chore: bump Flutter to <short sha>`).
+  `git log --oneline --no-merges v<last version>..origin/main`
+- Note any change that the gate does not exercise (auth, `--json` output,
+  platform specific fixes). Those need a manual check before you approve.
+- To ship a new Flutter, run a Flutter release instead.
 
-## 2. Smoke test
-
-- Run the e2e workflow on `main` from the Actions tab
-  (<https://github.com/shorebirdtech/shorebird/actions/workflows/e2e.yaml>),
-  or `gh workflow run e2e.yaml --ref main`. Leave `cli_ref` empty: setting it
-  skips the patch matrix.
-- Every leg must pass. If the most recent nightly failed, find out why before
-  releasing.
-- Run the device e2e in `shorebirdtech/shorebird_e2e` against the same commit.
-  All three run on Namespace runners, so no local device is needed:
-
-  ```sh
-  git fetch origin
-  SHA=$(git rev-parse origin/main)
-  gh workflow run macos_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
-  gh workflow run android_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
-  gh workflow run ios_test_lab_e2e.yaml --repo shorebirdtech/shorebird_e2e -f shorebird_ref="$SHA"
-  gh run list --repo shorebirdtech/shorebird_e2e --event workflow_dispatch --limit 6
-  ```
-
-  - Each run is named for the SHA it tests.
-  - `macos_e2e` releases, patches and UI-tests the standalone macOS app,
-    obfuscated and not.
-  - `android_e2e` does the same for the standalone and add-to-app Android
-    apps on an x86_64 emulator.
-  - `ios_test_lab_e2e` does the same for the standalone and add-to-app iOS
-    apps on a cloud iPhone.
-  - All three sign in with GitHub Actions OIDC. Leave `flutter_revision` empty
-    to test the Flutter pinned by the commit.
-  - All three must pass.
-- Manually check each change from step 1 that these runs do not cover, using a
-  local checkout of the commit being released. They do not cover signed iOS
-  builds (the iOS runs use `--no-codesign`, so no `.ipa` export or
-  `shorebird preview`), interactive `shorebird login`, or `--json` output. On
-  a Mac with an iOS device, Shorebird staff can run the `release-smoke-test`
-  agent skill in `shorebirdtech/_shorebird`, which covers all three.
-
-## 3. Prepare the release commit
-
-One commit on `main`, titled `chore: prepare for release <version>`:
-
-- `packages/shorebird_cli/lib/src/version.dart`: `packageVersion`
-- `packages/shorebird_cli/pubspec.yaml`: `version`
-- `RELEASE_NOTES.md`: a new section at the top,
-  `## <version> (<Month D, YYYY>)`, with user-facing changes only:
-  - 🐦 Flutter / Dart version, with notable Flutter fixes nested under it
-  - ✨ new features
-  - 🐛 fixes
-  - 🔧 other user-visible changes
-
-  `RELEASE_NOTES.md` is spell checked. Add new words to the `cspell:words`
-  comment at the top of the file.
-
-If `main` already carries `<version>` (bumped ahead of the release so CLIs
-built from `main` pass a server minimum-version check), the commit only adds
-the release notes.
-
-## 4. Publish
-
-Publish only when a maintainer can watch for problems for the next few
-hours, so not late at night or before a weekend, unless the release is
-urgent. Landing the prepare commit is fine at any hour; if publishing
-waits, say in the prepare PR when it will ship. `SHA` is the prepare
-commit.
-
-<!-- No # comments in these blocks: zsh, macOS's default shell, runs them
-as commands at the prompt, and on a `SHA=` line that leaves SHA unset. -->
+## 2. Dispatch the release
 
 ```sh
-VERSION=x.y.z
-SHA=$(git rev-parse origin/main)
-gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --generate-notes
-git push origin "${SHA}:stable"
+gh workflow run release_cli.yaml -R shorebirdtech/_build_engine --ref main -f dry_run=false
 ```
 
-- `stable` must fast-forward. It is protected (linear history, no force
-  pushes); pushing directly requires admin.
-- The tag and the `stable` push are what users see. Do not move `stable`
-  until the smoke test passes.
+`cli_version` is optional: by default it is `main`'s version when `main` was
+bumped ahead of the last release, else the next patch. `dry_run` (the
+default) prints every write and makes none.
 
-## 5. Verify
+The run:
+
+- `branch`: cuts `release/v<version>-rc<n>` from `main` with the
+  `chore: prepare for release <version>` commit (version, pubspec and a
+  `RELEASE_NOTES.md` section drafted from the commits since the last
+  release).
+- `gate`: runs e2e (signing, rollback, boot and the patch matrix across the
+  supported Flutter versions), shorebird_e2e Android on an emulator and on
+  arm64 and 32-bit phones, macOS, and the iOS check on cloud iPhones, all
+  against the branch's head. Every leg must pass.
+- `cli_pr`: opens the PR from the branch into `main` and waits for its
+  required checks.
+
+## 3. Review the notes and approve
+
+On the PR, edit `RELEASE_NOTES.md` to user-facing changes only: make each
+❓ entry ✨ or 🐛, or delete it. Edits to `.md` files keep the gate's
+results; any other change needs a fix on `main` and a new run, which cuts
+the next rc. `RELEASE_NOTES.md` is spell checked: add new words to the
+`cspell:words` comment at the top of the file.
+
+Check each change from step 1 that the gate does not cover with a checkout
+of the PR's head. The gate does not cover signed iOS builds (the iOS runs
+use `--no-codesign`, so no `.ipa` export or `shorebird preview`),
+interactive `shorebird login`, or `--json` output. On a Mac with an iOS
+device, Shorebird staff can run the `release-smoke-test` agent skill in
+`shorebirdtech/_shorebird`, which covers all three.
+
+Approve only when a maintainer can watch for problems for the next few
+hours, so not late at night or before a weekend, unless the release is
+urgent. An approver's (`approvers` in `_build_engine`'s
+`release_flutter/release.yaml`) approving review of the PR's head is the
+release approval: `promote` then tags `v<version>` on that head, moves
+`stable` to it, and lands the PR on `main` through the merge queue. The
+tag and `stable` are what users see. If the queue won't take the PR, the
+release is out anyway and the run warns: land it by hand.
+
+## 4. Verify
 
 - `shorebird upgrade` on a machine with an older CLI moves it to the new
   version, and `shorebird --version` reports it.
 
-## 6. Announce
+## 5. Announce
 
-Post a short summary on the Shorebird Discord, built from the
-`RELEASE_NOTES.md` section. It is not a changelog: pick the 2-4 changes users
-would notice, lead each with a plain-language sentence on its impact (what was
-broken, who it hit), and say any action needed (for example "create a new
-release"). Only claim an impact stated in the `RELEASE_NOTES.md` entry or
-its PR; drop a change whose impact isn't clear. Everything else is in the linked GitHub release.
+`promote` writes a Discord draft into the run's summary. Post it on the
+Shorebird Discord after editing it: it is not a changelog. Pick the 2-4
+changes users would notice, lead each with a plain-language sentence on its
+impact (what was broken, who it hit), and say any action needed (for example
+"create a new release"). Only claim an impact stated in the
+`RELEASE_NOTES.md` entry or its PR; drop a change whose impact isn't clear.
+Everything else is in the linked GitHub release.
 
 ```md
 @here - <greeting>. Shorebird <version> is out. Run `shorebird upgrade` to pick it up.
@@ -122,4 +93,3 @@ its PR; drop a change whose impact isn't clear. Everything else is in the linked
 
 Full notes: <https://github.com/shorebirdtech/shorebird/releases/tag/v<version>>
 ```
-
