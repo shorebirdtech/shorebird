@@ -1434,6 +1434,26 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               );
             });
 
+            test('goes on with --allow-build-flag-diffs', () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+              when(
+                () => argResults['allow-build-flag-diffs'],
+              ).thenReturn(true);
+              patchBuiltWith(['API_URL=https://b', 'SENTRY_DSN=x']);
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verifyNever(() => logger.confirm(any()));
+              verify(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: release.id,
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              ).called(1);
+            });
+
             test('goes on when the user confirms', () async {
               when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
               when(() => logger.confirm('Continue anyway?')).thenReturn(true);

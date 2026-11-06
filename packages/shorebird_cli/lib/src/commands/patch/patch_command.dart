@@ -112,6 +112,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         negatable: false,
       )
       ..addFlag(
+        'allow-build-flag-diffs',
+        help: allowBuildFlagDiffsHelpText,
+        negatable: false,
+      )
+      ..addFlag(
         'show-dex-diff',
         help: showDexDiffHelpText,
         negatable: false,
@@ -214,6 +219,11 @@ Without this, the first few differing instructions of the first ten changed meth
 Patch even if asset diffs are detected.
 NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be included in a patch can cause your app to behave unexpectedly.''';
 
+  /// Help text for the flag to patch despite build flag diffs.
+  static final allowBuildFlagDiffsHelpText = '''
+Patch even if the --dart-define values or --target differ from the release's.
+NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different values may fail to link or change code the release runs.''';
+
   late final ResolvePatcher _resolvePatcher;
 
   @override
@@ -237,6 +247,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
+
+  /// Whether to patch despite build flags that differ from the release's
+  /// (--allow-build-flag-diffs).
+  bool get allowBuildFlagDiffs => results['allow-build-flag-diffs'] == true;
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
@@ -696,8 +710,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// Stops before the patch build when its dart-defines or target differ
   /// from those [release] recorded in its supplement, which would fail to
-  /// link or change code the release runs. In a terminal the user may go on
-  /// anyway; a define the code never reads changes nothing. Releases from a
+  /// link or change code the release runs. With --allow-build-flag-diffs,
+  /// or when the user confirms in a terminal, it goes on: a define the code
+  /// never reads changes nothing. Releases from a
   /// CLI that recorded no flags aren't checked.
   void _assertBuildFlagsMatchRelease({
     required Patcher patcher,
@@ -731,6 +746,7 @@ This patch isn't built with the same flags as release ${release.version} ($platf
 ${differences.map((line) => '  $line').join('\n')}
 A patch must be built with the --dart-define values and --target of its release, or it may fail to link or change code the release runs.''',
     );
+    if (allowBuildFlagDiffs) return;
     if (shorebirdEnv.canAcceptUserInput && logger.confirm('Continue anyway?')) {
       return;
     }
@@ -738,7 +754,8 @@ A patch must be built with the --dart-define values and --target of its release,
       message: "This patch's flags don't match release ${release.version}.",
       hint:
           'Pass the same --dart-define, --dart-define-from-file and '
-          '--target values as the release, or create a new release.',
+          '--target values as the release, or create a new release. To '
+          'patch anyway, pass --allow-build-flag-diffs.',
     );
   }
 
