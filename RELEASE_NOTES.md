@@ -4,6 +4,27 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.138 (November 6, 2026)
+
+- ✨ `shorebird patch` stops when its dart-defines or target differ from the
+  release's
+- ✨ Updates can run once iOS unlocks protected data
+- 🐛 Xcode 27 keeps the debug map for Shorebird iOS builds
+- 🐛 Android Gradle Plugin can strip `libapp.so` again
+- 🐛 macOS apps no longer crash when `shorebird.yaml` can't be read
+- 🐛 `--no-codesign` iOS build failures show xcodebuild's output
+- 🐛 Xcode rebuilds keep the public key used to sign patches
+- 🐛 Installed patches are kept when the updater's state file can't be read
+- 🐛 The updater's state files are safe across processes
+- 🐛 Update failure messages lead with the root cause, and failed requests keep
+  the server's error code and message
+- 🐛 Android `shorebird patch` no longer warns that patches may be uninstalled
+  on the Flutter 3.24.1 revision that already has the fix
+- 🔧 `patch_verification` now defaults to `install_only`
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
 ## 1.6.137 (November 4, 2026)
 
 - ✨ `shorebird release` and `shorebird patch` accept common `flutter build`
