@@ -2,7 +2,7 @@
 
 # 0.2.8
 
-- Generated workflows now declare least-privilege `permissions:`, so regenerating no longer drops them from a repo that added them by hand, and a repo whose default `GITHUB_TOKEN` can write doesn't hand that to `pub get` and test steps. The dynamic workflow and the static main and reusable workflows set `contents: read` at the top level. The static `changes` job adds `pull-requests: read`, which `dorny/paths-filter` needs to list a pull request's files. A repo with its own steps added to a generated workflow that need more must declare it on those jobs.
+- Generated workflows now declare least-privilege `permissions:`, so regenerating no longer drops them from a repo that added them by hand, and a repo whose default `GITHUB_TOKEN` can write doesn't hand that to `pub get` and test steps. The dynamic workflow and the static main and reusable workflows set `contents: read` at the top level. The static `changes` job adds `pull-requests: read`, which `dorny/paths-filter` needs to list a pull request's files. A step you add to a generated workflow that needs more must be granted it on its job and, in a reusable workflow, on the job calling it too.
 
 # 0.2.7
 

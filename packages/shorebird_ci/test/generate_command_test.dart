@@ -391,28 +391,19 @@ void main() {
       }
     });
 
-    test('only the changes job can read pull requests', () async {
+    test('only the changes job gets more than the workflow token', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
       File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
       initGitRepo(tempDir);
 
       await runGenerate(tempDir, extra: ['--style', 'static', '--required']);
 
-      final doc = loadYaml(_readMain(tempDir)) as YamlMap;
-      final jobs = doc['jobs'] as YamlMap;
-      expect((jobs['changes'] as YamlMap)['permissions'], {
+      final jobs = _expectReadOnlyJobs(tempDir, except: 'changes');
+      expect((jobs['changes']! as YamlMap)['permissions'], {
         'contents': 'read',
         'pull-requests': 'read',
       });
-      final others = jobs.keys.where((job) => job != 'changes');
-      for (final job in others) {
-        final permissions = (jobs[job] as YamlMap)['permissions'] as YamlMap?;
-        expect(
-          permissions?.containsKey('pull-requests') ?? false,
-          isFalse,
-          reason: '$job',
-        );
-      }
     });
 
     test('emits main + both reusables for mixed repo', () async {
@@ -1076,6 +1067,15 @@ void main() {
       expect(doc['permissions'], {'contents': 'read'});
     });
 
+    test('dynamic jobs get no more than the workflow token', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir, extra: ['--required']);
+      _expectReadOnlyJobs(tempDir);
+    });
+
     test('dynamic workflow has workflow_dispatch trigger', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
@@ -1333,6 +1333,27 @@ String _readMain(Directory repoRoot) {
 String _readAll(Directory dir) => [
   for (final f in dir.listSync().whereType<File>()) f.readAsStringSync(),
 ].join('\n');
+
+/// Expects every job in every workflow under [repoRoot] to stay at
+/// `contents: read`, leaving out jobs named [except]. Returns the jobs, keyed
+/// by name.
+Map<String, Object?> _expectReadOnlyJobs(Directory repoRoot, {String? except}) {
+  final workflows = Directory(p.join(repoRoot.path, '.github', 'workflows'));
+  final jobs = <String, Object?>{};
+  for (final file in workflows.listSync().whereType<File>()) {
+    final doc = loadYaml(file.readAsStringSync()) as YamlMap;
+    jobs.addAll((doc['jobs'] as YamlMap).cast<String, Object?>());
+  }
+  expect(jobs, isNotEmpty);
+  for (final MapEntry(key: name, value: job) in jobs.entries) {
+    if (name == except) continue;
+    final permissions = (job! as YamlMap)['permissions'];
+    if (permissions != null) {
+      expect(permissions, {'contents': 'read'}, reason: name);
+    }
+  }
+  return jobs;
+}
 
 /// The main workflow cancels a superseded PR run, and only PR runs share a
 /// group.

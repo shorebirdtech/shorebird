@@ -1045,7 +1045,8 @@ concurrency:
 /// Sets the workflow's `GITHUB_TOKEN` to read-only, whatever the repo's
 /// default is: pub and test steps run third-party code. Reusable workflows
 /// carry this too, so they stay read-only when a hand-written caller grants
-/// more. A job that needs more declares its own `permissions:`.
+/// more. A job that needs more declares its own `permissions:`, and a job in
+/// a reusable workflow can't exceed what the calling job grants.
 const _readOnlyPermissionsBlock = '''
 permissions:
   contents: read
