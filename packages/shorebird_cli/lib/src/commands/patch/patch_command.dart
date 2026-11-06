@@ -7,6 +7,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/build_flags.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -108,6 +109,11 @@ To target the latest release (e.g. the release that was most recently updated) u
       ..addFlag(
         'allow-asset-diffs',
         help: allowAssetDiffsHelpText,
+        negatable: false,
+      )
+      ..addFlag(
+        'allow-build-flag-diffs',
+        help: allowBuildFlagDiffsHelpText,
         negatable: false,
       )
       ..addFlag(
@@ -213,6 +219,11 @@ Without this, the first few differing instructions of the first ten changed meth
 Patch even if asset diffs are detected.
 NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be included in a patch can cause your app to behave unexpectedly.''';
 
+  /// Help text for the flag to patch despite build flag diffs.
+  static final allowBuildFlagDiffsHelpText = '''
+Patch even if the --dart-define values or --target differ from the release's.
+NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different values may fail to link or change code the release runs.''';
+
   late final ResolvePatcher _resolvePatcher;
 
   @override
@@ -236,6 +247,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
+
+  /// Whether to patch despite build flags that differ from the release's
+  /// (--allow-build-flag-diffs).
+  bool get allowBuildFlagDiffs => results['allow-build-flag-diffs'] == true;
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
@@ -453,6 +468,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         patcher: patcher,
         release: release,
         obfuscationMapFile: downloaded.obfuscationMapFile,
+      );
+      _assertBuildFlagsMatchRelease(
+        patcher: patcher,
+        release: release,
+        supplementDirectory: downloaded.supplementDirectory,
       );
 
       return await runScoped(
@@ -686,6 +706,57 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       );
     }
     patcher.releaseManagedPublicKeyPem = publicKeyPem;
+  }
+
+  /// Stops before the patch build when its dart-defines or target differ
+  /// from those [release] recorded in its supplement, which would fail to
+  /// link or change code the release runs. With --allow-build-flag-diffs,
+  /// or when the user confirms in a terminal, it goes on: a define the code
+  /// never reads changes nothing. Releases from a
+  /// CLI that recorded no flags aren't checked.
+  void _assertBuildFlagsMatchRelease({
+    required Patcher patcher,
+    required Release release,
+    required Directory? supplementDirectory,
+  }) {
+    if (supplementDirectory == null) return;
+    final file = File(p.join(supplementDirectory.path, BuildFlags.fileName));
+    if (!file.existsSync()) return;
+    final releaseFlags = BuildFlags.tryParse(file.readAsStringSync());
+    if (releaseFlags == null) {
+      logger.detail(
+        'Not checking build flags: ${BuildFlags.fileName} is '
+        'from a newer CLI or unreadable.',
+      );
+      return;
+    }
+    final BuildFlags patchFlags;
+    try {
+      patchFlags = BuildFlags.fromArgs(results, target: patcher.target);
+    } on FormatException catch (error) {
+      usageException(error.message);
+    }
+    final differences = patchFlags.differencesFrom(releaseFlags);
+    if (differences.isEmpty) return;
+
+    final platform = patcher.releaseType.releasePlatform.displayName;
+    logger.warn(
+      '''
+This patch isn't built with the same flags as release ${release.version} ($platform):
+${differences.map((line) => '  $line').join('\n')}
+A patch must be built with the --dart-define values and --target of its release, or it may fail to link or change code the release runs.''',
+    );
+    if (allowBuildFlagDiffs) return;
+    if (shorebirdEnv.canAcceptUserInput && logger.confirm('Continue anyway?')) {
+      return;
+    }
+    throw CommandError(
+      message: "This patch's flags don't match release ${release.version}.",
+      hint:
+          'Pass the same --dart-define, --dart-define-from-file and '
+          '--target values as the release, or create a new release. To '
+          'patch anyway, pass --allow-build-flag-diffs.',
+    );
   }
 
   /// Configures [patcher] to build the patch with the same obfuscation as

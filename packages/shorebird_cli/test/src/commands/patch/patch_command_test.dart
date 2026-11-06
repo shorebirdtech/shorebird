@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
+import 'package:crypto/crypto.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -14,8 +15,10 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/build_flags.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -1327,6 +1330,137 @@ A patch cannot change the Flutter version a release was built with. To fix this,
 
             test('gracefully continues to create patch', () async {
               await runWithOverrides(() => command.createPatch(patcher));
+              verify(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: release.id,
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              ).called(1);
+            });
+          });
+
+          group('when the supplement records build flags', () {
+            String recorded(List<String> defines, {String? target}) =>
+                json.encode(
+                  BuildFlags(
+                    dartDefines: {
+                      for (final define in defines)
+                        define.split('=').first: sha256
+                            .convert(utf8.encode(define.split('=').last))
+                            .toString(),
+                    },
+                    target: target,
+                  ).toJson(),
+                );
+
+            void releaseBuiltWith(List<String> defines) {
+              when(
+                () => artifactManager.extractZip(
+                  zipFile: any(named: 'zipFile'),
+                  outputDirectory: any(named: 'outputDirectory'),
+                ),
+              ).thenAnswer((invocation) async {
+                final outputDirectory =
+                    invocation.namedArguments[#outputDirectory] as Directory;
+                File(
+                  p.join(outputDirectory.path, BuildFlags.fileName),
+                ).writeAsStringSync(recorded(defines));
+              });
+            }
+
+            void patchBuiltWith(List<String> defines) {
+              when(() => argResults['dart-define']).thenReturn(defines);
+              when(() => argResults['dart-define-from-file']).thenReturn(
+                <String>[],
+              );
+            }
+
+            setUp(() {
+              when(() => patcher.target).thenReturn(null);
+              releaseBuiltWith(['API_URL=https://a', 'SENTRY_DSN=x']);
+            });
+
+            test('builds the patch when they match', () async {
+              patchBuiltWith(['API_URL=https://a', 'SENTRY_DSN=x']);
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verify(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: release.id,
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              ).called(1);
+            });
+
+            test('stops without a terminal when they differ', () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+              patchBuiltWith(['API_URL=https://b']);
+
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                throwsA(
+                  isA<CommandError>().having(
+                    (e) => e.exitCode,
+                    'exitCode',
+                    ExitCode.usage.code,
+                  ),
+                ),
+              );
+              verify(
+                () => logger.warn(
+                  any(
+                    that: allOf(
+                      contains('--dart-define missing: SENTRY_DSN'),
+                      contains(
+                        '--dart-define with a different value: API_URL',
+                      ),
+                      isNot(contains('https://')),
+                    ),
+                  ),
+                ),
+              ).called(1);
+              verifyNever(
+                () => patcher.createPatchArtifacts(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              );
+            });
+
+            test('goes on with --allow-build-flag-diffs', () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+              when(
+                () => argResults['allow-build-flag-diffs'],
+              ).thenReturn(true);
+              patchBuiltWith(['API_URL=https://b', 'SENTRY_DSN=x']);
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verifyNever(() => logger.confirm(any()));
+              verify(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: release.id,
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              ).called(1);
+            });
+
+            test('goes on when the user confirms', () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+              when(() => logger.confirm('Continue anyway?')).thenReturn(true);
+              patchBuiltWith(['API_URL=https://b', 'SENTRY_DSN=x']);
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
               verify(
                 () => patcher.createPatchArtifacts(
                   appId: appId,
