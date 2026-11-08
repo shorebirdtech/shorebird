@@ -797,7 +797,9 @@ A patch must be built with the --dart-define values and --target of its release,
     final releaseFlutterVersion = tryParseVersion(release.flutterVersion ?? '');
     if (loadObfuscationMap &&
         releaseFlutterVersion != null &&
-        releaseFlutterVersion < minimumObfuscationFlutterVersion) {
+        !releaseFlutterVersion.satisfiesFloor(
+          minimumObfuscationFlutterVersion,
+        )) {
       if (patchesLinkAgainstRelease(releasePlatform)) {
         throw CommandError(
           message:
@@ -968,7 +970,8 @@ Building patch with Flutter $flutterVersionString
     if (minimumFlutterVersion == null) return;
 
     final flutterVersion = await shorebirdFlutter.getVersion();
-    if (flutterVersion == null || flutterVersion >= minimumFlutterVersion) {
+    if (flutterVersion == null ||
+        flutterVersion.satisfiesFloor(minimumFlutterVersion)) {
       return;
     }
 

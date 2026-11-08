@@ -688,7 +688,7 @@ The version of the Android or iOS app that embeds this module
           : await resolveFlutterVersionArg(),
     );
     final minimumFlutterVersion = releaser.minimumFlutterVersion;
-    if (version != null && version < minimumFlutterVersion) {
+    if (version != null && !version.satisfiesFloor(minimumFlutterVersion)) {
       final cliName = releaser.releaseType.cliName;
       throw CommandError(
         message:
@@ -704,7 +704,7 @@ The version of the Android or iOS app that embeds this module
     if (releaser.useObfuscation &&
         patchesLinkAgainstRelease(releaser.releaseType.releasePlatform) &&
         version != null &&
-        version < minimumObfuscationFlutterVersion) {
+        !version.satisfiesFloor(minimumObfuscationFlutterVersion)) {
       throw CommandError(
         message:
             'Obfuscation on '

@@ -2,6 +2,22 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
+/// Floor comparison for Flutter versions.
+extension FlutterVersionFloor on Version {
+  /// Whether this version meets the [floor].
+  ///
+  /// Shorebird cuts a side version of an upstream Flutter version by tagging
+  /// it with an `sb` pre-release, so `3.32.6-sb.1` carries everything `3.32.6`
+  /// carries. Semver sorts any pre-release below its release, which would
+  /// refuse a side version at a floor its own upstream version clears.
+  /// Upstream's own pre-releases (`3.32.6-0.1.pre`) really are earlier, so
+  /// they keep falling below the floor.
+  bool satisfiesFloor(Version floor) =>
+      (_isSideVersion ? Version(major, minor, patch) : this) >= floor;
+
+  bool get _isSideVersion => preRelease.isNotEmpty && preRelease.first == 'sb';
+}
+
 /// The minimum allowed Flutter version for Android releases.
 ///
 /// Patches are not checked, so existing releases on older versions can still
@@ -96,7 +112,7 @@ class FlutterSupportConstraint {
 
   /// Whether the given [version]/[revision] pair satisfies this constraint.
   bool isSatisfiedBy({required Version version, required String revision}) =>
-      version >= minVersion || allowedRevisions.contains(revision);
+      version.satisfiesFloor(minVersion) || allowedRevisions.contains(revision);
 }
 
 /// Flutter versions that include the fix for
