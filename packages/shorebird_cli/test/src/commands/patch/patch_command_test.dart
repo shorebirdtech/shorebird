@@ -25,6 +25,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -1486,13 +1487,20 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               await expectLater(
                 () => runWithOverrides(() => command.createPatch(patcher)),
                 throwsA(
-                  isA<CommandError>().having(
-                    (e) => e.exitCode,
-                    'exitCode',
-                    ExitCode.usage.code,
-                  ),
+                  isA<CommandError>()
+                      .having(
+                        (e) => e.exitCode,
+                        'exitCode',
+                        ExitCode.usage.code,
+                      )
+                      .having(
+                        (e) => e.code,
+                        'code',
+                        JsonErrorCode.interactivePromptRequired,
+                      ),
                 ),
               );
+              verifyNever(() => logger.confirm(any()));
               verify(
                 () => logger.warn(
                   any(
@@ -1534,6 +1542,32 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                   supplementDirectory: any(named: 'supplementDirectory'),
                 ),
               ).called(1);
+            });
+
+            test('stops when the user declines', () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+              when(() => logger.confirm('Continue anyway?')).thenReturn(false);
+              patchBuiltWith(['API_URL=https://b', 'SENTRY_DSN=x']);
+
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                throwsA(
+                  isA<PromptDeclinedExit>().having(
+                    (e) => e.exitCode,
+                    'exitCode',
+                    declinedExitCode,
+                  ),
+                ),
+              );
+              verify(() => logger.err('Aborting.')).called(1);
+              verifyNever(
+                () => patcher.createPatchArtifacts(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              );
             });
 
             test('goes on when the user confirms', () async {

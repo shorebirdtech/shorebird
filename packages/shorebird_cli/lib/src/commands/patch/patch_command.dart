@@ -748,16 +748,19 @@ ${differences.map((line) => '  $line').join('\n')}
 A patch must be built with the --dart-define values and --target of its release, or it may fail to link or change code the release runs.''',
     );
     if (allowBuildFlagDiffs) return;
-    if (shorebirdEnv.canAcceptUserInput && logger.confirm('Continue anyway?')) {
-      return;
+    if (!shorebirdEnv.canAcceptUserInput) {
+      throw CommandError(
+        message: "This patch's flags don't match release ${release.version}.",
+        hint:
+            'Pass the same --dart-define, --dart-define-from-file and '
+            '--target values as the release, or create a new release. To '
+            'patch anyway, pass --allow-build-flag-diffs.',
+        code: JsonErrorCode.interactivePromptRequired,
+      );
     }
-    throw CommandError(
-      message: "This patch's flags don't match release ${release.version}.",
-      hint:
-          'Pass the same --dart-define, --dart-define-from-file and '
-          '--target values as the release, or create a new release. To '
-          'patch anyway, pass --allow-build-flag-diffs.',
-    );
+    if (logger.confirm('Continue anyway?')) return;
+    logger.err('Aborting.');
+    throw PromptDeclinedExit();
   }
 
   /// Configures [patcher] to build the patch with the same obfuscation as
