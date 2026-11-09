@@ -1,0 +1,14 @@
+name: macho
+description: Mach-O binary parser and semantic differ for Apple executable and framework files.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+
+dependencies:
+  meta: ^1.19.0
+
+dev_dependencies:
+  test: ^1.32.0

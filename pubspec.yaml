@@ -4,6 +4,7 @@ environment:
   sdk: ^3.9.0
 workspace:
   - packages/dex
+  - packages/macho
   - packages/redis_client
   - packages/scoped_deps
   - packages/shorebird_build_trace

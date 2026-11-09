@@ -34,6 +34,7 @@ jobs:
       pull-requests: read
     outputs:
       dex: ${{ steps.filter.outputs.dex }}
+      macho: ${{ steps.filter.outputs.macho }}
       scoped_deps: ${{ steps.filter.outputs.scoped_deps }}
       shorebird_build_trace: ${{ steps.filter.outputs.shorebird_build_trace }}
       shorebird_ci: ${{ steps.filter.outputs.shorebird_ci }}
@@ -60,6 +61,12 @@ jobs:
               - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
+              - pubspec.lock
+              - pubspec.yaml
+            macho:
+              - .github/workflows/shorebird_ci.yaml
+              - .github/workflows/_shorebird_ci_dart.yaml
+              - packages/macho/**
               - pubspec.lock
               - pubspec.yaml
             scoped_deps:
@@ -126,6 +133,17 @@ jobs:
       package_path: packages/dex
       has_unit_tests: true
       subpackages: ""
+
+  macho:
+    needs: changes
+    if: needs.changes.outputs.macho == 'true'
+    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    with:
+      package_name: macho
+      package_path: packages/macho
+      has_unit_tests: true
+      subpackages: ""
+      min_coverage: "100"
 
   scoped_deps:
     needs: changes
@@ -238,6 +256,7 @@ jobs:
     needs:
       - changes
       - dex
+      - macho
       - scoped_deps
       - shorebird_build_trace
       - shorebird_ci
