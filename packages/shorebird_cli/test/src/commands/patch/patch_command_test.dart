@@ -648,6 +648,24 @@ void main() {
           );
         });
 
+        group('when the release Flutter version is a side version', () {
+          setUp(() {
+            when(() => shorebirdFlutter.getVersion()).thenAnswer(
+              (_) async => Version.parse('$minimumFlutterVersion-sb.1'),
+            );
+          });
+
+          test('builds the patch', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).called(1);
+          });
+        });
+
         group('when the release Flutter version is supported', () {
           setUp(() {
             when(
@@ -1651,6 +1669,31 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                     ),
                   ),
                 );
+                verify(
+                  () => patcher.obfuscationMapPath = any(that: isNotNull),
+                ).called(1);
+              });
+            });
+
+            group('when the release Flutter is a side version', () {
+              setUp(() {
+                when(
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => false);
+                stubReleaseFlutterVersion('3.41.2-sb.1');
+              });
+
+              test('loads the release obfuscation map', () async {
+                expect(
+                  Version.parse('3.41.2-sb.1'),
+                  lessThan(minimumObfuscationFlutterVersion),
+                );
+
+                await runWithOverrides(() => command.createPatch(patcher));
+
                 verify(
                   () => patcher.obfuscationMapPath = any(that: isNotNull),
                 ).called(1);

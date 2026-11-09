@@ -1460,6 +1460,49 @@ Did you mean --release-version=1.0.0+1?''',
         },
       );
 
+      group('when the Flutter version is a Shorebird side version', () {
+        late MockReleaser releaser;
+
+        setUp(() {
+          releaser = MockReleaser();
+          when(() => releaser.useObfuscation).thenReturn(false);
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(Version(0, 0, 0));
+          when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+        });
+
+        test('clears the release floor its upstream version clears', () async {
+          final sideVersion = Version.parse('3.32.6-sb.1');
+          expect(sideVersion, lessThan(minimumSupportedWindowsFlutterVersion));
+          when(() => releaser.releaseType).thenReturn(ReleaseType.windows);
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(minimumSupportedWindowsFlutterVersion);
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => sideVersion);
+
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+
+          verify(releaser.assertArgsAreValid).called(1);
+        });
+
+        test('clears the obfuscation floor on iOS', () async {
+          final sideVersion = Version.parse('3.41.2-sb.1');
+          expect(sideVersion, lessThan(minimumObfuscationFlutterVersion));
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          when(() => releaser.useObfuscation).thenReturn(true);
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => sideVersion);
+
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+
+          verify(releaser.assertArgsAreValid).called(1);
+        });
+      });
+
       group('when obfuscating below the obfuscation map floor', () {
         late MockReleaser releaser;
         final oldFlutterVersion = Version(3, 38, 9);
