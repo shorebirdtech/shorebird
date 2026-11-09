@@ -41,21 +41,26 @@ void main() {
       expect(command.description, contains('Removed'));
     });
 
-    test('errors with usage exit code and points to API keys', () async {
-      final result = await runWithOverrides(command.run);
+    test(
+      'errors with usage exit code and points to service accounts',
+      () async {
+        final result = await runWithOverrides(command.run);
 
-      expect(result, equals(ExitCode.usage.code));
+        expect(result, equals(ExitCode.usage.code));
 
-      final captured = verify(
-        () => logger.err(captureAny()),
-      ).captured;
+        final captured = verify(
+          () => logger.err(captureAny()),
+        ).captured;
 
-      final message = captured.single as String;
-      expect(message, contains('shorebird login:ci has been replaced'));
-      expect(message, contains('console.shorebird.dev'));
-      expect(message, contains('SHOREBIRD_TOKEN'));
-      expect(message, contains('docs.shorebird.dev/account/api-keys'));
-    });
+        final message = captured.single as String;
+        expect(message, contains('shorebird login:ci has been replaced'));
+        expect(message, contains('SHOREBIRD_TOKEN'));
+        expect(
+          message,
+          contains('docs.shorebird.dev/account/service-accounts'),
+        );
+      },
+    );
 
     test('does not trigger any auth flow', () async {
       await runWithOverrides(command.run);

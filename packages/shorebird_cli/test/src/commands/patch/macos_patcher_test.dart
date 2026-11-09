@@ -764,6 +764,44 @@ This may indicate that the patch contains native changes, which cannot be applie
 
           expect(splitDebugInfo.existsSync(), isTrue);
         });
+
+        test('writes each architecture its own symbols file', () async {
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception catch (_) {
+            // swallow exception
+          }
+
+          List<String> argsFor(ShorebirdArtifact artifact) =>
+              verify(
+                    () => artifactBuilder.buildElfAotSnapshot(
+                      appDillPath: any(named: 'appDillPath'),
+                      outFilePath: any(named: 'outFilePath'),
+                      genSnapshotArtifact: artifact,
+                      additionalArgs: captureAny(named: 'additionalArgs'),
+                    ),
+                  ).captured.single
+                  as List<String>;
+
+          expect(
+            argsFor(ShorebirdArtifact.genSnapshotMacosArm64),
+            contains(
+              '--save-debugging-info=${p.join(
+                splitDebugInfo.absolute.path,
+                'app.darwin-arm64.symbols',
+              )}',
+            ),
+          );
+          expect(
+            argsFor(ShorebirdArtifact.genSnapshotMacosX64),
+            contains(
+              '--save-debugging-info=${p.join(
+                splitDebugInfo.absolute.path,
+                'app.darwin-x86_64.symbols',
+              )}',
+            ),
+          );
+        });
       });
 
       group('when build succeeds', () {

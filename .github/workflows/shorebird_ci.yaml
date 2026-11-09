@@ -48,34 +48,40 @@ jobs:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
       - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
-      - run: dart pub global activate shorebird_ci 0.2.5
+      - run: dart pub global activate shorebird_ci 0.3.0
       - name: Verify CI coverage
         run: shorebird_ci verify
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          base: ${{ github.event.merge_group.base_ref || '' }}
           filters: |
             dex:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
               - pubspec.lock
               - pubspec.yaml
             scoped_deps:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/scoped_deps/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_build_trace:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_build_trace/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_ci:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_ci/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_cli:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/dex/**
               - packages/scoped_deps/**
@@ -86,22 +92,26 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_client:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_protocol:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_redis_client:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/redis_client/**
               - pubspec.lock
               - pubspec.yaml
             verify_cache:
+              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
               - packages/verify_cache/**
               - pubspec.lock
@@ -126,6 +136,8 @@ jobs:
       package_path: packages/scoped_deps
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
+      min_coverage: "100"
 
   shorebird_build_trace:
     needs: changes
@@ -146,6 +158,8 @@ jobs:
       package_path: packages/shorebird_ci
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
+      min_coverage: "99.7"
 
   shorebird_cli:
     needs: changes
@@ -156,6 +170,8 @@ jobs:
       package_path: packages/shorebird_cli
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
+      min_coverage: "94.7"
 
   shorebird_code_push_client:
     needs: changes
@@ -166,6 +182,8 @@ jobs:
       package_path: packages/shorebird_code_push_client
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
+      min_coverage: "99.4"
 
   shorebird_code_push_protocol:
     needs: changes
@@ -176,6 +194,8 @@ jobs:
       package_path: packages/shorebird_code_push_protocol
       has_unit_tests: true
       subpackages: ""
+      runners: '["macos-latest", "windows-latest", "ubuntu-latest"]'
+      min_coverage: "97.6"
 
   shorebird_redis_client:
     needs: changes
@@ -187,6 +207,7 @@ jobs:
       has_unit_tests: true
       subpackages: ""
       needs_redis: true
+      min_coverage: "98.0"
 
   verify_cache:
     needs: changes
@@ -201,14 +222,15 @@ jobs:
   cspell:
     name: CSpell
     runs-on: ubuntu-latest
+    # npx installs cspell's dependencies unpinned, so the job gets a
+    # read-only token and checkout doesn't leave it in .git/config.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
-      - uses: streetsidesoftware/cspell-action@ce1816e4ce36532956ac6e983737392774b6e169 # v9.2.0
-        with:
-          incremental_files_only: false
-          config: cspell.config.yaml
+          persist-credentials: false
+      - run: npx --yes cspell@10.4.0 --config cspell.config.yaml --no-progress "**"
 
   required:
     name: required

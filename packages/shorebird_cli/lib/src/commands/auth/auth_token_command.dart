@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template auth_token_command}
@@ -72,8 +73,9 @@ class AuthTokenCommand extends ShorebirdCommand {
             'this session sends, which is short-lived unless it is an API '
             'key.',
         hint:
-            'API keys (for $shorebirdTokenEnvVar in CI) are managed with '
-            '`$tokensCommand`.',
+            'Personal API keys are managed with `$tokensCommand`. For '
+            '$shorebirdTokenEnvVar in CI, use a service account key: '
+            '$serviceAccountsUrl',
       );
     }
 

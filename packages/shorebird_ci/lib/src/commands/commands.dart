@@ -1,4 +1,5 @@
 export 'affected_packages_command.dart';
+export 'check_coverage_command.dart';
 export 'flutter_version_command.dart';
 export 'generate_command.dart';
 export 'update_actions_command.dart';

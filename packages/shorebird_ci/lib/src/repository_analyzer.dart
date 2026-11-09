@@ -27,9 +27,12 @@ class RepositoryAnalyzer {
       );
     }
 
-    final submodulePaths = _git.submodulePaths(
-      workingDirectory: repositoryRoot.path,
-    );
+    final submodulePaths = {
+      ..._git.submodulePaths(
+        workingDirectory: repositoryRoot.path,
+      ),
+      ...DependencyResolver(repositoryRoot.path).submodulePaths,
+    }.toList();
     final absoluteSubmodulePaths = submodulePaths
         .map((e) => p.join(repositoryRoot.path, e))
         .toSet();
@@ -88,10 +91,15 @@ class RepositoryAnalyzer {
         .whereType<PackageDescription>()
         .toList();
 
+    final hasSubmodules =
+        submodulePaths.isNotEmpty ||
+        File(p.join(repositoryRoot.path, '.gitmodules')).existsSync();
+
     return RepositoryDescription(
       packages: packageDescriptions,
       root: repositoryRoot,
       hasCodecov: hasCodecov,
+      hasSubmodules: hasSubmodules,
       cspellConfig: cSpellConfigFile,
     );
   }
@@ -280,6 +288,60 @@ class RepositoryAnalyzer {
     return devDependencies?.containsKey('bloc_lint') ?? false;
   }
 
+  /// Reads optional declarative `shorebird_ci:` configuration from
+  /// `pubspec.yaml` at [root].
+  static PackageCiConfig ciConfig({required Directory root}) {
+    final pubspec = readPubspec(root.path);
+    final raw = pubspec?['shorebird_ci'];
+    if (raw is! YamlMap) return const PackageCiConfig();
+
+    final minCoverageValue = raw['min_coverage'];
+    final minCoverage = minCoverageValue?.toString();
+
+    List<String>? runners;
+    final rawRunners = raw['runners'];
+    if (rawRunners is YamlList) {
+      runners = [for (final item in rawRunners) item.toString()];
+    }
+
+    final needsRedis = raw['needs_redis'] == true;
+
+    String? reportOn;
+    final rawReportOn = raw['report_on'];
+    if (rawReportOn is String) {
+      reportOn = rawReportOn;
+    } else if (rawReportOn is YamlList) {
+      reportOn = [for (final item in rawReportOn) item.toString()].join(',');
+    }
+
+    String? coverageExcludes;
+    final rawExcludes = raw['coverage_excludes'];
+    if (rawExcludes is String) {
+      coverageExcludes = rawExcludes;
+    } else if (rawExcludes is YamlList) {
+      coverageExcludes = [
+        for (final item in rawExcludes) item.toString(),
+      ].join(' ');
+    }
+
+    int? totalShards;
+    final rawShards = raw['total_shards'];
+    if (rawShards is int) {
+      totalShards = rawShards;
+    } else if (rawShards is String) {
+      totalShards = int.tryParse(rawShards);
+    }
+
+    return PackageCiConfig(
+      minCoverage: minCoverage,
+      runners: runners,
+      needsRedis: needsRedis,
+      reportOn: reportOn,
+      coverageExcludes: coverageExcludes,
+      totalShards: totalShards,
+    );
+  }
+
   /// Whether a package has unit tests.
   static bool hasUnitTests({required Directory root}) {
     return _hasAnyFile(Directory(p.join(root.path, 'test')));
@@ -423,4 +485,36 @@ void walkPruned({
 /// a path that the runner can't resolve.
 String posixRelative(String path, {required String from}) {
   return p.relative(path, from: from).replaceAll(r'\', '/');
+}
+
+/// Declarative per-package CI configuration from `shorebird_ci:` in
+/// `pubspec.yaml`.
+class PackageCiConfig {
+  /// Creates a [PackageCiConfig].
+  const PackageCiConfig({
+    this.minCoverage,
+    this.runners,
+    this.needsRedis = false,
+    this.reportOn,
+    this.coverageExcludes,
+    this.totalShards,
+  });
+
+  /// Minimum line coverage floor (e.g., `"99.7"` or `"100"`).
+  final String? minCoverage;
+
+  /// Runner labels for the OS matrix on `main` and `merge_group`.
+  final List<String>? runners;
+
+  /// Whether the package requires a Redis instance during tests.
+  final bool needsRedis;
+
+  /// Directories passed to `--report-on` when formatting coverage.
+  final String? reportOn;
+
+  /// Globs excluded from coverage checking.
+  final String? coverageExcludes;
+
+  /// Number of file-level test shards when greater than 1.
+  final int? totalShards;
 }

@@ -82,8 +82,9 @@ void main() {
         expect(error['message'], contains('takes no arguments'));
         expect(
           error['hint'],
-          'API keys (for SHOREBIRD_TOKEN in CI) are managed with '
-          '`shorebird tokens create`.',
+          'Personal API keys are managed with `shorebird tokens create`. For '
+          'SHOREBIRD_TOKEN in CI, use a service account key: '
+          'https://docs.shorebird.dev/account/service-accounts/',
         );
       });
 
@@ -91,8 +92,9 @@ void main() {
         final error = await runWithRest(['generate']);
         expect(
           error['hint'],
-          'API keys (for SHOREBIRD_TOKEN in CI) are managed with '
-          '`shorebird tokens`.',
+          'Personal API keys are managed with `shorebird tokens`. For '
+          'SHOREBIRD_TOKEN in CI, use a service account key: '
+          'https://docs.shorebird.dev/account/service-accounts/',
         );
       });
     });

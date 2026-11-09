@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
+import 'package:shorebird_cli/src/flutter_build_options.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -44,6 +45,8 @@ class ReleaseCommand extends ShorebirdCommand {
     argParser
       ..addMultiOption(
         CommonArguments.dartDefineArg.name,
+        abbr: 'D',
+        splitCommas: false,
         help: CommonArguments.dartDefineArg.description,
       )
       ..addMultiOption(
@@ -174,7 +177,8 @@ The version of the Android or iOS app that embeds this module
         defaultsTo: '10000',
         hide: true,
         help: CommonArguments.ddMaxBytesArg.description,
-      );
+      )
+      ..addFlutterBuildOptions();
   }
 
   late final ResolveReleaser _resolveReleaser;
@@ -185,6 +189,9 @@ The version of the Android or iOS app that embeds this module
 
   @override
   String get name => 'release';
+
+  @override
+  String get usageFooter => flutterBuildOptionsUsage('release');
 
   @override
   Future<int> run() async {
@@ -373,6 +380,7 @@ The version of the Android or iOS app that embeds this module
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
+    _assertSigningAllowedByPolicy(app);
     final targetFlutterRevision = await _installTargetFlutter();
     await _ensureRequestedVersionIsReleasable(
       releaser: releaser,
@@ -389,6 +397,25 @@ The version of the Android or iOS app that embeds this module
         flutterRevision: targetFlutterRevision,
       ),
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    );
+  }
+
+  /// Exits before building if [app]'s enterprise requires patch signing and
+  /// the release would be built without it (`--no-patch-signing`): the
+  /// server refuses such a release, so building it would only waste the
+  /// build.
+  void _assertSigningAllowedByPolicy(AppMetadata app) {
+    if (app.patchSigningRequired != true || results.patchSigningEnabled) {
+      return;
+    }
+    throw CommandError(
+      message:
+          '${app.enterpriseName ?? 'Your enterprise'} requires patch '
+          "signing, so a release can't be built without it.",
+      hint:
+          'Release again without '
+          '--no-${CommonArguments.patchSigningArg.name}.',
+      exitCode: ExitCode.noPerm,
     );
   }
 

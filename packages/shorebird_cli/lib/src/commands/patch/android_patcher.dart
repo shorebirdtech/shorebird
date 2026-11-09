@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -18,6 +17,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -80,10 +80,14 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final flutterVersion = await shorebirdFlutter.getVersion();
-    // Android versions prior to 3.24.2 have a bug that can cause patches to
-    // be erroneously uninstalled.
+    // Android versions prior to 3.24.2 (except the patched 3.24.1 revision)
+    // have a bug that can cause patches to be erroneously uninstalled.
     // https://github.com/shorebirdtech/updater/issues/211 was fixed in 3.24.2
-    if (flutterVersion != null && flutterVersion < Version(3, 24, 2)) {
+    if (flutterVersion != null &&
+        !updaterPatchErrorFixConstraint.isSatisfiedBy(
+          version: flutterVersion,
+          revision: shorebirdEnv.flutterRevision,
+        )) {
       logger.warn(updaterPatchErrorWarning);
     }
 

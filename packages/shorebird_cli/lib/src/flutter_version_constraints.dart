@@ -99,6 +99,21 @@ class FlutterSupportConstraint {
       version >= minVersion || allowedRevisions.contains(revision);
 }
 
+/// Flutter versions that include the fix for
+/// https://github.com/shorebirdtech/updater/issues/211, where Android apps
+/// that start secondary Flutter engines (such as via
+/// `package:flutter_foreground_task`) could erroneously uninstall patches.
+///
+/// The fix shipped in Shorebird's second Flutter 3.24.1 engine revision
+/// (`a25b7cdfb9ef79f7d6dae48a6334a415f024a0a8`, Shorebird 1.3.1) and in
+/// Flutter 3.24.2 onward.
+final updaterPatchErrorFixConstraint = FlutterSupportConstraint(
+  minVersion: Version(3, 24, 2),
+  allowedRevisions: {
+    'a25b7cdfb9ef79f7d6dae48a6334a415f024a0a8',
+  },
+);
+
 /// Flutter support for downloading the `patch-darwin-arm64.zip` artifact
 /// on Apple Silicon. The arm64 upload was added in shorebirdtech/flutter#129
 /// (merged 2026-04-09); the tip of `flutter_release/3.41.7` and every

@@ -290,7 +290,7 @@ class CodePushClientWrapper {
   }
 
   /// Fetches the pending invitations to organization [organizationId], or
-  /// null if the user's role can't see them (the `auditor` role can't).
+  /// null if the user's role can't see them.
   Future<List<InvitationSummary>?> maybeGetOrganizationInvitations({
     required int organizationId,
   }) async {

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 import 'package:shorebird_ci/src/dependency_resolver.dart';
+import 'package:shorebird_ci/src/dorny_filter.dart';
 import 'package:shorebird_ci/src/flutter_version_resolver.dart';
 import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/package_slug.dart';
@@ -73,6 +74,21 @@ jobs only run on touched paths. The `required` job key is reserved
 when this flag is set, so generation fails if any package slug
 resolves to `required`. Skip the flag and any package slug is fine.''',
         negatable: false,
+      )
+      ..addFlag(
+        'filters-only',
+        help: '''
+Update `dorny/paths-filter` `filters: |` blocks in place inside the
+target workflow file without overwriting surrounding jobs, services,
+or matrix strategies.''',
+        negatable: false,
+      )
+      ..addFlag(
+        'fatal-infos',
+        help:
+            'Pass --fatal-infos to `dart analyze` and `flutter analyze` '
+            'in the generated workflows.',
+        negatable: false,
       );
   }
 
@@ -91,6 +107,8 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
     final style = argResults!['style'] as String;
     final codecovTokenSecret = argResults!['codecov-token-secret'] as String?;
     final emitRequiredJob = argResults!.flag('required');
+    final filtersOnly = argResults!.flag('filters-only');
+    final fatalInfos = argResults!.flag('fatal-infos');
 
     final analyzer = RepositoryAnalyzer();
     final repoDir = Directory(repoRoot);
@@ -108,6 +126,15 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
         (PackageDescription a, PackageDescription b) =>
             a.name.compareTo(b.name),
       );
+
+    if (filtersOnly) {
+      return _runFiltersOnly(
+        repository: repository,
+        packages: sortedPackages,
+        outputPath: outputPath,
+        dryRun: dryRun,
+      );
+    }
 
     // Slugs only matter for static-mode workflow generation: in dynamic
     // mode jobs are keyed `setup` / `dart_ci` / `flutter_ci` / `cspell`,
@@ -153,6 +180,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
             outputPath: outputPath,
             codecovTokenSecret: codecovTokenSecret,
             emitRequiredJob: emitRequiredJob,
+            fatalInfos: fatalInfos,
             packages: sortedPackages,
             slugs: slugs!,
           )
@@ -161,6 +189,7 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
               repository,
               codecovTokenSecret: codecovTokenSecret,
               emitRequiredJob: emitRequiredJob,
+              fatalInfos: fatalInfos,
             ),
           };
 
@@ -243,6 +272,64 @@ updates:
     stderr.writeln('Wrote ${file.path}');
   }
 
+  int _runFiltersOnly({
+    required RepositoryDescription repository,
+    required List<PackageDescription> packages,
+    required String outputPath,
+    required bool dryRun,
+  }) {
+    final outputFile = File(p.join(repoRoot, outputPath));
+    if (!outputFile.existsSync()) {
+      stderr.writeln(
+        'Workflow file not found: ${outputFile.path}. '
+        'Run `shorebird_ci generate` without --filters-only first.',
+      );
+      return 1;
+    }
+
+    final existing = outputFile.readAsStringSync();
+    final usesReusable =
+        existing.contains('_shorebird_ci_dart.yaml') ||
+        existing.contains('_shorebird_ci_flutter.yaml');
+    final slugs = computePackageSlugs(packages: packages, repoRoot: repoRoot);
+    final resolver = DependencyResolver(repoRoot);
+    final packageFilters = <String, List<String>>{};
+
+    for (final package in packages) {
+      final packageDir = posixRelative(package.rootPath, from: repoRoot);
+      final isFlutter = RepositoryAnalyzer.dependsOnFlutter(root: package.root);
+      final workflowFile = usesReusable
+          ? (isFlutter
+                ? '.github/workflows/_shorebird_ci_flutter.yaml'
+                : '.github/workflows/_shorebird_ci_dart.yaml')
+          : null;
+      packageFilters[slugs[package]!] = resolver.filterPaths(
+        packageDir,
+        workflowFile: workflowFile,
+      );
+    }
+
+    final updated = updateDornyFilters(existing, packageFilters);
+    if (updated == null) {
+      stderr.writeln(
+        'No dorny/paths-filter `filters: |` block found in ${outputFile.path}.',
+      );
+      return 1;
+    }
+
+    if (dryRun) {
+      stdout
+        ..writeln('# ──── $outputPath ────')
+        ..write(updated)
+        ..writeln();
+      return 0;
+    }
+
+    outputFile.writeAsStringSync(updated);
+    stderr.writeln('Updated filters in ${outputFile.path}');
+    return 0;
+  }
+
   // ── Static (dorny/paths-filter + reusable workflows) ─────────────
   //
   // Produces a full drop-in workflow setup: a main workflow that uses
@@ -256,6 +343,7 @@ updates:
     required String outputPath,
     required String? codecovTokenSecret,
     required bool emitRequiredJob,
+    required bool fatalInfos,
     required List<PackageDescription> packages,
     required Map<PackageDescription, String> slugs,
   }) {
@@ -280,6 +368,9 @@ updates:
           _buildDartReusableWorkflow(
             hasBlocLint: _anyDependsOnBlocLint(packages, isFlutter: false),
             hasCodecov: repository.hasCodecov,
+            hasRedis: _anyNeedsRedis(packages),
+            hasSubmodules: repository.hasSubmodules,
+            fatalInfos: fatalInfos,
             codecovTokenSecret: codecovTokenSecret,
           );
     }
@@ -288,6 +379,8 @@ updates:
           _buildFlutterReusableWorkflow(
             hasBlocLint: _anyDependsOnBlocLint(packages, isFlutter: true),
             hasCodecov: repository.hasCodecov,
+            hasSubmodules: repository.hasSubmodules,
+            fatalInfos: fatalInfos,
             codecovTokenSecret: codecovTokenSecret,
           );
     }
@@ -327,9 +420,14 @@ on:
     branches:
       - main
 
+$_readOnlyPermissionsBlock
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # dorny/paths-filter lists a pull request's changed files through the API.
+      pull-requests: read
     outputs:
 ''');
 
@@ -345,7 +443,7 @@ jobs:
     steps:
       - uses: $checkoutAction
         with:
-          # Full history so dorny/paths-filter can diff on push events.
+${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
       - uses: $setupDartAction
       - run: dart pub global activate shorebird_ci $packageVersion
@@ -354,6 +452,7 @@ jobs:
       - uses: $pathsFilterAction
         id: filter
         with:
+          base: \${{ github.event.merge_group.base_ref || '' }}
           filters: |
 ''');
 
@@ -362,17 +461,21 @@ jobs:
         package.rootPath,
         from: repository.root.path,
       );
-      final sortedDeps = resolver.resolve(packageDir).toList()..sort();
+      final isFlutter = RepositoryAnalyzer.dependsOnFlutter(
+        root: package.root,
+      );
+      final reusable = isFlutter
+          ? '.github/workflows/_shorebird_ci_flutter.yaml'
+          : '.github/workflows/_shorebird_ci_dart.yaml';
+      final filterEntries = resolver.filterPaths(
+        packageDir,
+        workflowFile: reusable,
+      );
       final slug = slugs[package]!;
 
       buffer.writeln('            $slug:');
-      for (final dep in sortedDeps) {
-        buffer.writeln('              - $dep/**');
-      }
-      final workspaceFiles = resolver.workspaceFiles(packageDir).toList()
-        ..sort();
-      for (final file in workspaceFiles) {
-        buffer.writeln('              - $file');
+      for (final entry in filterEntries) {
+        buffer.writeln('              - $entry');
       }
     }
     buffer.writeln();
@@ -394,6 +497,7 @@ jobs:
           ? '_shorebird_ci_flutter.yaml'
           : '_shorebird_ci_dart.yaml';
       final slug = slugs[package]!;
+      final ciConfig = RepositoryAnalyzer.ciConfig(root: package.root);
 
       buffer.write('''
   $slug:
@@ -412,6 +516,28 @@ jobs:
       // pass it only where it's true.
       if (RepositoryAnalyzer.dependsOnBlocLint(root: package.root)) {
         buffer.writeln('      has_bloc_lint: true');
+      }
+      if (ciConfig.needsRedis) {
+        buffer.writeln('      needs_redis: true');
+      }
+      if (ciConfig.runners != null && ciConfig.runners!.isNotEmpty) {
+        final runnersJson = ciConfig.runners!.map((r) => '"$r"').join(', ');
+        buffer.writeln("      runners: '[$runnersJson]'");
+      }
+      if (ciConfig.minCoverage != null && ciConfig.minCoverage!.isNotEmpty) {
+        buffer.writeln('      min_coverage: "${ciConfig.minCoverage}"');
+      }
+      if (ciConfig.coverageExcludes != null &&
+          ciConfig.coverageExcludes!.isNotEmpty) {
+        buffer.writeln(
+          '      coverage_excludes: "${ciConfig.coverageExcludes}"',
+        );
+      }
+      if (ciConfig.reportOn != null && ciConfig.reportOn!.isNotEmpty) {
+        buffer.writeln('      report_on: "${ciConfig.reportOn}"');
+      }
+      if (ciConfig.totalShards != null && ciConfig.totalShards! > 1) {
+        buffer.writeln('      total_shards: ${ciConfig.totalShards}');
       }
 
       if (isFlutter) {
@@ -452,29 +578,25 @@ jobs:
   String _buildDartReusableWorkflow({
     required bool hasBlocLint,
     required bool hasCodecov,
+    required bool hasRedis,
+    required bool hasSubmodules,
+    required bool fatalInfos,
     required String? codecovTokenSecret,
   }) {
-    final testStep = hasCodecov
+    final analyzeFlag = fatalInfos ? '--fatal-infos' : '--fatal-warnings';
+    final collectCondition = hasCodecov
+        ? 'true'
+        : r'[ -n "$MIN_COVERAGE" ] && [ "$MIN_COVERAGE" != "0" ] && '
+              r'[ "$RUNNER_OS_NAME" = "ubuntu-latest" ]';
+    final codecovStep = hasCodecov
         ? '''
-      - name: Run Tests
-        if: inputs.has_unit_tests
-        working-directory: \${{ inputs.package_path }}
-        # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
-        run: |
-          dart pub global activate coverage 1.15.1 && \\
-          dart test --coverage=coverage && \\
-          dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
         uses: $codecovAction
         with:
           flags: \${{ inputs.package_name }}
           working-directory: \${{ inputs.package_path }}
 ${_codecovTokenLine(codecovTokenSecret)}'''
-        : r'''
-      - if: inputs.has_unit_tests
-        working-directory: ${{ inputs.package_path }}
-        run: dart test
-''';
+        : '';
 
     return '''
 # Generated by shorebird_ci --style static. Safe to edit.
@@ -496,50 +618,142 @@ ${hasBlocLint ? _staticBlocLintInput : ''}      has_unit_tests:
         required: false
         default: ""
         type: string
+${hasRedis ? _staticRedisInput : ''}      runners:
+        required: false
+        default: '["ubuntu-latest"]'
+        type: string
+      min_coverage:
+        required: false
+        default: ""
+        type: string
+      coverage_excludes:
+        required: false
+        default: ""
+        type: string
+      report_on:
+        required: false
+        default: ""
+        type: string
+      total_shards:
+        required: false
+        default: 1
+        type: number
+      shard_index:
+        required: false
+        default: 0
+        type: number
 
+$_readOnlyPermissionsBlock
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: \${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || inputs.runners) }}
+    runs-on: \${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: $checkoutAction
-        with:
-          submodules: recursive
-      - uses: $setupDartAction
+${_checkoutStep(hasSubmodules: hasSubmodules)}${hasRedis ? _staticRedisStep : ''}      - uses: $setupDartAction
 ${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
         run: |
           dart pub get --no-example
           for sub in \${{ inputs.subpackages }}; do
-            dart pub get --no-example -C \$sub
+            dart pub get --no-example -C "\$sub"
           done
       - working-directory: \${{ inputs.package_path }}
-        run: dart format --set-exit-if-changed .
+        run: |
+          dart format --set-exit-if-changed .
+          if [ -d routes/.well-known ]; then
+            dart format --set-exit-if-changed routes/.well-known
+          fi
       - working-directory: \${{ inputs.package_path }}
-        run: dart analyze --fatal-warnings .
-${hasBlocLint ? _staticBlocLintStep : ''}$testStep''';
+        run: |
+          dart analyze $analyzeFlag .
+          if [ -d routes/.well-known ]; then
+            dart analyze $analyzeFlag routes/.well-known
+          fi
+${hasBlocLint ? _staticBlocLintStep : ''}      - name: Run Tests
+        if: inputs.has_unit_tests
+        working-directory: \${{ inputs.package_path }}
+        env:
+          MIN_COVERAGE: \${{ inputs.min_coverage }}
+          PACKAGE_NAME: \${{ inputs.package_name }}
+          REPORT_ON: \${{ inputs.report_on }}
+          RUNNER_OS_NAME: \${{ matrix.os }}
+          SHARD_INDEX: \${{ inputs.shard_index }}
+          TOTAL_SHARDS: \${{ inputs.total_shards }}
+          WORKSPACE_ROOT: \${{ github.workspace }}
+        run: |
+          set -f
+          files=\$(find test -name '*_test.dart' | sort | awk -v n="\${TOTAL_SHARDS:-1}" -v i="\${SHARD_INDEX:-0}" 'NR % n == i')
+          if [ -z "\$files" ]; then
+            exit 0
+          fi
+          if $collectCondition; then
+            # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
+            dart pub global activate coverage 1.15.1
+            COVERAGE_DIR="\$(pwd -W 2>/dev/null || pwd)/coverage"
+            printf '%s\\n' "\$files" | xargs -n 50 dart test --coverage="\$COVERAGE_DIR"
+            if [ -z "\$(find coverage -name '*.json' -print -quit)" ]; then
+              echo "::error::dart test wrote no coverage files to coverage/"
+              exit 1
+            fi
+            if [ -z "\$REPORT_ON" ]; then
+              if [ -d routes ]; then
+                REPORT_ON="lib,routes"
+              else
+                REPORT_ON="lib"
+              fi
+            fi
+            if [ -f .dart_tool/package_config.json ]; then
+              PACKAGE_CONFIG=".dart_tool/package_config.json"
+            else
+              PACKAGE_CONFIG="\$WORKSPACE_ROOT/.dart_tool/package_config.json"
+            fi
+            SCOPED_CONFIG="\$(dirname "\$PACKAGE_CONFIG")/package_config_scoped.json"
+            jq --arg name "\$PACKAGE_NAME" '.packages |= map(select(.name == \$name))' "\$PACKAGE_CONFIG" > "\$SCOPED_CONFIG"
+            dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="\$SCOPED_CONFIG" --report-on="\$REPORT_ON" --check-ignore
+          else
+            printf '%s\\n' "\$files" | xargs -n 50 dart test
+          fi
+      - name: Check Coverage
+        if: inputs.has_unit_tests && inputs.min_coverage != '' && inputs.min_coverage != '0' && matrix.os == 'ubuntu-latest'
+        working-directory: \${{ inputs.package_path }}
+        env:
+          EXCLUDES: \${{ inputs.coverage_excludes }}
+          MIN_COVERAGE: \${{ inputs.min_coverage }}
+        run: |
+          dart pub global activate shorebird_ci $packageVersion
+          shorebird_ci check_coverage coverage/lcov.info --min "\$MIN_COVERAGE" --exclude "\$EXCLUDES"
+$codecovStep''';
   }
 
   String _buildFlutterReusableWorkflow({
     required bool hasBlocLint,
     required bool hasCodecov,
+    required bool hasSubmodules,
+    required bool fatalInfos,
     required String? codecovTokenSecret,
   }) {
-    final testStep = hasCodecov
+    final analyzeCmd = fatalInfos
+        ? 'flutter analyze --fatal-infos'
+        : 'flutter analyze';
+    final collectCondition = hasCodecov
+        ? 'true'
+        : r'[ -n "$MIN_COVERAGE" ] && [ "$MIN_COVERAGE" != "0" ] && '
+              r'[ "$RUNNER_OS_NAME" = "ubuntu-latest" ]';
+    final codecovStep = hasCodecov
         ? '''
-      - if: inputs.has_unit_tests
-        working-directory: \${{ inputs.package_path }}
-        run: flutter test --coverage
       - if: inputs.has_unit_tests
         uses: $codecovAction
         with:
           flags: \${{ inputs.package_name }}
           working-directory: \${{ inputs.package_path }}
 ${_codecovTokenLine(codecovTokenSecret)}'''
-        : r'''
-      - if: inputs.has_unit_tests
-        working-directory: ${{ inputs.package_path }}
-        run: flutter test
-''';
+        : '';
 
     return '''
 # Generated by shorebird_ci --style static. Safe to edit.
@@ -569,15 +783,40 @@ ${hasBlocLint ? _staticBlocLintInput : ''}      has_integration_tests:
         required: false
         default: ""
         type: string
+      runners:
+        required: false
+        default: '["ubuntu-latest"]'
+        type: string
+      min_coverage:
+        required: false
+        default: ""
+        type: string
+      coverage_excludes:
+        required: false
+        default: ""
+        type: string
+      total_shards:
+        required: false
+        default: 1
+        type: number
+      shard_index:
+        required: false
+        default: 0
+        type: number
 
+$_readOnlyPermissionsBlock
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: \${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || inputs.runners) }}
+    runs-on: \${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: $checkoutAction
-        with:
-          submodules: recursive
-      - name: Setup Flutter
+${_checkoutStep(hasSubmodules: hasSubmodules)}      - name: Setup Flutter
         uses: $flutterAction
         with:
           flutter-version: \${{ inputs.flutter_version || '' }}
@@ -587,23 +826,71 @@ ${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencie
         run: |
           flutter pub get --no-example
           for sub in \${{ inputs.subpackages }}; do
-            flutter pub get --no-example -C \$sub
+            flutter pub get --no-example -C "\$sub"
           done
       - working-directory: \${{ inputs.package_path }}
-        run: dart format --set-exit-if-changed .
+        run: |
+          dart format --set-exit-if-changed .
+          if [ -d routes/.well-known ]; then
+            dart format --set-exit-if-changed routes/.well-known
+          fi
       - working-directory: \${{ inputs.package_path }}
-        run: flutter analyze .
-${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Tests
+        run: |
+          $analyzeCmd .
+          if [ -d routes/.well-known ]; then
+            $analyzeCmd routes/.well-known
+          fi
+${hasBlocLint ? _staticBlocLintStep : ''}      - name: Run Tests
+        if: inputs.has_unit_tests
+        working-directory: \${{ inputs.package_path }}
+        env:
+          MIN_COVERAGE: \${{ inputs.min_coverage }}
+          RUNNER_OS_NAME: \${{ matrix.os }}
+          SHARD_INDEX: \${{ inputs.shard_index }}
+          TOTAL_SHARDS: \${{ inputs.total_shards }}
+        run: |
+          set -f
+          files=\$(find test -name '*_test.dart' | sort | awk -v n="\${TOTAL_SHARDS:-1}" -v i="\${SHARD_INDEX:-0}" 'NR % n == i')
+          if [ -z "\$files" ]; then
+            exit 0
+          fi
+          if $collectCondition; then
+            COVERAGE_DIR="\$(pwd -W 2>/dev/null || pwd)/coverage"
+            printf '%s\\n' "\$files" | xargs -n 50 flutter test --coverage --merge-coverage --coverage-path="\$COVERAGE_DIR/lcov.info"
+          else
+            printf '%s\\n' "\$files" | xargs -n 50 flutter test
+          fi
+      - name: Check Coverage
+        if: inputs.has_unit_tests && inputs.min_coverage != '' && inputs.min_coverage != '0' && matrix.os == 'ubuntu-latest'
+        working-directory: \${{ inputs.package_path }}
+        env:
+          EXCLUDES: \${{ inputs.coverage_excludes }}
+          MIN_COVERAGE: \${{ inputs.min_coverage }}
+        run: |
+          dart pub global activate shorebird_ci $packageVersion
+          shorebird_ci check_coverage coverage/lcov.info --min "\$MIN_COVERAGE" --exclude "\$EXCLUDES"
+$codecovStep      - name: Integration Tests
         if: inputs.has_integration_tests
         working-directory: \${{ inputs.package_path }}
         run: flutter test integration_test
 ''';
   }
 
+  static String _checkoutStep({required bool hasSubmodules}) {
+    if (!hasSubmodules) {
+      return '      - uses: $checkoutAction\n';
+    }
+    return '''
+      - uses: $checkoutAction
+        with:
+          submodules: recursive
+''';
+  }
+
   /// Whether any of the [packages] built with Flutter (or, when
   /// [isFlutter] is false, with plain Dart) has a bloc_lint dev
   /// dependency. Repos with none get no bloc input or steps, so their
-  /// workflows don't pull in felangel/setup-bloc-tools at all.
+  /// workflows don't install bloc_tools at all.
   static bool _anyDependsOnBlocLint(
     Iterable<PackageDescription> packages, {
     required bool isFlutter,
@@ -613,6 +900,9 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
         RepositoryAnalyzer.dependsOnBlocLint(root: pkg.root),
   );
 
+  static bool _anyNeedsRedis(Iterable<PackageDescription> packages) => packages
+      .any((pkg) => RepositoryAnalyzer.ciConfig(root: pkg.root).needsRedis);
+
   static const _staticBlocLintInput = '''
       has_bloc_lint:
         required: false
@@ -620,11 +910,26 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
         type: boolean
 ''';
 
+  static const _staticRedisInput = '''
+      needs_redis:
+        required: false
+        default: false
+        type: boolean
+''';
+
+  static const _staticRedisStep = '''
+      - name: 🐳 Run Redis
+        if: inputs.needs_redis
+        run: |
+          docker pull redis/redis-stack-server:latest
+          docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
+''';
+
   static const _staticBlocToolsSetupStep =
       '''
       - name: Setup Bloc Tools
         if: inputs.has_bloc_lint
-        uses: $setupBlocToolsAction
+        run: dart pub global activate bloc_tools $_blocToolsVersion
 ''';
 
   static const _staticBlocLintStep = r'''
@@ -640,6 +945,7 @@ ${hasBlocLint ? _staticBlocLintStep : ''}$testStep      - name: Integration Test
     RepositoryDescription repository, {
     required String? codecovTokenSecret,
     required bool emitRequiredJob,
+    required bool fatalInfos,
   }) {
     final hasDart = repository.packages.any(
       (pkg) => !RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
@@ -673,10 +979,16 @@ on:
   # there's no diff base) or when you want to force a full re-check.
   workflow_dispatch:
 
+$_readOnlyPermissionsBlock
 jobs:
 ''');
 
-    _writeSetupJob(buffer, hasDart: hasDart, hasFlutter: hasFlutter);
+    _writeSetupJob(
+      buffer,
+      hasDart: hasDart,
+      hasFlutter: hasFlutter,
+      hasSubmodules: repository.hasSubmodules,
+    );
 
     if (hasDart) {
       _writeCiJob(
@@ -686,6 +998,8 @@ jobs:
           repository.packages,
           isFlutter: false,
         ),
+        hasSubmodules: repository.hasSubmodules,
+        fatalInfos: fatalInfos,
         outputKey: 'dart_packages',
         sdk: 'dart',
         hasCodecov: repository.hasCodecov,
@@ -701,6 +1015,8 @@ jobs:
           repository.packages,
           isFlutter: true,
         ),
+        hasSubmodules: repository.hasSubmodules,
+        fatalInfos: fatalInfos,
         outputKey: 'flutter_packages',
         sdk: 'flutter',
         hasCodecov: repository.hasCodecov,
@@ -729,6 +1045,7 @@ jobs:
     StringBuffer buffer, {
     required bool hasDart,
     required bool hasFlutter,
+    required bool hasSubmodules,
   }) {
     buffer.write('''
   setup:
@@ -752,8 +1069,7 @@ jobs:
     steps:
       - uses: $checkoutAction
         with:
-          submodules: recursive
-          # affected_packages diffs against origin/main, which isn't in
+${hasSubmodules ? '          submodules: recursive\n' : ''}          # affected_packages diffs against origin/main, which isn't in
           # the default shallow checkout. Full history is needed for the
           # diff to resolve.
           fetch-depth: 0
@@ -808,6 +1124,8 @@ jobs:
     StringBuffer buffer, {
     required String jobId,
     required bool hasBlocLint,
+    required bool hasSubmodules,
+    required bool fatalInfos,
     required String outputKey,
     required String sdk,
     required bool hasCodecov,
@@ -817,11 +1135,19 @@ jobs:
     final executable = isFlutter ? 'flutter' : 'dart';
 
     buffer
-      ..write(_ciJobHeader(jobId: jobId, outputKey: outputKey))
+      ..write(
+        _ciJobHeader(
+          jobId: jobId,
+          outputKey: outputKey,
+          hasSubmodules: hasSubmodules,
+        ),
+      )
       ..write(_sdkSetupStep(isFlutter: isFlutter))
       ..write(hasBlocLint ? _blocToolsSetupStep : '')
       ..write(_installDependenciesStep(executable: executable))
-      ..write(_formatAndAnalyzeSteps(executable: executable))
+      ..write(
+        _formatAndAnalyzeSteps(executable: executable, fatalInfos: fatalInfos),
+      )
       ..write(hasBlocLint ? _blocLintStep : '')
       ..write(
         _testStep(
@@ -840,7 +1166,11 @@ jobs:
   }
 
   // The job header up through the shared `actions/checkout` step.
-  String _ciJobHeader({required String jobId, required String outputKey}) {
+  String _ciJobHeader({
+    required String jobId,
+    required String outputKey,
+    required bool hasSubmodules,
+  }) {
     return '''
   $jobId:
     needs: setup
@@ -855,10 +1185,7 @@ jobs:
       run:
         working-directory: \${{ matrix.path }}
     steps:
-      - uses: $checkoutAction
-        with:
-          submodules: recursive
-''';
+${_checkoutStep(hasSubmodules: hasSubmodules)}''';
   }
 
   // For Flutter, use `flutter_version` from the matrix if the pubspec
@@ -878,7 +1205,7 @@ jobs:
       '''
       - name: Setup Bloc Tools
         if: matrix.has_bloc_lint == true
-        uses: $setupBlocToolsAction
+        run: dart pub global activate bloc_tools $_blocToolsVersion
 ''';
 
   String _installDependenciesStep({required String executable}) {
@@ -887,20 +1214,24 @@ jobs:
         run: |
           $executable pub get --no-example
           for sub in \${{ matrix.subpackages }}; do
-            $executable pub get --no-example -C \$sub
+            $executable pub get --no-example -C "\$sub"
           done
 ''';
   }
 
-  String _formatAndAnalyzeSteps({required String executable}) {
+  String _formatAndAnalyzeSteps({
+    required String executable,
+    required bool fatalInfos,
+  }) {
     // `dart analyze` defaults `--fatal-warnings` to on, so passing it is a
     // no-op today. Emitting it explicitly documents intent and keeps the
     // generated workflow correct if the SDK default ever flips.
     // `flutter analyze` already defaults `--fatal-warnings` to on with no
-    // CLI flag, so it doesn't need the same treatment.
+    // CLI flag, so it doesn't need the same treatment unless `--fatal-infos`
+    // is requested.
     final analyzeCmd = executable == 'dart'
-        ? 'dart analyze --fatal-warnings .'
-        : '$executable analyze .';
+        ? 'dart analyze ${fatalInfos ? '--fatal-infos' : '--fatal-warnings'} .'
+        : '$executable analyze ${fatalInfos ? '--fatal-infos ' : ''}.';
     return '''
       - run: dart format --set-exit-if-changed .
       - run: $analyzeCmd
@@ -962,14 +1293,15 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
   cspell:
     name: CSpell
     runs-on: ubuntu-latest
+    # npx installs cspell's dependencies unpinned, so the job gets a
+    # read-only token and checkout doesn't leave it in .git/config.
+    permissions:
+      contents: read
     steps:
       - uses: $checkoutAction
         with:
-          submodules: recursive
-      - uses: $cspellAction
-        with:
-          incremental_files_only: false
-          config: $configPath
+${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          persist-credentials: false
+      - run: npx --yes cspell@$_cspellVersion --config $configPath --no-progress "**"
 ''')
       ..writeln();
   }
@@ -1010,6 +1342,18 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
   }
 }
 
+/// The bloc_tools release `bloc lint` runs from. Only the package itself
+/// is pinned: pub resolves its dependencies (bloc_lint among them) fresh
+/// on each activate. Neither `generate` nor Dependabot bumps it; edit it
+/// here.
+const _blocToolsVersion = '0.1.0-dev.25';
+
+/// The cspell release the `cspell` job runs with `ubuntu-latest`'s own
+/// Node.js. As with [_blocToolsVersion], npx resolves its dependencies
+/// (the dictionaries among them) fresh on each run, and it's bumped by
+/// editing it here.
+const _cspellVersion = '10.4.0';
+
 /// Emitted ahead of `on:` in the main workflow.
 const _concurrencyBlock = r'''
 # A new push to a PR cancels that PR's run still going on the older head.
@@ -1018,4 +1362,14 @@ const _concurrencyBlock = r'''
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
+''';
+
+/// Sets the workflow's `GITHUB_TOKEN` to read-only, whatever the repo's
+/// default is: pub and test steps run third-party code. Reusable workflows
+/// carry this too, so they stay read-only when a hand-written caller grants
+/// more. A job that needs more declares its own `permissions:`, and a job in
+/// a reusable workflow can't exceed what the calling job grants.
+const _readOnlyPermissionsBlock = '''
+permissions:
+  contents: read
 ''';
