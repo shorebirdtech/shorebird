@@ -278,4 +278,22 @@ void main() {
     expect(result.exitCode, 0);
     expect(result.stdout, contains('--tool'));
   });
+
+  test('exits when the command leaves a subprocess running', () async {
+    final process = await Process.start(
+      Platform.resolvedExecutable,
+      [
+        bin,
+        '--cache-dir',
+        tempDir().path,
+        '--',
+        'sh',
+        '-c',
+        'sleep 5 &',
+      ],
+      workingDirectory: gitRepo().path,
+      environment: {slotHeldVariable: ''},
+    );
+    expect(await process.exitCode, 0);
+  });
 }
