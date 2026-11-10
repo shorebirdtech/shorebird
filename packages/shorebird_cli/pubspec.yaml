@@ -20,6 +20,8 @@ dependencies:
   crypto: ^3.0.8
   dex:
     path: ../dex
+  elf:
+    path: ../elf
   equatable: ^2.1.0
   ffi: ^2.2.0
   http: ^1.5.0

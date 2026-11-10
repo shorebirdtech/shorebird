@@ -74,6 +74,10 @@ More info: ${troubleshootingUrl.toLink()}.
   /// obfuscation flags when the release was built with obfuscation.
   List<String> extraBuildArgs = const [];
 
+  /// The downloaded primary release archive (e.g. `release.aab` on Android),
+  /// set by the patch command before building the patch.
+  File? releaseArchive;
+
   /// Additional gen_snapshot arguments needed to match the release's
   /// obfuscation flags. Used by Apple patchers for
   /// `ArtifactBuilder.buildElfAotSnapshot`

@@ -1,6 +1,7 @@
 export 'android_archive_differ.dart';
 export 'apple_archive_differ.dart';
 export 'bundle_dependencies.dart';
+export 'dart_bridge_analyzer.dart';
 export 'file_set_diff.dart';
 export 'linux_bundle_differ.dart';
 export 'windows_archive_differ.dart';
