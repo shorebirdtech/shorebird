@@ -130,6 +130,41 @@ void main() {
         await client.disconnect();
         await expectLater(client.execute(['PING']), completion(equals('PONG')));
       });
+
+      test(
+        'does not reconnect when closed before delayed reconnect fires',
+        () async {
+          final server = await ServerSocket.bind(
+            InternetAddress.loopbackIPv4,
+            0,
+          );
+          addTearDown(server.close);
+
+          var connections = 0;
+          server.listen((socket) {
+            connections++;
+            addTearDown(socket.destroy);
+          });
+
+          final reconnectingClient = RedisClient(
+            socket: RedisSocketOptions(
+              host: InternetAddress.loopbackIPv4.address,
+              port: server.port,
+              retryInterval: const Duration(milliseconds: 50),
+            ),
+          );
+          addTearDown(reconnectingClient.close);
+
+          await reconnectingClient.connect();
+          expect(connections, equals(1));
+
+          await reconnectingClient.disconnect();
+          await reconnectingClient.close();
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+
+          expect(connections, equals(1));
+        },
+      );
     });
 
     group('KEYS', () {

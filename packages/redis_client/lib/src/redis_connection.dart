@@ -110,6 +110,7 @@ class RedisConnection {
   }
 
   Future<void> _reconnect({required int retryAttempts}) async {
+    if (_closed) return;
     if (retryAttempts <= 0) {
       _connected.completeError(
         const SocketException('Connection retry limit exceeded'),
