@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -22,6 +23,16 @@ const String _pinDependenciesHint =
     'builds resolve the same versions as the release.\n'
     "Patches only contain Dart code, so devices keep running the release's "
     'versions of these libraries. If these version changes explain all of '
+    "the differences above and your Dart code doesn't rely on them, it is "
+    'safe to pass --allow-native-diffs for this patch.';
+
+/// Advice shown after listing embedded Apple frameworks whose versions changed.
+const String _pinFrameworksHint =
+    'A changed framework version is a common cause of native Mach-O changes. '
+    'Pin pod and Swift package versions in Podfile.lock / Package.resolved so '
+    'patch builds resolve the same versions as the release.\n'
+    "Patches only contain Dart code, so devices keep running the release's "
+    'versions of these frameworks. If these version changes explain all of '
     "the differences above and your Dart code doesn't rely on them, it is "
     'safe to pass --allow-native-diffs for this patch.';
 
@@ -179,6 +190,38 @@ class PatchDiffChecker {
               for (final change in contentDiffs.dependencyVersionChanges)
                 '  ${change.describe()}',
               _pinDependenciesHint,
+            ].join('\n'),
+          ),
+        );
+      }
+
+      // Show detailed Mach-O diff information if available.
+      if (contentDiffs is AppleFileSetDiff &&
+          contentDiffs.machODiffResults.isNotEmpty) {
+        for (final machOPath
+            in archiveDiffer.nativeFileSetDiff(contentDiffs).changedPaths) {
+          final machOResult = contentDiffs.machODiffResults[machOPath];
+          if (machOResult != null) {
+            logger.info(
+              yellow.wrap(
+                machOResult.describe(showFullCodeDiff: showDexDiff),
+              ),
+            );
+          }
+        }
+      }
+
+      // Name the embedded frameworks whose versions moved between the release
+      // and the patch.
+      if (contentDiffs is AppleFileSetDiff &&
+          contentDiffs.frameworkVersionChanges.isNotEmpty) {
+        logger.info(
+          yellow.wrap(
+            [
+              '\nFramework versions differ from the release:',
+              for (final change in contentDiffs.frameworkVersionChanges)
+                '  ${change.describe()}',
+              _pinFrameworksHint,
             ].join('\n'),
           ),
         );
