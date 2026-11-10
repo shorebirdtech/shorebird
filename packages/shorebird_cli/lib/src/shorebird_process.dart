@@ -254,7 +254,7 @@ class ShorebirdProcess {
     // strips the first and last quote on lines with more than two quotes.
     // Bare command names (such as `git`, `fvm`, `start`, or system `flutter`)
     // have no directory component and still need the shell on Windows for
-    // PATHEXT and built-in resolution.
+    // file extension and built-in resolution.
     return !resolvedExecutable.contains('/') &&
         !resolvedExecutable.contains(r'\');
   }
