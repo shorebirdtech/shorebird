@@ -607,6 +607,7 @@ void main() {
                   .having((r) => r.value, 'value', equals(56)),
             ),
           );
+          await expectLater(client.delete(key: key), completes);
           await expectLater(
             client.timeSeries.add(
               key: key,
