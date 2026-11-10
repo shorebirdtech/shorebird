@@ -123,19 +123,72 @@ void main() {
         ).called(1);
       });
 
-      test('sanitizes executable on windows', () async {
+      test(
+        'runs resolved executable paths without a shell or extra quotes on '
+        'windows',
+        () async {
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+          const executable =
+              r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
+          await runWithOverrides(
+            () => shorebirdProcess.run(executable, ['--version']),
+          );
+          verify(
+            () => processWrapper.run(
+              executable,
+              ['--version'],
+              environment: any(named: 'environment'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        },
+      );
+
+      test(
+        'runs vended flutter without a shell or extra quotes on windows',
+        () async {
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+          final flutterBinaryFile = File(
+            p.join(
+              'First Last',
+              '.shorebird',
+              'bin',
+              'cache',
+              'flutter',
+              'abc',
+              'bin',
+              'flutter.bat',
+            ),
+          );
+          when(
+            () => shorebirdEnv.flutterBinaryFile,
+          ).thenReturn(flutterBinaryFile);
+          await runWithOverrides(
+            () => shorebirdProcess.run('flutter', ['precache', '--android']),
+          );
+          verify(
+            () => processWrapper.run(
+              flutterBinaryFile.path,
+              ['precache', '--android'],
+              environment: flutterStorageBaseUrlEnv,
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        },
+      );
+
+      test('runs bare command names in a shell on windows', () async {
         platform = platform.copyWith(operatingSystem: NativePlatform.windows);
-        const executable =
-            r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         await runWithOverrides(
-          () => shorebirdProcess.run(executable, ['--version']),
+          () => shorebirdProcess.run('git', ['pull']),
         );
         verify(
           () => processWrapper.run(
-            '"$executable"',
-            ['--version'],
+            'git',
+            ['pull'],
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).called(1);
       });
@@ -286,8 +339,25 @@ void main() {
             any(),
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
           ),
         ).thenReturn(runProcessResult);
+      });
+
+      test('can override runInShell', () {
+        runWithOverrides(
+          () => shorebirdProcess.runSync('git', ['pull'], runInShell: true),
+        );
+
+        verify(
+          () => processWrapper.runSync(
+            'git',
+            ['pull'],
+            environment: {},
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).called(1);
       });
 
       test('forwards non-flutter executables to Process.runSync', () async {
@@ -306,19 +376,39 @@ void main() {
         ).called(1);
       });
 
-      test('sanitizes executable on windows', () {
+      test(
+        'runs resolved executable paths without a shell or extra quotes on '
+        'windows',
+        () {
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+          const executable =
+              r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
+          runWithOverrides(
+            () => shorebirdProcess.runSync(executable, ['--version']),
+          );
+          verify(
+            () => processWrapper.runSync(
+              executable,
+              ['--version'],
+              environment: any(named: 'environment'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        },
+      );
+
+      test('runs bare command names in a shell on windows', () {
         platform = platform.copyWith(operatingSystem: NativePlatform.windows);
-        const executable =
-            r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         runWithOverrides(
-          () => shorebirdProcess.runSync(executable, ['--version']),
+          () => shorebirdProcess.runSync('where.exe', ['java']),
         );
         verify(
           () => processWrapper.runSync(
-            '"$executable"',
-            ['--version'],
+            'where.exe',
+            ['java'],
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).called(1);
       });
@@ -597,19 +687,39 @@ void main() {
         ).called(1);
       });
 
-      test('sanitizes executable on windows', () async {
+      test(
+        'runs resolved executable paths without a shell or extra quotes on '
+        'windows',
+        () async {
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+          const executable =
+              r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
+          await runWithOverrides(
+            () => shorebirdProcess.start(executable, ['--version']),
+          );
+          verify(
+            () => processWrapper.start(
+              executable,
+              ['--version'],
+              environment: any(named: 'environment'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        },
+      );
+
+      test('runs bare command names in a shell on windows', () async {
         platform = platform.copyWith(operatingSystem: NativePlatform.windows);
-        const executable =
-            r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         await runWithOverrides(
-          () => shorebirdProcess.start(executable, ['--version']),
+          () => shorebirdProcess.start('git', ['pull']),
         );
         verify(
           () => processWrapper.start(
-            '"$executable"',
-            ['--version'],
+            'git',
+            ['pull'],
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).called(1);
       });
@@ -688,6 +798,54 @@ void main() {
         },
       );
     });
+
+    test(
+      'executes a script in a path with spaces and arguments with spaces',
+      () async {
+        final hostPlatform = NativePlatform.current!;
+        platform = TestNativePlatform(
+          operatingSystem: hostPlatform.operatingSystem,
+          environment: hostPlatform.environment,
+        );
+        final realProcess = runWithOverrides(ShorebirdProcess.new);
+        final tempDir = Directory.systemTemp.createTempSync('shorebird test ');
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+        final scriptDir = Directory(
+          p.join(tempDir.path, 'First Last', 'bin'),
+        )..createSync(recursive: true);
+
+        final File script;
+        if (hostPlatform.isWindows) {
+          script = File(p.join(scriptDir.path, 'flutter.bat'))
+            ..writeAsStringSync('@echo off\r\necho arg=%~1\r\n');
+        } else {
+          script = File(p.join(scriptDir.path, 'flutter'))
+            ..writeAsStringSync('#!/bin/sh\necho "arg=\$1"\n');
+          Process.runSync('chmod', ['+x', script.path]);
+        }
+        when(() => shorebirdEnv.flutterBinaryFile).thenReturn(script);
+
+        final runResult = await runWithOverrides(
+          () => realProcess.run('flutter', ['hello world']),
+        );
+        expect(
+          runResult.exitCode,
+          equals(ExitCode.success.code),
+          reason: 'stderr: ${runResult.stderr}',
+        );
+        expect('${runResult.stdout}'.trim(), equals('arg=hello world'));
+
+        final runSyncResult = runWithOverrides(
+          () => realProcess.runSync('flutter', ['hello world']),
+        );
+        expect(
+          runSyncResult.exitCode,
+          equals(ExitCode.success.code),
+          reason: 'stderr: ${runSyncResult.stderr}',
+        );
+        expect('${runSyncResult.stdout}'.trim(), equals('arg=hello world'));
+      },
+    );
   });
 }
 
