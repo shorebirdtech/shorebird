@@ -1,7 +1,8 @@
-// cspell:words Ljava LGreeter methname posthog
+// cspell:words libnative Ljava LGreeter methname objc posthog
 import 'dart:io';
 
 import 'package:dex/dex.dart';
+import 'package:elf/elf.dart';
 import 'package:http/http.dart' as http;
 import 'package:macho/macho.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -394,6 +395,54 @@ void main() {
                   contains('  io.branch.sdk.android:library 5.21.2 -> 5.21.3'),
                   contains('Gradle dependency locking'),
                   contains('safe to pass --allow-native-diffs for this patch.'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('names ELF symbol and code diffs for native .so files', () async {
+          const soPath = 'base/lib/arm64-v8a/libnative.so';
+          const androidDiff = AndroidFileSetDiff(
+            addedPaths: {},
+            removedPaths: {},
+            changedPaths: {soPath},
+            elfDiffResults: {
+              soPath: ElfDiffResult(
+                differences: [
+                  ElfDifference(
+                    kind: ElfDifferenceKind.functionCodeChanged,
+                    description:
+                        'Function code changed in '
+                        'Java_com_example_Native_compute',
+                  ),
+                ],
+              ),
+            },
+          );
+
+          when(
+            () => archiveDiffer.changedFiles(any(), any()),
+          ).thenAnswer((_) async => androidDiff);
+          when(
+            () => archiveDiffer.nativeFileSetDiff(any()),
+          ).thenReturn(androidDiff);
+
+          await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
+              archiveDiffer: archiveDiffer,
+              allowAssetChanges: false,
+              allowNativeChanges: true,
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  'Function code changed in Java_com_example_Native_compute',
                 ),
               ),
             ),

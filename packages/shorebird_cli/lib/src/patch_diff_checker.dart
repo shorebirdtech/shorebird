@@ -179,6 +179,23 @@ class PatchDiffChecker {
         }
       }
 
+      // Show detailed ELF (.so) diff information if available.
+      if (contentDiffs is AndroidFileSetDiff &&
+          contentDiffs.elfDiffResults.isNotEmpty) {
+        for (final elfPath
+            in archiveDiffer
+                .nativeFileSetDiff(contentDiffs)
+                .changedPaths
+                .where((p) => p.endsWith('.so'))) {
+          final elfResult = contentDiffs.elfDiffResults[elfPath];
+          if (elfResult != null) {
+            logger.info(
+              yellow.wrap(elfResult.describe(showFullCodeDiff: showDexDiff)),
+            );
+          }
+        }
+      }
+
       // Name the dependencies whose versions moved, which usually explains a
       // DEX change the developer didn't make.
       if (contentDiffs is AndroidFileSetDiff &&

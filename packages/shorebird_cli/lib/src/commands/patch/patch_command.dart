@@ -956,6 +956,7 @@ A patch must be built with the --dart-define values and --target of its release,
     logger.info('''
 Building patch with Flutter $flutterVersionString
 ''');
+    patcher.releaseArchive = releaseArchive;
     final patchArtifactFile = await _tryBuildingArtifact<File>(
       () => patcher.buildPatchArtifact(
         releaseVersion: release.version,
