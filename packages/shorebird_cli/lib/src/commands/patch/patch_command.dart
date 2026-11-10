@@ -31,6 +31,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/rollout_percentage.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -127,6 +128,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         help:
             'The track to publish the patch to (staging, beta, stable, or a '
             'custom track). Asked for when not given.',
+      )
+      ..addOption(
+        rolloutArgName,
+        help: rolloutHelp('the patch'),
+        valueHelp: 'percentage',
       )
       ..addFlag(
         'staging',
@@ -308,6 +314,16 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     return DeploymentTrack.stable;
   }
 
+  /// The share of [track]'s devices to publish the patch to (`--rollout`), or
+  /// null for all of them. [run] rejects a value that does not parse.
+  double? get rolloutPercentage => switch (results[rolloutArgName]) {
+    final String value => parseRolloutPercentage(
+      value,
+      argName: rolloutArgName,
+    ).percentage,
+    _ => null,
+  };
+
   @override
   Future<int> run() async {
     final releaseTypes = releaseTypesOrUsageError(siblingCommand: 'patches');
@@ -318,6 +334,15 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         '--${CommonArguments.ddMaxBytesArg.name} must be a non-negative '
         'integer (got $ddMaxBytes).',
       );
+    }
+
+    // Checked before anything is built or created, so a typo costs nothing.
+    if (results[rolloutArgName] case final String rollout) {
+      final error = parseRolloutPercentage(
+        rollout,
+        argName: rolloutArgName,
+      ).error;
+      if (error != null) usageException(error);
     }
 
     if (results.wasParsed('staging')) {
@@ -345,11 +370,38 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       emitJsonSuccess({
         'app_id': appId,
         'track': track.channel,
+        'rollout_percentage': rolloutPercentage ?? 100.0,
         'patches': [for (final p in published) p.toJson()],
       });
+    } else if (rolloutPercentage case final percentage? when percentage < 100) {
+      _logPartialRollout(published: published, percentage: percentage);
     }
 
     return ExitCode.success.code;
+  }
+
+  /// Says what a rollout below 100% means for each of [published] and how to
+  /// raise it.
+  void _logPartialRollout({
+    required List<PublishedPatch> published,
+    required double percentage,
+  }) {
+    final share = formatRolloutPercentage(percentage);
+    for (final p in published) {
+      final releaseVersion = p.release.version;
+      final patchNumber = p.patch.number;
+      final raiseCommand = raiseRolloutCommand(
+        releaseVersion: releaseVersion,
+        patchNumber: patchNumber,
+        flavor: flavor,
+      );
+      logger.info(
+        'Patch $patchNumber on release $releaseVersion is rolling out to '
+        '$share of devices on ${track.channel}. To raise it, run:\n'
+        '  ${lightCyan.wrap(raiseCommand)}',
+      );
+    }
+    logger.info(rolloutOlderDevicesNote);
   }
 
   /// Returns a [Patcher] for the given [ReleaseType].
@@ -952,6 +1004,7 @@ Building patch with Flutter $flutterVersionString
       metadata: metadata.toJson(),
       track: track,
       artifacts: patchArtifactBundles,
+      rolloutPercentage: rolloutPercentage,
     );
 
     return PublishedPatch(
@@ -1348,14 +1401,17 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '${arch.name} ($size)';
     });
-    final trackSummary = (() {
-      return switch (track) {
-        DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
-        DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
-        DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
-        final String trackName => '⚪️ Track: ${lightCyan.wrap(trackName)}',
-      };
-    })();
+    final rollout = switch (rolloutPercentage) {
+      final percentage? when percentage < 100 =>
+        ' ${lightCyan.wrap('(${formatRolloutPercentage(percentage)})')}',
+      _ => '',
+    };
+    final trackSummary = switch (track) {
+      DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
+      DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
+      DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
+      final String trackName => '⚪️ Track: ${lightCyan.wrap(trackName)}',
+    };
 
     final linkPercentage = patcher.linkPercentage;
     final summary = [
@@ -1363,7 +1419,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
-      trackSummary,
+      '$trackSummary$rollout',
       if (linkPercentage != null &&
           linkPercentage < Patcher.linkPercentageWarningThreshold)
         '''🔍 Debug Info: ${lightCyan.wrap(Patcher.debugInfoFile.path)}''',

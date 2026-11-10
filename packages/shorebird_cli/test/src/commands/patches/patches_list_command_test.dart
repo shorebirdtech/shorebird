@@ -238,6 +238,36 @@ void main() {
           ).called(1);
         });
       });
+
+      group('when patch is rolling out', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              const ReleasePatch(
+                id: 2,
+                number: 2,
+                channel: 'stable',
+                isRolledBack: false,
+                artifacts: [],
+                rolloutPercentage: 12.5,
+              ),
+            ],
+          );
+        });
+
+        test('shows its percentage after the track', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.info(any(that: endsWith('  track: stable (12.5%)'))),
+          ).called(1);
+        });
+      });
     });
 
     group('when API fetch fails', () {
