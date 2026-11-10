@@ -53,13 +53,7 @@ void main() {
       final held = await RunSlot.acquire(dir, 1);
       final order = <int>[];
 
-      final first = await Process.start(Platform.resolvedExecutable, [
-        'run',
-        p.join('test', 'fixtures', 'hold_slot.dart'),
-        dir.path,
-        '1',
-      ]);
-      addTearDown(first.kill);
+      final first = await startHoldSlot(dir, 1);
       final firstLines = StreamIterator(
         first.stdout.transform(utf8.decoder).transform(const LineSplitter()),
       );
