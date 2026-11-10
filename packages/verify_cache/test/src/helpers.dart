@@ -104,9 +104,9 @@ Future<Process> holdLock(Directory cacheDir, String digest) async {
   return process;
 }
 
-/// A process holding one of [count] slots under [cacheDir], started and
-/// holding by the time this completes. Killed after the test.
-Future<Process> holdSlot(Directory cacheDir, int count) async {
+/// Starts a process that acquires one of [count] slots under [cacheDir] and
+/// holds it until killed. Killed after the test.
+Future<Process> startHoldSlot(Directory cacheDir, int count) async {
   final fixture = await _compileFixture('hold_slot.dart');
   final process = await Process.start(Platform.resolvedExecutable, [
     fixture,
@@ -114,6 +114,13 @@ Future<Process> holdSlot(Directory cacheDir, int count) async {
     '$count',
   ]);
   addTearDown(process.kill);
+  return process;
+}
+
+/// A process holding one of [count] slots under [cacheDir], started and
+/// holding by the time this completes. Killed after the test.
+Future<Process> holdSlot(Directory cacheDir, int count) async {
+  final process = await startHoldSlot(cacheDir, count);
   final line = await process.stdout
       .transform(utf8.decoder)
       .transform(const LineSplitter())
