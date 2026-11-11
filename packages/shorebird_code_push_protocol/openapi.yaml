@@ -5203,6 +5203,12 @@ components:
           description: |
             The date and time the patch was created. Optional because it was
             added later; older servers do not send it.
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of `channel`'s devices the patch is offered to.
+            Absent when the patch is on no channel.
         notes:
           type: string
           description: Freeform notes associated with the patch, if any.
@@ -6057,6 +6063,12 @@ components:
           type: integer
           format: int64
           description: The ID of the channel.
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to, a
+            multiple of 0.01 from 0.01 to 100. Defaults to 100.
     PatchCheckRequest:
       type: object
       description: The request body for POST /patches/check.
