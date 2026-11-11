@@ -1,4 +1,15 @@
 include: ../../analysis_options.yaml
+# Matches the analysis_options.yaml space_gen renders for its output, which
+# tool/gen.dart does not render (see renderAnalysisOptions there).
 analyzer:
   exclude:
     - build/**
+  errors:
+    # Generated models read and write their own deprecated fields.
+    deprecated_member_use_from_same_package: ignore
+linter:
+  rules:
+    # space_gen emits docs only for schemas and fields the spec describes.
+    public_member_api_docs: false
+    # OpenAPI has no deprecation messages.
+    provide_deprecation_message: false
