@@ -234,11 +234,15 @@ symbolize" command with the right program symbol file is required to obtain a hu
   /// testing of the cascade limiter.
   static const ddMaxBytesArg = ArgumentDescriber(
     name: 'dd-max-bytes',
+    // Hidden from --help on release and patch. To set Dart's DD cap on a
+    // release on Flutter with aot_tools gen-snapshot, use the generic
+    // pass-through:
+    // `shorebird release ios -- --extra-gen-snapshot-options=--dd_max_bytes=<n>`.
     description:
-        'Dynamic Dispatch table cascade byte threshold. '
-        'Functions whose transitive caller tree exceeds this many bytes '
-        'are routed through the indirect dispatch table. '
-        'Set to 0 to disable.',
+        'For debugging Dynamic Dispatch (DD) only; may change or be removed '
+        'without notice. Dynamic Dispatch table cascade byte threshold: '
+        'functions whose transitive caller tree exceeds this many bytes are '
+        'routed through the indirect dispatch table. Set to 0 to disable.',
   );
 
   /// Accepted and ignored on `release` and `patch`. `--no-confirm` was a
