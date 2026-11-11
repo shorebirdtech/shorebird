@@ -5,7 +5,7 @@ void main() {
   group(PatchLink, () {
     test('can be (de)serialized when linked', () {
       const link = PatchLink(
-        result: PatchLinkResult.linked,
+        result: 'linked',
         platforms: [ReleasePlatform.ios],
       );
       final json = link.toJson();
@@ -15,7 +15,7 @@ void main() {
 
     test('can be (de)serialized when not linked', () {
       const link = PatchLink(
-        result: PatchLinkResult.notLinked,
+        result: 'not_linked',
         reason: 'platform_has_newer_patch',
         linkNumber: 7,
         platformPatchNumber: 8,
