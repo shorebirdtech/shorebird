@@ -1,8 +1,10 @@
-// cspell:words Ljava LGreeter
+// cspell:words libnative Ljava LGreeter methname objc posthog
 import 'dart:io';
 
 import 'package:dex/dex.dart';
+import 'package:elf/elf.dart';
 import 'package:http/http.dart' as http;
+import 'package:macho/macho.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -398,6 +400,139 @@ void main() {
             ),
           ).called(1);
         });
+
+        test('names ELF symbol and code diffs for native .so files', () async {
+          const soPath = 'base/lib/arm64-v8a/libnative.so';
+          const androidDiff = AndroidFileSetDiff(
+            addedPaths: {},
+            removedPaths: {},
+            changedPaths: {soPath},
+            elfDiffResults: {
+              soPath: ElfDiffResult(
+                differences: [
+                  ElfDifference(
+                    kind: ElfDifferenceKind.functionCodeChanged,
+                    description:
+                        'Function code changed in '
+                        'Java_com_example_Native_compute',
+                  ),
+                ],
+              ),
+            },
+          );
+
+          when(
+            () => archiveDiffer.changedFiles(any(), any()),
+          ).thenAnswer((_) async => androidDiff);
+          when(
+            () => archiveDiffer.nativeFileSetDiff(any()),
+          ).thenReturn(androidDiff);
+
+          await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
+              archiveDiffer: archiveDiffer,
+              allowAssetChanges: false,
+              allowNativeChanges: true,
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(
+                that: contains(
+                  'Function code changed in Java_com_example_Native_compute',
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test(
+          'names Mach-O symbol/selector diffs and framework version changes',
+          () async {
+            const runnerPath = 'Products/Applications/Runner.app/Runner';
+            const posthogPath =
+                'Products/Applications/Runner.app/Frameworks/PostHog.framework/PostHog';
+            const appleDiff = AppleFileSetDiff(
+              addedPaths: {},
+              removedPaths: {},
+              changedPaths: {runnerPath, posthogPath},
+              machODiffResults: {
+                runnerPath: MachODiffResult(
+                  differences: [
+                    MachODifference(
+                      kind: MachODifferenceKind.functionCodeChanged,
+                      description:
+                          'Function code changed in _AppDelegate_handleChannel',
+                    ),
+                  ],
+                ),
+                posthogPath: MachODiffResult(
+                  differences: [
+                    MachODifference(
+                      kind: MachODifferenceKind.objcSelectorAdded,
+                      description:
+                          'Objective-C selector added: '
+                          'captureEvent:properties:',
+                    ),
+                  ],
+                ),
+              },
+              frameworkVersionChanges: [
+                DependencyVersionChange(
+                  name: 'PostHog.framework',
+                  oldVersion: '3.71.6',
+                  newVersion: '3.71.7',
+                ),
+              ],
+            );
+
+            when(
+              () => archiveDiffer.changedFiles(any(), any()),
+            ).thenAnswer((_) async => appleDiff);
+            when(
+              () => archiveDiffer.nativeFileSetDiff(any()),
+            ).thenReturn(appleDiff);
+
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: true,
+              ),
+            );
+
+            verify(
+              () => logger.info(
+                any(that: contains('_AppDelegate_handleChannel')),
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(
+                any(
+                  that: contains(
+                    'Objective-C selector added: captureEvent:properties:',
+                  ),
+                ),
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(
+                any(
+                  that: allOf(
+                    contains('Framework versions differ from the release:'),
+                    contains('  PostHog.framework 3.71.6 -> 3.71.7'),
+                    contains('Podfile.lock / Package.resolved'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+        );
 
         test('prompts user if allowNativeChanges is false', () async {
           await runWithOverrides(

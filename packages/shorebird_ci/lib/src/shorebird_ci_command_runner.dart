@@ -7,6 +7,7 @@ class ShorebirdCiCommandRunner extends CommandRunner<int> {
   ShorebirdCiCommandRunner()
     : super('shorebird_ci', 'CI tooling for Dart/Flutter monorepos') {
     addCommand(AffectedPackagesCommand());
+    addCommand(CheckCoverageCommand());
     addCommand(FlutterVersionCommand());
     addCommand(GenerateCommand());
     addCommand(UpdateActionsCommand());

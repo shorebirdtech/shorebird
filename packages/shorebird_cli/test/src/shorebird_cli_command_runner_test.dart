@@ -345,8 +345,9 @@ To pass --foo to flutter build, put it after '--':
     group('unknown option on patch', () {
       const overrideHint = '''
 shorebird patch has no --force flag. The patch safety checks are bypassed per check:
-  --allow-native-diffs  publish even though native code changed
-  --allow-asset-diffs   publish even though assets changed
+  --allow-native-diffs      publish even though native code changed
+  --allow-asset-diffs       publish even though assets changed
+  --allow-build-flag-diffs  build even though --dart-define or --target differ from the release
 The warning that fails the patch names the one that applies.''';
 
       test('names --allow-native-diffs / --allow-asset-diffs', () async {

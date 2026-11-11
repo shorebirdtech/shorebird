@@ -2,6 +2,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -35,7 +36,8 @@ class PatchesListCommand extends ShorebirdCommand
       'Example output (one line per patch):\n'
       '  42  #1  track: stable\n'
       '  43  #2  [no track]\n'
-      '  44  #3  track: beta  [rolled back]\n\n'
+      '  44  #3  track: beta  [rolled back]\n'
+      '  45  #4  track: stable (10%)\n\n'
       '${ShorebirdCommand.jsonHint(_jsonExample)}';
 
   @override
@@ -68,9 +70,10 @@ class PatchesListCommand extends ShorebirdCommand
     for (final patch in patches) {
       final id = patch.id;
       final number = lightCyan.wrap('#${patch.number}');
-      final channel = patch.channel != null
-          ? '  track: ${patch.channel}'
-          : '  [no track]';
+      final channel = switch (formatPatchTrack(patch)) {
+        final track? => '  track: $track',
+        null => '  [no track]',
+      };
       final rolledBack = patch.isRolledBack ? '  [rolled back]' : '';
       logger.info('$id  $number$channel$rolledBack');
     }

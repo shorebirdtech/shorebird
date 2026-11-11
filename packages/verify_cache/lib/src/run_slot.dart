@@ -13,15 +13,22 @@ import 'package:path/path.dart' as p;
 /// Like a `KeyLock`, a slot is the operating system's lock on a file, under
 /// `slots/`, so the kernel drops it when its holder exits.
 class RunSlot {
-  RunSlot._(this._file);
+  RunSlot._(this._file, this._path);
 
   final RandomAccessFile _file;
+  final String _path;
+
+  /// Paths locked by this process, since an OS file lock never excludes the
+  /// process that already holds it.
+  static final _locked = <String>{};
+  static var _nextTicket = 0;
 
   /// How long a waiting run sleeps before it tries every slot again.
   static const retryInterval = Duration(seconds: 1);
 
   /// Takes one of [count] slots under [directory], waiting until one is
-  /// free. Calls [onWait] once before waiting, if it has to wait.
+  /// free. Waiters are served in arrival order. Calls [onWait] once before
+  /// waiting, if it has to wait.
   static Future<RunSlot> acquire(
     Directory directory,
     int count, {
@@ -29,42 +36,93 @@ class RunSlot {
   }) async {
     if (count < 1) throw ArgumentError.value(count, 'count', 'must be >= 1');
     final slots = Directory(p.join(directory.path, 'slots'));
-    await slots.create(recursive: true);
-    var waited = false;
-    while (true) {
-      for (var i = 0; i < count; i++) {
-        // Append, so opening never truncates a file another process holds.
-        final file = await File(
-          p.join(slots.path, '$i.lock'),
-        ).open(mode: FileMode.append);
-        try {
-          // The default mode: exclusive, and throwing rather than waiting.
-          await file.lock();
-          return RunSlot._(file);
-        } on FileSystemException {
-          await file.close();
+    final queue = Directory(p.join(slots.path, 'queue'));
+    await queue.create(recursive: true);
+
+    final ticketName =
+        '${DateTime.now().microsecondsSinceEpoch.toString().padLeft(20, '0')}'
+        '-$pid-${(_nextTicket++).toString().padLeft(8, '0')}';
+    final ticketFile = File(p.join(queue.path, ticketName));
+    // Created and locked in a temporary path before entering queue/, so no
+    // concurrent waiter ever sees an unlocked ticket in queue/.
+    final stagingFile = File(p.join(slots.path, '.$ticketName.tmp'));
+    final ticket = stagingFile.openSync(mode: FileMode.append)..lockSync();
+    stagingFile.renameSync(ticketFile.path);
+    _locked.add(ticketFile.path);
+
+    try {
+      var waited = false;
+      while (true) {
+        if (!_hasWaiterAhead(queue, ticketName)) {
+          for (var i = 0; i < count; i++) {
+            final slotFile = File(p.join(slots.path, '$i.lock'));
+            final locked = await _tryLock(slotFile);
+            if (locked != null) return RunSlot._(locked, slotFile.path);
+          }
         }
+        if (!waited) {
+          waited = true;
+          onWait?.call();
+        }
+        await Future<void>.delayed(retryInterval);
       }
-      if (!waited) {
-        waited = true;
-        onWait?.call();
-      }
-      await Future<void>.delayed(retryInterval);
+    } finally {
+      _locked.remove(ticketFile.path);
+      ticketFile.deleteSync();
+      ticket
+        ..unlockSync()
+        ..closeSync();
     }
   }
 
-  /// Gives the slot up.
-  Future<void> release() async {
-    await _file.unlock();
-    await _file.close();
+  static bool _hasWaiterAhead(Directory queue, String ticketName) {
+    final entries = queue.listSync().whereType<File>().toList()
+      ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+    for (final file in entries) {
+      if (p.basename(file.path).compareTo(ticketName) >= 0) break;
+      if (_locked.contains(file.path)) return true;
+      RandomAccessFile? stale;
+      try {
+        stale = file.openSync()..lockSync(FileLock.shared);
+        file.deleteSync();
+        stale.unlockSync();
+      } on FileSystemException {
+        if (file.existsSync()) return true;
+      } finally {
+        stale?.closeSync();
+      }
+    }
+    return false;
   }
+
+  static Future<RandomAccessFile?> _tryLock(File file) async {
+    if (!_locked.add(file.path)) return null;
+    // Append, so opening never truncates a file another process holds.
+    final opened = await file.open(mode: FileMode.append);
+    try {
+      // The default mode: exclusive, and throwing rather than waiting.
+      await opened.lock();
+      return opened;
+    } on FileSystemException {
+      _locked.remove(file.path);
+      await opened.close();
+      return null;
+    }
+  }
+
+  static Future<void> _unlock(RandomAccessFile file, String path) async {
+    _locked.remove(path);
+    await file.unlock();
+    await file.close();
+  }
+
+  /// Gives the slot up.
+  Future<void> release() async => _unlock(_file, _path);
 }
 
 /// How many runs check at once on one machine when `VERIFY_CACHE_SLOTS` is
-/// unset. Two, because one agent-verify takes a 12-core machine's load
-/// average from about 5 to 47, and four at once took 880 to 1,290 s each
-/// against about 300 s alone, finishing no sooner than four in a row.
-const defaultSlots = 2;
+/// unset.
+const defaultSlots = 4;
 
 /// Set in the environment of a command run while holding a slot, so a
 /// verify_cache nested inside it (agent-verify checks each package through

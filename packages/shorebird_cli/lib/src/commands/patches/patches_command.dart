@@ -13,6 +13,7 @@ class PatchesCommand extends ShorebirdCommand {
     addSubcommand(PromoteCommand());
     addSubcommand(RollbackCommand());
     addSubcommand(RollforwardCommand());
+    addSubcommand(RolloutCommand());
     addSubcommand(SetTrackCommand());
   }
 
@@ -28,5 +29,8 @@ class PatchesCommand extends ShorebirdCommand {
       'Examples:\n'
       '  shorebird patches list --release-version 1.0.0+1\n'
       '  shorebird patches info --release-version 1.0.0+1 --patch-number 1\n'
-      '  shorebird patches promote --release-version 1.0.0+1 --patch-number 1';
+      '  shorebird patches promote --release-version 1.0.0+1 --patch-number 1 '
+      '--rollout 10\n'
+      '  shorebird patches rollout --release-version 1.0.0+1 --patch-number 1 '
+      '--percentage 50';
 }

@@ -645,8 +645,9 @@ ${currentRunLogFile.absolute.path}
     if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
       return '''
 shorebird patch has no --$option flag. The patch safety checks are bypassed per check:
-  ${lightCyan.wrap('--allow-native-diffs')}  publish even though native code changed
-  ${lightCyan.wrap('--allow-asset-diffs')}   publish even though assets changed
+  ${lightCyan.wrap('--allow-native-diffs')}      publish even though native code changed
+  ${lightCyan.wrap('--allow-asset-diffs')}       publish even though assets changed
+  ${lightCyan.wrap('--allow-build-flag-diffs')}  build even though --dart-define or --target differ from the release
 The warning that fails the patch names the one that applies.''';
     }
 

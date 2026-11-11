@@ -8,7 +8,25 @@ import 'package:verify_cache/verify_cache.dart';
 import 'src/helpers.dart';
 
 void main() {
-  final bin = p.absolute('bin', 'verify_cache.dart');
+  late Directory binDir;
+  late String bin;
+
+  setUpAll(() async {
+    binDir = Directory.systemTemp.createTempSync('verify_cache_bin.');
+    bin = p.join(binDir.path, 'verify_cache.dill');
+    final result = await Process.run(Platform.resolvedExecutable, [
+      'compile',
+      'kernel',
+      p.join('bin', 'verify_cache.dart'),
+      '-o',
+      bin,
+    ]);
+    if (result.exitCode != 0) {
+      fail('dart compile kernel failed: ${result.stderr}');
+    }
+  });
+
+  tearDownAll(() => binDir.deleteSync(recursive: true));
 
   Future<ProcessResult> verifyCache(
     Directory repo,
@@ -277,5 +295,23 @@ void main() {
     final result = await verifyCache(gitRepo(), ['--help']);
     expect(result.exitCode, 0);
     expect(result.stdout, contains('--tool'));
+  });
+
+  test('exits when the command leaves a subprocess running', () async {
+    final process = await Process.start(
+      Platform.resolvedExecutable,
+      [
+        bin,
+        '--cache-dir',
+        tempDir().path,
+        '--',
+        'sh',
+        '-c',
+        'sleep 5 &',
+      ],
+      workingDirectory: gitRepo().path,
+      environment: {slotHeldVariable: ''},
+    );
+    expect(await process.exitCode, 0);
   });
 }

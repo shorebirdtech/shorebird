@@ -107,6 +107,10 @@ class ShorebirdProcess {
       arguments,
       useVendedFlutter: useVendedFlutter,
     );
+    final resolvedRunInShell = _resolveRunInShell(
+      resolvedExecutable,
+      runInShell: runInShell,
+    );
     logger.detail(
       '''[Process.run] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
@@ -116,7 +120,7 @@ class ShorebirdProcess {
       resolvedArguments,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
-      runInShell: runInShell,
+      runInShell: resolvedRunInShell,
     );
 
     _logResult(result);
@@ -129,6 +133,7 @@ class ShorebirdProcess {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
+    bool? runInShell,
     String? workingDirectory,
     bool useVendedFlutter = true,
   }) {
@@ -146,6 +151,10 @@ class ShorebirdProcess {
       arguments,
       useVendedFlutter: useVendedFlutter,
     );
+    final resolvedRunInShell = _resolveRunInShell(
+      resolvedExecutable,
+      runInShell: runInShell,
+    );
     logger.detail(
       '''[Process.runSync] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
@@ -155,6 +164,7 @@ class ShorebirdProcess {
       resolvedArguments,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
+      runInShell: resolvedRunInShell,
     );
 
     _logResult(result);
@@ -186,6 +196,10 @@ class ShorebirdProcess {
       arguments,
       useVendedFlutter: useVendedFlutter,
     );
+    final resolvedRunInShell = _resolveRunInShell(
+      resolvedExecutable,
+      runInShell: runInShell,
+    );
     logger.detail(
       '''[Process.start] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
@@ -194,7 +208,7 @@ class ShorebirdProcess {
       resolvedExecutable,
       resolvedArguments,
       environment: resolvedEnvironment,
-      runInShell: runInShell,
+      runInShell: resolvedRunInShell,
       workingDirectory: workingDirectory,
       mode: mode,
     );
@@ -219,22 +233,30 @@ class ShorebirdProcess {
     required bool useVendedFlutter,
   }) {
     if (useVendedFlutter && executable == 'flutter') {
-      return _sanitizeExecutablePath(shorebirdEnv.flutterBinaryFile.path);
-    }
-    return _sanitizeExecutablePath(executable);
-  }
-
-  /// Sanitizes the executable path on Windows.
-  /// https://github.com/dart-lang/sdk/issues/37751
-  String _sanitizeExecutablePath(String executable) {
-    if (executable.isEmpty) return executable;
-    if (!platform.isWindows) return executable;
-    if (executable.contains(' ') && !executable.contains('"')) {
-      // Use quoted strings to indicate where the file name ends and the
-      // arguments begin; otherwise, the file name is ambiguous.
-      return '"$executable"';
+      return shorebirdEnv.flutterBinaryFile.path;
     }
     return executable;
+  }
+
+  bool _resolveRunInShell(
+    String resolvedExecutable, {
+    required bool? runInShell,
+  }) {
+    if (runInShell != null) return runInShell;
+    if (!platform.isWindows) return false;
+    // A path with a directory component (such as the vended flutter.bat or
+    // dart.bat, gradlew.bat, java.exe, adb.exe, or patch.exe) already names
+    // the file and its extension, so CreateProcessW can launch it directly
+    // (and dart:io quotes paths with spaces when runInShell is false; see
+    // https://github.com/dart-lang/sdk/issues/37751). Running a resolved
+    // path through `cmd.exe /c` (runInShell: true) fails whenever both the
+    // executable path and any argument contain spaces, because `cmd /c`
+    // strips the first and last quote on lines with more than two quotes.
+    // Bare command names (such as `git`, `fvm`, `start`, or system `flutter`)
+    // have no directory component and still need the shell on Windows for
+    // file extension and built-in resolution.
+    return !resolvedExecutable.contains('/') &&
+        !resolvedExecutable.contains(r'\');
   }
 
   List<String> _resolveArguments(
@@ -323,14 +345,13 @@ class ProcessWrapper {
     List<String> arguments, {
     Map<String, String>? environment,
     String? workingDirectory,
-    bool? runInShell,
+    bool runInShell = false,
   }) async {
     final result = await Process.run(
       executable,
       arguments,
       environment: environment,
-      // TODO(felangel): refactor to never runInShell
-      runInShell: runInShell ?? Platform.isWindows,
+      runInShell: runInShell,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
@@ -346,12 +367,13 @@ class ProcessWrapper {
     List<String> arguments, {
     Map<String, String>? environment,
     String? workingDirectory,
+    bool runInShell = false,
   }) {
     final result = Process.runSync(
       executable,
       arguments,
       environment: environment,
-      runInShell: Platform.isWindows,
+      runInShell: runInShell,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
@@ -366,15 +388,14 @@ class ProcessWrapper {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
-    bool? runInShell,
+    bool runInShell = false,
     String? workingDirectory,
     ProcessStartMode mode = ProcessStartMode.normal,
   }) {
     return Process.start(
       executable,
       arguments,
-      // TODO(felangel): refactor to never runInShell
-      runInShell: runInShell ?? Platform.isWindows,
+      runInShell: runInShell,
       environment: environment,
       workingDirectory: workingDirectory,
       mode: mode,

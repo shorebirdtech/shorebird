@@ -74,6 +74,10 @@ More info: ${linkPercentageUrl.toLink()}.
   /// obfuscation flags when the release was built with obfuscation.
   List<String> extraBuildArgs = const [];
 
+  /// The downloaded primary release archive (e.g. `release.aab` on Android),
+  /// set by the patch command before building the patch.
+  File? releaseArchive;
+
   /// Additional gen_snapshot arguments needed to match the release's
   /// obfuscation flags. Used by Apple patchers for
   /// `ArtifactBuilder.buildElfAotSnapshot`
@@ -165,13 +169,15 @@ More info: ${linkPercentageUrl.toLink()}.
     return metadata;
   }
 
-  /// Uploads the patch artifacts to the CodePush server.
+  /// Uploads the patch artifacts to the CodePush server and publishes the
+  /// patch to [track], at [rolloutPercentage] of its devices when given.
   Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
+    double? rolloutPercentage,
   }) {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -180,6 +186,7 @@ More info: ${linkPercentageUrl.toLink()}.
       platform: releaseType.releasePlatform,
       track: track,
       patchArtifactBundles: artifacts,
+      rolloutPercentage: rolloutPercentage,
     );
   }
 

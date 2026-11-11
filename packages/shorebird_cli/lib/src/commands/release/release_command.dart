@@ -380,6 +380,7 @@ The version of the Android or iOS app that embeds this module
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
+    _assertSigningAllowedByPolicy(app);
     final targetFlutterRevision = await _installTargetFlutter();
     await _ensureRequestedVersionIsReleasable(
       releaser: releaser,
@@ -396,6 +397,25 @@ The version of the Android or iOS app that embeds this module
         flutterRevision: targetFlutterRevision,
       ),
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    );
+  }
+
+  /// Exits before building if [app]'s enterprise requires patch signing and
+  /// the release would be built without it (`--no-patch-signing`): the
+  /// server refuses such a release, so building it would only waste the
+  /// build.
+  void _assertSigningAllowedByPolicy(AppMetadata app) {
+    if (app.patchSigningRequired != true || results.patchSigningEnabled) {
+      return;
+    }
+    throw CommandError(
+      message:
+          '${app.enterpriseName ?? 'Your enterprise'} requires patch '
+          "signing, so a release can't be built without it.",
+      hint:
+          'Release again without '
+          '--no-${CommonArguments.patchSigningArg.name}.',
+      exitCode: ExitCode.noPerm,
     );
   }
 
@@ -668,7 +688,7 @@ The version of the Android or iOS app that embeds this module
           : await resolveFlutterVersionArg(),
     );
     final minimumFlutterVersion = releaser.minimumFlutterVersion;
-    if (version != null && version < minimumFlutterVersion) {
+    if (version != null && !version.satisfiesFloor(minimumFlutterVersion)) {
       final cliName = releaser.releaseType.cliName;
       throw CommandError(
         message:
@@ -684,7 +704,7 @@ The version of the Android or iOS app that embeds this module
     if (releaser.useObfuscation &&
         patchesLinkAgainstRelease(releaser.releaseType.releasePlatform) &&
         version != null &&
-        version < minimumObfuscationFlutterVersion) {
+        !version.satisfiesFloor(minimumObfuscationFlutterVersion)) {
       throw CommandError(
         message:
             'Obfuscation on '

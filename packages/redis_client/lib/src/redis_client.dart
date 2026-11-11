@@ -286,7 +286,7 @@ class RedisClient {
   /// Send a command to the Redis server.
   Future<dynamic> execute(List<Object?> command) {
     return _runWithRetry(
-      () => _connection.execute(command),
+      ({required cancel}) => _connection.execute(command, cancel: cancel),
       command: command.join(' '),
     );
   }
@@ -305,7 +305,7 @@ class RedisClient {
   Future<void> close() => _connection.close();
 
   Future<T> _runWithRetry<T>(
-    Future<T> Function() fn, {
+    Future<T> Function({required Future<void> cancel}) fn, {
     required String command,
     int? remainingAttempts,
   }) async {
@@ -322,9 +322,13 @@ class RedisClient {
 
     _logger.debug('Executing "$command"$attemptInfo.');
 
+    final cancel = Completer<void>();
     try {
-      return await Future<T>.sync(fn).timeout(_commandOptions.timeout);
+      return await Future<T>.sync(
+        () => fn(cancel: cancel.future),
+      ).timeout(_commandOptions.timeout);
     } catch (error, stackTrace) {
+      cancel.complete();
       if (error is RedisException) rethrow;
       if (remainingAttempts > 0) {
         _logger.error(
