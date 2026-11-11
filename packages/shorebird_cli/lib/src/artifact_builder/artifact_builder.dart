@@ -58,13 +58,7 @@ ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
 /// Builds the environment map for Flutter build subprocesses.
 ///
-/// Merges the public key (if present) with any additional environment
-/// variables.
-///
-/// [ddMaxBytes] sets `SHOREBIRD_DD_MAX_BYTES`, which exists only for Flutter
-/// versions before `aot_tools gen-snapshot` (see
-/// [aotToolsGenSnapshotConstraint]): they run the DD pass only when it is
-/// set. Newer versions ignore it.
+/// Merges the public key (if present) with [extra] environment variables.
 ///
 /// Environment variables are used (rather than command-line flags) for
 /// backwards compatibility: older Flutter builds that don't recognize a
@@ -72,14 +66,11 @@ ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 /// a build failure.
 Map<String, String>? buildEnvironment({
   String? base64PublicKey,
-  int? ddMaxBytes,
+  Map<String, String> extra = const {},
 }) {
-  final env = <String, String>{};
+  final env = <String, String>{...extra};
   if (base64PublicKey != null) {
     env['SHOREBIRD_PUBLIC_KEY'] = base64PublicKey;
-  }
-  if (ddMaxBytes != null) {
-    env['SHOREBIRD_DD_MAX_BYTES'] = ddMaxBytes.toString();
   }
   return env.isEmpty ? null : env;
 }
@@ -337,31 +328,30 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytesEnv: dd.ddMaxBytesEnv,
+      environment: dd.environment,
     );
   }
 
-  /// The DD table cap the CLI sets for iOS release builds on Flutter versions
-  /// before [aotToolsGenSnapshotConstraint] (3.44.0 through 3.47.x), which
-  /// run the DD pass only when the CLI turns it on. Newer versions default DD
-  /// on in `aot_tools gen-snapshot` and get no default from the CLI.
-  static const legacyDefaultDdMaxBytes = 10000;
-
   /// How an iOS `flutter build` gets the user's `--dd-max-bytes`
-  /// ([ddMaxBytes], null when they set none; `0` turns DD off).
+  /// ([ddMaxBytes], null when they set none; `0` turns DD off): flags to add
+  /// and environment variables to set.
   ///
-  /// On Flutter versions with `aot_tools gen-snapshot` the setting rides in
-  /// `--extra-gen-snapshot-options`, which Flutter also records in
-  /// `Generated.xcconfig`, so Xcode rebuilds keep it, and no setting means
-  /// Dart's default. Older versions hand those options to gen_snapshot as is,
-  /// and gen_snapshot rejects `--dd_max_bytes`, so there the setting goes in
-  /// `SHOREBIRD_DD_MAX_BYTES`, which exists only for those versions: they
-  /// default DD off, so the CLI turns it on with [legacyDefaultDdMaxBytes].
-  /// A revision whose version is unknown (a pinned dev revision) gets the
-  /// environment variable, which newer versions ignore.
-  Future<({List<String> flags, int? ddMaxBytesEnv})> _iosDdSettings(
-    int? ddMaxBytes,
-  ) async {
+  /// On Flutter versions with `aot_tools gen-snapshot`
+  /// ([aotToolsGenSnapshotConstraint]) DD is on by default with Dart's cap,
+  /// and a setting rides in `--extra-gen-snapshot-options`, which Flutter
+  /// also records in `Generated.xcconfig` so Xcode rebuilds keep it.
+  ///
+  /// Everything else here is a quirk of the Flutter versions before that,
+  /// 3.44.0 through 3.47.x (about nine months of releases), and this is the
+  /// only place in the CLI that knows about it: they run the DD pass only
+  /// when `SHOREBIRD_DD_MAX_BYTES` is set, so the CLI sets it, with its own
+  /// default of 10000, and their gen_snapshot rejects `--dd_max_bytes` as an
+  /// unknown flag. A revision whose version is unknown (a pinned dev
+  /// revision) is treated as one of these: newer versions ignore the
+  /// variable, while the flag would break an older build. Delete this branch
+  /// once those versions are out of support.
+  Future<({List<String> flags, Map<String, String> environment})>
+  _iosDdSettings(int? ddMaxBytes) async {
     final revision = shorebirdEnv.flutterRevision;
     final version = await shorebirdFlutter.resolveFlutterVersion(revision);
     final usesAotToolsGenSnapshot = aotToolsGenSnapshotConstraint.isSatisfiedBy(
@@ -374,13 +364,17 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
           if (ddMaxBytes != null)
             '--extra-gen-snapshot-options=--dd_max_bytes=$ddMaxBytes',
         ],
-        ddMaxBytesEnv: null,
+        environment: const <String, String>{},
       );
     }
+    const legacyDefaultDdMaxBytes = 10000;
     final legacyDdMaxBytes = ddMaxBytes ?? legacyDefaultDdMaxBytes;
     return (
       flags: const <String>[],
-      ddMaxBytesEnv: legacyDdMaxBytes > 0 ? legacyDdMaxBytes : null,
+      environment: {
+        if (legacyDdMaxBytes > 0)
+          'SHOREBIRD_DD_MAX_BYTES': legacyDdMaxBytes.toString(),
+      },
     );
   }
 
@@ -408,7 +402,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytesEnv: dd.ddMaxBytesEnv,
+      environment: dd.environment,
     );
   }
 
@@ -425,7 +419,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     required List<String> flags,
     required List<String> args,
     required String? base64PublicKey,
-    int? ddMaxBytesEnv,
+    Map<String, String> environment = const {},
     String Function(String buildCommand) fixRecommendation =
         runVanillaFlutterBuildRecommendation,
   }) async {
@@ -444,7 +438,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       arguments,
       environment: buildEnvironment(
         base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytesEnv,
+        extra: environment,
       ),
       // Never run in shell because we always have a fully resolved
       // executable path.
@@ -486,16 +480,15 @@ Reason: Exited with code $exitCode.''',
     required List<String> flags,
     required List<String> args,
     required String? base64PublicKey,
-    int? ddMaxBytesEnv,
+    Map<String, String> environment = const {},
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Make every target of this platform's builds re-run. On a Flutter that
     // doesn't copy its kernel (see [_shorebirdKernelFile]) we find the kernel
     // by the AOT target's stamp, which a skipped target would not rewrite. A
-    // cached build would also be stale on older Flutters: there the
-    // SHOREBIRD_PUBLIC_KEY and (on iOS only) SHOREBIRD_DD_MAX_BYTES environment
-    // variables change the build's output but are not inputs Flutter's build
-    // system tracks.
+    // cached build would also be stale on older Flutters: there environment
+    // variables such as SHOREBIRD_PUBLIC_KEY change the build's output but are
+    // not inputs Flutter's build system tracks.
     _deleteBuildStamps(projectRoot: projectRoot, platform: platformSubdir);
     // Delete the kernel copy a previous build left, so that a build with a
     // Flutter that doesn't write one can't be handed an old kernel.
@@ -526,7 +519,7 @@ Reason: Exited with code $exitCode.''',
       flags: flags,
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytesEnv: ddMaxBytesEnv,
+      environment: environment,
     );
     if (shorebirdKernelFile.existsSync()) {
       appDillPath = shorebirdKernelFile.path;

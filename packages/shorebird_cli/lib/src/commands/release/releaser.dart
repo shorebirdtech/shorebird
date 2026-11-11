@@ -223,9 +223,9 @@ abstract class Releaser {
   /// with `--dd-max-bytes`, or null when they set none (or a malformed or
   /// negative value). `0` turns DD off.
   ///
-  /// The CLI adds no default of its own here: Flutter versions that build
-  /// with `aot_tools gen-snapshot` default DD on. For older versions, which
-  /// default DD off, `ArtifactBuilder` supplies the CLI's own default.
+  /// A debugging option; unset, the build's own default applies. How it
+  /// reaches the build depends on the Flutter version; see
+  /// `ArtifactBuilder._iosDdSettings`.
   int? get ddMaxBytes {
     final value = argResults[CommonArguments.ddMaxBytesArg.name] as String?;
     if (value == null) return null;
