@@ -22,5 +22,16 @@ void main() {
       expect(json['rollout_percentage'], equals(25.5));
       expect(PromotePatchRequest.fromJson(json), equals(request));
     });
+
+    test('can be (de)serialized with platforms', () {
+      const request = PromotePatchRequest(
+        channelId: 123,
+        patchId: 456,
+        platforms: [ReleasePlatform.android, ReleasePlatform.ios],
+      );
+      final json = request.toJson();
+      expect(json['platforms'], equals(['android', 'ios']));
+      expect(PromotePatchRequest.fromJson(json), equals(request));
+    });
   });
 }
