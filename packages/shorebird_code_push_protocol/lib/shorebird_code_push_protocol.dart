@@ -164,7 +164,6 @@ export 'package:shorebird_code_push_protocol/src/models/patch_adoption_point.dar
 export 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_check_metadata.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_link.dart';
-export 'package:shorebird_code_push_protocol/src/models/patch_link_result.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_metric_breakdown_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_metric_current_window.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_metric_time_series_entry.dart';

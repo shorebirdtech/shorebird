@@ -6030,21 +6030,6 @@ components:
             Unstable: this may change shape until patch linking ships.
         link:
           $ref: '#/components/schemas/PatchLink'
-    PatchLinkResult:
-      type: string
-      description: |
-        What linking did for a created patch.
-        Unstable: this may change shape until patch linking ships.
-      enum:
-        - linked
-        - reused
-        - not_linked
-        - none
-      x-enum-descriptions:
-        - The patch joined a number that patches for other platforms with the same key already have.
-        - The server returned this platform's unfinished patch from an earlier request with the same key (`created` is false).
-        - Another patch has the key, but this one could not join its number (see `reason`) and took a new number.
-        - Nothing to link to, so the patch took a new number. The request had no key or no platform, linking is off, or no other patch on the release has the key.
     PatchLink:
       type: object
       description: |
@@ -6055,7 +6040,22 @@ components:
         - result
       properties:
         result:
-          $ref: '#/components/schemas/PatchLinkResult'
+          type: string
+          description: |
+            What linking did. One of:
+            - `linked`: the patch joined a number that patches for other
+              platforms with the same key already have.
+            - `reused`: the server returned this platform's unfinished
+              patch from an earlier request with the same key (`created`
+              is false).
+            - `not_linked`: another patch has the key, but this one could
+              not join its number (see `reason`) and took a new number.
+            - `none`: nothing to link to, so the patch took a new number.
+              The request had no key or no platform, linking is off, or no
+              other patch on the release has the key.
+            Clients should treat other values as a result they do not
+            know; new ones may be added.
+            Unstable: this may change shape until patch linking ships.
         reason:
           type: string
           description: |
@@ -6065,6 +6065,7 @@ components:
             `number_rolled_back` (a patch under the key's newest number is
             rolled back). Clients should treat other values as a reason
             they do not know; new ones may be added.
+            Unstable: this may change shape until patch linking ships.
         platforms:
           type: array
           items:
@@ -6072,18 +6073,21 @@ components:
           description: |
             When `result` is `linked` or `reused`, the other platforms that
             already have a patch under this number.
+            Unstable: this may change shape until patch linking ships.
         link_number:
           type: integer
           format: int64
           description: |
             When `result` is `not_linked`, the newest number on the release
             created with the same key, which the patch did not join.
+            Unstable: this may change shape until patch linking ships.
         platform_patch_number:
           type: integer
           format: int64
           description: |
             When `reason` is `platform_has_newer_patch`, the platform's
             newest patch number on the release.
+            Unstable: this may change shape until patch linking ships.
     CreatePatchArtifactRequest:
       type: object
       description: |

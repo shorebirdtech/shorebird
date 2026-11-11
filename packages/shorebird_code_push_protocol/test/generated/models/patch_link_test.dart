@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('PatchLink', () {
     test('round-trips via maybeFromJson/toJson', () {
-      const instance = PatchLink(result: PatchLinkResult.linked);
+      const instance = PatchLink(result: 'example');
       final parsed = PatchLink.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
