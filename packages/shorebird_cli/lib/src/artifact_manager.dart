@@ -271,13 +271,16 @@ class ArtifactManager {
   }) async {
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
-      final archive = ZipDecoder().decodeStream(inputStream, verify: true);
-      await extractArchiveToDisk(
-        archive,
-        outputDirectory.path,
-        throwOnError: true,
-      );
-      inputStream.closeSync();
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        await extractArchiveToDisk(
+          archive,
+          outputDirectory.path,
+          throwOnError: true,
+        );
+      } finally {
+        inputStream.closeSync();
+      }
     });
   }
 
@@ -428,19 +431,22 @@ class ArtifactManager {
       final inputStream = InputFileStream(aabPath);
       // Verify each entry's checksum so a damaged bundle throws rather than
       // yielding a partial libapp.so.
-      final archive = ZipDecoder().decodeStream(inputStream, verify: true);
       // Entry contents are decompressed lazily from the input stream, so only
       // close it once every libapp.so has been written out.
-      for (final file in archive.files) {
-        if (!file.isFile) continue;
-        final match = libappEntry.firstMatch(file.name);
-        if (match == null) continue;
-        final arch = match.group(1)!;
-        File(p.join(outPath, arch, 'libapp.so'))
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(file.content as List<int>);
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        for (final file in archive.files) {
+          if (!file.isFile) continue;
+          final match = libappEntry.firstMatch(file.name);
+          if (match == null) continue;
+          final arch = match.group(1)!;
+          File(p.join(outPath, arch, 'libapp.so'))
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(file.content as List<int>);
+        }
+      } finally {
+        inputStream.closeSync();
       }
-      inputStream.closeSync();
     });
   }
 

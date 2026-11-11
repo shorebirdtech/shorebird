@@ -869,36 +869,6 @@ void main() {
         ).called(1);
       });
 
-      test('falls back to the stripped dir when the aab has no '
-          'libapp.so', () async {
-        final stripped = strippedOutLib()..createSync(recursive: true);
-        final aab = File(p.join(projectRoot.path, 'no_libapp.aab'))
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(
-            ZipEncoder().encode(
-              Archive()..addFile(
-                ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'x'),
-              ),
-            ),
-          );
-
-        final result = await runWithOverrides(
-          () => ArtifactManager.withAndroidArchsDirectoryFromAab(
-            projectRoot: projectRoot,
-            aab: aab,
-            action: (result) async => result,
-          ),
-        );
-
-        expect(result, isNotNull);
-        expect(result!.path, equals(stripped.path));
-        verify(
-          () => logger.detail(
-            any(that: contains('No libapp.so entries found')),
-          ),
-        ).called(1);
-      });
-
       test('falls back to the stripped dir when the aab is '
           'corrupt', () async {
         final stripped = strippedOutLib()..createSync(recursive: true);
@@ -958,6 +928,11 @@ void main() {
         expect(result, isNotNull);
         expect(result!.path, equals(stripped.path));
         expect(stripped.existsSync(), isTrue);
+        verify(
+          () => logger.detail(
+            any(that: contains('No libapp.so entries found')),
+          ),
+        ).called(1);
       });
 
       test('returns null when there is no stripped dir and no aab', () async {

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
@@ -22,6 +23,12 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Signature for a function which takes a path to a zip file.
 typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
+
+/// An [UnzipFn] that extracts [zipFilePath] into [outputDir], checking each
+/// entry's checksum so a damaged zip throws an `ArchiveException` instead of
+/// extracting partial contents.
+Future<void> extractVerifiedZip(String zipFilePath, String outputDir) =>
+    extractFileToDisk(zipFilePath, outputDir, verify: true);
 
 /// Signature for a function which builds a [CodePushClient].
 typedef CodePushClientBuilder =
