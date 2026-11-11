@@ -99,7 +99,8 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
     final extractedAarDirectory = await shorebirdAndroidArtifacts.extractAar(
       packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
-      unzipFn: extractFileToDisk,
+      unzipFn: (zipPath, outputDir) =>
+          extractFileToDisk(zipPath, outputDir, verify: true),
     );
 
     return createAndroidPatchArtifactBundles(

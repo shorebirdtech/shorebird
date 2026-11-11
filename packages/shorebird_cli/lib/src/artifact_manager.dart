@@ -271,8 +271,12 @@ class ArtifactManager {
   }) async {
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
-      final archive = ZipDecoder().decodeStream(inputStream);
-      await extractArchiveToDisk(archive, outputDirectory.path);
+      final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+      await extractArchiveToDisk(
+        archive,
+        outputDirectory.path,
+        throwOnError: true,
+      );
       inputStream.closeSync();
     });
   }
@@ -422,7 +426,9 @@ class ArtifactManager {
     await Isolate.run(() {
       final libappEntry = RegExp(r'^base/lib/([^/]+)/libapp\.so$');
       final inputStream = InputFileStream(aabPath);
-      final archive = ZipDecoder().decodeStream(inputStream);
+      // Verify each entry's checksum so a damaged bundle throws rather than
+      // yielding a partial libapp.so.
+      final archive = ZipDecoder().decodeStream(inputStream, verify: true);
       // Entry contents are decompressed lazily from the input stream, so only
       // close it once every libapp.so has been written out.
       for (final file in archive.files) {

@@ -845,8 +845,8 @@ void main() {
 
       test('falls back to the stripped dir when the aab is not a valid '
           'zip', () async {
-        // ZipDecoder yields an empty archive for unrecognized input rather
-        // than throwing, so this exercises the no-entries fallback.
+        // Extraction verifies the archive, so input without a zip central
+        // directory throws and takes the extraction-failure fallback.
         final stripped = strippedOutLib()..createSync(recursive: true);
         final invalidAab = File(p.join(projectRoot.path, 'invalid.aab'))
           ..createSync(recursive: true)
@@ -856,6 +856,36 @@ void main() {
           () => ArtifactManager.withAndroidArchsDirectoryFromAab(
             projectRoot: projectRoot,
             aab: invalidAab,
+            action: (result) async => result,
+          ),
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, equals(stripped.path));
+        verify(
+          () => logger.detail(
+            any(that: contains('Failed to extract libapp.so')),
+          ),
+        ).called(1);
+      });
+
+      test('falls back to the stripped dir when the aab has no '
+          'libapp.so', () async {
+        final stripped = strippedOutLib()..createSync(recursive: true);
+        final aab = File(p.join(projectRoot.path, 'no_libapp.aab'))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(
+            ZipEncoder().encode(
+              Archive()..addFile(
+                ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'x'),
+              ),
+            ),
+          );
+
+        final result = await runWithOverrides(
+          () => ArtifactManager.withAndroidArchsDirectoryFromAab(
+            projectRoot: projectRoot,
+            aab: aab,
             action: (result) async => result,
           ),
         );

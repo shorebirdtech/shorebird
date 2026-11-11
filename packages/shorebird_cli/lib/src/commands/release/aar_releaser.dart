@@ -98,7 +98,8 @@ class AarReleaser extends Releaser {
     final extractedAarDir = await shorebirdAndroidArtifacts.extractAar(
       packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
-      unzipFn: extractFileToDisk,
+      unzipFn: (zipPath, outputDir) =>
+          extractFileToDisk(zipPath, outputDir, verify: true),
     );
     extractAarProgress.complete();
 
