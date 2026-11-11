@@ -468,19 +468,15 @@ class ArtifactManager {
     try {
       (entryCount, libsByArch) = await _nativeLibsInAabBaseModule(aab);
     }
-    // A name-only walk of the zip central directory decodes corrupt input to an
-    // empty archive rather than throwing, so this is only reachable via a
-    // filesystem I/O failure that cannot be forced on every CI platform.
-    // coverage:ignore-start
+    // The listing verifies the zip structure, so input that is not a zip or
+    // has a damaged central directory throws here.
     on Exception {
       // Unreadable bundles are handled by the extraction fallback elsewhere.
       return null;
     }
-    // coverage:ignore-end
 
-    // An empty archive means the file is not a real bundle (corrupt or
-    // garbage input decodes to zero entries rather than throwing), so don't
-    // claim libapp.so was dropped. A real .aab always has many entries.
+    // A zip with no entries is not a real bundle, so don't claim libapp.so was
+    // dropped. A real .aab always has many entries.
     if (entryCount == 0) return null;
 
     final hasLibapp = libsByArch.values.any(
@@ -531,7 +527,10 @@ its base/lib for libapp.so will confirm whether the build is dropping it.''');
       final libEntry = RegExp(r'^base/lib/([^/]+)/([^/]+\.so)$');
       final inputStream = InputFileStream(aabPath);
       try {
-        final archive = ZipDecoder().decodeStream(inputStream);
+        // Verify the structure so a damaged bundle throws instead of listing
+        // only the entries before the damage. Names are read without
+        // decompressing any entry.
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
         final result = <String, List<String>>{};
         var entryCount = 0;
         for (final file in archive.files) {

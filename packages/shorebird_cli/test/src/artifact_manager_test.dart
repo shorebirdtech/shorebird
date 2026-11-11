@@ -992,14 +992,22 @@ void main() {
       });
 
       test('returns null when the aab is not a valid zip', () async {
-        // Garbage decodes to an empty archive rather than throwing, and an
-        // empty archive must not be reported as a dropped libapp.so.
+        // Input with no zip structure must not be reported as a dropped
+        // libapp.so.
         final invalidAab = File(p.join(tempDir.path, 'invalid.aab'))
           ..createSync(recursive: true)
           ..writeAsStringSync('not a zip');
 
         final result = await ArtifactManager.describeMissingLibappInAab(
           invalidAab,
+        );
+
+        expect(result, isNull);
+      });
+
+      test('returns null when the aab has no entries', () async {
+        final result = await ArtifactManager.describeMissingLibappInAab(
+          aabWith([]),
         );
 
         expect(result, isNull);
