@@ -183,8 +183,7 @@ void main() {
         expect(request.metadata, equals({'from': 'callback'}));
       });
 
-      test('writes the build trace summary before describing a failed '
-          'run', () async {
+      test('writes the build trace summary of a failed run', () async {
         await recordRun(
           startRun(),
           () async => throw ProcessExit(ExitCode.software.code),

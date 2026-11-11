@@ -2045,6 +2045,77 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         );
       });
 
+      test('starts each platform with none of the last one\'s '
+          'state', () async {
+        when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+        command = PatchCommand(resolvePatcher: (_) => patcher)
+          ..testArgResults = argResults
+          ..testRunner = usageRunner();
+        when(
+          () => patcher.assertUnpatchableDiffs(
+            releaseArtifact: any(named: 'releaseArtifact'),
+            releaseArchive: any(named: 'releaseArchive'),
+            patchArchive: any(named: 'patchArchive'),
+          ),
+        ).thenAnswer(
+          (_) async =>
+              const DiffStatus(hasAssetChanges: true, hasNativeChanges: false),
+        );
+        var builds = 0;
+        when(
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async {
+          if (++builds == 2) throw Exception('gradle');
+          return File('');
+        });
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        final runs = verify(
+          () => codePushClient.createBuildRun(
+            appId: appId,
+            request: captureAny(named: 'request'),
+          ),
+        ).captured.cast<CreateBuildRunRequest>();
+        expect(runs, hasLength(2));
+        expect(runs.first.outcome, equals(BuildRunOutcome.succeeded));
+        expect(runs.first.runId, equals(runs.last.runId));
+        expect(runs.last.outcome, equals(BuildRunOutcome.failed));
+        expect(runs.last.reason, equals(BuildRunFailureReason.buildFailed));
+        expect(runs.last.patchId, isNull);
+        final described = verify(
+          () => patcher.updatedCreatePatchMetadata(captureAny()),
+        ).captured.cast<CreatePatchMetadata>();
+        expect(described.first.hasAssetChanges, isTrue);
+        // The failed platform never reached the diff check.
+        expect(described.last.hasAssetChanges, isFalse);
+      });
+
+      test('records every change the diff check found', () async {
+        stubDiffs(
+          const UserCancelledException(
+            UnpatchableChange.asset,
+            status: DiffStatus(hasAssetChanges: true, hasNativeChanges: true),
+          ),
+        );
+
+        await expectLater(runWithOverrides(command.run), exitsDeclined);
+
+        expect(sentRun().reason, equals(BuildRunFailureReason.assetDiffs));
+        final metadata =
+            verify(
+                  () => patcher.updatedCreatePatchMetadata(captureAny()),
+                ).captured.single
+                as CreatePatchMetadata;
+        expect(metadata.hasNativeChanges, isTrue);
+        expect(metadata.hasAssetChanges, isTrue);
+      });
+
       test('records nothing when the release is not found', () async {
         when(
           () => codePushClientWrapper.getRelease(
@@ -3112,11 +3183,11 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 ),
                 () => patcher.buildPatchArtifact(),
                 () => patcher.extractReleaseVersionFromArtifact(any()),
-                () => shorebirdFlutter.installRevision(
-                  revision: releaseFlutterRevision,
-                ),
                 () => shorebirdEnv.copyWith(
                   flutterRevisionOverride: releaseFlutterRevision,
+                ),
+                () => shorebirdFlutter.installRevision(
+                  revision: releaseFlutterRevision,
                 ),
                 () =>
                     patcher.buildPatchArtifact(releaseVersion: releaseVersion),

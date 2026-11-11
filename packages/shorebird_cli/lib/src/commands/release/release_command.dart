@@ -586,11 +586,7 @@ The version of the Android or iOS app that embeds this module
       '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
     );
     try {
-      return await blameFailureOn(
-        _buildRun,
-        BuildRunFailureReason.buildFailed,
-        releaser.buildReleaseArtifacts,
-      );
+      return await releaser.buildReleaseArtifacts();
     } on ArtifactBuildException catch (e) {
       _buildRun?.failWith(BuildRunFailureReason.buildFailed);
       throw CommandError(

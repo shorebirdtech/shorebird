@@ -521,6 +521,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     final resolved = await _resolveRelease(patcher);
     final release = resolved.release;
     _inferredReleaseVersion = resolved.inferredReleaseVersion;
+    final releaseFlutterShorebirdEnv = _releaseShorebirdEnv = shorebirdEnv
+        .copyWith(flutterRevisionOverride: release.flutterRevision);
     _buildRun
       ?..appId = appId
       ..releaseId = release.id
@@ -537,9 +539,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
-
-    final releaseFlutterShorebirdEnv = _releaseShorebirdEnv = shorebirdEnv
-        .copyWith(flutterRevisionOverride: release.flutterRevision);
 
     // Fail before downloading anything if the release's Flutter is too old.
     await runScoped(
@@ -1010,14 +1009,12 @@ A patch must be built with the --dart-define values and --target of its release,
 Building patch with Flutter $flutterVersionString
 ''');
     patcher.releaseArchive = releaseArchive;
-    final patchArtifactFile = await blameFailureOn(
-      _buildRun,
-      BuildRunFailureReason.buildFailed,
-      () => _tryBuildingArtifact<File>(
-        () => patcher.buildPatchArtifact(
-          releaseVersion: release.version,
-        ),
+    final patchArtifactFile = await _tryBuildingArtifact<File>(
+      () => patcher.buildPatchArtifact(
+        releaseVersion: release.version,
       ),
+      onBuildFailed: () =>
+          _buildRun?.failWith(BuildRunFailureReason.buildFailed),
     );
 
     final diffStatus = await assertUnpatchableDiffs(
@@ -1433,14 +1430,14 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         patchArchive: patchArchive,
       );
     } on UserCancelledException catch (e) {
-      _failWithChanges({e.change});
+      _failWithChanges({e.change}, status: e.status);
       logger.err('Aborting.');
       throw PromptDeclinedExit();
     } on UnpatchableChangeException catch (e) {
       // The diff checker has already listed the changes.
       final changes = e.changes;
       final native = changes.contains(UnpatchableChange.native);
-      _failWithChanges(changes);
+      _failWithChanges(changes, status: e.status);
       final releaseCommand = patcher.releaseType.releaseCommand(
         releaseVersion: '<new version>',
       );
@@ -1460,12 +1457,17 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     }
   }
 
-  /// Records in the build run that the patch stopped on [changes], which the
-  /// diff check found, so the run's metadata says what it found.
-  void _failWithChanges(Set<UnpatchableChange> changes) {
+  /// Records in the build run that the patch stopped on [changes], and
+  /// keeps [status], everything the diff check found, for the run's
+  /// metadata.
+  void _failWithChanges(
+    Set<UnpatchableChange> changes, {
+    required DiffStatus? status,
+  }) {
     final native = changes.contains(UnpatchableChange.native);
     final asset = changes.contains(UnpatchableChange.asset);
-    _diffStatus = DiffStatus(hasAssetChanges: asset, hasNativeChanges: native);
+    _diffStatus =
+        status ?? DiffStatus(hasAssetChanges: asset, hasNativeChanges: native);
     _buildRun?.failWith(
       native
           ? BuildRunFailureReason.nativeDiffs
@@ -1546,10 +1548,16 @@ ${summary.join('\n')}
 
 /// Executes [build] to build the artifact and includes
 /// special handling thrown exceptions such as [ArtifactBuildException].
-Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
+/// Calls [onBuildFailed] when the build itself fails, not when a step it
+/// takes already reported why it stopped.
+Future<R> _tryBuildingArtifact<R>(
+  Future<R> Function() build, {
+  void Function()? onBuildFailed,
+}) async {
   try {
     return await build();
   } on ArtifactBuildException catch (e) {
+    onBuildFailed?.call();
     throw CommandError(
       message: e.message,
       hint: e.fixRecommendation.isNullOrEmpty ? null : e.fixRecommendation,
@@ -1559,6 +1567,7 @@ Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
     // The build already reported why it stopped.
     rethrow;
   } on Exception catch (e) {
+    onBuildFailed?.call();
     throw CommandError(
       message: 'Failed to build patch artifacts: $e',
       exitCode: ExitCode.software,

@@ -80,19 +80,25 @@ enum UnpatchableChange {
 /// user cannot be prompted to continue.
 class UnpatchableChangeException implements Exception {
   /// Creates an [UnpatchableChangeException] for [changes].
-  const UnpatchableChangeException(this.changes);
+  const UnpatchableChangeException(this.changes, {this.status});
 
   /// The changes that blocked the patch, in [UnpatchableChange] order.
   final Set<UnpatchableChange> changes;
+
+  /// Every change the check found, including any the patch was allowed.
+  final DiffStatus? status;
 }
 
 /// Thrown when the user cancels after being prompted to continue.
 class UserCancelledException implements Exception {
   /// Creates a [UserCancelledException] for the declined [change].
-  const UserCancelledException(this.change);
+  const UserCancelledException(this.change, {this.status});
 
   /// The change the user was asked about.
   final UnpatchableChange change;
+
+  /// Every change the check found, including any the user accepted.
+  final DiffStatus? status;
 }
 
 /// A reference to a [PatchDiffChecker] instance.
@@ -265,7 +271,10 @@ If you don't know why you're seeing this, visit our troubleshooting page at ${na
           'Continue anyway?',
           hint: allowNativeDiffsHint,
         )) {
-          throw const UserCancelledException(UnpatchableChange.native);
+          throw UserCancelledException(
+            UnpatchableChange.native,
+            status: status,
+          );
         }
       }
     }
@@ -307,12 +316,17 @@ If you don't know why you're seeing this, visit our troubleshooting page at ${as
           'Continue anyway?',
           hint: allowAssetDiffsHint,
         )) {
-          throw const UserCancelledException(UnpatchableChange.asset);
+          throw UserCancelledException(
+            UnpatchableChange.asset,
+            status: status,
+          );
         }
       }
     }
 
-    if (blocked.isNotEmpty) throw UnpatchableChangeException(blocked);
+    if (blocked.isNotEmpty) {
+      throw UnpatchableChangeException(blocked, status: status);
+    }
 
     return status;
   }
