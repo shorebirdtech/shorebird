@@ -75,6 +75,8 @@ export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_chec
 export 'package:shorebird_code_push_protocol/src/messages/promote_patch/promote_patch_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/put_app_store_connect_credential/put_app_store_connect_credential_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/remove_enterprise_member/remove_enterprise_member200_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/rollback_patch/rollback_patch_request.dart';
+export 'package:shorebird_code_push_protocol/src/messages/rollforward_patch/rollforward_patch_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/set_enterprise_member_role/set_enterprise_member_role200_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/set_enterprise_member_role/set_enterprise_member_role_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/set_enterprise_organization_member_role/set_enterprise_organization_member_role_request.dart';
@@ -161,6 +163,8 @@ export 'package:shorebird_code_push_protocol/src/models/patch_adoption_entry.dar
 export 'package:shorebird_code_push_protocol/src/models/patch_adoption_point.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_check_metadata.dart';
+export 'package:shorebird_code_push_protocol/src/models/patch_link.dart';
+export 'package:shorebird_code_push_protocol/src/models/patch_link_result.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_metric_breakdown_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_metric_current_window.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_metric_time_series_entry.dart';

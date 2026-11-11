@@ -1060,12 +1060,25 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PerPage'
         - $ref: '#/components/parameters/Cursor'
+        - name: link_key
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Only the patches created with this `link_key`, so a client
+            retrying a publish can tell which platforms already finished.
+            Unstable: this may change shape until patch linking ships.
       responses:
         '200':
           description: |
-            The patches for the release, in patch number order. A patch
-            promoted to more than one channel appears once per channel, and
-            a page counts it once.
+            The patches for the release, in patch number order. Patches
+            built from one commit for different platforms can share a
+            number: each platform has its own entry, and within a number
+            the least-promoted entry comes first (no channel, then other
+            channels, then stable). A patch promoted to more than one
+            channel appears once per channel. A page counts each number
+            once.
           content:
             application/json:
               schema:
@@ -1101,6 +1114,16 @@ paths:
         - patches
       summary: Create a new patch.
       operationId: createPatch
+      description: |
+        Creates the patch for one platform of a release. Patches built from
+        one commit for different platforms share a number when the request
+        carries the same `link_key` and the number is newer than every patch
+        the platform already has on the release; `link` in the response
+        says what happened. A request that repeats an unfinished publish
+        (same platform and key, no artifacts uploaded yet, never on a
+        channel) gets the same patch back with `created: false`.
+        Unstable: linking, `link_key` and `created` may change shape until
+        patch linking ships.
       requestBody:
         required: true
         content:
@@ -1109,7 +1132,7 @@ paths:
               $ref: '#/components/schemas/CreatePatchRequest'
       responses:
         '201':
-          description: The newly-created patch.
+          description: The patch, newly created or resumed (see `created`).
           content:
             application/json:
               schema:
@@ -1151,6 +1174,19 @@ paths:
         - patches
       summary: Promote a patch to a channel.
       operationId: promotePatch
+      description: |
+        Moves the patch onto the channel. When the channel is protected the
+        patch does not move: an approval request is filed instead, replacing
+        any pending one for the same release and channel, and the answer is
+        `409` (`patch_approval_required`) with a message linking to the
+        request in the console.
+
+        Patches for different platforms can share a number. With
+        `platforms` the request moves only those platforms' patches under
+        the number. Without it, it moves every platform's patch under the
+        number, and answers `409` (`patch_platforms_differ`) when they are
+        on different channels.
+        Unstable: this may change shape until patch linking ships.
       requestBody:
         required: true
         content:
@@ -1160,6 +1196,25 @@ paths:
       responses:
         '204':
           description: The patch was promoted.
+        '400':
+          description: |
+            A platform in `platforms` has no patch under the number
+            (`patch_platform_not_found`).
+            Unstable: this may change shape until patch linking ships.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            The channel is protected, so an approval request was filed
+            instead (`patch_approval_required`), or `platforms` was omitted
+            and the number's platforms are on different channels
+            (`patch_platforms_differ`, unstable until patch linking ships).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/invitations:
@@ -1348,12 +1403,24 @@ paths:
         not rolled back, or to the base release. Undo with `rollforward`.
         Requires the `patches.rollback` permission.
 
+        Patches for different platforms can share a number. With
+        `platforms` the request rolls back only those platforms' patches
+        under the number. Without it, it rolls back every platform's patch
+        under the number that is not rolled back yet.
+        Unstable: this may change shape until patch linking ships.
+
         Rolling back a patch that is already rolled back changes nothing
         and answers `304`. Either way the cached patch-check responses for
         the release are cleared; if that fails the request answers `424`
         (`patch_rollback_cache_error`) with the patch already rolled back,
         and repeating the request retries the clear.
       operationId: rollbackPatch
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackPatchRequest'
       responses:
         '204':
           description: The patch was rolled back.
@@ -1363,8 +1430,10 @@ paths:
           description: |
             A path id is not an integer (`release_id_malformed`,
             `patch_id_malformed`), the release does not belong to the app
-            (`release_app_mismatch`), or the patch does not belong to the
-            release (`patch_release_mismatch`).
+            (`release_app_mismatch`), the patch does not belong to the
+            release (`patch_release_mismatch`), or a platform in
+            `platforms` has no patch under the number
+            (`patch_platform_not_found`).
           content:
             application/json:
               schema:
@@ -1407,12 +1476,25 @@ paths:
         Clears the patch's rolled-back mark, so the patch check serves it
         again. Requires the `patches.promoteToStable` permission.
 
+        Patches for different platforms can share a number. With
+        `platforms` the request rolls forward only those platforms' patches
+        under the number. Without it, it rolls forward every platform's
+        patch under the number, and answers `409` (`patch_platforms_differ`)
+        when some are rolled back and some are not.
+        Unstable: this may change shape until patch linking ships.
+
         Rolling forward a patch that is not rolled back changes nothing and
         answers `304`. Either way the cached patch-check responses for the
         release are cleared; if that fails the request answers `424`
         (`patch_rollforward_cache_error`) with the patch already rolled
         forward, and repeating the request retries the clear.
       operationId: rollforwardPatch
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollforwardPatchRequest'
       responses:
         '204':
           description: The patch was rolled forward.
@@ -1422,8 +1504,10 @@ paths:
           description: |
             A path id is not an integer (`release_id_malformed`,
             `patch_id_malformed`), the release does not belong to the app
-            (`release_app_mismatch`), or the patch does not belong to the
-            release (`patch_release_mismatch`).
+            (`release_app_mismatch`), the patch does not belong to the
+            release (`patch_release_mismatch`), or a platform in
+            `platforms` has no patch under the number
+            (`patch_platform_not_found`).
           content:
             application/json:
               schema:
@@ -1439,6 +1523,17 @@ paths:
           description: |
             The app (`app_not_found`), release (`release_not_found`) or
             patch (`patch_not_found`) does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            The patch is on a protected channel, so an approval request to
+            roll it forward was filed instead (`patch_approval_required`),
+            or `platforms` was omitted and some of the number's platforms
+            are rolled back and some are not (`patch_platforms_differ`,
+            unstable until patch linking ships).
           content:
             application/json:
               schema:
@@ -5203,9 +5298,33 @@ components:
           description: |
             The date and time the patch was created. Optional because it was
             added later; older servers do not send it.
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of `channel`'s devices the patch is offered to.
+            Absent when the patch is on no channel.
         notes:
           type: string
           description: Freeform notes associated with the patch, if any.
+        platform:
+          $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platform the patch was built for. Absent on patches created
+            before the server recorded it; read those from `artifacts`.
+            Unstable: this may change shape until patch linking ships.
+        link_key:
+          type: string
+          description: |
+            The key the patch was created with, which patches for other
+            platforms under the same number share. Absent when it was
+            created without one.
+            Unstable: this may change shape until patch linking ships.
+        git_sha:
+          type: string
+          description: |
+            The commit the patch was built from, when it was built in a git
+            checkout. Unstable: this may change shape until patch linking ships.
     ReleasePlatform:
       type: string
       description: A platform to which a Shorebird release can be deployed.
@@ -5855,6 +5974,33 @@ components:
           description: |
             Additional information about the command that was run to
             create the patch and the environment it was run in.
+        platform:
+          $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platform the patch is built for. Linking needs it; without
+            it the server reads `metadata.release_platform`.
+            Unstable: this may change shape until patch linking ships.
+        link_key:
+          type: string
+          description: |
+            Links this platform's patch to patches for other platforms
+            created with the same key on the release, so they share a
+            number. Clients send one key for every platform built from one
+            commit, usually its SHA. At most 255 characters; a blank key is
+            refused.
+            Unstable: this may change shape until patch linking ships.
+        git_sha:
+          type: string
+          description: |
+            The commit the patch was built from, when it is built in a git
+            checkout, as at most 64 hex characters. Recorded as provenance whether or not the patch is
+            linked. Unstable: this may change shape until patch linking ships.
+        git_dirty:
+          type: boolean
+          description: |
+            Whether the git working tree had uncommitted changes when the
+            patch was built. Sent with `git_sha`.
+            Unstable: this may change shape until patch linking ships.
     CreatePatchResponse:
       type: object
       description: |
@@ -5875,6 +6021,69 @@ components:
           type: integer
           format: int64
           description: The patch number. A larger number equates to a newer patch.
+        created:
+          type: boolean
+          description: |
+            False when the server returned this platform's unfinished patch
+            from an earlier request with the same `link_key` instead of
+            creating one. Absent from servers that predate linking.
+            Unstable: this may change shape until patch linking ships.
+        link:
+          $ref: '#/components/schemas/PatchLink'
+    PatchLinkResult:
+      type: string
+      description: |
+        What linking did for a created patch.
+        Unstable: this may change shape until patch linking ships.
+      enum:
+        - linked
+        - reused
+        - not_linked
+        - none
+      x-enum-descriptions:
+        - The patch joined a number that patches for other platforms with the same key already have.
+        - The server returned this platform's unfinished patch from an earlier request with the same key (`created` is false).
+        - Another patch has the key, but this one could not join its number (see `reason`) and took a new number.
+        - Nothing to link to, so the patch took a new number. The request had no key or no platform, linking is off, or no other patch on the release has the key.
+    PatchLink:
+      type: object
+      description: |
+        What linking did for a created patch. Absent from servers that
+        predate linking.
+        Unstable: this may change shape until patch linking ships.
+      required:
+        - result
+      properties:
+        result:
+          $ref: '#/components/schemas/PatchLinkResult'
+        reason:
+          type: string
+          description: |
+            Why the patch was not linked, when `result` is `not_linked`.
+            One of `platform_has_newer_patch` (the platform already has a
+            patch numbered at or above the key's newest number) or
+            `number_rolled_back` (a patch under the key's newest number is
+            rolled back). Clients should treat other values as a reason
+            they do not know; new ones may be added.
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            When `result` is `linked` or `reused`, the other platforms that
+            already have a patch under this number.
+        link_number:
+          type: integer
+          format: int64
+          description: |
+            When `result` is `not_linked`, the newest number on the release
+            created with the same key, which the patch did not join.
+        platform_patch_number:
+          type: integer
+          format: int64
+          description: |
+            When `reason` is `platform_has_newer_patch`, the platform's
+            newest patch number on the release.
     CreatePatchArtifactRequest:
       type: object
       description: |
@@ -6057,6 +6266,48 @@ components:
           type: integer
           format: int64
           description: The ID of the channel.
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to, a
+            multiple of 0.01 from 0.01 to 100. Defaults to 100.
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platforms whose patches under the number to promote, at
+            least one. Omit to promote every platform's.
+            Unstable: this may change shape until patch linking ships.
+    RollbackPatchRequest:
+      type: object
+      description: |
+        The optional request body for POST
+        /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollback.
+      properties:
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platforms whose patches under the number to roll back, at
+            least one. Omit to roll back every platform's.
+            Unstable: this may change shape until patch linking ships.
+    RollforwardPatchRequest:
+      type: object
+      description: |
+        The optional request body for POST
+        /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollforward.
+      properties:
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platforms whose patches under the number to roll forward,
+            at least one. Omit to roll forward every platform's.
+            Unstable: this may change shape until patch linking ships.
     PatchCheckRequest:
       type: object
       description: The request body for POST /patches/check.
@@ -6291,7 +6542,8 @@ components:
     PatchAdoptionEntry:
       type: object
       description: |
-        Cumulative adoption for one patch of the release. Values are
+        Cumulative adoption for one patch number of the release, across
+        every platform with a patch under that number. Values are
         cumulative — "patch `>= patch_number`" — so they are monotonic
         non-increasing in `patch_number`.
       required:
@@ -6310,11 +6562,20 @@ components:
           items:
             $ref: '#/components/schemas/ReleasePlatform'
           description: |
-            The platform(s) the patch was built for (from its artifacts). The
-            denominator counts only devices on these platforms.
+            The platforms with a patch under this number. The denominator
+            counts only devices on these platforms.
         is_rolled_back:
           type: boolean
-          description: Whether the patch has been rolled back.
+          description: |
+            Whether the patch has been rolled back. When several platforms
+            share the number, true only when every one of them is.
+        rolled_back_platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platforms whose patch under this number is rolled back.
+            Unstable: this may change shape until patch linking ships.
         series:
           type: array
           items:
@@ -6383,7 +6644,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PatchAdoptionEntry'
-          description: One entry per patch of the release.
+          description: One entry per patch number of the release.
     ActiveHourEntry:
       type: object
       description: |

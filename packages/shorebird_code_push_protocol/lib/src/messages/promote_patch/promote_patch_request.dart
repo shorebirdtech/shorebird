@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template promote_patch_request}
 /// The request body for POST /apps/{appId}/patches/promote.
@@ -11,6 +12,7 @@ class PromotePatchRequest {
     required this.patchId,
     required this.channelId,
     this.rolloutPercentage,
+    this.platforms,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PromotePatchRequest].
@@ -22,6 +24,9 @@ class PromotePatchRequest {
         patchId: json['patch_id'] as int,
         channelId: json['channel_id'] as int,
         rolloutPercentage: (json['rollout_percentage'] as num?)?.toDouble(),
+        platforms: (json['platforms'] as List?)
+            ?.map<ReleasePlatform>((e) => ReleasePlatform.fromJson(e as String))
+            .toList(),
       ),
     );
   }
@@ -45,12 +50,18 @@ class PromotePatchRequest {
   /// multiple of 0.01 from 0.01 to 100. Defaults to 100.
   final double? rolloutPercentage;
 
+  /// The platforms whose patches under the number to promote, at
+  /// least one. Omit to promote every platform's.
+  /// Unstable: this may change shape until patch linking ships.
+  final List<ReleasePlatform>? platforms;
+
   /// Converts a [PromotePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'patch_id': patchId,
       'channel_id': channelId,
       'rollout_percentage': ?rolloutPercentage,
+      'platforms': ?platforms?.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -59,6 +70,7 @@ class PromotePatchRequest {
     patchId,
     channelId,
     rolloutPercentage,
+    listHash(platforms),
   ]);
 
   @override
@@ -67,6 +79,7 @@ class PromotePatchRequest {
     return other is PromotePatchRequest &&
         patchId == other.patchId &&
         channelId == other.channelId &&
-        rolloutPercentage == other.rolloutPercentage;
+        rolloutPercentage == other.rolloutPercentage &&
+        listsEqual(platforms, other.platforms);
   }
 }
