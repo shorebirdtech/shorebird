@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 
 /// {@template release_patch}
@@ -22,6 +23,9 @@ class ReleasePatch {
     this.rolloutPauseWeekends,
     this.rolloutTimezone,
     this.notes,
+    this.platform,
+    this.linkKey,
+    this.gitSha,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleasePatch].
@@ -52,6 +56,9 @@ class ReleasePatch {
         rolloutPauseWeekends: json['rollout_pause_weekends'] as bool?,
         rolloutTimezone: json['rollout_timezone'] as String?,
         notes: json['notes'] as String?,
+        platform: ReleasePlatform.maybeFromJson(json['platform'] as String?),
+        linkKey: json['link_key'] as String?,
+        gitSha: json['git_sha'] as String?,
       ),
     );
   }
@@ -109,6 +116,21 @@ class ReleasePatch {
   /// Freeform notes associated with the patch, if any.
   final String? notes;
 
+  /// The platform the patch was built for. Absent on patches created
+  /// before the server recorded it; read those from `artifacts`.
+  /// Unstable: this may change shape until patch linking ships.
+  final ReleasePlatform? platform;
+
+  /// The key the patch was created with, which patches for other
+  /// platforms under the same number share. Absent when it was
+  /// created without one.
+  /// Unstable: this may change shape until patch linking ships.
+  final String? linkKey;
+
+  /// The commit the patch was built from, when it was built in a git
+  /// checkout. Unstable: this may change shape until patch linking ships.
+  final String? gitSha;
+
   /// Converts a [ReleasePatch] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -124,6 +146,9 @@ class ReleasePatch {
       'rollout_pause_weekends': ?rolloutPauseWeekends,
       'rollout_timezone': ?rolloutTimezone,
       'notes': ?notes,
+      'platform': ?platform?.toJson(),
+      'link_key': ?linkKey,
+      'git_sha': ?gitSha,
     };
   }
 
@@ -141,6 +166,9 @@ class ReleasePatch {
     rolloutPauseWeekends,
     rolloutTimezone,
     notes,
+    platform,
+    linkKey,
+    gitSha,
   ]);
 
   @override
@@ -158,6 +186,9 @@ class ReleasePatch {
         rolloutNextStepAt == other.rolloutNextStepAt &&
         rolloutPauseWeekends == other.rolloutPauseWeekends &&
         rolloutTimezone == other.rolloutTimezone &&
-        notes == other.notes;
+        notes == other.notes &&
+        platform == other.platform &&
+        linkKey == other.linkKey &&
+        gitSha == other.gitSha;
   }
 }
