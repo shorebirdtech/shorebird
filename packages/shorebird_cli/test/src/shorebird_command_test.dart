@@ -651,16 +651,11 @@ void main() {
     });
 
     File writeZip({required bool damaged}) {
-      final bytes = ZipEncoder().encode(
-        Archive()..addFile(ArchiveFile.string(entryName, 'a' * 4096)),
-      );
-      if (damaged) {
-        // Overwrite the start of the deflate stream that follows the 30-byte
-        // local file header and the entry name.
-        for (var i = 30 + entryName.length; i < 38 + entryName.length; i++) {
-          bytes[i] = 0xff;
-        }
-      }
+      final bytes = damaged
+          ? damagedZipBytes()
+          : ZipEncoder().encode(
+              Archive()..addFile(ArchiveFile.string(entryName, 'a' * 4096)),
+            );
       return File(p.join(tempDir.path, 'input.zip'))..writeAsBytesSync(bytes);
     }
 

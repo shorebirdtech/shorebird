@@ -530,18 +530,21 @@ its base/lib for libapp.so will confirm whether the build is dropping it.''');
     return Isolate.run(() {
       final libEntry = RegExp(r'^base/lib/([^/]+)/([^/]+\.so)$');
       final inputStream = InputFileStream(aabPath);
-      final archive = ZipDecoder().decodeStream(inputStream);
-      final result = <String, List<String>>{};
-      var entryCount = 0;
-      for (final file in archive.files) {
-        if (!file.isFile) continue;
-        entryCount++;
-        final match = libEntry.firstMatch(file.name);
-        if (match == null) continue;
-        (result[match.group(1)!] ??= []).add(match.group(2)!);
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream);
+        final result = <String, List<String>>{};
+        var entryCount = 0;
+        for (final file in archive.files) {
+          if (!file.isFile) continue;
+          entryCount++;
+          final match = libEntry.firstMatch(file.name);
+          if (match == null) continue;
+          (result[match.group(1)!] ??= []).add(match.group(2)!);
+        }
+        return (entryCount, result);
+      } finally {
+        inputStream.closeSync();
       }
-      inputStream.closeSync();
-      return (entryCount, result);
     });
   }
 
