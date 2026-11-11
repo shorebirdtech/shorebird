@@ -52,6 +52,33 @@ void main() {
       });
     });
 
+    group('rollout_percentage', () {
+      test('round-trips through JSON', () {
+        const patch = ReleasePatch(
+          id: 0,
+          number: 1,
+          channel: 'stable',
+          isRolledBack: false,
+          artifacts: [],
+          rolloutPercentage: 12.5,
+        );
+        final json = patch.toJson();
+        expect(json['rollout_percentage'], equals(12.5));
+        expect(ReleasePatch.fromJson(json), equals(patch));
+      });
+
+      test('is null when a server does not send it', () {
+        final patch = ReleasePatch.fromJson(const {
+          'id': 0,
+          'number': 1,
+          'artifacts': <Object>[],
+          'is_rolled_back': false,
+        });
+        expect(patch.rolloutPercentage, isNull);
+        expect(patch.toJson(), isNot(contains('rollout_percentage')));
+      });
+    });
+
     group('copyWith', () {
       final patch = ReleasePatch(
         id: 0,
@@ -60,6 +87,7 @@ void main() {
         isRolledBack: false,
         artifacts: const [],
         createdAt: DateTime.utc(2026),
+        rolloutPercentage: 10,
         notes: 'notes',
       );
 
@@ -75,6 +103,7 @@ void main() {
         expect(copy.channel, equals(patch.channel));
         expect(copy.artifacts, equals(patch.artifacts));
         expect(copy.createdAt, equals(patch.createdAt));
+        expect(copy.rolloutPercentage, equals(patch.rolloutPercentage));
         expect(copy.notes, equals(patch.notes));
       });
 
@@ -95,6 +124,7 @@ void main() {
           artifacts: [artifact],
           isRolledBack: true,
           createdAt: DateTime.utc(2027),
+          rolloutPercentage: 50,
           notes: 'other-notes',
         );
         expect(
@@ -107,6 +137,7 @@ void main() {
               artifacts: [artifact],
               isRolledBack: true,
               createdAt: DateTime.utc(2027),
+              rolloutPercentage: 50,
               notes: 'other-notes',
             ),
           ),

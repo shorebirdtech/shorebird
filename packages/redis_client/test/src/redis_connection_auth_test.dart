@@ -61,11 +61,20 @@ class _FakeRedisServer {
   }
 
   /// Drops every open client connection, as a server restart would.
+  ///
+  /// Closes with a FIN before destroying: `resp_client` listens to plaintext
+  /// sockets without an error handler, so an immediate RST from
+  /// [Socket.destroy] on macOS raises an unhandled [SocketException] on the
+  /// read stream before the write side closes when the client proceeds to
+  /// write.
   Future<void> dropClients() async {
-    for (final socket in _sockets) {
+    final sockets = List.of(_sockets);
+    _sockets.clear();
+    for (final socket in sockets) {
+      await socket.close();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       socket.destroy();
     }
-    _sockets.clear();
   }
 
   Future<void> close() async {

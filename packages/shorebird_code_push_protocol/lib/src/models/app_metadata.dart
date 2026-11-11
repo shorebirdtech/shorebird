@@ -16,6 +16,8 @@ class AppMetadata {
     required this.createdAt,
     required this.updatedAt,
     this.organizationId,
+    this.patchSigningRequired,
+    this.enterpriseName,
     this.latestReleaseVersion,
     this.latestPatchNumber,
     this.platforms,
@@ -33,6 +35,8 @@ class AppMetadata {
         appId: json['app_id'] as String,
         organizationId: json['organization_id'] as int?,
         displayName: json['display_name'] as String,
+        patchSigningRequired: json['patch_signing_required'] as bool?,
+        enterpriseName: json['enterprise_name'] as String?,
         latestReleaseVersion: json['latest_release_version'] as String?,
         latestPatchNumber: json['latest_patch_number'] as int?,
         createdAt: DateTime.parse(json['created_at'] as String),
@@ -78,6 +82,18 @@ class AppMetadata {
 
   /// The display name of the app.
   final String displayName;
+
+  /// Whether the enterprise the app's organization is in requires
+  /// every release and patch of the app to be signed, so the server
+  /// refuses a release built with `--no-patch-signing` and any patch
+  /// to a release that can't verify a signature. Sent only when
+  /// reading one app.
+  final bool? patchSigningRequired;
+
+  /// The name of the enterprise the app's organization is in, to
+  /// name in messages about its policies. Sent only when reading one
+  /// app, and only for an app in an enterprise.
+  final String? enterpriseName;
 
   /// The latest release version of the app.
   final String? latestReleaseVersion;
@@ -129,6 +145,8 @@ class AppMetadata {
       'app_id': appId,
       'organization_id': ?organizationId,
       'display_name': displayName,
+      'patch_signing_required': ?patchSigningRequired,
+      'enterprise_name': ?enterpriseName,
       'latest_release_version': ?latestReleaseVersion,
       'latest_patch_number': ?latestPatchNumber,
       'created_at': createdAt.toUtc().toIso8601String(),
@@ -149,6 +167,8 @@ class AppMetadata {
     appId,
     organizationId,
     displayName,
+    patchSigningRequired,
+    enterpriseName,
     latestReleaseVersion,
     latestPatchNumber,
     createdAt,
@@ -166,6 +186,8 @@ class AppMetadata {
         appId == other.appId &&
         organizationId == other.organizationId &&
         displayName == other.displayName &&
+        patchSigningRequired == other.patchSigningRequired &&
+        enterpriseName == other.enterpriseName &&
         latestReleaseVersion == other.latestReleaseVersion &&
         latestPatchNumber == other.latestPatchNumber &&
         createdAt == other.createdAt &&

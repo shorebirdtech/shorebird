@@ -1,5 +1,5 @@
 // cspell:words xcframeworks xcasset unsign codesign assetutil pubspec
-// cspell:words xcassets actool
+// cspell:words xcassets actool bplist dsym dsyms propertylistserialization
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -7,13 +7,38 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
+import 'package:macho/macho.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/platform/apple/macho.dart';
+import 'package:shorebird_cli/src/platform/apple/plist.dart';
+
+/// A [FileSetDiff] that also carries semantic Mach-O diff results and embedded
+/// framework version changes.
+class AppleFileSetDiff extends FileSetDiff {
+  /// Creates an [AppleFileSetDiff] with Mach-O diff results and framework
+  /// version changes.
+  const AppleFileSetDiff({
+    required super.addedPaths,
+    required super.removedPaths,
+    required super.changedPaths,
+    this.machODiffResults = const {},
+    this.frameworkVersionChanges = const [],
+  });
+
+  /// Mach-O diff results for breaking changes, keyed by file path.
+  final Map<String, MachODiffResult> machODiffResults;
+
+  /// Embedded `.framework` bundles whose `Info.plist` versions differ between
+  /// the two archives.
+  final List<DependencyVersionChange> frameworkVersionChanges;
+}
 
 /// {@template apple_archive_differ}
 /// Finds differences between two IPAs, zipped Xcframeworks, or zipped macOS
@@ -41,6 +66,14 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     RegExp(r'Flutter.framework/Flutter$'),
   };
 
+  /// Framework names owned by Flutter/Shorebird rather than native plugins or
+  /// SDKs.
+  static const _flutterFrameworkNames = {
+    'App',
+    'Flutter',
+    'ShorebirdFlutter',
+  };
+
   /// The regex pattern for identifying app files within an xcarchive.
   static final RegExp xcFrameworkAppRegex = RegExp(
     r'^Products/Applications/[\w\-. ]+.app/[\w\- ]+$',
@@ -49,11 +82,60 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   /// The regex pattern for identifying executable files within a macOS .app.
   static final RegExp macosAppRegex = RegExp(r'^Contents/MacOS/.+$');
 
+  /// The regex pattern for identifying embedded `.framework` binary files:
+  /// matches both flat iOS/tvOS frameworks (`Frameworks/<Name>.framework/<Name>`)
+  /// and versioned macOS frameworks
+  /// (`Frameworks/<Name>.framework/Versions/<Ver>/<Name>`).
+  static final RegExp embeddedFrameworkBinaryRegex = RegExp(
+    r'(?:^|/)Frameworks/([\w\-. ]+)\.framework/(?:Versions/[^/]+/)?([\w\-. ]+)$',
+  );
+
+  /// The regex pattern for identifying embedded `.framework` `Info.plist`
+  /// files: matches both flat (`Frameworks/<Name>.framework/Info.plist`) and
+  /// versioned macOS
+  /// (`Frameworks/<Name>.framework/Versions/<Ver>/Resources/Info.plist` or
+  /// `Frameworks/<Name>.framework/Resources/Info.plist`) layouts.
+  static final RegExp embeddedFrameworkPlistRegex = RegExp(
+    r'(?:^|/)Frameworks/([\w\-. ]+)\.framework/'
+    r'(?:Versions/[^/]+/)?(?:Resources/)?Info\.plist$',
+  );
+
+  /// The regex pattern for identifying companion `.dSYM` DWARF Mach-O files.
+  static final RegExp _dsymDwarfRegex = RegExp(
+    r'(?:^|/)dSYMs/[\w\-. ]+\.dSYM/Contents/Resources/DWARF/([\w\-. ]+)$',
+  );
+
+  /// Whether [filePath] is a non-Flutter embedded `.framework` binary.
+  static bool isEmbeddedFrameworkBinaryPath(String filePath) {
+    final match = embeddedFrameworkBinaryRegex.firstMatch(filePath);
+    if (match == null) return false;
+    final frameworkName = match.group(1)!;
+    final binaryName = match.group(2)!;
+    return frameworkName == binaryName &&
+        !_flutterFrameworkNames.contains(frameworkName);
+  }
+
+  static bool _isMachOBinaryPath(String filePath) =>
+      xcFrameworkAppRegex.hasMatch(filePath) ||
+      macosAppRegex.hasMatch(filePath) ||
+      isEmbeddedFrameworkBinaryPath(filePath);
+
+  /// Returns the non-Flutter framework name if [filePath] is an embedded
+  /// framework `Info.plist`, or `null` otherwise.
+  static String? embeddedFrameworkNameForPlistPath(String filePath) {
+    final match = embeddedFrameworkPlistRegex.firstMatch(filePath);
+    if (match == null) return null;
+    final frameworkName = match.group(1)!;
+    if (_flutterFrameworkNames.contains(frameworkName)) return null;
+    return frameworkName;
+  }
+
   /// Files that have been added, removed, or that have changed between the
   /// archives at the two provided paths. This method will also unsign mach-o
-  /// binaries in the archives before computing the diff.
+  /// binaries in the archives before computing the diff, and semantically diff
+  /// native Mach-O binaries via [MachODiffer].
   @override
-  Future<FileSetDiff> changedFiles(
+  Future<AppleFileSetDiff> changedFiles(
     String oldArchivePath,
     String newArchivePath,
   ) async {
@@ -69,15 +151,195 @@ class AppleArchiveDiffer extends ArchiveDiffer {
       pathHashes: newPathHashes,
     );
 
-    return FileSetDiff.fromPathHashes(
+    final fileSetDiff = FileSetDiff.fromPathHashes(
       oldPathHashes: oldPathHashes,
       newPathHashes: newPathHashes,
     );
+
+    final candidateMachOPaths = fileSetDiff.changedPaths
+        .where(_isMachOBinaryPath)
+        .toList();
+
+    final oldPlistPaths = oldPathHashes.keys
+        .where((p) => embeddedFrameworkNameForPlistPath(p) != null)
+        .toList();
+    final newPlistPaths = newPathHashes.keys
+        .where((p) => embeddedFrameworkNameForPlistPath(p) != null)
+        .toList();
+    final allPlistPaths = {...oldPlistPaths, ...newPlistPaths};
+
+    final changedPlistPaths = allPlistPaths
+        .where((p) => oldPathHashes[p] != newPathHashes[p])
+        .toSet();
+
+    if (candidateMachOPaths.isEmpty && changedPlistPaths.isEmpty) {
+      return AppleFileSetDiff(
+        addedPaths: fileSetDiff.addedPaths,
+        removedPaths: fileSetDiff.removedPaths,
+        changedPaths: fileSetDiff.changedPaths,
+      );
+    }
+
+    final oldDsymPaths = oldPathHashes.keys.where(_dsymDwarfRegex.hasMatch);
+    final newDsymPaths = newPathHashes.keys.where(_dsymDwarfRegex.hasMatch);
+
+    final oldExtracted = _extractFiles(oldArchivePath, {
+      ...candidateMachOPaths,
+      ...oldDsymPaths,
+      ...allPlistPaths,
+    });
+    final newExtracted = _extractFiles(newArchivePath, {
+      ...candidateMachOPaths,
+      ...newDsymPaths,
+      ...allPlistPaths,
+    });
+
+    final oldDsymByBinary = <String, Uint8List>{
+      for (final path in oldDsymPaths)
+        _dsymDwarfRegex.firstMatch(path)!.group(1)!: ?oldExtracted[path],
+    };
+    final newDsymByBinary = <String, Uint8List>{
+      for (final path in newDsymPaths)
+        _dsymDwarfRegex.firstMatch(path)!.group(1)!: ?newExtracted[path],
+    };
+
+    const differ = MachODiffer();
+    final safePaths = <String>{};
+    final machODiffResults = <String, MachODiffResult>{};
+
+    for (final path in candidateMachOPaths) {
+      final oldBytes = oldExtracted[path];
+      final newBytes = newExtracted[path];
+      if (oldBytes == null || newBytes == null) continue;
+
+      final binaryName = p.basename(path);
+      final result = differ.diffBytes(
+        oldBytes,
+        newBytes,
+        oldDsymBytes: oldDsymByBinary[binaryName],
+        newDsymBytes: newDsymByBinary[binaryName],
+      );
+
+      if (result.isSafe) {
+        safePaths.add(path);
+      } else {
+        machODiffResults[path] = result;
+      }
+    }
+
+    final frameworkVersionChanges = _diffFrameworkVersions(
+      oldExtracted: oldExtracted,
+      newExtracted: newExtracted,
+      oldPlistPaths: oldPlistPaths,
+      newPlistPaths: newPlistPaths,
+    );
+
+    final changedVersionNames = frameworkVersionChanges
+        .map((c) => c.name)
+        .toSet();
+    for (final path in changedPlistPaths) {
+      final name = embeddedFrameworkNameForPlistPath(path);
+      if (name != null && !changedVersionNames.contains('$name.framework')) {
+        safePaths.add(path);
+      }
+    }
+
+    final changedPaths = fileSetDiff.changedPaths.difference(safePaths);
+
+    return AppleFileSetDiff(
+      addedPaths: fileSetDiff.addedPaths,
+      removedPaths: fileSetDiff.removedPaths,
+      changedPaths: changedPaths,
+      machODiffResults: machODiffResults,
+      frameworkVersionChanges: frameworkVersionChanges,
+    );
+  }
+
+  List<DependencyVersionChange> _diffFrameworkVersions({
+    required Map<String, Uint8List> oldExtracted,
+    required Map<String, Uint8List> newExtracted,
+    required Iterable<String> oldPlistPaths,
+    required Iterable<String> newPlistPaths,
+  }) {
+    final oldVersions = _parseFrameworkVersions(oldExtracted, oldPlistPaths);
+    final newVersions = _parseFrameworkVersions(newExtracted, newPlistPaths);
+    return diffDependencyVersions(oldVersions, newVersions);
+  }
+
+  Map<String, String> _parseFrameworkVersions(
+    Map<String, Uint8List> extracted,
+    Iterable<String> plistPaths,
+  ) {
+    final versions = <String, String>{};
+    for (final path in plistPaths) {
+      final frameworkName = embeddedFrameworkNameForPlistPath(path);
+      final bytes = extracted[path];
+      if (frameworkName == null || bytes == null) continue;
+      final version = _readPlistVersion(bytes);
+      if (version != null) {
+        versions['$frameworkName.framework'] = version;
+      }
+    }
+    return versions;
+  }
+
+  static String? _readPlistVersion(Uint8List bytes) {
+    try {
+      final isBinary =
+          bytes.length >= 6 &&
+          bytes[0] == 0x62 && // 'b'
+          bytes[1] == 0x70 && // 'p'
+          bytes[2] == 0x6c && // 'l'
+          bytes[3] == 0x69 && // 'i'
+          bytes[4] == 0x73 && // 's'
+          bytes[5] == 0x74; // 't'
+      final properties =
+          (isBinary
+                  ? PropertyListSerialization.propertyListWithData(
+                      ByteData.sublistView(bytes),
+                    )
+                  : PropertyListSerialization.propertyListWithString(
+                      utf8.decode(bytes),
+                    ))
+              as Map<String, Object>;
+      final shortVersion = properties[Plist.releaseVersionKey] as String?;
+      final buildNumber = properties[Plist.buildNumberKey] as String?;
+      if (shortVersion == null && buildNumber == null) return null;
+      if (shortVersion == null) return buildNumber;
+      if (buildNumber == null || buildNumber == shortVersion) {
+        return shortVersion;
+      }
+      return '$shortVersion+$buildNumber';
+      // Malformed Info.plist files are ignored when computing version labels.
+      // ignore: avoid_catches_without_on_clauses
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, Uint8List> _extractFiles(
+    String archivePath,
+    Set<String> paths,
+  ) {
+    if (paths.isEmpty) return const {};
+    final result = <String, Uint8List>{};
+    final input = InputFileStream(archivePath);
+    try {
+      final archive = ZipDecoder().decodeStream(input);
+      for (final file in archive.files) {
+        if (file.isFile && paths.contains(file.name)) {
+          result[file.name] = Uint8List.fromList(file.content);
+        }
+      }
+    } finally {
+      input.closeSync();
+    }
+    return result;
   }
 
   /// Replaces crc32s from zip file headers where needed. This currently
   /// includes:
-  ///   - Signed files (those with a .app extension)
+  ///   - Signed files (those with a .app extension or embedded frameworks)
   ///   - Compiled asset catalogs (those with a .car extension)
   Future<PathHashes> _updateHashes({
     required String archivePath,
@@ -125,7 +387,9 @@ class AppleArchiveDiffer extends ArchiveDiffer {
               _binaryFilePatterns.any(
                 (pattern) => pattern.hasMatch(file.name),
               ) ||
-              xcFrameworkAppRegex.hasMatch(file.name),
+              xcFrameworkAppRegex.hasMatch(file.name) ||
+              macosAppRegex.hasMatch(file.name) ||
+              isEmbeddedFrameworkBinaryPath(file.name),
         )
         .toList();
   }
@@ -167,7 +431,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
 
     final outFile = File(outPath);
     final Uint8List bytes;
-    if (MachO.isMachOFile(outFile)) {
+    if (outFile.lengthSync() >= 32 && MachO.isMachOFile(outFile)) {
       bytes = MachO.bytesWithZeroedUUID(outFile);
     } else {
       bytes = outFile.readAsBytesSync();
@@ -232,13 +496,23 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}',
   );
 
-  /// The `_<uuid>-<pid>-<counter>` suffix `actool` appends to the rendition
-  /// file names it generates for a layered icon (.icon) bundle. Every part of
-  /// it is regenerated per build, including the trailing pid and counter that
-  /// sit outside the uuid.
+  /// The per-build UUID suffix `actool` appends to the rendition file names it
+  /// generates for iOS 18+ layered icon (`.icon`) bundles
+  /// (`_<uuid>-<pid>-<counter>`) and Xcode 16+ appearance renditions
+  /// (`_UIAppearance<Variant>_<uuid>` / `_ISAppearance<Variant>_<uuid>`).
+  /// Every part of the generated suffix is regenerated per build.
   static final _generatedRenditionSuffixRegex = RegExp(
+    '_(?:(?:UIAppearance|ISAppearance)[A-Za-z]+_)?'
+    '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
+    '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}'
+    r'(?:-\d+-[0-9A-Fa-f]+)?',
+  );
+
+  static final _appearanceRenditionSuffixRegex = RegExp(
+    '(_(?:UIAppearance|ISAppearance)[A-Za-z]+)'
     '_[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
-    r'[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}-\d+-[0-9A-Fa-f]+',
+    '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}'
+    r'(?:-\d+-[0-9A-Fa-f]+)?',
   );
 
   /// Strips non-deterministic content from an `assetutil --info` JSON dump so
@@ -254,7 +528,8 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   ///     `SizeOnDisk`, `Encoding`, `Compression`, both dimensions and
   ///     `SHA1Digest` are all still compared.
   ///   * The generated suffix in the rendition file names of iOS 18 layered
-  ///     icon (.icon) bundles, which `actool` regenerates every build.
+  ///     icon (.icon) bundles and Xcode 16+ appearance renditions, which
+  ///     `actool` regenerates every build.
   ///   * `SHA1Digest` on those renditions only. Two builds of one unchanged
   ///     icon produce byte-identical payloads but different digests, so the
   ///     digest covers a region that includes the generated name and cannot
@@ -308,9 +583,13 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     }
   }
 
-  // The generated-suffix pattern is applied first because it is the more
-  // specific of the two and contains a uuid of its own.
+  // The generated-suffix patterns are applied first because they are the more
+  // specific patterns and contain a uuid of their own.
   static String _sanitizeString(String value) => value
+      .replaceAllMapped(
+        _appearanceRenditionSuffixRegex,
+        (match) => '${match.group(1)}_<generated>',
+      )
       .replaceAll(_generatedRenditionSuffixRegex, '_<generated>')
       .replaceAll(_uuidRegex, '<uuid>');
 
@@ -369,6 +648,6 @@ class AppleArchiveDiffer extends ArchiveDiffer {
 
   @override
   bool isNativeFilePath(String filePath) =>
-      xcFrameworkAppRegex.hasMatch(filePath) ||
-      macosAppRegex.hasMatch(filePath);
+      _isMachOBinaryPath(filePath) ||
+      embeddedFrameworkNameForPlistPath(filePath) != null;
 }

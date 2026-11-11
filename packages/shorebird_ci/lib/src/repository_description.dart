@@ -9,6 +9,7 @@ class RepositoryDescription {
     required this.packages,
     required this.root,
     required this.hasCodecov,
+    this.hasSubmodules = false,
     this.cspellConfig,
   });
 
@@ -20,6 +21,9 @@ class RepositoryDescription {
 
   /// Whether the repository has codecov configured.
   final bool hasCodecov;
+
+  /// Whether the repository has git submodules (`.gitmodules`).
+  final bool hasSubmodules;
 
   /// The cspell configuration file, if one exists.
   final File? cspellConfig;

@@ -146,6 +146,39 @@ void main() {
         expect(runs, 1);
         expect(entries(), hasLength(1));
       });
+
+      test(
+        'a run waiting for a slot does not hold the key lock, and takes a '
+        'pass recorded while it waited',
+        () async {
+          final slot = await RunSlot.acquire(cache, 1);
+          final waiting = Completer<void>();
+          final waiter = runCached(
+            command: const ['verify'],
+            workingDirectory: repo.path,
+            cacheDirectory: cache,
+            tools: const ['git'],
+            slots: 1,
+            log: (message) {
+              logs.add(message);
+              if (message.contains('waiting for one to finish')) {
+                waiting.complete();
+              }
+            },
+            run: runner(),
+          );
+          await waiting.future;
+          expect(Directory(p.join(cache.path, 'locks')).existsSync(), isFalse);
+
+          expect(await cached(), 0);
+          expect(runs, 1);
+
+          await slot.release();
+          expect(await waiter, 0);
+          expect(runs, 1);
+          expect(logs.last, startsWith('already verified'));
+        },
+      );
     });
 
     group('with inputs', () {
@@ -219,6 +252,20 @@ void main() {
       expect(runs, 1);
       expect(entries(), isEmpty);
     });
+
+    test(
+      'when git cannot hash the working tree, runs and records nothing',
+      () async {
+        File(p.join(repo.path, '.git', 'index')).writeAsStringSync('corrupt');
+        expect(await cached(), 0);
+        expect(runs, 1);
+        expect(entries(), isEmpty);
+        expect(
+          logs,
+          contains(contains('git could not hash the working tree')),
+        );
+      },
+    );
 
     test('a run waiting on the lock takes the pass it waited for', () async {
       await cached();

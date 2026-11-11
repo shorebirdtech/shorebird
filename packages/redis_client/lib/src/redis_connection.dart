@@ -81,9 +81,20 @@ class RedisConnection {
   /// Send a single command to the server. Waits for the socket to be ready
   /// before writing. Throws [RedisException] on a server-side error reply.
   /// Throws [StateError] if the connection has been closed.
-  Future<dynamic> execute(List<Object?> command) async {
+  ///
+  /// If [cancel] completes before the socket is ready, the attempt is
+  /// abandoned without writing [command] to the wire.
+  Future<dynamic> execute(
+    List<Object?> command, {
+    Future<void>? cancel,
+  }) async {
     if (_closed) throw StateError('RedisClient has been closed.');
-    await _untilConnected;
+    var canceled = false;
+    await Future.any([
+      _untilConnected,
+      ?cancel?.then((_) => canceled = true),
+    ]);
+    if (canceled) return null;
     final result = await RespCommandsTier0(_client!).execute(command);
     if (result.isError) throw RedisException(result.toString());
     return result.payload;
@@ -99,6 +110,7 @@ class RedisConnection {
   }
 
   Future<void> _reconnect({required int retryAttempts}) async {
+    if (_closed) return;
     if (retryAttempts <= 0) {
       _connected.completeError(
         const SocketException('Connection retry limit exceeded'),

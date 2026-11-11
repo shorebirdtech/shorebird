@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -5,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/build_flags.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -365,14 +367,14 @@ abstract class Releaser {
   }
 
   /// Assembles the supplement directory: copies the obfuscation map (if
-  /// present) into the platform supplement dir. Returns the directory, or null
-  /// if empty.
+  /// present) into the platform supplement dir and writes the release's
+  /// [BuildFlags]. Returns the directory, or null if there's no project.
   Directory? assembleSupplementDirectory() {
     final obfuscationMapFile = File(obfuscationMapPath);
     final hasObfuscationMap = useObfuscation && obfuscationMapFile.existsSync();
     final supplementDir = artifactManager.getReleaseSupplementDirectory(
       platformSubdir: supplementPlatformSubdir,
-      create: hasObfuscationMap,
+      create: true,
     );
     if (supplementDir == null) return null;
 
@@ -392,11 +394,13 @@ abstract class Releaser {
       targetMapFile.deleteSync();
     }
 
-    // Return null if the supplement directory is now empty (nothing to upload).
-    // Note: currently the obfuscation map is the only supplement artifact. If
-    // other supplement files are added in the future, this check (and the
-    // stale-file cleanup above) should be updated to handle them explicitly.
-    if (supplementDir.listSync().isEmpty) return null;
+    // The build already read every --dart-define-from-file, so this reads
+    // them again only to hash them.
+    File(
+      p.join(supplementDir.path, BuildFlags.fileName),
+    ).writeAsStringSync(
+      json.encode(BuildFlags.fromArgs(argResults, target: target).toJson()),
+    );
 
     return supplementDir;
   }
@@ -405,11 +409,10 @@ abstract class Releaser {
   /// assembled. `shorebird release` calls this right after
   /// [uploadReleaseArtifacts].
   ///
-  // TODO(bdero): This is a separate network call from the primary artifact
-  // upload, so an interruption between the two leaves the release without its
-  // supplement. Now that the supplement drives patching decisions (e.g.
-  // obfuscation), we should make this atomic or recoverable.
-  // https://github.com/shorebirdtech/shorebird/issues/3630
+  /// Both uploads run while the release is a draft on this platform, and
+  /// `shorebird patch` refuses a release that is not active on its platform.
+  /// A run stopped between them leaves a release nothing can patch until it
+  /// is released again.
   Future<void> uploadSupplementArtifact({
     required String appId,
     required int releaseId,

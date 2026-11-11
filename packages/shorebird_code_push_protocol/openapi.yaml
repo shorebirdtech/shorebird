@@ -4734,6 +4734,20 @@ components:
         display_name:
           type: string
           description: The display name of the app.
+        patch_signing_required:
+          type: boolean
+          description: |
+            Whether the enterprise the app's organization is in requires
+            every release and patch of the app to be signed, so the server
+            refuses a release built with `--no-patch-signing` and any patch
+            to a release that can't verify a signature. Sent only when
+            reading one app.
+        enterprise_name:
+          type: string
+          description: |
+            The name of the enterprise the app's organization is in, to
+            name in messages about its policies. Sent only when reading one
+            app, and only for an app in an enterprise.
         latest_release_version:
           type: string
           description: The latest release version of the app.
@@ -5189,6 +5203,12 @@ components:
           description: |
             The date and time the patch was created. Optional because it was
             added later; older servers do not send it.
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of `channel`'s devices the patch is offered to.
+            Absent when the patch is on no channel.
         notes:
           type: string
           description: Freeform notes associated with the patch, if any.
@@ -6043,6 +6063,12 @@ components:
           type: integer
           format: int64
           description: The ID of the channel.
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to, a
+            multiple of 0.01 from 0.01 to 100. Defaults to 100.
     PatchCheckRequest:
       type: object
       description: The request body for POST /patches/check.

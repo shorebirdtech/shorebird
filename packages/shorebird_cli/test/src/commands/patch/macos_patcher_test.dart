@@ -34,7 +34,6 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-import '../../fakes.dart';
 import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
@@ -290,6 +289,14 @@ void main() {
     });
 
     group('assertUnpatchableDiffs', () {
+      const podfileLockHash = 'podfile-lock-hash';
+
+      setUp(() {
+        when(
+          () => shorebirdEnv.macosPodfileLockHash,
+        ).thenReturn(podfileLockHash);
+      });
+
       group('when no native changes are detected', () {
         const noChangeDiffStatus = DiffStatus(
           hasAssetChanges: false,
@@ -304,51 +311,13 @@ void main() {
               archiveDiffer: any(named: 'archiveDiffer'),
               allowAssetChanges: any(named: 'allowAssetChanges'),
               allowNativeChanges: any(named: 'allowNativeChanges'),
-              confirmNativeChanges: false,
             ),
           ).thenAnswer((_) async => noChangeDiffStatus);
         });
 
-        test('returns diff status from patchDiffChecker', () async {
-          final diffStatus = await runWithOverrides(
-            () => patcher.assertUnpatchableDiffs(
-              releaseArtifact: FakeReleaseArtifact(),
-              releaseArchive: File(''),
-              patchArchive: File(''),
-            ),
-          );
-          expect(diffStatus, equals(noChangeDiffStatus));
-          verifyNever(() => logger.warn(any()));
-        });
-      });
-
-      group('when native changes are detected', () {
-        const nativeChangeDiffStatus = DiffStatus(
-          hasAssetChanges: false,
-          hasNativeChanges: true,
-        );
-
-        const podfileLockHash = 'podfile-lock-hash';
-
-        setUp(() {
-          when(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArchive: any(named: 'localArchive'),
-              releaseArchive: any(named: 'releaseArchive'),
-              archiveDiffer: any(named: 'archiveDiffer'),
-              allowAssetChanges: any(named: 'allowAssetChanges'),
-              allowNativeChanges: any(named: 'allowNativeChanges'),
-              confirmNativeChanges: false,
-            ),
-          ).thenAnswer((_) async => nativeChangeDiffStatus);
-
-          when(
-            () => shorebirdEnv.macosPodfileLockHash,
-          ).thenReturn(podfileLockHash);
-        });
-
-        group('when release has podspec lock hash', () {
-          group('when release podspec lock hash matches patch', () {
+        test(
+          'returns diff status without warning when Podfile.lock matches',
+          () async {
             const releaseArtifact = ReleaseArtifact(
               id: 0,
               releaseId: 0,
@@ -361,27 +330,23 @@ void main() {
               canSideload: true,
             );
 
-            setUp(() {
-              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
-              when(
-                () => logger.confirm(any(), hint: any(named: 'hint')),
-              ).thenReturn(true);
-            });
+            final diffStatus = await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: releaseArtifact,
+                releaseArchive: File(''),
+                patchArchive: File(''),
+              ),
+            );
+            expect(diffStatus, equals(noChangeDiffStatus));
+            verifyNever(() => logger.warn(any()));
+            verifyNever(() => logger.info(any()));
+          },
+        );
 
-            test('does not warn of native changes', () async {
-              final diffStatus = await runWithOverrides(
-                () => patcher.assertUnpatchableDiffs(
-                  releaseArtifact: releaseArtifact,
-                  releaseArchive: File(''),
-                  patchArchive: File(''),
-                ),
-              );
-              expect(diffStatus, equals(nativeChangeDiffStatus));
-              verifyNever(() => logger.warn(any()));
-            });
-          });
-
-          group('when release podspec lock hash does not match patch', () {
+        test(
+          'logs informational note and does not fail when Podfile.lock changed '
+          'but compiled native binaries are identical',
+          () async {
             const releaseArtifact = ReleaseArtifact(
               id: 0,
               releaseId: 0,
@@ -394,164 +359,129 @@ void main() {
               canSideload: true,
             );
 
-            group('when native diffs are allowed', () {
-              setUp(() {
-                when(() => argResults['allow-native-diffs']).thenReturn(true);
-              });
+            final diffStatus = await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: releaseArtifact,
+                releaseArchive: File(''),
+                patchArchive: File(''),
+              ),
+            );
+            expect(diffStatus, equals(noChangeDiffStatus));
+            verify(
+              () => logger.info(
+                'Your macos/Podfile.lock changed from the release, but all '
+                'compiled native binaries are identical.',
+              ),
+            ).called(1);
+            verifyNever(() => logger.warn(any()));
+          },
+        );
+      });
 
-              test(
-                'logs warning, does not prompt for confirmation to proceed',
-                () async {
-                  final diffStatus = await runWithOverrides(
-                    () => patcher.assertUnpatchableDiffs(
-                      releaseArtifact: releaseArtifact,
-                      releaseArchive: File(''),
-                      patchArchive: File(''),
-                    ),
-                  );
-                  expect(diffStatus, equals(nativeChangeDiffStatus));
-                  verify(
-                    () => logger.warn(
-                      '''
+      group('when native changes are detected', () {
+        const nativeChangeDiffStatus = DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: true,
+        );
+
+        setUp(() {
+          when(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: any(named: 'localArchive'),
+              releaseArchive: any(named: 'releaseArchive'),
+              archiveDiffer: any(named: 'archiveDiffer'),
+              allowAssetChanges: any(named: 'allowAssetChanges'),
+              allowNativeChanges: any(named: 'allowNativeChanges'),
+            ),
+          ).thenAnswer((_) async => nativeChangeDiffStatus);
+        });
+
+        test(
+          'does not log extra Podfile.lock warning when Podfile.lock matches',
+          () async {
+            const releaseArtifact = ReleaseArtifact(
+              id: 0,
+              releaseId: 0,
+              arch: 'aarch64',
+              platform: ReleasePlatform.macos,
+              hash: '#',
+              size: 42,
+              url: 'https://example.com',
+              podfileLockHash: podfileLockHash,
+              canSideload: true,
+            );
+
+            final diffStatus = await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: releaseArtifact,
+                releaseArchive: File(''),
+                patchArchive: File(''),
+              ),
+            );
+            expect(diffStatus, equals(nativeChangeDiffStatus));
+            verifyNever(() => logger.warn(any()));
+          },
+        );
+
+        test(
+          'logs Podfile.lock warning when Podfile.lock also differs',
+          () async {
+            const releaseArtifact = ReleaseArtifact(
+              id: 0,
+              releaseId: 0,
+              arch: 'aarch64',
+              platform: ReleasePlatform.macos,
+              hash: '#',
+              size: 42,
+              url: 'https://example.com',
+              podfileLockHash: 'non-matching podfile-lock-hash',
+              canSideload: true,
+            );
+
+            final diffStatus = await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: releaseArtifact,
+                releaseArchive: File(''),
+                patchArchive: File(''),
+              ),
+            );
+            expect(diffStatus, equals(nativeChangeDiffStatus));
+            verify(
+              () => logger.warn(
+                '''
 Your macos/Podfile.lock is different from the one used to build the release.
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
-                    ),
-                  ).called(1);
-                  verifyNever(() => logger.confirm(any()));
-                },
-              );
-            });
+              ),
+            ).called(1);
+          },
+        );
 
-            group('when native diffs are not allowed', () {
-              group('when in an environment that accepts user input', () {
-                setUp(() {
-                  when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
-                });
+        test(
+          'does not log Podfile.lock warning when release has no '
+          'podfileLockHash',
+          () async {
+            const releaseArtifact = ReleaseArtifact(
+              id: 0,
+              releaseId: 0,
+              arch: 'aarch64',
+              platform: ReleasePlatform.macos,
+              hash: '#',
+              size: 42,
+              url: 'https://example.com',
+              canSideload: true,
+            );
 
-                group('when user opts to continue at prompt', () {
-                  setUp(() {
-                    when(
-                      () => logger.confirm(any(), hint: any(named: 'hint')),
-                    ).thenReturn(true);
-                  });
-
-                  test('returns diff status from patchDiffChecker', () async {
-                    final diffStatus = await runWithOverrides(
-                      () => patcher.assertUnpatchableDiffs(
-                        releaseArtifact: releaseArtifact,
-                        releaseArchive: File(''),
-                        patchArchive: File(''),
-                      ),
-                    );
-                    expect(diffStatus, equals(nativeChangeDiffStatus));
-                  });
-                });
-
-                group('when user aborts at prompt', () {
-                  setUp(() {
-                    when(
-                      () => logger.confirm(any(), hint: any(named: 'hint')),
-                    ).thenReturn(false);
-                  });
-
-                  test('throws UserCancelledException', () async {
-                    await expectLater(
-                      () => runWithOverrides(
-                        () => patcher.assertUnpatchableDiffs(
-                          releaseArtifact: releaseArtifact,
-                          releaseArchive: File(''),
-                          patchArchive: File(''),
-                        ),
-                      ),
-                      throwsA(isA<UserCancelledException>()),
-                    );
-                  });
-                });
-              });
-
-              group(
-                'when in an environment that does not accept user input',
-                () {
-                  setUp(() {
-                    when(
-                      () => shorebirdEnv.canAcceptUserInput,
-                    ).thenReturn(false);
-                  });
-
-                  test('throws UnpatchableChangeException', () async {
-                    await expectLater(
-                      () => runWithOverrides(
-                        () => patcher.assertUnpatchableDiffs(
-                          releaseArtifact: releaseArtifact,
-                          releaseArchive: File(''),
-                          patchArchive: File(''),
-                        ),
-                      ),
-                      throwsA(
-                        isA<UnpatchableChangeException>().having(
-                          (e) => e.changes,
-                          'changes',
-                          {UnpatchableChange.native},
-                        ),
-                      ),
-                    );
-                    verify(
-                      () => logger.err(
-                        any(
-                          that: startsWith(
-                            'Your macos/Podfile.lock is different',
-                          ),
-                        ),
-                      ),
-                    ).called(1);
-                    verifyNever(() => logger.warn(any()));
-                  });
-                },
-              );
-            });
-          });
-        });
-
-        group('when release has no podspec lock hash', () {
-          // Releases made before Podfile.lock hashes were recorded have
-          // nothing to compare against, so the native diff passes through
-          // without a warning or prompt.
-          const releaseArtifact = ReleaseArtifact(
-            id: 0,
-            releaseId: 0,
-            arch: 'aarch64',
-            platform: ReleasePlatform.macos,
-            hash: '#',
-            size: 42,
-            url: 'https://example.com',
-            canSideload: true,
-          );
-
-          setUp(() {
-            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
-            when(
-              () => logger.confirm(any(), hint: any(named: 'hint')),
-            ).thenReturn(true);
-          });
-
-          test(
-            'returns diff status without warning or prompting',
-            () async {
-              final diffStatus = await runWithOverrides(
-                () => patcher.assertUnpatchableDiffs(
-                  releaseArtifact: releaseArtifact,
-                  releaseArchive: File(''),
-                  patchArchive: File(''),
-                ),
-              );
-              expect(diffStatus, equals(nativeChangeDiffStatus));
-              verifyNever(() => logger.warn(any()));
-              verifyNever(
-                () => logger.confirm(any(), hint: any(named: 'hint')),
-              );
-            },
-          );
-        });
+            final diffStatus = await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: releaseArtifact,
+                releaseArchive: File(''),
+                patchArchive: File(''),
+              ),
+            );
+            expect(diffStatus, equals(nativeChangeDiffStatus));
+            verifyNever(() => logger.warn(any()));
+          },
+        );
       });
     });
 
@@ -763,6 +693,44 @@ This may indicate that the patch contains native changes, which cannot be applie
           }
 
           expect(splitDebugInfo.existsSync(), isTrue);
+        });
+
+        test('writes each architecture its own symbols file', () async {
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception catch (_) {
+            // swallow exception
+          }
+
+          List<String> argsFor(ShorebirdArtifact artifact) =>
+              verify(
+                    () => artifactBuilder.buildElfAotSnapshot(
+                      appDillPath: any(named: 'appDillPath'),
+                      outFilePath: any(named: 'outFilePath'),
+                      genSnapshotArtifact: artifact,
+                      additionalArgs: captureAny(named: 'additionalArgs'),
+                    ),
+                  ).captured.single
+                  as List<String>;
+
+          expect(
+            argsFor(ShorebirdArtifact.genSnapshotMacosArm64),
+            contains(
+              '--save-debugging-info=${p.join(
+                splitDebugInfo.absolute.path,
+                'app.darwin-arm64.symbols',
+              )}',
+            ),
+          );
+          expect(
+            argsFor(ShorebirdArtifact.genSnapshotMacosX64),
+            contains(
+              '--save-debugging-info=${p.join(
+                splitDebugInfo.absolute.path,
+                'app.darwin-x86_64.symbols',
+              )}',
+            ),
+          );
         });
       });
 

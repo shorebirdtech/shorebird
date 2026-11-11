@@ -7,7 +7,14 @@ import 'dart:io';
 import 'package:verify_cache/verify_cache.dart';
 
 Future<void> main(List<String> args) async {
-  await RunSlot.acquire(Directory(args[0]), int.parse(args[1]));
+  await RunSlot.acquire(
+    Directory(args[0]),
+    int.parse(args[1]),
+    onWait: () async {
+      stdout.writeln('waiting');
+      await stdout.flush();
+    },
+  );
   stdout.writeln('held');
   await stdout.flush();
   // A pending timer, unlike a future nothing completes, keeps the VM alive.

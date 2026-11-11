@@ -545,6 +545,62 @@ workspace:
         expect(RepositoryAnalyzer.dependsOnFlutter(root: fooDir), isFalse);
       },
     );
+
+    test('ciConfig parses shorebird_ci configuration from pubspec.yaml', () {
+      final pkgA = Directory(p.join(tempDir.path, 'packages/a'))
+        ..createSync(recursive: true);
+      File(p.join(pkgA.path, 'pubspec.yaml')).writeAsStringSync('''
+name: a
+environment:
+  sdk: ^3.0.0
+shorebird_ci:
+  min_coverage: 99.7
+  runners:
+    - macos-latest
+    - ubuntu-latest
+  needs_redis: true
+  report_on:
+    - lib
+    - routes
+  coverage_excludes:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+  total_shards: "4"
+''');
+      final configA = RepositoryAnalyzer.ciConfig(root: pkgA);
+      expect(configA.minCoverage, '99.7');
+      expect(configA.runners, ['macos-latest', 'ubuntu-latest']);
+      expect(configA.needsRedis, isTrue);
+      expect(configA.reportOn, 'lib,routes');
+      expect(configA.coverageExcludes, '**/*.g.dart **/*.freezed.dart');
+      expect(configA.totalShards, 4);
+
+      final pkgB = Directory(p.join(tempDir.path, 'packages/b'))
+        ..createSync(recursive: true);
+      File(p.join(pkgB.path, 'pubspec.yaml')).writeAsStringSync('''
+name: b
+environment:
+  sdk: ^3.0.0
+shorebird_ci:
+  min_coverage: "100"
+  report_on: lib,bin
+  coverage_excludes: "**/*.g.dart"
+  total_shards: 2
+''');
+      final configB = RepositoryAnalyzer.ciConfig(root: pkgB);
+      expect(configB.minCoverage, '100');
+      expect(configB.runners, isNull);
+      expect(configB.needsRedis, isFalse);
+      expect(configB.reportOn, 'lib,bin');
+      expect(configB.coverageExcludes, '**/*.g.dart');
+      expect(configB.totalShards, 2);
+
+      final pkgEmpty = Directory(p.join(tempDir.path, 'packages/empty'))
+        ..createSync(recursive: true);
+      final configEmpty = RepositoryAnalyzer.ciConfig(root: pkgEmpty);
+      expect(configEmpty.minCoverage, isNull);
+      expect(configEmpty.needsRedis, isFalse);
+    });
   });
 
   group('posixRelative', () {

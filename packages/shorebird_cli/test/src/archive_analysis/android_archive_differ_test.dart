@@ -1,7 +1,11 @@
+// cspell:words crashlytics debuglink dynsym libcorrupt libnative librust
+// cspell:words posthog ProguardUuids rodata
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:elf/elf.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
@@ -119,6 +123,376 @@ void main() {
           expect(
             differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
             isTrue,
+          );
+        });
+
+        test(
+          'conservatively keeps DEX files when DEX bytes are corrupt',
+          () async {
+            final tempDir = Directory.systemTemp.createTempSync();
+            addTearDown(() => tempDir.deleteSync(recursive: true));
+
+            String writeZip(Map<String, Uint8List> files) {
+              final archive = Archive();
+              files.forEach((name, bytes) {
+                archive.addFile(ArchiveFile(name, bytes.length, bytes));
+              });
+              final path = p.join(tempDir.path, '${archive.hashCode}.aab');
+              File(path).writeAsBytesSync(ZipEncoder().encode(archive));
+              return path;
+            }
+
+            final oldAab = writeZip({
+              'base/dex/classes.dex': Uint8List.fromList([1, 2, 3]),
+            });
+            final newAab = writeZip({
+              'base/dex/classes.dex': Uint8List.fromList([4, 5, 6]),
+            });
+
+            final fileSetDiff = await differ.changedFiles(oldAab, newAab);
+            expect(fileSetDiff.changedPaths, contains('base/dex/classes.dex'));
+            expect(
+              differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+              isTrue,
+            );
+          },
+        );
+
+        group('native ELF .so files', () {
+          late Directory tempDir;
+
+          setUp(() {
+            tempDir = Directory.systemTemp.createTempSync();
+          });
+
+          tearDown(() {
+            tempDir.deleteSync(recursive: true);
+          });
+
+          String writeZip(String fileName, Map<String, Uint8List> files) {
+            final archive = Archive();
+            files.forEach((name, bytes) {
+              archive.addFile(ArchiveFile(name, bytes.length, bytes));
+            });
+            final path = p.join(tempDir.path, fileName);
+            File(path).writeAsBytesSync(ZipEncoder().encode(archive));
+            return path;
+          }
+
+          test(
+            'filters out native .so files that differ only in build-id and '
+            'debuglink',
+            () async {
+              const soPath = 'base/lib/arm64-v8a/libnative.so';
+              final oldElf = ElfBuilder.build(
+                buildId: Uint8List.fromList([0x11, 0x22, 0x33, 0x44]),
+                debugLinkName: 'libnative_old.debug',
+                textBytes: Uint8List.fromList([0xC0, 0x03, 0x5F, 0xD6]),
+                rodataBytes: Uint8List.fromList(
+                  [0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00],
+                ),
+                symbols: const [
+                  ElfSymbolSpec(
+                    name: 'Java_com_example_Native_compute',
+                    size: 4,
+                  ),
+                ],
+              );
+              final newElf = ElfBuilder.build(
+                buildId: Uint8List.fromList([0xAA, 0xBB, 0xCC, 0xDD]),
+                debugLinkName: 'libnative_new.debug',
+                textBytes: Uint8List.fromList([0xC0, 0x03, 0x5F, 0xD6]),
+                rodataBytes: Uint8List.fromList(
+                  [0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x00],
+                ),
+                symbols: const [
+                  ElfSymbolSpec(
+                    name: 'Java_com_example_Native_compute',
+                    size: 4,
+                  ),
+                ],
+              );
+
+              final oldAab = writeZip('old_safe.aab', {soPath: oldElf});
+              final newAab = writeZip('new_safe.aab', {soPath: newElf});
+
+              final fileSetDiff = await differ.changedFiles(oldAab, newAab);
+              expect(fileSetDiff.changedPaths, isNot(contains(soPath)));
+              expect(fileSetDiff.elfDiffResults, isEmpty);
+              expect(
+                differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+                isFalse,
+              );
+            },
+          );
+
+          test(
+            'keeps native .so files with code, symbol, or rodata changes and '
+            'records ElfDiffResult and dependencyVersionChanges',
+            () async {
+              const soPath = 'base/lib/arm64-v8a/libnative.so';
+              final oldElf = ElfBuilder.build(
+                buildId: Uint8List.fromList([0x11, 0x22]),
+                textBytes: Uint8List.fromList([0xC0, 0x03, 0x5F, 0xD6]),
+                rodataBytes: Uint8List.fromList([0x76, 0x31, 0x00]),
+                symbols: const [
+                  ElfSymbolSpec(
+                    name: 'Java_com_example_Native_compute',
+                    size: 4,
+                  ),
+                ],
+              );
+              final newElf = ElfBuilder.build(
+                buildId: Uint8List.fromList([0x11, 0x22]),
+                textBytes: Uint8List.fromList(
+                  [0x20, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6],
+                ),
+                rodataBytes: Uint8List.fromList([0x76, 0x32, 0x00]),
+                symbols: const [
+                  ElfSymbolSpec(
+                    name: 'Java_com_example_Native_compute',
+                  ),
+                  ElfSymbolSpec(
+                    name: 'Java_com_example_Native_extra',
+                    value: 0x1004,
+                    size: 4,
+                  ),
+                ],
+              );
+
+              final oldAab = writeZip('old_breaking.aab', {
+                soPath: oldElf,
+                bundleDependenciesPath: appDependencies([
+                  mavenLibrary('com.posthog', 'posthog-android', '3.71.6'),
+                ]),
+              });
+              final newAab = writeZip('new_breaking.aab', {
+                soPath: newElf,
+                bundleDependenciesPath: appDependencies([
+                  mavenLibrary('com.posthog', 'posthog-android', '3.71.7'),
+                ]),
+              });
+
+              final fileSetDiff = await differ.changedFiles(oldAab, newAab);
+              expect(fileSetDiff.changedPaths, contains(soPath));
+              expect(fileSetDiff.elfDiffResults, contains(soPath));
+              expect(fileSetDiff.elfDiffResults[soPath]!.isSafe, isFalse);
+              expect(
+                differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+                isTrue,
+              );
+              expect(
+                fileSetDiff.dependencyVersionChanges,
+                const [
+                  DependencyVersionChange(
+                    name: 'com.posthog:posthog-android',
+                    oldVersion: '3.71.6',
+                    newVersion: '3.71.7',
+                  ),
+                ],
+              );
+            },
+          );
+
+          test(
+            'conservatively keeps corrupt/truncated .so files without throwing',
+            () async {
+              const soPath = 'base/lib/arm64-v8a/libcorrupt.so';
+              final oldAab = writeZip('old_corrupt.aab', {
+                soPath: Uint8List.fromList([0x7F, 0x45, 0x4C, 0x46, 0x01]),
+              });
+              final newAab = writeZip('new_corrupt.aab', {
+                soPath: Uint8List.fromList([0x7F, 0x45, 0x4C, 0x46, 0x02]),
+              });
+
+              final fileSetDiff = await differ.changedFiles(oldAab, newAab);
+              expect(fileSetDiff.changedPaths, contains(soPath));
+              expect(fileSetDiff.elfDiffResults, contains(soPath));
+              expect(
+                differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+                isTrue,
+              );
+            },
+          );
+        });
+
+        group('build properties canonicalization', () {
+          late Directory tempDir;
+
+          setUp(() {
+            tempDir = Directory.systemTemp.createTempSync();
+          });
+
+          tearDown(() {
+            tempDir.deleteSync(recursive: true);
+          });
+
+          String writeZip(String fileName, Map<String, String> files) {
+            final archive = Archive();
+            files.forEach((name, content) {
+              final bytes = Uint8List.fromList(utf8.encode(content));
+              archive.addFile(ArchiveFile(name, bytes.length, bytes));
+            });
+            final path = p.join(tempDir.path, fileName);
+            File(path).writeAsBytesSync(ZipEncoder().encode(archive));
+            return path;
+          }
+
+          test(
+            'filters out sentry-debug-meta.properties and '
+            'crashlytics-build.properties when only UUIDs and timestamp '
+            'comments changed',
+            () async {
+              const sentryPath = 'base/assets/sentry-debug-meta.properties';
+              const crashlyticsPath =
+                  'base/assets/crashlytics-build.properties';
+
+              final oldAab = writeZip('old_props_safe.aab', {
+                sentryPath:
+                    '#Generated by sentry-android-gradle-plugin\n'
+                    '#Mon Nov 10 10:00:00 UTC 2026\n'
+                    'io.sentry.ProguardUuids='
+                    '11111111-2222-3333-4444-555555555555\n'
+                    'io.sentry.bundle-ids='
+                    'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee,'
+                    '1234567890abcdef1234567890abcdef\n'
+                    'io.sentry.environment=production\n',
+                crashlyticsPath:
+                    '!Generated by Crashlytics\n'
+                    '#Mon Nov 10 10:00:00 UTC 2026\n'
+                    'build_id=99999999-8888-7777-6666-555555555555\n'
+                    'package_name=com.example.app\n',
+              });
+              final newAab = writeZip('new_props_safe.aab', {
+                sentryPath:
+                    '#Generated by sentry-android-gradle-plugin\n'
+                    '#Mon Nov 10 11:30:00 UTC 2026\n'
+                    'io.sentry.ProguardUuids='
+                    'fedcba98-7654-3210-fedc-ba9876543210\n'
+                    'io.sentry.bundle-ids='
+                    '00000000-1111-2222-3333-444444444444,'
+                    'abcdef1234567890abcdef1234567890\n'
+                    'io.sentry.environment=production\n',
+                crashlyticsPath:
+                    '!Generated by Crashlytics\n'
+                    '#Mon Nov 10 11:30:00 UTC 2026\n'
+                    'build_id=12345678-1234-1234-1234-1234567890ab\n'
+                    'package_name=com.example.app\n',
+              });
+
+              final fileSetDiff = await differ.changedFiles(oldAab, newAab);
+              expect(fileSetDiff.changedPaths, isEmpty);
+              expect(
+                differ.containsPotentiallyBreakingAssetDiffs(fileSetDiff),
+                isFalse,
+              );
+            },
+          );
+
+          test(
+            'keeps build properties when non-UUID values or keys change',
+            () async {
+              const sentryPath = 'base/assets/sentry-debug-meta.properties';
+              const crashlyticsPath =
+                  'base/assets/crashlytics-build.properties';
+
+              final oldAab = writeZip('old_props_breaking.aab', {
+                sentryPath:
+                    'io.sentry.ProguardUuids='
+                    '11111111-2222-3333-4444-555555555555\n'
+                    'io.sentry.environment=staging\n',
+                crashlyticsPath:
+                    'build_id=99999999-8888-7777-6666-555555555555\n'
+                    'version_name=1.0.0\n',
+              });
+              final newAab = writeZip('new_props_breaking.aab', {
+                sentryPath:
+                    'io.sentry.ProguardUuids='
+                    'fedcba98-7654-3210-fedc-ba9876543210\n'
+                    'io.sentry.environment=production\n',
+                crashlyticsPath:
+                    'build_id=12345678-1234-1234-1234-1234567890ab\n'
+                    'version_name=1.0.1\n',
+              });
+
+              final fileSetDiff = await differ.changedFiles(oldAab, newAab);
+              expect(
+                fileSetDiff.changedPaths,
+                containsAll([sentryPath, crashlyticsPath]),
+              );
+              expect(
+                differ.containsPotentiallyBreakingAssetDiffs(fileSetDiff),
+                isTrue,
+              );
+            },
+          );
+
+          test(
+            'canonicalizeBuildProperties handles edge cases and malformed '
+            'inputs',
+            () {
+              // Unrecognized filename returns null.
+              expect(
+                AndroidArchiveDiffer.canonicalizeBuildProperties(
+                  'base/assets/other.properties',
+                  Uint8List.fromList(
+                    utf8.encode(
+                      'build_id=11111111-2222-3333-4444-555555555555',
+                    ),
+                  ),
+                ),
+                isNull,
+              );
+
+              // Invalid UTF-8 bytes returns null.
+              expect(
+                AndroidArchiveDiffer.canonicalizeBuildProperties(
+                  'base/assets/sentry-debug-meta.properties',
+                  Uint8List.fromList([0xFF, 0xFE, 0xFD]),
+                ),
+                isNull,
+              );
+
+              // Line without '=' returns null.
+              expect(
+                AndroidArchiveDiffer.canonicalizeBuildProperties(
+                  'base/assets/sentry-debug-meta.properties',
+                  Uint8List.fromList(utf8.encode('not_a_key_value_line')),
+                ),
+                isNull,
+              );
+
+              // Line starting with '=' or whitespace before '=' returns null.
+              expect(
+                AndroidArchiveDiffer.canonicalizeBuildProperties(
+                  'base/assets/sentry-debug-meta.properties',
+                  Uint8List.fromList(utf8.encode('=value')),
+                ),
+                isNull,
+              );
+
+              // Invalid UUID value for a UUID key returns null.
+              expect(
+                AndroidArchiveDiffer.canonicalizeBuildProperties(
+                  'base/assets/sentry-debug-meta.properties',
+                  Uint8List.fromList(
+                    utf8.encode('io.sentry.ProguardUuids=not-a-uuid'),
+                  ),
+                ),
+                isNull,
+              );
+
+              // File without any UUID key returns null.
+              expect(
+                AndroidArchiveDiffer.canonicalizeBuildProperties(
+                  'base/assets/sentry-debug-meta.properties',
+                  Uint8List.fromList(
+                    utf8.encode('io.sentry.environment=production'),
+                  ),
+                ),
+                isNull,
+              );
+            },
           );
         });
       });
@@ -434,6 +808,29 @@ void main() {
             isFalse,
           );
         });
+
+        test(
+          'classifies non-Flutter .so files as native and excludes '
+          'libapp.so and libflutter.so',
+          () {
+            expect(
+              differ.isNativeFilePath('base/lib/arm64-v8a/libnative.so'),
+              isTrue,
+            );
+            expect(
+              differ.isNativeFilePath('jni/arm64-v8a/librust.so'),
+              isTrue,
+            );
+            expect(
+              differ.isNativeFilePath('base/lib/arm64-v8a/libapp.so'),
+              isFalse,
+            );
+            expect(
+              differ.isNativeFilePath('base/lib/arm64-v8a/libflutter.so'),
+              isFalse,
+            );
+          },
+        );
       });
     });
   });

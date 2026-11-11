@@ -1,10 +1,30 @@
 <!-- cspell:words toplevel -->
 
-# Unreleased
+# 0.3.0
 
+- `DependencyResolver` now parses `.gitmodules` and collapses any dependency inside a submodule to the submodule's mount point, since `git diff` reports submodule updates at the mount point rather than paths beneath it.
+- `DependencyResolver` now reads extra input globs from `shorebird_ci: inputs:` and `verify_cache: inputs:` in `pubspec.yaml`, and static package filters include the reusable workflow file (`.github/workflows/_shorebird_ci_{dart,flutter}.yaml`).
+- New `--filters-only` flag on `generate` updates `dorny/paths-filter` `filters: |` blocks in place without overwriting surrounding jobs, services, or matrix strategies.
+- `generate --style static` reads declarative per-package `shorebird_ci:` configuration from `pubspec.yaml` (`min_coverage`, `runners`, `needs_redis`, `report_on`, `coverage_excludes`, `total_shards`).
+- Static reusable workflows (`_shorebird_ci_dart.yaml` and `_shorebird_ci_flutter.yaml`) now run an OS matrix (`ubuntu-latest` on pull requests, `inputs.runners` on `main` and `merge_group`), batch test files 50 at a time under `set -f` with optional `total_shards`/`shard_index` partitioning, use an absolute `COVERAGE_DIR` so tests that change `Directory.current` do not lose coverage, auto-detect `routes/` and `routes/.well-known`, scope `.dart_tool/package_config_scoped.json` to the active package before `coverage:format_coverage --check-ignore`, and gate `min_coverage` with `shorebird_ci check_coverage`.
+- New `--fatal-infos` flag on `generate` passes `--fatal-infos` to `dart analyze` and `flutter analyze`.
+- Generated workflows now emit `base: ${{ github.event.merge_group.base_ref || '' }}` on `dorny/paths-filter` and emit `submodules: recursive` on `actions/checkout` only when `.gitmodules` is present.
+
+# 0.2.8
+
+- Generated workflows now declare least-privilege `permissions:`, so regenerating no longer drops them from a repo that added them by hand, and a repo whose default `GITHUB_TOKEN` can write doesn't hand that to `pub get` and test steps. The dynamic workflow and the static main and reusable workflows set `contents: read` at the top level. The static `changes` job adds `pull-requests: read`, which `dorny/paths-filter` needs to list a pull request's files. A step you add to a generated workflow that needs more must be granted it on its job and, in a reusable workflow, on the job calling it too.
+
+# 0.2.7
+
+- Generated workflows no longer use `felangel/setup-bloc-tools` or `streetsidesoftware/cspell-action`. Bloc lint installs `bloc_tools` 0.1.0-dev.25 with `dart pub global activate`, and the `cspell` job runs `npx cspell@10.4.0`, each at the version that generated the workflow (their own dependencies still resolve fresh on each run). The `cspell` job runs with a read-only token that checkout doesn't persist. Flutter jobs with bloc lint now run `dart format` on Flutter's own Dart: `setup-bloc-tools` also ran `dart-lang/setup-dart@v1` on a tag inside it, which a SHA pin on the outer action doesn't cover.
+
+# 0.2.6
+
+- New `check_coverage` command: fails when line coverage in lcov tracefiles is below `--min` (default 100), leaving out sources matching `--exclude` globs. Several tracefiles are merged by summing hits per line, as test shards need. It replaces `VeryGoodOpenSource/very_good_coverage`, whose repository is archived, with the same rule: lines hit over lines found, and an empty or missing tracefile fails.
 - `generate` pins every action to a commit SHA, with its release tag in a trailing comment (`actions/checkout@<sha> # v7.0.1`), the form GitHub's hardening guide recommends and Dependabot keeps updating. Before, generated workflows used major tags (`@v6`), which whoever controls the action's repo can move to new code that then runs with the job's token and secrets. `--no-update-actions` writes the pins built into this version of shorebird_ci; otherwise `generate` pins each action's latest release.
 - `update_actions` pins `owner/repo@vN` refs to the action's latest release by SHA, and moves `owner/repo@<sha> # vN.N.N` pins to a newer release when there is one. It doesn't follow a tag that was moved under the same version, never moves a pin to an older release, and leaves SHA pins without a version comment alone. Breaking for library users: `LatestMajorResolver` is now `LatestReleaseResolver`, returning an `ActionRelease` (tag and SHA), and the `resolveLatestMajor:` parameters are `resolveLatestRelease:`.
 
+- `verify` fails when the workflow pins a shorebird_ci other than the one running, naming both and the `activate` line that would match it. Before, `verify` off `PATH` was whatever had been globally activated, while CI activated the pinned version, so a local pass was not a CI pass: an older `verify` skipped the static-filter check 0.2.5 added and passed on a repo CI then failed. A workflow naming no exact version, a constraint among them, is reported on stdout rather than failed, since what CI resolves it to is not knowable locally.
 - `generate` pins `dart pub global activate shorebird_ci` to the version that generated the workflow. Before, generated workflows activated whatever shorebird_ci was newest, so each release changed every user's CI the moment it was published, and a new `verify` check could fail a merge queue that hadn't changed. To move to a new shorebird_ci, run `generate` again (or bump the version in the workflow).
 
 - `generate` adds a `concurrency` block to the main workflow, so a new push to a pull request cancels that PR's run still going on the older head. The group is the PR number, with `github.run_id` as the fallback, so push-to-main and merge-queue runs each get their own group and are never cancelled or queued. The `required` aggregator now runs on `!cancelled()` instead of `always()`, so a cancelled superseded run shows as cancelled rather than reporting `required` red on the old commit.
