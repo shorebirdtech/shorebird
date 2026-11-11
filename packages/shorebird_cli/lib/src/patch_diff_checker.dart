@@ -87,7 +87,13 @@ class UnpatchableChangeException implements Exception {
 }
 
 /// Thrown when the user cancels after being prompted to continue.
-class UserCancelledException implements Exception {}
+class UserCancelledException implements Exception {
+  /// Creates a [UserCancelledException] for the declined [change].
+  const UserCancelledException(this.change);
+
+  /// The change the user was asked about.
+  final UnpatchableChange change;
+}
 
 /// A reference to a [PatchDiffChecker] instance.
 ScopedRef<PatchDiffChecker> patchDiffCheckerRef = create(PatchDiffChecker.new);
@@ -259,7 +265,7 @@ If you don't know why you're seeing this, visit our troubleshooting page at ${na
           'Continue anyway?',
           hint: allowNativeDiffsHint,
         )) {
-          throw UserCancelledException();
+          throw const UserCancelledException(UnpatchableChange.native);
         }
       }
     }
@@ -301,7 +307,7 @@ If you don't know why you're seeing this, visit our troubleshooting page at ${as
           'Continue anyway?',
           hint: allowAssetDiffsHint,
         )) {
-          throw UserCancelledException();
+          throw const UserCancelledException(UnpatchableChange.asset);
         }
       }
     }
