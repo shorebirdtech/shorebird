@@ -71,7 +71,7 @@ class GetPatchAdoptionResponse {
   /// may lag by up to ~1 hour.
   final DateTime asOf;
 
-  /// One entry per patch of the release.
+  /// One entry per patch number of the release.
   final List<PatchAdoptionEntry> patches;
 
   /// Converts a [GetPatchAdoptionResponse] to a `Map<String, dynamic>`.
