@@ -1358,7 +1358,8 @@ these improvements.
 
 - 🔧 Fix an issue where certain packages could interact poorly with the
   Shorebird updater, causing patches to be unexpectedly uninstalled. See
-  https://github.com/shorebirdtech/updater/issues/211 for more information.
+  https://docs.shorebird.dev/getting-started/flutter-version/#flutter-version-notes
+  for more information.
 - 🔗 Remove link percentage from `shorebird patch ios` summary logs.
 - #️⃣ Fix issue where `shorebird release ios` would not accept git commit hashes
   for the `--flutter-version` argument.

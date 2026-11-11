@@ -115,10 +115,10 @@ class FlutterSupportConstraint {
       version.satisfiesFloor(minVersion) || allowedRevisions.contains(revision);
 }
 
-/// Flutter versions that include the fix for
-/// https://github.com/shorebirdtech/updater/issues/211, where Android apps
-/// that start secondary Flutter engines (such as via
-/// `package:flutter_foreground_task`) could erroneously uninstall patches.
+/// Flutter versions that include the fix for a bug where Android apps that
+/// start secondary Flutter engines (such as via
+/// `package:flutter_foreground_task`) could erroneously uninstall patches. See
+/// https://docs.shorebird.dev/getting-started/flutter-version/#flutter-version-notes
 ///
 /// The fix shipped in Shorebird's second Flutter 3.24.1 engine revision
 /// (`a25b7cdfb9ef79f7d6dae48a6334a415f024a0a8`, Shorebird 1.3.1) and in
