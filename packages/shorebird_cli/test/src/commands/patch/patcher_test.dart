@@ -48,10 +48,24 @@ void main() {
     });
 
     group('lowLinkPercentageWarning', () {
-      test('rounds the percentage and links to the performance docs', () {
+      test('truncates the percentage and links to the performance docs', () {
         final warning = Patcher.lowLinkPercentageWarning(12.345678901234567);
         expect(warning, contains('share 12.3% of Dart code'));
         expect(warning, contains(linkPercentageUrl));
+      });
+
+      test('does not round a value just under 20% up to 20.0%', () {
+        final warning = Patcher.lowLinkPercentageWarning(19.97);
+        expect(warning, contains('share 19.9% of Dart code'));
+      });
+    });
+
+    group('formatLinkPercentage', () {
+      test('shows one decimal place, truncated', () {
+        expect(Patcher.formatLinkPercentage(62.1337), equals('62.1'));
+        expect(Patcher.formatLinkPercentage(19.97), equals('19.9'));
+        expect(Patcher.formatLinkPercentage(19.9), equals('19.9'));
+        expect(Patcher.formatLinkPercentage(20), equals('20.0'));
       });
     });
 
