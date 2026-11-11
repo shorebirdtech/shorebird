@@ -6,7 +6,7 @@ void main() {
   group('SetPatchRolloutRequest', () {
     test('round-trips via maybeFromJson/toJson', () {
       const instance = SetPatchRolloutRequest(rolloutPercentage: 0);
-      final parsed = SetPatchRolloutRequest.maybeFromJson(instance.toJson());
+      final parsed = SetPatchRolloutRequest.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

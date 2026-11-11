@@ -1455,6 +1455,74 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
+  /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/ReleaseId'
+      - $ref: '#/components/parameters/PatchId'
+    put:
+      tags:
+        - patches
+      summary: Set a patch's rollout percentage on its channel.
+      description: |
+        Raises the percentage of the patch's channel that receives it, up
+        to `100`. Rollouts only go up; to stop serving a patch, roll it
+        back instead.
+
+        A patch on a protected channel is refused. Raise its rollout by
+        promoting it to that channel at the new percentage, which files an
+        approval request for it.
+      operationId: setPatchRollout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPatchRolloutRequest'
+      responses:
+        '204':
+          description: The patch's rollout percentage was updated.
+        '400':
+          description: |
+            The body or `rollout_percentage` is malformed
+            (`patch_rollout_malformed_request_body`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            The caller lacks the required permission for the patch's
+            channel (`patches.promoteToStable` on `stable`, or
+            `patches.updateChannel` on another channel), or an active
+            deployment freeze window blocks the rollout increase on `stable`
+            (`deployment_freeze_active`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The app (`app_not_found`), release (`release_not_found`) or
+            patch (`patch_not_found`) does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            The patch is on no channel (`patch_not_on_channel`), the
+            requested percentage is lower than the patch's current one
+            (`rollout_percentage_lower`), the patch is on a protected
+            channel (`patch_rollout_protected_channel`), or the patch
+            moved track or was raised concurrently
+            (`patch_rollout_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
   /apps/{appId}/metrics/version-distribution:
     parameters:
       - $ref: '#/components/parameters/AppId'
@@ -6057,6 +6125,21 @@ components:
           type: integer
           format: int64
           description: The ID of the channel.
+    SetPatchRolloutRequest:
+      type: object
+      description: |
+        The request body for PUT
+        /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout.
+      required:
+        - rollout_percentage
+      properties:
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to, a
+            multiple of 0.01 from 0.01 to 100, no lower than the patch's
+            current one.
     PatchCheckRequest:
       type: object
       description: The request body for POST /patches/check.
