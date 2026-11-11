@@ -174,7 +174,6 @@ The version of the Android or iOS app that embeds this module
       )
       ..addOption(
         CommonArguments.ddMaxBytesArg.name,
-        defaultsTo: '10000',
         hide: true,
         help: CommonArguments.ddMaxBytesArg.description,
       )

@@ -450,7 +450,6 @@ void main() {
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
-            ddMaxBytes: any(named: 'ddMaxBytes'),
           ),
         ).thenAnswer((_) async => aabFile);
       });
@@ -540,7 +539,6 @@ void main() {
                     targetPlatforms: captureAny(named: 'targetPlatforms'),
                     args: any(named: 'args'),
                     base64PublicKey: any(named: 'base64PublicKey'),
-                    ddMaxBytes: any(named: 'ddMaxBytes'),
                   ),
                 ).captured.single
                 as Iterable<Arch>?;
@@ -675,7 +673,6 @@ void main() {
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenThrow(exception);
         });
@@ -787,7 +784,6 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((invocation) async {
               final args = invocation.namedArguments[#args] as List<String>;
@@ -840,7 +836,6 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((invocation) async {
               final args = invocation.namedArguments[#args] as List<String>;
@@ -890,7 +885,6 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: captureAny(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured.cast<List<String>>();
 
@@ -1265,7 +1259,6 @@ void main() {
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>

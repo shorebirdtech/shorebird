@@ -166,3 +166,19 @@ final buildTraceSupportConstraint = FlutterSupportConstraint(
 final libappStrippedByAgpConstraint = FlutterSupportConstraint(
   minVersion: Version(3, 44, 0),
 );
+
+/// Flutter versions that build iOS snapshots with `aot_tools gen-snapshot`
+/// (shorebirdtech/flutter#245, shorebirdtech/dart-sdk#899), which runs the
+/// Dynamic Dispatch (DD) table pass by default with Dart's own cap. On these
+/// versions DD needs nothing from the CLI: an Xcode or fastlane rebuild gets
+/// the same table as `shorebird release`.
+///
+/// Older versions (the DD pass shipped in 3.44.0) run the DD pass only when
+/// `SHOREBIRD_DD_MAX_BYTES` is set, and hand `--extra-gen-snapshot-options`
+/// to gen_snapshot as is, which rejects `--dd_max_bytes` as an unrecognized
+/// flag.
+// TODO(eseidel): set to the first Flutter release that carries
+// shorebirdtech/flutter#245 once it is cut.
+final aotToolsGenSnapshotConstraint = FlutterSupportConstraint(
+  minVersion: Version(3, 47, 10),
+);

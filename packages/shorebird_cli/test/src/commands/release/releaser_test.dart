@@ -197,8 +197,13 @@ void main() {
         expect(releaser.ddMaxBytes, equals(10000));
       });
 
-      test('is null for 0, negative, or malformed values', () {
-        for (final value in ['0', '-1', 'abc']) {
+      test('passes 0 through, to turn DD off', () {
+        when(() => argResults['dd-max-bytes']).thenReturn('0');
+        expect(releaser.ddMaxBytes, equals(0));
+      });
+
+      test('is null for negative or malformed values', () {
+        for (final value in ['-1', 'abc']) {
           when(() => argResults['dd-max-bytes']).thenReturn(value);
           expect(releaser.ddMaxBytes, isNull, reason: value);
         }
