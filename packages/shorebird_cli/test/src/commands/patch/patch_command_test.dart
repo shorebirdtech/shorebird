@@ -2015,6 +2015,32 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).called(1);
         });
 
+        test('shows the link percentage to one decimal place', () async {
+          when(() => patcher.linkPercentage).thenReturn(12.345678901234567);
+          await expectLater(
+            runWithOverrides(
+              () => command.assertMinLinkPercentage(patcher),
+            ),
+            exitsWithError(
+              message: contains('this patch (12.3%) is below'),
+              exitCode: ExitCode.software,
+            ),
+          );
+        });
+
+        test('shows a value just under the threshold below it', () async {
+          when(() => patcher.linkPercentage).thenReturn(19.97);
+          await expectLater(
+            runWithOverrides(
+              () => command.assertMinLinkPercentage(patcher),
+            ),
+            exitsWithError(
+              message: contains('this patch (19.9%) is below'),
+              exitCode: ExitCode.software,
+            ),
+          );
+        });
+
         group('when min-link-percentage is not specified', () {
           test('exits with an error below the default of 20%', () async {
             when(() => patcher.linkPercentage).thenReturn(12.3);
@@ -2071,7 +2097,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 ),
                 exitsWithError(
                   message:
-                      'The link percentage of this patch ($linkPercentage%) '
+                      'The link percentage of this patch (62.1%) '
                       'is below the minimum threshold (70%).',
                   hint:
                       'Not publishing. Lower --min-link-percentage to accept '

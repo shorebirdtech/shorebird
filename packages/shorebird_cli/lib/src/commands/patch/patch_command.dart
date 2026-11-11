@@ -1140,7 +1140,8 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     if (linkPercentage != null && linkPercentage < minLinkPercentage) {
       throw CommandError(
         message:
-            'The link percentage of this patch ($linkPercentage%) is below '
+            'The link percentage of this patch '
+            '(${Patcher.formatLinkPercentage(linkPercentage)}%) is below '
             'the minimum threshold ($minLinkPercentage%).',
         hint:
             'Not publishing. Lower --min-link-percentage to accept this '
