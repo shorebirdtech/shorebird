@@ -12,6 +12,9 @@ const flutterVersionUrl = '$docsUrl/getting-started/flutter-version';
 const supportedFlutterVersionsUrl =
     '$flutterVersionUrl#supported-flutter-versions';
 
+/// Link to the service accounts page, where CI gets its credentials.
+const serviceAccountsUrl = '$docsUrl/account/service-accounts/';
+
 /// Link to the troubleshooting page on the Shorebird documentation.
 const troubleshootingUrl = '$docsUrl/code-push/troubleshooting';
 

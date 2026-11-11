@@ -66,7 +66,7 @@ Future<void> main(List<String> arguments) async {
     stdout
       ..writeln(_usage)
       ..writeln(parser.usage);
-    return;
+    exit(exitCode);
   }
   if (results.rest.isEmpty) {
     stderr
@@ -138,7 +138,7 @@ Future<void> main(List<String> arguments) async {
           if (passed?[i] ?? false) package,
       ]),
     );
-    return;
+    exit(exitCode);
   }
   if (packages.isNotEmpty) {
     inputs
@@ -171,4 +171,5 @@ Future<void> main(List<String> arguments) async {
       environment: {if (slots != null) slotHeldVariable: '1'},
     ),
   );
+  exit(exitCode);
 }

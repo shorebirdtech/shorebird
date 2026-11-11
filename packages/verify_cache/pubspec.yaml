@@ -11,9 +11,9 @@ environment:
 
 dependencies:
   args: ^2.4.2
-  crypto: ^3.0.7
+  crypto: ^3.0.8
   path: ^1.9.0
   yaml: ^3.1.4
 
 dev_dependencies:
-  test: ^1.32.0
+  test: ^1.33.0

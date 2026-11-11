@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -72,6 +73,10 @@ More info: ${troubleshootingUrl.toLink()}.
   /// in the Flutter build command args by patchers. Currently used to inject
   /// obfuscation flags when the release was built with obfuscation.
   List<String> extraBuildArgs = const [];
+
+  /// The downloaded primary release archive (e.g. `release.aab` on Android),
+  /// set by the patch command before building the patch.
+  File? releaseArchive;
 
   /// Additional gen_snapshot arguments needed to match the release's
   /// obfuscation flags. Used by Apple patchers for
@@ -164,13 +169,15 @@ More info: ${troubleshootingUrl.toLink()}.
     return metadata;
   }
 
-  /// Uploads the patch artifacts to the CodePush server.
+  /// Uploads the patch artifacts to the CodePush server and publishes the
+  /// patch to [track], at [rolloutPercentage] of its devices when given.
   Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
+    double? rolloutPercentage,
   }) {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -179,6 +186,7 @@ More info: ${troubleshootingUrl.toLink()}.
       platform: releaseType.releasePlatform,
       track: track,
       patchArtifactBundles: artifacts,
+      rolloutPercentage: rolloutPercentage,
     );
   }
 
@@ -365,12 +373,15 @@ More info: ${troubleshootingUrl.toLink()}.
     return value == null ? null : int.tryParse(value);
   }
 
-  /// The value of `--split-debug-info-path` if specified.
+  /// Where the patch's Dart symbols go: the `--split-debug-info` directory the
+  /// user passed, or the default added to [extraBuildArgs] for an obfuscated
+  /// patch.
   String? get splitDebugInfoPath {
     return argResults.findOption(
-      CommonArguments.splitDebugInfoArg.name,
-      argParser: argParser,
-    );
+          CommonArguments.splitDebugInfoArg.name,
+          argParser: argParser,
+        ) ??
+        splitDebugInfoDirectory(extraBuildArgs);
   }
 
   /// The path to the output file for the debug info.

@@ -130,6 +130,41 @@ void main() {
         await client.disconnect();
         await expectLater(client.execute(['PING']), completion(equals('PONG')));
       });
+
+      test(
+        'does not reconnect when closed before delayed reconnect fires',
+        () async {
+          final server = await ServerSocket.bind(
+            InternetAddress.loopbackIPv4,
+            0,
+          );
+          addTearDown(server.close);
+
+          var connections = 0;
+          server.listen((socket) {
+            connections++;
+            addTearDown(socket.destroy);
+          });
+
+          final reconnectingClient = RedisClient(
+            socket: RedisSocketOptions(
+              host: InternetAddress.loopbackIPv4.address,
+              port: server.port,
+              retryInterval: const Duration(milliseconds: 50),
+            ),
+          );
+          addTearDown(reconnectingClient.close);
+
+          await reconnectingClient.connect();
+          expect(connections, equals(1));
+
+          await reconnectingClient.disconnect();
+          await reconnectingClient.close();
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+
+          expect(connections, equals(1));
+        },
+      );
     });
 
     group('KEYS', () {
@@ -270,6 +305,42 @@ void main() {
           throwsA(isA<TimeoutException>()),
         );
       });
+
+      test(
+        'does not write timed-out command attempts after reconnecting',
+        () async {
+          var reconnected = Completer<void>();
+          final reconnectingClient = RedisClient(
+            logger: _OnConnectedRedisLogger(() {
+              if (!reconnected.isCompleted) reconnected.complete();
+            }),
+            socket: const RedisSocketOptions(
+              password: 'password',
+              retryInterval: Duration(milliseconds: 200),
+            ),
+            command: const RedisCommandOptions(
+              timeout: Duration(milliseconds: 20),
+              retryAttempts: 1,
+            ),
+          );
+          addTearDown(reconnectingClient.close);
+
+          await reconnectingClient.connect();
+          reconnected = Completer<void>();
+          await reconnectingClient.disconnect();
+
+          await expectLater(
+            reconnectingClient.set(key: 'foo', value: 'bar'),
+            throwsA(isA<TimeoutException>()),
+          );
+
+          await reconnected.future;
+          await expectLater(
+            reconnectingClient.get(key: 'foo'),
+            completion(isNull),
+          );
+        },
+      );
     });
 
     group('INCR/INCRBYFLOAT', () {
@@ -536,6 +607,7 @@ void main() {
                   .having((r) => r.value, 'value', equals(56)),
             ),
           );
+          await expectLater(client.delete(key: key), completes);
           await expectLater(
             client.timeSeries.add(
               key: key,
@@ -752,4 +824,21 @@ void main() {
       });
     });
   });
+}
+
+class _OnConnectedRedisLogger implements RedisLogger {
+  const _OnConnectedRedisLogger(this._onConnected);
+
+  final void Function() _onConnected;
+
+  @override
+  void debug(String message) {}
+
+  @override
+  void info(String message) {
+    if (message == 'Connected.') _onConnected();
+  }
+
+  @override
+  void error(String message, {Object? error, StackTrace? stackTrace}) {}
 }

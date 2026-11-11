@@ -10,6 +10,7 @@ class PromotePatchRequest {
   const PromotePatchRequest({
     required this.patchId,
     required this.channelId,
+    this.rolloutPercentage,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PromotePatchRequest].
@@ -20,6 +21,7 @@ class PromotePatchRequest {
       () => PromotePatchRequest(
         patchId: json['patch_id'] as int,
         channelId: json['channel_id'] as int,
+        rolloutPercentage: (json['rollout_percentage'] as num?)?.toDouble(),
       ),
     );
   }
@@ -39,11 +41,16 @@ class PromotePatchRequest {
   /// The ID of the channel.
   final int channelId;
 
+  /// The percentage of the channel's devices to offer the patch to, a
+  /// multiple of 0.01 from 0.01 to 100. Defaults to 100.
+  final double? rolloutPercentage;
+
   /// Converts a [PromotePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'patch_id': patchId,
       'channel_id': channelId,
+      'rollout_percentage': ?rolloutPercentage,
     };
   }
 
@@ -51,6 +58,7 @@ class PromotePatchRequest {
   int get hashCode => Object.hashAll([
     patchId,
     channelId,
+    rolloutPercentage,
   ]);
 
   @override
@@ -58,6 +66,7 @@ class PromotePatchRequest {
     if (identical(this, other)) return true;
     return other is PromotePatchRequest &&
         patchId == other.patchId &&
-        channelId == other.channelId;
+        channelId == other.channelId &&
+        rolloutPercentage == other.rolloutPercentage;
   }
 }

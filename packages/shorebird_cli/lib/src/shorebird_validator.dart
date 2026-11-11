@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/auth/oidc_credential_source.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -193,9 +194,9 @@ class ShorebirdValidator {
           'job `permissions: id-token: write`, set $shorebirdProjectIdEnvVar '
           'to the id of your project, and add a GitHub Actions trust rule for '
           'this workflow at $console.';
-      final apiKeyHint =
-          'Or set $shorebirdTokenEnvVar to a Shorebird API key from '
-          '$console.';
+      const apiKeyHint =
+          'Or set $shorebirdTokenEnvVar to a service account key: '
+          '$serviceAccountsUrl';
       logger
         ..err('You must be logged in to run this command.')
         ..info(oidcHint)

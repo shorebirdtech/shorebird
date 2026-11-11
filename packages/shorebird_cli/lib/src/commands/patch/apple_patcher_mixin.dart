@@ -32,24 +32,31 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// macOS) the local Podfile.lock state used to detect native diffs that
 /// `package:archive` can't reliably catch in a nondeterministic Xcode build.
 mixin ApplePatcherMixin on Patcher {
-  /// The name of the file that gen_snapshot writes split debug info to. The
-  /// filename is iOS-flavored historically; we keep it for both iOS and macOS
-  /// so existing release artifacts remain referenceable.
+  /// The name of the file that gen_snapshot writes an iOS patch's split debug
+  /// info to: the name `flutter build ipa` gives the release's.
   static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
 
   /// Resolves the absolute path inside [directory] where gen_snapshot should
-  /// write the split debug info file.
-  static String saveDebuggingInfoPath(String directory) =>
-      p.join(p.absolute(directory), splitDebugInfoFileName);
+  /// write the split debug info file named [fileName].
+  static String saveDebuggingInfoPath(
+    String directory, {
+    String fileName = splitDebugInfoFileName,
+  }) => p.join(p.absolute(directory), fileName);
 
   /// The additional gen_snapshot arguments to pass when building the patch
-  /// with `--split-debug-info`.
-  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) =>
-      splitDebugInfoPath != null
+  /// with `--split-debug-info`, writing the debug info to [fileName] in
+  /// [splitDebugInfoPath].
+  static List<String> splitDebugInfoArgs(
+    String? splitDebugInfoPath, {
+    String fileName = splitDebugInfoFileName,
+  }) => splitDebugInfoPath != null
       ? [
           '--dwarf-stack-traces',
           '--resolve-dwarf-paths',
-          '--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}',
+          '--save-debugging-info=${saveDebuggingInfoPath(
+            splitDebugInfoPath,
+            fileName: fileName,
+          )}',
         ]
       : <String>[];
 
@@ -60,18 +67,25 @@ mixin ApplePatcherMixin on Patcher {
 
   /// The gen_snapshot arguments for `--split-debug-info` and obfuscation,
   /// shared by the ELF snapshot build and the linker.
-  List<String> get appleGenSnapshotArgs => [
-    ...splitDebugInfoArgs(splitDebugInfoPath),
+  List<String> get appleGenSnapshotArgs => _appleGenSnapshotArgs();
+
+  List<String> _appleGenSnapshotArgs({
+    String splitDebugInfoFileName = splitDebugInfoFileName,
+  }) => [
+    ...splitDebugInfoArgs(splitDebugInfoPath, fileName: splitDebugInfoFileName),
     ...obfuscationGenSnapshotArgs,
   ];
 
   /// Builds an ELF AOT snapshot of [appDillPath] at [outFilePath] with
   /// [genSnapshotArtifact], creating the split debug info directory first if
-  /// one was requested.
+  /// one was requested. A build that runs gen_snapshot once per architecture
+  /// (macOS) gives each run its own [splitDebugInfoFileName], so one run
+  /// doesn't overwrite another's symbols.
   Future<void> buildAppleElfAotSnapshot({
     required String appDillPath,
     required String outFilePath,
     required ShorebirdArtifact genSnapshotArtifact,
+    String splitDebugInfoFileName = ApplePatcherMixin.splitDebugInfoFileName,
   }) async {
     if (splitDebugInfoPath != null) {
       Directory(splitDebugInfoPath!).createSync(recursive: true);
@@ -80,7 +94,9 @@ mixin ApplePatcherMixin on Patcher {
       appDillPath: appDillPath,
       outFilePath: outFilePath,
       genSnapshotArtifact: genSnapshotArtifact,
-      additionalArgs: appleGenSnapshotArgs,
+      additionalArgs: _appleGenSnapshotArgs(
+        splitDebugInfoFileName: splitDebugInfoFileName,
+      ),
     );
   }
 
@@ -247,10 +263,6 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    // Check for diffs without warning about native changes, as Xcode builds
-    // can be nondeterministic. So we still have some hope of alerting users of
-    // unpatchable native changes, we compare the Podfile.lock hash between the
-    // patch and the release.
     final diffStatus = await patchDiffChecker
         .confirmUnpatchableDiffsIfNecessary(
           localArchive: patchArchive,
@@ -258,30 +270,28 @@ mixin ApplePodfileLockPatcherMixin on Patcher, ApplePatcherMixin {
           archiveDiffer: const AppleArchiveDiffer(),
           allowAssetChanges: allowAssetDiffs,
           allowNativeChanges: allowNativeDiffs,
-          confirmNativeChanges: false,
         );
 
-    if (!diffStatus.hasNativeChanges) return diffStatus;
+    final podfileLockChanged =
+        releaseArtifact.podfileLockHash != null &&
+        localPodfileLockHash != releaseArtifact.podfileLockHash;
 
-    if (releaseArtifact.podfileLockHash != null &&
-        localPodfileLockHash != releaseArtifact.podfileLockHash) {
-      final podfileLockMessage =
-          '''
+    if (!diffStatus.hasNativeChanges) {
+      if (podfileLockChanged) {
+        logger.info(
+          'Your $podfileLockRelativePath changed from the release, but all '
+          'compiled native binaries are identical.',
+        );
+      }
+      return diffStatus;
+    }
+
+    if (podfileLockChanged) {
+      logger.warn(
+        '''
 Your $podfileLockRelativePath is different from the one used to build the release.
-This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''';
-      // Where the CLI can't prompt, this fails the patch: an error, not a
-      // warning.
-      if (!allowNativeDiffs && !shorebirdEnv.canAcceptUserInput) {
-        logger.err(podfileLockMessage);
-        throw const UnpatchableChangeException({UnpatchableChange.native});
-      }
-      logger.warn(podfileLockMessage);
-
-      if (!allowNativeDiffs) {
-        if (!logger.confirm('Continue anyway?', hint: allowNativeDiffsHint)) {
-          throw UserCancelledException();
-        }
-      }
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
+      );
     }
 
     return diffStatus;

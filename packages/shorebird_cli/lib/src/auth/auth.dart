@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -241,7 +242,7 @@ class ApiKeySource extends CredentialSource {
           '(API keys start with $apiKeyPrefix).',
         )
         ..info(
-          '''CI tokens from `shorebird login:ci` are no longer supported. Create an API key at ${link(uri: Uri.parse('https://console.shorebird.dev'))} and set it as your ${lightCyan.wrap(shorebirdTokenEnvVar)} environment variable.''',
+          '''CI tokens from `shorebird login:ci` are no longer supported. Create a service account key (${serviceAccountsUrl.toLink()}) and set it as your ${lightCyan.wrap(shorebirdTokenEnvVar)} environment variable.''',
         );
       throw ProcessExit(ExitCode.config.code);
     }

@@ -4,6 +4,49 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.138 (November 6, 2026)
+
+- ✨ `shorebird patch` stops when its dart-defines or target differ from the
+  release's
+- ✨ Updates can run once iOS unlocks protected data
+- 🐛 Xcode 27 keeps the debug map for Shorebird iOS builds
+- 🐛 Android Gradle Plugin can strip `libapp.so` again
+- 🐛 macOS apps no longer crash when `shorebird.yaml` can't be read
+- 🐛 `--no-codesign` iOS build failures show xcodebuild's output
+- 🐛 Xcode rebuilds keep the public key used to sign patches
+- 🐛 Installed patches are kept when the updater's state file can't be read
+- 🐛 The updater's state files are safe across processes
+- 🐛 Update failure messages lead with the root cause, and failed requests keep
+  the server's error code and message
+- 🐛 Android `shorebird patch` no longer warns that patches may be uninstalled
+  on the Flutter 3.24.1 revision that already has the fix
+- 🔧 `patch_verification` now defaults to `install_only`
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
+## 1.6.137 (November 4, 2026)
+
+- ✨ `shorebird release` and `shorebird patch` accept common `flutter build`
+  options without `--`, such as `--no-tree-shake-icons`, `--no-pub`,
+  `-P`/`--android-project-arg` and `--enable-experiment`. `--` still works for
+  everything, and an unknown option's error shows your command with it moved
+  after `--`
+- ✨ `-D` works as the short form of `--dart-define`
+- 🐛 Obfuscated iOS and iOS framework patches built without
+  `--split-debug-info` now save the patch's own symbols to the default
+  directory, `build/shorebird/symbols`
+- 🐛 `shorebird patch` with no `--release-version` that can't prompt (CI,
+  `--json`) always rebuilds with the release's settings, so an obfuscated release no longer gets
+  an unobfuscated patch
+- 🔧 `--dart-define` values keep their commas, as in `flutter build`.
+  `--dart-define=A=1,B=2` used to set `A` and `B`; it now sets `A` to `1,B=2`.
+  Repeat the flag to pass several defines
+- 🔧 Guessing the release version in `shorebird patch` is deprecated and will be
+  removed in a release after January 1, 2027. Pass `--release-version=<version>`
+  or `--release-version=latest`. Until then, guessing takes an extra build
+- 🔧 CI sign-in hints point at service account keys instead of personal API keys
+
 ## 1.6.136 (November 2, 2026)
 
 - ✨ Add `shorebird enterprise` for enterprise owners, admins and billing

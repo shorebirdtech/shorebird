@@ -1,14 +1,19 @@
+// cspell:words allprojects librust posthog
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
+import 'package:elf/elf.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
+import 'package:shorebird_cli/src/archive_analysis/dart_bridge_analyzer.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -32,6 +37,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../archive_analysis/bundle_dependencies_helpers.dart';
 import '../../fakes.dart';
 import '../../helpers.dart';
 import '../../matchers.dart';
@@ -150,6 +156,9 @@ void main() {
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
+      when(
+        () => shorebirdEnv.flutterRevision,
+      ).thenReturn('83305b5088e6fe327fb3334a73ff190828d85713');
 
       patcher = AndroidPatcher(
         argParser: argParser,
@@ -169,6 +178,15 @@ void main() {
     group('primaryReleaseArtifactArch', () {
       test('is "aab"', () {
         expect(patcher.primaryReleaseArtifactArch, equals('aab'));
+      });
+    });
+
+    group('supplementaryReleaseArtifactArch', () {
+      test('is "android_supplement"', () {
+        expect(
+          patcher.supplementaryReleaseArtifactArch,
+          equals('android_supplement'),
+        );
       });
     });
 
@@ -306,6 +324,110 @@ void main() {
           ),
         ).called(1);
       });
+
+      group('when app.dill and releaseArchive exist', () {
+        File writeAab(String fileName, Map<String, Uint8List> entries) {
+          final archive = Archive();
+          entries.forEach((name, bytes) {
+            archive.addFile(ArchiveFile(name, bytes.length, bytes));
+          });
+          final file = File(p.join(projectRoot.path, fileName))
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(ZipEncoder().encode(archive));
+          return file;
+        }
+
+        test(
+          'does not warn when @Native symbols in app.dill exist in release .so',
+          () async {
+            final dillBytes =
+                (DillKernelBuilder()..addFfiNativeSymbol(
+                      'rust_hash_v1',
+                      dartName: 'hashV1',
+                      assetId: 'package:app/native.dart',
+                    ))
+                    .build();
+            File(p.join(projectRoot.path, 'build', 'app.dill'))
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(dillBytes);
+
+            final releaseElf = ElfBuilder.build(
+              textBytes: Uint8List.fromList([0xC0, 0x03, 0x5F, 0xD6]),
+              symbols: const [
+                ElfSymbolSpec(
+                  name: 'rust_hash_v1',
+                  size: 4,
+                ),
+              ],
+            );
+            final releaseArchive = writeAab('release.aab', {
+              'base/lib/arm64-v8a/librust.so': releaseElf,
+            });
+            final patchArchive = writeAab('patch.aab', {
+              'base/lib/arm64-v8a/librust.so': releaseElf,
+            });
+
+            await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: FakeReleaseArtifact(),
+                releaseArchive: releaseArchive,
+                patchArchive: patchArchive,
+              ),
+            );
+
+            verifyNever(() => logger.warn(any()));
+          },
+        );
+
+        test(
+          'logs [CRASH RISK] warning when app.dill references @Native symbol '
+          'missing from release .so',
+          () async {
+            final dillBytes =
+                (DillKernelBuilder()..addFfiNativeSymbol(
+                      'rust_hash_v2',
+                      dartName: 'hashV2',
+                      assetId: 'package:app/native.dart',
+                    ))
+                    .build();
+            File(p.join(projectRoot.path, 'build', 'app.dill'))
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(dillBytes);
+
+            final releaseElf = ElfBuilder.build(
+              textBytes: Uint8List.fromList([0xC0, 0x03, 0x5F, 0xD6]),
+              symbols: const [
+                ElfSymbolSpec(
+                  name: 'rust_hash_v1',
+                  size: 4,
+                ),
+              ],
+            );
+            final releaseArchive = writeAab('release_missing.aab', {
+              'base/lib/arm64-v8a/librust.so': releaseElf,
+            });
+
+            await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: FakeReleaseArtifact(),
+                releaseArchive: releaseArchive,
+                patchArchive: File('non_existent_patch.aab'),
+              ),
+            );
+
+            verify(
+              () => logger.warn(
+                any(
+                  that: allOf(
+                    contains('[CRASH RISK]'),
+                    contains('@Native symbol "rust_hash_v2"'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+      });
     });
 
     group('buildPatchArtifact', () {
@@ -340,6 +462,9 @@ void main() {
           when(
             () => shorebirdFlutter.getVersion(),
           ).thenAnswer((_) async => Version(3, 24, 1));
+          when(
+            () => shorebirdEnv.flutterRevision,
+          ).thenReturn('4150b0d8ee6354ee56dbc667bf5aee3e9d5eb1ca');
         });
 
         test('warns user of potential patch issues', () async {
@@ -352,19 +477,41 @@ void main() {
       });
 
       group('when flutter version does not have the patch uninstall issue', () {
-        setUp(() {
-          setUpProjectRootArtifacts();
-          when(
-            () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 24, 2));
+        setUp(setUpProjectRootArtifacts);
+
+        group('when on the fixed Flutter 3.24.1 revision', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => Version(3, 24, 1));
+            when(
+              () => shorebirdEnv.flutterRevision,
+            ).thenReturn('a25b7cdfb9ef79f7d6dae48a6334a415f024a0a8');
+          });
+
+          test('does not warn user of potential patch issues', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verifyNever(
+              () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
+            );
+          });
         });
 
-        test('does not warn user of potential patch issues', () async {
-          await runWithOverrides(patcher.buildPatchArtifact);
+        group('when on Flutter 3.24.2 or newer', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => Version(3, 24, 2));
+          });
 
-          verifyNever(
-            () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
-          );
+          test('does not warn user of potential patch issues', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verifyNever(
+              () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
+            );
+          });
         });
       });
 
@@ -586,6 +733,195 @@ void main() {
             ),
           ).called(1);
         });
+      });
+
+      group('release-pinned Gradle resolution from dependencies.pb', () {
+        setUp(setUpProjectRootArtifacts);
+
+        File writeReleaseAab(String fileName, Uint8List? dependenciesBytes) {
+          final archive = Archive();
+          if (dependenciesBytes != null) {
+            archive.addFile(
+              ArchiveFile(
+                bundleDependenciesPath,
+                dependenciesBytes.length,
+                dependenciesBytes,
+              ),
+            );
+          } else {
+            archive.addFile(
+              ArchiveFile.string('base/lib/arm64-v8a/libapp.so', 'app'),
+            );
+          }
+          final file = File(p.join(projectRoot.path, fileName))
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(ZipEncoder().encode(archive));
+          return file;
+        }
+
+        test(
+          'extracts Maven versions from dependencies.pb, passes --init-script '
+          'with resolutionStrategy.force(...) to buildAppBundle, and deletes '
+          'the temporary init script on exit',
+          () async {
+            final releaseAab = writeReleaseAab(
+              'release_with_deps.aab',
+              appDependencies([
+                mavenLibrary('io.sentry', 'sentry-android', '7.14.0'),
+                mavenLibrary('com.posthog', 'posthog-android', '3.71.6'),
+                mavenLibrary(
+                  'com.posthog',
+                  'posthog-android',
+                  '3.71.6',
+                  classifier: 'aar',
+                ),
+              ]),
+            );
+
+            String? capturedScriptPath;
+            String? capturedScriptContent;
+            when(
+              () => artifactBuilder.buildAppBundle(
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+              ),
+            ).thenAnswer((invocation) async {
+              final args = invocation.namedArguments[#args] as List<String>;
+              final initIdx = args.indexOf('--init-script');
+              expect(initIdx, isNonNegative);
+              capturedScriptPath = args[initIdx + 1];
+              final scriptFile = File(capturedScriptPath!);
+              expect(scriptFile.existsSync(), isTrue);
+              capturedScriptContent = scriptFile.readAsStringSync();
+              return aabFile;
+            });
+
+            patcher.releaseArchive = releaseAab;
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            expect(capturedScriptPath, isNotNull);
+            expect(File(capturedScriptPath!).existsSync(), isFalse);
+            expect(File(capturedScriptPath!).parent.existsSync(), isFalse);
+            const posthogCoord = 'com.posthog:posthog-android:3.71.6';
+            const sentryCoord = 'io.sentry:sentry-android:7.14.0';
+            expect(
+              capturedScriptContent,
+              equals(
+                'allprojects {\n'
+                '  configurations.all {\n'
+                "    resolutionStrategy.force('$posthogCoord')\n"
+                "    resolutionStrategy.force('$sentryCoord')\n"
+                '  }\n'
+                '}\n',
+              ),
+            );
+          },
+        );
+
+        test(
+          'cleans up temporary --init-script even when buildAppBundle throws',
+          () async {
+            final releaseAab = writeReleaseAab(
+              'release_throw.aab',
+              appDependencies([
+                mavenLibrary('com.posthog', 'posthog-android', '3.71.6'),
+              ]),
+            );
+
+            String? capturedScriptPath;
+            when(
+              () => artifactBuilder.buildAppBundle(
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+              ),
+            ).thenAnswer((invocation) async {
+              final args = invocation.namedArguments[#args] as List<String>;
+              final initIdx = args.indexOf('--init-script');
+              capturedScriptPath = args[initIdx + 1];
+              expect(File(capturedScriptPath!).existsSync(), isTrue);
+              throw ArtifactBuildException('build failed');
+            });
+
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseArchive: releaseAab),
+              ),
+              throwsA(isA<ArtifactBuildException>()),
+            );
+
+            expect(capturedScriptPath, isNotNull);
+            expect(File(capturedScriptPath!).existsSync(), isFalse);
+            expect(File(capturedScriptPath!).parent.existsSync(), isFalse);
+          },
+        );
+
+        test(
+          'omits --init-script when dependencies.pb is absent, empty, or '
+          'corrupt',
+          () async {
+            final noDepsAab = writeReleaseAab('no_deps.aab', null);
+            final emptyDepsAab = writeReleaseAab(
+              'empty_deps.aab',
+              appDependencies(const []),
+            );
+            final corruptDepsAab = writeReleaseAab(
+              'corrupt_deps.aab',
+              Uint8List.fromList([0x80, 0xFF]),
+            );
+
+            for (final archive in [noDepsAab, emptyDepsAab, corruptDepsAab]) {
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseArchive: archive),
+              );
+            }
+
+            final capturedArgs = verify(
+              () => artifactBuilder.buildAppBundle(
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: captureAny(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+              ),
+            ).captured.cast<List<String>>();
+
+            expect(capturedArgs, hasLength(3));
+            for (final args in capturedArgs) {
+              expect(args, isNot(contains('--init-script')));
+            }
+          },
+        );
+
+        test(
+          'generateGradleInitScript skips entries with empty version or '
+          'malformed coordinate key',
+          () {
+            final script = AndroidPatcher.generateGradleInitScript({
+              'invalid_key_without_colon': '1.0.0',
+              'com.example:empty-version': '',
+              'com.example:valid': '2.1.0',
+            });
+            expect(
+              script,
+              equals(
+                'allprojects {\n'
+                '  configurations.all {\n'
+                "    resolutionStrategy.force('com.example:valid:2.1.0')\n"
+                '  }\n'
+                '}\n',
+              ),
+            );
+          },
+        );
       });
 
       group('when build succeeds', () {

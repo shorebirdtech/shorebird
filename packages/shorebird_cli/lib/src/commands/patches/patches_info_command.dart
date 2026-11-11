@@ -43,7 +43,7 @@ class PatchesInfoCommand extends ShorebirdCommand
       'Example output:\n'
       '  ID:          42\n'
       '  Number:      1\n'
-      '  Track:       stable\n'
+      '  Track:       stable (10%)\n'
       '  Rolled back: no\n'
       '  Notes:       Optional patch notes.\n'
       '  Artifacts:\n'

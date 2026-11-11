@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -388,6 +389,57 @@ void main() {
           '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platforms=android --release-version=${release.version}')}''',
         ),
       ]);
+    });
+
+    group("when the app's enterprise requires patch signing", () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+        ).thenAnswer(
+          (_) async => AppMetadata(
+            appId: appId,
+            displayName: appDisplayName,
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+            patchSigningRequired: true,
+            enterpriseName: 'Acme Corp',
+          ),
+        );
+      });
+
+      test('refuses --no-patch-signing before building', () async {
+        when(
+          () => argResults[CommonArguments.patchSigningArg.name],
+        ).thenReturn(false);
+        for (final arg in [
+          CommonArguments.publicKeyArg.name,
+          CommonArguments.publicKeyCmd.name,
+        ]) {
+          when(() => argResults.wasParsed(arg)).thenReturn(false);
+        }
+
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithError(
+            message:
+                "Acme Corp requires patch signing, so a release can't be "
+                'built without it.',
+            hint: 'Release again without --no-patch-signing.',
+            exitCode: ExitCode.noPerm,
+          ),
+        );
+        verifyNever(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
+        );
+        verifyNever(() => releaser.buildReleaseArtifacts());
+      });
+
+      test('releases when patches are signed', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+      });
     });
 
     group('when build fails', () {
@@ -1408,6 +1460,49 @@ Did you mean --release-version=1.0.0+1?''',
         },
       );
 
+      group('when the Flutter version is a Shorebird side version', () {
+        late MockReleaser releaser;
+
+        setUp(() {
+          releaser = MockReleaser();
+          when(() => releaser.useObfuscation).thenReturn(false);
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(Version(0, 0, 0));
+          when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+        });
+
+        test('clears the release floor its upstream version clears', () async {
+          final sideVersion = Version.parse('3.32.6-sb.1');
+          expect(sideVersion, lessThan(minimumSupportedWindowsFlutterVersion));
+          when(() => releaser.releaseType).thenReturn(ReleaseType.windows);
+          when(
+            () => releaser.minimumFlutterVersion,
+          ).thenReturn(minimumSupportedWindowsFlutterVersion);
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => sideVersion);
+
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+
+          verify(releaser.assertArgsAreValid).called(1);
+        });
+
+        test('clears the obfuscation floor on iOS', () async {
+          final sideVersion = Version.parse('3.41.2-sb.1');
+          expect(sideVersion, lessThan(minimumObfuscationFlutterVersion));
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          when(() => releaser.useObfuscation).thenReturn(true);
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => sideVersion);
+
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+
+          verify(releaser.assertArgsAreValid).called(1);
+        });
+      });
+
       group('when obfuscating below the obfuscation map floor', () {
         late MockReleaser releaser;
         final oldFlutterVersion = Version(3, 38, 9);
@@ -1528,5 +1623,21 @@ Did you mean --release-version=1.0.0+1?''',
         });
       });
     });
+  });
+
+  test('ReleaseCommand accepts flutter build options without --', () {
+    final results = ReleaseCommand().argParser.parse([
+      'android',
+      '--no-tree-shake-icons',
+      '-D',
+      'FOO=a,b',
+      '-P',
+      'key=value',
+    ]);
+    expect(results.forwardedArgs, [
+      '--dart-define=FOO=a,b',
+      '--android-project-arg=key=value',
+      '--no-tree-shake-icons',
+    ]);
   });
 }

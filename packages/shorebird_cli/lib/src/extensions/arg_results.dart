@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/flutter_build_options.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -232,6 +233,20 @@ extension ForwardedArgs on ArgResults {
     return value ? ['--$name'] : [];
   }
 
+  /// The [FlutterBuildOption] as it was passed. Commands that read
+  /// [forwardedArgs] register these with
+  /// [FlutterBuildOptionsArgParser.addFlutterBuildOptions].
+  Iterable<String> _flutterBuildArgs(FlutterBuildOption option) {
+    final name = option.name;
+    if (!wasParsed(name)) return [];
+    final value = this[name];
+    return switch (value) {
+      true => ['--$name'],
+      false => ['--no-$name'],
+      _ => (value as List<String>).map((v) => '--$name=$v'),
+    };
+  }
+
   /// A list of arguments parsed by Shorebird commands that will be forwarded
   /// to the underlying Flutter commands (that is, placed after `--`).
   List<String> get forwardedArgs {
@@ -253,6 +268,7 @@ extension ForwardedArgs on ArgResults {
       ..._argsNamed(CommonArguments.exportMethodArg.name),
       ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
       ..._flagNamed(CommonArguments.obfuscateArg.name),
+      for (final option in flutterBuildOptions) ..._flutterBuildArgs(option),
     ]);
 
     return forwarded;
