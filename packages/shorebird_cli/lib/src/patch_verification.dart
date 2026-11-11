@@ -5,10 +5,11 @@
 /// 3.41.9) and is in every engine built since, up to the updater fix. This
 /// list is closed: it holds every engine revision we shipped with the bug
 /// (the heads of flutter_release/3.41.9, 3.44.0-3.44.9 and 3.47.0-3.47.7,
-/// earlier builds of those branches, and shorebird/dev builds the CLI
-/// pinned), and every engine built after the fix is fixed. A fixed rebuild
-/// of any of these versions gets a new engine revision, so it isn't on this
-/// list and needs no CLI change.
+/// earlier builds of those branches, shorebird/dev builds the CLI pinned,
+/// and rebuilds reachable only by passing their Flutter revision to
+/// `--flutter-version`), and every engine built after the fix is fixed. A
+/// fixed rebuild of any of these versions gets a new engine revision, so it
+/// isn't on this list and needs no CLI change.
 ///
 /// Keyed on the engine revision rather than the Flutter revision: every
 /// Flutter revision that uses one of these engines carries the bug,
@@ -47,6 +48,8 @@ const installOnlyBrokenEngineRevisions = <String>{
   '1a6158332f5490c3fd6087394b6f3376c818fa7b', // 2026-10-09
   '4b936a0c03e13389ddfb1ac48823f187964975c2', // 2026-10-09
   '9e6800c5ce7addd79a287b1be563a42838f1d351', // 3.47.7, 2026-10-22
+  // A 3.47.7 rebuild (Flutter ab86e95), 2026-10-22.
+  'f72e85061bf02a62c480ff868ea55906e655aa26',
 };
 
 /// Whether `patch_verification: install_only` skips the patch signature

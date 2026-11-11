@@ -40,6 +40,15 @@ void main() {
       expect(installOnlyBrokenEngineRevisions, containsAll(releaseEngines));
     });
 
+    test('holds the engine of a rebuild only --flutter-version reaches', () {
+      // The engine of Flutter ab86e95, a 3.47.7 rebuild no CLI release uses
+      // by default. Its updater predates the fix.
+      expect(
+        installOnlyBrokenEngineRevisions,
+        contains('f72e85061bf02a62c480ff868ea55906e655aa26'),
+      );
+    });
+
     test('holds only full engine revisions', () {
       for (final revision in installOnlyBrokenEngineRevisions) {
         expect(revision, matches(RegExp(r'^[0-9a-f]{40}$')));
