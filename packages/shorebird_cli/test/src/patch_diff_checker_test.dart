@@ -399,7 +399,8 @@ void main() {
       implementation("io.branch.sdk.android:library") { version { strictly("5.21.2") } }
     }
   }
-Or use Gradle dependency locking'''),
+Remove these lines before your next release'''),
+                  contains('commit the lockfile with each release'),
                   contains('safe to pass --allow-native-diffs for this patch.'),
                 ),
               ),
@@ -407,8 +408,8 @@ Or use Gradle dependency locking'''),
           ).called(1);
         });
 
-        test('writes one constraint per module, none for an added '
-            'library', () async {
+        test('writes one constraint per module, none for an added or '
+            'removed library', () async {
           when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
             (_) async => const AndroidFileSetDiff(
               addedPaths: {},
@@ -419,6 +420,16 @@ Or use Gradle dependency locking'''),
                   name: 'com.example:added',
                   oldVersion: null,
                   newVersion: '1.0.0',
+                ),
+                DependencyVersionChange(
+                  name: 'com.example:removed',
+                  oldVersion: '2.0.0',
+                  newVersion: null,
+                ),
+                DependencyVersionChange(
+                  name: 'com.posthog:posthog',
+                  oldVersion: '6.46.2',
+                  newVersion: '6.46.3',
                 ),
                 DependencyVersionChange(
                   name: 'com.posthog:posthog-android',
@@ -450,16 +461,19 @@ Or use Gradle dependency locking'''),
                 that: allOf(
                   contains('''
     constraints {
+      implementation("com.posthog:posthog") { version { strictly("6.46.2") } }
       implementation("com.posthog:posthog-android") { version { strictly("3.71.6") } }
     }'''),
                   isNot(contains('com.example:added")')),
+                  isNot(contains('com.example:removed")')),
                 ),
               ),
             ),
           ).called(1);
         });
 
-        test('with only added libraries, gives the general advice', () async {
+        test('with only added or removed libraries, gives the general '
+            'advice', () async {
           when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
             (_) async => const AndroidFileSetDiff(
               addedPaths: {},
@@ -470,6 +484,11 @@ Or use Gradle dependency locking'''),
                   name: 'com.example:added',
                   oldVersion: null,
                   newVersion: '1.0.0',
+                ),
+                DependencyVersionChange(
+                  name: 'com.example:removed',
+                  oldVersion: '2.0.0',
+                  newVersion: null,
                 ),
               ],
             ),
