@@ -316,9 +316,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   /// platform is built.
   PatchLinkPlan _link = PatchLinkPlan.none;
 
-  /// The patches published under [_link]'s key, by release id, fetched once
-  /// per release.
-  final _linkedPatches = <int, Future<List<ReleasePatch>>>{};
+  /// The patches of each release this run checks for already published
+  /// platforms, by release id, fetched once per release.
+  final _releasePatches = <int, Future<List<ReleasePatch>>>{};
 
   @override
   String get description =>
@@ -524,10 +524,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         if (published.isNotEmpty && !isJsonMode) {
           _logPublished(published);
           if (_link.source == PatchLinkSource.random) {
-            _logResumeCommand(
-              published: published,
-              unfinished: patchers.skip(index).toList(),
-            );
+            _logResumeCommand(unfinished: patchers.skip(index).toList());
           }
         }
         rethrow;
@@ -598,20 +595,21 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     }
   }
 
-  /// Prints the arguments that publish the [unfinished] platforms under the
-  /// same key as [published], for a run whose key no rerun would derive
-  /// again.
-  void _logResumeCommand({
-    required List<PublishedPatch> published,
-    required List<Patcher> unfinished,
-  }) {
-    final releaseVersions = {for (final p in published) p.release.version};
+  /// Prints the arguments that publish the [unfinished] platforms under this
+  /// run's key, for a run whose key no rerun would derive again.
+  void _logResumeCommand({required List<Patcher> unfinished}) {
+    final rest = results.rest;
     final args = [
       '--platforms=${unfinished.map((p) => p.releaseType.cliName).join(',')}',
       '--$patchKeyArgName=${_link.key}',
-      if (releaseVersions.length == 1)
-        '--release-version=${releaseVersions.single}',
+      if (results['release-version'] case final String version)
+        '--release-version=$version',
       if (_track case final track?) '--track=${track.channel}',
+      if (results[rolloutArgName] case final String rollout)
+        '--$rolloutArgName=$rollout',
+      if (flavor case final flavor?) '--flavor=$flavor',
+      if (target case final target?) '--target=$target',
+      if (rest.isNotEmpty) '-- ${rest.join(' ')}',
     ].join(' ');
     logger.info(
       'To give the remaining platforms the same patch number, rerun this '
@@ -887,40 +885,47 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   }
 
   /// Returns [patcher]'s platform's patch on [release] that an earlier run
-  /// published under this run's key to [track], or null when this run should
-  /// build and publish it.
+  /// published from this commit under this run's key to [track], or null
+  /// when this run should build and publish it.
   ///
-  /// Only the platform's newest patch under the key counts, and only once
-  /// its artifacts are uploaded. Skipped on a dirty tree or a dry run, where
-  /// the key does not prove the build would be the same.
+  /// Only the platform's newest patch on the release counts, so a platform
+  /// that has moved on to a newer patch is published again, and only once
+  /// its artifacts are uploaded and while it is not rolled back. Skipped on a
+  /// dirty tree or a dry run, where the commit does not prove the build
+  /// would be the same.
   Future<ReleasePatch?> _findPublishedUnderKey({
     required Patcher patcher,
     required Release release,
   }) async {
     final key = _link.key;
-    if (key == null || !_link.canSkipPublished) return null;
+    final checkout = _link.checkout;
+    if (key == null || checkout == null || !_link.canSkipPublished) {
+      return null;
+    }
     if (results['dry-run'] == true) return null;
 
-    final patches = await _linkedPatches.putIfAbsent(
+    // The whole list, not only the key's patches, to see whether the
+    // platform has a newer patch than the one under the key.
+    final patches = await _releasePatches.putIfAbsent(
       release.id,
       () => codePushClientWrapper.getReleasePatches(
         appId: appId,
         releaseId: release.id,
-        linkKey: key,
       ),
     );
     final platform = patcher.releaseType.releasePlatform;
-    // A server that ignores the link_key filter returns every patch, so the
-    // key is checked here too.
     final platformPatches = patches
-        .where((p) => p.linkKey == key && p.resolvedPlatform == platform)
+        .where((p) => p.resolvedPlatform == platform)
         .toList();
     if (platformPatches.isEmpty) return null;
     final newest = platformPatches.map((p) => p.number).max;
     return platformPatches.firstWhereOrNull(
       (p) =>
           p.number == newest &&
+          p.linkKey == key &&
+          p.gitSha == checkout.sha &&
           p.artifacts.isNotEmpty &&
+          !p.isRolledBack &&
           p.channel == track.channel,
     );
   }
@@ -1563,11 +1568,14 @@ Building patch with Flutter $flutterVersionString
         final linkedPatch = linkNumber == null
             ? 'the patch for other platforms'
             : 'patch $linkNumber';
+        final newerPatch = switch (link.platformPatchNumber) {
+          final number? => 'patch $number',
+          null => 'a newer patch',
+        };
         final why = switch (link.reason) {
           'platform_has_newer_patch' =>
-            '$name already has patch '
-                '${link.platformPatchNumber ?? 'a newer patch'} on release '
-                '${release.version}, so it cannot join $linkedPatch',
+            '$name already has $newerPatch on release ${release.version}, '
+                'so it cannot join $linkedPatch',
           'number_rolled_back' =>
             '$linkedPatch is rolled back on a platform, so $name cannot '
                 'join it',
