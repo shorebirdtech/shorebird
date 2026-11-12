@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
@@ -17,6 +18,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
+import 'package:shorebird_cli/src/extensions/release_patch.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/flutter_build_options.dart';
@@ -75,6 +77,21 @@ class PatchCommand extends ShorebirdCommand {
         abbr: 'p',
         help: 'The platform(s) to build this patch for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
+      )
+      ..addOption(
+        patchKeyArgName,
+        help:
+            'Give this patch the same patch number as patches for other '
+            'platforms published with the same key on the release. Defaults '
+            "to the commit's SHA when the git working tree is clean.",
+        valueHelp: 'key',
+      )
+      ..addFlag(
+        noLinkArgName,
+        negatable: false,
+        help:
+            'Do not share a patch number with patches for other platforms, '
+            'even when built from the same commit.',
       )
       ..addOption(
         CommonArguments.buildNameArg.name,
@@ -230,7 +247,24 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 Patch even if the --dart-define values or --target differ from the release's.
 NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different values may fail to link or change code the release runs.''';
 
+  /// The option that sets the key linking this patch to other platforms'.
+  static const patchKeyArgName = 'patch-key';
+
+  /// The flag that turns linking off.
+  static const noLinkArgName = 'no-link';
+
+  /// The longest key the server accepts.
+  static const patchKeyMaxLength = 255;
+
   late final ResolvePatcher _resolvePatcher;
+
+  /// How this run links its platforms' patches, set by [run] before any
+  /// platform is built.
+  PatchLinkPlan _link = PatchLinkPlan.none;
+
+  /// The patches published under [_link]'s key, by release id, fetched once
+  /// per release.
+  final _linkedPatches = <int, Future<List<ReleasePatch>>>{};
 
   @override
   String get description =>
@@ -352,6 +386,25 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       );
     }
 
+    final patchKey = results[patchKeyArgName] as String?;
+    final noLink = results[noLinkArgName] == true;
+    if (patchKey != null) {
+      if (patchKey.trim().isEmpty) {
+        usageException('--$patchKeyArgName cannot be empty.');
+      }
+      if (patchKey.length > patchKeyMaxLength) {
+        usageException(
+          '--$patchKeyArgName must be at most $patchKeyMaxLength characters '
+          '(got ${patchKey.length}).',
+        );
+      }
+      if (noLink) {
+        usageException(
+          'Pass --$patchKeyArgName or --$noLinkArgName, not both.',
+        );
+      }
+    }
+
     final patchers = [
       for (final releaseType in releaseTypes) _resolvePatcher(releaseType),
     ];
@@ -361,9 +414,27 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       await _assertCanPatch(patcher);
     }
 
+    // Decided once, so every platform built by this run sends the same key.
+    _link = await resolvePatchLink(
+      patchKey: patchKey,
+      noLink: noLink,
+      platforms: [for (final p in patchers) p.releaseType.releasePlatform],
+      projectRoot: shorebirdEnv.getShorebirdProjectRoot() ?? Directory.current,
+    );
+
     final published = <PublishedPatch>[];
-    for (final patcher in patchers) {
-      published.add(await createPatch(patcher));
+    for (final (index, patcher) in patchers.indexed) {
+      try {
+        published.add(await createPatch(patcher));
+      } catch (_) {
+        if (_link.source == PatchLinkSource.random && published.isNotEmpty) {
+          _logResumeCommand(
+            published: published,
+            unfinished: patchers.skip(index).toList(),
+          );
+        }
+        rethrow;
+      }
     }
 
     if (isJsonMode) {
@@ -371,13 +442,75 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         'app_id': appId,
         'track': track.channel,
         'rollout_percentage': rolloutPercentage ?? 100.0,
+        'link_key': _link.key,
         'patches': [for (final p in published) p.toJson()],
       });
-    } else if (rolloutPercentage case final percentage? when percentage < 100) {
+      return ExitCode.success.code;
+    }
+
+    _logPublished(published);
+    if (rolloutPercentage case final percentage? when percentage < 100) {
       _logPartialRollout(published: published, percentage: percentage);
     }
 
     return ExitCode.success.code;
+  }
+
+  /// Says which patch number each platform in [published] has, one line for
+  /// each number, and that platforms on different releases are not linked.
+  void _logPublished(List<PublishedPatch> published) {
+    final releaseVersions = {for (final p in published) p.release.version};
+    final groups = <(String, int), List<ReleasePlatform>>{};
+    for (final p in published) {
+      groups
+          .putIfAbsent((p.release.version, p.patch.number), () => [])
+          .add(
+            p.platform,
+          );
+    }
+    final parts = [
+      for (final MapEntry(key: (version, number), value: platforms)
+          in groups.entries)
+        [
+          'patch $number',
+          if (releaseVersions.length > 1) 'on release $version',
+          '(${platforms.map((p) => p.displayName).join(', ')})',
+        ].join(' '),
+    ];
+    logger.success('\n✅ Published ${parts.join(' and ')}!');
+
+    if (_link.key != null && releaseVersions.length > 1) {
+      final patched = [
+        for (final p in published)
+          '${p.platform.displayName} ${p.release.version}',
+      ].join(', ');
+      logger.info(
+        'Not linked across releases: patches share a number only within one '
+        'release, and these platforms patched different ones ($patched).',
+      );
+    }
+  }
+
+  /// Prints the arguments that publish the [unfinished] platforms under the
+  /// same key as [published], for a run whose key no rerun would derive
+  /// again.
+  void _logResumeCommand({
+    required List<PublishedPatch> published,
+    required List<Patcher> unfinished,
+  }) {
+    final releaseVersions = {for (final p in published) p.release.version};
+    final args = [
+      '--platforms=${unfinished.map((p) => p.releaseType.cliName).join(',')}',
+      '--$patchKeyArgName=${_link.key}',
+      if (releaseVersions.length == 1)
+        '--release-version=${releaseVersions.single}',
+      if (_track case final track?) '--track=${track.channel}',
+    ].join(' ');
+    final done = published.map((p) => p.platform.displayName).join(', ');
+    logger.info(
+      '$done published. To give the remaining platforms the same patch '
+      'number, rerun this command with:\n  ${lightCyan.wrap(args)}',
+    );
   }
 
   /// Says what a rollout below 100% means for each of [published] and how to
@@ -477,6 +610,21 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
 
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
+
+    if (await _findPublishedUnderKey(patcher: patcher, release: release)
+        case final existing?) {
+      logger.info(
+        '${patcher.releaseType.releasePlatform.displayName} already '
+        'published as patch ${existing.number}.',
+      );
+      return PublishedPatch(
+        platform: patcher.releaseType.releasePlatform,
+        release: release,
+        patch: CreatePatchResponse(id: existing.id, number: existing.number),
+        linkPercentage: null,
+        alreadyPublished: true,
+      );
+    }
     _assertCanSignForRelease(release: release, patcher: patcher);
     _assertReleaseSignedForPolicy(app: app, release: release, patcher: patcher);
     _warnIfFlutterRevisionHasKnownIssue(release: release, patcher: patcher);
@@ -547,6 +695,45 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         directory.deleteTemporarySync();
       }
     }
+  }
+
+  /// Returns [patcher]'s platform's patch on [release] that an earlier run
+  /// published under this run's key to [track], or null when this run should
+  /// build and publish it.
+  ///
+  /// Only the platform's newest patch under the key counts, and only once
+  /// its artifacts are uploaded. Skipped on a dirty tree or a dry run, where
+  /// the key does not prove the build would be the same.
+  Future<ReleasePatch?> _findPublishedUnderKey({
+    required Patcher patcher,
+    required Release release,
+  }) async {
+    final key = _link.key;
+    if (key == null || !_link.canSkipPublished) return null;
+    if (results['dry-run'] == true) return null;
+
+    final patches = await _linkedPatches.putIfAbsent(
+      release.id,
+      () => codePushClientWrapper.getReleasePatches(
+        appId: appId,
+        releaseId: release.id,
+        linkKey: key,
+      ),
+    );
+    final platform = patcher.releaseType.releasePlatform;
+    // A server that ignores the link_key filter returns every patch, so the
+    // key is checked here too.
+    final platformPatches = patches
+        .where((p) => p.linkKey == key && p.resolvedPlatform == platform)
+        .toList();
+    if (platformPatches.isEmpty) return null;
+    final newest = platformPatches.map((p) => p.number).max;
+    return platformPatches.firstWhereOrNull(
+      (p) =>
+          p.number == newest &&
+          p.artifacts.isNotEmpty &&
+          p.channel == track.channel,
+    );
   }
 
   /// The patchers [_assertCanPatch] has already passed.
@@ -1006,6 +1193,14 @@ Building patch with Flutter $flutterVersionString
       track: track,
       artifacts: patchArtifactBundles,
       rolloutPercentage: rolloutPercentage,
+      linkKey: _link.key,
+      gitSha: _link.checkout?.sha,
+      gitDirty: _link.checkout?.dirty,
+    );
+    _logLink(
+      platform: patcher.releaseType.releasePlatform,
+      release: release,
+      patch: patch,
     );
 
     return PublishedPatch(
@@ -1014,6 +1209,50 @@ Building patch with Flutter $flutterVersionString
       patch: patch,
       linkPercentage: patcher.linkPercentage,
     );
+  }
+
+  /// Says what linking did for [platform]'s [patch] on [release].
+  void _logLink({
+    required ReleasePlatform platform,
+    required Release release,
+    required CreatePatchResponse patch,
+  }) {
+    final link = patch.link;
+    if (link == null) return;
+    final name = platform.displayName;
+    final number = patch.number;
+    final others = [
+      for (final p in link.platforms ?? const <ReleasePlatform>[])
+        p.displayName,
+    ];
+    switch (link.result) {
+      case 'linked':
+        final details = [
+          ...others,
+          if (_link.source == PatchLinkSource.commit)
+            'commit ${_link.checkout!.shortSha}',
+        ];
+        final suffix = details.isEmpty ? '' : ' (${details.join(', ')})';
+        logger.info('Linked $name to patch $number$suffix.');
+      case 'reused':
+        logger.info('Resumed the unfinished patch $number for $name.');
+      case 'not_linked':
+        final linkNumber = link.linkNumber;
+        final linkedPatch = linkNumber == null
+            ? 'the patch for other platforms'
+            : 'patch $linkNumber';
+        final why = switch (link.reason) {
+          'platform_has_newer_patch' =>
+            '$name already has patch '
+                '${link.platformPatchNumber ?? 'a newer patch'} on release '
+                '${release.version}, so it cannot join $linkedPatch',
+          'number_rolled_back' =>
+            '$linkedPatch is rolled back on a platform, so $name cannot '
+                'join it',
+          _ => '$name could not join $linkedPatch',
+        };
+        logger.info('Not linked: $why. $name is patch $number.');
+    }
   }
 
   /// Exits if [release] was built with a Flutter version older than
@@ -1496,6 +1735,7 @@ class PublishedPatch {
     required this.release,
     required this.patch,
     required this.linkPercentage,
+    this.alreadyPublished = false,
   });
 
   /// The platform the patch was built for.
@@ -1511,6 +1751,10 @@ class PublishedPatch {
   /// where the platform reports one.
   final double? linkPercentage;
 
+  /// Whether an earlier run published this patch, so this run skipped the
+  /// platform.
+  final bool alreadyPublished;
+
   /// The shape written into the `--json` envelope.
   Map<String, dynamic> toJson() => {
     'platform': platform.name,
@@ -1519,5 +1763,7 @@ class PublishedPatch {
     'patch_id': patch.id,
     'patch_number': patch.number,
     'link_percentage': linkPercentage,
+    'already_published': alreadyPublished,
+    'link_result': patch.link?.result,
   };
 }

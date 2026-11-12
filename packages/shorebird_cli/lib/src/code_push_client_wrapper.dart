@@ -889,14 +889,20 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     return releases.firstWhereOrNull((r) => r.version == releaseVersion);
   }
 
-  /// Gets the patches for [appId]'s [releaseId].
+  /// Gets the patches for [appId]'s [releaseId], only those created with
+  /// [linkKey] when it is given.
   Future<List<ReleasePatch>> getReleasePatches({
     required String appId,
     required int releaseId,
+    String? linkKey,
   }) {
     return _withProgress(
       'Fetching patches',
-      () => codePushClient.getPatches(appId: appId, releaseId: releaseId),
+      () => codePushClient.getPatches(
+        appId: appId,
+        releaseId: releaseId,
+        linkKey: linkKey,
+      ),
     );
   }
 
@@ -1522,12 +1528,18 @@ $name artifact already exists, continuing...''');
     createSupplementProgress.complete();
   }
 
-  /// Creates a patch for the given [appId], [releaseId], and [metadata].
+  /// Creates [platform]'s patch for the given [appId], [releaseId], and
+  /// [metadata], linked by [linkKey] and recording the commit [gitSha] when
+  /// given.
   @visibleForTesting
   Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    ReleasePlatform? platform,
+    String? linkKey,
+    String? gitSha,
+    bool? gitDirty,
   }) {
     return _withProgress(
       'Creating patch',
@@ -1535,6 +1547,10 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         metadata: metadata,
+        platform: platform,
+        linkKey: linkKey,
+        gitSha: gitSha,
+        gitDirty: gitDirty,
       ),
     );
   }
@@ -1569,11 +1585,15 @@ $name artifact already exists, continuing...''');
 
   /// Promotes a patch to a specific [channel], starting a rollout there at
   /// [rolloutPercentage], or to every device on it when that is null.
+  ///
+  /// [platforms] limits the promotion to those platforms' patches under the
+  /// patch's number; without it the server promotes every platform's.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
     required Channel channel,
     double? rolloutPercentage,
+    List<ReleasePlatform>? platforms,
   }) {
     final share = rolloutPercentage == null
         ? ''
@@ -1585,6 +1605,7 @@ $name artifact already exists, continuing...''');
         patchId: patchId,
         channelId: channel.id,
         rolloutPercentage: rolloutPercentage,
+        platforms: platforms,
       ),
     );
   }
@@ -1618,11 +1639,15 @@ $name artifact already exists, continuing...''');
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
     required int patchId,
     int? patchNumber,
+    List<ReleasePlatform>? platforms,
   }) async {
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling back $label');
@@ -1631,6 +1656,7 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
+        platforms: platforms,
       );
       // A completed spinner would claim the rollback happened, so say so when
       // the server reported there was nothing to change.
@@ -1651,11 +1677,15 @@ $name artifact already exists, continuing...''');
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollforwardPatch({
     required String appId,
     required int releaseId,
     required int patchId,
     int? patchNumber,
+    List<ReleasePlatform>? platforms,
   }) async {
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling forward $label');
@@ -1664,6 +1694,7 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
+        platforms: platforms,
       );
       // A completed spinner would claim the rollforward happened, so say so
       // when the server reported there was nothing to change.
@@ -1680,6 +1711,11 @@ $name artifact already exists, continuing...''');
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track], at [rolloutPercentage] of its
   /// devices when given.
+  ///
+  /// [linkKey] links the patch to patches for other platforms created with
+  /// the same key; [gitSha] and [gitDirty] record the commit it was built
+  /// from. Only [platform]'s patch is promoted, even when the patch shares
+  /// its number with other platforms.
   Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
@@ -1688,11 +1724,18 @@ $name artifact already exists, continuing...''');
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
     double? rolloutPercentage,
+    String? linkKey,
+    String? gitSha,
+    bool? gitDirty,
   }) async {
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
+      platform: platform,
+      linkKey: linkKey,
+      gitSha: gitSha,
+      gitDirty: gitDirty,
     );
 
     await createPatchArtifacts(
@@ -1711,9 +1754,9 @@ $name artifact already exists, continuing...''');
       patchId: patch.id,
       channel: channel,
       rolloutPercentage: rolloutPercentage,
+      platforms: [platform],
     );
 
-    logger.success('\n✅ Published Patch ${patch.number}!');
     return patch;
   }
 

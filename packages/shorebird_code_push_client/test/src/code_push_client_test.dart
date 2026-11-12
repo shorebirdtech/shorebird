@@ -88,11 +88,8 @@ void main() {
         );
       }
 
-      Future<void> createPatch() => codePushClient.createPatch(
-        appId: appId,
-        releaseId: 1,
-        metadata: {},
-      );
+      Future<void> createPatch() =>
+          codePushClient.createPatch(appId: appId, releaseId: 1, metadata: {});
 
       test('passes a notice header to onNotice', () async {
         respondWith({CodePushClient.noticeHeader: '"Patches are paused."'});
@@ -577,9 +574,8 @@ void main() {
           // A storage 409 must not read as an API conflict.
           http.StreamedResponse(const Stream.empty(), HttpStatus.conflict),
         ];
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => responses.removeAt(0));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -643,9 +639,8 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         ];
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => responses.removeAt(0));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -701,9 +696,8 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         ];
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => responses.removeAt(0));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'patch.txt'))
@@ -721,9 +715,8 @@ void main() {
           completes,
         );
 
-        final requests = verify(
-          () => httpClient.send(captureAny()),
-        ).captured.cast<http.BaseRequest>();
+        final requests = verify(() => httpClient.send(captureAny())).captured
+            .cast<http.BaseRequest>();
         expect(requests, hasLength(2));
         final uploadRequest = requests.last;
         expect(uploadRequest.method, equals('PUT'));
@@ -1021,9 +1014,8 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.badRequest),
         ];
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => responses.removeAt(0));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -1082,9 +1074,8 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         ];
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => responses.removeAt(0));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -1142,9 +1133,8 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         ];
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => responses.removeAt(0));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -1164,9 +1154,8 @@ void main() {
           completes,
         );
 
-        final requests = verify(
-          () => httpClient.send(captureAny()),
-        ).captured.cast<http.BaseRequest>();
+        final requests = verify(() => httpClient.send(captureAny())).captured
+            .cast<http.BaseRequest>();
         expect(requests, hasLength(2));
         final uploadRequest = requests.last;
         expect(uploadRequest.method, equals('PUT'));
@@ -1207,9 +1196,8 @@ void main() {
         void stubActions(
           List<Future<http.StreamedResponse> Function()> actions,
         ) {
-          when(
-            () => httpClient.send(any()),
-          ).thenAnswer((_) => actions.removeAt(0)());
+          when(() => httpClient.send(any()))
+              .thenAnswer((_) => actions.removeAt(0)());
         }
 
         Future<void> upload(String artifactPath) =>
@@ -1225,9 +1213,7 @@ void main() {
             );
 
         List<http.BaseRequest> capturedPuts() =>
-            verify(
-                  () => httpClient.send(captureAny()),
-                ).captured
+            verify(() => httpClient.send(captureAny())).captured
                 .cast<http.BaseRequest>()
                 .where((r) => r.method == 'PUT')
                 .toList();
@@ -1633,6 +1619,54 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
+      test('sends the link fields when given', () async {
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+              platform: ReleasePlatform.ios,
+              linkKey: 'abc123',
+              gitSha: 'abc123',
+              gitDirty: false,
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'release_id': releaseId,
+            'metadata': {'foo': 'bar'},
+            'platform': 'ios',
+            'link_key': 'abc123',
+            'git_sha': 'abc123',
+            'git_dirty': false,
+          }),
+        );
+      });
+
+      test('omits the link fields when not given', () async {
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'release_id': releaseId,
+            'metadata': {'foo': 'bar'},
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1848,11 +1882,7 @@ void main() {
                     flutterVersion,
                   )
                   .having((r) => r.displayName, 'displayName', displayName)
-                  .having(
-                    (r) => r.platforms,
-                    'platforms',
-                    isEmpty,
-                  ),
+                  .having((r) => r.platforms, 'platforms', isEmpty),
             ),
           ),
         );
@@ -2065,10 +2095,7 @@ void main() {
         expect(request.method, equals('PATCH'));
         expect(request.url, equals(v1('users/me')));
         expect(request.hasHeaders(expectedHeaders), isTrue);
-        expect(
-          json.decode(request.body),
-          equals({'display_name': 'Jane Doe'}),
-        );
+        expect(json.decode(request.body), equals({'display_name': 'Jane Doe'}));
       });
 
       test('throws an exception if the http request fails', () async {
@@ -2954,6 +2981,32 @@ void main() {
           );
           expect(patches, equals([patch]));
         });
+
+        test('queries by link_key when given', () async {
+          await codePushClient.getPatches(
+            appId: appId,
+            releaseId: 123,
+            linkKey: 'abc 123',
+          );
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(
+            request.url,
+            equals(
+              v1('apps/$appId/releases/123/patches')
+                  .replace(queryParameters: {'link_key': 'abc 123'}),
+            ),
+          );
+        });
+
+        test('sends no query without a link key', () async {
+          await codePushClient.getPatches(appId: appId, releaseId: 123);
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.url.hasQuery, isFalse);
+        });
       });
     });
 
@@ -3116,6 +3169,28 @@ void main() {
         );
       });
 
+      test('sends platforms when given', () async {
+        codePushClient
+            .promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channelId,
+              platforms: [ReleasePlatform.android],
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'patch_id': patchId,
+            'channel_id': channelId,
+            'platforms': ['android'],
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -3205,10 +3280,8 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await setPatchRollout();
@@ -3224,10 +3297,7 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
-        expect(
-          json.decode(request.body),
-          equals({'rollout_percentage': 50}),
-        );
+        expect(json.decode(request.body), equals({'rollout_percentage': 50}));
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -3277,10 +3347,8 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await codePushClient.rollbackPatch(
@@ -3300,6 +3368,48 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('sends no body without platforms', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollbackPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.body, isEmpty);
+      });
+
+      test('sends platforms when given', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollbackPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+          platforms: [ReleasePlatform.ios],
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'platforms': ['ios'],
+          }),
+        );
       });
 
       test('returns false on 304 Not Modified (idempotent)', () async {
@@ -3322,10 +3432,8 @@ void main() {
 
       test('returns true on 204 No Content', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await expectLater(
@@ -3396,10 +3504,8 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await codePushClient.rollforwardPatch(
@@ -3419,6 +3525,48 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('sends no body without platforms', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollforwardPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.body, isEmpty);
+      });
+
+      test('sends platforms when given', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollforwardPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+          platforms: [ReleasePlatform.ios],
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'platforms': ['ios'],
+          }),
+        );
       });
 
       test('returns false on 304 Not Modified (idempotent)', () async {
@@ -3441,10 +3589,8 @@ void main() {
 
       test('returns true on 204 No Content', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await expectLater(
@@ -3742,9 +3888,9 @@ void main() {
             ),
             completion(equals([invite, invite])),
           );
-          final urls = verify(
-            () => httpClient.send(captureAny()),
-          ).captured.map((r) => (r as http.Request).url).toList();
+          final urls = verify(() => httpClient.send(captureAny())).captured
+              .map((r) => (r as http.Request).url)
+              .toList();
           expect(urls[0].path, endsWith('organizations/42/invitations'));
           expect(urls[0].queryParameters, {'per_page': '100'});
           expect(urls[1].queryParameters, {'per_page': '100', 'cursor': 'c2'});
@@ -4084,9 +4230,8 @@ void main() {
       }
 
       final failingCalls = <String, Future<Object?> Function()>{
-        'getServiceAccounts': () => codePushClient.getServiceAccounts(
-          organizationId: organizationId,
-        ),
+        'getServiceAccounts': () =>
+            codePushClient.getServiceAccounts(organizationId: organizationId),
         'createServiceAccount': () => codePushClient.createServiceAccount(
           organizationId: organizationId,
           name: 'release-bot',
@@ -4339,10 +4484,7 @@ void main() {
               verify(() => httpClient.send(captureAny())).captured.single
                   as http.BaseRequest;
           expect(request.method, equals('GET'));
-          expect(
-            request.url,
-            equals(v1('organizations/$organizationId/apps')),
-          );
+          expect(request.url, equals(v1('organizations/$organizationId/apps')));
         });
       });
     });
@@ -4371,9 +4513,9 @@ void main() {
         );
       }
 
-      List<http.Request> requests() => verify(
-        () => httpClient.send(captureAny()),
-      ).captured.cast<http.Request>();
+      List<http.Request> requests() =>
+          verify(() => httpClient.send(captureAny())).captured
+              .cast<http.Request>();
 
       final failsWithServerMessage = throwsA(
         isA<CodePushException>().having(
@@ -4788,9 +4930,8 @@ void main() {
       });
 
       test('stops at an empty page even if it carries a cursor', () async {
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => page([], nextCursor: 'again'));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => page([], nextCursor: 'again'));
 
         final invitations = await codePushClient.getReceivedInvitations();
 
@@ -4803,24 +4944,22 @@ void main() {
           page([invitation('a')], nextCursor: 'next'),
           page([invitation('b')]),
         ];
-        when(
-          () => httpClient.send(any()),
-        ).thenAnswer((_) async => responses.removeAt(0));
+        when(() => httpClient.send(any()))
+            .thenAnswer((_) async => responses.removeAt(0));
 
         final invitations = await codePushClient.getReceivedInvitations();
 
         expect(invitations.map((i) => i.id), equals(['a', 'b']));
-        final requests = verify(
-          () => httpClient.send(captureAny()),
-        ).captured.cast<http.BaseRequest>();
+        final requests = verify(() => httpClient.send(captureAny())).captured
+            .cast<http.BaseRequest>();
         expect(requests.map((r) => r.method), everyElement(equals('GET')));
         expect(
           requests.map((r) => r.url),
           equals([
             v1('invitations').replace(queryParameters: {'per_page': '100'}),
-            v1('invitations').replace(
-              queryParameters: {'per_page': '100', 'cursor': 'next'},
-            ),
+            v1(
+              'invitations',
+            ).replace(queryParameters: {'per_page': '100', 'cursor': 'next'}),
           ]),
         );
       });
