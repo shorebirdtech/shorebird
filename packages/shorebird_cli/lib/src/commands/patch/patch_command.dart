@@ -207,9 +207,9 @@ To target the latest release (e.g. the release that was most recently updated) u
         'share-debug-info',
         negatable: false,
         help:
-            "Share this run's debugging information (link report, diff "
-            'details, versions) with Shorebird, whatever your '
-            "organization's setting.",
+            "Share this patch's debugging information "
+            '(build/patch-debug.zip, written when patching iOS or macOS) '
+            "with Shorebird, whatever your organization's setting.",
       )
       ..addOption(
         CommonArguments.ddMaxBytesArg.name,
