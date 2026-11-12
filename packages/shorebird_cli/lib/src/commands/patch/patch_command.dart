@@ -123,6 +123,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         help: showDexDiffHelpText,
         negatable: false,
       )
+      ..addFlag(
+        'pin-dependencies',
+        help: pinDependenciesHelpText,
+        defaultsTo: true,
+      )
       ..addOption(
         'track',
         aliases: const ['channel'],
@@ -220,6 +225,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Native code changes cannot b
   static const showDexDiffHelpText = '''
 Print every differing instruction when native changes are detected in an Android patch.
 Without this, the first few differing instructions of the first ten changed methods are shown, string constants are replaced by their length, and a payload such as a switch table or an array initializer is cut after its first few units. Output contains your app's bytecode, including class and method names, and is written to the shorebird.log file support asks you to attach.''';
+
+  /// Help text for the flag that pins an Android patch's Maven versions.
+  static const pinDependenciesHelpText = '''
+Android only. Build the patch with each Maven library at the version the release used, read from the release's app bundle, on Flutter versions that support it.
+Use --no-pin-dependencies to resolve versions as your Gradle files say, for example when the build fails on a library you updated since the release.''';
 
   /// Warning message for when asset diffs are detected.
   static final allowAssetDiffsHelpText = '''

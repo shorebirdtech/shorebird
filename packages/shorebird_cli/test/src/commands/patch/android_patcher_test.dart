@@ -736,7 +736,44 @@ void main() {
       });
 
       group('pinning Maven versions to the release', () {
-        setUp(setUpProjectRootArtifacts);
+        late Directory flutterDirectory;
+
+        setUp(() {
+          setUpProjectRootArtifacts();
+          flutterDirectory = Directory.systemTemp.createTempSync();
+          when(
+            () => shorebirdEnv.flutterDirectory,
+          ).thenReturn(flutterDirectory);
+        });
+
+        void addPinInitScriptToFlutter() {
+          File(
+              p.join(
+                flutterDirectory.path,
+                'packages',
+                'flutter_tools',
+                'gradle',
+                'shorebird_pin_dependencies_init.gradle',
+              ),
+            )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('// pins');
+        }
+
+        void buildFails() {
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenThrow(
+            ArtifactBuildException('build failed', fixRecommendation: 'tip'),
+          );
+        }
 
         File writeReleaseAab(Uint8List? dependenciesBytes) {
           final archive = Archive()
@@ -823,6 +860,89 @@ void main() {
             throwsA(isA<ArtifactBuildException>()),
           );
           expect(File(pinsPath!).parent.existsSync(), isFalse);
+        });
+
+        test('passes no pins with --no-pin-dependencies', () async {
+          when(() => argResults['pin-dependencies']).thenReturn(false);
+          patcher.releaseArchive = writeReleaseAab(
+            appDependencies([mavenLibrary('com.example', 'lib', '1.0.0')]),
+          );
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
+          );
+          verify(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: ['--build-name=1.2.3', '--build-number=4'],
+            ),
+          ).called(1);
+        });
+
+        test('when a pinned build fails on a Flutter that pins, '
+            'suggests --no-pin-dependencies', () async {
+          addPinInitScriptToFlutter();
+          patcher.releaseArchive = writeReleaseAab(
+            appDependencies([
+              mavenLibrary('com.example', 'a', '1.0.0'),
+              mavenLibrary('com.example', 'b', '2.0.0'),
+            ]),
+          );
+          buildFails();
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            throwsA(
+              isA<ArtifactBuildException>()
+                  .having((e) => e.message, 'message', 'build failed')
+                  .having(
+                    (e) => e.fixRecommendation,
+                    'fixRecommendation',
+                    '${AndroidPatcher.pinnedDependenciesBuildHint(2)}\ntip',
+                  ),
+            ),
+          );
+          expect(
+            AndroidPatcher.pinnedDependenciesBuildHint(2),
+            contains('--no-pin-dependencies'),
+          );
+        });
+
+        test('when a pinned build fails on a Flutter that ignores pins, '
+            'passes the failure on unchanged', () async {
+          patcher.releaseArchive = writeReleaseAab(
+            appDependencies([mavenLibrary('com.example', 'a', '1.0.0')]),
+          );
+          buildFails();
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.fixRecommendation,
+                'fixRecommendation',
+                'tip',
+              ),
+            ),
+          );
+        });
+
+        test('when an unpinned build fails, '
+            'passes the failure on unchanged', () async {
+          addPinInitScriptToFlutter();
+          when(() => argResults['pin-dependencies']).thenReturn(false);
+          patcher.releaseArchive = writeReleaseAab(
+            appDependencies([mavenLibrary('com.example', 'a', '1.0.0')]),
+          );
+          buildFails();
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.fixRecommendation,
+                'fixRecommendation',
+                'tip',
+              ),
+            ),
+          );
         });
 
         for (final (description, bytes) in [

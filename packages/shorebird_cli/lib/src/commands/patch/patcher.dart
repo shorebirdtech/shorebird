@@ -203,6 +203,10 @@ More info: ${linkPercentageUrl.toLink()}.
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
 
+  /// Whether to pin Maven versions to the release's (--[no-]pin-dependencies).
+  /// On unless turned off.
+  bool get pinDependencies => argResults['pin-dependencies'] != false;
+
   /// Whether to print every differing instruction (--show-dex-diff).
   bool get showDexDiff => argResults['show-dex-diff'] == true;
 

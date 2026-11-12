@@ -108,6 +108,25 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
     return coordinates.toList()..sort();
   }
 
+  /// Shown when a patch build with pinned Maven versions fails: pinning is
+  /// the likeliest cause the customer can't see in their own build files.
+  @visibleForTesting
+  static String pinnedDependenciesBuildHint(int count) => '''
+This patch was built with $count Maven libraries pinned to the versions your release used, so that it matches what devices run. If the error names a library you updated since the release, rerun with --no-pin-dependencies to use the versions in your Gradle files. A patch can't change native code, so the patch may then be reported as having native changes.''';
+
+  /// Whether this Flutter has the fork's init script that reads
+  /// [pinnedDependenciesProjectProperty]. Older ones ignore the property, so a
+  /// failed build there has nothing to do with pinning.
+  bool get _flutterPinsDependencies => File(
+    p.join(
+      shorebirdEnv.flutterDirectory.path,
+      'packages',
+      'flutter_tools',
+      'gradle',
+      'shorebird_pin_dependencies_init.gradle',
+    ),
+  ).existsSync();
+
   @override
   ReleaseType get releaseType => ReleaseType.android;
 
@@ -173,8 +192,14 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
       logger.warn(updaterPatchErrorWarning);
     }
 
-    final pinnedDependencies = releasePinnedDependencies(releaseArchive);
-    if (pinnedDependencies.isNotEmpty) {
+    final pinnedDependencies = pinDependencies
+        ? releasePinnedDependencies(releaseArchive)
+        : const <String>[];
+    if (!pinDependencies) {
+      logger.detail(
+        "Not pinning Maven versions to the release's: --no-pin-dependencies.",
+      );
+    } else if (pinnedDependencies.isNotEmpty) {
       logger.detail(
         "Pinning ${pinnedDependencies.length} Maven libraries to the release's "
         'versions (on Flutter versions that support it).',
@@ -206,6 +231,15 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
             ].join('='),
         ],
         base64PublicKey: await getEncodedPublicKey(),
+      );
+    } on ArtifactBuildException catch (e) {
+      if (pinnedDependencies.isEmpty || !_flutterPinsDependencies) rethrow;
+      throw ArtifactBuildException(
+        e.message,
+        fixRecommendation: [
+          pinnedDependenciesBuildHint(pinnedDependencies.length),
+          ?e.fixRecommendation,
+        ].join('\n'),
       );
     } finally {
       pinsDir?.deleteTemporarySync();
