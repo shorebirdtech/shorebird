@@ -801,7 +801,6 @@ void main() {
             appId: appId,
             patchId: patch.id,
             channel: targetChannel,
-            rolloutPercentage: null,
             rolloutSchedule: schedule,
           ),
         ).called(1);
@@ -832,7 +831,6 @@ void main() {
             appId: appId,
             patchId: patch.id,
             channel: targetChannel,
-            rolloutPercentage: null,
             rolloutSchedule: const RolloutSchedule(
               steps: [
                 RolloutStep(percentage: 1, durationMinutes: 240),

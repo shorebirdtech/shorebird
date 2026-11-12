@@ -4076,7 +4076,6 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             metadata: any(named: 'metadata'),
             artifacts: any(named: 'artifacts'),
             track: DeploymentTrack.stable,
-            rolloutPercentage: null,
             rolloutSchedule: schedule,
           ),
         ).called(1);

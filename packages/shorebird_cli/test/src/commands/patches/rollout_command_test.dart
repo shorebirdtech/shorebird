@@ -496,7 +496,6 @@ void main() {
             releaseId: release.id,
             patchId: patch.id,
             patchNumber: patchNumber,
-            rolloutPercentage: null,
             rolloutSchedule: schedule,
           ),
         ).called(1);
@@ -604,7 +603,6 @@ void main() {
             patchId: patch.id,
             patchNumber: patchNumber,
             rolloutPercentage: 50,
-            rolloutSchedule: null,
           ),
         ).called(1);
       });
