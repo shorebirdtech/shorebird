@@ -14,3 +14,7 @@ dependencies:
 
 dev_dependencies:
   test: ^1.33.0
+
+shorebird_ci:
+  needs_redis: true
+  min_coverage: 98.0

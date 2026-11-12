@@ -65,3 +65,10 @@ dev_dependencies:
 
 executables:
   shorebird:
+
+shorebird_ci:
+  runners:
+    - macos-latest
+    - windows-latest
+    - ubuntu-latest
+  min_coverage: 94.7

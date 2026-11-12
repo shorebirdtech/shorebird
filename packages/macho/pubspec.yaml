@@ -12,3 +12,6 @@ dependencies:
 
 dev_dependencies:
   test: ^1.32.0
+
+shorebird_ci:
+  min_coverage: 100
