@@ -148,6 +148,20 @@ class SetTrackCommand extends ShorebirdCommand
     );
     if (patch == null) return lookupError!;
 
+    // Without --platforms the server moves every platform's patch, and only
+    // when they are all on one track.
+    if (requestedPlatforms == null && patch.tracksDiffer) {
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: _notOn(patch, targetChannel),
+        extraArgs: ['--track=$targetChannel'],
+        reason:
+            "Patch $patchNumber's platforms are on different tracks, so "
+            'pass --${PatchLookup.platformsArgName} to choose which to move.',
+      );
+    }
+
     final chosen = choosePlatforms(
       patch: patch,
       releaseVersion: releaseVersion,
@@ -305,10 +319,7 @@ class SetTrackCommand extends ShorebirdCommand
       return reportPlatformsDiffer(
         patch: patch,
         releaseVersion: releaseVersion,
-        suggested: [
-          for (final p in patch.patches)
-            if (p.channel != targetChannel) ?p.resolvedPlatform,
-        ],
+        suggested: _notOn(patch, targetChannel),
         extraArgs: ['--track=$targetChannel'],
       );
     }
@@ -359,6 +370,12 @@ class SetTrackCommand extends ShorebirdCommand
 
     return ExitCode.success.code;
   }
+
+  /// The platforms under [patch] whose patch is not on [channel].
+  List<ReleasePlatform> _notOn(PatchNumber patch, String channel) => [
+    for (final p in patch.patches)
+      if (p.channel != channel) ?p.resolvedPlatform,
+  ];
 
   Map<String, Object?> _successJson({
     required String appId,
