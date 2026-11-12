@@ -196,6 +196,17 @@ jobs:
           path: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
           key: android-ndk-${{ env.NDK_VERSION }}-${{ runner.os }}
 
+      # A cli_ref run checks out cli_ref, which may predate this workflow's
+      # helper scripts (scripts/install_android_sdk_packages.sh came in
+      # #4431), so the helper comes from this workflow's own commit.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .e2e_workflow
+          sparse-checkout: scripts/install_android_sdk_packages.sh
+          sparse-checkout-cone-mode: false
+
       # Downloads what the cache didn't restore. A bad download is retried
       # (see the script) instead of failing `shorebird release` mid-build.
       # Unquoted so the list splits into one argument per package.
@@ -205,7 +216,7 @@ jobs:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
         run: |
           # shellcheck disable=SC2086
-          ./scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
+          ./.e2e_workflow/scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -543,9 +554,20 @@ jobs:
           path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
           key: android-ndk-28.2.13676358-${{ runner.os }}
 
+      # A cli_ref run checks out cli_ref, which may predate this workflow's
+      # helper scripts (scripts/install_android_sdk_packages.sh came in
+      # #4431), so the helper comes from this workflow's own commit.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .e2e_workflow
+          sparse-checkout: scripts/install_android_sdk_packages.sh
+          sparse-checkout-cone-mode: false
+
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 17
-        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
+        run: ./.e2e_workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -713,9 +735,20 @@ jobs:
           path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
           key: android-ndk-28.2.13676358-${{ runner.os }}
 
+      # A cli_ref run checks out cli_ref, which may predate this workflow's
+      # helper scripts (scripts/install_android_sdk_packages.sh came in
+      # #4431), so the helper comes from this workflow's own commit.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .e2e_workflow
+          sparse-checkout: scripts/install_android_sdk_packages.sh
+          sparse-checkout-cone-mode: false
+
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 17
-        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
+        run: ./.e2e_workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
