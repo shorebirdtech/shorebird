@@ -179,6 +179,7 @@ export 'package:shorebird_code_push_protocol/src/models/release_platform_details
 export 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 export 'package:shorebird_code_push_protocol/src/models/role.dart';
+export 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 export 'package:shorebird_code_push_protocol/src/models/service_account.dart';
 export 'package:shorebird_code_push_protocol/src/models/service_account_key.dart';
 export 'package:shorebird_code_push_protocol/src/models/service_account_role.dart';

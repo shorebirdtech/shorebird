@@ -22,5 +22,30 @@ void main() {
       expect(json['rollout_percentage'], equals(25.5));
       expect(PromotePatchRequest.fromJson(json), equals(request));
     });
+
+    test('can be (de)serialized with a timed rollout schedule', () {
+      const request = PromotePatchRequest(
+        channelId: 123,
+        patchId: 456,
+        rolloutSteps: [
+          RolloutStep(percentage: 1, durationMinutes: 240),
+          RolloutStep(percentage: 100),
+        ],
+        rolloutPauseWeekends: true,
+        rolloutTimezone: 'America/New_York',
+      );
+      final json = request.toJson();
+      expect(json, isNot(contains('rollout_percentage')));
+      expect(
+        json['rollout_steps'],
+        equals([
+          {'percentage': 1.0, 'duration_minutes': 240},
+          {'percentage': 100.0},
+        ]),
+      );
+      expect(json['rollout_pause_weekends'], isTrue);
+      expect(json['rollout_timezone'], equals('America/New_York'));
+      expect(PromotePatchRequest.fromJson(json), equals(request));
+    });
   });
 }

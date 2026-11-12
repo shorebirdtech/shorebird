@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
+import 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 
 /// {@template release_patch}
 /// A patch for a given release.
@@ -16,6 +17,10 @@ class ReleasePatch {
     this.channel,
     this.createdAt,
     this.rolloutPercentage,
+    this.rolloutSteps,
+    this.rolloutNextStepAt,
+    this.rolloutPauseWeekends,
+    this.rolloutTimezone,
     this.notes,
   });
 
@@ -36,6 +41,16 @@ class ReleasePatch {
         isRolledBack: json['is_rolled_back'] as bool,
         createdAt: maybeParseDateTime(json['created_at'] as String?),
         rolloutPercentage: (json['rollout_percentage'] as num?)?.toDouble(),
+        rolloutSteps: (json['rollout_steps'] as List?)
+            ?.map<RolloutStep>(
+              (e) => RolloutStep.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+        rolloutNextStepAt: maybeParseDateTime(
+          json['rollout_next_step_at'] as String?,
+        ),
+        rolloutPauseWeekends: json['rollout_pause_weekends'] as bool?,
+        rolloutTimezone: json['rollout_timezone'] as String?,
         notes: json['notes'] as String?,
       ),
     );
@@ -73,6 +88,24 @@ class ReleasePatch {
   /// Absent when the patch is on no channel.
   final double? rolloutPercentage;
 
+  /// The remaining steps of an in-progress timed rollout schedule on
+  /// `channel`, starting with the active step. Absent when the rollout
+  /// is fixed or the patch is on no channel.
+  final List<RolloutStep>? rolloutSteps;
+
+  /// When the next step in `rollout_steps` is scheduled to apply.
+  /// Absent when `rollout_steps` is absent.
+  final DateTime? rolloutNextStepAt;
+
+  /// Whether the timed rollout schedule on `channel` pauses step
+  /// advancement over weekends in `rollout_timezone`. Absent when the
+  /// patch is on no channel.
+  final bool? rolloutPauseWeekends;
+
+  /// The IANA timezone name used to evaluate weekend pauses on
+  /// `channel`. Absent when the patch is on no channel.
+  final String? rolloutTimezone;
+
   /// Freeform notes associated with the patch, if any.
   final String? notes;
 
@@ -86,6 +119,10 @@ class ReleasePatch {
       'is_rolled_back': isRolledBack,
       'created_at': ?createdAt?.toUtc().toIso8601String(),
       'rollout_percentage': ?rolloutPercentage,
+      'rollout_steps': ?rolloutSteps?.map((e) => e.toJson()).toList(),
+      'rollout_next_step_at': ?rolloutNextStepAt?.toUtc().toIso8601String(),
+      'rollout_pause_weekends': ?rolloutPauseWeekends,
+      'rollout_timezone': ?rolloutTimezone,
       'notes': ?notes,
     };
   }
@@ -99,6 +136,10 @@ class ReleasePatch {
     isRolledBack,
     createdAt,
     rolloutPercentage,
+    listHash(rolloutSteps),
+    rolloutNextStepAt,
+    rolloutPauseWeekends,
+    rolloutTimezone,
     notes,
   ]);
 
@@ -113,6 +154,10 @@ class ReleasePatch {
         isRolledBack == other.isRolledBack &&
         createdAt == other.createdAt &&
         rolloutPercentage == other.rolloutPercentage &&
+        listsEqual(rolloutSteps, other.rolloutSteps) &&
+        rolloutNextStepAt == other.rolloutNextStepAt &&
+        rolloutPauseWeekends == other.rolloutPauseWeekends &&
+        rolloutTimezone == other.rolloutTimezone &&
         notes == other.notes;
   }
 }

@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
@@ -89,6 +90,7 @@ void main() {
           patchId: any(named: 'patchId'),
           patchNumber: any(named: 'patchNumber'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
+          rolloutSchedule: any(named: 'rolloutSchedule'),
         ),
       );
     }
@@ -132,6 +134,7 @@ void main() {
           patchId: any(named: 'patchId'),
           patchNumber: any(named: 'patchNumber'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
+          rolloutSchedule: any(named: 'rolloutSchedule'),
         ),
       ).thenAnswer((_) async {});
 
@@ -156,10 +159,20 @@ void main() {
         equals('50'),
         reason: '--rollout, as on patch and promote, works here too',
       );
-      expect(command.argParser.options['percentage']!.mandatory, isTrue);
+      expect(
+        command.argParser.options['percentage']!.mandatory,
+        isFalse,
+        reason: '--$rolloutStepsArgName stands in for it',
+      );
       expect(
         command.argParser.options.keys,
-        containsAll(['app-id', 'flavor']),
+        containsAll([
+          'app-id',
+          'flavor',
+          rolloutStepsArgName,
+          pauseWeekendsArgName,
+          timezoneArgName,
+        ]),
       );
     });
 
@@ -331,6 +344,7 @@ void main() {
             patchId: any(named: 'patchId'),
             patchNumber: any(named: 'patchNumber'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
           ),
         ).thenThrow(ApiErrorExit(error, ExitCode.software.code));
       });
@@ -358,6 +372,226 @@ void main() {
       });
     });
 
+    group('when neither --percentage nor --rollout-steps is given', () {
+      setUp(() {
+        when(() => argResults['percentage']).thenReturn(null);
+      });
+
+      test('exits with usage error and says what to pass', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            'Option --percentage is mandatory unless '
+            '--$rolloutStepsArgName is given.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'Raise the rollout to a percentage with --percentage=50, or put '
+            'it on a schedule with '
+            '--$rolloutStepsArgName=$rolloutStepsExample.',
+          ),
+        ).called(1);
+        verifyNoRolloutRequest();
+      });
+    });
+
+    group('when --percentage and --rollout-steps are both given', () {
+      setUp(() {
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn(rolloutStepsExample);
+      });
+
+      test('exits with usage error', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            '--percentage and --$rolloutStepsArgName are mutually exclusive: '
+            'a rollout is either a fixed percentage or a schedule.',
+          ),
+        ).called(1);
+        verifyNoRolloutRequest();
+      });
+    });
+
+    group('when --rollout-steps does not end at 100', () {
+      setUp(() {
+        when(() => argResults['percentage']).thenReturn(null);
+        when(() => argResults[rolloutStepsArgName]).thenReturn('10:12h,50');
+      });
+
+      test('exits with usage error and does not fetch', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            '--$rolloutStepsArgName must end at 100, which is where the '
+            'rollout stops (got "50").',
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+    });
+
+    group('when --pause-weekends is given without --rollout-steps', () {
+      setUp(() {
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(true);
+      });
+
+      test('exits with usage error', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            '--$pauseWeekendsArgName only applies to a timed rollout '
+            'schedule, which --$rolloutStepsArgName sets (e.g. '
+            '--$rolloutStepsArgName=$rolloutStepsExample).',
+          ),
+        ).called(1);
+        verifyNoRolloutRequest();
+      });
+    });
+
+    group('when --rollout-steps is given', () {
+      const schedule = RolloutSchedule(
+        steps: [
+          RolloutStep(percentage: 10, durationMinutes: 720),
+          RolloutStep(percentage: 50, durationMinutes: 1440),
+          RolloutStep(percentage: 100),
+        ],
+        pauseWeekends: true,
+        timezone: 'America/New_York',
+      );
+
+      setUp(() {
+        when(() => argResults['percentage']).thenReturn(null);
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn('10:12h,50:1d,100');
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(true);
+        when(
+          () => argResults[timezoneArgName],
+        ).thenReturn('America/New_York');
+      });
+
+      test('asks the server for the schedule', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.setPatchRollout(
+            appId: appId,
+            releaseId: release.id,
+            patchId: patch.id,
+            patchNumber: patchNumber,
+            rolloutPercentage: null,
+            rolloutSchedule: schedule,
+          ),
+        ).called(1);
+      });
+
+      test('logs the schedule, which devices count, and the patch', () async {
+        await runWithOverrides(command.run);
+
+        verifyInOrder([
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion is now rolling '
+            'out on stable on a schedule: 10% for 12h, then 50% for 1d, then '
+            '100%, holding over weekends in America/New_York.',
+          ),
+          () => logger.info(rolloutOlderDevicesNote),
+          () => logger.info('Track:       stable (10%)'),
+        ]);
+      });
+
+      test('in --json mode, emits the schedule', () async {
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['changed'], isTrue);
+        expect(data['rollout_percentage'], 10);
+        expect(
+          data['rollout_steps'],
+          equals([
+            {'percentage': 10, 'duration_minutes': 720},
+            {'percentage': 50, 'duration_minutes': 1440},
+            {'percentage': 100},
+          ]),
+        );
+        expect(data['rollout_pause_weekends'], isTrue);
+        expect(data['rollout_timezone'], 'America/New_York');
+      });
+
+      test('reports a change at the first step the patch is at', () async {
+        when(() => argResults[rolloutStepsArgName]).thenReturn('10:12h,100');
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(false);
+        when(() => argResults[timezoneArgName]).thenReturn(null);
+
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect((json['data'] as Map<String, dynamic>)['changed'], isTrue);
+      });
+
+      test('rejects a timezone that is not a zone name', () async {
+        when(() => argResults[timezoneArgName]).thenReturn('New York');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            '--$timezoneArgName must be an IANA time zone name, such as '
+            'America/New_York (got "New York").',
+          ),
+        ).called(1);
+        verifyNoRolloutRequest();
+      });
+
+      group('when the patch is on no track', () {
+        setUp(() {
+          stubPatches([
+            const ReleasePatch(
+              id: 42,
+              number: patchNumber,
+              isRolledBack: false,
+              artifacts: [],
+            ),
+          ]);
+        });
+
+        test('says how to put it on a track on that schedule', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.info(
+              'Put it on a track on that schedule with: '
+              'shorebird patches promote --release-version $releaseVersion '
+              '--patch-number $patchNumber '
+              '--$rolloutStepsArgName 10:12h,50:1d,100 '
+              '--$pauseWeekendsArgName '
+              '--$timezoneArgName America/New_York',
+            ),
+          ).called(1);
+          verifyNoRolloutRequest();
+        });
+      });
+    });
+
     group('when the rollout is raised', () {
       test('asks the server for the new percentage', () async {
         final result = await runWithOverrides(command.run);
@@ -370,6 +604,7 @@ void main() {
             patchId: patch.id,
             patchNumber: patchNumber,
             rolloutPercentage: 50,
+            rolloutSchedule: null,
           ),
         ).called(1);
       });
@@ -436,6 +671,81 @@ void main() {
               rolloutPercentage: 50,
             ).toJson(),
           ),
+        );
+      });
+    });
+
+    group('when the patch the server reports is on a schedule', () {
+      setUp(() {
+        stubPatches([
+          ReleasePatch(
+            id: patch.id,
+            number: patch.number,
+            channel: patch.channel,
+            isRolledBack: patch.isRolledBack,
+            artifacts: patch.artifacts,
+            rolloutPercentage: patch.rolloutPercentage,
+            rolloutSteps: const [
+              RolloutStep(percentage: 10, durationMinutes: 720),
+              RolloutStep(percentage: 100),
+            ],
+            rolloutNextStepAt: DateTime.utc(2026, 11, 11, 12),
+            rolloutPauseWeekends: true,
+            rolloutTimezone: 'America/New_York',
+          ),
+        ]);
+      });
+
+      test('in --json mode, a fixed rollout reports no schedule', () async {
+        when(() => argResults['percentage']).thenReturn('100');
+
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final emitted =
+            (json['data'] as Map<String, dynamic>)['patch']
+                as Map<String, dynamic>;
+        expect(emitted['rollout_percentage'], 100);
+        expect(
+          emitted.keys,
+          isNot(
+            anyElement(
+              isIn([
+                'rollout_steps',
+                'rollout_next_step_at',
+                'rollout_pause_weekends',
+                'rollout_timezone',
+              ]),
+            ),
+          ),
+        );
+      });
+
+      test('in --json mode, a new schedule replaces the old one', () async {
+        when(() => argResults['percentage']).thenReturn(null);
+        when(() => argResults[rolloutStepsArgName]).thenReturn('1:4h,100');
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(false);
+        when(() => argResults[timezoneArgName]).thenReturn(null);
+
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final emitted =
+            (json['data'] as Map<String, dynamic>)['patch']
+                as Map<String, dynamic>;
+        expect(
+          emitted['rollout_steps'],
+          equals([
+            {'percentage': 1, 'duration_minutes': 240},
+            {'percentage': 100},
+          ]),
+        );
+        expect(emitted['rollout_pause_weekends'], isFalse);
+        expect(emitted.containsKey('rollout_timezone'), isFalse);
+        expect(
+          emitted.containsKey('rollout_next_step_at'),
+          isFalse,
+          reason: 'only the server knows when the next step applies',
         );
       });
     });

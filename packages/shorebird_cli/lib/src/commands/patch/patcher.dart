@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/split_debug_info.dart';
@@ -177,7 +178,8 @@ More info: ${linkPercentageUrl.toLink()}.
   }
 
   /// Uploads the patch artifacts to the CodePush server and publishes the
-  /// patch to [track], at [rolloutPercentage] of its devices when given.
+  /// patch to [track], at [rolloutPercentage] of its devices or on the timed
+  /// schedule [rolloutSchedule] when given.
   Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
@@ -185,6 +187,7 @@ More info: ${linkPercentageUrl.toLink()}.
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
     double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -194,6 +197,7 @@ More info: ${linkPercentageUrl.toLink()}.
       track: track,
       patchArtifactBundles: artifacts,
       rolloutPercentage: rolloutPercentage,
+      rolloutSchedule: rolloutSchedule,
     );
   }
 

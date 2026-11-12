@@ -3116,6 +3116,38 @@ void main() {
         );
       });
 
+      test('sends the timed rollout schedule when given', () async {
+        codePushClient
+            .promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channelId,
+              rolloutSteps: const [
+                RolloutStep(percentage: 1, durationMinutes: 240),
+                RolloutStep(percentage: 100),
+              ],
+              rolloutPauseWeekends: true,
+              rolloutTimezone: 'America/New_York',
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'patch_id': patchId,
+            'channel_id': channelId,
+            'rollout_steps': [
+              {'percentage': 1, 'duration_minutes': 240},
+              {'percentage': 100},
+            ],
+            'rollout_pause_weekends': true,
+            'rollout_timezone': 'America/New_York',
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -3227,6 +3259,42 @@ void main() {
         expect(
           json.decode(request.body),
           equals({'rollout_percentage': 50}),
+        );
+      });
+
+      test('sends the timed rollout schedule when given', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.setPatchRollout(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+          rolloutSteps: const [
+            RolloutStep(percentage: 10, durationMinutes: 720),
+            RolloutStep(percentage: 100),
+          ],
+          rolloutPauseWeekends: true,
+          rolloutTimezone: 'America/New_York',
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'rollout_steps': [
+              {'percentage': 10, 'duration_minutes': 720},
+              {'percentage': 100},
+            ],
+            'rollout_pause_weekends': true,
+            'rollout_timezone': 'America/New_York',
+          }),
         );
       });
 
