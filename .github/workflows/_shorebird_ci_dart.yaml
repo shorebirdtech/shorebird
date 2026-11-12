@@ -80,11 +80,13 @@ jobs:
           if [ -d routes/.well-known ]; then
             dart format --set-exit-if-changed routes/.well-known
           fi
+      # --fatal-infos is hand-edited: regenerate with `shorebird_ci generate
+      # --fatal-infos` or it goes back to --fatal-warnings.
       - working-directory: ${{ inputs.package_path }}
         run: |
-          dart analyze --fatal-warnings .
+          dart analyze --fatal-infos .
           if [ -d routes/.well-known ]; then
-            dart analyze --fatal-warnings routes/.well-known
+            dart analyze --fatal-infos routes/.well-known
           fi
       - name: Run Tests
         if: inputs.has_unit_tests

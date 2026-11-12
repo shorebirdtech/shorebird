@@ -2045,7 +2045,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         );
       });
 
-      test('starts each platform with none of the last one\'s '
+      test("starts each platform with none of the last one's "
           'state', () async {
         when(() => argResults['platforms']).thenReturn(['android', 'ios']);
         command = PatchCommand(resolvePatcher: (_) => patcher)
@@ -3063,7 +3063,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         });
 
         test(
-          'builds an obfuscated release\'s patch with its obfuscation map',
+          "builds an obfuscated release's patch with its obfuscation map",
           () async {
             when(
               () => codePushClientWrapper.getRelease(

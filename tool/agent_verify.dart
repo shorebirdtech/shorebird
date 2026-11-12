@@ -132,7 +132,7 @@ Future<int> _checkPackage(String package) async {
   // `-o none` because dart format otherwise writes in place, and the tree it
   // reformatted would then pass.
   await check('format', ['format', '-o', 'none', '--set-exit-if-changed', '.']);
-  await check('analyze', ['analyze', '--fatal-warnings', '.']);
+  await check('analyze', ['analyze', '--fatal-infos', '.']);
   final service = _testsNeedServices[package];
   if (service != null) {
     stdout.writeln('$package: tests need $service, which CI starts; skipped');

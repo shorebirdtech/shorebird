@@ -1407,7 +1407,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
     throw CommandError(
       message:
           '${app.enterpriseName ?? 'Your enterprise'} requires patch '
-          "signing, and release ${release.version} (${platform.displayName}) "
+          'signing, and release ${release.version} (${platform.displayName}) '
           "wasn't built with signing, so its devices can't verify a patch.",
       hint: 'Ship a new release and patch that.',
       exitCode: ExitCode.noPerm,
