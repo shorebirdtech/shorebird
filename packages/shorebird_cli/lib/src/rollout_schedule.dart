@@ -258,8 +258,14 @@ int? _durationInMinutes(String duration) {
   final match = _durationPattern.firstMatch(duration);
   if (match == null) return null;
   final unitMinutes = _durationUnitMinutes[match.group(2)] ?? 0;
-  final minutes = int.parse(match.group(1) ?? '0') * unitMinutes;
-  return minutes > 0 ? minutes : null;
+  // A count too long for a 64-bit int, or one whose minutes overflow one,
+  // is no more usable than a malformed duration, so it leaves the same way
+  // rather than throwing or wrapping to a few minutes.
+  final count = int.tryParse(match.group(1) ?? '0');
+  if (count == null) return null;
+  final minutes = count * unitMinutes;
+  if (minutes <= 0) return null;
+  return minutes ~/ unitMinutes == count ? minutes : null;
 }
 
 /// A time zone name's shape: slash-separated words, as `America/New_York`.
