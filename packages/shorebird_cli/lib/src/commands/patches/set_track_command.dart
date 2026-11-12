@@ -275,16 +275,18 @@ class SetTrackCommand extends ShorebirdCommand
     if (promoteError != null) return promoteError;
 
     // Promoting starts a new rollout on the track.
-    final promotedPatch = patch.copyWith(
-      channel: targetChannel,
-      rolloutPercentage: requestedPercentage ?? 100,
-    ).withRolloutSchedule(
-      steps: schedule?.steps,
-      // Only the server knows when the next step applies.
-      nextStepAt: null,
-      pauseWeekends: schedule?.pauseWeekends,
-      timezone: schedule?.timezone,
-    );
+    final promotedPatch = patch
+        .copyWith(
+          channel: targetChannel,
+          rolloutPercentage: requestedPercentage ?? 100,
+        )
+        .withRolloutSchedule(
+          steps: schedule?.steps,
+          // Only the server knows when the next step applies.
+          nextStepAt: null,
+          pauseWeekends: schedule?.pauseWeekends,
+          timezone: schedule?.timezone,
+        );
 
     if (isJsonMode) {
       emitJsonSuccess(

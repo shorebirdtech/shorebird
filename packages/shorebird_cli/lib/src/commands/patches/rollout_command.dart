@@ -201,16 +201,18 @@ class RolloutCommand extends ShorebirdCommand
     // it from the first step even when the patch is already there.
     final changed =
         schedule != null || targetPercentage != patch.rolloutPercentage;
-    final updatedPatch = patch.copyWith(
-      channel: channel,
-      rolloutPercentage: targetPercentage,
-    ).withRolloutSchedule(
-      steps: schedule?.steps,
-      // Only the server knows when the next step applies.
-      nextStepAt: null,
-      pauseWeekends: schedule?.pauseWeekends,
-      timezone: schedule?.timezone,
-    );
+    final updatedPatch = patch
+        .copyWith(
+          channel: channel,
+          rolloutPercentage: targetPercentage,
+        )
+        .withRolloutSchedule(
+          steps: schedule?.steps,
+          // Only the server knows when the next step applies.
+          nextStepAt: null,
+          pauseWeekends: schedule?.pauseWeekends,
+          timezone: schedule?.timezone,
+        );
 
     if (isJsonMode) {
       emitJsonSuccess({
