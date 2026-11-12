@@ -105,11 +105,31 @@ jobs:
           if [ -z "$files" ]; then
             exit 0
           fi
+          # A suite whose VM service connection drops as it loads fails every
+          # suite running alongside it:
+          # https://github.com/dart-lang/native/issues/3738
+          retry_test() {
+            set -o pipefail
+            local log attempt
+            log=$(mktemp)
+            for attempt in 1 2; do
+              if [ "$attempt" -gt 1 ]; then
+                echo "::warning::a suite died loading, so the tests run again"
+              fi
+              if dart test "$@" 2>&1 | tee "$log"; then
+                return 0
+              fi
+              grep -q 'Failed to load' "$log" || return 1
+              grep -q 'Connection closed before full header was received' "$log" || return 1
+            done
+            return 1
+          }
+          export -f retry_test
           if [ -n "$MIN_COVERAGE" ] && [ "$MIN_COVERAGE" != "0" ] && [ "$RUNNER_OS_NAME" = "ubuntu-latest" ]; then
             # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
             dart pub global activate coverage 1.15.1
             COVERAGE_DIR="$(pwd -W 2>/dev/null || pwd)/coverage"
-            printf '%s\n' "$files" | xargs -n 50 dart test --coverage="$COVERAGE_DIR"
+            printf '%s\n' "$files" | xargs -n 50 bash -c 'retry_test "$@"' _ --coverage="$COVERAGE_DIR"
             if [ -z "$(find coverage -name '*.json' -print -quit)" ]; then
               echo "::error::dart test wrote no coverage files to coverage/"
               exit 1
@@ -130,7 +150,7 @@ jobs:
             jq --arg name "$PACKAGE_NAME" '.packages |= map(select(.name == $name))' "$PACKAGE_CONFIG" > "$SCOPED_CONFIG"
             dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="$SCOPED_CONFIG" --report-on="$REPORT_ON" --check-ignore
           else
-            printf '%s\n' "$files" | xargs -n 50 dart test
+            printf '%s\n' "$files" | xargs -n 50 bash -c 'retry_test "$@"' _
           fi
       - name: Check Coverage
         if: inputs.has_unit_tests && inputs.min_coverage != '' && inputs.min_coverage != '0' && matrix.os == 'ubuntu-latest'

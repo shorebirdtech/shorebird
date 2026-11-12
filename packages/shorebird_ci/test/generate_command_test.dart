@@ -32,6 +32,16 @@ Future<int?> runGenerate(
   ]);
 }
 
+/// A generated Run Tests step, with the workflow and job holding it.
+typedef TestSite = ({
+  String name,
+  String executable,
+  String style,
+  bool hasCodecov,
+  String workflow,
+  String job,
+});
+
 void main() {
   setUpTempDir('shorebird_ci_generate_');
 
@@ -798,10 +808,6 @@ void main() {
       );
     }
 
-    String readWorkflow(String name) => File(
-      p.join(tempDir.path, '.github', 'workflows', name),
-    ).readAsStringSync();
-
     test('dynamic: no bloc steps when no package uses bloc_lint', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
@@ -1329,10 +1335,6 @@ void main() {
   });
 
   group('v0.3.0 features', () {
-    String readWorkflow(String name) => File(
-      p.join(tempDir.path, '.github', 'workflows', name),
-    ).readAsStringSync();
-
     test('--filters-only updates dorny/paths-filter in place', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       createPackage(tempDir, 'packages/bar', 'bar');
@@ -1616,6 +1618,179 @@ shorebird_ci:
         expect(dartYaml, contains('routes/.well-known'));
       },
     );
+  });
+
+  group('Run Tests step', () {
+    /// Every generated step the retry wraps.
+    const sites = <TestSite>[
+      (
+        name: 'static dart',
+        executable: 'dart',
+        style: 'static',
+        hasCodecov: false,
+        workflow: '_shorebird_ci_dart.yaml',
+        job: 'ci',
+      ),
+      (
+        name: 'static flutter',
+        executable: 'flutter',
+        style: 'static',
+        hasCodecov: false,
+        workflow: '_shorebird_ci_flutter.yaml',
+        job: 'ci',
+      ),
+      (
+        name: 'dynamic dart',
+        executable: 'dart',
+        style: 'dynamic',
+        hasCodecov: true,
+        workflow: 'shorebird_ci.yaml',
+        job: 'dart_ci',
+      ),
+      (
+        name: 'dynamic flutter',
+        executable: 'flutter',
+        style: 'dynamic',
+        hasCodecov: true,
+        workflow: 'shorebird_ci.yaml',
+        job: 'flutter_ci',
+      ),
+    ];
+
+    /// The `run:` script of the Run Tests step in [job] of [workflow].
+    String runTestsStep(String workflow, String job) {
+      final steps =
+          ((loadYaml(workflow) as YamlMap)['jobs'] as YamlMap)[job] as YamlMap;
+      final step = (steps['steps'] as YamlList).cast<YamlMap>().firstWhere(
+        (step) => step['name'] == 'Run Tests',
+      );
+      return step['run'] as String;
+    }
+
+    /// Writes an [executable] into [dir] that answers each `test` invocation
+    /// with the next entry of [runs] and every other invocation with success,
+    /// recording the `test` ones in `attempts` beside itself. The last entry
+    /// answers every `test` invocation after it.
+    void writeStub(
+      Directory dir,
+      String executable,
+      List<({String output, int exitCode})> runs,
+    ) {
+      final cases = [
+        for (final (index, run) in runs.indexed)
+          '''
+  ${index == runs.length - 1 ? '*' : index + 1})
+    printf '%s\\n' '${run.output}'
+    exit ${run.exitCode}
+    ;;''',
+      ].join('\n');
+      final stub = File(p.join(dir.path, executable))
+        ..writeAsStringSync('''
+#!/usr/bin/env bash
+if [ "\$1" != test ]; then
+  exit 0
+fi
+attempts="\$(dirname "\$0")/attempts"
+echo "$executable \$*" >> "\$attempts"
+case "\$(grep -c . "\$attempts")" in
+$cases
+esac
+''');
+      Process.runSync('chmod', ['+x', stub.path]);
+    }
+
+    /// Runs [site]'s generated step over one test file, against an SDK
+    /// answering with [runs]. Returns the step's exit code and how many
+    /// times it ran the SDK's `test`.
+    Future<({int exitCode, int testRuns})> runStep(
+      TestSite site,
+      List<({String output, int exitCode})> runs,
+    ) async {
+      final isFlutter = site.executable == 'flutter';
+      createPackage(
+        tempDir,
+        'pkg',
+        'pkg',
+        addTestDir: true,
+        flutterLine: isFlutter ? 'any' : null,
+      );
+      if (site.hasCodecov) {
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      }
+      initGitRepo(tempDir);
+      await runGenerate(tempDir, extra: ['--style', site.style]);
+
+      final stubDir = Directory(p.join(tempDir.path, 'stub'))..createSync();
+      writeStub(stubDir, site.executable, runs);
+      final script = File(p.join(tempDir.path, 'step.sh'))
+        ..writeAsStringSync(
+          runTestsStep(readWorkflow(site.workflow), site.job),
+        );
+
+      // The static workflows declare `shell: bash`, which GitHub runs with
+      // `-eo pipefail`. The dynamic ones take the default `bash -e`, so the
+      // step cannot lean on its caller for pipefail.
+      final result = Process.runSync(
+        'bash',
+        [
+          '--noprofile',
+          '--norc',
+          if (site.style == 'static') ...['-eo', 'pipefail'] else '-e',
+          script.path,
+        ],
+        workingDirectory: p.join(tempDir.path, 'pkg'),
+        environment: {
+          'MIN_COVERAGE': '',
+          'PATH': '${stubDir.path}:${Platform.environment['PATH']}',
+          'RUNNER_OS_NAME': 'ubuntu-latest',
+          'SHARD_INDEX': '0',
+          'TOTAL_SHARDS': '1',
+        },
+      );
+      printOnFailure('${result.stdout}${result.stderr}');
+      final attempts = File(p.join(stubDir.path, 'attempts'));
+      return (
+        exitCode: result.exitCode,
+        testRuns: attempts.existsSync()
+            ? attempts.readAsLinesSync().where((l) => l.isNotEmpty).length
+            : 0,
+      );
+    }
+
+    const droppedConnection =
+        'Failed to load "test/example_test.dart": '
+        'Connection closed before full header was received';
+
+    for (final site in sites) {
+      group(site.name, () {
+        test('a dropped suite connection passes on the second run', () async {
+          final step = await runStep(site, [
+            (output: droppedConnection, exitCode: 1),
+            (output: 'All tests passed!', exitCode: 0),
+          ]);
+
+          expect(step, (exitCode: 0, testRuns: 2));
+        }, testOn: '!windows');
+
+        test('a failing test is not retried and fails the step', () async {
+          final step = await runStep(site, [
+            (output: 'Some tests failed.', exitCode: 1),
+          ]);
+
+          expect(step.exitCode, isNot(0));
+          expect(step.testRuns, 1);
+        }, testOn: '!windows');
+
+        test('a connection that drops twice fails the step', () async {
+          final step = await runStep(site, [
+            (output: droppedConnection, exitCode: 1),
+          ]);
+
+          expect(step.exitCode, isNot(0));
+          expect(step.testRuns, 2);
+        }, testOn: '!windows');
+      });
+    }
   });
 }
 
