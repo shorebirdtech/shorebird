@@ -1139,6 +1139,10 @@ paths:
       responses:
         '201':
           description: The run was recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBuildRunResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/patches/{patchId}/artifacts:
@@ -5985,6 +5989,97 @@ components:
             including its build trace summary, as far as the run got.
         build_flags:
           $ref: '#/components/schemas/BuildRunBuildFlags'
+        artifacts:
+          type: array
+          description: |
+            The files the run made that Shorebird may keep, at most one of
+            each kind. The server offers an upload for each the run
+            consented to share: see `RunArtifactKind`.
+          items:
+            $ref: '#/components/schemas/CreateRunArtifact'
+        share_debug_info:
+          type: boolean
+          description: |
+            The person running `shorebird patch --share-debug-info` asked to
+            share this run's `debug_bundle`, whatever the organization's
+            setting and however the run ended.
+    CreateRunArtifact:
+      type: object
+      description: A file a run made, declared so the server can offer its upload.
+      required:
+        - kind
+        - size_bytes
+      properties:
+        kind:
+          $ref: '#/components/schemas/RunArtifactKind'
+        size_bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: |
+            The file's size in bytes, which its upload is held to. Each kind
+            has its own cap: a `debug_bundle` is at most 1073741824 (1 GiB).
+    RunArtifactKind:
+      type: string
+      description: |
+        What a file a run shared is. Each kind has its own rule for when
+        the customer has agreed to share it.
+      enum:
+        - debug_bundle
+      x-enum-descriptions:
+        - |
+          A patch run's `build/patch-debug.zip`. Shared when the run asked
+          with `share_debug_info`, or when it failed and the organization's
+          "Share debugging information with Shorebird" setting is on.
+    CreateBuildRunResponse:
+      type: object
+      description: The response body for POST /apps/{appId}/runs.
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: The id of the recorded run.
+        artifact_uploads:
+          type: array
+          description: |
+            An upload for each declared file the server accepted, in no
+            particular order. Absent when it accepted none.
+          items:
+            $ref: '#/components/schemas/RunArtifactUpload'
+    RunArtifactUpload:
+      type: object
+      description: Where to upload a file the server accepted from a run.
+      required:
+        - id
+        - kind
+        - shared_by
+        - upload_url
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: The artifact's id.
+        kind:
+          $ref: '#/components/schemas/RunArtifactKind'
+        shared_by:
+          $ref: '#/components/schemas/RunArtifactSharedBy'
+        upload_url:
+          type: string
+          format: uri
+          description: |
+            A GCS resumable upload session for the file, held to its
+            declared `size_bytes`.
+    RunArtifactSharedBy:
+      type: string
+      description: Why a run shared a file with Shorebird.
+      enum:
+        - setting
+        - flag
+      x-enum-descriptions:
+        - The organization's "Share debugging information with Shorebird" setting, for a failed patch run.
+        - The run asked with `shorebird patch --share-debug-info`.
     CreatePatchRequest:
       type: object
       description: The request body for POST /apps/{appId}/patches.
