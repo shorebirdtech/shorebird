@@ -183,6 +183,22 @@ jobs:
           ndk=$(tr ' ' '\n' <<< "$ANDROID_PACKAGES" | sed -n 's/^ndk;//p')
           echo "NDK_VERSION=${ndk}" >> "$GITHUB_ENV"
 
+      # The scripts that set up the runner come from this workflow's own
+      # revision, not cli_ref's: a release gate dispatches main's workflow on
+      # an older CLI commit, which may predate a script main's steps call
+      # (run 43264527202 failed at setup, exit 127, on 3.47.9's CLI commit).
+      # The e2e scripts themselves stay cli_ref's.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .workflow
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/install_android_sdk_packages.sh
+            scripts/no_android_sdk_downloads.sh
+
       # Every NDK leg downloaded its ~700 MB NDK from dl.google.com on every
       # run, and a corrupt or stalled download failed legs that tested nothing
       # (runs 41553186726, 42728409530, 43237646183). The runner image ships
@@ -205,7 +221,7 @@ jobs:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
         run: |
           # shellcheck disable=SC2086
-          ./scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
+          ./.workflow/scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -269,7 +285,7 @@ jobs:
           # 40148213340). Without it 3.32 falls back to GLES, and 3.35 still
           # uses Vulkan inside the device but no longer takes the runner down.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
+          script: ./.workflow/scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
 
       # What actions/cache's post step did: save a passing leg's miss.
       - name: 🐘 Save Gradle Cache
@@ -333,6 +349,19 @@ jobs:
         run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       # The patch job's entry for this NDK.
+      # The runner's setup scripts, from this workflow's revision (see the
+      # patch job).
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .workflow
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/install_android_sdk_packages.sh
+            scripts/no_android_sdk_downloads.sh
+
       - name: 🤖 NDK Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -341,7 +370,7 @@ jobs:
 
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 17
-        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
+        run: ./.workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -377,7 +406,7 @@ jobs:
           arch: x86_64
           target: default
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart --cli "$CLI_VERSION" ${FLUTTER_VERSION:+"$FLUTTER_VERSION"}
+          script: ./.workflow/scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart --cli "$CLI_VERSION" ${FLUTTER_VERSION:+"$FLUTTER_VERSION"}
 
   # Patch signing end to end on Linux, macOS, Windows and Android: release and
   # patch with the real CLI against dev, then run the app and check which code
@@ -537,6 +566,19 @@ jobs:
         run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       # The patch job's entry for this NDK.
+      # The runner's setup scripts, from this workflow's revision (see the
+      # patch job).
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .workflow
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/install_android_sdk_packages.sh
+            scripts/no_android_sdk_downloads.sh
+
       - name: 🤖 NDK Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -545,7 +587,7 @@ jobs:
 
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 17
-        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
+        run: ./.workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -579,7 +621,7 @@ jobs:
           # -feature -Vulkan as in the patch job.
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -feature -Vulkan
           disable-animations: true
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_signing_e2e.dart android
+          script: ./.workflow/scripts/no_android_sdk_downloads.sh dart scripts/patch_signing_e2e.dart android
 
   # Rollback end to end on Linux: publish two patches, roll them back and
   # forward with the real CLI against dev, and check which code the app runs
@@ -707,6 +749,19 @@ jobs:
         run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       # The patch job's entry for this NDK.
+      # The runner's setup scripts, from this workflow's revision (see the
+      # patch job).
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .workflow
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            scripts/install_android_sdk_packages.sh
+            scripts/no_android_sdk_downloads.sh
+
       - name: 🤖 NDK Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -715,7 +770,7 @@ jobs:
 
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 17
-        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
+        run: ./.workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -747,7 +802,7 @@ jobs:
           target: default
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: true
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
+          script: ./.workflow/scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
   cli:
     if: ${{ !inputs.cli_version }}
