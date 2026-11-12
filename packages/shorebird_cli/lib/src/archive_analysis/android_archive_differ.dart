@@ -293,7 +293,7 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
     final result = <String, Uint8List>{};
     final input = InputFileStream(archivePath);
     try {
-      final archive = ZipDecoder().decodeStream(input);
+      final archive = ZipDecoder().decodeStream(input, verify: true);
       for (final file in archive.files) {
         if (file.isFile && pathSet.contains(file.name)) {
           result[file.name] = Uint8List.fromList(file.content);

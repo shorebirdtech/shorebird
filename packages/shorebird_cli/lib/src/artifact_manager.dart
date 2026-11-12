@@ -271,9 +271,16 @@ class ArtifactManager {
   }) async {
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
-      final archive = ZipDecoder().decodeStream(inputStream);
-      await extractArchiveToDisk(archive, outputDirectory.path);
-      inputStream.closeSync();
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        await extractArchiveToDisk(
+          archive,
+          outputDirectory.path,
+          throwOnError: true,
+        );
+      } finally {
+        inputStream.closeSync();
+      }
     });
   }
 
@@ -422,19 +429,24 @@ class ArtifactManager {
     await Isolate.run(() {
       final libappEntry = RegExp(r'^base/lib/([^/]+)/libapp\.so$');
       final inputStream = InputFileStream(aabPath);
-      final archive = ZipDecoder().decodeStream(inputStream);
+      // Verify each entry's checksum so a damaged bundle throws rather than
+      // yielding a partial libapp.so.
       // Entry contents are decompressed lazily from the input stream, so only
       // close it once every libapp.so has been written out.
-      for (final file in archive.files) {
-        if (!file.isFile) continue;
-        final match = libappEntry.firstMatch(file.name);
-        if (match == null) continue;
-        final arch = match.group(1)!;
-        File(p.join(outPath, arch, 'libapp.so'))
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(file.content as List<int>);
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        for (final file in archive.files) {
+          if (!file.isFile) continue;
+          final match = libappEntry.firstMatch(file.name);
+          if (match == null) continue;
+          final arch = match.group(1)!;
+          File(p.join(outPath, arch, 'libapp.so'))
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(file.content as List<int>);
+        }
+      } finally {
+        inputStream.closeSync();
       }
-      inputStream.closeSync();
     });
   }
 
@@ -456,19 +468,15 @@ class ArtifactManager {
     try {
       (entryCount, libsByArch) = await _nativeLibsInAabBaseModule(aab);
     }
-    // A name-only walk of the zip central directory decodes corrupt input to an
-    // empty archive rather than throwing, so this is only reachable via a
-    // filesystem I/O failure that cannot be forced on every CI platform.
-    // coverage:ignore-start
+    // The listing verifies the zip structure, so input that is not a zip or
+    // has a damaged central directory throws here.
     on Exception {
       // Unreadable bundles are handled by the extraction fallback elsewhere.
       return null;
     }
-    // coverage:ignore-end
 
-    // An empty archive means the file is not a real bundle (corrupt or
-    // garbage input decodes to zero entries rather than throwing), so don't
-    // claim libapp.so was dropped. A real .aab always has many entries.
+    // A zip with no entries is not a real bundle, so don't claim libapp.so was
+    // dropped. A real .aab always has many entries.
     if (entryCount == 0) return null;
 
     final hasLibapp = libsByArch.values.any(
@@ -518,18 +526,24 @@ its base/lib for libapp.so will confirm whether the build is dropping it.''');
     return Isolate.run(() {
       final libEntry = RegExp(r'^base/lib/([^/]+)/([^/]+\.so)$');
       final inputStream = InputFileStream(aabPath);
-      final archive = ZipDecoder().decodeStream(inputStream);
-      final result = <String, List<String>>{};
-      var entryCount = 0;
-      for (final file in archive.files) {
-        if (!file.isFile) continue;
-        entryCount++;
-        final match = libEntry.firstMatch(file.name);
-        if (match == null) continue;
-        (result[match.group(1)!] ??= []).add(match.group(2)!);
+      try {
+        // Verify the structure so a damaged bundle throws instead of listing
+        // only the entries before the damage. Names are read without
+        // decompressing any entry.
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        final result = <String, List<String>>{};
+        var entryCount = 0;
+        for (final file in archive.files) {
+          if (!file.isFile) continue;
+          entryCount++;
+          final match = libEntry.firstMatch(file.name);
+          if (match == null) continue;
+          (result[match.group(1)!] ??= []).add(match.group(2)!);
+        }
+        return (entryCount, result);
+      } finally {
+        inputStream.closeSync();
       }
-      inputStream.closeSync();
-      return (entryCount, result);
     });
   }
 

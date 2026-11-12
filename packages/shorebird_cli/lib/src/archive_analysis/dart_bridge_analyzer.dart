@@ -725,7 +725,7 @@ class DartBridgeAnalyzer {
     try {
       final input = InputFileStream(archivePath);
       try {
-        final archive = ZipDecoder().decodeStream(input);
+        final archive = ZipDecoder().decodeStream(input, verify: true);
         for (final file in archive.files) {
           if (!file.isFile) continue;
           final name = file.name;

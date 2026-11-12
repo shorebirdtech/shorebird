@@ -97,7 +97,7 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
       final input = InputFileStream(releaseAab.path);
       Uint8List? dependenciesBytes;
       try {
-        final archive = ZipDecoder().decodeStream(input);
+        final archive = ZipDecoder().decodeStream(input, verify: true);
         for (final file in archive.files) {
           if (file.isFile && file.name == bundleDependenciesPath) {
             dependenciesBytes = Uint8List.fromList(file.content);

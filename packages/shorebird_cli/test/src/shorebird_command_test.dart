@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -634,6 +635,49 @@ void main() {
           expect(captured, isEmpty);
         });
       });
+    });
+  });
+
+  group(extractVerifiedZip, () {
+    const entryName = 'lib/libapp.so';
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync();
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    File writeZip({required bool damaged}) {
+      final bytes = damaged
+          ? damagedZipBytes()
+          : ZipEncoder().encode(
+              Archive()..addFile(ArchiveFile.string(entryName, 'a' * 4096)),
+            );
+      return File(p.join(tempDir.path, 'input.zip'))..writeAsBytesSync(bytes);
+    }
+
+    test('extracts a valid zip', () async {
+      final zip = writeZip(damaged: false);
+      final out = p.join(tempDir.path, 'out');
+
+      await extractVerifiedZip(zip.path, out);
+
+      expect(
+        File(p.join(out, entryName)).readAsStringSync(),
+        equals('a' * 4096),
+      );
+    });
+
+    test('throws on a damaged entry', () async {
+      final zip = writeZip(damaged: true);
+
+      await expectLater(
+        extractVerifiedZip(zip.path, p.join(tempDir.path, 'out')),
+        throwsA(isA<ArchiveException>()),
+      );
     });
   });
 }
