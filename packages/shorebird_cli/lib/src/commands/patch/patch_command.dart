@@ -32,6 +32,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -133,6 +134,21 @@ To target the latest release (e.g. the release that was most recently updated) u
         rolloutArgName,
         help: rolloutHelp('the patch'),
         valueHelp: 'percentage',
+      )
+      ..addOption(
+        rolloutStepsArgName,
+        help: rolloutStepsHelp('the patch'),
+        valueHelp: 'steps',
+      )
+      ..addFlag(
+        pauseWeekendsArgName,
+        help: pauseWeekendsHelp,
+        negatable: false,
+      )
+      ..addOption(
+        timezoneArgName,
+        help: timezoneHelp,
+        valueHelp: 'name',
       )
       ..addFlag(
         'staging',
@@ -324,6 +340,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     _ => null,
   };
 
+  /// The timed schedule to raise the patch's rollout through
+  /// (`--rollout-steps`), or null when the patch is published at a fixed
+  /// percentage. [run] rejects a schedule that does not parse.
+  RolloutSchedule? get rolloutSchedule =>
+      readRolloutSchedule(results, percentageArgName: rolloutArgName).schedule;
+
   @override
   Future<int> run() async {
     final releaseTypes = releaseTypesOrUsageError(siblingCommand: 'patches');
@@ -344,6 +366,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       ).error;
       if (error != null) usageException(error);
     }
+    final scheduleError = readRolloutSchedule(
+      results,
+      percentageArgName: rolloutArgName,
+    ).error;
+    if (scheduleError != null) usageException(scheduleError);
 
     if (results.wasParsed('staging')) {
       return reportError(
@@ -366,13 +393,22 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       published.add(await createPatch(patcher));
     }
 
+    final schedule = rolloutSchedule;
     if (isJsonMode) {
       emitJsonSuccess({
         'app_id': appId,
         'track': track.channel,
-        'rollout_percentage': rolloutPercentage ?? 100.0,
+        'rollout_percentage':
+            schedule?.initialPercentage ?? rolloutPercentage ?? 100.0,
+        if (schedule != null) ...{
+          'rollout_steps': [for (final step in schedule.steps) step.toJson()],
+          'rollout_pause_weekends': schedule.pauseWeekends,
+          'rollout_timezone': ?schedule.timezone,
+        },
         'patches': [for (final p in published) p.toJson()],
       });
+    } else if (schedule != null) {
+      _logScheduledRollout(published: published, schedule: schedule);
     } else if (rolloutPercentage case final percentage? when percentage < 100) {
       _logPartialRollout(published: published, percentage: percentage);
     }
@@ -398,6 +434,30 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       logger.info(
         'Patch $patchNumber on release $releaseVersion is rolling out to '
         '$share of devices on ${track.channel}. To raise it, run:\n'
+        '  ${lightCyan.wrap(raiseCommand)}',
+      );
+    }
+    logger.info(rolloutOlderDevicesNote);
+  }
+
+  /// Says what schedule each of [published] is rolling out on and how to
+  /// raise it sooner.
+  void _logScheduledRollout({
+    required List<PublishedPatch> published,
+    required RolloutSchedule schedule,
+  }) {
+    for (final p in published) {
+      final releaseVersion = p.release.version;
+      final patchNumber = p.patch.number;
+      final raiseCommand = raiseRolloutCommand(
+        releaseVersion: releaseVersion,
+        patchNumber: patchNumber,
+        flavor: flavor,
+      );
+      logger.info(
+        'Patch $patchNumber on release $releaseVersion is rolling out to '
+        '${track.channel} on a schedule: ${formatRolloutSchedule(schedule)}. '
+        'To raise it sooner, run:\n'
         '  ${lightCyan.wrap(raiseCommand)}',
       );
     }
@@ -1006,6 +1066,7 @@ Building patch with Flutter $flutterVersionString
       track: track,
       artifacts: patchArtifactBundles,
       rolloutPercentage: rolloutPercentage,
+      rolloutSchedule: rolloutSchedule,
     );
 
     return PublishedPatch(
@@ -1403,11 +1464,16 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '${arch.name} ($size)';
     });
-    final rollout = switch (rolloutPercentage) {
-      final percentage? when percentage < 100 =>
-        ' ${lightCyan.wrap('(${formatRolloutPercentage(percentage)})')}',
-      _ => '',
+    final rolloutSummary = switch ((rolloutSchedule, rolloutPercentage)) {
+      (final RolloutSchedule schedule, _) =>
+        '(${formatRolloutSchedule(schedule)})',
+      (_, final double percentage) when percentage < 100 =>
+        '(${formatRolloutPercentage(percentage)})',
+      _ => null,
     };
+    final rollout = rolloutSummary == null
+        ? ''
+        : ' ${lightCyan.wrap(rolloutSummary)}';
     final trackSummary = switch (track) {
       DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
       DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',

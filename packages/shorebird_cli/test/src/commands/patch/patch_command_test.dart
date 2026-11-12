@@ -33,6 +33,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -292,6 +293,7 @@ void main() {
           artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
+          rolloutSchedule: any(named: 'rolloutSchedule'),
         ),
       ).thenAnswer((_) async => const CreatePatchResponse(id: 3, number: 2));
 
@@ -3036,6 +3038,34 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         verifyNever(() => logger.info(rolloutOlderDevicesNote));
       });
 
+      test('emits the rollout schedule given', () async {
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn('1:4h,10:12h,100');
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(true);
+        when(
+          () => argResults[timezoneArgName],
+        ).thenReturn('America/New_York');
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJson(() => runWithOverrides(command.run)),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['rollout_percentage'], equals(1));
+        expect(
+          data['rollout_steps'],
+          equals([
+            {'percentage': 1, 'duration_minutes': 240},
+            {'percentage': 10, 'duration_minutes': 720},
+            {'percentage': 100},
+          ]),
+        );
+        expect(data['rollout_pause_weekends'], isTrue);
+        expect(data['rollout_timezone'], equals('America/New_York'));
+      });
+
       group('with --dry-run', () {
         setUp(() {
           when(() => argResults['dry-run']).thenReturn(true);
@@ -3642,6 +3672,129 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).called(1);
           verifyNever(() => logger.info(rolloutOlderDevicesNote));
         });
+      });
+    });
+
+    group('--$rolloutStepsArgName', () {
+      const schedule = RolloutSchedule(
+        steps: [
+          RolloutStep(percentage: 1, durationMinutes: 240),
+          RolloutStep(percentage: 10, durationMinutes: 720),
+          RolloutStep(percentage: 100),
+        ],
+      );
+
+      setUp(() {
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn('1:4h,10:12h,100');
+      });
+
+      test('rejects a schedule that does not parse before building', () async {
+        when(() => argResults[rolloutStepsArgName]).thenReturn('1:4h,10,100');
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--$rolloutStepsArgName needs a duration on every step but the '
+                  'last, such as "$rolloutStepsExample" (got "10").',
+            ),
+          ),
+        );
+        verifyNever(
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+
+      test('rejects --$rolloutArgName alongside it', () async {
+        when(() => argResults['rollout']).thenReturn('10');
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--$rolloutArgName and --$rolloutStepsArgName are mutually '
+                  'exclusive: a rollout is either a fixed percentage or a '
+                  'schedule.',
+            ),
+          ),
+        );
+      });
+
+      test('rejects --$timezoneArgName without it', () async {
+        when(() => argResults[rolloutStepsArgName]).thenReturn(null);
+        when(
+          () => argResults[timezoneArgName],
+        ).thenReturn('America/New_York');
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--$timezoneArgName only applies to a timed rollout schedule, '
+                  'which --$rolloutStepsArgName sets (e.g. '
+                  '--$rolloutStepsArgName=$rolloutStepsExample).',
+            ),
+          ),
+        );
+      });
+
+      test('publishes the patch on the schedule', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verify(
+          () => patcher.uploadPatchArtifacts(
+            appId: appId,
+            releaseId: release.id,
+            metadata: any(named: 'metadata'),
+            artifacts: any(named: 'artifacts'),
+            track: DeploymentTrack.stable,
+            rolloutPercentage: null,
+            rolloutSchedule: schedule,
+          ),
+        ).called(1);
+      });
+
+      test('shows the schedule in the summary', () async {
+        await runWithOverrides(command.run);
+
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                '🟢 Track: ${lightCyan.wrap('Stable')} '
+                '${lightCyan.wrap('(1% for 4h, then 10% for 12h, then 100%)')}',
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('says what the schedule does and how to raise it', () async {
+        await runWithOverrides(command.run);
+
+        final raiseCommand =
+            'shorebird patches rollout --release-version ${release.version} '
+            '--patch-number 2 --percentage <percentage>';
+        verifyInOrder([
+          () => logger.info(
+            'Patch 2 on release ${release.version} is rolling out to stable '
+            'on a schedule: 1% for 4h, then 10% for 12h, then 100%. '
+            'To raise it sooner, run:\n'
+            '  ${lightCyan.wrap(raiseCommand)}',
+          ),
+          () => logger.info(rolloutOlderDevicesNote),
+        ]);
       });
     });
 

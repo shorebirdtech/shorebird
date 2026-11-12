@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -47,12 +48,27 @@ class RolloutCommand extends ShorebirdCommand
             "The percentage of the track's devices to offer the patch to, "
             'a number greater than 0 and at most 100 with at most two '
             'decimal places (e.g. "50"). Rollouts only go up; 100 offers it '
-            'to every device on the track.',
+            'to every device on the track. Required unless '
+            '--$rolloutStepsArgName is given.',
         // `--rollout` is the name on `patch` and `promote`, so it works here
         // too.
         aliases: const [rolloutArgName],
         valueHelp: 'percentage',
-        mandatory: true,
+      )
+      ..addOption(
+        rolloutStepsArgName,
+        help: rolloutStepsHelp("the patch's rollout"),
+        valueHelp: 'steps',
+      )
+      ..addFlag(
+        pauseWeekendsArgName,
+        help: pauseWeekendsHelp,
+        negatable: false,
+      )
+      ..addOption(
+        timezoneArgName,
+        help: timezoneHelp,
+        valueHelp: 'name',
       );
     addAppScopeOptions();
   }
@@ -67,6 +83,9 @@ class RolloutCommand extends ShorebirdCommand
       '`shorebird patches promote`) reaches that share of the devices on it. '
       'This raises the share; it cannot lower it. To stop a rollout, leave '
       'it where it is or run `shorebird patches rollback`.\n\n'
+      '--$rolloutStepsArgName instead hands the rollout to a timed schedule '
+      'the server advances on its own, as '
+      '--$rolloutStepsArgName=$rolloutStepsExample.\n\n'
       '$rolloutOlderDevicesNote\n\n'
       'Example output:\n'
       '  Patch 1 on release 1.0.0+1 is now rolling out to 50% of devices on '
@@ -87,11 +106,40 @@ class RolloutCommand extends ShorebirdCommand
     final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
     if (patchNumber == null) return patchNumberError!;
 
-    final (:percentage, error: percentageError) = parseRolloutPercentage(
-      results[_percentageArgName] as String,
-      argName: _percentageArgName,
+    final (:schedule, error: scheduleError) = readRolloutSchedule(
+      results,
+      percentageArgName: _percentageArgName,
     );
-    if (percentage == null) return reportError(message: percentageError!);
+    if (scheduleError != null) return reportError(message: scheduleError);
+
+    double? percentage;
+    if (results[_percentageArgName] case final String value) {
+      final (percentage: parsed, :error) = parseRolloutPercentage(
+        value,
+        argName: _percentageArgName,
+      );
+      if (parsed == null) return reportError(message: error!);
+      percentage = parsed;
+    }
+
+    final double targetPercentage;
+    if (percentage != null) {
+      targetPercentage = percentage;
+    } else if (schedule != null) {
+      // A schedule's first step is where the rollout lands now; the server
+      // raises it from there.
+      targetPercentage = schedule.initialPercentage;
+    } else {
+      return reportError(
+        message:
+            'Option --$_percentageArgName is mandatory unless '
+            '--$rolloutStepsArgName is given.',
+        hint:
+            'Raise the rollout to a percentage with '
+            '--$_percentageArgName=50, or put it on a schedule with '
+            '--$rolloutStepsArgName=$rolloutStepsExample.',
+      );
+    }
 
     final fetched = await fetchReleasePatches(
       appId: appId,
@@ -116,15 +164,18 @@ class RolloutCommand extends ShorebirdCommand
         '--patch-number $patchNumber',
         if (appIdArg != null) '--app-id $appIdArg',
         if (flavorArg != null) '--flavor $flavorArg',
-        '--rollout ${formatRolloutArgument(percentage)}',
+        if (schedule == null)
+          '--$rolloutArgName ${formatRolloutArgument(targetPercentage)}'
+        else
+          ...rolloutScheduleArguments(schedule),
       ].join(' ');
       return reportError(
         message:
             'Patch $patchNumber on release $releaseVersion is on no track, so '
             'it has no rollout to raise.',
-        hint:
-            'Put it on a track at a percentage with: '
-            '$promoteCommand',
+        hint: schedule == null
+            ? 'Put it on a track at a percentage with: $promoteCommand'
+            : 'Put it on a track on that schedule with: $promoteCommand',
       );
     }
 
@@ -137,6 +188,7 @@ class RolloutCommand extends ShorebirdCommand
         patchId: patch.id,
         patchNumber: patch.number,
         rolloutPercentage: percentage,
+        rolloutSchedule: schedule,
       ),
       code: JsonErrorCode.softwareError,
       message:
@@ -145,10 +197,16 @@ class RolloutCommand extends ShorebirdCommand
     );
     if (rolloutError != null) return rolloutError;
 
-    final changed = percentage != patch.rolloutPercentage;
+    // A schedule always changes the rollout, since the server starts raising
+    // it from the first step even when the patch is already there.
+    final changed =
+        schedule != null || targetPercentage != patch.rolloutPercentage;
     final updatedPatch = patch.copyWith(
       channel: channel,
-      rolloutPercentage: percentage,
+      rolloutPercentage: targetPercentage,
+      rolloutSteps: schedule?.steps,
+      rolloutPauseWeekends: schedule?.pauseWeekends,
+      rolloutTimezone: schedule?.timezone,
     );
 
     if (isJsonMode) {
@@ -158,22 +216,34 @@ class RolloutCommand extends ShorebirdCommand
         'patch_number': patchNumber,
         'action': name,
         'changed': changed,
-        'rollout_percentage': percentage,
+        'rollout_percentage': targetPercentage,
+        if (schedule != null) ...{
+          'rollout_steps': [for (final step in schedule.steps) step.toJson()],
+          'rollout_pause_weekends': schedule.pauseWeekends,
+          'rollout_timezone': ?schedule.timezone,
+        },
         'patch': updatedPatch.toJson(),
       });
       return ExitCode.success.code;
     }
 
     logger.success(
-      changed
-          ? 'Patch $patchNumber on release $releaseVersion is now rolling out '
-                'to ${formatRolloutPercentage(percentage)} of devices on '
-                '$channel.'
-          : 'Patch $patchNumber on release $releaseVersion is already rolling '
-                'out to ${formatRolloutPercentage(percentage)} of devices on '
-                '$channel.',
+      switch (schedule) {
+        final schedule? =>
+          'Patch $patchNumber on release $releaseVersion is now rolling out '
+              'on $channel on a schedule: '
+              '${formatRolloutSchedule(schedule)}.',
+        _ when changed =>
+          'Patch $patchNumber on release $releaseVersion is now rolling out '
+              'to ${formatRolloutPercentage(targetPercentage)} of devices on '
+              '$channel.',
+        _ =>
+          'Patch $patchNumber on release $releaseVersion is already rolling '
+              'out to ${formatRolloutPercentage(targetPercentage)} of devices '
+              'on $channel.',
+      },
     );
-    if (percentage < 100) logger.info(rolloutOlderDevicesNote);
+    if (targetPercentage < 100) logger.info(rolloutOlderDevicesNote);
     formatPatchDetails(updatedPatch).forEach(logger.info);
     return ExitCode.success.code;
   }

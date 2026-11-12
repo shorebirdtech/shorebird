@@ -1,5 +1,6 @@
 import 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
+import 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 
 /// Application-level behavior on [ReleasePatch] that does not fit in the
 /// OpenAPI schema.
@@ -14,6 +15,10 @@ extension ReleasePatchExtensions on ReleasePatch {
     bool? isRolledBack,
     DateTime? createdAt,
     double? rolloutPercentage,
+    List<RolloutStep>? rolloutSteps,
+    DateTime? rolloutNextStepAt,
+    bool? rolloutPauseWeekends,
+    String? rolloutTimezone,
     String? notes,
   }) => ReleasePatch(
     id: id ?? this.id,
@@ -23,6 +28,10 @@ extension ReleasePatchExtensions on ReleasePatch {
     isRolledBack: isRolledBack ?? this.isRolledBack,
     createdAt: createdAt ?? this.createdAt,
     rolloutPercentage: rolloutPercentage ?? this.rolloutPercentage,
+    rolloutSteps: rolloutSteps ?? this.rolloutSteps,
+    rolloutNextStepAt: rolloutNextStepAt ?? this.rolloutNextStepAt,
+    rolloutPauseWeekends: rolloutPauseWeekends ?? this.rolloutPauseWeekends,
+    rolloutTimezone: rolloutTimezone ?? this.rolloutTimezone,
     notes: notes ?? this.notes,
   );
 }

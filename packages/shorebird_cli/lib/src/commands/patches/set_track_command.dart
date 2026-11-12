@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -62,6 +63,21 @@ class SetTrackCommand extends ShorebirdCommand
         rolloutArgName,
         help: rolloutHelp('the patch'),
         valueHelp: 'percentage',
+      )
+      ..addOption(
+        rolloutStepsArgName,
+        help: rolloutStepsHelp('the patch'),
+        valueHelp: 'steps',
+      )
+      ..addFlag(
+        pauseWeekendsArgName,
+        help: pauseWeekendsHelp,
+        negatable: false,
+      )
+      ..addOption(
+        timezoneArgName,
+        help: timezoneHelp,
+        valueHelp: 'name',
       );
     addAppScopeOptions();
   }
@@ -105,6 +121,16 @@ class SetTrackCommand extends ShorebirdCommand
       rolloutPercentage = percentage;
     }
 
+    final (:schedule, error: scheduleError) = readRolloutSchedule(
+      results,
+      percentageArgName: rolloutArgName,
+    );
+    if (scheduleError != null) return reportError(message: scheduleError);
+    // A schedule starts the rollout at its first step, so the checks below
+    // read it the way they read --rollout.
+    final requestedPercentage =
+        rolloutPercentage ?? schedule?.initialPercentage;
+
     final fetched = await fetchReleasePatches(
       appId: appId,
       releaseVersion: releaseVersion,
@@ -122,10 +148,10 @@ class SetTrackCommand extends ShorebirdCommand
     // percentage for a patch already on the track is a job for
     // `patches rollout`.
     if (patch.channel == targetChannel &&
-        rolloutPercentage != null &&
-        rolloutPercentage != (patch.rolloutPercentage ?? 100)) {
+        requestedPercentage != null &&
+        requestedPercentage != (patch.rolloutPercentage ?? 100)) {
       final current = patch.rolloutPercentage ?? 100;
-      if (rolloutPercentage < current) {
+      if (requestedPercentage < current) {
         return reportError(
           message:
               'Patch $patchNumber on release $releaseVersion is already '
@@ -146,7 +172,27 @@ class SetTrackCommand extends ShorebirdCommand
             'To change its rollout, run: ${raiseRolloutCommand(
               releaseVersion: releaseVersion,
               patchNumber: patchNumber,
-              percentage: rolloutPercentage,
+              percentage: requestedPercentage,
+              appId: results[CommonArguments.appIdArg.name] as String?,
+              flavor: results[CommonArguments.flavorArg.name] as String?,
+            )}',
+      );
+    }
+
+    // A schedule is never a no-op: promoting again would restart the rollout,
+    // so a patch already on the track goes through `patches rollout`.
+    if (patch.channel == targetChannel && schedule != null) {
+      return reportError(
+        message:
+            'Patch $patchNumber on release $releaseVersion is already in '
+            'channel ${formatPatchTrack(patch)}, and promoting it again would '
+            'restart its rollout.',
+        hint:
+            'To put its rollout on that schedule, run: '
+            '${scheduleRolloutCommand(
+              releaseVersion: releaseVersion,
+              patchNumber: patchNumber,
+              schedule: schedule,
               appId: results[CommonArguments.appIdArg.name] as String?,
               flavor: results[CommonArguments.flavorArg.name] as String?,
             )}',
@@ -219,6 +265,7 @@ class SetTrackCommand extends ShorebirdCommand
         patchId: patch.id,
         channel: trackChannel,
         rolloutPercentage: rolloutPercentage,
+        rolloutSchedule: schedule,
       ),
       code: JsonErrorCode.softwareError,
       message:
@@ -230,7 +277,10 @@ class SetTrackCommand extends ShorebirdCommand
     // Promoting starts a new rollout on the track.
     final promotedPatch = patch.copyWith(
       channel: targetChannel,
-      rolloutPercentage: rolloutPercentage ?? 100,
+      rolloutPercentage: requestedPercentage ?? 100,
+      rolloutSteps: schedule?.steps,
+      rolloutPauseWeekends: schedule?.pauseWeekends,
+      rolloutTimezone: schedule?.timezone,
     );
 
     if (isJsonMode) {
@@ -250,7 +300,12 @@ class SetTrackCommand extends ShorebirdCommand
       'Patch $patchNumber on release $releaseVersion is now in channel '
       '${formatPatchTrack(promotedPatch)}!',
     );
-    if (rolloutPercentage != null && rolloutPercentage < 100) {
+    if (schedule != null) {
+      logger.info(
+        'Its rollout rises on a schedule: ${formatRolloutSchedule(schedule)}.',
+      );
+    }
+    if (requestedPercentage != null && requestedPercentage < 100) {
       logger.info(rolloutOlderDevicesNote);
     }
 

@@ -5209,9 +5209,52 @@ components:
           description: |
             The percentage of `channel`'s devices the patch is offered to.
             Absent when the patch is on no channel.
+        rollout_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolloutStep'
+          description: |
+            The remaining steps of an in-progress timed rollout schedule on
+            `channel`, starting with the active step. Absent when the rollout
+            is fixed or the patch is on no channel.
+        rollout_next_step_at:
+          type: string
+          format: date-time
+          description: |
+            When the next step in `rollout_steps` is scheduled to apply.
+            Absent when `rollout_steps` is absent.
+        rollout_pause_weekends:
+          type: boolean
+          description: |
+            Whether the timed rollout schedule on `channel` pauses step
+            advancement over weekends in `rollout_timezone`. Absent when the
+            patch is on no channel.
+        rollout_timezone:
+          type: string
+          description: |
+            The IANA timezone name used to evaluate weekend pauses on
+            `channel`. Absent when the patch is on no channel.
         notes:
           type: string
           description: Freeform notes associated with the patch, if any.
+    RolloutStep:
+      type: object
+      description: A step in a timed rollout schedule on a channel.
+      required:
+        - percentage
+      properties:
+        percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to at
+            this step, a multiple of 0.01 from 0.01 to 100.
+        duration_minutes:
+          type: integer
+          format: int64
+          description: |
+            How many minutes to hold at `percentage` before advancing to the
+            next step. Absent on the final 100% step.
     ReleasePlatform:
       type: string
       description: A platform to which a Shorebird release can be deployed.
@@ -6069,6 +6112,23 @@ components:
           description: |
             The percentage of the channel's devices to offer the patch to, a
             multiple of 0.01 from 0.01 to 100. Defaults to 100.
+        rollout_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolloutStep'
+          description: |
+            A timed rollout schedule of 2 to 10 strictly increasing percentage
+            steps ending at 100. Mutually exclusive with `rollout_percentage`.
+        rollout_pause_weekends:
+          type: boolean
+          description: |
+            Whether to pause step advancement over weekends in
+            `rollout_timezone`.
+        rollout_timezone:
+          type: string
+          description: |
+            The IANA timezone name used to evaluate weekend pauses. Defaults
+            to `UTC`.
     PatchCheckRequest:
       type: object
       description: The request body for POST /patches/check.

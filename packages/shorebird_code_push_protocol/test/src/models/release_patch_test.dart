@@ -79,6 +79,59 @@ void main() {
       });
     });
 
+    group('timed rollout schedule', () {
+      test('round-trips through JSON', () {
+        final patch = ReleasePatch(
+          id: 0,
+          number: 1,
+          channel: 'stable',
+          isRolledBack: false,
+          artifacts: const [],
+          rolloutPercentage: 10,
+          rolloutSteps: const [
+            RolloutStep(percentage: 10, durationMinutes: 720),
+            RolloutStep(percentage: 100),
+          ],
+          rolloutNextStepAt: DateTime.utc(2026, 10, 25, 12, 30),
+          rolloutPauseWeekends: true,
+          rolloutTimezone: 'America/New_York',
+        );
+        final json = patch.toJson();
+        expect(
+          json['rollout_steps'],
+          equals([
+            {'percentage': 10.0, 'duration_minutes': 720},
+            {'percentage': 100.0},
+          ]),
+        );
+        expect(
+          json['rollout_next_step_at'],
+          equals('2026-10-25T12:30:00.000Z'),
+        );
+        expect(json['rollout_pause_weekends'], isTrue);
+        expect(json['rollout_timezone'], equals('America/New_York'));
+        expect(ReleasePatch.fromJson(json), equals(patch));
+      });
+
+      test('is absent when a server does not send it', () {
+        final patch = ReleasePatch.fromJson(const {
+          'id': 0,
+          'number': 1,
+          'artifacts': <Object>[],
+          'is_rolled_back': false,
+        });
+        expect(patch.rolloutSteps, isNull);
+        expect(patch.rolloutNextStepAt, isNull);
+        expect(patch.rolloutPauseWeekends, isNull);
+        expect(patch.rolloutTimezone, isNull);
+        final json = patch.toJson();
+        expect(json, isNot(contains('rollout_steps')));
+        expect(json, isNot(contains('rollout_next_step_at')));
+        expect(json, isNot(contains('rollout_pause_weekends')));
+        expect(json, isNot(contains('rollout_timezone')));
+      });
+    });
+
     group('copyWith', () {
       final patch = ReleasePatch(
         id: 0,
@@ -88,6 +141,13 @@ void main() {
         artifacts: const [],
         createdAt: DateTime.utc(2026),
         rolloutPercentage: 10,
+        rolloutSteps: const [
+          RolloutStep(percentage: 10, durationMinutes: 720),
+          RolloutStep(percentage: 100),
+        ],
+        rolloutNextStepAt: DateTime.utc(2026, 1, 2),
+        rolloutPauseWeekends: true,
+        rolloutTimezone: 'America/New_York',
         notes: 'notes',
       );
 
@@ -104,6 +164,10 @@ void main() {
         expect(copy.artifacts, equals(patch.artifacts));
         expect(copy.createdAt, equals(patch.createdAt));
         expect(copy.rolloutPercentage, equals(patch.rolloutPercentage));
+        expect(copy.rolloutSteps, equals(patch.rolloutSteps));
+        expect(copy.rolloutNextStepAt, equals(patch.rolloutNextStepAt));
+        expect(copy.rolloutPauseWeekends, equals(patch.rolloutPauseWeekends));
+        expect(copy.rolloutTimezone, equals(patch.rolloutTimezone));
         expect(copy.notes, equals(patch.notes));
       });
 
@@ -125,6 +189,10 @@ void main() {
           isRolledBack: true,
           createdAt: DateTime.utc(2027),
           rolloutPercentage: 50,
+          rolloutSteps: const [RolloutStep(percentage: 100)],
+          rolloutNextStepAt: DateTime.utc(2027, 1, 2),
+          rolloutPauseWeekends: false,
+          rolloutTimezone: 'Europe/Berlin',
           notes: 'other-notes',
         );
         expect(
@@ -138,6 +206,10 @@ void main() {
               isRolledBack: true,
               createdAt: DateTime.utc(2027),
               rolloutPercentage: 50,
+              rolloutSteps: const [RolloutStep(percentage: 100)],
+              rolloutNextStepAt: DateTime.utc(2027, 1, 2),
+              rolloutPauseWeekends: false,
+              rolloutTimezone: 'Europe/Berlin',
               notes: 'other-notes',
             ),
           ),
