@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -4101,6 +4102,54 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           ).called(1);
         });
+        test('promotes on the rollout schedule given', () async {
+          when(
+            () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              channelId: any(named: 'channelId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
+              rolloutSteps: any(named: 'rolloutSteps'),
+              rolloutPauseWeekends: any(named: 'rolloutPauseWeekends'),
+              rolloutTimezone: any(named: 'rolloutTimezone'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channel: channel,
+              rolloutSchedule: const RolloutSchedule(
+                steps: [
+                  RolloutStep(percentage: 1, durationMinutes: 240),
+                  RolloutStep(percentage: 100),
+                ],
+                pauseWeekends: true,
+                timezone: 'America/New_York',
+              ),
+            ),
+          );
+
+          verify(
+            () => logger.progress(
+              'Promoting patch to ${channel.name} (1%, rising on a schedule)',
+            ),
+          ).called(1);
+          verify(
+            () => codePushClient.promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channel.id,
+              rolloutSteps: const [
+                RolloutStep(percentage: 1, durationMinutes: 240),
+                RolloutStep(percentage: 100),
+              ],
+              rolloutPauseWeekends: true,
+              rolloutTimezone: 'America/New_York',
+            ),
+          ).called(1);
+        });
       });
 
       group('setPatchRollout', () {
@@ -4156,6 +4205,53 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: releaseId,
               patchId: patchId,
               rolloutPercentage: 50,
+            ),
+          ).called(1);
+        });
+        test('sets the rollout schedule given', () async {
+          when(
+            () => codePushClient.setPatchRollout(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
+              rolloutSteps: any(named: 'rolloutSteps'),
+              rolloutPauseWeekends: any(named: 'rolloutPauseWeekends'),
+              rolloutTimezone: any(named: 'rolloutTimezone'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.setPatchRollout(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+              rolloutSchedule: const RolloutSchedule(
+                steps: [
+                  RolloutStep(percentage: 10, durationMinutes: 720),
+                  RolloutStep(percentage: 100),
+                ],
+              ),
+            ),
+          );
+
+          verify(
+            () => logger.progress(
+              'Rolling out patch $patchNumber on a schedule from 10%',
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
+          verify(
+            () => codePushClient.setPatchRollout(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              rolloutSteps: const [
+                RolloutStep(percentage: 10, durationMinutes: 720),
+                RolloutStep(percentage: 100),
+              ],
+              rolloutPauseWeekends: false,
             ),
           ).called(1);
         });

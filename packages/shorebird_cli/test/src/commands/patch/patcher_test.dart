@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -348,6 +349,63 @@ void main() {
             track: track,
             patchArtifactBundles: artifacts,
             rolloutPercentage: 10,
+          ),
+        ).called(1);
+      });
+
+      test('passes the rollout schedule through', () async {
+        final patcher = _TestPatcher(
+          argParser: MockArgParser(),
+          argResults: MockArgResults(),
+          flavor: null,
+          target: null,
+          releaseType: ReleaseType.android,
+        );
+        const schedule = RolloutSchedule(
+          steps: [
+            RolloutStep(percentage: 1, durationMinutes: 240),
+            RolloutStep(percentage: 100),
+          ],
+          pauseWeekends: true,
+          timezone: 'America/New_York',
+        );
+        final codePushClientWrapper = MockCodePushClientWrapper();
+        when(
+          () => codePushClientWrapper.publishPatch(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            platform: any(named: 'platform'),
+            track: any(named: 'track'),
+            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+        ).thenAnswer((_) async => const CreatePatchResponse(id: 1, number: 1));
+
+        await runScoped(
+          () => patcher.uploadPatchArtifacts(
+            appId: 'test_app_id',
+            releaseId: 42,
+            metadata: const <String, String>{},
+            artifacts: const <Arch, PatchArtifactBundle>{},
+            track: DeploymentTrack.stable,
+            rolloutSchedule: schedule,
+          ),
+          values: {
+            codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          },
+        );
+
+        verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: 'test_app_id',
+            releaseId: 42,
+            metadata: const <String, String>{},
+            platform: ReleaseType.android.releasePlatform,
+            track: DeploymentTrack.stable,
+            patchArtifactBundles: const <Arch, PatchArtifactBundle>{},
+            rolloutSchedule: schedule,
           ),
         ).called(1);
       });

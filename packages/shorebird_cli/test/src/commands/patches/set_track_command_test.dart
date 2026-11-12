@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
@@ -133,6 +134,7 @@ void main() {
           patchId: any(named: 'patchId'),
           channel: any(named: 'channel'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
+          rolloutSchedule: any(named: 'rolloutSchedule'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -501,6 +503,7 @@ void main() {
             patchId: any(named: 'patchId'),
             channel: any(named: 'channel'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
           ),
         );
       }
@@ -688,6 +691,216 @@ void main() {
       });
     });
 
+    group('--$rolloutStepsArgName', () {
+      const schedule = RolloutSchedule(
+        steps: [
+          RolloutStep(percentage: 1, durationMinutes: 240),
+          RolloutStep(percentage: 10, durationMinutes: 720),
+          RolloutStep(percentage: 100),
+        ],
+      );
+
+      void verifyNoPromotion() {
+        verifyNever(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+        );
+      }
+
+      setUp(() {
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn('1:4h,10:12h,100');
+      });
+
+      test('is offered on set-track', () {
+        final parsed = SetTrackCommand().argParser.parse([
+          '--release-version=1.0.0+1',
+          '--patch-number=2',
+          '--track=beta',
+          '--$rolloutStepsArgName=$rolloutStepsExample',
+          '--$pauseWeekendsArgName',
+          '--$timezoneArgName=America/New_York',
+        ]);
+        expect(parsed[rolloutStepsArgName], equals(rolloutStepsExample));
+        expect(parsed[pauseWeekendsArgName], isTrue);
+        expect(parsed[timezoneArgName], equals('America/New_York'));
+      });
+
+      test('promotes the patch on the schedule', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: patch.id,
+            channel: targetChannel,
+            rolloutPercentage: null,
+            rolloutSchedule: schedule,
+          ),
+        ).called(1);
+        verifyInOrder([
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion '
+            'is now in channel ${targetChannel.name} (1%)!',
+          ),
+          () => logger.info(
+            'Its rollout rises on a schedule: 1% for 4h, then 10% for 12h, '
+            'then 100%.',
+          ),
+          () => logger.info(rolloutOlderDevicesNote),
+        ]);
+      });
+
+      test('passes --$pauseWeekendsArgName and --$timezoneArgName '
+          'through', () async {
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(true);
+        when(
+          () => argResults[timezoneArgName],
+        ).thenReturn('America/New_York');
+
+        await runWithOverrides(command.run);
+
+        verify(
+          () => codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: patch.id,
+            channel: targetChannel,
+            rolloutPercentage: null,
+            rolloutSchedule: const RolloutSchedule(
+              steps: [
+                RolloutStep(percentage: 1, durationMinutes: 240),
+                RolloutStep(percentage: 10, durationMinutes: 720),
+                RolloutStep(percentage: 100),
+              ],
+              pauseWeekends: true,
+              timezone: 'America/New_York',
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('exits with usage error before fetching when invalid', () async {
+        when(() => argResults[rolloutStepsArgName]).thenReturn('100');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            '--$rolloutStepsArgName takes $minRolloutSteps to '
+            '$maxRolloutSteps steps (got 1 in "100").',
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+
+      test('cannot be given with --$rolloutArgName', () async {
+        when(() => argResults[rolloutArgName]).thenReturn('10');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            '--$rolloutArgName and --$rolloutStepsArgName are mutually '
+            'exclusive: a rollout is either a fixed percentage or a '
+            'schedule.',
+          ),
+        ).called(1);
+      });
+
+      group('when the patch is already on the target track', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              ReleasePatch(
+                id: 0,
+                number: patchNumber,
+                channel: targetChannel.name,
+                isRolledBack: false,
+                artifacts: const [],
+              ),
+            ],
+          );
+        });
+
+        test('reads the first step as the rollout it would start at', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              'Patch $patchNumber on release $releaseVersion is already '
+              'rolling out to 100% of devices on ${targetChannel.name}, and '
+              'a rollout can only be raised.',
+            ),
+          ).called(1);
+          verifyNoPromotion();
+        });
+
+        test(
+          'points at patches rollout when it is at the first step',
+          () async {
+            when(
+              () => codePushClientWrapper.getReleasePatches(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+              ),
+            ).thenAnswer(
+              (_) async => [
+                ReleasePatch(
+                  id: 0,
+                  number: patchNumber,
+                  channel: targetChannel.name,
+                  isRolledBack: false,
+                  artifacts: const [],
+                  rolloutPercentage: 1,
+                ),
+              ],
+            );
+
+            final result = await runWithOverrides(command.run);
+
+            expect(result, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'Patch $patchNumber on release $releaseVersion is already in '
+                'channel ${targetChannel.name} (1%), and promoting it again '
+                'would restart its rollout.',
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(
+                'To put its rollout on that schedule, run: '
+                'shorebird patches rollout '
+                '--release-version $releaseVersion '
+                '--patch-number $patchNumber '
+                '--$rolloutStepsArgName 1:4h,10:12h,100',
+              ),
+            ).called(1);
+            verifyNoPromotion();
+          },
+        );
+      });
+    });
+
     group('when promotePatch fails', () {
       setUp(() {
         when(
@@ -769,6 +982,29 @@ void main() {
         final data = json['data'] as Map<String, dynamic>;
         final patch = data['patch'] as Map<String, dynamic>;
         expect(patch['rollout_percentage'], 10);
+      });
+
+      test('emits the rollout schedule given', () async {
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn('1:4h,10:12h,100');
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJsonMode(command.run),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        final patch = data['patch'] as Map<String, dynamic>;
+        expect(patch['rollout_percentage'], 1);
+        expect(
+          patch['rollout_steps'],
+          equals([
+            {'percentage': 1, 'duration_minutes': 240},
+            {'percentage': 10, 'duration_minutes': 720},
+            {'percentage': 100},
+          ]),
+        );
       });
 
       group('when channel does not exist', () {
