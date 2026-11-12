@@ -63,6 +63,8 @@ tags:
     description: Invitations sent to the signed-in user.
   - name: billing
     description: The plan an account is on, and its patch install usage against it.
+  - name: build-history
+    description: Records of shorebird release and patch runs (Enterprise).
   - name: diagnostics
     description: Infrastructure diagnostics endpoints.
   - name: metrics
@@ -1114,6 +1116,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreatePatchResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /apps/{appId}/runs:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+    post:
+      tags:
+        - build-history
+      summary: Record a shorebird release or patch run.
+      description: |
+        The CLI sends one record per platform when a `shorebird release` or
+        `shorebird patch` run ends, whether it succeeded or failed. Records
+        are shown in the console's Build history (Enterprise).
+      operationId: createBuildRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBuildRunRequest'
+      responses:
+        '201':
+          description: The run was recorded.
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/patches/{patchId}/artifacts:
@@ -5844,6 +5869,122 @@ components:
           description: |
             How many items the whole list holds. Present only when the
             request was paginated.
+    BuildRunCommand:
+      type: string
+      description: The CLI command a build run recorded.
+      enum:
+        - release
+        - patch
+      x-enum-descriptions:
+        - shorebird release.
+        - shorebird patch.
+    BuildRunOutcome:
+      type: string
+      description: How a build run ended.
+      enum:
+        - succeeded
+        - failed
+      x-enum-descriptions:
+        - The run finished, or a dry run found no issues.
+        - The run stopped without publishing.
+    BuildRunFailureReason:
+      type: string
+      description: Why a build run failed.
+      enum:
+        - link_percentage
+        - asset_diffs
+        - native_diffs
+        - build_flag_diffs
+        - build_failed
+        - release_incompatible
+        - server_rejected
+        - upload_failed
+        - canceled
+        - other
+      x-enum-descriptions:
+        - The patch linked less of the release than --min-link-percentage.
+        - Assets changed since the release, and the run stopped or the user declined to continue.
+        - Native code changed since the release, and the run stopped or the user declined to continue.
+        - The patch's --dart-define or --target differ from the release's, and the run stopped or the user declined to continue.
+        - The Flutter, Xcode or Gradle build failed.
+        - The release can't be patched, such as its Flutter is too old or it has no build for the platform.
+        - The Shorebird API refused a request.
+        - Uploading an artifact failed.
+        - The user declined a confirmation.
+        - A failure the CLI does not classify.
+    BuildRunBuildFlags:
+      type: object
+      description: |
+        The flags a run built with that change compiled Dart code, as
+        SHA-256 hashes. Never holds dart-define values or paths.
+      required:
+        - dart_define_count
+        - dart_defines
+      properties:
+        dart_define_count:
+          type: integer
+          description: How many --dart-define values the build used.
+        dart_defines:
+          type: object
+          additionalProperties:
+            type: string
+          description: Each dart-define key with the hex SHA-256 of its value.
+        target:
+          type: string
+          description: |
+            The hex SHA-256 of the --target path relative to the project,
+            absent for the default entrypoint.
+    CreateBuildRunRequest:
+      type: object
+      description: The request body for POST /apps/{appId}/runs.
+      required:
+        - run_id
+        - command
+        - platform
+        - outcome
+        - started_at
+        - duration_ms
+        - dry_run
+      properties:
+        run_id:
+          type: string
+          description: |
+            Chosen by the CLI for each command it runs. Shared by the
+            records of one run's platforms.
+        command:
+          $ref: '#/components/schemas/BuildRunCommand'
+        platform:
+          $ref: '#/components/schemas/ReleasePlatform'
+        outcome:
+          $ref: '#/components/schemas/BuildRunOutcome'
+        reason:
+          $ref: '#/components/schemas/BuildRunFailureReason'
+        release_id:
+          type: integer
+          format: int64
+          description: The release the run made or patched, if it got one.
+        patch_id:
+          type: integer
+          format: int64
+          description: The patch the run made, if it made one.
+        started_at:
+          type: string
+          format: date-time
+          description: When the platform's work began.
+        duration_ms:
+          type: integer
+          description: How long the platform's work took, in milliseconds.
+        dry_run:
+          type: boolean
+          description: Whether the run was a --dry-run.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: |
+            The metadata the CLI sends with a published release or patch,
+            including its build trace summary, as far as the run got.
+        build_flags:
+          $ref: '#/components/schemas/BuildRunBuildFlags'
     CreatePatchRequest:
       type: object
       description: The request body for POST /apps/{appId}/patches.

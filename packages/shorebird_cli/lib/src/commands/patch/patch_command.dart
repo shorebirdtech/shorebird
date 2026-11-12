@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/build_flags.dart';
+import 'package:shorebird_cli/src/build_history.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -363,7 +364,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
 
     final published = <PublishedPatch>[];
     for (final patcher in patchers) {
-      published.add(await createPatch(patcher));
+      published.add(await _recordPatchRun(patcher));
     }
 
     if (isJsonMode) {
@@ -460,6 +461,51 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     }
   }
 
+  /// The build history record of the platform being patched, if [run] is
+  /// patching.
+  BuildRun? _buildRun;
+
+  /// Whether the release being patched was guessed by building the app.
+  bool _inferredReleaseVersion = false;
+
+  /// What the diff check found, once it has run.
+  DiffStatus? _diffStatus;
+
+  /// [shorebirdEnv] with the Flutter of the release being patched, once it
+  /// is known.
+  ShorebirdEnv? _releaseShorebirdEnv;
+
+  /// Creates the patch for [patcher] with [createPatch], recording the run in
+  /// the app's build history.
+  Future<PublishedPatch> _recordPatchRun(Patcher patcher) {
+    _inferredReleaseVersion = false;
+    _diffStatus = null;
+    _releaseShorebirdEnv = null;
+    final run = _buildRun = buildHistory.start(
+      command: BuildRunCommand.patch,
+      platform: patcher.releaseType.releasePlatform,
+      dryRun: results['dry-run'] == true,
+    );
+    return buildHistory.record(
+      run,
+      () => createPatch(patcher),
+      // Described with the release's Flutter, as the published patch is.
+      metadata: () => runScoped(
+        () async => (await _createPatchMetadata(
+          patcher: patcher,
+          diffStatus:
+              _diffStatus ??
+              const DiffStatus(hasAssetChanges: false, hasNativeChanges: false),
+          inferredReleaseVersion: _inferredReleaseVersion,
+        )).toJson(),
+        values: {
+          if (_releaseShorebirdEnv case final env?)
+            shorebirdEnvRef.overrideWith(() => env),
+        },
+      ),
+    );
+  }
+
   /// Creates a patch using the provided [patcher].
   ///
   /// Returns what was published. A dry run does not return: it exits the
@@ -474,6 +520,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
 
     final resolved = await _resolveRelease(patcher);
     final release = resolved.release;
+    _inferredReleaseVersion = resolved.inferredReleaseVersion;
+    final releaseFlutterShorebirdEnv = _releaseShorebirdEnv = shorebirdEnv
+        .copyWith(flutterRevisionOverride: release.flutterRevision);
+    _buildRun
+      ?..appId = appId
+      ..releaseId = release.id
+      ..buildFlags = buildHistory.buildFlags(results, target: patcher.target);
 
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
@@ -486,10 +539,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
-
-    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
-      flutterRevisionOverride: release.flutterRevision,
-    );
 
     // Fail before downloading anything if the release's Flutter is too old.
     await runScoped(
@@ -801,6 +850,7 @@ A patch must be built with the --dart-define values and --target of its release,
     );
     if (allowBuildFlagDiffs) return;
     if (!shorebirdEnv.canAcceptUserInput) {
+      _buildRun?.failWith(BuildRunFailureReason.buildFlagDiffs);
       throw CommandError(
         message: "This patch's flags don't match release ${release.version}.",
         hint:
@@ -812,6 +862,7 @@ A patch must be built with the --dart-define values and --target of its release,
     }
     if (logger.confirm('Continue anyway?')) return;
     logger.err('Aborting.');
+    _buildRun?.failWith(BuildRunFailureReason.buildFlagDiffs);
     throw PromptDeclinedExit();
   }
 
@@ -856,6 +907,7 @@ A patch must be built with the --dart-define values and --target of its release,
           minimumObfuscationFlutterVersion,
         )) {
       if (patchesLinkAgainstRelease(releasePlatform)) {
+        _buildRun?.failWith(BuildRunFailureReason.releaseIncompatible);
         throw CommandError(
           message:
               'Release ${release.version} was built with obfuscation on '
@@ -961,6 +1013,8 @@ Building patch with Flutter $flutterVersionString
       () => patcher.buildPatchArtifact(
         releaseVersion: release.version,
       ),
+      onBuildFailed: () =>
+          _buildRun?.failWith(BuildRunFailureReason.buildFailed),
     );
 
     final diffStatus = await assertUnpatchableDiffs(
@@ -969,11 +1023,16 @@ Building patch with Flutter $flutterVersionString
       patchArchive: patchArtifactFile,
       patcher: patcher,
     );
-    final patchArtifactBundles = await patcher.createPatchArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      releaseArtifact: releaseArchive,
-      supplementDirectory: supplementDirectory,
+    _diffStatus = diffStatus;
+    final patchArtifactBundles = await blameFailureOn(
+      _buildRun,
+      BuildRunFailureReason.buildFailed,
+      () => patcher.createPatchArtifacts(
+        appId: appId,
+        releaseId: release.id,
+        releaseArtifact: releaseArchive,
+        supplementDirectory: supplementDirectory,
+      ),
     );
 
     await assertMinLinkPercentage(patcher);
@@ -998,15 +1057,21 @@ Building patch with Flutter $flutterVersionString
       diffStatus: diffStatus,
       inferredReleaseVersion: inferredReleaseVersion,
     );
+    _buildRun?.metadata = metadata.toJson();
 
-    final patch = await patcher.uploadPatchArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      metadata: metadata.toJson(),
-      track: track,
-      artifacts: patchArtifactBundles,
-      rolloutPercentage: rolloutPercentage,
+    final patch = await blameFailureOn(
+      _buildRun,
+      BuildRunFailureReason.uploadFailed,
+      () => patcher.uploadPatchArtifacts(
+        appId: appId,
+        releaseId: release.id,
+        metadata: metadata.toJson(),
+        track: track,
+        artifacts: patchArtifactBundles,
+        rolloutPercentage: rolloutPercentage,
+      ),
     );
+    _buildRun?.patchId = patch.id;
 
     return PublishedPatch(
       platform: patcher.releaseType.releasePlatform,
@@ -1035,6 +1100,7 @@ Building patch with Flutter $flutterVersionString
     final flutterVersionAndRevision = await shorebirdFlutter
         .getVersionAndRevision();
     final cliName = patcher.releaseType.cliName;
+    _buildRun?.failWith(BuildRunFailureReason.releaseIncompatible);
     throw CommandError(
       message:
           'Release ${release.version} was built with Flutter '
@@ -1138,6 +1204,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       );
     }
     if (linkPercentage != null && linkPercentage < minLinkPercentage) {
+      _buildRun?.failWith(BuildRunFailureReason.linkPercentage);
       throw CommandError(
         message:
             'The link percentage of this patch '
@@ -1259,6 +1326,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       final releaseCommand = patcher.releaseType.releaseCommand(
         releaseVersion: release.version,
       );
+      _buildRun?.failWith(BuildRunFailureReason.releaseIncompatible);
       throw CommandError(
         message:
             'Release ${release.version} has no '
@@ -1278,6 +1346,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       final releaseCommand = patcher.releaseType.releaseCommand(
         releaseVersion: release.version,
       );
+      _buildRun?.failWith(BuildRunFailureReason.releaseIncompatible);
       throw CommandError(
         message:
             'Release ${release.version} is incomplete: the release command '
@@ -1335,6 +1404,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         signingMode == ReleaseSigningMode.customer.value) {
       return;
     }
+    _buildRun?.failWith(BuildRunFailureReason.releaseIncompatible);
     throw CommandError(
       message:
           '${app.enterpriseName ?? 'Your enterprise'} requires patch '
@@ -1360,13 +1430,15 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         releaseArchive: releaseArchive,
         patchArchive: patchArchive,
       );
-    } on UserCancelledException {
+    } on UserCancelledException catch (e) {
+      _failWithChanges({e.change}, status: e.status);
       logger.err('Aborting.');
       throw PromptDeclinedExit();
     } on UnpatchableChangeException catch (e) {
       // The diff checker has already listed the changes.
       final changes = e.changes;
       final native = changes.contains(UnpatchableChange.native);
+      _failWithChanges(changes, status: e.status);
       final releaseCommand = patcher.releaseType.releaseCommand(
         releaseVersion: '<new version>',
       );
@@ -1384,6 +1456,24 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         exitCode: ExitCode.software,
       );
     }
+  }
+
+  /// Records in the build run that the patch stopped on [changes], and
+  /// keeps [status], everything the diff check found, for the run's
+  /// metadata.
+  void _failWithChanges(
+    Set<UnpatchableChange> changes, {
+    required DiffStatus? status,
+  }) {
+    final native = changes.contains(UnpatchableChange.native);
+    final asset = changes.contains(UnpatchableChange.asset);
+    _diffStatus =
+        status ?? DiffStatus(hasAssetChanges: asset, hasNativeChanges: native);
+    _buildRun?.failWith(
+      native
+          ? BuildRunFailureReason.nativeDiffs
+          : BuildRunFailureReason.assetDiffs,
+    );
   }
 
   /// Logs a summary of the patch to be created, including:
@@ -1459,10 +1549,16 @@ ${summary.join('\n')}
 
 /// Executes [build] to build the artifact and includes
 /// special handling thrown exceptions such as [ArtifactBuildException].
-Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
+/// Calls [onBuildFailed] when the build itself fails, not when a step it
+/// takes already reported why it stopped.
+Future<R> _tryBuildingArtifact<R>(
+  Future<R> Function() build, {
+  void Function()? onBuildFailed,
+}) async {
   try {
     return await build();
   } on ArtifactBuildException catch (e) {
+    onBuildFailed?.call();
     throw CommandError(
       message: e.message,
       hint: e.fixRecommendation.isNullOrEmpty ? null : e.fixRecommendation,
@@ -1472,6 +1568,7 @@ Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
     // The build already reported why it stopped.
     rethrow;
   } on Exception catch (e) {
+    onBuildFailed?.call();
     throw CommandError(
       message: 'Failed to build patch artifacts: $e',
       exitCode: ExitCode.software,

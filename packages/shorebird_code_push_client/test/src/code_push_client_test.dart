@@ -1870,6 +1870,50 @@ void main() {
       });
     });
 
+    group('createBuildRun', () {
+      const appId = 'test-app-id';
+      final request = CreateBuildRunRequest(
+        runId: 'run-id',
+        command: BuildRunCommand.patch,
+        platform: ReleasePlatform.ios,
+        outcome: BuildRunOutcome.failed,
+        reason: BuildRunFailureReason.linkPercentage,
+        releaseId: 1,
+        startedAt: DateTime.utc(2026, 11, 10),
+        durationMs: 1000,
+        dryRun: false,
+      );
+
+      test('posts the run to the app', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.created),
+        );
+
+        await codePushClient.createBuildRun(appId: appId, request: request);
+
+        final sent =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(sent.method, equals('POST'));
+        expect(sent.url, equals(v1('apps/$appId/runs')));
+        expect(sent.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(sent.body), equals(request.toJson()));
+      });
+
+      test('throws a CodePushException when the server refuses', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.forbidden),
+        );
+
+        await expectLater(
+          codePushClient.createBuildRun(appId: appId, request: request),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+    });
+
     group('updateReleaseStatus', () {
       const appId = 'test-app-id';
       const releaseId = 42;

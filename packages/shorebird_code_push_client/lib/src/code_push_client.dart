@@ -624,6 +624,22 @@ class CodePushClient {
     return CreatePatchResponse.fromJson(body);
   }
 
+  /// Records a `shorebird release` or `shorebird patch` run of the app with
+  /// the provided [appId] in its build history.
+  Future<void> createBuildRun({
+    required String appId,
+    required CreateBuildRunRequest request,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/apps/$appId/runs'),
+      body: json.encode(request.toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Create a new release for the app with the provided [appId].
   Future<Release> createRelease({
     required String appId,

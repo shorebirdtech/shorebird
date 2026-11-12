@@ -17,6 +17,7 @@ export 'package:shorebird_code_push_protocol/src/messages/add_enterprise_organiz
 export 'package:shorebird_code_push_protocol/src/messages/artifact_signing_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_app/create_app_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_app_collaborator/create_app_collaborator_request.dart';
+export 'package:shorebird_code_push_protocol/src/messages/create_build_run/create_build_run_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_channel/create_channel_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_organization/create_organization_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_organization_invitation/create_organization_invitation201_response.dart';
@@ -113,6 +114,10 @@ export 'package:shorebird_code_push_protocol/src/models/audit_log_product.dart';
 export 'package:shorebird_code_push_protocol/src/models/audit_log_resource.dart';
 export 'package:shorebird_code_push_protocol/src/models/audit_log_session.dart';
 export 'package:shorebird_code_push_protocol/src/models/audit_log_source_endpoint.dart';
+export 'package:shorebird_code_push_protocol/src/models/build_run_build_flags.dart';
+export 'package:shorebird_code_push_protocol/src/models/build_run_command.dart';
+export 'package:shorebird_code_push_protocol/src/models/build_run_failure_reason.dart';
+export 'package:shorebird_code_push_protocol/src/models/build_run_outcome.dart';
 export 'package:shorebird_code_push_protocol/src/models/channel.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise_app.dart';
