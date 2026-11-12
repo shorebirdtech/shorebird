@@ -602,14 +602,26 @@ class CodePushClient {
   }
 
   /// Create a new patch for the given [releaseId].
+  ///
+  /// Patches for other platforms created on the release with the same
+  /// [linkKey] can share its number. [gitSha] and [gitDirty] record the commit
+  /// the patch was built from.
   Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    ReleasePlatform? platform,
+    String? linkKey,
+    String? gitSha,
+    bool? gitDirty,
   }) async {
     final request = CreatePatchRequest(
       releaseId: releaseId,
       metadata: metadata,
+      platform: platform,
+      linkKey: linkKey,
+      gitSha: gitSha,
+      gitDirty: gitDirty,
     );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
@@ -978,13 +990,17 @@ class CodePushClient {
     return decoded.releases;
   }
 
-  /// Gets [ReleasePatch]es associated with [appId]'s [releaseId].
+  /// Gets [ReleasePatch]es associated with [appId]'s [releaseId], only those
+  /// created with [linkKey] when it is given.
   Future<List<ReleasePatch>> getPatches({
     required String appId,
     required int releaseId,
+    String? linkKey,
   }) async {
     final response = await _httpClient.get(
-      Uri.parse('$_v1/apps/$appId/releases/$releaseId/patches'),
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId/patches').replace(
+        queryParameters: linkKey == null ? null : {'link_key': linkKey},
+      ),
     );
 
     if (!response.isSuccess) {
@@ -1051,6 +1067,9 @@ class CodePushClient {
   /// holds over weekends in [rolloutTimezone] when [rolloutPauseWeekends] is
   /// set. Schedules and [rolloutPercentage] are mutually exclusive, and the
   /// server answers 403 when the app's plan does not include schedules.
+  ///
+  /// [platforms] limits the promotion to those platforms' patches under the
+  /// patch's number; without it the server promotes every platform's.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
@@ -1059,6 +1078,7 @@ class CodePushClient {
     List<RolloutStep>? rolloutSteps,
     bool? rolloutPauseWeekends,
     String? rolloutTimezone,
+    List<ReleasePlatform>? platforms,
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches/promote'),
@@ -1070,6 +1090,7 @@ class CodePushClient {
           rolloutSteps: rolloutSteps,
           rolloutPauseWeekends: rolloutPauseWeekends,
           rolloutTimezone: rolloutTimezone,
+          platforms: platforms,
         ).toJson(),
       ),
     );
@@ -1122,15 +1143,22 @@ class CodePushClient {
   /// `true` when it changed the patch. The server is the only authority on
   /// this, since another actor may roll the patch back between a read and this
   /// call.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
     required int patchId,
+    List<ReleasePlatform>? platforms,
   }) async {
     final response = await _httpClient.post(
       Uri.parse(
         '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollback',
       ),
+      body: platforms == null
+          ? null
+          : json.encode(RollbackPatchRequest(platforms: platforms).toJson()),
     );
 
     if (response.statusCode == HttpStatus.notModified) return false;
@@ -1149,15 +1177,22 @@ class CodePushClient {
   /// answers `304 Not Modified` because the patch was already active, `true`
   /// when it changed the patch. The server is the only authority on this, since
   /// another actor may roll the patch forward between a read and this call.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollforwardPatch({
     required String appId,
     required int releaseId,
     required int patchId,
+    List<ReleasePlatform>? platforms,
   }) async {
     final response = await _httpClient.post(
       Uri.parse(
         '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollforward',
       ),
+      body: platforms == null
+          ? null
+          : json.encode(RollforwardPatchRequest(platforms: platforms).toJson()),
     );
 
     if (response.statusCode == HttpStatus.notModified) return false;
@@ -1238,9 +1273,9 @@ class CodePushClient {
     String? cursor;
     do {
       final response = await _httpClient.get(
-        Uri.parse('$_v1/organizations/$organizationId/invitations').replace(
-          queryParameters: {'per_page': '100', 'cursor': ?cursor},
-        ),
+        Uri.parse(
+          '$_v1/organizations/$organizationId/invitations',
+        ).replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
       );
 
       if (!response.isSuccess) {
@@ -1599,13 +1634,11 @@ class CodePushClient {
 
   /// Gets the enterprises the current user belongs to, with the user's role
   /// in each.
-  Future<List<EnterpriseMembership>> getEnterprises() => _getEveryPage(
-    Uri.parse('$_v1/enterprises'),
-    (json) {
-      final page = GetEnterprises200Response.fromJson(json);
-      return (items: page.enterprises, nextCursor: page.nextCursor);
-    },
-  );
+  Future<List<EnterpriseMembership>> getEnterprises() =>
+      _getEveryPage(Uri.parse('$_v1/enterprises'), (json) {
+        final page = GetEnterprises200Response.fromJson(json);
+        return (items: page.enterprises, nextCursor: page.nextCursor);
+      });
 
   /// Gets enterprise [enterpriseId]: its name and domains.
   Future<Enterprise> getEnterprise({required int enterpriseId}) async {
@@ -1645,25 +1678,22 @@ class CodePushClient {
   /// their enterprise role and the organizations they're in.
   Future<List<EnterpriseMember>> getEnterpriseMembers({
     required int enterpriseId,
-  }) => _getEveryPage(
-    Uri.parse('$_v1/enterprises/$enterpriseId/members'),
-    (json) {
-      final page = GetEnterpriseMembers200Response.fromJson(json);
-      return (items: page.members, nextCursor: page.nextCursor);
-    },
-  );
+  }) => _getEveryPage(Uri.parse('$_v1/enterprises/$enterpriseId/members'), (
+    json,
+  ) {
+    final page = GetEnterpriseMembers200Response.fromJson(json);
+    return (items: page.members, nextCursor: page.nextCursor);
+  });
 
   /// Gets the guests of enterprise [enterpriseId]: people in its
   /// organizations who aren't in its directory.
   Future<List<EnterpriseGuest>> getEnterpriseGuests({
     required int enterpriseId,
-  }) => _getEveryPage(
-    Uri.parse('$_v1/enterprises/$enterpriseId/guests'),
-    (json) {
-      final page = GetEnterpriseGuests200Response.fromJson(json);
-      return (items: page.guests, nextCursor: page.nextCursor);
-    },
-  );
+  }) =>
+      _getEveryPage(Uri.parse('$_v1/enterprises/$enterpriseId/guests'), (json) {
+        final page = GetEnterpriseGuests200Response.fromJson(json);
+        return (items: page.guests, nextCursor: page.nextCursor);
+      });
 
   /// Sets member [userId]'s enterprise role in enterprise [enterpriseId] to
   /// [role].
@@ -1761,15 +1791,16 @@ class CodePushClient {
   /// Gets each organization on enterprise [enterpriseId]'s plan with its
   /// installs this period.
   Future<List<EnterpriseBillingOrganization>>
-  getEnterpriseBillingOrganizations({
-    required int enterpriseId,
-  }) => _getEveryPage(
-    Uri.parse('$_v1/enterprises/$enterpriseId/billing/organizations'),
-    (json) {
-      final page = GetEnterpriseBillingOrganizations200Response.fromJson(json);
-      return (items: page.organizations, nextCursor: page.nextCursor);
-    },
-  );
+  getEnterpriseBillingOrganizations({required int enterpriseId}) =>
+      _getEveryPage(
+        Uri.parse('$_v1/enterprises/$enterpriseId/billing/organizations'),
+        (json) {
+          final page = GetEnterpriseBillingOrganizations200Response.fromJson(
+            json,
+          );
+          return (items: page.organizations, nextCursor: page.nextCursor);
+        },
+      );
 
   /// Gets every item of the paged list at [uri], 100 to a page, reading
   /// each page's items and next cursor with [readPage].
@@ -1805,9 +1836,9 @@ class CodePushClient {
     String? cursor;
     do {
       final response = await _httpClient.get(
-        Uri.parse('$_v1/invitations').replace(
-          queryParameters: {'per_page': '100', 'cursor': ?cursor},
-        ),
+        Uri.parse(
+          '$_v1/invitations',
+        ).replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
       );
 
       if (!response.isSuccess) {

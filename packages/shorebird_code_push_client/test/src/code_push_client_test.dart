@@ -88,11 +88,8 @@ void main() {
         );
       }
 
-      Future<void> createPatch() => codePushClient.createPatch(
-        appId: appId,
-        releaseId: 1,
-        metadata: {},
-      );
+      Future<void> createPatch() =>
+          codePushClient.createPatch(appId: appId, releaseId: 1, metadata: {});
 
       test('passes a notice header to onNotice', () async {
         respondWith({CodePushClient.noticeHeader: '"Patches are paused."'});
@@ -1225,9 +1222,7 @@ void main() {
             );
 
         List<http.BaseRequest> capturedPuts() =>
-            verify(
-                  () => httpClient.send(captureAny()),
-                ).captured
+            verify(() => httpClient.send(captureAny())).captured
                 .cast<http.BaseRequest>()
                 .where((r) => r.method == 'PUT')
                 .toList();
@@ -1776,6 +1771,54 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
+      test('sends the link fields when given', () async {
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+              platform: ReleasePlatform.ios,
+              linkKey: 'abc123',
+              gitSha: 'abc123',
+              gitDirty: false,
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'release_id': releaseId,
+            'metadata': {'foo': 'bar'},
+            'platform': 'ios',
+            'link_key': 'abc123',
+            'git_sha': 'abc123',
+            'git_dirty': false,
+          }),
+        );
+      });
+
+      test('omits the link fields when not given', () async {
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'release_id': releaseId,
+            'metadata': {'foo': 'bar'},
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -1991,11 +2034,7 @@ void main() {
                     flutterVersion,
                   )
                   .having((r) => r.displayName, 'displayName', displayName)
-                  .having(
-                    (r) => r.platforms,
-                    'platforms',
-                    isEmpty,
-                  ),
+                  .having((r) => r.platforms, 'platforms', isEmpty),
             ),
           ),
         );
@@ -2402,10 +2441,7 @@ void main() {
         expect(request.method, equals('PATCH'));
         expect(request.url, equals(v1('users/me')));
         expect(request.hasHeaders(expectedHeaders), isTrue);
-        expect(
-          json.decode(request.body),
-          equals({'display_name': 'Jane Doe'}),
-        );
+        expect(json.decode(request.body), equals({'display_name': 'Jane Doe'}));
       });
 
       test('throws an exception if the http request fails', () async {
@@ -3303,6 +3339,33 @@ void main() {
           );
           expect(patches, equals([patch]));
         });
+
+        test('queries by link_key when given', () async {
+          await codePushClient.getPatches(
+            appId: appId,
+            releaseId: 123,
+            linkKey: 'abc 123',
+          );
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(
+            request.url,
+            equals(
+              v1(
+                'apps/$appId/releases/123/patches',
+              ).replace(queryParameters: {'link_key': 'abc 123'}),
+            ),
+          );
+        });
+
+        test('sends no query without a link key', () async {
+          await codePushClient.getPatches(appId: appId, releaseId: 123);
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.url.hasQuery, isFalse);
+        });
       });
     });
 
@@ -3497,6 +3560,28 @@ void main() {
         );
       });
 
+      test('sends platforms when given', () async {
+        codePushClient
+            .promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channelId,
+              platforms: [ReleasePlatform.android],
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'patch_id': patchId,
+            'channel_id': channelId,
+            'platforms': ['android'],
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -3586,10 +3671,8 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await setPatchRollout();
@@ -3605,10 +3688,7 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
-        expect(
-          json.decode(request.body),
-          equals({'rollout_percentage': 50}),
-        );
+        expect(json.decode(request.body), equals({'rollout_percentage': 50}));
       });
 
       test('sends the timed rollout schedule when given', () async {
@@ -3696,10 +3776,8 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await codePushClient.rollbackPatch(
@@ -3719,6 +3797,48 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('sends no body without platforms', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollbackPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.body, isEmpty);
+      });
+
+      test('sends platforms when given', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollbackPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+          platforms: [ReleasePlatform.ios],
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'platforms': ['ios'],
+          }),
+        );
       });
 
       test('returns false on 304 Not Modified (idempotent)', () async {
@@ -3741,10 +3861,8 @@ void main() {
 
       test('returns true on 204 No Content', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await expectLater(
@@ -3815,10 +3933,8 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await codePushClient.rollforwardPatch(
@@ -3838,6 +3954,48 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('sends no body without platforms', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollforwardPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.body, isEmpty);
+      });
+
+      test('sends platforms when given', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await codePushClient.rollforwardPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+          platforms: [ReleasePlatform.ios],
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'platforms': ['ios'],
+          }),
+        );
       });
 
       test('returns false on 304 Not Modified (idempotent)', () async {
@@ -3860,10 +4018,8 @@ void main() {
 
       test('returns true on 204 No Content', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.noContent,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         );
 
         await expectLater(
@@ -4503,9 +4659,8 @@ void main() {
       }
 
       final failingCalls = <String, Future<Object?> Function()>{
-        'getServiceAccounts': () => codePushClient.getServiceAccounts(
-          organizationId: organizationId,
-        ),
+        'getServiceAccounts': () =>
+            codePushClient.getServiceAccounts(organizationId: organizationId),
         'createServiceAccount': () => codePushClient.createServiceAccount(
           organizationId: organizationId,
           name: 'release-bot',
@@ -4758,10 +4913,7 @@ void main() {
               verify(() => httpClient.send(captureAny())).captured.single
                   as http.BaseRequest;
           expect(request.method, equals('GET'));
-          expect(
-            request.url,
-            equals(v1('organizations/$organizationId/apps')),
-          );
+          expect(request.url, equals(v1('organizations/$organizationId/apps')));
         });
       });
     });
@@ -5237,9 +5389,9 @@ void main() {
           requests.map((r) => r.url),
           equals([
             v1('invitations').replace(queryParameters: {'per_page': '100'}),
-            v1('invitations').replace(
-              queryParameters: {'per_page': '100', 'cursor': 'next'},
-            ),
+            v1(
+              'invitations',
+            ).replace(queryParameters: {'per_page': '100', 'cursor': 'next'}),
           ]),
         );
       });

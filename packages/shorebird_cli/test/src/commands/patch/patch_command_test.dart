@@ -145,6 +145,7 @@ void main() {
     late BuildHistory buildHistory;
     late CodePushClient codePushClient;
     late CodePushClientWrapper codePushClientWrapper;
+    late Git git;
     late ShorebirdLogger logger;
     late Patcher patcher;
     late Progress progress;
@@ -167,6 +168,7 @@ void main() {
           cacheRef.overrideWith(() => cache),
           buildHistoryRef.overrideWith(() => buildHistory),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          gitRef.overrideWith(() => git),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdTracerRef.overrideWith(ShorebirdTracer.new),
@@ -245,6 +247,7 @@ void main() {
           request: any(named: 'request'),
         ),
       ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
+      git = MockGit();
       logger = MockShorebirdLogger();
       progress = MockProgress();
       patcher = MockPatcher();
@@ -279,6 +282,14 @@ void main() {
         () => argResults.wasParsed(CommonArguments.signCmd.name),
       ).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
+
+      // Not a git checkout unless a test says otherwise.
+      when(
+        () => git.revParse(
+          revision: any(named: 'revision'),
+          directory: any(named: 'directory'),
+        ),
+      ).thenThrow(const ProcessException('git', ['rev-parse']));
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
       when(aotTools.isLinkMetadataSupported).thenAnswer((_) async => true);
@@ -319,6 +330,9 @@ void main() {
           metadata: any(named: 'metadata'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
           rolloutSchedule: any(named: 'rolloutSchedule'),
+          linkKey: any(named: 'linkKey'),
+          gitSha: any(named: 'gitSha'),
+          gitDirty: any(named: 'gitDirty'),
         ),
       ).thenAnswer((_) async => const CreatePatchResponse(id: 3, number: 2));
       when(
@@ -584,10 +598,734 @@ void main() {
                 metadata: any(named: 'metadata'),
                 track: any(named: 'track'),
                 artifacts: any(named: 'artifacts'),
+                linkKey: any(named: 'linkKey'),
+                gitSha: any(named: 'gitSha'),
+                gitDirty: any(named: 'gitDirty'),
               ),
             );
           },
         );
+      });
+    });
+
+    group('linking', () {
+      const sha = 'abc1234def5678abc1234def5678abc1234def56';
+      final twoPlatformRelease = Release(
+        id: release.id,
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: flutterRevision,
+        flutterVersion: flutterVersion,
+        displayName: release.displayName,
+        platforms: const {
+          ReleasePlatform.android: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+          ),
+          ReleasePlatform.ios: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+          ),
+        },
+        createdAt: release.createdAt,
+        updatedAt: release.updatedAt,
+      );
+
+      late Patcher iosPatcher;
+
+      void stubUpload(Patcher p, CreatePatchResponse response) {
+        when(
+          () => p.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            metadata: any(named: 'metadata'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            linkKey: any(named: 'linkKey'),
+            gitSha: any(named: 'gitSha'),
+            gitDirty: any(named: 'gitDirty'),
+          ),
+        ).thenAnswer((_) async => response);
+      }
+
+      Patcher stubbedPatcher(ReleaseType type) {
+        final p = MockPatcher();
+        when(() => p.releaseType).thenReturn(type);
+        when(p.assertArgsAreValid).thenAnswer((_) async {});
+        when(p.assertPreconditions).thenAnswer((_) async {});
+        when(
+          () => p.prepareForRelease(
+            appId: any(named: 'appId'),
+            release: any(named: 'release'),
+          ),
+        ).thenAnswer((_) async {});
+        when(() => p.requiresReleaseVersionArg).thenReturn(false);
+        when(
+          () => p.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => File(''));
+        when(() => p.primaryReleaseArtifactArch).thenReturn('aab');
+        when(
+          () => p.createPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            releaseArtifact: any(named: 'releaseArtifact'),
+            supplementDirectory: any(named: 'supplementDirectory'),
+          ),
+        ).thenAnswer((_) async => patchArtifactBundles);
+        when(
+          () => p.updatedCreatePatchMetadata(any()),
+        ).thenAnswer((_) async => patchMetadata);
+        when(
+          () => p.assertUnpatchableDiffs(
+            releaseArtifact: any(named: 'releaseArtifact'),
+            releaseArchive: any(named: 'releaseArchive'),
+            patchArchive: any(named: 'patchArchive'),
+          ),
+        ).thenAnswer((_) async => diffStatus);
+        return p;
+      }
+
+      void stubCleanCheckout({String status = ''}) {
+        when(
+          () => git.revParse(
+            revision: 'HEAD',
+            directory: any(named: 'directory'),
+          ),
+        ).thenAnswer((_) async => sha);
+        when(
+          () => git.statusPorcelain(directory: any(named: 'directory')),
+        ).thenAnswer((_) async => status);
+      }
+
+      void patchBothPlatforms() {
+        when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+        command =
+            PatchCommand(
+                resolvePatcher: (type) =>
+                    type == ReleaseType.ios ? iosPatcher : patcher,
+              )
+              ..testArgResults = argResults
+              ..testRunner = usageRunner();
+      }
+
+      ReleasePatch publishedRow({
+        required ReleasePlatform platform,
+        required int number,
+        String? linkKey = sha,
+        String? channel = 'stable',
+        bool hasArtifacts = true,
+      }) => ReleasePatch(
+        id: number * 10,
+        number: number,
+        channel: channel,
+        artifacts: [
+          if (hasArtifacts)
+            PatchArtifact(
+              id: 1,
+              patchId: number * 10,
+              arch: arch,
+              platform: platform,
+              hash: '#',
+              size: 1,
+              createdAt: DateTime(2023),
+            ),
+        ],
+        isRolledBack: false,
+        platform: platform,
+        linkKey: linkKey,
+      );
+
+      void stubLinkedPatches(List<ReleasePatch> patches) {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            linkKey: any(named: 'linkKey'),
+          ),
+        ).thenAnswer((_) async => patches);
+      }
+
+      setUp(() {
+        iosPatcher = stubbedPatcher(ReleaseType.ios);
+        stubUpload(patcher, const CreatePatchResponse(id: 3, number: 2));
+        stubUpload(iosPatcher, const CreatePatchResponse(id: 4, number: 2));
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => twoPlatformRelease);
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+          ),
+        ).thenAnswer((_) async => aabArtifact);
+        stubLinkedPatches([]);
+      });
+
+      group('--patch-key', () {
+        for (final value in ['', '  ']) {
+          test('rejects "$value"', () async {
+            when(() => argResults['patch-key']).thenReturn(value);
+
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '--patch-key cannot be empty.',
+                ),
+              ),
+            );
+          });
+        }
+
+        test('rejects a key longer than the server accepts', () async {
+          when(() => argResults['patch-key']).thenReturn('k' * 256);
+
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                '--patch-key must be at most 255 characters (got 256).',
+              ),
+            ),
+          );
+        });
+
+        test('rejects --patch-key with --no-link', () async {
+          when(() => argResults['patch-key']).thenReturn('key');
+          when(() => argResults['no-link']).thenReturn(true);
+
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                'Pass --patch-key or --no-link, not both.',
+              ),
+            ),
+          );
+        });
+
+        test('sends the key given', () async {
+          when(() => argResults['patch-key']).thenReturn('my-key');
+
+          await runWithOverrides(command.run);
+
+          verify(
+            () => patcher.uploadPatchArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              track: any(named: 'track'),
+              artifacts: any(named: 'artifacts'),
+              metadata: any(named: 'metadata'),
+              linkKey: 'my-key',
+            ),
+          ).called(1);
+        });
+      });
+
+      test("sends HEAD's SHA as the key on a clean tree", () async {
+        stubCleanCheckout();
+
+        await runWithOverrides(command.run);
+
+        verify(
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            metadata: any(named: 'metadata'),
+            linkKey: sha,
+            gitSha: sha,
+            gitDirty: false,
+          ),
+        ).called(1);
+      });
+
+      test('sends the commit but no key with --no-link', () async {
+        stubCleanCheckout();
+        when(() => argResults['no-link']).thenReturn(true);
+
+        await runWithOverrides(command.run);
+
+        verify(
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            metadata: any(named: 'metadata'),
+            gitSha: sha,
+            gitDirty: false,
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            linkKey: any(named: 'linkKey'),
+          ),
+        );
+      });
+
+      group('says what linking did', () {
+        Future<void> publishWith(PatchLink link) async {
+          stubCleanCheckout();
+          stubUpload(
+            patcher,
+            CreatePatchResponse(id: 3, number: 7, link: link),
+          );
+          await runWithOverrides(command.run);
+        }
+
+        test('when linked', () async {
+          await publishWith(
+            const PatchLink(
+              result: 'linked',
+              platforms: [ReleasePlatform.ios],
+            ),
+          );
+          verify(
+            () =>
+                logger.info('Linked Android to patch 7 (iOS, commit abc1234).'),
+          ).called(1);
+        });
+
+        test('when linked by --patch-key', () async {
+          when(() => argResults['patch-key']).thenReturn('my-key');
+          await publishWith(
+            const PatchLink(
+              result: 'linked',
+              platforms: [ReleasePlatform.ios],
+            ),
+          );
+          verify(
+            () => logger.info('Linked Android to patch 7 (iOS).'),
+          ).called(1);
+        });
+
+        test('when linked without other platforms named', () async {
+          when(() => argResults['patch-key']).thenReturn('my-key');
+          await publishWith(const PatchLink(result: 'linked'));
+          verify(() => logger.info('Linked Android to patch 7.')).called(1);
+        });
+
+        test('when an unfinished patch was resumed', () async {
+          await publishWith(const PatchLink(result: 'reused'));
+          verify(
+            () => logger.info('Resumed the unfinished patch 7 for Android.'),
+          ).called(1);
+        });
+
+        test('when the platform has a newer patch', () async {
+          await publishWith(
+            const PatchLink(
+              result: 'not_linked',
+              reason: 'platform_has_newer_patch',
+              linkNumber: 5,
+              platformPatchNumber: 6,
+            ),
+          );
+          verify(
+            () => logger.info(
+              'Not linked: Android already has patch 6 on release '
+              '$releaseVersion, so it cannot join patch 5. Android is '
+              'patch 7.',
+            ),
+          ).called(1);
+        });
+
+        test('when the number is rolled back', () async {
+          await publishWith(
+            const PatchLink(
+              result: 'not_linked',
+              reason: 'number_rolled_back',
+              linkNumber: 5,
+            ),
+          );
+          verify(
+            () => logger.info(
+              'Not linked: patch 5 is rolled back on a platform, so Android '
+              'cannot join it. Android is patch 7.',
+            ),
+          ).called(1);
+        });
+
+        test('when the reason is one it does not know', () async {
+          await publishWith(
+            const PatchLink(result: 'not_linked', reason: 'something_new'),
+          );
+          verify(
+            () => logger.info(
+              'Not linked: Android could not join the patch for other '
+              'platforms. Android is patch 7.',
+            ),
+          ).called(1);
+        });
+
+        test('nothing when there was nothing to link to', () async {
+          await publishWith(const PatchLink(result: 'none'));
+          verifyNever(
+            () => logger.info(any(that: contains('inked'))),
+          );
+        });
+      });
+
+      group('when patching more than one platform', () {
+        setUp(patchBothPlatforms);
+
+        test('sends one key with every platform', () async {
+          stubCleanCheckout();
+
+          await runWithOverrides(command.run);
+
+          for (final p in [patcher, iosPatcher]) {
+            verify(
+              () => p.uploadPatchArtifacts(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                track: any(named: 'track'),
+                artifacts: any(named: 'artifacts'),
+                metadata: any(named: 'metadata'),
+                linkKey: sha,
+                gitSha: sha,
+                gitDirty: false,
+              ),
+            ).called(1);
+          }
+          verify(
+            () => git.statusPorcelain(directory: any(named: 'directory')),
+          ).called(1);
+        });
+
+        test('sends one random key outside a git checkout', () async {
+          final keys = <String?>[];
+          for (final p in [patcher, iosPatcher]) {
+            when(
+              () => p.uploadPatchArtifacts(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                track: any(named: 'track'),
+                artifacts: any(named: 'artifacts'),
+                metadata: any(named: 'metadata'),
+                rolloutPercentage: any(named: 'rolloutPercentage'),
+                linkKey: any(named: 'linkKey'),
+                gitSha: any(named: 'gitSha'),
+                gitDirty: any(named: 'gitDirty'),
+              ),
+            ).thenAnswer((invocation) async {
+              keys.add(invocation.namedArguments[#linkKey] as String?);
+              return const CreatePatchResponse(id: 3, number: 2);
+            });
+          }
+
+          await runWithOverrides(command.run);
+
+          expect(keys, hasLength(2));
+          expect(keys.first, isNotNull);
+          expect(keys.last, equals(keys.first));
+        });
+
+        test('says once which platforms got which number', () async {
+          await runWithOverrides(command.run);
+
+          verify(
+            () => logger.success('\n✅ Published patch 2 (Android, iOS)!'),
+          ).called(1);
+        });
+
+        test('names each number when platforms got different ones', () async {
+          stubUpload(iosPatcher, const CreatePatchResponse(id: 4, number: 3));
+
+          await runWithOverrides(command.run);
+
+          verify(
+            () => logger.success(
+              '\n✅ Published patch 2 (Android) and patch 3 (iOS)!',
+            ),
+          ).called(1);
+        });
+
+        test('says platforms on different releases do not link', () async {
+          stubCleanCheckout();
+          final olderRelease = Release(
+            id: 99,
+            appId: appId,
+            version: '1.0.0+1',
+            flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
+            displayName: '1.0.0+1',
+            platforms: twoPlatformRelease.platforms,
+            createdAt: release.createdAt,
+            updatedAt: release.updatedAt,
+          );
+          var calls = 0;
+          when(
+            () => codePushClientWrapper.getRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer(
+            (_) async => calls++ == 0 ? twoPlatformRelease : olderRelease,
+          );
+          stubUpload(iosPatcher, const CreatePatchResponse(id: 4, number: 1));
+
+          await runWithOverrides(command.run);
+
+          verify(
+            () => logger.success(
+              '\n✅ Published patch 2 on release $releaseVersion (Android) and '
+              'patch 1 on release 1.0.0+1 (iOS)!',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              'Not linked across releases: patches share a number only '
+              'within one release, and these platforms patched different '
+              'ones (Android $releaseVersion, iOS 1.0.0+1).',
+            ),
+          ).called(1);
+        });
+
+        group('when a platform fails after another was published', () {
+          setUp(() {
+            when(
+              () => iosPatcher.uploadPatchArtifacts(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                track: any(named: 'track'),
+                artifacts: any(named: 'artifacts'),
+                metadata: any(named: 'metadata'),
+                rolloutPercentage: any(named: 'rolloutPercentage'),
+                linkKey: any(named: 'linkKey'),
+                gitSha: any(named: 'gitSha'),
+                gitDirty: any(named: 'gitDirty'),
+              ),
+            ).thenThrow(ProcessExit(ExitCode.software.code));
+          });
+
+          test('prints the arguments that finish a random key', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+
+            final message =
+                verify(
+                      () => logger.info(
+                        captureAny(that: startsWith('Android published.')),
+                      ),
+                    ).captured.single
+                    as String;
+            expect(
+              message,
+              matches(
+                RegExp(
+                  '--platforms=ios --patch-key=[0-9a-f-]{36} '
+                  '--release-version=${RegExp.escape(releaseVersion)} '
+                  '--track=stable',
+                ),
+              ),
+            );
+          });
+
+          test('prints nothing to resume a commit key', () async {
+            stubCleanCheckout();
+
+            await expectLater(
+              runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verifyNever(
+              () => logger.info(any(that: startsWith('Android published.'))),
+            );
+          });
+
+          test('a rerun on the same commit skips Android', () async {
+            stubCleanCheckout();
+            await expectLater(
+              runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).called(1);
+
+            clearInteractions(codePushClientWrapper);
+            clearInteractions(logger);
+            // The server now has Android's patch under the commit.
+            stubLinkedPatches([
+              publishedRow(platform: ReleasePlatform.android, number: 2),
+            ]);
+            stubUpload(
+              iosPatcher,
+              const CreatePatchResponse(
+                id: 4,
+                number: 2,
+                link: PatchLink(
+                  result: 'linked',
+                  platforms: [ReleasePlatform.android],
+                ),
+              ),
+            );
+            patchBothPlatforms();
+
+            await runWithOverrides(command.run);
+
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+            verify(
+              () => codePushClientWrapper.getReleasePatches(
+                appId: appId,
+                releaseId: twoPlatformRelease.id,
+                linkKey: sha,
+              ),
+            ).called(1);
+            verify(
+              () => logger.info('Android already published as patch 2.'),
+            ).called(1);
+            verify(
+              () => logger.info(
+                'Linked iOS to patch 2 (Android, commit abc1234).',
+              ),
+            ).called(1);
+            verify(
+              () => logger.success('\n✅ Published patch 2 (Android, iOS)!'),
+            ).called(1);
+          });
+        });
+      });
+
+      group('skipping a platform published under the key', () {
+        setUp(stubCleanCheckout);
+
+        Future<void> expectBuilt({required bool built}) async {
+          await runWithOverrides(command.run);
+          if (built) {
+            verify(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ).called(1);
+          } else {
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          }
+        }
+
+        test('skips when its newest patch is on the track', () async {
+          stubLinkedPatches([
+            publishedRow(platform: ReleasePlatform.android, number: 2),
+          ]);
+          await expectBuilt(built: false);
+        });
+
+        test('reports the skipped platform in --json', () async {
+          stubLinkedPatches([
+            publishedRow(platform: ReleasePlatform.android, number: 2),
+          ]);
+          final (:exitCode, :json) = await captureJson(
+            () => runScoped(
+              () => runWithOverrides(command.run),
+              values: {isJsonModeRef.overrideWith(() => true)},
+            ),
+          );
+          expect(exitCode, equals(ExitCode.success.code));
+          final data = json['data'] as Map<String, dynamic>;
+          expect(data['link_key'], equals(sha));
+          expect(
+            (data['patches'] as List).single,
+            containsPair('already_published', true),
+          );
+        });
+
+        test('builds when the patch is on another track', () async {
+          stubLinkedPatches([
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              channel: 'staging',
+            ),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test('builds when the patch has no artifacts', () async {
+          stubLinkedPatches([
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              hasArtifacts: false,
+            ),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test('builds when a newer patch under the key is unfinished', () async {
+          stubLinkedPatches([
+            publishedRow(platform: ReleasePlatform.android, number: 2),
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 3,
+              channel: null,
+            ),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test("builds when only another platform's patch has the key", () async {
+          stubLinkedPatches([
+            publishedRow(platform: ReleasePlatform.ios, number: 2),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test('builds when the server ignored the key filter', () async {
+          stubLinkedPatches([
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              linkKey: null,
+            ),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test('does not look on a dirty tree', () async {
+          stubCleanCheckout(status: ' M lib/main.dart\n');
+          when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+          stubLinkedPatches([
+            publishedRow(platform: ReleasePlatform.android, number: 2),
+          ]);
+          await expectBuilt(built: true);
+          verifyNever(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              linkKey: any(named: 'linkKey'),
+            ),
+          );
+        });
       });
     });
 
@@ -2146,6 +2884,9 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             artifacts: any(named: 'artifacts'),
             metadata: any(named: 'metadata'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
+            linkKey: any(named: 'linkKey'),
+            gitSha: any(named: 'gitSha'),
+            gitDirty: any(named: 'gitDirty'),
           ),
         ).thenThrow(ProcessExit(ExitCode.software.code));
 
@@ -2166,6 +2907,9 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             artifacts: any(named: 'artifacts'),
             metadata: any(named: 'metadata'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
+            linkKey: any(named: 'linkKey'),
+            gitSha: any(named: 'gitSha'),
+            gitDirty: any(named: 'gitDirty'),
           ),
         ).thenThrow(
           ApiErrorExit(
@@ -3547,6 +4291,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             'app_id': appId,
             'track': 'stable',
             'rollout_percentage': 100,
+            'link_key': null,
             'patches': [
               {
                 'platform': 'android',
@@ -3555,6 +4300,8 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 'patch_id': 3,
                 'patch_number': 2,
                 'link_percentage': 97.5,
+                'already_published': false,
+                'link_result': null,
               },
             ],
           }),
@@ -3705,6 +4452,8 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           rolloutStepsArgName,
           pauseWeekendsArgName,
           timezoneArgName,
+          PatchCommand.patchKeyArgName,
+          PatchCommand.noLinkArgName,
         ]) {
           when(() => argResults.wasParsed(arg)).thenReturn(false);
         }
@@ -3764,6 +4513,9 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             track: any(named: 'track'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
             rolloutSchedule: any(named: 'rolloutSchedule'),
+            linkKey: any(named: 'linkKey'),
+            gitSha: any(named: 'gitSha'),
+            gitDirty: any(named: 'gitDirty'),
           ),
         );
         verifyNever(
@@ -3809,6 +4561,8 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               'patch_id': 7,
               'patch_number': 3,
               'link_percentage': null,
+              'already_published': false,
+              'link_result': null,
             },
           ]),
         );
@@ -3848,6 +4602,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         rolloutStepsArgName,
         pauseWeekendsArgName,
         timezoneArgName,
+        PatchCommand.patchKeyArgName,
       ]) {
         test('rejects --$arg', () async {
           when(() => argResults.wasParsed(arg)).thenReturn(true);
@@ -3857,7 +4612,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               isA<UsageException>().having(
                 (e) => e.message,
                 'message',
-                'Patch 3 keeps its own track and rollout. Remove --$arg.',
+                'Patch 3 keeps its own track, rollout and link. Remove --$arg.',
               ),
             ),
           );

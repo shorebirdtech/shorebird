@@ -1042,7 +1042,7 @@ base_url: https://example.com''');
 
         group('when running on CI', () {
           setUp(() {
-            platform = platform.copyWith(environment: {'CI': ''});
+            platform = platform.copyWith(environment: {'CI': 'true'});
           });
 
           test('returns false', () {
@@ -1305,10 +1305,19 @@ base_url: $devHostedUrl''');
         expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
       });
 
-      test('returns true if CI variable is set', () {
-        platform = platform.copyWith(environment: {'CI': ''});
-        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
-      });
+      for (final value in ['true', '1']) {
+        test('returns true if CI variable is "$value"', () {
+          platform = platform.copyWith(environment: {'CI': value});
+          expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+        });
+      }
+
+      for (final value in ['', 'false', 'FALSE']) {
+        test('returns false if CI variable is "$value"', () {
+          platform = platform.copyWith(environment: {'CI': value});
+          expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isFalse);
+        });
+      }
 
       test('returns true if APPVEYOR variable is set', () {
         platform = platform.copyWith(environment: {'APPVEYOR': ''});
