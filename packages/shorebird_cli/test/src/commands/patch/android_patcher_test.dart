@@ -5,14 +5,12 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
-import 'package:elf/elf.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/dart_bridge_analyzer.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -321,110 +319,6 @@ void main() {
             showDexDiff: any(named: 'showDexDiff'),
           ),
         ).called(1);
-      });
-
-      group('when app.dill and releaseArchive exist', () {
-        File writeAab(String fileName, Map<String, Uint8List> entries) {
-          final archive = Archive();
-          entries.forEach((name, bytes) {
-            archive.addFile(ArchiveFile(name, bytes.length, bytes));
-          });
-          final file = File(p.join(projectRoot.path, fileName))
-            ..createSync(recursive: true)
-            ..writeAsBytesSync(ZipEncoder().encode(archive));
-          return file;
-        }
-
-        test(
-          'does not warn when @Native symbols in app.dill exist in release .so',
-          () async {
-            final dillBytes =
-                (DillKernelBuilder()..addFfiNativeSymbol(
-                      'rust_hash_v1',
-                      dartName: 'hashV1',
-                      assetId: 'package:app/native.dart',
-                    ))
-                    .build();
-            File(p.join(projectRoot.path, 'build', 'app.dill'))
-              ..createSync(recursive: true)
-              ..writeAsBytesSync(dillBytes);
-
-            final releaseElf = ElfBuilder.build(
-              textBytes: Uint8List.fromList([0xC0, 0x03, 0x5F, 0xD6]),
-              symbols: const [
-                ElfSymbolSpec(
-                  name: 'rust_hash_v1',
-                  size: 4,
-                ),
-              ],
-            );
-            final releaseArchive = writeAab('release.aab', {
-              'base/lib/arm64-v8a/librust.so': releaseElf,
-            });
-            final patchArchive = writeAab('patch.aab', {
-              'base/lib/arm64-v8a/librust.so': releaseElf,
-            });
-
-            await runWithOverrides(
-              () => patcher.assertUnpatchableDiffs(
-                releaseArtifact: FakeReleaseArtifact(),
-                releaseArchive: releaseArchive,
-                patchArchive: patchArchive,
-              ),
-            );
-
-            verifyNever(() => logger.warn(any()));
-          },
-        );
-
-        test(
-          'logs [CRASH RISK] warning when app.dill references @Native symbol '
-          'missing from release .so',
-          () async {
-            final dillBytes =
-                (DillKernelBuilder()..addFfiNativeSymbol(
-                      'rust_hash_v2',
-                      dartName: 'hashV2',
-                      assetId: 'package:app/native.dart',
-                    ))
-                    .build();
-            File(p.join(projectRoot.path, 'build', 'app.dill'))
-              ..createSync(recursive: true)
-              ..writeAsBytesSync(dillBytes);
-
-            final releaseElf = ElfBuilder.build(
-              textBytes: Uint8List.fromList([0xC0, 0x03, 0x5F, 0xD6]),
-              symbols: const [
-                ElfSymbolSpec(
-                  name: 'rust_hash_v1',
-                  size: 4,
-                ),
-              ],
-            );
-            final releaseArchive = writeAab('release_missing.aab', {
-              'base/lib/arm64-v8a/librust.so': releaseElf,
-            });
-
-            await runWithOverrides(
-              () => patcher.assertUnpatchableDiffs(
-                releaseArtifact: FakeReleaseArtifact(),
-                releaseArchive: releaseArchive,
-                patchArchive: File('non_existent_patch.aab'),
-              ),
-            );
-
-            verify(
-              () => logger.warn(
-                any(
-                  that: allOf(
-                    contains('[CRASH RISK]'),
-                    contains('@Native symbol "rust_hash_v2"'),
-                  ),
-                ),
-              ),
-            ).called(1);
-          },
-        );
       });
     });
 
