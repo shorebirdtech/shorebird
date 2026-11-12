@@ -684,6 +684,26 @@ void main() {
               ),
             ).called(1);
           });
+
+          test('gives the patcher the release archive before building, '
+              'to pin Maven versions to it', () async {
+            final releaseAab = File('release.aab');
+            when(
+              () => artifactManager.downloadReleaseArtifact(
+                any(),
+                message: any(named: 'message'),
+              ),
+            ).thenAnswer((_) async => releaseAab);
+
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyInOrder([
+              () => patcher.releaseArchive = releaseAab,
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            ]);
+          });
         });
 
         group('when the release Flutter version is supported', () {
@@ -2045,7 +2065,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         );
       });
 
-      test('starts each platform with none of the last one\'s '
+      test("starts each platform with none of the last one's "
           'state', () async {
         when(() => argResults['platforms']).thenReturn(['android', 'ios']);
         command = PatchCommand(resolvePatcher: (_) => patcher)
@@ -3063,7 +3083,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         });
 
         test(
-          'builds an obfuscated release\'s patch with its obfuscation map',
+          "builds an obfuscated release's patch with its obfuscation map",
           () async {
             when(
               () => codePushClientWrapper.getRelease(
