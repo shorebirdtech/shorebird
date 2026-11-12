@@ -90,8 +90,11 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
       }
       if (bytes == null) return const [];
       dependencies = parseBundleDependencies(bytes);
-    } on Exception catch (error) {
-      logger.detail('Not pinning Maven versions: $error');
+      // A damaged archive can throw an Error (a RangeError from
+      // package:archive) as well as an Exception. Either way, build unpinned.
+      // ignore: avoid_catches_without_on_clauses
+    } catch (error) {
+      logger.detail('Not pinning Maven versions to the release: $error');
       return const [];
     }
     final coordinates = <String>{};
@@ -171,6 +174,12 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
     }
 
     final pinnedDependencies = releasePinnedDependencies(releaseArchive);
+    if (pinnedDependencies.isNotEmpty) {
+      logger.detail(
+        "Pinning ${pinnedDependencies.length} Maven libraries to the release's "
+        'versions (on Flutter versions that support it).',
+      );
+    }
     final pinsDir = pinnedDependencies.isEmpty
         ? null
         : Directory.systemTemp.createTempSync('shorebird_pins_');
