@@ -1,6 +1,15 @@
 # cspell:words cmdline sdkmanager LASTEXITCODE
 
 name: e2e
+# The inputs a run was dispatched with, which GitHub's API doesn't otherwise
+# return: the Flutter release's CLI e2e preflight (_build_engine
+# release_flutter) finds a green run of its leg on the CLI commit by this
+# name, e.g. "e2e cli_ref=<sha> patch_matrix", rather than dispatching
+# another. Inputs a run ignores (patch_matrix without cli_ref,
+# flutter_version without cli_version) are left out, as in the concurrency
+# group. A scheduled run is plain "e2e".
+run-name: >-
+  e2e${{ inputs.cli_ref && format(' cli_ref={0}', inputs.cli_ref) || '' }}${{ inputs.cli_ref && inputs.patch_matrix && ' patch_matrix' || '' }}${{ inputs.cli_version && format(' cli_version={0}', inputs.cli_version) || '' }}${{ inputs.cli_version && inputs.flutter_version && format(' flutter_version={0}', inputs.flutter_version) || '' }}
 
 concurrency:
   # A cli_ref dispatch tests one CLI ref (with the patch matrix only when
