@@ -26,6 +26,8 @@ on:
       cli_ref:
         description: >-
           Ref the cli job checks out, for verifying a fix before it lands.
+          A commit must be its full 40-character SHA: actions/checkout
+          fetches a shorter one as a branch name and fails.
           Defaults to each matrix branch. Setting it skips the patch matrix
           (unless patch_matrix is set)
           and pins the cli job to the dev API, so such a dispatch never
