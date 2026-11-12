@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -16,15 +17,60 @@ const String allowNativeDiffsHint =
     "If you don't understand these native changes, don't ship this patch. "
     'Pass --allow-native-diffs to override this warning for this patch.';
 
-/// Advice shown after listing dependencies whose versions changed.
-const String _pinDependenciesHint =
-    'A changed dependency version is a common cause of DEX changes. '
-    'Pin dependency versions (or use Gradle dependency locking) so patch '
-    'builds resolve the same versions as the release.\n'
-    "Patches only contain Dart code, so devices keep running the release's "
-    'versions of these libraries. If these version changes explain all of '
-    "the differences above and your Dart code doesn't rely on them, it is "
-    'safe to pass --allow-native-diffs for this patch.';
+/// Advice shown after listing dependencies whose versions changed: Gradle's
+/// standard fixes, with a constraint ready to paste for each library that
+/// resolved to a different version than the release's.
+String _pinDependenciesHint(List<DependencyVersionChange> changes) {
+  final pins = <String>{
+    for (final change in changes)
+      // A library added or removed since the release can't be pinned back.
+      if ((change.oldVersion, change.newVersion) case (final version?, _?))
+        // A constraint applies to a module, whatever its classifier.
+        _strictPin(change.name.split(':').take(2).join(':'), version),
+  };
+  const cause =
+      "A dependency that resolves to a different version than the release's "
+      "is a common cause of DEX changes you didn't make, often because a "
+      'plugin asks for a version range.';
+  const pinAdvice =
+      "To build this patch with the release's versions, add this to your app "
+      "module's build file (usually android/app/build.gradle or "
+      'build.gradle.kts):';
+  const removeBeforeRelease =
+      'Remove these lines before your next release: a strict version wins '
+      'even over a newer version a plugin requires, without any error.';
+  const lockingAdvice =
+      "To keep future patches on their release's versions, use Gradle "
+      'dependency locking '
+      '(https://docs.gradle.org/current/userguide/dependency_locking.html) '
+      'and commit the lockfile with each release.';
+  const generalAdvice =
+      'Pin dependency versions (or use Gradle dependency locking) so patch '
+      'builds resolve the same versions as the release.';
+  const safeToPass =
+      "Patches only contain Dart code, so devices keep running the release's "
+      'versions of these libraries. If these version changes explain all of '
+      "the differences above and your Dart code doesn't rely on them, it is "
+      'safe to pass --allow-native-diffs for this patch.';
+  return [
+    cause,
+    if (pins.isNotEmpty) ...[
+      pinAdvice,
+      '  dependencies {',
+      '    constraints {',
+      ...pins,
+      '    }',
+      '  }',
+      removeBeforeRelease,
+      lockingAdvice,
+    ] else
+      generalAdvice,
+    safeToPass,
+  ].join('\n');
+}
+
+String _strictPin(String module, String version) =>
+    '      implementation("$module") { version { strictly("$version") } }';
 
 /// Advice shown after listing embedded Apple frameworks whose versions changed.
 const String _pinFrameworksHint =
@@ -218,7 +264,7 @@ class PatchDiffChecker {
               '\nDependency versions differ from the release:',
               for (final change in contentDiffs.dependencyVersionChanges)
                 '  ${change.describe()}',
-              _pinDependenciesHint,
+              _pinDependenciesHint(contentDiffs.dependencyVersionChanges),
             ].join('\n'),
           ),
         );
