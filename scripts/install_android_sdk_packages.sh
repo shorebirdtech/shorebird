@@ -6,11 +6,11 @@
 #
 # An install normally takes 20-30 seconds. Its download from dl.google.com
 # has failed e2e jobs that tested nothing: a corrupt NDK zip ("Error reading
-# Zip content from a SeekableByteChannel", runs 41553186726 and 43237646183)
-# and one that hung until the step timed out (run 42728409530). Each attempt
-# gets a deadline, and a failed attempt's partial download is deleted before
-# the next one, since sdkmanager can resume an interrupted download from it
-# and read the same bad bytes again.
+# Zip content from a SeekableByteChannel", runs 41553186726 and 43237646183),
+# and sdkmanager has hung at "Loading local repository" until the step timed
+# out (run 42728409530). Each attempt gets a deadline, and a failed attempt's
+# partial download is deleted before the next one, since sdkmanager can resume
+# an interrupted download from it and read the same bad bytes again.
 #
 # Usage: ./install_android_sdk_packages.sh <package> [package...]
 # e.g. ./install_android_sdk_packages.sh "ndk;28.2.13676358" "cmake;3.22.1"
@@ -26,8 +26,8 @@ fi
 
 sdkmanager="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
 attempts=3
-# About six times a normal install.
-deadline=3m
+# The slowest of 235 successful installs took 207 seconds.
+deadline=5m
 
 for attempt in $(seq 1 "$attempts"); do
     status=0
@@ -36,7 +36,8 @@ for attempt in $(seq 1 "$attempts"); do
     if [[ $status -eq 0 ]]; then
         exit 0
     fi
-    if [[ $status -eq 124 ]]; then
+    # 124 from the deadline, 137 if it then had to be killed.
+    if [[ $status -eq 124 || $status -eq 137 ]]; then
         echo "⚠️ sdkmanager timed out after $deadline (attempt $attempt of $attempts)."
     else
         echo "⚠️ sdkmanager exited $status (attempt $attempt of $attempts)."

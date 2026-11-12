@@ -167,7 +167,7 @@ jobs:
       # `shorebird release` mid-build. Unquoted so the list splits into one
       # argument per package.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 12
+        timeout-minutes: 17
         env:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
         run: |
@@ -301,7 +301,7 @@ jobs:
       # line's, the only one the release gate releases. Move them with that
       # entry when the line moves.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 12
+        timeout-minutes: 17
         run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
@@ -497,7 +497,7 @@ jobs:
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 12
+        timeout-minutes: 17
         run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
@@ -659,7 +659,7 @@ jobs:
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 12
+        timeout-minutes: 17
         run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
