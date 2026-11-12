@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
@@ -78,6 +79,32 @@ class BuildRun {
 
   /// Sets [reason] unless one is already set: the first stop is the cause.
   void failWith(BuildRunFailureReason reason) => _reason ??= reason;
+
+  /// Whether the person running the command asked to share this run's debug
+  /// bundle (`shorebird patch --share-debug-info`), whatever the
+  /// organization's setting.
+  bool shareDebugInfo = false;
+
+  File? _debugBundle;
+  DateTime? _debugBundleModifiedAtStart;
+
+  /// Offers [file], where the run writes its debug bundle, to the server with
+  /// the record, if the run writes it. A file a previous run left there and
+  /// this run didn't rewrite is never offered.
+  void watchDebugBundle(File file) {
+    _debugBundle = file;
+    _debugBundleModifiedAtStart = file.existsSync()
+        ? file.lastModifiedSync()
+        : null;
+  }
+
+  /// The debug bundle this run wrote, or null if it wrote none.
+  File? get writtenDebugBundle {
+    final file = _debugBundle;
+    if (file == null || !file.existsSync()) return null;
+    if (file.lastModifiedSync() == _debugBundleModifiedAtStart) return null;
+    return file;
+  }
 }
 
 /// Runs [body], blaming a failure on [reason] in [run], if there is one,
@@ -106,6 +133,11 @@ Future<T> blameFailureOn<T>(
 /// succeeded or why it failed, how long it took, and the metadata and build
 /// flag hashes the command sends with a release or patch. Never logs, error
 /// messages, paths or dart-define values.
+///
+/// A patch run that wrote a debug bundle (`build/patch-debug.zip`) says so,
+/// with its size. When the server answers with an upload for it (the
+/// organization shares debug info, or the run passed `--share-debug-info`),
+/// the bundle is uploaded to Shorebird.
 ///
 /// Sending is best effort: a failed send never changes the run's result.
 /// Crashes of the CLI and Ctrl-C aren't recorded.
@@ -225,6 +257,8 @@ class BuildHistory {
     final appId = run.appId;
     if (appId == null) return;
     final duration = clock.now().difference(run.startedAt);
+    final debugBundle = run.writtenDebugBundle;
+    final CreateBuildRunResponse response;
     try {
       final request = CreateBuildRunRequest(
         runId: run.runId,
@@ -239,15 +273,52 @@ class BuildHistory {
         dryRun: run.dryRun,
         metadata: run.metadata ?? await _tryMetadata(metadata),
         buildFlags: run.buildFlags,
+        artifacts: debugBundle == null
+            ? null
+            : [
+                CreateRunArtifact(
+                  kind: RunArtifactKind.debugBundle,
+                  sizeBytes: debugBundle.lengthSync(),
+                ),
+              ],
+        shareDebugInfo: run.shareDebugInfo ? true : null,
       );
-      await codePushClientWrapper.codePushClient
+      response = await codePushClientWrapper.codePushClient
           .createBuildRun(appId: appId, request: request)
           .timeout(sendTimeout);
     } on Object catch (error) {
       // Build history is a record for the customer, not part of the run: a
       // run that worked must not fail because it couldn't be recorded.
       logger.detail('Could not record this run in build history: $error');
+      return;
     }
+    for (final upload in response.artifactUploads ?? <RunArtifactUpload>[]) {
+      if (upload.kind != RunArtifactKind.debugBundle || debugBundle == null) {
+        continue;
+      }
+      await _shareDebugBundle(upload, debugBundle);
+    }
+  }
+
+  /// Uploads [file] to [upload]. Like the record, sharing never changes the
+  /// run's result: a failed upload is reported and the run goes on.
+  Future<void> _shareDebugBundle(RunArtifactUpload upload, File file) async {
+    try {
+      await codePushClientWrapper.codePushClient.uploadRunArtifact(
+        upload: upload,
+        path: file.path,
+      );
+    } on Object catch (error) {
+      logger
+        ..warn('Could not share debugging information with Shorebird.')
+        ..detail('Debug bundle upload failed: $error');
+      return;
+    }
+    final why = switch (upload.sharedBy) {
+      RunArtifactSharedBy.setting => 'org setting',
+      RunArtifactSharedBy.flag => '--share-debug-info',
+    };
+    logger.info('Shared debugging information with Shorebird ($why)');
   }
 
   /// [metadata], with the build trace summary written first if the run

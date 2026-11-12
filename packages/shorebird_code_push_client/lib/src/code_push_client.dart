@@ -626,7 +626,7 @@ class CodePushClient {
 
   /// Records a `shorebird release` or `shorebird patch` run of the app with
   /// the provided [appId] in its build history.
-  Future<void> createBuildRun({
+  Future<CreateBuildRunResponse> createBuildRun({
     required String appId,
     required CreateBuildRunRequest request,
   }) async {
@@ -638,7 +638,18 @@ class CodePushClient {
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
+
+    return CreateBuildRunResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
   }
+
+  /// Uploads the file at [path] to [upload], the session the server opened
+  /// for one of a run's artifacts in [CreateBuildRunResponse.artifactUploads].
+  Future<void> uploadRunArtifact({
+    required RunArtifactUpload upload,
+    required String path,
+  }) => _resumableUpload(sessionUri: upload.uploadUrl, artifactPath: path);
 
   /// Create a new release for the app with the provided [appId].
   Future<Release> createRelease({
