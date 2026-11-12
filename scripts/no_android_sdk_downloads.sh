@@ -27,7 +27,17 @@ list_packages() {
 
 before=$(list_packages)
 status=0
-"$@" || status=$?
+# In the background, so a cancelled job's SIGTERM or SIGINT, which the runner
+# sends only to this shell, reaches the command too and it can clean up (the
+# e2e scripts delete the app they made on the server).
+"$@" &
+child=$!
+trap 'kill -TERM "$child" 2>/dev/null' TERM INT
+# A trapped signal ends `wait` early; wait again for the command to finish.
+wait "$child" || status=$?
+while kill -0 "$child" 2>/dev/null; do
+    wait "$child" || status=$?
+done
 added=$(comm -13 <(echo "$before") <(list_packages))
 
 if [[ -n "$added" ]]; then
