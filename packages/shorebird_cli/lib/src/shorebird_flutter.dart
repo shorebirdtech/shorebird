@@ -791,15 +791,29 @@ class ShorebirdFlutter {
     }
   }
 
-  /// Get the list of Flutter versions for the given [revision].
+  /// Get the list of Flutter versions for the given [revision], oldest
+  /// first.
+  ///
+  /// Only full releases (`X.Y.Z`) are listed. Branches with a suffix, such as
+  /// side versions (`3.47.9-sb.1`), release candidates (`3.38.10-rc`) or
+  /// upstream pre-releases, stay usable by name with `--flutter-version` but
+  /// aren't offered here. Versions are sorted by version number, not by name,
+  /// so `3.47.10` comes after `3.47.9`.
   Future<List<String>> getVersions({String? revision}) async {
     final result = await git.forEachRef(
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
       directory: _workingDirectory(revision: revision),
     );
-    return LineSplitter.split(
-      result,
-    ).map((e) => e.replaceFirst('origin/flutter_release/', '')).toList();
+    final versions = <Version>[];
+    for (final line in LineSplitter.split(result)) {
+      final name = line.replaceFirst('origin/flutter_release/', '');
+      if (!_fullReleasePattern.hasMatch(name)) continue;
+      versions.add(Version.parse(name));
+    }
+    versions.sort();
+    return versions.map((v) => v.toString()).toList();
   }
+
+  static final _fullReleasePattern = RegExp(r'^\d+\.\d+\.\d+$');
 }
