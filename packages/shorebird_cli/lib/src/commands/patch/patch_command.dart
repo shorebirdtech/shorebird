@@ -361,9 +361,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       await _assertCanPatch(patcher);
     }
 
+    final releases = await _resolveReleasesBeforeBuilding(patchers);
     final published = <PublishedPatch>[];
     for (final patcher in patchers) {
-      published.add(await createPatch(patcher));
+      published.add(
+        await createPatch(patcher, resolvedRelease: releases[patcher]),
+      );
     }
 
     if (isJsonMode) {
@@ -465,14 +468,19 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   /// Returns what was published. A dry run does not return: it exits the
   /// process with success once the patch has been checked.
   @visibleForTesting
-  Future<PublishedPatch> createPatch(Patcher patcher) async {
+  Future<PublishedPatch> createPatch(
+    Patcher patcher, {
+    Release? resolvedRelease,
+  }) async {
     await _assertCanPatch(patcher);
 
     await cache.updateAll();
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    final resolved = await _resolveRelease(patcher);
+    final resolved = resolvedRelease != null
+        ? (release: resolvedRelease, inferredReleaseVersion: false)
+        : await _resolveRelease(patcher);
     final release = resolved.release;
 
     assertReleaseContainsPlatform(release: release, patcher: patcher);
@@ -609,7 +617,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         releaseVersion: releaseVersion,
       );
     } else if (shorebirdEnv.canAcceptUserInput) {
-      release = await promptForRelease(patcher.releaseType);
+      release = await _promptForRelease([patcher.releaseType]);
     } else {
       // Without a terminal to prompt in, the release version is guessed by
       // building and reading it back out of the artifact, which some release
@@ -650,6 +658,39 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       release: release,
       inferredReleaseVersion: inferredReleaseVersion,
     );
+  }
+
+  Future<Map<Patcher, Release>> _resolveReleasesBeforeBuilding(
+    List<Patcher> patchers,
+  ) async {
+    if (patchers.length < 2) return {};
+
+    final Map<Patcher, Release> releases;
+    if (useLatestRelease) {
+      releases = {
+        for (final patcher in patchers)
+          patcher: (await _resolveRelease(patcher)).release,
+      };
+    } else if (results.wasParsed('release-version')) {
+      final release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: results['release-version'] as String,
+      );
+      releases = {for (final patcher in patchers) patcher: release};
+    } else if (shorebirdEnv.canAcceptUserInput) {
+      final release = await _promptForRelease([
+        for (final patcher in patchers) patcher.releaseType,
+      ]);
+      releases = {for (final patcher in patchers) patcher: release};
+    } else {
+      return {};
+    }
+
+    for (final MapEntry(key: patcher, value: release) in releases.entries) {
+      assertReleaseContainsPlatform(release: release, patcher: patcher);
+      assertReleaseIsActive(release: release, patcher: patcher);
+    }
+    return releases;
   }
 
   /// Downloads [release]'s primary artifact and, if the platform has one, its
@@ -1208,20 +1249,39 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
   }
 
   /// Prompts the user for the specific release to patch.
-  Future<Release> promptForRelease(ReleaseType releaseType) async {
-    final platform = releaseType.releasePlatform;
+  Future<Release> _promptForRelease(List<ReleaseType> releaseTypes) async {
     final releases = await codePushClientWrapper.getReleases(appId: appId);
 
-    final releasesForPlatform = releases.where(
-      (release) => release.hasPlatform(platform),
+    for (final releaseType in releaseTypes) {
+      final platform = releaseType.releasePlatform;
+      if (!releases.any((release) => release.hasPlatform(platform))) {
+        throw _noReleasesToPatch(releaseType);
+      }
+    }
+
+    final releasesForPlatforms = releases.where(
+      (release) => releaseTypes.every(
+        (releaseType) => release.hasPlatform(releaseType.releasePlatform),
+      ),
     );
 
-    if (releasesForPlatform.isEmpty) {
-      throw _noReleasesToPatch(releaseType);
+    if (releasesForPlatforms.isEmpty) {
+      final platformNames = releaseTypes
+          .map((releaseType) => releaseType.releasePlatform.displayName)
+          .join(', ');
+      throw CommandError(
+        message:
+            'No release of app $appId has a build for every platform being '
+            'patched ($platformNames).',
+        hint:
+            'Patch each platform separately (for example '
+            '--platforms=android), or create a release that includes all of '
+            'them.',
+      );
     }
 
     return chooseRelease(
-      releases: releasesForPlatform,
+      releases: releasesForPlatforms,
       action: 'patch',
     );
   }
