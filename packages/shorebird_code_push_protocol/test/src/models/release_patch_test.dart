@@ -216,5 +216,71 @@ void main() {
         );
       });
     });
+
+    group('withRolloutSchedule', () {
+      final patch = ReleasePatch(
+        id: 0,
+        number: 1,
+        channel: 'channel',
+        isRolledBack: false,
+        artifacts: const [],
+        createdAt: DateTime.utc(2026),
+        rolloutPercentage: 10,
+        rolloutSteps: const [
+          RolloutStep(percentage: 10, durationMinutes: 720),
+          RolloutStep(percentage: 100),
+        ],
+        rolloutNextStepAt: DateTime.utc(2026, 1, 2),
+        rolloutPauseWeekends: true,
+        rolloutTimezone: 'America/New_York',
+        notes: 'notes',
+      );
+
+      test('clears every schedule field when all are null', () {
+        final copy = patch.withRolloutSchedule(
+          steps: null,
+          nextStepAt: null,
+          pauseWeekends: null,
+          timezone: null,
+        );
+        expect(copy.rolloutSteps, isNull);
+        expect(copy.rolloutNextStepAt, isNull);
+        expect(copy.rolloutPauseWeekends, isNull);
+        expect(copy.rolloutTimezone, isNull);
+      });
+
+      test('leaves every other field alone', () {
+        final copy = patch.withRolloutSchedule(
+          steps: null,
+          nextStepAt: null,
+          pauseWeekends: null,
+          timezone: null,
+        );
+        expect(copy.id, equals(patch.id));
+        expect(copy.number, equals(patch.number));
+        expect(copy.channel, equals(patch.channel));
+        expect(copy.artifacts, equals(patch.artifacts));
+        expect(copy.isRolledBack, equals(patch.isRolledBack));
+        expect(copy.createdAt, equals(patch.createdAt));
+        expect(copy.rolloutPercentage, equals(patch.rolloutPercentage));
+        expect(copy.notes, equals(patch.notes));
+      });
+
+      test('replaces every schedule field when all are given', () {
+        final copy = patch.withRolloutSchedule(
+          steps: const [RolloutStep(percentage: 50, durationMinutes: 60)],
+          nextStepAt: DateTime.utc(2027, 3, 4),
+          pauseWeekends: false,
+          timezone: 'Europe/Berlin',
+        );
+        expect(
+          copy.rolloutSteps,
+          equals(const [RolloutStep(percentage: 50, durationMinutes: 60)]),
+        );
+        expect(copy.rolloutNextStepAt, equals(DateTime.utc(2027, 3, 4)));
+        expect(copy.rolloutPauseWeekends, isFalse);
+        expect(copy.rolloutTimezone, equals('Europe/Berlin'));
+      });
+    });
   });
 }

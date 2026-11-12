@@ -475,6 +475,66 @@ void main() {
           ),
         ).called(1);
       });
+
+      test('in --json mode, omits the replaced rollout schedule', () async {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            ReleasePatch(
+              id: patch.id,
+              number: patch.number,
+              channel: patch.channel,
+              isRolledBack: patch.isRolledBack,
+              artifacts: patch.artifacts,
+              rolloutPercentage: 10,
+              rolloutSteps: const [
+                RolloutStep(percentage: 10, durationMinutes: 720),
+                RolloutStep(percentage: 100),
+              ],
+              rolloutNextStepAt: DateTime.utc(2026, 11, 11, 12),
+              rolloutPauseWeekends: true,
+              rolloutTimezone: 'America/New_York',
+            ),
+          ],
+        );
+
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final emitted =
+            (json['data'] as Map<String, dynamic>)['patch']
+                as Map<String, dynamic>;
+        expect(
+          emitted.keys,
+          isNot(
+            anyElement(
+              isIn([
+                'rollout_steps',
+                'rollout_next_step_at',
+                'rollout_pause_weekends',
+                'rollout_timezone',
+              ]),
+            ),
+          ),
+        );
+      });
     });
 
     group('--rollout', () {
