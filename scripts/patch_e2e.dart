@@ -379,6 +379,9 @@ Future<void> run(Options options) async {
   await adb([
     'shell',
     'monkey',
+    // No system key events: newer emulators have no hardware keys, and monkey
+    // exits 251 when asked for keys the device lacks.
+    ...['--pct-syskeys', '0'],
     '-p',
     package,
     '-c',
