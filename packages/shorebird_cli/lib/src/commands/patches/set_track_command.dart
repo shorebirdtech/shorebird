@@ -126,8 +126,8 @@ class SetTrackCommand extends ShorebirdCommand
       percentageArgName: rolloutArgName,
     );
     if (scheduleError != null) return reportError(message: scheduleError);
-    // A schedule starts the rollout at its first step, so the checks below
-    // read it the way they read --rollout.
+    // A schedule starts the rollout at its first step, so that is where the
+    // patch lands either way.
     final requestedPercentage =
         rolloutPercentage ?? schedule?.initialPercentage;
 
@@ -143,6 +143,26 @@ class SetTrackCommand extends ShorebirdCommand
       releaseVersion: releaseVersion,
     );
     if (patch == null) return lookupError!;
+
+    // A schedule is never a no-op: promoting again would restart the rollout,
+    // so a patch already on the track goes through `patches rollout`.
+    if (patch.channel == targetChannel && schedule != null) {
+      return reportError(
+        message:
+            'Patch $patchNumber on release $releaseVersion is already in '
+            'channel ${formatPatchTrack(patch)}, and promoting it again would '
+            'restart its rollout.',
+        hint:
+            'To put its rollout on that schedule, run: '
+            '${scheduleRolloutCommand(
+              releaseVersion: releaseVersion,
+              patchNumber: patchNumber,
+              schedule: schedule,
+              appId: results[CommonArguments.appIdArg.name] as String?,
+              flavor: results[CommonArguments.flavorArg.name] as String?,
+            )}',
+      );
+    }
 
     // Promoting again would start the rollout over, so a different
     // percentage for a patch already on the track is a job for
@@ -173,26 +193,6 @@ class SetTrackCommand extends ShorebirdCommand
               releaseVersion: releaseVersion,
               patchNumber: patchNumber,
               percentage: requestedPercentage,
-              appId: results[CommonArguments.appIdArg.name] as String?,
-              flavor: results[CommonArguments.flavorArg.name] as String?,
-            )}',
-      );
-    }
-
-    // A schedule is never a no-op: promoting again would restart the rollout,
-    // so a patch already on the track goes through `patches rollout`.
-    if (patch.channel == targetChannel && schedule != null) {
-      return reportError(
-        message:
-            'Patch $patchNumber on release $releaseVersion is already in '
-            'channel ${formatPatchTrack(patch)}, and promoting it again would '
-            'restart its rollout.',
-        hint:
-            'To put its rollout on that schedule, run: '
-            '${scheduleRolloutCommand(
-              releaseVersion: releaseVersion,
-              patchNumber: patchNumber,
-              schedule: schedule,
               appId: results[CommonArguments.appIdArg.name] as String?,
               flavor: results[CommonArguments.flavorArg.name] as String?,
             )}',

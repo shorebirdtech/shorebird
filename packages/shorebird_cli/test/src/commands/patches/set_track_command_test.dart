@@ -841,15 +841,24 @@ void main() {
           );
         });
 
-        test('reads the first step as the rollout it would start at', () async {
+        test('points at patches rollout, schedule and all', () async {
           final result = await runWithOverrides(command.run);
 
           expect(result, equals(ExitCode.usage.code));
           verify(
             () => logger.err(
-              'Patch $patchNumber on release $releaseVersion is already '
-              'rolling out to 100% of devices on ${targetChannel.name}, and '
-              'a rollout can only be raised.',
+              'Patch $patchNumber on release $releaseVersion is already in '
+              'channel ${targetChannel.name}, and promoting it again would '
+              'restart its rollout.',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              'To put its rollout on that schedule, run: '
+              'shorebird patches rollout '
+              '--release-version $releaseVersion '
+              '--patch-number $patchNumber '
+              '--$rolloutStepsArgName 1:4h,10:12h,100',
             ),
           ).called(1);
           verifyNoPromotion();

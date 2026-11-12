@@ -127,7 +127,18 @@ void main() {
       );
     });
 
-    for (final duration in ['0h', '12', '12hours', 'h', '1.5h', '-1h', '30s']) {
+    for (final duration in [
+      '0h',
+      '12',
+      '12hours',
+      'h',
+      '1.5h',
+      '-1h',
+      '30s',
+      // Too many digits for a 64-bit int, then enough minutes to wrap one.
+      '99999999999999999999h',
+      '12810238940076078d',
+    ]) {
       test('rejects the duration "$duration"', () {
         expect(
           parse('10:$duration,100').error,
