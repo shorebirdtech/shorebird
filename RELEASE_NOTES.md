@@ -4,6 +4,57 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.139 (November 12, 2026)
+
+- ✨ Roll a patch out to a share of a track's devices with `--rollout` on
+  `shorebird patch`, `shorebird patches set-track` and `shorebird patches
+  promote`, and raise it with `shorebird patches rollout`. `shorebird patches
+  list` and `shorebird patches info` show partial rollouts
+- ✨ `shorebird patch` checks iOS and macOS native code for changes again,
+  ignoring build noise such as UUIDs, signature padding and asset rendition IDs,
+  and only notes a `Podfile.lock` change when the binaries are identical
+- ✨ Android `shorebird patch` warns about changes to native `.so` libraries, and
+  ignores rotated Sentry and Crashlytics build IDs
+- ✨ When Android dependency versions differ from the release's, `shorebird
+  patch` prints a Gradle `strictly()` constraint you can paste to build with the
+  release's versions
+- ✨ `shorebird release --no-patch-signing`, and patches to releases built
+  without signing, stop before building when your enterprise requires patch
+  signing
+- 🐛 iOS releases archived from Xcode or fastlane after `shorebird release`
+  match the CLI's build, so patches apply to them
+- 🐛 iOS releases built with `--split-debug-info` or `--obfuscate` no longer
+  lose most of their patch linking, and other iOS releases link patches a little
+  better
+- 🐛 Android apps start with the release's code instead of failing to launch
+  when a patch can't be loaded
+- 🐛 Patched iOS apps no longer risk crashing during garbage collection after
+  resuming async code
+- 🐛 A corrupt download or a patch for the wrong base is reported as a corrupt
+  patch instead of a disk write error
+- 🐛 Shorebird commands work on Windows when your user profile path has spaces
+- 🐛 `shorebird flutter versions list` lists only full Flutter releases, newest
+  first
+- 🐛 Flutter side versions such as `3.47.9-sb.1` pass the CLI's Flutter version
+  checks and report their own name in `flutter --version`
+- 🐛 The low link percentage warning links to the docs section that explains it,
+  and `--min-link-percentage` failures show the percentage to one decimal place
+- 🐛 The Android patch warning for releases on Flutter 3.24.1 and older links to
+  the docs instead of a dead issue page
+- 🔧 iOS apps are about 3 MiB smaller, as Flutter.framework no longer exports
+  the updater's internals
+- 🔧 Debug builds no longer include the updater, so
+  `package:shorebird_code_push` reports it unavailable, as on stock Flutter
+- 🔧 When `shorebird patch` stops because its flags differ from the release's,
+  `--json` reports `interactive_prompt_required`, and declining the prompt
+  prints `Aborting.` and exits 1 instead of 64
+- 🔧 `shorebird release` and `shorebird patch` report each run's outcome,
+  failure reason and timing for Enterprise build history, without logs, paths or
+  dart-define values
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
 ## 1.6.138 (November 6, 2026)
 
 - ✨ `shorebird patch` stops when its dart-defines or target differ from the
