@@ -43,7 +43,7 @@ on:
           (_build_engine release_flutter.yaml and release_cli.yaml) sets it,
           so a release candidate is patched on every supported Flutter. The
           matrix (Flutter versions, Android packages) is the dispatch ref's;
-          the scripts and the default leg's Flutter are cli_ref's.
+          the e2e scripts and the default leg's Flutter are cli_ref's.
         required: false
         type: boolean
         default: false
@@ -145,6 +145,17 @@ jobs:
         with:
           ref: ${{ inputs.cli_ref }}
 
+      # The workflow's CI helpers (Android SDK installs and checks) come from
+      # the workflow's own commit, not cli_ref: an older cli_ref (a release
+      # gate's CLI commit) predates helpers this workflow calls, as
+      # install_android_sdk_packages.sh did (exit 127, run 43264527202).
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .workflow
+          sparse-checkout: scripts
+
       - name: 🖥️ Add Shorebird to PATH
         shell: bash
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
@@ -205,7 +216,7 @@ jobs:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
         run: |
           # shellcheck disable=SC2086
-          ./scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
+          ./.workflow/scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -269,7 +280,7 @@ jobs:
           # 40148213340). Without it 3.32 falls back to GLES, and 3.35 still
           # uses Vulkan inside the device but no longer takes the runner down.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -feature -Vulkan
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
+          script: ./.workflow/scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart ${{ matrix.flutter-version }}
 
       # What actions/cache's post step did: save a passing leg's miss.
       - name: 🐘 Save Gradle Cache
@@ -514,6 +525,14 @@ jobs:
         with:
           ref: ${{ inputs.cli_ref }}
 
+      # See the patch job.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .workflow
+          sparse-checkout: scripts
+
       - name: 🖥️ Add Shorebird to PATH
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
@@ -545,7 +564,7 @@ jobs:
 
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 17
-        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
+        run: ./.workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -579,7 +598,7 @@ jobs:
           # -feature -Vulkan as in the patch job.
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -feature -Vulkan
           disable-animations: true
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_signing_e2e.dart android
+          script: ./.workflow/scripts/no_android_sdk_downloads.sh dart scripts/patch_signing_e2e.dart android
 
   # Rollback end to end on Linux: publish two patches, roll them back and
   # forward with the real CLI against dev, and check which code the app runs
@@ -684,6 +703,14 @@ jobs:
         with:
           ref: ${{ inputs.cli_ref }}
 
+      # See the patch job.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .workflow
+          sparse-checkout: scripts
+
       - name: 🖥️ Add Shorebird to PATH
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
@@ -715,7 +742,7 @@ jobs:
 
       - name: 🤖 Install Android SDK Packages
         timeout-minutes: 17
-        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
+        run: ./.workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -747,7 +774,7 @@ jobs:
           target: default
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: true
-          script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
+          script: ./.workflow/scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
   cli:
     if: ${{ !inputs.cli_version }}
