@@ -670,8 +670,10 @@ void main() {
         required ReleasePlatform platform,
         required int number,
         String? linkKey = sha,
+        String? gitSha = sha,
         String? channel = 'stable',
         bool hasArtifacts = true,
+        bool isRolledBack = false,
       }) => ReleasePatch(
         id: number * 10,
         number: number,
@@ -688,9 +690,10 @@ void main() {
               createdAt: DateTime(2023),
             ),
         ],
-        isRolledBack: false,
+        isRolledBack: isRolledBack,
         platform: platform,
         linkKey: linkKey,
+        gitSha: gitSha,
       );
 
       void stubLinkedPatches(List<ReleasePatch> patches) {
@@ -698,7 +701,6 @@ void main() {
           () => codePushClientWrapper.getReleasePatches(
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
-            linkKey: any(named: 'linkKey'),
           ),
         ).thenAnswer((_) async => patches);
       }
@@ -831,7 +833,6 @@ void main() {
           () => codePushClientWrapper.getReleasePatches(
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
-            linkKey: any(named: 'linkKey'),
           ),
         );
       });
@@ -897,6 +898,23 @@ void main() {
           verify(
             () => logger.info(
               'Not linked: Android already has patch 6 on release '
+              '$releaseVersion, so it cannot join patch 5. Android is '
+              'patch 7.',
+            ),
+          ).called(1);
+        });
+
+        test('when the platform has a newer patch it does not name', () async {
+          await publishWith(
+            const PatchLink(
+              result: 'not_linked',
+              reason: 'platform_has_newer_patch',
+              linkNumber: 5,
+            ),
+          );
+          verify(
+            () => logger.info(
+              'Not linked: Android already has a newer patch on release '
               '$releaseVersion, so it cannot join patch 5. Android is '
               'patch 7.',
             ),
@@ -1099,6 +1117,36 @@ void main() {
             );
           });
 
+          test('keeps --rollout, --flavor and build args in them', () async {
+            when(() => argResults['rollout']).thenReturn('10');
+            when(() => argResults['flavor']).thenReturn('internal');
+            when(() => argResults.rest).thenReturn(['--verbose']);
+            when(
+              () => shorebirdEnv.getShorebirdYaml(),
+            ).thenReturn(
+              const ShorebirdYaml(
+                appId: appId,
+                flavors: {'internal': appId},
+              ),
+            );
+
+            await expectLater(
+              runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.info(
+                any(
+                  that: contains(
+                    '--track=stable --rollout=10 --flavor=internal '
+                    '-- --verbose',
+                  ),
+                ),
+              ),
+            ).called(1);
+          });
+
           test('says what was published before the failure', () async {
             await expectLater(
               runWithOverrides(command.run),
@@ -1167,7 +1215,6 @@ void main() {
               () => codePushClientWrapper.getReleasePatches(
                 appId: appId,
                 releaseId: twoPlatformRelease.id,
-                linkKey: sha,
               ),
             ).called(1);
             verify(
@@ -1272,12 +1319,61 @@ void main() {
           await expectBuilt(built: true);
         });
 
-        test('builds when the server ignored the key filter', () async {
+        test('builds when the patch does not have the key', () async {
           stubLinkedPatches([
             publishedRow(
               platform: ReleasePlatform.android,
               number: 2,
               linkKey: null,
+            ),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test('builds when the key was reused on another commit', () async {
+          when(() => argResults['patch-key']).thenReturn('hotfix');
+          stubLinkedPatches([
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              linkKey: 'hotfix',
+              gitSha: 'f00f00f',
+            ),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test('skips a --patch-key patch built from this commit', () async {
+          when(() => argResults['patch-key']).thenReturn('hotfix');
+          stubLinkedPatches([
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              linkKey: 'hotfix',
+            ),
+          ]);
+          await expectBuilt(built: false);
+        });
+
+        test('builds when the platform has a newer patch', () async {
+          stubLinkedPatches([
+            publishedRow(platform: ReleasePlatform.android, number: 2),
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 3,
+              linkKey: 'other',
+              gitSha: 'f00f00f',
+            ),
+          ]);
+          await expectBuilt(built: true);
+        });
+
+        test('builds when the patch is rolled back', () async {
+          stubLinkedPatches([
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              isRolledBack: true,
             ),
           ]);
           await expectBuilt(built: true);
@@ -1294,7 +1390,6 @@ void main() {
             () => codePushClientWrapper.getReleasePatches(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
-              linkKey: any(named: 'linkKey'),
             ),
           );
         });

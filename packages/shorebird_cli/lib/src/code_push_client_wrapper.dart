@@ -889,20 +889,14 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     return releases.firstWhereOrNull((r) => r.version == releaseVersion);
   }
 
-  /// Gets the patches for [appId]'s [releaseId], only those created with
-  /// [linkKey] when it is given.
+  /// Gets the patches for [appId]'s [releaseId].
   Future<List<ReleasePatch>> getReleasePatches({
     required String appId,
     required int releaseId,
-    String? linkKey,
   }) {
     return _withProgress(
       'Fetching patches',
-      () => codePushClient.getPatches(
-        appId: appId,
-        releaseId: releaseId,
-        linkKey: linkKey,
-      ),
+      () => codePushClient.getPatches(appId: appId, releaseId: releaseId),
     );
   }
 
