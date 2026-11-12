@@ -219,6 +219,10 @@ More info: ${linkPercentageUrl.toLink()}.
   /// Uploads the patch artifacts to the CodePush server and publishes the
   /// patch to [track], at [rolloutPercentage] of its devices or on the timed
   /// schedule [rolloutSchedule] when given.
+  ///
+  /// [linkKey] links the patch to patches for other platforms created with
+  /// the same key; [gitSha] and [gitDirty] record the commit it was built
+  /// from.
   Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
@@ -227,6 +231,9 @@ More info: ${linkPercentageUrl.toLink()}.
     required DeploymentTrack track,
     double? rolloutPercentage,
     RolloutSchedule? rolloutSchedule,
+    String? linkKey,
+    String? gitSha,
+    bool? gitDirty,
   }) {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -237,6 +244,9 @@ More info: ${linkPercentageUrl.toLink()}.
       patchArtifactBundles: artifacts,
       rolloutPercentage: rolloutPercentage,
       rolloutSchedule: rolloutSchedule,
+      linkKey: linkKey,
+      gitSha: gitSha,
+      gitDirty: gitDirty,
     );
   }
 
