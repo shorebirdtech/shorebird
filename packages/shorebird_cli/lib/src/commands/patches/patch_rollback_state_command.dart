@@ -113,6 +113,23 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     );
     if (patch == null) return lookupError!;
 
+    // Without --platforms the server rolls forward every platform's patch,
+    // and only when they are all rolled back or all active.
+    final rolledBackStates = patch.patches.map((p) => p.isRolledBack).toSet();
+    if (!targetIsRolledBack &&
+        requestedPlatforms == null &&
+        rolledBackStates.length > 1) {
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: _notInTargetState(patch),
+        reason:
+            "Some of patch $patchNumber's platforms are rolled back and some "
+            'are not, so pass --${PatchLookup.platformsArgName} to choose '
+            'which to $verb.',
+      );
+    }
+
     final chosen = choosePlatforms(
       patch: patch,
       releaseVersion: releaseVersion,
@@ -142,10 +159,7 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
       return reportPlatformsDiffer(
         patch: patch,
         releaseVersion: releaseVersion,
-        suggested: [
-          for (final p in patch.patches)
-            if (p.isRolledBack != targetIsRolledBack) ?p.resolvedPlatform,
-        ],
+        suggested: _notInTargetState(patch),
       );
     }
     if (changeError != null) return changeError;
@@ -193,4 +207,10 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
   }
 
   void _indented(String line) => logger.info('  $line');
+
+  /// The platforms under [patch] whose patch is not yet in the target state.
+  List<ReleasePlatform> _notInTargetState(PatchNumber patch) => [
+    for (final p in patch.patches)
+      if (p.isRolledBack != targetIsRolledBack) ?p.resolvedPlatform,
+  ];
 }

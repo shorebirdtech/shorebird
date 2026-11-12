@@ -998,7 +998,46 @@ void main() {
         );
       });
 
+      test('without --platforms, refuses tracks that differ', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            "Patch $patchNumber's platforms are on different tracks, so pass "
+            '--platforms to choose which to move.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'To choose which to change, run:\n'
+            '  shorebird set-track --release-version=$releaseVersion '
+            '--patch-number=$patchNumber --track=${targetChannel.name} '
+            '--platforms=android,ios',
+          ),
+        ).called(1);
+        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            platforms: any(named: 'platforms'),
+          ),
+        );
+      });
+
       test('without --platforms asks before moving all of them', () async {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [androidPatch, iosPatch.copyWith(channel: 'stable')],
+        );
+
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
@@ -1036,18 +1075,27 @@ void main() {
             ExitCode.software.code,
           ),
         );
-        when(() => argResults['track']).thenReturn('stable');
+        // The tracks matched when read, then changed before the promote.
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [androidPatch, iosPatch.copyWith(channel: 'stable')],
+        );
 
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.software.code));
         verifyInOrder([
           () => logger.info('  Android: stable'),
-          () => logger.info('  iOS: beta'),
+          () => logger.info('  iOS: stable'),
           () => logger.info(
             'To choose which to change, run:\n'
             '  shorebird set-track --release-version=$releaseVersion '
-            '--patch-number=$patchNumber --track=stable --platforms=ios',
+            '--patch-number=$patchNumber --track=${targetChannel.name} '
+            '--platforms=android,ios',
           ),
         ]);
       });

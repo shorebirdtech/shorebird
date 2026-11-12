@@ -67,11 +67,23 @@ class PatchNumber {
       for (final row in rows)
         if (row.id == patch.id) ?formatPatchTrack(row),
     ];
-    return tracks.isEmpty ? null : tracks.join(', ');
+    return tracks.isEmpty ? null : tracks.join(' + ');
   }
 
-  /// Whether the patches under [number] are on different tracks.
-  bool get tracksDiffer => patches.map(tracksOf).toSet().length > 1;
+  /// The tracks [patch] is on, without rollout percentages.
+  Set<String> _channelsOf(ReleasePatch patch) => {
+    for (final row in rows)
+      if (row.id == patch.id) ?row.channel,
+  };
+
+  /// Whether the patches under [number] are on different tracks. Patches on
+  /// the same track at different rollout percentages are not.
+  bool get tracksDiffer =>
+      patches
+          .map((p) => (_channelsOf(p).toList()..sort()).join(','))
+          .toSet()
+          .length >
+      1;
 
   /// [patch]'s track and whether it is rolled back, e.g. `stable, rolled
   /// back`.
@@ -97,19 +109,28 @@ List<PatchNumber> groupByNumber(List<ReleasePatch> patches) => [
 
 /// One line describing [patch]: its number, platforms, track and whether it
 /// is rolled back, saying so when its platforms are on different tracks.
-String formatPatchNumberLine(PatchNumber patch) {
-  final number = lightCyan.wrap('#${patch.number}');
+///
+/// [color] highlights the number; leave it off for text that may end up in
+/// `--json` output.
+String formatPatchNumberLine(PatchNumber patch, {bool color = true}) {
+  final number = color
+      ? lightCyan.wrap('#${patch.number}')
+      : '#${patch.number}';
   final platforms = patch.platforms.map((p) => p.value).join(', ');
   final patches = patch.patches;
+  final each = [
+    for (final p in patches)
+      '${_platformValue(p)}: ${patch.tracksOf(p) ?? 'no track'}',
+  ].join(', ');
+  final tracks = patches.map(patch.tracksOf).toSet();
   final String track;
   if (patch.tracksDiffer) {
-    final each = [
-      for (final p in patches)
-        '${_platformValue(p)}: ${patch.tracksOf(p) ?? 'no track'}',
-    ].join(', ');
     track = '  on different tracks ($each)';
+  } else if (tracks.length > 1) {
+    // One track, rolling out to different shares of each platform.
+    track = '  track: ${patch.patches.first.channel} ($each)';
   } else {
-    track = switch (patch.tracksOf(patches.first)) {
+    track = switch (tracks.single) {
       final tracks? => '  track: $tracks',
       null => '  [no track]',
     };
@@ -220,7 +241,7 @@ mixin PatchLookup on ShorebirdCommand {
     }
 
     final available = numbers
-        .map((n) => '\n  ${formatPatchNumberLine(n)}')
+        .map((n) => '\n  ${formatPatchNumberLine(n, color: false)}')
         .join();
     final errorCode = reportError(
       message:
@@ -316,15 +337,39 @@ mixin PatchLookup on ShorebirdCommand {
     return (platforms: null, patches: patch.patches, errorCode: null);
   }
 
-  /// Says, after the server refused to act on every platform under [patch]
-  /// because they are in different states, what each one's state is and how
-  /// to act on [suggested] alone. Returns the exit code to fail with.
+  /// Says that the platforms under [patch] are in different states, so the
+  /// server would refuse to act on all of them without `--platforms`: what
+  /// each one's state is and how to act on [suggested] alone. Returns the
+  /// exit code to fail with.
+  ///
+  /// [reason] is the error to report first when the server has not already
+  /// reported one, and the only output in `--json` mode. With it, the run
+  /// fails as a usage error; without it, as the server's error.
   int reportPlatformsDiffer({
     required PatchNumber patch,
     required String releaseVersion,
     required List<ReleasePlatform> suggested,
     List<String> extraArgs = const [],
+    String? reason,
   }) {
+    final platforms = suggested.isEmpty ? patch.platforms : suggested;
+    final command = [
+      'shorebird $fullCommandName',
+      '--release-version=$releaseVersion',
+      '--patch-number=${patch.number}',
+      ...extraArgs,
+      for (final option in const ['app-id', 'flavor'])
+        if (argParser.options.containsKey(option))
+          if (results[option] case final String value) '--$option=$value',
+      '--$platformsArgName=${platforms.map((p) => p.value).join(',')}',
+    ].join(' ');
+    if (reason != null && isJsonMode) {
+      return reportError(
+        message: reason,
+        hint: 'To choose which to change, run: $command',
+      );
+    }
+    if (reason != null) logger.err(reason);
     logger.info(
       'Patch ${patch.number} on release $releaseVersion has patches for '
       'several platforms, in different states:',
@@ -332,17 +377,9 @@ mixin PatchLookup on ShorebirdCommand {
     for (final p in patch.patches) {
       logger.info('  ${PatchNumber.platformName(p)}: ${patch.stateOf(p)}');
     }
-    final platforms = suggested.isEmpty ? patch.platforms : suggested;
-    final command = [
-      'shorebird $fullCommandName',
-      '--release-version=$releaseVersion',
-      '--patch-number=${patch.number}',
-      ...extraArgs,
-      '--$platformsArgName=${platforms.map((p) => p.value).join(',')}',
-    ].join(' ');
     logger.info(
       'To choose which to change, run:\n  ${lightCyan.wrap(command)}',
     );
-    return ExitCode.software.code;
+    return reason == null ? ExitCode.software.code : ExitCode.usage.code;
   }
 }
