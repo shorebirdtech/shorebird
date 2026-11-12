@@ -12,7 +12,7 @@ npx cspell <changed files>
 
 `agent-verify.sh` caches passes per package. A test reading a file outside its package must list it under `verify_cache: inputs:` in its pubspec. It skips coverage, the version check and `redis_client`'s tests.
 
-It runs a Dart of the version CI runs (current stable, which `setup-dart` installs): what `dart format` does depends on the Dart version and `analysis_options.yaml`, not on where Dart is installed, so a Flutter checkout's Dart of that version counts. A machine with no Dart of that version gets a `3` rather than a pass, with the versions it found. Both scripts above pick it, so run them rather than a bare `dart`. `DART_BIN` names one explicitly and skips the check.
+It runs a Dart of the version CI runs (current stable, which `setup-dart` installs): what `dart format` does depends on the Dart version, the package's language version and `analysis_options.yaml`, not on where Dart is installed, so a Flutter checkout's Dart of that version counts. With no Dart of that version on PATH (or no network and no cached version on a first run), `agent-verify.sh` exits `3` and `bootstrap.sh` exits `1`, listing the versions found. Run the scripts rather than a bare `dart`. `DART_BIN` names one explicitly and skips the check.
 
 ## Conventions
 

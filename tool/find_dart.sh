@@ -23,6 +23,7 @@ _find_dart_ci_version() {
     echo "$fetched" >"$cache"
     echo "$fetched"
   elif [ -f "$cache" ]; then
+    echo "find_dart: offline, using CI's Dart version from the last check ($cache)" >&2
     cat "$cache"
   fi
 }
@@ -37,12 +38,16 @@ _find_dart_sdk_binary() {
   if [ -x "$dir/cache/dart-sdk/bin/dart" ]; then
     echo "$dir/cache/dart-sdk/bin/dart"
   else
-    echo "$resolved"
+    # Not the resolved file: a mise shim resolves to the mise binary, which
+    # only acts as dart when called by the shim's name.
+    echo "$1"
   fi
 }
 
+# Empty when it isn't a working dart (an asdf shim with no version set, a
+# Flutter checkout whose cache isn't filled): skip it, don't fail the caller.
 _find_dart_version_of() {
-  "$1" --version 2>&1 | sed -n 's/^Dart SDK version: \([^ ]*\).*/\1/p'
+  { "$1" --version 2>&1 || true; } | sed -n 's/^Dart SDK version: \([^ ]*\).*/\1/p'
 }
 
 find_dart() {
@@ -61,7 +66,7 @@ find_dart() {
     [ -x "$candidate" ] || continue
     sdk_bin="$(_find_dart_sdk_binary "$candidate")"
     [ -x "$sdk_bin" ] || continue
-    have="$(_find_dart_version_of "$sdk_bin")"
+    have="$(_find_dart_version_of "$sdk_bin")" || have=""
     if [ "$have" = "$want" ]; then
       dart_bin="$sdk_bin"
       return 0
@@ -71,5 +76,5 @@ find_dart() {
 
   echo "error: no dart on PATH is $want, the stable Dart CI runs" >&2
   [ -n "$tried" ] && printf 'Found:\n%s' "$tried" >&2
-  echo "Install Dart $want (https://dart.dev/get-dart), update the Flutter checkout whose dart is on PATH, or set DART_BIN" >&2
+  echo "Install Dart $want (https://dart.dev/get-dart), run \`flutter --version\` in the Flutter checkout whose dart is on PATH to update it, or set DART_BIN" >&2
 }
