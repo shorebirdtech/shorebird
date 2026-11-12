@@ -1,4 +1,4 @@
-# cspell:words cmdline sdkmanager LASTEXITCODE
+# cspell:words sdkmanager LASTEXITCODE
 
 name: e2e
 
@@ -163,15 +163,16 @@ jobs:
       - name: 🎯 Use Shorebird's Dart
         run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
-      # A bad download fails this step instead of `shorebird release`
-      # mid-build. Unquoted so the list splits into one argument per package.
+      # A bad download is retried here (see the script) instead of failing
+      # `shorebird release` mid-build. Unquoted so the list splits into one
+      # argument per package.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
+        timeout-minutes: 12
         env:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
         run: |
           # shellcheck disable=SC2086
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install $ANDROID_PACKAGES
+          ./scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -300,9 +301,8 @@ jobs:
       # line's, the only one the release gate releases. Move them with that
       # entry when the line moves.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 12
+        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -497,9 +497,8 @@ jobs:
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 12
+        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -660,9 +659,8 @@ jobs:
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 12
+        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
