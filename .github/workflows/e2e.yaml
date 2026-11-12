@@ -1,4 +1,4 @@
-# cspell:words cmdline sdkmanager LASTEXITCODE
+# cspell:words sdkmanager LASTEXITCODE
 
 name: e2e
 # The inputs a run was dispatched with, which GitHub's API doesn't otherwise
@@ -172,15 +172,40 @@ jobs:
       - name: 🎯 Use Shorebird's Dart
         run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
-      # A bad download fails this step instead of `shorebird release`
-      # mid-build. Unquoted so the list splits into one argument per package.
+      # The env context only holds what a workflow sets, so ANDROID_HOME is
+      # copied into it for the Android cache paths. NDK_VERSION is the leg's
+      # NDK, empty if it installs none.
+      - name: 🤖 Android Cache Paths
+        env:
+          ANDROID_PACKAGES: ${{ matrix.android-packages }}
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+          ndk=$(tr ' ' '\n' <<< "$ANDROID_PACKAGES" | sed -n 's/^ndk;//p')
+          echo "NDK_VERSION=${ndk}" >> "$GITHUB_ENV"
+
+      # Every NDK leg downloaded its ~700 MB NDK from dl.google.com on every
+      # run, and a corrupt or stalled download failed legs that tested nothing
+      # (runs 41553186726, 42728409530, 43237646183). The runner image ships
+      # none of the NDKs these Flutter versions pin. Restored, sdkmanager finds
+      # it installed and downloads nothing. Keyed on the NDK alone, so legs
+      # sharing one share an entry: three entries, about 2 GB.
+      - name: 🤖 NDK Cache
+        if: ${{ env.NDK_VERSION != '' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+          key: android-ndk-${{ env.NDK_VERSION }}-${{ runner.os }}
+
+      # Downloads what the cache didn't restore. A bad download is retried
+      # (see the script) instead of failing `shorebird release` mid-build.
+      # Unquoted so the list splits into one argument per package.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
+        timeout-minutes: 17
         env:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
         run: |
           # shellcheck disable=SC2086
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install $ANDROID_PACKAGES
+          ./scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -214,12 +239,7 @@ jobs:
 
       # android-emulator-runner installs the API 30 system image on every run.
       # A bad download of it has failed a nightly ("Error on ZipFile unknown
-      # archive"); restored here, its sdkmanager finds it installed. The env
-      # context only holds what a workflow sets, so ANDROID_HOME is copied
-      # into it for the cache path.
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
-
+      # archive"); restored here, its sdkmanager finds it installed.
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -308,10 +328,20 @@ jobs:
       # The patch matrix's default entry's packages: the current version
       # line's, the only one the release gate releases. Move them with that
       # entry when the line moves.
+      # See the patch job.
+      - name: 🤖 Android Cache Paths
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      # The patch job's entry for this NDK.
+      - name: 🤖 NDK Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          key: android-ndk-28.2.13676358-${{ runner.os }}
+
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 17
+        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -332,9 +362,6 @@ jobs:
             ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-default-${{ hashFiles('bin/internal/flutter.version') }}
-
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -505,10 +532,20 @@ jobs:
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
+      # See the patch job.
+      - name: 🤖 Android Cache Paths
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      # The patch job's entry for this NDK.
+      - name: 🤖 NDK Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          key: android-ndk-28.2.13676358-${{ runner.os }}
+
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 17
+        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -526,9 +563,6 @@ jobs:
             ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
-
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -668,10 +702,20 @@ jobs:
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
+      # See the patch job.
+      - name: 🤖 Android Cache Paths
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      # The patch job's entry for this NDK.
+      - name: 🤖 NDK Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          key: android-ndk-28.2.13676358-${{ runner.os }}
+
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 17
+        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -688,9 +732,6 @@ jobs:
             ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
-
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
