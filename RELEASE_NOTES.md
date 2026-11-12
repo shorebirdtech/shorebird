@@ -6,123 +6,54 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.139 (November 12, 2026)
 
-- ❓ Feat(shorebird_cli): refuse unsigned releases and patches before building
-  when the app's enterprise requires patch signing
-- ❓ Fix(tool): verify under the Dart CI installs, not PATH's answer
-- ❓ Feat(shorebird_ci): upgrade generator and dependency resolver to 0.3.0
-- ❓ Chore: prepare for release 1.6.138
-- ❓ Ci: run the Dart packages' CI from one path
-- ❓ Chore(deps): bump the dart-deps group across 1 directory with 6 updates
-- ❓ Fix(shorebird_cli): let a Flutter side version clear version floors
-- ❓ Fix(shorebird_cli): report build flag mismatch stops like other prompts
-- ❓ Feat(macho): add pure-Dart semantic Mach-O parser and differ
-- ❓ Fix(redis_client): cancel timed-out commands waiting to connect
-- ❓ Fix(redis_client): skip delayed reconnects after close
-- ❓ Test(redis_client): close client sockets cleanly in _FakeRedisServer
-- ❓ Docs(shorebird_cli): say why a stopped release can't be patched without its
-  supplement
-- ❓ Feat(shorebird_code_push_protocol): add percentage rollout fields
-- ❓ Feat(elf): add pure-Dart semantic ELF parser and differ
-- ❓ Test(redis_client): delete series before server.now() TS.ADD sample
-- ❓ Fix(verify_cache): acquire slots FIFO before key locks and exit
-- ❓ Feat(shorebird_cli): add --rollout and patches rollout
-- ❓ Feat(shorebird_cli): wire semantic Mach-O diffing for Apple patches
-- ❓ Test(verify_cache): precompile verify_cache.dart once in setUpAll
-- ❓ Fix(shorebird_cli): launch resolved paths w/o a shell on Windows
-- ❓ Test(shorebird_cli): precompile shorebird.dart in broken_pipe_test
-- ❓ Test(verify_cache): precompile lock and slot fixtures once per suite
-- ❓ Test(verify_cache): run precompiled hold_slot in arrival-order test
-- ❓ Feat(shorebird_cli): wire ElfDiffer, Gradle pinning, and dill checks
-- ❓ Fix(shorebird_code_push_protocol): add rollout_percentage to the spec copy
-- ❓ Fix(shorebird_cli): link the docs instead of a disabled issue tracker
-- ❓ Chore(deps): bump actions/setup-java from 6.1.0 to 6.2.0 in the gh-deps
-  group across 1 directory
-- ❓ Docs: name the shipped patch signing flags in the 1.6.132 notes
-- ❓ Fix(shorebird_cli): link the low link percentage warning to its docs section
-  and shorten the min-link-percentage error's percentage
-- ❓ Docs: keep PRs reviewable; split big ones along their seams
-- ❓ Feat(shorebird_cli): record each release and patch run in Enterprise build
-  history
-- ❓ Fix(scripts): pass --pct-syskeys 0 to monkey in patch_e2e
-- ❓ Fix(shorebird_cli): stop passing Gradle's --init-script to flutter build
-  appbundle
-- ❓ Fix(shorebird_cli): remove the Android app.dill bridge check, which never
-  ran
-- ❓ Ci: build a real Android release and patch on PRs that touch them
-- ❓ Fix(shorebird_cli): list only full Flutter releases in flutter versions list
-- ❓ Chore: make lint infos fatal in CI and agent-verify
-- ❓ Feat(shorebird_cli): print a Gradle strictly() constraint for each
-  dependency that moved since the release
-- ❓ Fix(tool): pick a Dart by CI's version, not by whether Flutter sits beside
-  it
-- ❓ Feat(shorebird): leave the updater out of debug engines
-- ❓ Chore: release Flutter 3.47.9-rc4
-- ❓ Chore: bump Dart to d1ada02
-- ❓ Chore(shorebird): build the iOS release engine with
-  shorebird_include_mixed_mode
-- ❓ Feat(shorebird): build ios_debug with dart_force_simulator, as upstream does
-- ❓ Feat(shorebird): serve ios/artifacts.zip (iOS debug) from the fork
-- ❓ Fix(shorebird): don't give debug flutter_windows.dll the updater .def
-- ❓ Chore: bump Dart to 3491ef4
-- ❓ Fix(shorebird): report a side version X.Y.Z-sb.N by its own name
-- ❓ Ci(shorebird): skip shorebird_ci's tests on PRs that touch nothing under
-  packages/ or bin/
-- ❓ Chore: bump Dart to 7623f50
-- ❓ Fix(shorebird): pass the patch's base snapshot and link header per isolate
-  group
-- ❓ Feat(shorebird): hide the updater's internals from Flutter.framework
-  exports, and check them
-- ❓ Chore: bump Dart to 9b89da8
-- ❓ Fix(shorebird): on Android, boot the release's own code when the patch won't
-  load
-- ❓ Ci(shorebird): make the required ci check wait on the engine jobs
-- ❓ Docs(shorebird): Shorebird never claims a single-slot app-wide resource
-- ❓ Feat(shorebird): build iOS release snapshots with aot_tools
-- ❓ Feat(shorebird): pin Android patch builds to the release's Maven versions
-- ❓ Revert "feat(shorebird): pin Android patch builds to the release's Maven
-  versions (#320)"
-- ❓ Chore: bump Dart to 10eb668
-- ❓ Ci(shorebird_ci): align workflow w/ shorebird_ci 0.3.0
-- ❓ Fix(updater): attribute inflate read errors to patch or base EOF
-- ❓ Chore(deps): bump taiki-e/install-action from 2.88.0 to 2.89.0 in the
-  gh-deps group across 1 directory
-- ❓ Chore(deps): bump ffigen from 22.0.0 to 23.0.0 in /shorebird_code_push in
-  the shorebird_code_push-deps group across 1 directory
-- ❓ Docs: Shorebird never claims a single-slot app-wide resource
-- ❓ Fix(test_runner): give simarm_x64 the simulator timeout multiplier
-- ❓ Refactor(vm): use upstream's arm64 native call sequence; branch on
-  is_simulating in the stubs
-- ❓ Ci(publish): build without id-token, publish only from shorebird/dev's code
-- ❓ Refactor(vm): rename SHOREBIRD_SNAPSHOT/RUNTIME to
-  SHOREBIRD_TARGET/INCLUDE_MIXED_MODE
-- ❓ Refactor(vm): compile the arm64 interpreter stubs out of stock builds
-- ❓ Ci(analyze-snapshot): build without id-token, publish only from
-  shorebird/dev's code
-- ❓ Fix(tools): stop build.py when gn fails
-- ❓ Fix(vm): gate the FFI callback stub's sixth metadata word on the target
-- ❓ Fix(vm): build upstream's arm64 forced simulator without mixed mode, for iOS
-  debug
-- ❓ Ci: run ffi on the stock arm64 forced simulator (debug simarm64)
-- ❓ Ci: fail the required ci check when a job times out
-- ❓ Fix(simulator): skip transition sentinels in FindPCFor
-- ❓ Ci: drop very_good_coverage, which checked a 0% floor
-- ❓ Ci: pin every action to a commit SHA, add Dependabot, drop dead Codecov
-  upload
-- ❓ Ci: don't pass the changed-file list to a dispatch's scope step
-- ❓ Chore(build): drop the old shorebird_snapshot/shorebird_runtime GN args
-- ❓ Build: turn the SDK hash check back on (verify_sdk_hash = true)
-- ❓ Ci: merge queue reuses each cell's result from a run on the same inputs
-- ❓ Ci: run the mixed-mode cells that don't need iOS on Linux arm64
-- ❓ Ci: run full and release mixed-mode rows that don't need iOS on Linux arm64
-- ❓ Ci: least privilege for build_package, no checkout token in publish build
-  jobs
-- ❓ Fix(simulator): flush the store buffer before entering CPU code
-- ❓ [vm] Detached Process.start reports pre-exec errors intact
-- ❓ [vm] Own the link table and base snapshots per IsolateGroup
-- ❓ Feat(aot_tools): add gen-snapshot, which builds a release with its DD table
-- ❓ Fix(aot_tools): give gen-snapshot's DD table the identity file
+- ✨ Roll a patch out to a share of a track's devices with `--rollout` on
+  `shorebird patch`, `shorebird patches set-track` and `shorebird patches
+  promote`, and raise it with `shorebird patches rollout`. `shorebird patches
+  list` and `shorebird patches info` show partial rollouts
+- ✨ `shorebird patch` checks iOS and macOS native code for changes again,
+  ignoring build noise such as UUIDs, signature padding and asset rendition IDs,
+  and only notes a `Podfile.lock` change when the binaries are identical
+- ✨ Android `shorebird patch` warns about changes to native `.so` libraries, and
+  ignores rotated Sentry and Crashlytics build IDs
+- ✨ When Android dependency versions differ from the release's, `shorebird
+  patch` prints a Gradle `strictly()` constraint you can paste to build with the
+  release's versions
+- ✨ `shorebird release --no-patch-signing`, and patches to releases built
+  without signing, stop before building when your enterprise requires patch
+  signing
+- 🐛 iOS releases archived from Xcode or fastlane after `shorebird release`
+  match the CLI's build, so patches apply to them
+- 🐛 iOS releases built with `--split-debug-info` or `--obfuscate` no longer
+  lose most of their patch linking, and other iOS releases link patches a little
+  better
+- 🐛 Android apps start with the release's code instead of failing to launch
+  when a patch can't be loaded
+- 🐛 Patched iOS apps no longer risk crashing during garbage collection after
+  resuming async code
+- 🐛 A corrupt download or a patch for the wrong base is reported as a corrupt
+  patch instead of a disk write error
+- 🐛 Shorebird commands work on Windows when your user profile path has spaces
+- 🐛 `shorebird flutter versions list` lists only full Flutter releases, newest
+  first
+- 🐛 Flutter side versions such as `3.47.9-sb.1` pass the CLI's Flutter version
+  checks and report their own name in `flutter --version`
+- 🐛 The low link percentage warning links to the docs section that explains it,
+  and `--min-link-percentage` failures show the percentage to one decimal place
+- 🐛 The Android patch warning for releases on Flutter 3.24.1 and older links to
+  the docs instead of a dead issue page
+- 🔧 iOS apps are about 3 MiB smaller, as Flutter.framework no longer exports
+  the updater's internals
+- 🔧 Debug builds no longer include the updater, so
+  `package:shorebird_code_push` reports it unavailable, as on stock Flutter
+- 🔧 When `shorebird patch` stops because its flags differ from the release's,
+  `--json` reports `interactive_prompt_required`, and declining the prompt
+  prints `Aborting.` and exits 1 instead of 64
+- 🔧 `shorebird release` and `shorebird patch` report each run's outcome,
+  failure reason and timing for Enterprise build history, without logs, paths or
+  dart-define values
 
-Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.138.
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
 
 ## 1.6.138 (November 6, 2026)
 
