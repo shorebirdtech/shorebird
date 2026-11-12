@@ -2275,7 +2275,9 @@ Reason: Exited with code 70.'''),
         setUp(() => useFlutterVersion(newFlutter));
 
         test('passes no DD setting by default', () async {
-          await runWithOverrides(builder.buildIpa);
+          await runWithOverrides(
+            () => builder.buildIpa(applyLegacyDdDefault: true),
+          );
           expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
           expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
         });
@@ -2302,9 +2304,17 @@ Reason: Exited with code 70.'''),
       group('on Flutter before aot_tools gen-snapshot', () {
         setUp(() => useFlutterVersion(oldFlutter));
 
-        test('turns DD on with the default cap', () async {
-          await runWithOverrides(builder.buildIpa);
+        test('turns DD on with the default cap for releases', () async {
+          await runWithOverrides(
+            () => builder.buildIpa(applyLegacyDdDefault: true),
+          );
           expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], equals('10000'));
+          expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
+        });
+
+        test('sets nothing for patch builds by default', () async {
+          await runWithOverrides(builder.buildIpa);
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
           expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
         });
 
@@ -2316,13 +2326,17 @@ Reason: Exited with code 70.'''),
         });
 
         test('leaves DD off for --dd-max-bytes=0', () async {
-          await runWithOverrides(() => builder.buildIpa(ddMaxBytes: 0));
+          await runWithOverrides(
+            () => builder.buildIpa(ddMaxBytes: 0, applyLegacyDdDefault: true),
+          );
           expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
           expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
         });
 
-        test('turns DD on for ios-framework builds', () async {
-          await runWithOverrides(builder.buildIosFramework);
+        test('turns DD on for ios-framework releases', () async {
+          await runWithOverrides(
+            () => builder.buildIosFramework(applyLegacyDdDefault: true),
+          );
           expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], equals('10000'));
         });
       });

@@ -312,8 +312,12 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
+    bool applyLegacyDdDefault = false,
   }) async {
-    final dd = await _iosDdSettings(ddMaxBytes);
+    final dd = await _iosDdSettings(
+      ddMaxBytes,
+      applyLegacyDdDefault: applyLegacyDdDefault,
+    );
     return _buildAppleKernel(
       command: 'ipa',
       description: 'IPA',
@@ -344,14 +348,16 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
   /// Everything else here is a quirk of the Flutter versions before that,
   /// 3.44.0 through 3.47.x (about nine months of releases), and this is the
   /// only place in the CLI that knows about it: they run the DD pass only
-  /// when `SHOREBIRD_DD_MAX_BYTES` is set, so the CLI sets it, with its own
-  /// default of 10000, and their gen_snapshot rejects `--dd_max_bytes` as an
-  /// unknown flag. A revision whose version is unknown (a pinned dev
+  /// when `SHOREBIRD_DD_MAX_BYTES` is set, so the CLI sets it, and their
+  /// gen_snapshot rejects `--dd_max_bytes` as an unknown flag. Release builds
+  /// ([applyLegacyDdDefault]) default it to 10000; patch builds set it only
+  /// when the user does, as they always have, since the patch's DD table
+  /// comes from the release. A revision whose version is unknown (a pinned dev
   /// revision) is treated as one of these: newer versions ignore the
   /// variable, while the flag would break an older build. Delete this branch
   /// once those versions are out of support.
   Future<({List<String> flags, Map<String, String> environment})>
-  _iosDdSettings(int? ddMaxBytes) async {
+  _iosDdSettings(int? ddMaxBytes, {required bool applyLegacyDdDefault}) async {
     final revision = shorebirdEnv.flutterRevision;
     final version = await shorebirdFlutter.resolveFlutterVersion(revision);
     final usesAotToolsGenSnapshot = aotToolsGenSnapshotConstraint.isSatisfiedBy(
@@ -368,11 +374,12 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       );
     }
     const legacyDefaultDdMaxBytes = 10000;
-    final legacyDdMaxBytes = ddMaxBytes ?? legacyDefaultDdMaxBytes;
+    final legacyDdMaxBytes =
+        ddMaxBytes ?? (applyLegacyDdDefault ? legacyDefaultDdMaxBytes : null);
     return (
       flags: const <String>[],
       environment: {
-        if (legacyDdMaxBytes > 0)
+        if (legacyDdMaxBytes != null && legacyDdMaxBytes > 0)
           'SHOREBIRD_DD_MAX_BYTES': legacyDdMaxBytes.toString(),
       },
     );
@@ -384,11 +391,15 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
+    bool applyLegacyDdDefault = false,
   }) async {
     _deleteForeignModuleXcodeProperties(
       shorebirdEnv.getShorebirdProjectRoot()!,
     );
-    final dd = await _iosDdSettings(ddMaxBytes);
+    final dd = await _iosDdSettings(
+      ddMaxBytes,
+      applyLegacyDdDefault: applyLegacyDdDefault,
+    );
     return _buildAppleKernel(
       command: 'ios-framework',
       description: 'iOS framework',

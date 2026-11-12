@@ -263,6 +263,14 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('accepts a hidden --dd-max-bytes option with no default', () {
+      final option = ReleaseCommand()
+          .argParser
+          .options[CommonArguments.ddMaxBytesArg.name]!;
+      expect(option.hide, isTrue);
+      expect(option.defaultsTo, isNull);
+    });
+
     test('accepts a hidden --no-confirm and rejects --confirm', () {
       final parser = ReleaseCommand().argParser;
       expect(parser.options['no-confirm']!.hide, isTrue);
@@ -1491,6 +1499,26 @@ Did you mean --release-version=1.0.0+1?''',
           verifyNever(() => logger.warn(any()));
         });
       });
+
+      for (final value in ['-1', 'lots', '1.5', '']) {
+        test('rejects --dd-max-bytes "$value"', () async {
+          when(
+            () => argResults[CommonArguments.ddMaxBytesArg.name],
+          ).thenReturn(value);
+          await expectLater(
+            () => runWithOverrides(
+              () => command.assertArgsAreValid(MockReleaser()),
+            ),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                '--dd-max-bytes must be a non-negative integer (got $value).',
+              ),
+            ),
+          );
+        });
+      }
 
       test('rejects --no-patch-signing with a public key', () async {
         when(

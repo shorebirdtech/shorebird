@@ -292,6 +292,7 @@ $body
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -344,6 +345,7 @@ $body
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -363,6 +365,29 @@ $body
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
+                applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
+              ),
+            ).called(1);
+          },
+        );
+
+        test(
+          'forwards --dd-max-bytes and asks for the release DD default',
+          () async {
+            when(
+              () => argResults[CommonArguments.ddMaxBytesArg.name],
+            ).thenReturn('0');
+            await runWithOverrides(() => iosReleaser.buildReleaseArtifacts());
+
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: 0,
+                applyLegacyDdDefault: true,
               ),
             ).called(1);
           },
@@ -408,6 +433,7 @@ $body
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer((_) async {
             File(
@@ -474,6 +500,7 @@ $body
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer((_) async {
             File(
@@ -542,7 +569,12 @@ $body
               xcarchiveDirectory: xcarchiveDirectory,
             ),
           ).called(1);
-          verify(() => artifactBuilder.buildIpa(args: ['--verbose'])).called(1);
+          verify(
+            () => artifactBuilder.buildIpa(
+              args: ['--verbose'],
+              applyLegacyDdDefault: true,
+            ),
+          ).called(1);
         });
       });
 
@@ -706,6 +738,7 @@ $body
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
@@ -732,6 +765,7 @@ $body
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).captured;
 
@@ -755,6 +789,7 @@ $body
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).captured;
 

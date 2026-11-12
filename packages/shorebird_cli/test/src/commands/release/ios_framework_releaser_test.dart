@@ -272,7 +272,10 @@ void main() {
 
       setUp(() {
         when(
-          () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+          () => artifactBuilder.buildIosFramework(
+            args: any(named: 'args'),
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
+          ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
         );
@@ -306,6 +309,7 @@ void main() {
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -328,6 +332,7 @@ void main() {
               () => artifactBuilder.buildIosFramework(
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
+                applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
               ),
             ).called(1);
           },
@@ -342,7 +347,10 @@ void main() {
         test('forwards --no-codesign to flutter', () async {
           await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
           verify(
-            () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+            () => artifactBuilder.buildIosFramework(
+              args: ['--no-codesign'],
+              applyLegacyDdDefault: true,
+            ),
           ).called(1);
         });
       });
@@ -359,7 +367,10 @@ void main() {
 
           expect(xcframework.path, p.join(projectRoot.path, 'release'));
           verify(
-            () => artifactBuilder.buildIosFramework(args: ['--verbose']),
+            () => artifactBuilder.buildIosFramework(
+              args: ['--verbose'],
+              applyLegacyDdDefault: true,
+            ),
           ).called(1);
         });
       });
@@ -370,7 +381,12 @@ void main() {
         );
 
         expect(xcframework.path, p.join(projectRoot.path, 'release'));
-        verify(() => artifactBuilder.buildIosFramework(args: [])).called(1);
+        verify(
+          () => artifactBuilder.buildIosFramework(
+            args: [],
+            applyLegacyDdDefault: true,
+          ),
+        ).called(1);
       });
 
       test(
@@ -414,6 +430,7 @@ void main() {
           () => artifactBuilder.buildIosFramework(
             target: any(named: 'target'),
             args: any(named: 'args'),
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
         iosFrameworkReleaser = IosFrameworkReleaser(
@@ -428,6 +445,7 @@ void main() {
           () => artifactBuilder.buildIosFramework(
             target: 'lib/main_prod.dart',
             args: [],
+            applyLegacyDdDefault: true,
           ),
         ).called(1);
       });
@@ -448,6 +466,7 @@ void main() {
           when(
             () => artifactBuilder.buildIosFramework(
               args: any(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
@@ -469,6 +488,7 @@ void main() {
           final captured = verify(
             () => artifactBuilder.buildIosFramework(
               args: captureAny(named: 'args'),
+              applyLegacyDdDefault: true,
             ),
           ).captured;
 
