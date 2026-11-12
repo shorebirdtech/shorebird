@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -16,15 +17,40 @@ const String allowNativeDiffsHint =
     "If you don't understand these native changes, don't ship this patch. "
     'Pass --allow-native-diffs to override this warning for this patch.';
 
-/// Advice shown after listing dependencies whose versions changed.
-const String _pinDependenciesHint =
-    'A changed dependency version is a common cause of DEX changes. '
-    'Pin dependency versions (or use Gradle dependency locking) so patch '
-    'builds resolve the same versions as the release.\n'
+/// Advice shown after listing dependencies whose versions changed: Gradle's
+/// standard fixes, with a constraint ready to paste for each library that
+/// moved.
+String _pinDependenciesHint(List<DependencyVersionChange> changes) {
+  final pins = <String>{
+    for (final change in changes)
+      if (change.oldVersion case final version?)
+        // A constraint applies to a module, whatever its classifier.
+        '      implementation("${change.name.split(':').take(2).join(':')}") '
+            '{ version { strictly("$version") } }',
+  };
+  return [
+    "A dependency that resolves to a different version than the release's "
+        "is a common cause of DEX changes you didn't make, often because a "
+        'plugin asks for a version range.',
+    if (pins.isNotEmpty) ...[
+      "To build with the release's versions, add this to "
+          'android/app/build.gradle (or build.gradle.kts):',
+      '  dependencies {',
+      '    constraints {',
+      ...pins,
+      '    }',
+      '  }',
+      'Or use Gradle dependency locking '
+          '(https://docs.gradle.org/current/userguide/dependency_locking.html).',
+    ] else
+      'Pin dependency versions (or use Gradle dependency locking) so patch '
+          'builds resolve the same versions as the release.',
     "Patches only contain Dart code, so devices keep running the release's "
-    'versions of these libraries. If these version changes explain all of '
-    "the differences above and your Dart code doesn't rely on them, it is "
-    'safe to pass --allow-native-diffs for this patch.';
+        'versions of these libraries. If these version changes explain all of '
+        "the differences above and your Dart code doesn't rely on them, it is "
+        'safe to pass --allow-native-diffs for this patch.',
+  ].join('\n');
+}
 
 /// Advice shown after listing embedded Apple frameworks whose versions changed.
 const String _pinFrameworksHint =
@@ -218,7 +244,7 @@ class PatchDiffChecker {
               '\nDependency versions differ from the release:',
               for (final change in contentDiffs.dependencyVersionChanges)
                 '  ${change.describe()}',
-              _pinDependenciesHint,
+              _pinDependenciesHint(contentDiffs.dependencyVersionChanges),
             ].join('\n'),
           ),
         );
