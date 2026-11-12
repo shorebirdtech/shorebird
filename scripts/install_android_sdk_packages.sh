@@ -7,10 +7,11 @@
 # An install normally takes 20-30 seconds. Its download from dl.google.com
 # has failed e2e jobs that tested nothing: a corrupt NDK zip ("Error reading
 # Zip content from a SeekableByteChannel", runs 41553186726 and 43237646183),
-# and sdkmanager has hung at "Loading local repository" until the step timed
-# out (run 42728409530). Each attempt gets a deadline, and a failed attempt's
-# partial download is deleted before the next one, since sdkmanager can resume
-# an interrupted download from it and read the same bad bytes again.
+# and a download that stalled until the step timed out (run 42728409530, whose
+# log stops at "Loading package information..."). e2e.yaml caches the NDK, so this downloads only
+# on a cache miss. Each attempt gets a deadline, and a failed attempt's
+# scratch files (partial downloads, unpacked pieces) are deleted, so the next
+# one starts clean.
 #
 # Usage: ./install_android_sdk_packages.sh <package> [package...]
 # e.g. ./install_android_sdk_packages.sh "ndk;28.2.13676358" "cmake;3.22.1"
