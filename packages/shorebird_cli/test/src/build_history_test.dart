@@ -422,6 +422,53 @@ void main() {
         await recordRun(run, () async {});
 
         expect(sentRequest().shareDebugInfo, isTrue);
+        verify(
+          () => logger.warn(
+            any(that: contains('No debugging information was shared')),
+          ),
+        ).called(1);
+      });
+
+      test('offers a bundle this run rewrote within the same mtime', () async {
+        final modified = DateTime(2026, 11, 12, 9);
+        bundle
+          ..writeAsBytesSync([1])
+          ..setLastModifiedSync(modified);
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async {
+          bundle
+            ..writeAsBytesSync([1, 2])
+            ..setLastModifiedSync(modified);
+        });
+
+        expect(sentRequest().artifacts?.single.sizeBytes, equals(2));
+      });
+
+      test('never offers an empty bundle', () async {
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async => bundle.writeAsBytesSync([]));
+
+        expect(sentRequest().artifacts, isNull);
+      });
+
+      test('warns a run that asked to share when the record failed', () async {
+        when(
+          () => codePushClient.createBuildRun(
+            appId: any(named: 'appId'),
+            request: any(named: 'request'),
+          ),
+        ).thenThrow(const CodePushException(message: 'offline'));
+        final run = startRun()..shareDebugInfo = true;
+
+        await recordRun(run, () async {});
+
+        verify(
+          () => logger.warn(
+            'Could not share debugging information with Shorebird.',
+          ),
+        ).called(1);
       });
 
       test('uploads the bundle when the server asks for it', () async {

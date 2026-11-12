@@ -86,23 +86,32 @@ class BuildRun {
   bool shareDebugInfo = false;
 
   File? _debugBundle;
-  DateTime? _debugBundleModifiedAtStart;
+  FileStat? _debugBundleAtStart;
 
   /// Offers [file], where the run writes its debug bundle, to the server with
   /// the record, if the run writes it. A file a previous run left there and
   /// this run didn't rewrite is never offered.
   void watchDebugBundle(File file) {
     _debugBundle = file;
-    _debugBundleModifiedAtStart = file.existsSync()
-        ? file.lastModifiedSync()
-        : null;
+    _debugBundleAtStart = file.statSync();
   }
 
-  /// The debug bundle this run wrote, or null if it wrote none.
+  /// The debug bundle this run wrote, or null if it wrote none (or it can't
+  /// be read).
   File? get writtenDebugBundle {
     final file = _debugBundle;
-    if (file == null || !file.existsSync()) return null;
-    if (file.lastModifiedSync() == _debugBundleModifiedAtStart) return null;
+    if (file == null) return null;
+    final stat = file.statSync();
+    if (stat.type != FileSystemEntityType.file) return null;
+    // Rewritten within the timestamp's resolution, a bundle almost always
+    // changes size: compare both.
+    final atStart = _debugBundleAtStart;
+    if (atStart != null &&
+        atStart.type == FileSystemEntityType.file &&
+        atStart.modified == stat.modified &&
+        atStart.size == stat.size) {
+      return null;
+    }
     return file;
   }
 }
@@ -152,6 +161,20 @@ class BuildHistory {
   /// How long sending a record may take before it is dropped.
   @visibleForTesting
   static const sendTimeout = Duration(seconds: 5);
+
+  /// How long sending a record that offers a debug bundle may take: the
+  /// server opens the bundle's upload session before it answers.
+  @visibleForTesting
+  static const sendWithBundleTimeout = Duration(seconds: 30);
+
+  /// How long uploading a debug bundle may take before it is abandoned, so a
+  /// stalled connection can't hold up a run that is otherwise done.
+  @visibleForTesting
+  static const shareTimeout = Duration(minutes: 5);
+
+  /// The largest debug bundle the server accepts.
+  @visibleForTesting
+  static const maxDebugBundleBytes = 1 << 30;
 
   /// Starts the record of [platform]'s part of [command].
   ///
@@ -257,8 +280,8 @@ class BuildHistory {
     final appId = run.appId;
     if (appId == null) return;
     final duration = clock.now().difference(run.startedAt);
-    final debugBundle = run.writtenDebugBundle;
     final CreateBuildRunResponse response;
+    final offered = _offerableDebugBundle(run);
     try {
       final request = CreateBuildRunRequest(
         runId: run.runId,
@@ -273,41 +296,64 @@ class BuildHistory {
         dryRun: run.dryRun,
         metadata: run.metadata ?? await _tryMetadata(metadata),
         buildFlags: run.buildFlags,
-        artifacts: debugBundle == null
+        artifacts: offered == null
             ? null
             : [
                 CreateRunArtifact(
                   kind: RunArtifactKind.debugBundle,
-                  sizeBytes: debugBundle.lengthSync(),
+                  sizeBytes: offered.$2,
                 ),
               ],
         shareDebugInfo: run.shareDebugInfo ? true : null,
       );
       response = await codePushClientWrapper.codePushClient
           .createBuildRun(appId: appId, request: request)
-          .timeout(sendTimeout);
+          .timeout(offered == null ? sendTimeout : sendWithBundleTimeout);
     } on Object catch (error) {
       // Build history is a record for the customer, not part of the run: a
       // run that worked must not fail because it couldn't be recorded.
       logger.detail('Could not record this run in build history: $error');
+      if (run.shareDebugInfo) {
+        logger.warn('Could not share debugging information with Shorebird.');
+      }
       return;
     }
-    for (final upload in response.artifactUploads ?? <RunArtifactUpload>[]) {
-      if (upload.kind != RunArtifactKind.debugBundle || debugBundle == null) {
-        continue;
-      }
-      await _shareDebugBundle(upload, debugBundle);
+    final uploads = [
+      for (final upload in response.artifactUploads ?? <RunArtifactUpload>[])
+        if (upload.kind == RunArtifactKind.debugBundle) upload,
+    ];
+    if (offered case (final bundle, _) when uploads.isNotEmpty) {
+      await _shareDebugBundle(uploads.first, bundle);
+    } else if (run.shareDebugInfo) {
+      logger.warn(
+        'No debugging information was shared: this run wrote none '
+        '(it is written when linking an iOS or macOS patch).',
+      );
     }
+  }
+
+  /// The debug bundle [run] wrote and its size, if the server could accept
+  /// it.
+  (File, int)? _offerableDebugBundle(BuildRun run) {
+    final bundle = run.writtenDebugBundle;
+    if (bundle == null) return null;
+    // statSync reports a file that vanished as notFound with size -1 rather
+    // than throwing.
+    final size = bundle.statSync().size;
+    if (size <= 0 || size > maxDebugBundleBytes) {
+      logger.detail('Not offering a debug bundle of $size bytes.');
+      return null;
+    }
+    return (bundle, size);
   }
 
   /// Uploads [file] to [upload]. Like the record, sharing never changes the
   /// run's result: a failed upload is reported and the run goes on.
   Future<void> _shareDebugBundle(RunArtifactUpload upload, File file) async {
     try {
-      await codePushClientWrapper.codePushClient.uploadRunArtifact(
-        upload: upload,
-        path: file.path,
-      );
+      await codePushClientWrapper.codePushClient
+          .uploadRunArtifact(upload: upload, path: file.path)
+          .timeout(shareTimeout);
     } on Object catch (error) {
       logger
         ..warn('Could not share debugging information with Shorebird.')

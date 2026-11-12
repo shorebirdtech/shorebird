@@ -116,7 +116,7 @@ void main() {
         () => artifactBuilder.prepareBuildTrace(
           platform: any(named: 'platform'),
         ),
-      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
+      ).thenAnswer((_) async {});
       when(artifactBuilder.writeBuildTraceSummary).thenReturn(null);
       cache = MockCache();
       buildHistory = BuildHistory(runId: 'run-id');
@@ -179,7 +179,7 @@ void main() {
           status: any(named: 'status'),
           metadata: any(named: 'metadata'),
         ),
-      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
+      ).thenAnswer((_) async {});
 
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -205,7 +205,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
         ),
-      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
+      ).thenAnswer((_) async {});
       when(
         () => releaser.postReleaseInstructions,
       ).thenReturn(postReleaseInstructions);
@@ -242,7 +242,7 @@ void main() {
       ).thenAnswer((_) async => {});
       when(
         () => shorebirdFlutter.fetchRemoteRefs(),
-      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
+      ).thenAnswer((_) async {});
       when(
         () => shorebirdFlutter.resolveFlutterVersion(any()),
       ).thenAnswer((_) async => flutterVersion);
