@@ -1,6 +1,5 @@
 // cspell:words allprojects librust posthog
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';

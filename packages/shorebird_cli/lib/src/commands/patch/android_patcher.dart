@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -49,7 +48,6 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
   /// [createPatchArtifacts] extracts each `libapp.so` from.
   /// See https://github.com/shorebirdtech/shorebird/issues/3388.
   File? _patchAab;
-
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
