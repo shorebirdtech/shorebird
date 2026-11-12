@@ -297,7 +297,7 @@ void main() {
         patch.platforms,
         equals([ReleasePlatform.android, ReleasePlatform.ios]),
       );
-      expect(patch.tracksOf(patch.patches.first), equals('beta, stable'));
+      expect(patch.tracksOf(patch.patches.first), equals('beta + stable'));
       expect(patch.tracksDiffer, isTrue);
       expect(patch.patchFor(ReleasePlatform.ios)?.id, equals(2));
       expect(patch.patchFor(ReleasePlatform.macos), isNull);
@@ -353,6 +353,28 @@ void main() {
           equals(
             '#7  android, ios  on different tracks '
             '(android: stable (10%), ios: no track)',
+          ),
+        );
+      });
+
+      test('names each rollout when platforms share a track', () {
+        expect(
+          formatPatchNumberLine(
+            PatchNumber(
+              number: 7,
+              rows: [
+                row(
+                  id: 1,
+                  platform: ReleasePlatform.android,
+                  rolloutPercentage: 10,
+                ),
+                row(id: 2, platform: ReleasePlatform.ios),
+              ],
+            ),
+          ),
+          equals(
+            '#7  android, ios  track: stable '
+            '(android: stable (10%), ios: stable)',
           ),
         );
       });

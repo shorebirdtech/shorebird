@@ -36,8 +36,10 @@ class _TestCommand extends PatchRollbackStateCommand {
   @override
   String get name => 'flip';
 
+  bool target = true;
+
   @override
-  bool get targetIsRolledBack => true;
+  bool get targetIsRolledBack => target;
 
   @override
   String get verb => 'flip';
@@ -565,6 +567,38 @@ void main() {
         expect(exitCode, equals(ExitCode.success.code));
         final data = json['data'] as Map<String, dynamic>;
         expect(data['patches'], hasLength(2));
+      });
+
+      test('refuses to roll forward platforms in different states', () async {
+        command.target = false;
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        expect(command.calls, isEmpty);
+        verify(
+          () => logger.err(
+            "Some of patch $patchNumber's platforms are rolled back and some "
+            'are not, so pass --platforms to choose which to flip.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'To choose which to change, run:\n'
+            '  shorebird flip --release-version=$releaseVersion '
+            '--patch-number=$patchNumber --platforms=ios',
+          ),
+        ).called(1);
+      });
+
+      test('in --json mode, reports the platforms that differ', () async {
+        command.target = false;
+
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.usage.code));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['hint'], contains('--platforms=ios'));
       });
 
       group('when the server says the platforms differ', () {
