@@ -574,8 +574,9 @@ void main() {
           // A storage 409 must not read as an API conflict.
           http.StreamedResponse(const Stream.empty(), HttpStatus.conflict),
         ];
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => responses.removeAt(0));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -639,8 +640,9 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         ];
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => responses.removeAt(0));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -696,8 +698,9 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         ];
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => responses.removeAt(0));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'patch.txt'))
@@ -715,8 +718,9 @@ void main() {
           completes,
         );
 
-        final requests = verify(() => httpClient.send(captureAny())).captured
-            .cast<http.BaseRequest>();
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
         expect(requests, hasLength(2));
         final uploadRequest = requests.last;
         expect(uploadRequest.method, equals('PUT'));
@@ -1014,8 +1018,9 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.badRequest),
         ];
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => responses.removeAt(0));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -1074,8 +1079,9 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         ];
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => responses.removeAt(0));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -1133,8 +1139,9 @@ void main() {
           ),
           http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         ];
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => responses.removeAt(0));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
 
         final tempDir = Directory.systemTemp.createTempSync();
         final fixture = File(path.join(tempDir.path, 'release.txt'))
@@ -1154,8 +1161,9 @@ void main() {
           completes,
         );
 
-        final requests = verify(() => httpClient.send(captureAny())).captured
-            .cast<http.BaseRequest>();
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
         expect(requests, hasLength(2));
         final uploadRequest = requests.last;
         expect(uploadRequest.method, equals('PUT'));
@@ -1196,8 +1204,9 @@ void main() {
         void stubActions(
           List<Future<http.StreamedResponse> Function()> actions,
         ) {
-          when(() => httpClient.send(any()))
-              .thenAnswer((_) => actions.removeAt(0)());
+          when(
+            () => httpClient.send(any()),
+          ).thenAnswer((_) => actions.removeAt(0)());
         }
 
         Future<void> upload(String artifactPath) =>
@@ -2994,8 +3003,9 @@ void main() {
           expect(
             request.url,
             equals(
-              v1('apps/$appId/releases/123/patches')
-                  .replace(queryParameters: {'link_key': 'abc 123'}),
+              v1(
+                'apps/$appId/releases/123/patches',
+              ).replace(queryParameters: {'link_key': 'abc 123'}),
             ),
           );
         });
@@ -3888,9 +3898,9 @@ void main() {
             ),
             completion(equals([invite, invite])),
           );
-          final urls = verify(() => httpClient.send(captureAny())).captured
-              .map((r) => (r as http.Request).url)
-              .toList();
+          final urls = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.map((r) => (r as http.Request).url).toList();
           expect(urls[0].path, endsWith('organizations/42/invitations'));
           expect(urls[0].queryParameters, {'per_page': '100'});
           expect(urls[1].queryParameters, {'per_page': '100', 'cursor': 'c2'});
@@ -4513,9 +4523,9 @@ void main() {
         );
       }
 
-      List<http.Request> requests() =>
-          verify(() => httpClient.send(captureAny())).captured
-              .cast<http.Request>();
+      List<http.Request> requests() => verify(
+        () => httpClient.send(captureAny()),
+      ).captured.cast<http.Request>();
 
       final failsWithServerMessage = throwsA(
         isA<CodePushException>().having(
@@ -4930,8 +4940,9 @@ void main() {
       });
 
       test('stops at an empty page even if it carries a cursor', () async {
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => page([], nextCursor: 'again'));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => page([], nextCursor: 'again'));
 
         final invitations = await codePushClient.getReceivedInvitations();
 
@@ -4944,14 +4955,16 @@ void main() {
           page([invitation('a')], nextCursor: 'next'),
           page([invitation('b')]),
         ];
-        when(() => httpClient.send(any()))
-            .thenAnswer((_) async => responses.removeAt(0));
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
 
         final invitations = await codePushClient.getReceivedInvitations();
 
         expect(invitations.map((i) => i.id), equals(['a', 'b']));
-        final requests = verify(() => httpClient.send(captureAny())).captured
-            .cast<http.BaseRequest>();
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
         expect(requests.map((r) => r.method), everyElement(equals('GET')));
         expect(
           requests.map((r) => r.url),

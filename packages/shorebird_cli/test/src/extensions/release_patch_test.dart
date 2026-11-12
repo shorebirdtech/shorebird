@@ -2,7 +2,10 @@ import 'package:shorebird_cli/src/extensions/release_patch.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
+
 void main() {
+  useTempWorkingDirectory();
   group('ReleasePatchPlatform', () {
     PatchArtifact artifact(ReleasePlatform platform) => PatchArtifact(
       id: 1,

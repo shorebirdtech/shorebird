@@ -711,8 +711,9 @@ class CodePushClient {
     required ReleasePlatform platform,
   }) async {
     final response = await _httpClient.delete(
-      Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts')
-          .replace(queryParameters: {'platform': platform.value}),
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/artifacts',
+      ).replace(queryParameters: {'platform': platform.value}),
     );
 
     if (!response.isSuccess) {
@@ -1112,8 +1113,9 @@ class CodePushClient {
     String? cursor;
     do {
       final response = await _httpClient.get(
-        Uri.parse('$_v1/organizations/$organizationId/invitations')
-            .replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
+        Uri.parse(
+          '$_v1/organizations/$organizationId/invitations',
+        ).replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
       );
 
       if (!response.isSuccess) {
@@ -1674,8 +1676,9 @@ class CodePushClient {
     String? cursor;
     do {
       final response = await _httpClient.get(
-        Uri.parse('$_v1/invitations')
-            .replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
+        Uri.parse(
+          '$_v1/invitations',
+        ).replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
       );
 
       if (!response.isSuccess) {

@@ -1081,7 +1081,9 @@ void main() {
             final message =
                 verify(
                       () => logger.info(
-                        captureAny(that: startsWith('Android published.')),
+                        captureAny(
+                          that: startsWith('To give the remaining platforms'),
+                        ),
                       ),
                     ).captured.single
                     as String;
@@ -1097,6 +1099,17 @@ void main() {
             );
           });
 
+          test('says what was published before the failure', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.success('\n✅ Published patch 2 (Android)!'),
+            ).called(1);
+          });
+
           test('prints nothing to resume a commit key', () async {
             stubCleanCheckout();
 
@@ -1106,7 +1119,9 @@ void main() {
             );
 
             verifyNever(
-              () => logger.info(any(that: startsWith('Android published.'))),
+              () => logger.info(
+                any(that: startsWith('To give the remaining platforms')),
+              ),
             );
           });
 

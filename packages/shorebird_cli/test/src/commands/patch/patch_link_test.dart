@@ -9,9 +9,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
+  useTempWorkingDirectory();
   group('resolvePatchLink', () {
     const sha = 'abc1234def5678abc1234def5678abc1234def56';
     final projectRoot = Directory('project');

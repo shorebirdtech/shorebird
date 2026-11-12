@@ -427,11 +427,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       try {
         published.add(await createPatch(patcher));
       } catch (_) {
-        if (_link.source == PatchLinkSource.random && published.isNotEmpty) {
-          _logResumeCommand(
-            published: published,
-            unfinished: patchers.skip(index).toList(),
-          );
+        if (published.isNotEmpty && !isJsonMode) {
+          _logPublished(published);
+          if (_link.source == PatchLinkSource.random) {
+            _logResumeCommand(
+              published: published,
+              unfinished: patchers.skip(index).toList(),
+            );
+          }
         }
         rethrow;
       }
@@ -506,10 +509,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         '--release-version=${releaseVersions.single}',
       if (_track case final track?) '--track=${track.channel}',
     ].join(' ');
-    final done = published.map((p) => p.platform.displayName).join(', ');
     logger.info(
-      '$done published. To give the remaining platforms the same patch '
-      'number, rerun this command with:\n  ${lightCyan.wrap(args)}',
+      'To give the remaining platforms the same patch number, rerun this '
+      'command with:\n  ${lightCyan.wrap(args)}',
     );
   }
 
