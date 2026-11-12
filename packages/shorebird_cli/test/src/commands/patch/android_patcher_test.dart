@@ -741,6 +741,7 @@ void main() {
         setUp(() {
           setUpProjectRootArtifacts();
           flutterDirectory = Directory.systemTemp.createTempSync();
+          addTearDown(() => flutterDirectory.deleteSync(recursive: true));
           when(
             () => shorebirdEnv.flutterDirectory,
           ).thenReturn(flutterDirectory);
@@ -760,7 +761,9 @@ void main() {
             ..writeAsStringSync('// pins');
         }
 
-        void buildFails() {
+        // Fails like ArtifactBuilder does: the message and the
+        // recommendation both show the command, with every arg.
+        void buildFails({bool withRecommendation = true}) {
           when(
             () => artifactBuilder.buildAppBundle(
               flavor: any(named: 'flavor'),
@@ -770,9 +773,14 @@ void main() {
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
-          ).thenThrow(
-            ArtifactBuildException('build failed', fixRecommendation: 'tip'),
-          );
+          ).thenAnswer((invocation) async {
+            final args = invocation.namedArguments[#args] as List<String>;
+            final command = ['flutter build appbundle', ...args].join(' ');
+            throw ArtifactBuildException(
+              'failed: $command',
+              fixRecommendation: withRecommendation ? 'run: $command' : null,
+            );
+          });
         }
 
         File writeReleaseAab(Uint8List? dependenciesBytes) {
@@ -893,37 +901,72 @@ void main() {
             () => runWithOverrides(patcher.buildPatchArtifact),
             throwsA(
               isA<ArtifactBuildException>()
-                  .having((e) => e.message, 'message', 'build failed')
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    'failed: flutter build appbundle',
+                  )
                   .having(
                     (e) => e.fixRecommendation,
                     'fixRecommendation',
-                    '${AndroidPatcher.pinnedDependenciesBuildHint(2)}\ntip',
+                    '${AndroidPatcher.pinnedDependenciesBuildHint(2)}\n'
+                        'run: flutter build appbundle',
                   ),
             ),
           );
           expect(
             AndroidPatcher.pinnedDependenciesBuildHint(2),
-            contains('--no-pin-dependencies'),
+            allOf(
+              contains('2 Maven libraries'),
+              contains('--no-pin-dependencies'),
+              contains('--allow-native-diffs'),
+            ),
+          );
+          expect(
+            AndroidPatcher.pinnedDependenciesBuildHint(1),
+            contains('1 Maven library '),
           );
         });
 
-        test('when a pinned build fails on a Flutter that ignores pins, '
-            'passes the failure on unchanged', () async {
+        test('when a pinned build fails with no recommendation, '
+            'gives the hint alone', () async {
+          addPinInitScriptToFlutter();
           patcher.releaseArchive = writeReleaseAab(
             appDependencies([mavenLibrary('com.example', 'a', '1.0.0')]),
           );
-          buildFails();
+          buildFails(withRecommendation: false);
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
             throwsA(
               isA<ArtifactBuildException>().having(
                 (e) => e.fixRecommendation,
                 'fixRecommendation',
-                'tip',
+                AndroidPatcher.pinnedDependenciesBuildHint(1),
               ),
             ),
           );
         });
+
+        test(
+          'when a pinned build fails on a Flutter that ignores pins, '
+          'adds no hint and drops the deleted pins file from the command',
+          () async {
+            patcher.releaseArchive = writeReleaseAab(
+              appDependencies([mavenLibrary('com.example', 'a', '1.0.0')]),
+            );
+            buildFails();
+            await expectLater(
+              () => runWithOverrides(patcher.buildPatchArtifact),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.fixRecommendation,
+                  'fixRecommendation',
+                  'run: flutter build appbundle',
+                ),
+              ),
+            );
+          },
+        );
 
         test('when an unpinned build fails, '
             'passes the failure on unchanged', () async {
@@ -939,7 +982,7 @@ void main() {
               isA<ArtifactBuildException>().having(
                 (e) => e.fixRecommendation,
                 'fixRecommendation',
-                'tip',
+                'run: flutter build appbundle',
               ),
             ),
           );

@@ -445,6 +445,15 @@ void main() {
       expect(results['track'], equals('beta'));
     });
 
+    test('pins dependencies unless --no-pin-dependencies', () {
+      final parser = PatchCommand().argParser;
+      expect(parser.parse([])['pin-dependencies'], isTrue);
+      expect(
+        parser.parse(['--no-pin-dependencies'])['pin-dependencies'],
+        isFalse,
+      );
+    });
+
     test('accepts a hidden --dd-max-bytes option with no default', () {
       final option =
           PatchCommand().argParser.options[CommonArguments.ddMaxBytesArg.name]!;

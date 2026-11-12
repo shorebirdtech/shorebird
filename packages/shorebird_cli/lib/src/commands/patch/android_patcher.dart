@@ -111,8 +111,13 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
   /// Shown when a patch build with pinned Maven versions fails: pinning is
   /// the likeliest cause the customer can't see in their own build files.
   @visibleForTesting
-  static String pinnedDependenciesBuildHint(int count) => '''
-This patch was built with $count Maven libraries pinned to the versions your release used, so that it matches what devices run. If the error names a library you updated since the release, rerun with --no-pin-dependencies to use the versions in your Gradle files. A patch can't change native code, so the patch may then be reported as having native changes.''';
+  static String pinnedDependenciesBuildHint(int count) {
+    final libraries = count == 1 ? '1 Maven library' : '$count Maven libraries';
+    return '''
+This patch was built with $libraries pinned to the versions your release used, so that it matches what devices run.
+If the build failed on a class or method that only a newer version of a library has (for example, after you updated a plugin since the release), that change needs a new release: devices keep the release's libraries.
+To build the patch anyway, rerun with --no-pin-dependencies. It will then be reported as having native changes, which need --allow-native-diffs and won't reach devices until a new release.''';
+  }
 
   /// Whether this Flutter has the fork's init script that reads
   /// [pinnedDependenciesProjectProperty]. Older ones ignore the property, so a
@@ -208,12 +213,18 @@ This patch was built with $count Maven libraries pinned to the versions your rel
     final pinsDir = pinnedDependencies.isEmpty
         ? null
         : Directory.systemTemp.createTempSync('shorebird_pins_');
+    final pinsFile = pinsDir == null
+        ? null
+        : File(p.join(pinsDir.path, 'pinned_dependencies.txt'));
+    // Read by shorebird_pin_dependencies_init.gradle in Shorebird's Flutter
+    // fork. Flutter versions without it ignore the property.
+    final pinsArg = pinsFile == null
+        ? null
+        : '--android-project-arg=$pinnedDependenciesProjectProperty='
+              '${pinsFile.path}';
     final File aabFile;
     try {
-      final pinsFile = pinsDir == null
-          ? null
-          : (File(p.join(pinsDir.path, 'pinned_dependencies.txt'))
-              ..writeAsStringSync('${pinnedDependencies.join('\n')}\n'));
+      pinsFile?.writeAsStringSync('${pinnedDependencies.join('\n')}\n');
       aabFile = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
@@ -222,24 +233,26 @@ This patch was built with $count Maven libraries pinned to the versions your rel
           ...argResults.forwardedArgs,
           ...extraBuildArgs,
           ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
-          // Read by shorebird_pin_dependencies_init.gradle in Shorebird's
-          // Flutter fork. Flutter versions without it ignore the property.
-          if (pinsFile != null)
-            [
-              '--android-project-arg=$pinnedDependenciesProjectProperty',
-              pinsFile.path,
-            ].join('='),
+          ?pinsArg,
         ],
         base64PublicKey: await getEncodedPublicKey(),
       );
     } on ArtifactBuildException catch (e) {
-      if (pinnedDependencies.isEmpty || !_flutterPinsDependencies) rethrow;
+      if (pinsArg == null) rethrow;
+      // The pins file is deleted below, so a command shown for the customer
+      // to rerun must not name it: it would fail on the missing file.
+      String withoutPins(String text) => text.replaceAll(' $pinsArg', '');
+      final fixRecommendation = e.fixRecommendation == null
+          ? null
+          : withoutPins(e.fixRecommendation!);
       throw ArtifactBuildException(
-        e.message,
-        fixRecommendation: [
-          pinnedDependenciesBuildHint(pinnedDependencies.length),
-          ?e.fixRecommendation,
-        ].join('\n'),
+        withoutPins(e.message),
+        fixRecommendation: _flutterPinsDependencies
+            ? [
+                pinnedDependenciesBuildHint(pinnedDependencies.length),
+                ?fixRecommendation,
+              ].join('\n')
+            : fixRecommendation,
       );
     } finally {
       pinsDir?.deleteTemporarySync();
