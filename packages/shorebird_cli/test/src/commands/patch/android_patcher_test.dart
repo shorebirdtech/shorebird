@@ -12,7 +12,6 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/archive_analysis/dart_bridge_analyzer.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -37,7 +36,6 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-import '../../archive_analysis/bundle_dependencies_helpers.dart';
 import '../../fakes.dart';
 import '../../helpers.dart';
 import '../../matchers.dart';
@@ -718,7 +716,7 @@ void main() {
       group('when releaseVersion is provided', () {
         setUp(setUpProjectRootArtifacts);
 
-        test('forwards --build-name and --build-number to builder', () async {
+        test('passes only --build-name and --build-number', () async {
           await runWithOverrides(
             () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
           );
@@ -726,202 +724,13 @@ void main() {
             () => artifactBuilder.buildAppBundle(
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              args: any(
-                named: 'args',
-                that: containsAll(['--build-name=1.2.3', '--build-number=4']),
-              ),
+              // Exactly these: every arg goes to `flutter build appbundle`,
+              // whose parser rejects anything it doesn't know (shorebird#4406
+              // added Gradle's --init-script here and broke every patch).
+              args: ['--build-name=1.2.3', '--build-number=4'],
             ),
           ).called(1);
         });
-      });
-
-      group('release-pinned Gradle resolution from dependencies.pb', () {
-        setUp(setUpProjectRootArtifacts);
-
-        File writeReleaseAab(String fileName, Uint8List? dependenciesBytes) {
-          final archive = Archive();
-          if (dependenciesBytes != null) {
-            archive.addFile(
-              ArchiveFile(
-                bundleDependenciesPath,
-                dependenciesBytes.length,
-                dependenciesBytes,
-              ),
-            );
-          } else {
-            archive.addFile(
-              ArchiveFile.string('base/lib/arm64-v8a/libapp.so', 'app'),
-            );
-          }
-          final file = File(p.join(projectRoot.path, fileName))
-            ..createSync(recursive: true)
-            ..writeAsBytesSync(ZipEncoder().encode(archive));
-          return file;
-        }
-
-        test(
-          'extracts Maven versions from dependencies.pb, passes --init-script '
-          'with resolutionStrategy.force(...) to buildAppBundle, and deletes '
-          'the temporary init script on exit',
-          () async {
-            final releaseAab = writeReleaseAab(
-              'release_with_deps.aab',
-              appDependencies([
-                mavenLibrary('io.sentry', 'sentry-android', '7.14.0'),
-                mavenLibrary('com.posthog', 'posthog-android', '3.71.6'),
-                mavenLibrary(
-                  'com.posthog',
-                  'posthog-android',
-                  '3.71.6',
-                  classifier: 'aar',
-                ),
-              ]),
-            );
-
-            String? capturedScriptPath;
-            String? capturedScriptContent;
-            when(
-              () => artifactBuilder.buildAppBundle(
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                targetPlatforms: any(named: 'targetPlatforms'),
-                args: any(named: 'args'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
-              ),
-            ).thenAnswer((invocation) async {
-              final args = invocation.namedArguments[#args] as List<String>;
-              final initIdx = args.indexOf('--init-script');
-              expect(initIdx, isNonNegative);
-              capturedScriptPath = args[initIdx + 1];
-              final scriptFile = File(capturedScriptPath!);
-              expect(scriptFile.existsSync(), isTrue);
-              capturedScriptContent = scriptFile.readAsStringSync();
-              return aabFile;
-            });
-
-            patcher.releaseArchive = releaseAab;
-            await runWithOverrides(patcher.buildPatchArtifact);
-
-            expect(capturedScriptPath, isNotNull);
-            expect(File(capturedScriptPath!).existsSync(), isFalse);
-            expect(File(capturedScriptPath!).parent.existsSync(), isFalse);
-            const posthogCoord = 'com.posthog:posthog-android:3.71.6';
-            const sentryCoord = 'io.sentry:sentry-android:7.14.0';
-            expect(
-              capturedScriptContent,
-              equals(
-                'allprojects {\n'
-                '  configurations.all {\n'
-                "    resolutionStrategy.force('$posthogCoord')\n"
-                "    resolutionStrategy.force('$sentryCoord')\n"
-                '  }\n'
-                '}\n',
-              ),
-            );
-          },
-        );
-
-        test(
-          'cleans up temporary --init-script even when buildAppBundle throws',
-          () async {
-            final releaseAab = writeReleaseAab(
-              'release_throw.aab',
-              appDependencies([
-                mavenLibrary('com.posthog', 'posthog-android', '3.71.6'),
-              ]),
-            );
-
-            String? capturedScriptPath;
-            when(
-              () => artifactBuilder.buildAppBundle(
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                targetPlatforms: any(named: 'targetPlatforms'),
-                args: any(named: 'args'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
-              ),
-            ).thenAnswer((invocation) async {
-              final args = invocation.namedArguments[#args] as List<String>;
-              final initIdx = args.indexOf('--init-script');
-              capturedScriptPath = args[initIdx + 1];
-              expect(File(capturedScriptPath!).existsSync(), isTrue);
-              throw ArtifactBuildException('build failed');
-            });
-
-            await expectLater(
-              () => runWithOverrides(
-                () => patcher.buildPatchArtifact(releaseArchive: releaseAab),
-              ),
-              throwsA(isA<ArtifactBuildException>()),
-            );
-
-            expect(capturedScriptPath, isNotNull);
-            expect(File(capturedScriptPath!).existsSync(), isFalse);
-            expect(File(capturedScriptPath!).parent.existsSync(), isFalse);
-          },
-        );
-
-        test(
-          'omits --init-script when dependencies.pb is absent, empty, or '
-          'corrupt',
-          () async {
-            final noDepsAab = writeReleaseAab('no_deps.aab', null);
-            final emptyDepsAab = writeReleaseAab(
-              'empty_deps.aab',
-              appDependencies(const []),
-            );
-            final corruptDepsAab = writeReleaseAab(
-              'corrupt_deps.aab',
-              Uint8List.fromList([0x80, 0xFF]),
-            );
-
-            for (final archive in [noDepsAab, emptyDepsAab, corruptDepsAab]) {
-              await runWithOverrides(
-                () => patcher.buildPatchArtifact(releaseArchive: archive),
-              );
-            }
-
-            final capturedArgs = verify(
-              () => artifactBuilder.buildAppBundle(
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                targetPlatforms: any(named: 'targetPlatforms'),
-                args: captureAny(named: 'args'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
-              ),
-            ).captured.cast<List<String>>();
-
-            expect(capturedArgs, hasLength(3));
-            for (final args in capturedArgs) {
-              expect(args, isNot(contains('--init-script')));
-            }
-          },
-        );
-
-        test(
-          'generateGradleInitScript skips entries with empty version or '
-          'malformed coordinate key',
-          () {
-            final script = AndroidPatcher.generateGradleInitScript({
-              'invalid_key_without_colon': '1.0.0',
-              'com.example:empty-version': '',
-              'com.example:valid': '2.1.0',
-            });
-            expect(
-              script,
-              equals(
-                'allprojects {\n'
-                '  configurations.all {\n'
-                "    resolutionStrategy.force('com.example:valid:2.1.0')\n"
-                '  }\n'
-                '}\n',
-              ),
-            );
-          },
-        );
       });
 
       group('when build succeeds', () {
