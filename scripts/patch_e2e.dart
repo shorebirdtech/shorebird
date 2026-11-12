@@ -37,6 +37,7 @@
 //                      CLI's real `flutter build` and the server accept the
 //                      release and the patch, not that the app runs them.
 //                      PR CI runs this (main.yaml's android_build_e2e).
+//                      Needs no adb or emulator; --avd is ignored.
 //
 // Device: an attached device or running emulator is used as is (set
 // ANDROID_SERIAL to pick one of several). With none attached, it boots the AVD

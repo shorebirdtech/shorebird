@@ -98,9 +98,9 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
 
-      # The code a real `shorebird release android` and `patch android` run
-      # through: their commands, the builds they start, the Flutter they
-      # build with, and the job itself.
+      # What a real `shorebird release android` and `patch android` run:
+      # the CLI and the packages it builds from, the Flutter it pins, and
+      # this job.
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Android Build E2E Detection
         id: android_build_e2e
@@ -108,15 +108,22 @@ jobs:
           filters: |
             android:
               - ./.github/workflows/main.yaml
-              - bin/internal/flutter.version
+              - bin/**
               - scripts/patch_e2e.dart
+              - scripts/e2e_helpers.dart
               - scripts/no_android_sdk_downloads.sh
-              - packages/shorebird_cli/lib/src/commands/release/**
-              - packages/shorebird_cli/lib/src/commands/patch/**
-              - packages/shorebird_cli/lib/src/artifact_builder/**
-              - packages/shorebird_cli/lib/src/archive_analysis/**
-              - packages/shorebird_cli/lib/src/**/*android*
-              - packages/shorebird_cli/lib/src/**/*gradle*
+              - packages/dex/**
+              - packages/elf/**
+              - packages/macho/**
+              - packages/scoped_deps/**
+              - packages/shorebird_build_trace/**
+              - packages/shorebird_cli/bin/**
+              - packages/shorebird_cli/lib/**
+              - packages/shorebird_cli/pubspec.yaml
+              - packages/shorebird_code_push_client/lib/**
+              - packages/shorebird_code_push_protocol/lib/**
+              - pubspec.lock
+              - pubspec.yaml
 
   # A real Android release and patch built by this PR's CLI against dev,
   # with no device: PR CI's unit tests mock the builds, so a `flutter build`
@@ -126,13 +133,15 @@ jobs:
   #
   # Signs in with OIDC as dev's Shorebird E2E (437) e2e account, whose trust
   # rule admits this file on refs/pull/*. GitHub gives a fork's PR no OIDC
-  # token, so a fork's PR skips it.
+  # token, so a fork's PR skips it, as do Dependabot's (the nightly covers
+  # those).
   android_build_e2e:
     name: 🤖 Android Build E2E
     needs: changes
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
       needs.changes.outputs.android_build_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -157,13 +166,10 @@ jobs:
         run: shorebird --version
 
       - name: ☕ Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: "temurin"
           java-version: "17"
-
-      - name: 🎯 Set up Dart
-        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
 
       # The packages the pinned Flutter's build downloads otherwise; see
       # e2e.yaml's patch job.
@@ -173,9 +179,10 @@ jobs:
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
 
       # e2e.yaml's android_signing cache (same app template and pinned
-      # Flutter), which a PR's run can restore from main.
+      # Flutter), saved on main. Restore only: a PR's own save is usable by
+      # no other ref and fills the repo's 10 GB cache.
       - name: 🐘 Gradle Cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.gradle/caches/modules-2
@@ -184,7 +191,8 @@ jobs:
           key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
 
       - name: 🧪 Release and Patch Android
-        run: ./scripts/no_android_sdk_downloads.sh dart scripts/patch_e2e.dart --no-device
+        # With the Dart of the Flutter the CLI pins, as e2e.yaml's patch job.
+        run: ./scripts/no_android_sdk_downloads.sh "bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/dart" scripts/patch_e2e.dart --no-device
 
   verify_packages:
     needs: changes
