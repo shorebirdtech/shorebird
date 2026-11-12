@@ -204,9 +204,12 @@ class RolloutCommand extends ShorebirdCommand
     final updatedPatch = patch.copyWith(
       channel: channel,
       rolloutPercentage: targetPercentage,
-      rolloutSteps: schedule?.steps,
-      rolloutPauseWeekends: schedule?.pauseWeekends,
-      rolloutTimezone: schedule?.timezone,
+    ).withRolloutSchedule(
+      steps: schedule?.steps,
+      // Only the server knows when the next step applies.
+      nextStepAt: null,
+      pauseWeekends: schedule?.pauseWeekends,
+      timezone: schedule?.timezone,
     );
 
     if (isJsonMode) {

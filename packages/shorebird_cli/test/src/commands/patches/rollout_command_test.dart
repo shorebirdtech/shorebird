@@ -674,5 +674,80 @@ void main() {
         );
       });
     });
+
+    group('when the patch the server reports is on a schedule', () {
+      setUp(() {
+        stubPatches([
+          ReleasePatch(
+            id: patch.id,
+            number: patch.number,
+            channel: patch.channel,
+            isRolledBack: patch.isRolledBack,
+            artifacts: patch.artifacts,
+            rolloutPercentage: patch.rolloutPercentage,
+            rolloutSteps: const [
+              RolloutStep(percentage: 10, durationMinutes: 720),
+              RolloutStep(percentage: 100),
+            ],
+            rolloutNextStepAt: DateTime.utc(2026, 11, 11, 12),
+            rolloutPauseWeekends: true,
+            rolloutTimezone: 'America/New_York',
+          ),
+        ]);
+      });
+
+      test('in --json mode, a fixed rollout reports no schedule', () async {
+        when(() => argResults['percentage']).thenReturn('100');
+
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final emitted =
+            (json['data'] as Map<String, dynamic>)['patch']
+                as Map<String, dynamic>;
+        expect(emitted['rollout_percentage'], 100);
+        expect(
+          emitted.keys,
+          isNot(
+            anyElement(
+              isIn([
+                'rollout_steps',
+                'rollout_next_step_at',
+                'rollout_pause_weekends',
+                'rollout_timezone',
+              ]),
+            ),
+          ),
+        );
+      });
+
+      test('in --json mode, a new schedule replaces the old one', () async {
+        when(() => argResults['percentage']).thenReturn(null);
+        when(() => argResults[rolloutStepsArgName]).thenReturn('1:4h,100');
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(false);
+        when(() => argResults[timezoneArgName]).thenReturn(null);
+
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final emitted =
+            (json['data'] as Map<String, dynamic>)['patch']
+                as Map<String, dynamic>;
+        expect(
+          emitted['rollout_steps'],
+          equals([
+            {'percentage': 1, 'duration_minutes': 240},
+            {'percentage': 100},
+          ]),
+        );
+        expect(emitted['rollout_pause_weekends'], isFalse);
+        expect(emitted.containsKey('rollout_timezone'), isFalse);
+        expect(
+          emitted.containsKey('rollout_next_step_at'),
+          isFalse,
+          reason: 'only the server knows when the next step applies',
+        );
+      });
+    });
   });
 }

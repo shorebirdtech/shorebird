@@ -278,9 +278,12 @@ class SetTrackCommand extends ShorebirdCommand
     final promotedPatch = patch.copyWith(
       channel: targetChannel,
       rolloutPercentage: requestedPercentage ?? 100,
-      rolloutSteps: schedule?.steps,
-      rolloutPauseWeekends: schedule?.pauseWeekends,
-      rolloutTimezone: schedule?.timezone,
+    ).withRolloutSchedule(
+      steps: schedule?.steps,
+      // Only the server knows when the next step applies.
+      nextStepAt: null,
+      pauseWeekends: schedule?.pauseWeekends,
+      timezone: schedule?.timezone,
     );
 
     if (isJsonMode) {
