@@ -1,5 +1,6 @@
 // cspell:words allprojects librust posthog
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
@@ -10,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -33,6 +35,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../archive_analysis/bundle_dependencies_helpers.dart';
 import '../../fakes.dart';
 import '../../helpers.dart';
 import '../../matchers.dart';
@@ -624,6 +627,117 @@ void main() {
             ),
           ).called(1);
         });
+      });
+
+      group('pinning Maven versions to the release', () {
+        setUp(setUpProjectRootArtifacts);
+
+        File writeReleaseAab(Uint8List? dependenciesBytes) {
+          final archive = Archive()
+            ..addFile(ArchiveFile.string('base/lib/arm64-v8a/libapp.so', 'a'));
+          if (dependenciesBytes != null) {
+            archive.addFile(
+              ArchiveFile.bytes(bundleDependenciesPath, dependenciesBytes),
+            );
+          }
+          return File(p.join(projectRoot.path, 'release.aab'))
+            ..writeAsBytesSync(ZipEncoder().encode(archive));
+        }
+
+        test('passes the release versions as a Gradle project property, '
+            'then deletes the file', () async {
+          patcher.releaseArchive = writeReleaseAab(
+            appDependencies([
+              mavenLibrary('io.sentry', 'sentry-android', '7.14.0'),
+              mavenLibrary('com.posthog', 'posthog-android', '3.71.6'),
+              mavenLibrary(
+                'com.posthog',
+                'posthog-android',
+                '3.71.6',
+                classifier: 'aar',
+              ),
+            ]),
+          );
+          String? pinsPath;
+          String? pins;
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer((invocation) async {
+            final args = invocation.namedArguments[#args] as List<String>;
+            const prefix =
+                '--android-project-arg=shorebird.pinned-dependencies=';
+            pinsPath = args
+                .singleWhere((arg) => arg.startsWith(prefix))
+                .substring(prefix.length);
+            pins = File(pinsPath!).readAsStringSync();
+            return aabFile;
+          });
+
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          expect(
+            pins,
+            equals(
+              'com.posthog:posthog-android:3.71.6\n'
+              'io.sentry:sentry-android:7.14.0\n',
+            ),
+          );
+          expect(File(pinsPath!).parent.existsSync(), isFalse);
+        });
+
+        test('deletes the file when the build throws', () async {
+          patcher.releaseArchive = writeReleaseAab(
+            appDependencies([mavenLibrary('com.example', 'lib', '1.0.0')]),
+          );
+          String? pinsPath;
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer((invocation) async {
+            final args = invocation.namedArguments[#args] as List<String>;
+            pinsPath = args.last.split('=').last;
+            throw ArtifactBuildException('build failed');
+          });
+
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            throwsA(isA<ArtifactBuildException>()),
+          );
+          expect(File(pinsPath!).parent.existsSync(), isFalse);
+        });
+
+        for (final (description, bytes) in [
+          ('has no dependencies.pb', null),
+          ('has an empty dependencies.pb', appDependencies(const [])),
+          ('has a corrupt dependencies.pb', Uint8List.fromList([0x80, 0xFF])),
+        ]) {
+          test('passes no pins when the release AAB $description', () async {
+            patcher.releaseArchive = writeReleaseAab(bytes);
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
+            );
+            verify(
+              () => artifactBuilder.buildAppBundle(
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                args: ['--build-name=1.2.3', '--build-number=4'],
+              ),
+            ).called(1);
+          });
+        }
       });
 
       group('when build succeeds', () {

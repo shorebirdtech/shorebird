@@ -1,8 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:archive/archive_io.dart';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -12,6 +18,7 @@ import 'package:shorebird_cli/src/commands/patch/android_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -48,6 +55,49 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
   /// [createPatchArtifacts] extracts each `libapp.so` from.
   /// See https://github.com/shorebirdtech/shorebird/issues/3388.
   File? _patchAab;
+
+  /// The Gradle project property that Shorebird's Flutter fork reads to pin
+  /// Maven dependency versions: the path of a file listing one
+  /// `group:artifact:version` per line.
+  @visibleForTesting
+  static const pinnedDependenciesProjectProperty =
+      'shorebird.pinned-dependencies';
+
+  /// The `group:artifact:version` of each Maven library in [releaseAab]'s
+  /// `dependencies.pb`, sorted, so the patch resolves the same versions as
+  /// the release. Empty when there is no release AAB or it has no readable
+  /// `dependencies.pb`: the patch then builds unpinned, as before.
+  @visibleForTesting
+  static List<String> releasePinnedDependencies(File? releaseAab) {
+    if (releaseAab == null || !releaseAab.existsSync()) return const [];
+    final Map<String, String> dependencies;
+    try {
+      final input = InputFileStream(releaseAab.path);
+      Uint8List? bytes;
+      try {
+        final file = ZipDecoder()
+            .decodeStream(input)
+            .findFile(bundleDependenciesPath);
+        if (file != null && file.isFile) bytes = file.content;
+      } finally {
+        input.closeSync();
+      }
+      if (bytes == null) return const [];
+      dependencies = parseBundleDependencies(bytes);
+    } on Exception catch (error) {
+      logger.detail('Not pinning Maven versions: $error');
+      return const [];
+    }
+    final coordinates = <String>{};
+    for (final MapEntry(key: name, value: version) in dependencies.entries) {
+      // name is group:artifact, plus :classifier when there is one; a
+      // version applies to every classifier of a module.
+      final parts = name.split(':');
+      if (parts.length < 2 || version.isEmpty) continue;
+      coordinates.add('${parts[0]}:${parts[1]}:$version');
+    }
+    return coordinates.toList()..sort();
+  }
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
@@ -93,17 +143,37 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
       logger.warn(updaterPatchErrorWarning);
     }
 
-    final aabFile = await artifactBuilder.buildAppBundle(
-      flavor: flavor,
-      target: target,
-      targetPlatforms: releaseTargetPlatforms,
-      args: [
-        ...argResults.forwardedArgs,
-        ...extraBuildArgs,
-        ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
-      ],
-      base64PublicKey: await getEncodedPublicKey(),
-    );
+    final pinnedDependencies = releasePinnedDependencies(releaseArchive);
+    final pinsDir = pinnedDependencies.isEmpty
+        ? null
+        : Directory.systemTemp.createTempSync('shorebird_pins_');
+    final File aabFile;
+    try {
+      final pinsFile = pinsDir == null
+          ? null
+          : (File(p.join(pinsDir.path, 'pinned_dependencies.txt'))
+              ..writeAsStringSync('${pinnedDependencies.join('\n')}\n'));
+      aabFile = await artifactBuilder.buildAppBundle(
+        flavor: flavor,
+        target: target,
+        targetPlatforms: releaseTargetPlatforms,
+        args: [
+          ...argResults.forwardedArgs,
+          ...extraBuildArgs,
+          ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+          // Read by shorebird_pin_dependencies_init.gradle in Shorebird's
+          // Flutter fork. Flutter versions without it ignore the property.
+          if (pinsFile != null)
+            [
+              '--android-project-arg=$pinnedDependenciesProjectProperty',
+              pinsFile.path,
+            ].join('='),
+        ],
+        base64PublicKey: await getEncodedPublicKey(),
+      );
+    } finally {
+      pinsDir?.deleteTemporarySync();
+    }
 
     // When the built .aab never packaged libapp.so, fail fast with an accurate
     // explanation rather than the generic "cannot find artifacts" message or
