@@ -692,11 +692,11 @@ ${hasBlocLint ? _staticBlocLintStep : ''}      - name: Run Tests
           if [ -z "\$files" ]; then
             exit 0
           fi
-          if $collectCondition; then
+${_retryTestFunction(executable: 'dart', exported: true)}          if $collectCondition; then
             # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
             dart pub global activate coverage 1.15.1
             COVERAGE_DIR="\$(pwd -W 2>/dev/null || pwd)/coverage"
-            printf '%s\\n' "\$files" | xargs -n 50 dart test --coverage="\$COVERAGE_DIR"
+            printf '%s\\n' "\$files" | xargs -n 50 bash -c 'retry_test "\$@"' _ --coverage="\$COVERAGE_DIR"
             if [ -z "\$(find coverage -name '*.json' -print -quit)" ]; then
               echo "::error::dart test wrote no coverage files to coverage/"
               exit 1
@@ -717,7 +717,7 @@ ${hasBlocLint ? _staticBlocLintStep : ''}      - name: Run Tests
             jq --arg name "\$PACKAGE_NAME" '.packages |= map(select(.name == \$name))' "\$PACKAGE_CONFIG" > "\$SCOPED_CONFIG"
             dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages="\$SCOPED_CONFIG" --report-on="\$REPORT_ON" --check-ignore
           else
-            printf '%s\\n' "\$files" | xargs -n 50 dart test
+            printf '%s\\n' "\$files" | xargs -n 50 bash -c 'retry_test "\$@"' _
           fi
       - name: Check Coverage
         if: inputs.has_unit_tests && inputs.min_coverage != '' && inputs.min_coverage != '0' && matrix.os == 'ubuntu-latest'
@@ -854,11 +854,11 @@ ${hasBlocLint ? _staticBlocLintStep : ''}      - name: Run Tests
           if [ -z "\$files" ]; then
             exit 0
           fi
-          if $collectCondition; then
+${_retryTestFunction(executable: 'flutter', exported: true)}          if $collectCondition; then
             COVERAGE_DIR="\$(pwd -W 2>/dev/null || pwd)/coverage"
-            printf '%s\\n' "\$files" | xargs -n 50 flutter test --coverage --merge-coverage --coverage-path="\$COVERAGE_DIR/lcov.info"
+            printf '%s\\n' "\$files" | xargs -n 50 bash -c 'retry_test "\$@"' _ --coverage --merge-coverage --coverage-path="\$COVERAGE_DIR/lcov.info"
           else
-            printf '%s\\n' "\$files" | xargs -n 50 flutter test
+            printf '%s\\n' "\$files" | xargs -n 50 bash -c 'retry_test "\$@"' _
           fi
       - name: Check Coverage
         if: inputs.has_unit_tests && inputs.min_coverage != '' && inputs.min_coverage != '0' && matrix.os == 'ubuntu-latest'
@@ -938,6 +938,38 @@ $codecovStep      - name: Integration Tests
         working-directory: ${{ inputs.package_path }}
         run: bloc lint .
 ''';
+
+  /// Shell function a test step calls in place of `[executable] test`, which
+  /// runs the same arguments a second time when the first run died loading a
+  /// suite rather than failing a test. Only that one signature is retried: a
+  /// failing test, a compile error and every other load failure come back as
+  /// they are. [exported] hands the function to the `bash -c` that `xargs`
+  /// spawns per batch of suites.
+  static String _retryTestFunction({
+    required String executable,
+    required bool exported,
+  }) =>
+      '''
+          # A suite whose VM service connection drops as it loads fails every
+          # suite running alongside it:
+          # https://github.com/dart-lang/native/issues/3738
+          retry_test() {
+            set -o pipefail
+            local log attempt
+            log=\$(mktemp)
+            for attempt in 1 2; do
+              if [ "\$attempt" -gt 1 ]; then
+                echo "::warning::a suite died loading, so the tests run again"
+              fi
+              if $executable test "\$@" 2>&1 | tee "\$log"; then
+                return 0
+              fi
+              grep -q 'Failed to load' "\$log" || return 1
+              grep -q 'Connection closed before full header was received' "\$log" || return 1
+            done
+            return 1
+          }
+${exported ? '          export -f retry_test\n' : ''}''';
 
   // ── Dynamic (affected_packages + matrix) ─────────────────────────
 
@@ -1249,14 +1281,22 @@ ${_checkoutStep(hasSubmodules: hasSubmodules)}''';
     required bool hasCodecov,
     required String executable,
   }) {
+    // Left bare: without `--coverage` there is no VM service connection
+    // for a loading suite to drop, which is all the retry covers.
     if (!hasCodecov) return '      - run: $executable test\n';
-    if (isFlutter) return '      - run: flutter test --coverage\n';
-    return r'''
+    if (isFlutter) {
+      return '''
+      - name: Run Tests
+        run: |
+${_retryTestFunction(executable: 'flutter', exported: false)}          retry_test --coverage
+''';
+    }
+    return '''
       - name: Run Tests
         # Pinned until https://github.com/dart-lang/tools/issues/2667 is fixed.
         run: |
-          dart pub global activate coverage 1.15.1 && \
-          dart test --coverage=coverage && \
+${_retryTestFunction(executable: 'dart', exported: false)}          dart pub global activate coverage 1.15.1 && \\
+          retry_test --coverage=coverage && \\
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
 ''';
   }

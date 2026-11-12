@@ -78,6 +78,11 @@ void createPackage(
   }
 }
 
+/// Reads the workflow [name] out of [tempDir]'s `.github/workflows`.
+String readWorkflow(String name) => File(
+  p.join(tempDir.path, '.github', 'workflows', name),
+).readAsStringSync();
+
 /// Creates a Dart workspace root pubspec at [root] listing [members].
 void createWorkspaceRoot(
   Directory root, {
