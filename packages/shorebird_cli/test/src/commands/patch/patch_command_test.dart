@@ -11,11 +11,13 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/build_flags.dart';
+import 'package:shorebird_cli/src/build_history.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -136,6 +138,8 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late Cache cache;
+    late BuildHistory buildHistory;
+    late CodePushClient codePushClient;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdLogger logger;
     late Patcher patcher;
@@ -157,6 +161,7 @@ void main() {
             () => BuildTraceSession(commandStartedAt: DateTime(2023)),
           ),
           cacheRef.overrideWith(() => cache),
+          buildHistoryRef.overrideWith(() => buildHistory),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -167,6 +172,7 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(FakeCreateBuildRunRequest());
       registerFallbackValue(CreatePatchMetadata.forTest());
       registerFallbackValue(DeploymentTrack.stable);
       registerFallbackValue(FakeDiffStatus());
@@ -221,7 +227,18 @@ void main() {
       when(artifactBuilder.writeBuildTraceSummary).thenReturn(null);
       artifactManager = MockArtifactManager();
       cache = MockCache();
+      buildHistory = BuildHistory(runId: 'run-id');
+      codePushClient = MockCodePushClient();
       codePushClientWrapper = MockCodePushClientWrapper();
+      when(
+        () => codePushClientWrapper.codePushClient,
+      ).thenReturn(codePushClient);
+      when(
+        () => codePushClient.createBuildRun(
+          appId: any(named: 'appId'),
+          request: any(named: 'request'),
+        ),
+      ).thenAnswer((_) async {});
       logger = MockShorebirdLogger();
       progress = MockProgress();
       patcher = MockPatcher();
@@ -1840,6 +1857,287 @@ A patch cannot change the Flutter version a release was built with. To fix this,
       });
     });
 
+    group('build history', () {
+      CreateBuildRunRequest sentRun() =>
+          verify(
+                () => codePushClient.createBuildRun(
+                  appId: appId,
+                  request: captureAny(named: 'request'),
+                ),
+              ).captured.single
+              as CreateBuildRunRequest;
+
+      void stubDiffs(Exception error) {
+        when(
+          () => patcher.assertUnpatchableDiffs(
+            releaseArtifact: any(named: 'releaseArtifact'),
+            releaseArchive: any(named: 'releaseArchive'),
+            patchArchive: any(named: 'patchArchive'),
+          ),
+        ).thenThrow(error);
+      }
+
+      setUp(() {
+        when(() => argResults['release-version']).thenReturn(releaseVersion);
+      });
+
+      test('records a published patch as succeeded', () async {
+        await runWithOverrides(command.run);
+
+        final run = sentRun();
+        expect(run.runId, equals('run-id'));
+        expect(run.command, equals(BuildRunCommand.patch));
+        expect(run.platform, equals(releasePlatform));
+        expect(run.outcome, equals(BuildRunOutcome.succeeded));
+        expect(run.reason, isNull);
+        expect(run.releaseId, equals(release.id));
+        expect(run.patchId, equals(3));
+        expect(run.dryRun, isFalse);
+        expect(run.metadata, equals(patchMetadata.toJson()));
+      });
+
+      test('records a link percentage below the minimum', () async {
+        when(() => argResults['dry-run']).thenReturn(true);
+        when(() => patcher.linkPercentage).thenReturn(12.3);
+        when(
+          () => shorebirdEnv.buildDirectory,
+        ).thenReturn(Directory.systemTemp.createTempSync());
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        final run = sentRun();
+        expect(run.outcome, equals(BuildRunOutcome.failed));
+        expect(run.reason, equals(BuildRunFailureReason.linkPercentage));
+        expect(run.dryRun, isTrue);
+        expect(run.patchId, isNull);
+        expect(run.metadata, equals(patchMetadata.toJson()));
+      });
+
+      test('records native diffs over asset diffs when both stop it', () async {
+        stubDiffs(
+          const UnpatchableChangeException({
+            UnpatchableChange.native,
+            UnpatchableChange.asset,
+          }),
+        );
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        expect(sentRun().reason, equals(BuildRunFailureReason.nativeDiffs));
+        final metadata =
+            verify(
+                  () => patcher.updatedCreatePatchMetadata(captureAny()),
+                ).captured.single
+                as CreatePatchMetadata;
+        expect(metadata.hasNativeChanges, isTrue);
+        expect(metadata.hasAssetChanges, isTrue);
+      });
+
+      test('records asset diffs the user declined', () async {
+        stubDiffs(const UserCancelledException(UnpatchableChange.asset));
+
+        await expectLater(runWithOverrides(command.run), exitsDeclined);
+
+        expect(sentRun().reason, equals(BuildRunFailureReason.assetDiffs));
+      });
+
+      test('records a failed build', () async {
+        when(
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenThrow(Exception('gradle'));
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        expect(sentRun().reason, equals(BuildRunFailureReason.buildFailed));
+      });
+
+      test('records a failed upload', () async {
+        when(
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            metadata: any(named: 'metadata'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        expect(sentRun().reason, equals(BuildRunFailureReason.uploadFailed));
+      });
+
+      test('records a request the server refused', () async {
+        when(
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            metadata: any(named: 'metadata'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+          ),
+        ).thenThrow(
+          ApiErrorExit(
+            const CodePushException(message: 'quota'),
+            ExitCode.software.code,
+          ),
+        );
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        expect(
+          sentRun().reason,
+          equals(BuildRunFailureReason.serverRejected),
+        );
+      });
+
+      test('records a release that cannot be patched', () async {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer(
+          (_) async => Release(
+            id: 0,
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
+            displayName: '1.2.3+1',
+            platforms: const {
+              releasePlatform: ReleasePlatformDetails(
+                status: ReleaseStatus.draft,
+              ),
+            },
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          ),
+        );
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        expect(
+          sentRun().reason,
+          equals(BuildRunFailureReason.releaseIncompatible),
+        );
+      });
+
+      test('starts each platform with none of the last one\'s '
+          'state', () async {
+        when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+        command = PatchCommand(resolvePatcher: (_) => patcher)
+          ..testArgResults = argResults
+          ..testRunner = usageRunner();
+        when(
+          () => patcher.assertUnpatchableDiffs(
+            releaseArtifact: any(named: 'releaseArtifact'),
+            releaseArchive: any(named: 'releaseArchive'),
+            patchArchive: any(named: 'patchArchive'),
+          ),
+        ).thenAnswer(
+          (_) async =>
+              const DiffStatus(hasAssetChanges: true, hasNativeChanges: false),
+        );
+        var builds = 0;
+        when(
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async {
+          if (++builds == 2) throw Exception('gradle');
+          return File('');
+        });
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        final runs = verify(
+          () => codePushClient.createBuildRun(
+            appId: appId,
+            request: captureAny(named: 'request'),
+          ),
+        ).captured.cast<CreateBuildRunRequest>();
+        expect(runs, hasLength(2));
+        expect(runs.first.outcome, equals(BuildRunOutcome.succeeded));
+        expect(runs.first.runId, equals(runs.last.runId));
+        expect(runs.last.outcome, equals(BuildRunOutcome.failed));
+        expect(runs.last.reason, equals(BuildRunFailureReason.buildFailed));
+        expect(runs.last.patchId, isNull);
+        final described = verify(
+          () => patcher.updatedCreatePatchMetadata(captureAny()),
+        ).captured.cast<CreatePatchMetadata>();
+        expect(described.first.hasAssetChanges, isTrue);
+        // The failed platform never reached the diff check.
+        expect(described.last.hasAssetChanges, isFalse);
+      });
+
+      test('records every change the diff check found', () async {
+        stubDiffs(
+          const UserCancelledException(
+            UnpatchableChange.asset,
+            status: DiffStatus(hasAssetChanges: true, hasNativeChanges: true),
+          ),
+        );
+
+        await expectLater(runWithOverrides(command.run), exitsDeclined);
+
+        expect(sentRun().reason, equals(BuildRunFailureReason.assetDiffs));
+        final metadata =
+            verify(
+                  () => patcher.updatedCreatePatchMetadata(captureAny()),
+                ).captured.single
+                as CreatePatchMetadata;
+        expect(metadata.hasNativeChanges, isTrue);
+        expect(metadata.hasAssetChanges, isTrue);
+      });
+
+      test('records nothing when the release is not found', () async {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verifyNever(
+          () => codePushClient.createBuildRun(
+            appId: any(named: 'appId'),
+            request: any(named: 'request'),
+          ),
+        );
+      });
+    });
+
     group('getPatcher', () {
       test('maps the correct platform to the patcher', () async {
         expect(command.getPatcher(ReleaseType.aar), isA<AarPatcher>());
@@ -2911,11 +3209,11 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 ),
                 () => patcher.buildPatchArtifact(),
                 () => patcher.extractReleaseVersionFromArtifact(any()),
-                () => shorebirdFlutter.installRevision(
-                  revision: releaseFlutterRevision,
-                ),
                 () => shorebirdEnv.copyWith(
                   flutterRevisionOverride: releaseFlutterRevision,
+                ),
+                () => shorebirdFlutter.installRevision(
+                  revision: releaseFlutterRevision,
                 ),
                 () =>
                     patcher.buildPatchArtifact(releaseVersion: releaseVersion),
@@ -3278,7 +3576,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               releaseArchive: any(named: 'releaseArchive'),
               patchArchive: any(named: 'patchArchive'),
             ),
-          ).thenThrow(UserCancelledException());
+          ).thenThrow(const UserCancelledException(UnpatchableChange.native));
         });
 
         test('exits 1 and prints Aborting. to stderr', () async {

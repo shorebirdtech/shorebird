@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/build_history.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
@@ -204,7 +205,7 @@ The version of the Android or iOS app that embeds this module
     // the one whose platform statuses are complete.
     final releases = <int, Release>{};
     for (final releaseType in releaseTypes) {
-      final release = await createRelease(_resolveReleaser(releaseType));
+      final release = await _recordReleaseRun(_resolveReleaser(releaseType));
       releases[release.id] = release;
     }
 
@@ -219,6 +220,37 @@ The version of the Android or iOS app that embeds this module
     }
 
     return ExitCode.success.code;
+  }
+
+  /// The build history record of the platform being released, if [run] is
+  /// releasing.
+  BuildRun? _buildRun;
+
+  /// [shorebirdEnv] with the Flutter the release is built with, once it is
+  /// known.
+  ShorebirdEnv? _releaseShorebirdEnv;
+
+  /// Creates the release for [releaser] with [createRelease], recording the
+  /// run in the app's build history.
+  Future<Release> _recordReleaseRun(Releaser releaser) {
+    _releaseShorebirdEnv = null;
+    final run = _buildRun = buildHistory.start(
+      command: BuildRunCommand.release,
+      platform: releaser.releaseType.releasePlatform,
+      dryRun: results['dry-run'] == true,
+    );
+    return buildHistory.record(
+      run,
+      () => createRelease(releaser),
+      // Described with the release's Flutter, as the published release is.
+      metadata: () => runScoped(
+        () async => (await _releaseMetadata(releaser)).toJson(),
+        values: {
+          if (_releaseShorebirdEnv case final env?)
+            shorebirdEnvRef.overrideWith(() => env),
+        },
+      ),
+    );
   }
 
   /// Returns a [Releaser] for the given [ReleaseType].
@@ -379,6 +411,9 @@ The version of the Android or iOS app that embeds this module
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
+    _buildRun
+      ?..appId = appId
+      ..buildFlags = buildHistory.buildFlags(results, target: target);
     _assertSigningAllowedByPolicy(app);
     final targetFlutterRevision = await _installTargetFlutter();
     await _ensureRequestedVersionIsReleasable(
@@ -386,9 +421,8 @@ The version of the Android or iOS app that embeds this module
       flutterRevision: targetFlutterRevision,
     );
 
-    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
-      flutterRevisionOverride: targetFlutterRevision,
-    );
+    final releaseFlutterShorebirdEnv = _releaseShorebirdEnv = shorebirdEnv
+        .copyWith(flutterRevisionOverride: targetFlutterRevision);
     return await runScoped(
       () => _buildAndPublishRelease(
         releaser: releaser,
@@ -553,6 +587,7 @@ The version of the Android or iOS app that embeds this module
     try {
       return await releaser.buildReleaseArtifacts();
     } on ArtifactBuildException catch (e) {
+      _buildRun?.failWith(BuildRunFailureReason.buildFailed);
       throw CommandError(
         message: e.message,
         hint: e.fixRecommendation.isNullOrEmpty ? null : e.fixRecommendation,
@@ -564,6 +599,7 @@ The version of the Android or iOS app that embeds this module
       // server's error for --json.
       rethrow;
     } on Exception catch (e) {
+      _buildRun?.failWith(BuildRunFailureReason.buildFailed);
       throw CommandError(
         message: 'Failed to build release artifacts: $e',
         exitCode: ExitCode.software,
@@ -603,11 +639,18 @@ The version of the Android or iOS app that embeds this module
       version: releaseVersion,
       releasePlatform: releaser.releaseType.releasePlatform,
     );
+    _buildRun?.releaseId = release.id;
     await prepareRelease(release: release, releaser: releaser);
-    await releaser.uploadReleaseArtifacts(release: release, appId: appId);
-    await releaser.uploadSupplementArtifact(
-      appId: appId,
-      releaseId: release.id,
+    await blameFailureOn(
+      _buildRun,
+      BuildRunFailureReason.uploadFailed,
+      () async {
+        await releaser.uploadReleaseArtifacts(release: release, appId: appId);
+        await releaser.uploadSupplementArtifact(
+          appId: appId,
+          releaseId: release.id,
+        );
+      },
     );
     await finalizeRelease(release: release, releaser: releaser);
 
@@ -799,6 +842,7 @@ The version of the Android or iOS app that embeds this module
           version: existingRelease.flutterVersion,
         );
 
+        _buildRun?.failWith(BuildRunFailureReason.releaseIncompatible);
         throw CommandError(
           message:
               'Release $version was built with Flutter '
@@ -889,6 +933,20 @@ ${summary.join('\n')}
     // tracing wasn't set up (older Flutter pin).
     artifactBuilder.writeBuildTraceSummary();
 
+    final updatedMetadata = await _releaseMetadata(releaser);
+    _buildRun?.metadata = updatedMetadata.toJson();
+    await codePushClientWrapper.updateReleaseStatus(
+      appId: appId,
+      releaseId: release.id,
+      platform: releaser.releaseType.releasePlatform,
+      status: ReleaseStatus.active,
+      metadata: updatedMetadata.toJson(),
+    );
+  }
+
+  /// The metadata sent with the release, describing how [releaser] built
+  /// it. Must run with [shorebirdEnv] scoped to the release's Flutter.
+  Future<UpdateReleaseMetadata> _releaseMetadata(Releaser releaser) {
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
@@ -909,14 +967,7 @@ ${summary.join('\n')}
       // or when trace parsing failed; uploader sends null-as-omitted.
       buildTraceSummary: buildTraceSession.summary?.toJson(),
     );
-    final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);
-    await codePushClientWrapper.updateReleaseStatus(
-      appId: appId,
-      releaseId: release.id,
-      platform: releaser.releaseType.releasePlatform,
-      status: ReleaseStatus.active,
-      metadata: updatedMetadata.toJson(),
-    );
+    return releaser.updatedReleaseMetadata(baseMetadata);
   }
 
   /// Instructions explaining how to patch the release that was just created.
