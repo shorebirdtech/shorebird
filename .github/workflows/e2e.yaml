@@ -82,6 +82,26 @@ permissions:
   contents: read
 
 jobs:
+  # actions/checkout reads a short SHA as a branch name: every job then fails
+  # its checkout after three retries with no clear error, testing nothing
+  # (run 43290432219). Fail once, up front, and say what to pass.
+  check_cli_ref:
+    name: check cli_ref
+    # Not on a cli_version dispatch, which reads no cli_ref and runs only its
+    # own job: the release gate counts the jobs that ran.
+    if: ${{ !inputs.cli_version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 🔎 Reject a short SHA
+        env:
+          CLI_REF: ${{ inputs.cli_ref }}
+        run: |
+          if [[ "$CLI_REF" =~ ^[0-9a-fA-F]{7,39}$ ]]; then
+            echo "::error::cli_ref '$CLI_REF' looks like a short SHA; actions/checkout can't fetch one. Pass the full 40-char SHA."
+            exit 1
+          fi
+
   patch:
     # Without this the job name lists every matrix value, android-packages
     # included.
@@ -89,6 +109,7 @@ jobs:
     # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
     # unrelated jobs that would only burn runner time, unless patch_matrix
     # asks for it (a release candidate).
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version && (!inputs.cli_ref || inputs.patch_matrix) }}
     strategy:
       fail-fast: false
@@ -397,6 +418,7 @@ jobs:
   # and unlike the patch job also on a cli_ref dispatch, testing that ref.
   linux_signing:
     name: linux signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -434,6 +456,7 @@ jobs:
 
   macos_signing:
     name: macos signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     # The release gate waits on this workflow's slowest job, and this one's
     # six serial builds took 9 minutes on macos-latest's 3 vCPUs.
@@ -470,6 +493,7 @@ jobs:
 
   windows_signing:
     name: windows signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: windows-latest
     timeout-minutes: 20
@@ -506,6 +530,7 @@ jobs:
 
   android_signing:
     name: android signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -609,6 +634,7 @@ jobs:
   # dispatch, like linux_signing.
   linux_rollback:
     name: linux rollback
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -649,6 +675,7 @@ jobs:
   # (scripts/boot_recovery_e2e.dart). Runs when linux_signing does.
   linux_boot:
     name: linux boot
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -687,6 +714,7 @@ jobs:
   # The same checks on an Android emulator, set up as in android_signing.
   android_boot:
     name: android boot
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -783,6 +811,7 @@ jobs:
           script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
   cli:
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     strategy:
       fail-fast: false
