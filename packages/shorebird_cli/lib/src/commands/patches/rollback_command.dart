@@ -1,5 +1,6 @@
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_rollback_state_command.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template rollback_command}
 /// Rolls back a patch on a release. Devices on this release that next call
@@ -47,10 +48,12 @@ class RollbackCommand extends PatchRollbackStateCommand {
     required int releaseId,
     required int patchId,
     required int patchNumber,
+    List<ReleasePlatform>? platforms,
   }) => codePushClientWrapper.rollbackPatch(
     appId: appId,
     releaseId: releaseId,
     patchId: patchId,
     patchNumber: patchNumber,
+    platforms: platforms,
   );
 }

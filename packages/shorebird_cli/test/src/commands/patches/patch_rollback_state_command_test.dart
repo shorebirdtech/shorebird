@@ -2,9 +2,11 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_rollback_state_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -28,6 +30,7 @@ typedef _ChangeCall = ({
 /// tests cover only the shared behavior.
 class _TestCommand extends PatchRollbackStateCommand {
   final calls = <_ChangeCall>[];
+  final platformsSent = <List<ReleasePlatform>?>[];
   Future<bool> Function() onChange = () async => true;
 
   @override
@@ -58,7 +61,9 @@ class _TestCommand extends PatchRollbackStateCommand {
     required int releaseId,
     required int patchId,
     required int patchNumber,
+    List<ReleasePlatform>? platforms,
   }) {
+    platformsSent.add(platforms);
     calls.add((
       appId: appId,
       releaseId: releaseId,
@@ -293,7 +298,9 @@ void main() {
           ),
         ).called(1);
         verify(
-          () => logger.info('Available patches: ${otherPatch.number}.'),
+          () => logger.info(
+            'Available patches:\n  #${otherPatch.number}  track: stable',
+          ),
         ).called(1);
         expect(command.calls, isEmpty);
       });
@@ -437,6 +444,168 @@ void main() {
           final error = json['error'] as Map<String, dynamic>;
           expect(error['code'], 'usage_error');
           expect(error['message'], 'Patch $patchNumber is already flipped.');
+        });
+      });
+    });
+
+    group('when patches for several platforms share the number', () {
+      const androidPatch = ReleasePatch(
+        id: 42,
+        number: patchNumber,
+        channel: 'stable',
+        isRolledBack: false,
+        artifacts: [],
+        platform: ReleasePlatform.android,
+      );
+      const iosPatch = ReleasePatch(
+        id: 43,
+        number: patchNumber,
+        channel: 'beta',
+        isRolledBack: true,
+        artifacts: [],
+        platform: ReleasePlatform.ios,
+      );
+
+      setUp(() {
+        stubPatches([androidPatch, iosPatch]);
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        when(() => logger.confirm(any())).thenReturn(true);
+      });
+
+      test('with --platforms changes only those platforms', () async {
+        when(() => argResults['platforms']).thenReturn(['ios']);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        expect(command.calls.single.patchId, equals(iosPatch.id));
+        expect(command.platformsSent.single, equals([ReleasePlatform.ios]));
+        verifyNever(() => logger.confirm(any()));
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion has been flipped '
+            '(iOS).',
+          ),
+        ).called(1);
+      });
+
+      test('rejects a platform without a patch under the number', () async {
+        when(() => argResults['platforms']).thenReturn(['macos']);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        expect(command.calls, isEmpty);
+        verify(
+          () => logger.err(
+            'Patch $patchNumber on release $releaseVersion has no macOS '
+            'patch.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info('It has patches for Android, iOS.'),
+        ).called(1);
+      });
+
+      test('without --platforms lists them and asks first', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verifyInOrder([
+          () => logger.info(
+            'Patch $patchNumber on release $releaseVersion has patches for '
+            '2 platforms:',
+          ),
+          () => logger.info('  Android: stable'),
+          () => logger.info('  iOS: beta, rolled back'),
+          () => logger.confirm('Flip all of them?'),
+        ]);
+        expect(command.calls.single.patchId, equals(androidPatch.id));
+        expect(command.platformsSent.single, isNull);
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion has been flipped '
+            '(Android, iOS).',
+          ),
+        ).called(1);
+        verify(() => logger.info('Android:')).called(1);
+        verify(() => logger.info('iOS:')).called(1);
+        verify(() => logger.info('  Rolled back: yes')).called(2);
+      });
+
+      test('stops when the answer is no', () async {
+        when(() => logger.confirm(any())).thenReturn(false);
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(isA<PromptDeclinedExit>()),
+        );
+
+        expect(command.calls, isEmpty);
+        verify(
+          () => logger.info(
+            'To flip only some, pass --platforms, e.g. --platforms=android.',
+          ),
+        ).called(1);
+      });
+
+      test('does not ask when it cannot', () async {
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verifyNever(() => logger.confirm(any()));
+        expect(command.platformsSent.single, isNull);
+      });
+
+      test('in --json mode, emits every patch changed', () async {
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['patches'], hasLength(2));
+      });
+
+      group('when the server says the platforms differ', () {
+        setUp(() {
+          command.onChange = () async => throw ApiErrorExit(
+            const CodePushConflictException(
+              message: 'The platforms differ.',
+              response: ErrorResponse(
+                code: 'patch_platforms_differ',
+                message: 'The platforms differ.',
+              ),
+            ),
+            ExitCode.software.code,
+          );
+        });
+
+        test('prints each platform and the --platforms command', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.software.code));
+          verifyInOrder([
+            () => logger.info('  Android: stable'),
+            () => logger.info('  iOS: beta, rolled back'),
+            () => logger.info(
+              'To choose which to change, run:\n'
+              '  shorebird flip --release-version=$releaseVersion '
+              '--patch-number=$patchNumber --platforms=android',
+            ),
+          ]);
+        });
+
+        test('rethrows other API errors', () async {
+          command.onChange = () async => throw ApiErrorExit(
+            const CodePushException(message: 'oops'),
+            ExitCode.software.code,
+          );
+
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ApiErrorExit>()),
+          );
         });
       });
     });

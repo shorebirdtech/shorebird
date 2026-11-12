@@ -1,9 +1,12 @@
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/extensions/release_patch.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -79,6 +82,7 @@ class SetTrackCommand extends ShorebirdCommand
         help: timezoneHelp,
         valueHelp: 'name',
       );
+    addPlatformsOption(action: 'move');
     addAppScopeOptions();
   }
 
@@ -137,27 +141,43 @@ class SetTrackCommand extends ShorebirdCommand
     );
     if (fetched.errorCode case final errorCode?) return errorCode;
 
-    final (:patch, errorCode: lookupError) = findPatchOrReport(
+    final (:patch, errorCode: lookupError) = findPatchNumberOrReport(
       patches: fetched.patches,
       patchNumber: patchNumber!,
       releaseVersion: releaseVersion,
     );
     if (patch == null) return lookupError!;
 
+    final chosen = choosePlatforms(
+      patch: patch,
+      releaseVersion: releaseVersion,
+      verb: 'move',
+      confirmSuffix: ' to $targetChannel',
+    );
+    if (chosen.errorCode case final errorCode?) return errorCode;
+    final targets = chosen.patches;
+    final several = patch.platforms.length > 1;
+    final platformsLabel = several
+        ? ' (${targets.map(PatchNumber.platformName).join(', ')})'
+        : '';
+
     // A schedule is never a no-op: promoting again would restart the rollout,
     // so a patch already on the track goes through `patches rollout`.
-    if (patch.channel == targetChannel && schedule != null) {
+    final onTrackForSchedule = schedule == null
+        ? null
+        : targets.firstWhereOrNull((p) => p.channel == targetChannel);
+    if (onTrackForSchedule case final onTrack?) {
       return reportError(
         message:
             'Patch $patchNumber on release $releaseVersion is already in '
-            'channel ${formatPatchTrack(patch)}, and promoting it again would '
-            'restart its rollout.',
+            'channel ${formatPatchTrack(onTrack)}, and promoting it again '
+            'would restart its rollout.',
         hint:
             'To put its rollout on that schedule, run: '
             '${scheduleRolloutCommand(
               releaseVersion: releaseVersion,
               patchNumber: patchNumber,
-              schedule: schedule,
+              schedule: schedule!,
               appId: results[CommonArguments.appIdArg.name] as String?,
               flavor: results[CommonArguments.flavorArg.name] as String?,
             )}',
@@ -167,11 +187,16 @@ class SetTrackCommand extends ShorebirdCommand
     // Promoting again would start the rollout over, so a different
     // percentage for a patch already on the track is a job for
     // `patches rollout`.
-    if (patch.channel == targetChannel &&
-        requestedPercentage != null &&
-        requestedPercentage != (patch.rolloutPercentage ?? 100)) {
-      final current = patch.rolloutPercentage ?? 100;
-      if (requestedPercentage < current) {
+    final onTrackAtOtherRollout = requestedPercentage == null
+        ? null
+        : targets.firstWhereOrNull(
+            (p) =>
+                p.channel == targetChannel &&
+                requestedPercentage != (p.rolloutPercentage ?? 100),
+          );
+    if (onTrackAtOtherRollout case final onTrack?) {
+      final current = onTrack.rolloutPercentage ?? 100;
+      if (requestedPercentage! < current) {
         return reportError(
           message:
               'Patch $patchNumber on release $releaseVersion is already '
@@ -186,8 +211,8 @@ class SetTrackCommand extends ShorebirdCommand
       return reportError(
         message:
             'Patch $patchNumber on release $releaseVersion is already in '
-            'channel ${formatPatchTrack(patch)}, and promoting it again would '
-            'restart its rollout.',
+            'channel ${formatPatchTrack(onTrack)}, and promoting it again '
+            'would restart its rollout.',
         hint:
             'To change its rollout, run: ${raiseRolloutCommand(
               releaseVersion: releaseVersion,
@@ -202,13 +227,13 @@ class SetTrackCommand extends ShorebirdCommand
     // Already on the requested track (at the requested percentage, if one was
     // given): nothing to do, which is success, as it is for rollback and
     // rollforward.
-    if (patch.channel == targetChannel) {
+    if (targets.every((p) => p.channel == targetChannel)) {
       if (isJsonMode) {
         emitJsonSuccess(
           _successJson(
             appId: appId,
             releaseVersion: releaseVersion,
-            patch: patch,
+            patches: targets,
             track: targetChannel,
             changed: false,
           ),
@@ -217,7 +242,7 @@ class SetTrackCommand extends ShorebirdCommand
       }
       logger.info(
         'Patch $patchNumber on release $releaseVersion is already in channel '
-        '${formatPatchTrack(patch)}.',
+        '${formatPatchTrack(targets.first)}$platformsLabel.',
       );
       return ExitCode.success.code;
     }
@@ -259,41 +284,59 @@ class SetTrackCommand extends ShorebirdCommand
 
     // Non-null here; bind it so the closure below keeps the promotion.
     final trackChannel = channel;
-    final promoteError = await guardApiCall(
-      () => codePushClientWrapper.promotePatch(
-        appId: appId,
-        patchId: patch.id,
-        channel: trackChannel,
-        rolloutPercentage: rolloutPercentage,
-        rolloutSchedule: schedule,
-      ),
-      code: JsonErrorCode.softwareError,
-      message:
-          'Failed to set track for patch $patchNumber '
-          'of release "$releaseVersion".',
-    );
+    final int? promoteError;
+    try {
+      promoteError = await guardApiCall(
+        () => codePushClientWrapper.promotePatch(
+          appId: appId,
+          patchId: targets.first.id,
+          channel: trackChannel,
+          rolloutPercentage: rolloutPercentage,
+          rolloutSchedule: schedule,
+          platforms: chosen.platforms,
+        ),
+        code: JsonErrorCode.softwareError,
+        message:
+            'Failed to set track for patch $patchNumber '
+            'of release "$releaseVersion".',
+      );
+    } on ApiErrorExit catch (e) {
+      if (!isPlatformsDiffer(e)) rethrow;
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: [
+          for (final p in patch.patches)
+            if (p.channel != targetChannel) ?p.resolvedPlatform,
+        ],
+        extraArgs: ['--track=$targetChannel'],
+      );
+    }
     if (promoteError != null) return promoteError;
 
     // Promoting starts a new rollout on the track.
-    final promotedPatch = patch
-        .copyWith(
-          channel: targetChannel,
-          rolloutPercentage: requestedPercentage ?? 100,
-        )
-        .withRolloutSchedule(
-          steps: schedule?.steps,
-          // Only the server knows when the next step applies.
-          nextStepAt: null,
-          pauseWeekends: schedule?.pauseWeekends,
-          timezone: schedule?.timezone,
-        );
+    final promotedPatches = [
+      for (final p in targets)
+        p
+            .copyWith(
+              channel: targetChannel,
+              rolloutPercentage: requestedPercentage ?? 100,
+            )
+            .withRolloutSchedule(
+              steps: schedule?.steps,
+              // Only the server knows when the next step applies.
+              nextStepAt: null,
+              pauseWeekends: schedule?.pauseWeekends,
+              timezone: schedule?.timezone,
+            ),
+    ];
 
     if (isJsonMode) {
       emitJsonSuccess(
         _successJson(
           appId: appId,
           releaseVersion: releaseVersion,
-          patch: promotedPatch,
+          patches: promotedPatches,
           track: targetChannel,
           changed: true,
         ),
@@ -303,7 +346,7 @@ class SetTrackCommand extends ShorebirdCommand
 
     logger.success(
       'Patch $patchNumber on release $releaseVersion is now in channel '
-      '${formatPatchTrack(promotedPatch)}!',
+      '${formatPatchTrack(promotedPatches.first)}$platformsLabel!',
     );
     if (schedule != null) {
       logger.info(
@@ -320,15 +363,16 @@ class SetTrackCommand extends ShorebirdCommand
   Map<String, Object?> _successJson({
     required String appId,
     required String releaseVersion,
-    required ReleasePatch patch,
+    required List<ReleasePatch> patches,
     required String track,
     required bool changed,
   }) => {
     'app_id': appId,
     'release_version': releaseVersion,
-    'patch_number': patch.number,
+    'patch_number': patches.first.number,
     'track': track,
     'changed': changed,
-    'patch': patch.toJson(),
+    'patch': patches.first.toJson(),
+    'patches': [for (final p in patches) p.toJson()],
   };
 }
