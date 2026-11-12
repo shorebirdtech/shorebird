@@ -89,6 +89,9 @@ void main() {
         createdAt: DateTime.utc(2026),
         rolloutPercentage: 10,
         notes: 'notes',
+        platform: ReleasePlatform.ios,
+        linkKey: 'key',
+        gitSha: 'abc',
       );
 
       test('returns an identical copy when no fields are provided', () {
@@ -105,6 +108,9 @@ void main() {
         expect(copy.createdAt, equals(patch.createdAt));
         expect(copy.rolloutPercentage, equals(patch.rolloutPercentage));
         expect(copy.notes, equals(patch.notes));
+        expect(copy.platform, equals(patch.platform));
+        expect(copy.linkKey, equals(patch.linkKey));
+        expect(copy.gitSha, equals(patch.gitSha));
       });
 
       test('replaces every field when all are provided', () {
@@ -126,6 +132,9 @@ void main() {
           createdAt: DateTime.utc(2027),
           rolloutPercentage: 50,
           notes: 'other-notes',
+          platform: ReleasePlatform.android,
+          linkKey: 'other-key',
+          gitSha: 'def',
         );
         expect(
           copy,
@@ -139,6 +148,9 @@ void main() {
               createdAt: DateTime.utc(2027),
               rolloutPercentage: 50,
               notes: 'other-notes',
+              platform: ReleasePlatform.android,
+              linkKey: 'other-key',
+              gitSha: 'def',
             ),
           ),
         );

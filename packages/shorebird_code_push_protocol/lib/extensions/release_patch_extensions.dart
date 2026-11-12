@@ -1,5 +1,6 @@
 import 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// Application-level behavior on [ReleasePatch] that does not fit in the
 /// OpenAPI schema.
@@ -15,6 +16,9 @@ extension ReleasePatchExtensions on ReleasePatch {
     DateTime? createdAt,
     double? rolloutPercentage,
     String? notes,
+    ReleasePlatform? platform,
+    String? linkKey,
+    String? gitSha,
   }) => ReleasePatch(
     id: id ?? this.id,
     number: number ?? this.number,
@@ -24,5 +28,8 @@ extension ReleasePatchExtensions on ReleasePatch {
     createdAt: createdAt ?? this.createdAt,
     rolloutPercentage: rolloutPercentage ?? this.rolloutPercentage,
     notes: notes ?? this.notes,
+    platform: platform ?? this.platform,
+    linkKey: linkKey ?? this.linkKey,
+    gitSha: gitSha ?? this.gitSha,
   );
 }
