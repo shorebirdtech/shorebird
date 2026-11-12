@@ -2,9 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/dart_bridge_analyzer.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -51,11 +49,6 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
   /// See https://github.com/shorebirdtech/shorebird/issues/3388.
   File? _patchAab;
 
-  /// Optional compiled Dart kernel (`app.dill`) inspected during
-  /// [assertUnpatchableDiffs] to verify `@Native` and platform channel bridge
-  /// contracts against the release binary.
-  File? appDill;
-
   @override
   ReleaseType get releaseType => ReleaseType.android;
 
@@ -71,7 +64,7 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    final status = await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+    return patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
       localArchive: patchArchive,
       releaseArchive: releaseArchive,
       archiveDiffer: const AndroidArchiveDiffer(),
@@ -79,27 +72,6 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
       allowNativeChanges: allowNativeDiffs,
       showDexDiff: showDexDiff,
     );
-
-    final dillFile =
-        appDill ?? File(p.join(projectRoot.path, 'build', 'app.dill'));
-    if (dillFile.existsSync() && releaseArchive.existsSync()) {
-      final fileSetDiff = patchArchive.existsSync()
-          ? await const AndroidArchiveDiffer().changedFiles(
-              releaseArchive.path,
-              patchArchive.path,
-            )
-          : null;
-      final bridgeResult = const DartBridgeAnalyzer().analyze(
-        dillBytes: dillFile.readAsBytesSync(),
-        releaseArchivePath: releaseArchive.path,
-        fileSetDiff: fileSetDiff,
-      );
-      for (final diagnostic in bridgeResult.diagnostics) {
-        logger.warn(yellow.wrap(diagnostic.describe()));
-      }
-    }
-
-    return status;
   }
 
   @override
