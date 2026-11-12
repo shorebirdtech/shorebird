@@ -1,5 +1,6 @@
 import 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 
 /// Application-level behavior on [ReleasePatch] that does not fit in the
@@ -20,6 +21,9 @@ extension ReleasePatchExtensions on ReleasePatch {
     bool? rolloutPauseWeekends,
     String? rolloutTimezone,
     String? notes,
+    ReleasePlatform? platform,
+    String? linkKey,
+    String? gitSha,
   }) => ReleasePatch(
     id: id ?? this.id,
     number: number ?? this.number,
@@ -33,6 +37,9 @@ extension ReleasePatchExtensions on ReleasePatch {
     rolloutPauseWeekends: rolloutPauseWeekends ?? this.rolloutPauseWeekends,
     rolloutTimezone: rolloutTimezone ?? this.rolloutTimezone,
     notes: notes ?? this.notes,
+    platform: platform ?? this.platform,
+    linkKey: linkKey ?? this.linkKey,
+    gitSha: gitSha ?? this.gitSha,
   );
 
   /// Returns a copy of this [ReleasePatch] carrying exactly the given rollout
@@ -58,5 +65,8 @@ extension ReleasePatchExtensions on ReleasePatch {
     rolloutPauseWeekends: pauseWeekends,
     rolloutTimezone: timezone,
     notes: notes,
+    platform: platform,
+    linkKey: linkKey,
+    gitSha: gitSha,
   );
 }

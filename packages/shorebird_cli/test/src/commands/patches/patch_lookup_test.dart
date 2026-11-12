@@ -207,7 +207,11 @@ void main() {
               'No patch found with number 5 for release "$releaseVersion".',
             ),
           ).called(1);
-          verify(() => logger.info('Available patches: 1, 2.')).called(1);
+          verify(
+            () => logger.info(
+              'Available patches:\n  #1  track: stable\n  #2  track: beta',
+            ),
+          ).called(1);
         });
 
         test('says the release has no patches when there are none', () {
@@ -249,10 +253,150 @@ void main() {
               'No patch found with number 5 for release "$releaseVersion".',
             ),
           );
-          expect(error['hint'], equals('Available patches: 1, 2.'));
+          expect(
+            error['hint'],
+            equals(
+              'Available patches:\n  #1  track: stable\n  #2  track: beta',
+            ),
+          );
           verifyNever(() => logger.info(any()));
         });
       });
+    });
+  });
+
+  group(PatchNumber, () {
+    ReleasePatch row({
+      required int id,
+      ReleasePlatform? platform,
+      String? channel = 'stable',
+      bool isRolledBack = false,
+      double? rolloutPercentage,
+    }) => ReleasePatch(
+      id: id,
+      number: 7,
+      channel: channel,
+      isRolledBack: isRolledBack,
+      artifacts: const [],
+      platform: platform,
+      rolloutPercentage: rolloutPercentage,
+    );
+
+    test('lists one patch and platform per patch id', () {
+      final patch = PatchNumber(
+        number: 7,
+        rows: [
+          row(id: 1, platform: ReleasePlatform.android, channel: 'beta'),
+          row(id: 1, platform: ReleasePlatform.android),
+          row(id: 2, platform: ReleasePlatform.ios),
+        ],
+      );
+
+      expect(patch.patches.map((p) => p.id), equals([1, 2]));
+      expect(
+        patch.platforms,
+        equals([ReleasePlatform.android, ReleasePlatform.ios]),
+      );
+      expect(patch.tracksOf(patch.patches.first), equals('beta, stable'));
+      expect(patch.tracksDiffer, isTrue);
+      expect(patch.patchFor(ReleasePlatform.ios)?.id, equals(2));
+      expect(patch.patchFor(ReleasePlatform.macos), isNull);
+    });
+
+    test('without platforms from the server, treats it as one patch', () {
+      final patch = PatchNumber(number: 7, rows: [row(id: 1)]);
+
+      expect(patch.platforms, isEmpty);
+      expect(patch.patchFor(ReleasePlatform.ios)?.id, equals(1));
+      expect(PatchNumber.platformName(patch.patches.single), 'patch 1');
+    });
+
+    test('stateOf names the track and whether it is rolled back', () {
+      final patch = PatchNumber(
+        number: 7,
+        rows: [row(id: 1, channel: null, isRolledBack: true)],
+      );
+      expect(patch.stateOf(patch.patches.single), 'no track, rolled back');
+    });
+
+    group('formatPatchNumberLine', () {
+      test('names the platforms and their one track', () {
+        expect(
+          formatPatchNumberLine(
+            PatchNumber(
+              number: 7,
+              rows: [
+                row(id: 1, platform: ReleasePlatform.android),
+                row(id: 2, platform: ReleasePlatform.ios),
+              ],
+            ),
+          ),
+          equals('#7  android, ios  track: stable'),
+        );
+      });
+
+      test('says when the platforms are on different tracks', () {
+        expect(
+          formatPatchNumberLine(
+            PatchNumber(
+              number: 7,
+              rows: [
+                row(
+                  id: 1,
+                  platform: ReleasePlatform.android,
+                  rolloutPercentage: 10,
+                ),
+                row(id: 2, platform: ReleasePlatform.ios, channel: null),
+              ],
+            ),
+          ),
+          equals(
+            '#7  android, ios  on different tracks '
+            '(android: stable (10%), ios: no track)',
+          ),
+        );
+      });
+
+      test('says which platforms are rolled back', () {
+        expect(
+          formatPatchNumberLine(
+            PatchNumber(
+              number: 7,
+              rows: [
+                row(id: 1, platform: ReleasePlatform.android),
+                row(id: 2, platform: ReleasePlatform.ios, isRolledBack: true),
+              ],
+            ),
+          ),
+          equals('#7  android, ios  track: stable  [rolled back on ios]'),
+        );
+        expect(
+          formatPatchNumberLine(
+            PatchNumber(
+              number: 7,
+              rows: [
+                row(id: 1, channel: null, isRolledBack: true),
+              ],
+            ),
+          ),
+          equals('#7  [no track]  [rolled back]'),
+        );
+      });
+    });
+
+    test('groupByNumber keeps the order numbers first appear in', () {
+      final numbers = groupByNumber([
+        row(id: 1),
+        const ReleasePatch(
+          id: 2,
+          number: 3,
+          isRolledBack: false,
+          artifacts: [],
+        ),
+        row(id: 4),
+      ]);
+      expect(numbers.map((n) => n.number), equals([7, 3]));
+      expect(numbers.first.rows.map((r) => r.id), equals([1, 4]));
     });
   });
 }
