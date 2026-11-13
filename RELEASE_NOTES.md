@@ -6,24 +6,15 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.140 (November 13, 2026)
 
-- ❓ Ci(e2e): name a dispatched run for its inputs
-- ❓ Ci(e2e): cache each leg's Android NDK and retry what's left to download
-- ❓ Fix(shorebird_ci): retry a test batch that died loading a suite
-- ❓ Ci(e2e): run the SDK install helper from the workflow's commit, not cli_ref
-- ❓ Ci(e2e): reject a short cli_ref SHA up front
-- ❓ Chore: prepare for release 1.6.139
-- ❓ Feat(shorebird_cli): shorebird patch --share-debug-info, and share a patch's
-  debug bundle when its org or run asks
-- ❓ Ci(shorebird): retry a failed NDK download in the release tests
-- ❓ Shorebird_engine_tests: start release PRs' run with Namespace priority
-- ❓ Chore: release Flutter 3.47.9-rc7
-- ❓ Chore: bump Dart to 4597873
-- ❓ Ci: a release's full CI starts its Linux jobs ahead of PR runs
-- ❓ Publish-*: name each run for its platform and revision
-- ❓ Fix(aot_tools): link a Code-bearing patch function only to a base function
-  with Code
+- ✨ `shorebird patch --share-debug-info` shares the patch's debug bundle
+  (`build/patch-debug.zip`, written by iOS and macOS patches) with Shorebird,
+  and failed patches share it automatically when your organization's setting
+  asks
+- 🐛 iOS and macOS patches built with `--obfuscate` and `--split-debug-info` no
+  longer risk crashing the app at launch
 
-Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.139.
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
 
 ## 1.6.139 (November 12, 2026)
 
