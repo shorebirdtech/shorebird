@@ -59,44 +59,44 @@ jobs:
           base: ${{ github.event.merge_group.base_ref || '' }}
           filters: |
             dex:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/dex/**
               - pubspec.lock
               - pubspec.yaml
             elf:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/elf/**
               - pubspec.lock
               - pubspec.yaml
             macho:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/macho/**
               - pubspec.lock
               - pubspec.yaml
             scoped_deps:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/scoped_deps/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_build_trace:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/shorebird_build_trace/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_ci:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/shorebird_ci/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_cli:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/dex/**
               - packages/elf/**
               - packages/macho/**
@@ -108,27 +108,27 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_client:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/shorebird_code_push_client/**
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_code_push_protocol:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
             shorebird_redis_client:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/redis_client/**
               - pubspec.lock
               - pubspec.yaml
             verify_cache:
-              - .github/workflows/shorebird_ci.yaml
               - .github/workflows/_shorebird_ci_dart.yaml
+              - .github/workflows/shorebird_ci.yaml
               - packages/verify_cache/**
               - pubspec.lock
               - pubspec.yaml
