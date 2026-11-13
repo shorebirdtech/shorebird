@@ -1,4 +1,4 @@
-# cspell:words dartsdk
+# cspell:words dartsdk mmin
 # Sourced by tool/agent-verify.sh and scripts/bootstrap.sh. Sets dart_bin to
 # a Dart SDK binary of the version CI runs, or leaves it empty and prints why
 # to stderr.
@@ -56,10 +56,28 @@ _find_dart_version_of() {
   { "$1" --version 2>&1 || true; } | sed -n 's/^Dart SDK version: \([^ ]*\).*/\1/p'
 }
 
+# Takes the one-writer lock on the SDK cache. A directory is the atomic
+# test-and-set every filesystem has, so the lock is one. Non-zero when another
+# fetch still holds it. It is held for two renames, so one still there a
+# minute later belongs to a fetch that was killed inside them, and the wait
+# runs past that minute so a dead lock is reaped rather than waited out.
+_find_dart_take_lock() {
+  local lock="$1" waited=0
+  until mkdir "$lock" 2>/dev/null; do
+    if [ "$waited" -ge 120 ]; then
+      return 1
+    fi
+    find "$lock" -maxdepth 0 -mmin +1 -exec rm -rf {} + 2>/dev/null || true
+    sleep 1
+    waited=$((waited + 1))
+  done
+}
+
 # Echoes a Dart of version $1, fetching it from the archive unless a past run
 # already did. Empty, with the reason on stderr, when it could not be had.
 _find_dart_fetched() {
   local want="$1" root dest url tmp published computed os arch sum
+  local lock err="" install_err=""
   case "$(uname -s)" in
     Darwin) os=macos ;;
     Linux) os=linux ;;
@@ -101,10 +119,16 @@ _find_dart_fetched() {
   fi
 
   url="https://storage.googleapis.com/dart-archive/channels/stable/release/$want/sdk/dartsdk-$os-$arch-release.zip"
-  mkdir -p "$root" || return 0
+  if ! mkdir -p "$root"; then
+    echo "find_dart: Dart $want was not fetched, $root could not be created" >&2
+    return 0
+  fi
   # A fetch killed partway leaves its zip behind, and no fetch runs for a day.
   find "$root" -maxdepth 1 -name '.fetch.*' -mtime +1 -exec rm -rf {} + 2>/dev/null || true
-  tmp="$(mktemp -d "$root/.fetch.XXXXXX")" || return 0
+  if ! tmp="$(mktemp -d "$root/.fetch.XXXXXX")"; then
+    echo "find_dart: Dart $want was not fetched, no scratch directory could be made in $root" >&2
+    return 0
+  fi
   echo "find_dart: fetching Dart $want, the stable Dart CI runs, into $dest" >&2
   # The SDK is a few hundred megabytes, so a person watching gets curl's
   # progress bar rather than minutes of silence.
@@ -129,13 +153,36 @@ _find_dart_fetched() {
     return 0
   fi
 
-  # A rename, so no other worktree reads a half-unpacked SDK. Two fetching at
-  # once each unpack a whole one and the second lands inside the first's
-  # directory rather than over it, so it is the copy that gets thrown away.
-  mv "$tmp/unpacked" "$dest" 2>/dev/null || true
-  rm -rf "$tmp" "$dest/unpacked"
+  # Installing is a rename, so no worktree ever reads a half-unpacked SDK. A
+  # $dest holding no working SDK has to go first, because `mv` lands a
+  # directory inside an existing one rather than over it. Reading $dest and
+  # renaming into it are one step as far as another fetch is concerned:
+  # taking the path from a fetch that has just cached its own SDK there
+  # leaves it nothing to answer with.
+  lock="$root/.install.$os-$arch-$want"
+  if _find_dart_take_lock "$lock"; then
+    # A fetch that raced this one may have cached it already, and then that
+    # copy is the answer and this one's is the copy thrown away.
+    if [ "$(_find_dart_version_of "$dest/dart-sdk/bin/dart")" != "$want" ]; then
+      # Moved aside rather than deleted, so a run already reading what is
+      # there keeps the file it opened.
+      if [ -e "$dest" ] && ! err="$(mv "$dest" "$tmp/stale" 2>&1)"; then
+        install_err="$dest holds no working Dart $want and would not move aside: $err"
+      elif ! err="$(mv "$tmp/unpacked" "$dest" 2>&1)"; then
+        install_err="it could not be moved to $dest: $err"
+      fi
+    fi
+    rmdir "$lock" 2>/dev/null || true
+  else
+    install_err="another fetch is installing it and still holds $lock"
+  fi
+  rm -rf "$tmp"
   if [ "$(_find_dart_version_of "$dest/dart-sdk/bin/dart")" = "$want" ]; then
     echo "$dest/dart-sdk/bin/dart"
+    return 0
+  fi
+  if [ -n "$install_err" ]; then
+    echo "find_dart: Dart $want was fetched but not installed, $install_err" >&2
     return 0
   fi
   echo "find_dart: the SDK $url served is not Dart $want" >&2
