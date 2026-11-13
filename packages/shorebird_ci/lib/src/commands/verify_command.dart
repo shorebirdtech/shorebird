@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/activate_pin.dart';
+import 'package:shorebird_ci/src/commands/generate_command.dart';
 import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/dorny_filter.dart';
 import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
+import 'package:shorebird_ci/src/repository_description.dart';
 import 'package:shorebird_ci/src/version.dart';
 import 'package:yaml/yaml.dart';
 
@@ -46,6 +48,14 @@ const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 /// its `needs:`, and every entry in `needs:` must match a real
 /// top-level job. The aggregator is the single check listed in branch
 /// protection, so drift in either direction silently breaks the gate.
+///
+/// Finally, every workflow carrying the `--style static` marker is
+/// rebuilt from the repository and compared against what is checked in,
+/// whatever coverage style the rest of the repository uses. The
+/// coverage checks above only ask whether each filter is a superset of
+/// its package's dep graph, so a hand-added input, a job generation no
+/// longer writes, or a declaration somebody forgot all pass them and
+/// then vanish at the next `generate` run.
 class VerifyCommand extends Command<int> with RepoRootOption {
   /// Creates a [VerifyCommand].
   VerifyCommand() {
@@ -96,6 +106,8 @@ class VerifyCommand extends Command<int> with RepoRootOption {
           ..sort((a, b) => a.path.compareTo(b.path));
 
     final dynamicWorkflows = <String>[];
+    // Workflows `generate --style static` wrote, by file name.
+    final generatedStaticWorkflows = <String>[];
     var dynamicRunsBlocLint = false;
     final otherPins = <String, List<String>>{};
     final unpinned = <String>[];
@@ -110,14 +122,22 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       if (others.isNotEmpty) otherPins[fileName] = others;
       if (pins.hasUnpinned) unpinned.add(fileName);
 
+      if (content.contains(staticWorkflowMarker)) {
+        generatedStaticWorkflows.add(fileName);
+      }
+
+      // Read from every workflow, dynamic ones included, so a file
+      // carrying both markers is still rebuilt below. Only a workflow
+      // without the dynamic marker has its filters count as coverage.
+      final filters = extractDornyFilters(content);
+      filtersByWorkflow[fileName] = filters;
+
       if (_usesDynamicCoverage(content)) {
         dynamicWorkflows.add(fileName);
         dynamicRunsBlocLint |= content.contains('bloc lint');
         continue;
       }
 
-      final filters = extractDornyFilters(content);
-      filtersByWorkflow[fileName] = filters;
       for (final name in filters.keys) {
         coverageMap.putIfAbsent(name, () => []).add(fileName);
       }
@@ -159,6 +179,29 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     // workflow file, independent of static-vs-dynamic coverage style.
     final requiredJobErrors = _findRequiredJobErrors(workflowFiles);
 
+    // Also independent of coverage style: a generated static
+    // orchestrator is rebuilt and compared wherever it sits, including
+    // beside a workflow that covers packages dynamically.
+    final slugs = computePackageSlugs(
+      packages: allPackages,
+      repoRoot: repoRoot,
+    );
+    // The orchestrator is the generated workflow holding the dorny
+    // filters; the reusable workflows it calls hold none.
+    final orchestrators = [
+      for (final fileName in generatedStaticWorkflows)
+        if (filtersByWorkflow[fileName]?.isNotEmpty ?? false) fileName,
+    ];
+    final regenerationDrift = _findRegenerationDrift(
+      repository: repository,
+      packages: allPackages,
+      slugs: slugs,
+      orchestrators: orchestrators,
+    );
+    final orchestratorPath = orchestrators.isEmpty
+        ? null
+        : p.posix.join('.github', 'workflows', orchestrators.first);
+
     if (dynamicWorkflows.isNotEmpty) {
       stdout.writeln(
         'Using dynamic coverage via ${dynamicWorkflows.join(', ')} — '
@@ -179,17 +222,19 @@ class VerifyCommand extends Command<int> with RepoRootOption {
           '`bloc lint`. Re-run `shorebird_ci generate` to regenerate.',
         );
       }
+      if (regenerationDrift.isNotEmpty) {
+        _printRegenerationDrift(regenerationDrift);
+      }
       if (requiredJobErrors.isNotEmpty) {
         _printRequiredJobErrors(requiredJobErrors);
-        return 1;
       }
-      return missingBlocLint ? 1 : 0;
+      return missingBlocLint ||
+              regenerationDrift.isNotEmpty ||
+              requiredJobErrors.isNotEmpty
+          ? 1
+          : 0;
     }
 
-    final slugs = computePackageSlugs(
-      packages: allPackages,
-      repoRoot: repoRoot,
-    );
     final missing = <PackageDescription>[];
     final resolver = DependencyResolver(repoRoot);
     // Filters that don't match every package their job depends on, so
@@ -264,45 +309,117 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     }
 
     if (missing.isEmpty) {
-      if (drift.isNotEmpty) {
-        if (requiredJobErrors.isNotEmpty) {
-          _printRequiredJobErrors(requiredJobErrors);
-        }
-        return 1;
+      if (drift.isEmpty && regenerationDrift.isEmpty) {
+        stdout.writeln('\nAll packages have CI coverage.');
       }
-      stdout.writeln('\nAll packages have CI coverage.');
-      if (requiredJobErrors.isNotEmpty) {
-        _printRequiredJobErrors(requiredJobErrors);
-        return 1;
-      }
-      return 0;
-    }
-
-    stdout.writeln();
-
-    for (final pkg in missing) {
-      final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
-      final entries = resolver.filterPaths(packageDir);
-      final slug = slugs[pkg]!;
-      final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
-
-      stdout
-        ..writeln('MISSING: $label')
-        ..writeln('  Add this entry to a dorny paths-filter block:')
-        ..writeln('            $slug:');
-      for (final entry in entries) {
-        stdout.writeln('              - $entry');
-      }
+    } else {
       stdout.writeln();
+
+      for (final pkg in missing) {
+        final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
+        final entries = suggestedFilterEntries(
+          resolver: resolver,
+          packageDir: packageDir,
+          isFlutter: RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
+          orchestratorPath: orchestratorPath,
+        );
+        final slug = slugs[pkg]!;
+        final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
+
+        stdout
+          ..writeln('MISSING: $label')
+          ..writeln('  Add this entry to a dorny paths-filter block:')
+          ..writeln('            $slug:');
+        for (final entry in entries) {
+          stdout.writeln('              - $entry');
+        }
+        stdout.writeln();
+      }
+
+      stderr.writeln(
+        '${missing.length} package(s) missing from CI coverage.',
+      );
     }
 
-    stderr.writeln(
-      '${missing.length} package(s) missing from CI coverage.',
-    );
+    if (regenerationDrift.isNotEmpty) {
+      _printRegenerationDrift(regenerationDrift);
+    }
     if (requiredJobErrors.isNotEmpty) {
       _printRequiredJobErrors(requiredJobErrors);
     }
-    return 1;
+
+    final failed =
+        missing.isNotEmpty ||
+        drift.isNotEmpty ||
+        regenerationDrift.isNotEmpty ||
+        requiredJobErrors.isNotEmpty;
+    return failed ? 1 : 0;
+  }
+
+  /// Rebuilds what `generate --style static` would write for each
+  /// orchestrator in [orchestrators] and returns, per repo-relative
+  /// path, where the checked-in copy parts company with it.
+  ///
+  /// Every input generation reads lives in the tree: the packages, their
+  /// dep graph, and the `shorebird_ci:` blocks in `pubspec.yaml`. So a
+  /// difference is a hand edit or a declaration somebody forgot, and
+  /// either way the next `generate` run overwrites it.
+  Map<String, GeneratedWorkflowDiff> _findRegenerationDrift({
+    required RepositoryDescription repository,
+    required List<PackageDescription> packages,
+    required Map<PackageDescription, String> slugs,
+    required List<String> orchestrators,
+  }) {
+    final diffs = <String, GeneratedWorkflowDiff>{};
+    for (final orchestrator in orchestrators) {
+      final generated = buildStaticWorkflowFiles(
+        repository,
+        outputPath: p.posix.join('.github', 'workflows', orchestrator),
+        codecovTokenSecret: repository.ciConfig.codecovTokenSecret,
+        emitRequiredJob: repository.ciConfig.emitRequiredJob,
+        fatalInfos: repository.ciConfig.fatalInfos,
+        packages: packages,
+        slugs: slugs,
+      );
+      for (final MapEntry(key: path, value: expected) in generated.entries) {
+        final file = File(p.join(repoRoot, path));
+        final diff = diffGeneratedWorkflow(
+          expected: expected,
+          actual: file.existsSync() ? file.readAsStringSync() : null,
+        );
+        if (diff != null) diffs[path] = diff;
+      }
+    }
+    return diffs;
+  }
+
+  void _printRegenerationDrift(Map<String, GeneratedWorkflowDiff> diffs) {
+    stderr.writeln();
+    for (final MapEntry(key: path, value: diff) in diffs.entries) {
+      final actual = diff.actual;
+      if (actual == null) {
+        stderr.writeln(
+          'REGENERATE: $path is missing. '
+          '`shorebird_ci generate --style static` writes it.',
+        );
+        continue;
+      }
+      stderr.writeln(
+        'REGENERATE: $path is not what generation writes, '
+        'from line ${diff.line}:',
+      );
+      for (final line in _diffWindow(actual)) {
+        stderr.writeln('  checked in: $line');
+      }
+      for (final line in _diffWindow(diff.expected)) {
+        stderr.writeln('   generated: $line');
+      }
+    }
+    stderr.writeln(
+      '\nDeclare the input in the `shorebird_ci:` block of the package or '
+      'repository `pubspec.yaml`, or re-run `shorebird_ci generate '
+      '--style static` and commit what it writes.',
+    );
   }
 
   /// For each workflow file w/ a top-level `required:` job, returns
@@ -453,6 +570,101 @@ class _RequiredJobReport {
   /// true, `missing` and `stale` are empty — there's nothing structured
   /// to compare.
   final bool isMalformed;
+}
+
+/// The dorny filter entries `generate --style static` writes for the
+/// package at [packageDir], which is what `verify` offers for a package
+/// missing from every filter.
+///
+/// Both workflow paths are in there because a job declared in the
+/// orchestrator and run by a reusable workflow has to re-run when either
+/// changes. [orchestratorPath] is null for a repo whose static workflows
+/// are hand-rolled, which has neither path to name.
+List<String> suggestedFilterEntries({
+  required DependencyResolver resolver,
+  required String packageDir,
+  required bool isFlutter,
+  required String? orchestratorPath,
+}) {
+  final reusable = orchestratorPath == null
+      ? null
+      : isFlutter
+      ? '.github/workflows/_shorebird_ci_flutter.yaml'
+      : '.github/workflows/_shorebird_ci_dart.yaml';
+  return <String>{
+    ?orchestratorPath,
+    ...resolver.filterPaths(packageDir, workflowFile: reusable),
+  }.toList()..sort();
+}
+
+/// Where a checked-in workflow and its regenerated copy part company.
+///
+/// `line` is 1-based, `actual` is the checked-in window or null when the
+/// file is absent from the tree, and `expected` is what generation
+/// writes in its place.
+typedef GeneratedWorkflowDiff = ({
+  int line,
+  List<String>? actual,
+  List<String> expected,
+});
+
+/// The lines where [expected] and [actual] first and last differ, with
+/// their common prefix and suffix trimmed off, or null when they match.
+GeneratedWorkflowDiff? diffGeneratedWorkflow({
+  required String expected,
+  required String? actual,
+}) {
+  if (actual == null) return (line: 1, actual: null, expected: const []);
+
+  final expectedLines = expected.split('\n');
+  final actualLines = actual.split('\n');
+
+  var prefix = 0;
+  while (prefix < expectedLines.length &&
+      prefix < actualLines.length &&
+      _sameLine(expectedLines[prefix], actualLines[prefix])) {
+    prefix++;
+  }
+  if (prefix == expectedLines.length && prefix == actualLines.length) {
+    return null;
+  }
+
+  var suffix = 0;
+  while (suffix < expectedLines.length - prefix &&
+      suffix < actualLines.length - prefix &&
+      _sameLine(
+        expectedLines[expectedLines.length - 1 - suffix],
+        actualLines[actualLines.length - 1 - suffix],
+      )) {
+    suffix++;
+  }
+
+  return (
+    line: prefix + 1,
+    actual: actualLines.sublist(prefix, actualLines.length - suffix),
+    expected: expectedLines.sublist(prefix, expectedLines.length - suffix),
+  );
+}
+
+/// Two generated lines that say the same thing. An action reference
+/// compares by action alone: every `uses:` ref moves past the pins in
+/// `action_versions.dart` as soon as it is written, first by
+/// `generate`'s own update step and then by Dependabot, so a bumped pin
+/// is that working rather than drift.
+bool _sameLine(String a, String b) =>
+    _withoutActionRef(a) == _withoutActionRef(b);
+
+final _actionRefPattern = RegExp(r'^(\s*(?:- )?uses: [^@\s]+)@\S+');
+
+String _withoutActionRef(String line) =>
+    _actionRefPattern.firstMatch(line)?.group(1) ?? line;
+
+/// At most ten lines of a difference, so a file that differs wholesale
+/// reports somewhere to look rather than itself.
+List<String> _diffWindow(List<String> lines) {
+  if (lines.isEmpty) return const ['(nothing)'];
+  if (lines.length <= 10) return lines;
+  return [...lines.take(10), '... ${lines.length - 10} more lines'];
 }
 
 /// Whether one of a dorny filter's [patterns] matches the repo-relative

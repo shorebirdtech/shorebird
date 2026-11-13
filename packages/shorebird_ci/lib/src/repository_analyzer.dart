@@ -101,6 +101,21 @@ class RepositoryAnalyzer {
       hasCodecov: hasCodecov,
       hasSubmodules: hasSubmodules,
       cspellConfig: cSpellConfigFile,
+      ciConfig: repositoryCiConfig(root: repositoryRoot),
+    );
+  }
+
+  /// Reads optional declarative repository-wide `shorebird_ci:`
+  /// configuration from `pubspec.yaml` at [root].
+  static RepositoryCiConfig repositoryCiConfig({required Directory root}) {
+    final raw = readPubspec(root.path)?['shorebird_ci'];
+    if (raw is! YamlMap) return const RepositoryCiConfig();
+
+    final secret = raw['codecov_token_secret'];
+    return RepositoryCiConfig(
+      emitRequiredJob: raw['required'] == true,
+      fatalInfos: raw['fatal_infos'] == true,
+      codecovTokenSecret: secret is String && secret.isNotEmpty ? secret : null,
     );
   }
 
