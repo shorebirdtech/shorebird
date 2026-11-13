@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/commands.dart';
+import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/version.dart';
 import 'package:test/test.dart';
 
@@ -20,6 +22,22 @@ Future<int?> runVerify(
     repoRoot.path,
     ...extra,
   ]);
+}
+
+/// Runs `generate --style static` over [repoRoot], without the network
+/// call that moves action pins to their latest release.
+Future<void> runGenerateStatic(Directory repoRoot) async {
+  final runner = CommandRunner<int>('test', 'test')
+    ..addCommand(GenerateCommand());
+  final result = await runner.run([
+    'generate',
+    '--repo-root',
+    repoRoot.path,
+    '--style',
+    'static',
+    '--no-update-actions',
+  ]);
+  expect(result, 0);
 }
 
 void _writeWorkflow(Directory repoRoot, String name, String content) {
@@ -765,5 +783,324 @@ jobs:
         expect(await runVerify(tempDir), 0);
       },
     );
+  });
+
+  group('static regeneration drift', () {
+    File orchestrator() => File(
+      p.join(tempDir.path, '.github', 'workflows', 'shorebird_ci.yaml'),
+    );
+
+    /// Appends [line] to the `with:` block of `foo`'s job, the shape a
+    /// per-package input takes when somebody adds one by hand instead of
+    /// declaring it in the package's pubspec.
+    void handAddInput(String line) {
+      const anchor = '      package_name: foo\n';
+      final content = orchestrator().readAsStringSync();
+      expect(content, contains(anchor));
+      orchestrator().writeAsStringSync(
+        content.replaceFirst(anchor, '$anchor$line\n'),
+      );
+    }
+
+    setUp(() {
+      createWorkspaceRoot(tempDir, members: ['packages/bar', 'packages/foo']);
+      createPackage(
+        tempDir,
+        'packages/foo',
+        'foo',
+        useWorkspace: true,
+        addTestDir: true,
+      );
+      createPackage(
+        tempDir,
+        'packages/bar',
+        'bar',
+        useWorkspace: true,
+        addTestDir: true,
+      );
+      initGitRepo(tempDir);
+    });
+
+    test('passes on a tree generation reproduces', () async {
+      await runGenerateStatic(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('fails on a hand-added min_coverage', () async {
+      await runGenerateStatic(tempDir);
+      handAddInput('      min_coverage: "90"');
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('fails on a hand-added runners', () async {
+      await runGenerateStatic(tempDir);
+      handAddInput("      runners: '[\"macos-latest\"]'");
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('fails on a hand-added needs_redis', () async {
+      await runGenerateStatic(tempDir);
+      handAddInput('      needs_redis: true');
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    /// Writes the dynamic-coverage workflow that sits beside the
+    /// orchestrator in a repo moving between the two styles.
+    void writeDynamicWorkflow() {
+      _writeWorkflow(tempDir, 'main.yaml', '''
+# shorebird_ci-managed: dynamic
+name: main
+on: [push]
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: shorebird_ci affected_packages
+''');
+    }
+
+    test('checks the orchestrator beside a dynamic workflow', () async {
+      await runGenerateStatic(tempDir);
+      writeDynamicWorkflow();
+
+      expect(await runVerify(tempDir), 0);
+
+      handAddInput('      min_coverage: "90"');
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('checks an orchestrator carrying the dynamic marker', () async {
+      await runGenerateStatic(tempDir);
+      orchestrator().writeAsStringSync(
+        '# shorebird_ci-managed: dynamic\n${orchestrator().readAsStringSync()}',
+      );
+      handAddInput('      min_coverage: "90"');
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('fails on a difference too wide to print', () async {
+      await runGenerateStatic(tempDir);
+      handAddInput(
+        List.generate(12, (i) => '      # hand-added $i').join('\n'),
+      );
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('passes once the hand-added input is declared instead', () async {
+      File(
+        p.join(tempDir.path, 'packages', 'foo', 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'shorebird_ci:\n  min_coverage: 90\n',
+        mode: FileMode.append,
+      );
+      await runGenerateStatic(tempDir);
+
+      expect(
+        orchestrator().readAsStringSync(),
+        contains('      min_coverage: "90"'),
+      );
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('fails when a reusable workflow is deleted', () async {
+      await runGenerateStatic(tempDir);
+      File(
+        p.join(
+          tempDir.path,
+          '.github',
+          'workflows',
+          '_shorebird_ci_dart.yaml',
+        ),
+      ).deleteSync();
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('ignores an action pin Dependabot moved', () async {
+      await runGenerateStatic(tempDir);
+      final bumped = orchestrator().readAsStringSync().replaceAll(
+        checkoutAction,
+        'actions/checkout@${'f' * 40} # v99.0.0',
+      );
+      expect(bumped, isNot(orchestrator().readAsStringSync()));
+      orchestrator().writeAsStringSync(bumped);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('reads --required and --fatal-infos from the root pubspec', () async {
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync(
+        'shorebird_ci:\n  required: true\n  fatal_infos: true\n',
+        mode: FileMode.append,
+      );
+      await runGenerateStatic(tempDir);
+
+      expect(orchestrator().readAsStringSync(), contains('\n  required:\n'));
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-infos .'),
+      );
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('fails when a declared input is reverted in the workflow', () async {
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync(
+        'shorebird_ci:\n  fatal_infos: true\n',
+        mode: FileMode.append,
+      );
+      await runGenerateStatic(tempDir);
+      final reusable = File(
+        p.join(
+          tempDir.path,
+          '.github',
+          'workflows',
+          '_shorebird_ci_dart.yaml',
+        ),
+      );
+      reusable.writeAsStringSync(
+        reusable.readAsStringSync().replaceAll(
+          '--fatal-infos',
+          '--fatal-warnings',
+        ),
+      );
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test(
+      'leaves a repo whose static workflows are hand-rolled alone',
+      () async {
+        _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            bar:
+              - packages/bar/**
+              - pubspec.lock
+              - pubspec.yaml
+            foo:
+              - packages/foo/**
+              - pubspec.lock
+              - pubspec.yaml
+''');
+
+        expect(await runVerify(tempDir), 0);
+      },
+    );
+  });
+
+  group('the filter suggested for a missing package', () {
+    setUp(() {
+      createWorkspaceRoot(tempDir, members: ['packages/foo']);
+      createPackage(tempDir, 'packages/foo', 'foo', useWorkspace: true);
+      initGitRepo(tempDir);
+    });
+
+    test('names the orchestrator and the reusable workflow it calls', () {
+      final entries = suggestedFilterEntries(
+        resolver: DependencyResolver(tempDir.path),
+        packageDir: 'packages/foo',
+        isFlutter: false,
+        orchestratorPath: '.github/workflows/shorebird_ci.yaml',
+      );
+
+      expect(
+        entries,
+        containsAll([
+          '.github/workflows/_shorebird_ci_dart.yaml',
+          '.github/workflows/shorebird_ci.yaml',
+          'packages/foo/**',
+        ]),
+      );
+    });
+
+    test('names the flutter reusable workflow for a flutter package', () {
+      final entries = suggestedFilterEntries(
+        resolver: DependencyResolver(tempDir.path),
+        packageDir: 'packages/foo',
+        isFlutter: true,
+        orchestratorPath: '.github/workflows/shorebird_ci.yaml',
+      );
+
+      expect(
+        entries,
+        contains('.github/workflows/_shorebird_ci_flutter.yaml'),
+      );
+    });
+
+    test('names no workflow when the static workflows are hand-rolled', () {
+      final entries = suggestedFilterEntries(
+        resolver: DependencyResolver(tempDir.path),
+        packageDir: 'packages/foo',
+        isFlutter: false,
+        orchestratorPath: null,
+      );
+
+      expect(entries.where((e) => e.startsWith('.github/')), isEmpty);
+    });
+  });
+
+  group('diffGeneratedWorkflow', () {
+    test('returns null when the two match', () {
+      expect(
+        diffGeneratedWorkflow(expected: 'a\nb\n', actual: 'a\nb\n'),
+        isNull,
+      );
+    });
+
+    test('names the hand-added line and nothing around it', () {
+      final diff = diffGeneratedWorkflow(
+        expected: 'a\nb\nc\n',
+        actual: 'a\n      min_coverage: "90"\nb\nc\n',
+      );
+
+      expect(diff, isNotNull);
+      expect(diff!.line, 2);
+      expect(diff.actual, ['      min_coverage: "90"']);
+      expect(diff.expected, isEmpty);
+    });
+
+    test('names the line generation writes where one was removed', () {
+      final diff = diffGeneratedWorkflow(
+        expected: 'a\n      needs_redis: true\nb\n',
+        actual: 'a\nb\n',
+      );
+
+      expect(diff!.actual, isEmpty);
+      expect(diff.expected, ['      needs_redis: true']);
+    });
+
+    test('an action pinned to another commit is not a difference', () {
+      expect(
+        diffGeneratedWorkflow(
+          expected: '      - uses: actions/checkout@aaa # v7.0.1\n',
+          actual: '      - uses: actions/checkout@bbb # v7.1.0\n',
+        ),
+        isNull,
+      );
+    });
+
+    test('a different action at the same step is a difference', () {
+      expect(
+        diffGeneratedWorkflow(
+          expected: '      - uses: actions/checkout@aaa # v7.0.1\n',
+          actual: '      - uses: other/checkout@aaa # v7.0.1\n',
+        ),
+        isNotNull,
+      );
+    });
   });
 }

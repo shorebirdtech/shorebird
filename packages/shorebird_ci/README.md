@@ -181,11 +181,53 @@ packages):
 shorebird_ci verify --ignore e2e,other_package
 ```
 
+## Configuration
+
+Anything that changes what `generate` writes and isn't a fact it can
+read out of the repository goes in a `shorebird_ci:` block, so
+`verify` can rebuild the workflows and tell a hand edit from
+generated output. A flag passed on the command line leaves nothing
+behind, so the next `generate` run drops it.
+
+Per package, in the package's own `pubspec.yaml`:
+
+```yaml
+shorebird_ci:
+  min_coverage: 99.7
+  runners: [ubuntu-latest, macos-latest]
+  needs_redis: true
+  report_on: lib,routes
+  coverage_excludes: "lib/generated/**"
+  total_shards: 4
+  inputs: ["openapi.yaml"]
+```
+
+Repository-wide, in the repository root's `pubspec.yaml`:
+
+```yaml
+shorebird_ci:
+  required: true
+  fatal_infos: true
+  codecov_token_secret: CODECOV_TOKEN
+```
+
+Each repository-wide key mirrors the flag of the same name, and a flag
+still wins where both are set.
+
 ## Customization
 
-The generated file is a normal YAML file, not a locked artifact. Edit
-freely. The tool's ongoing role is `verify`, not regeneration. Common
-edits the tool doesn't make for you:
+`verify` fails when a workflow `generate --style static` wrote is not
+what it writes now, naming the line. That holds per file rather than
+per repository, so an orchestrator sitting beside a dynamic workflow
+is still rebuilt and compared. Change the repository or the
+`shorebird_ci:` blocks above and re-run `generate` rather than
+patching the file. An action ref is the exception: `generate`'s own
+update step moves every pin past the ones built into it, and
+Dependabot keeps moving them, so a bumped SHA is not drift.
+
+A `--style dynamic` workflow is a normal YAML file, not a locked
+artifact. Edit freely: the tool's ongoing role there is `verify`, not
+regeneration. Common edits the tool doesn't make for you:
 
 - **Branch name.** The workflow triggers on `pull_request` and `push`
   against `main` only. Repos using `master`, `trunk`, etc. need to
@@ -212,3 +254,6 @@ When `verify` reports missing packages (only possible in repos using
 deps computed. You decide which workflow file and which filter group
 to add it to; read the existing structure and make the call.
 
+When `verify` reports `REGENERATE`, don't patch the line it names. Either
+the repository has drifted from the declaration or the declaration is
+missing: find which, fix that, and re-run `generate`.

@@ -1834,6 +1834,101 @@ esac
       });
     }
   });
+
+  group('the repository-wide shorebird_ci block', () {
+    void declare(String block) {
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(block, mode: FileMode.append);
+    }
+
+    setUp(() {
+      createWorkspaceRoot(tempDir, members: ['packages/foo']);
+      createPackage(
+        tempDir,
+        'packages/foo',
+        'foo',
+        useWorkspace: true,
+        addTestDir: true,
+      );
+    });
+
+    test('required: true emits the aggregator w/o the flag', () async {
+      declare('shorebird_ci:\n  required: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), contains('\n  required:\n'));
+    });
+
+    test('fatal_infos: true emits --fatal-infos w/o the flag', () async {
+      declare('shorebird_ci:\n  fatal_infos: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-infos .'),
+      );
+    });
+
+    test('codecov_token_secret threads the token w/o the flag', () async {
+      declare('shorebird_ci:\n  codecov_token_secret: CODECOV_TOKEN\n');
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
+      );
+    });
+
+    test('an empty codecov_token_secret reads as unset', () async {
+      declare('shorebird_ci:\n  codecov_token_secret: ""\n');
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        isNot(contains('secrets.')),
+      );
+    });
+
+    test('a block that is not a map reads as no configuration', () async {
+      declare('shorebird_ci: nope\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), isNot(contains('\n  required:\n')));
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-warnings .'),
+      );
+    });
+
+    test('a flag still wins over a block that leaves it out', () async {
+      declare('shorebird_ci:\n  required: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--fatal-infos'],
+      );
+
+      expect(_readMain(tempDir), contains('\n  required:\n'));
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-infos .'),
+      );
+    });
+  });
 }
 
 String _readMain(Directory repoRoot) {
