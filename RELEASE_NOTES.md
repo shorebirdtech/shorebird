@@ -4,6 +4,18 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.140 (November 13, 2026)
+
+- ✨ `shorebird patch --share-debug-info` shares the patch's debug bundle
+  (`build/patch-debug.zip`, written by iOS and macOS patches) with Shorebird,
+  and failed patches share it automatically when your organization's setting
+  asks
+- 🐛 iOS and macOS patches built with `--obfuscate` and `--split-debug-info` no
+  longer risk crashing the app at launch
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
 ## 1.6.139 (November 12, 2026)
 
 - ✨ Roll a patch out to a share of a track's devices with `--rollout` on
