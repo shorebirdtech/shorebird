@@ -334,6 +334,7 @@ void main() {
         contains(
           '            foo:\n'
           '              - .github/workflows/_shorebird_ci_dart.yaml\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/foo/**\n'
           '              - pubspec.lock\n'
           '              - pubspec.yaml\n',
@@ -344,8 +345,47 @@ void main() {
         contains(
           '            solo:\n'
           '              - .github/workflows/_shorebird_ci_dart.yaml\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - tools/solo/**\n',
         ),
+      );
+    });
+
+    test('every static filter matches the orchestrator itself', () async {
+      // Every package's job is declared in the orchestrator, so a commit
+      // touching only it would skip every job a filter that misses it.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar');
+      createPackage(tempDir, 'packages/baz', 'baz', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final filters = _readStaticFilters(_readMain(tempDir));
+      expect(filters.keys, containsAll(['bar', 'baz', 'foo']));
+      for (final MapEntry(key: slug, value: paths) in filters.entries) {
+        expect(
+          paths,
+          contains('.github/workflows/shorebird_ci.yaml'),
+          reason: slug,
+        );
+      }
+    });
+
+    test('every static filter matches a custom --output path', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--output', '.github/workflows/ci.yaml'],
+      );
+
+      final filters = _readStaticFilters(readWorkflow('ci.yaml'));
+      expect(filters['foo'], contains('.github/workflows/ci.yaml'));
+      expect(
+        filters['foo'],
+        isNot(contains('.github/workflows/shorebird_ci.yaml')),
       );
     });
 
@@ -1374,8 +1414,10 @@ jobs:
         contains(
           '          filters: |\n'
           '            bar:\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/bar/**\n'
           '            foo:\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/foo/**\n',
         ),
       );
@@ -1798,6 +1840,21 @@ String _readMain(Directory repoRoot) {
   return File(
     p.join(repoRoot.path, '.github', 'workflows', 'shorebird_ci.yaml'),
   ).readAsStringSync();
+}
+
+/// The `dorny/paths-filter` patterns in a static orchestrator, by slug.
+Map<String, List<String>> _readStaticFilters(String yaml) {
+  final jobs = (loadYaml(yaml) as YamlMap)['jobs'] as YamlMap;
+  final steps = (jobs['changes'] as YamlMap)['steps'] as YamlList;
+  final step =
+      steps.firstWhere((step) => (step as YamlMap)['id'] == 'filter')
+          as YamlMap;
+  final filters =
+      loadYaml((step['with'] as YamlMap)['filters'] as String) as YamlMap;
+  return {
+    for (final MapEntry(key: slug, value: paths) in filters.entries)
+      slug as String: (paths as YamlList).cast<String>().toList(),
+  };
 }
 
 String _readAll(Directory dir) => [

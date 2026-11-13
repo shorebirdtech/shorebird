@@ -303,10 +303,10 @@ updates:
                 ? '.github/workflows/_shorebird_ci_flutter.yaml'
                 : '.github/workflows/_shorebird_ci_dart.yaml')
           : null;
-      packageFilters[slugs[package]!] = resolver.filterPaths(
-        packageDir,
-        workflowFile: workflowFile,
-      );
+      packageFilters[slugs[package]!] = <String>{
+        outputPath,
+        ...resolver.filterPaths(packageDir, workflowFile: workflowFile),
+      }.toList()..sort();
     }
 
     final updated = updateDornyFilters(existing, packageFilters);
@@ -360,6 +360,7 @@ updates:
         packages: packages,
         codecovTokenSecret: codecovTokenSecret,
         emitRequiredJob: emitRequiredJob,
+        outputPath: outputPath,
         slugs: slugs,
       ),
     };
@@ -392,6 +393,7 @@ updates:
     required List<PackageDescription> packages,
     required String? codecovTokenSecret,
     required bool emitRequiredJob,
+    required String outputPath,
     required Map<PackageDescription, String> slugs,
   }) {
     final emitSecretsInherit =
@@ -467,10 +469,13 @@ ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          
       final reusable = isFlutter
           ? '.github/workflows/_shorebird_ci_flutter.yaml'
           : '.github/workflows/_shorebird_ci_dart.yaml';
-      final filterEntries = resolver.filterPaths(
-        packageDir,
-        workflowFile: reusable,
-      );
+      // Every package's job is declared in this file, so a commit that
+      // touches only this file still has to match each filter or every
+      // job it just rewrote is skipped.
+      final filterEntries = <String>{
+        outputPath,
+        ...resolver.filterPaths(packageDir, workflowFile: reusable),
+      }.toList()..sort();
       final slug = slugs[package]!;
 
       buffer.writeln('            $slug:');
