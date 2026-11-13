@@ -4,6 +4,27 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.140 (November 13, 2026)
+
+- ❓ Ci(e2e): name a dispatched run for its inputs
+- ❓ Ci(e2e): cache each leg's Android NDK and retry what's left to download
+- ❓ Fix(shorebird_ci): retry a test batch that died loading a suite
+- ❓ Ci(e2e): run the SDK install helper from the workflow's commit, not cli_ref
+- ❓ Ci(e2e): reject a short cli_ref SHA up front
+- ❓ Chore: prepare for release 1.6.139
+- ❓ Feat(shorebird_cli): shorebird patch --share-debug-info, and share a patch's
+  debug bundle when its org or run asks
+- ❓ Ci(shorebird): retry a failed NDK download in the release tests
+- ❓ Shorebird_engine_tests: start release PRs' run with Namespace priority
+- ❓ Chore: release Flutter 3.47.9-rc7
+- ❓ Chore: bump Dart to 4597873
+- ❓ Ci: a release's full CI starts its Linux jobs ahead of PR runs
+- ❓ Publish-*: name each run for its platform and revision
+- ❓ Fix(aot_tools): link a Code-bearing patch function only to a base function
+  with Code
+
+Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.139.
+
 ## 1.6.139 (November 12, 2026)
 
 - ✨ Roll a patch out to a share of a track's devices with `--rollout` on
