@@ -26,3 +26,10 @@ dependencies:
 dev_dependencies:
   test: ^1.33.0
   very_good_analysis: ^11.0.0
+
+shorebird_ci:
+  runners:
+    - macos-latest
+    - windows-latest
+    - ubuntu-latest
+  min_coverage: 99.7
