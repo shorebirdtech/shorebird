@@ -20,6 +20,23 @@ import 'package:test/test.dart';
 import '../helpers.dart';
 import '../mocks.dart';
 
+/// A deadline for a test that unzips and hashes the xcarchive and xcframework
+/// fixtures, which a loaded machine does not finish inside package:test's
+/// 30 second default.
+///
+/// Overrunning costs more than the one failure. package:test abandons the body
+/// but its isolates keep extracting into a directory the tear-down has already
+/// deleted, so the PathNotFoundException that follows is reported against
+/// whichever test is running by then.
+const archiveTimeout = Timeout(Duration(minutes: 4));
+
+/// A deadline for a test that goes over an archive pair twice, by hashing it
+/// and then extracting it again.
+///
+/// A factor rather than a duration, so it scales whatever deadline the
+/// enclosing group set.
+const twiceOverArchiveTimeout = Timeout.factor(2);
+
 void main() {
   useTempWorkingDirectory();
   final xcarchiveFixturesBasePath = p.join(fixturesDirectory, 'xcarchives');
@@ -411,7 +428,7 @@ void main() {
       );
     });
 
-    group('xcarchive', () {
+    group('xcarchive', testOn: 'mac-os', timeout: archiveTimeout, () {
       group('changedPaths', () {
         test('finds no differences between the same xcarchive', () async {
           expect(await differ.changedFiles(baseIpaPath, baseIpaPath), isEmpty);
@@ -447,22 +464,26 @@ void main() {
           }
         });
 
-        test('leaves no temporary files behind', () async {
-          final expected = await differ.changedFiles(
-            baseIpaPath,
-            changedCarXcarchivePath,
-          );
-          final systemTemp = createSystemTemp();
-          late FileSetDiff fileSetDiff;
-          await runWithSystemTemp(systemTemp, () async {
-            fileSetDiff = await differ.changedFiles(
+        test(
+          'leaves no temporary files behind',
+          timeout: twiceOverArchiveTimeout,
+          () async {
+            final expected = await differ.changedFiles(
               baseIpaPath,
               changedCarXcarchivePath,
             );
-          });
-          expect(fileSetDiff.changedPaths, equals(expected.changedPaths));
-          expect(systemTemp.listSync(), isEmpty);
-        });
+            final systemTemp = createSystemTemp();
+            late FileSetDiff fileSetDiff;
+            await runWithSystemTemp(systemTemp, () async {
+              fileSetDiff = await differ.changedFiles(
+                baseIpaPath,
+                changedCarXcarchivePath,
+              );
+            });
+            expect(fileSetDiff.changedPaths, equals(expected.changedPaths));
+            expect(systemTemp.listSync(), isEmpty);
+          },
+        );
       });
 
       group('changedFiles', () {
@@ -551,7 +572,7 @@ void main() {
         });
       });
 
-      group('availableAssetDiffs', () {
+      group('availableAssetDiffs', timeout: twiceOverArchiveTimeout, () {
         group('when a car file has changed', () {
           const diffOutput = 'diff output';
 
@@ -654,9 +675,9 @@ void main() {
           });
         });
       });
-    }, testOn: 'mac-os');
+    });
 
-    group('xcframework', () {
+    group('xcframework', timeout: archiveTimeout, () {
       group('changedPaths', () {
         test(
           'finds no differences between the same zipped xcframeworks',
