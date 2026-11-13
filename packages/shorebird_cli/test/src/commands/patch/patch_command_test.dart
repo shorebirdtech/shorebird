@@ -238,13 +238,16 @@ void main() {
           appId: any(named: 'appId'),
           request: any(named: 'request'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
       logger = MockShorebirdLogger();
       progress = MockProgress();
       patcher = MockPatcher();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      final buildDirectory = Directory.systemTemp.createTempSync();
+      addTearDown(() => buildDirectory.deleteSync(recursive: true));
+      when(() => shorebirdEnv.buildDirectory).thenReturn(buildDirectory);
 
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
@@ -2136,6 +2139,22 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ),
         );
       });
+    });
+
+    test('passes --share-debug-info to the run record', () async {
+      when(() => argResults['share-debug-info']).thenReturn(true);
+
+      await runWithOverrides(command.run);
+
+      final request =
+          verify(
+                () => codePushClient.createBuildRun(
+                  appId: appId,
+                  request: captureAny(named: 'request'),
+                ),
+              ).captured.single
+              as CreateBuildRunRequest;
+      expect(request.shareDebugInfo, isTrue);
     });
 
     group('getPatcher', () {

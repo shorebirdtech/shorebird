@@ -18,6 +18,7 @@ export 'package:shorebird_code_push_protocol/src/messages/artifact_signing_reque
 export 'package:shorebird_code_push_protocol/src/messages/create_app/create_app_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_app_collaborator/create_app_collaborator_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_build_run/create_build_run_request.dart';
+export 'package:shorebird_code_push_protocol/src/messages/create_build_run/create_build_run_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_channel/create_channel_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_organization/create_organization_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_organization_invitation/create_organization_invitation201_response.dart';
@@ -119,6 +120,7 @@ export 'package:shorebird_code_push_protocol/src/models/build_run_command.dart';
 export 'package:shorebird_code_push_protocol/src/models/build_run_failure_reason.dart';
 export 'package:shorebird_code_push_protocol/src/models/build_run_outcome.dart';
 export 'package:shorebird_code_push_protocol/src/models/channel.dart';
+export 'package:shorebird_code_push_protocol/src/models/create_run_artifact.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise_app.dart';
 export 'package:shorebird_code_push_protocol/src/models/enterprise_app_grant.dart';
@@ -184,6 +186,9 @@ export 'package:shorebird_code_push_protocol/src/models/release_platform_details
 export 'package:shorebird_code_push_protocol/src/models/release_signing_mode.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 export 'package:shorebird_code_push_protocol/src/models/role.dart';
+export 'package:shorebird_code_push_protocol/src/models/run_artifact_kind.dart';
+export 'package:shorebird_code_push_protocol/src/models/run_artifact_shared_by.dart';
+export 'package:shorebird_code_push_protocol/src/models/run_artifact_upload.dart';
 export 'package:shorebird_code_push_protocol/src/models/service_account.dart';
 export 'package:shorebird_code_push_protocol/src/models/service_account_key.dart';
 export 'package:shorebird_code_push_protocol/src/models/service_account_role.dart';

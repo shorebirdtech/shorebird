@@ -107,7 +107,7 @@ void main() {
           appId: any(named: 'appId'),
           request: any(named: 'request'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
     });
 
     test('gives each instance its own run id', () {
@@ -344,6 +344,210 @@ void main() {
           ),
           throwsA(same(exit)),
         );
+      });
+    });
+
+    group('debug bundle', () {
+      late File bundle;
+      final upload = RunArtifactUpload(
+        id: 3,
+        kind: RunArtifactKind.debugBundle,
+        sharedBy: RunArtifactSharedBy.setting,
+        uploadUrl: Uri.parse('https://storage.example/session'),
+      );
+
+      void answerWith(List<RunArtifactUpload> uploads) =>
+          when(
+            () => codePushClient.createBuildRun(
+              appId: any(named: 'appId'),
+              request: any(named: 'request'),
+            ),
+          ).thenAnswer(
+            (_) async =>
+                CreateBuildRunResponse(id: 1, artifactUploads: uploads),
+          );
+
+      setUp(() {
+        bundle = File('patch-debug.zip');
+        when(
+          () => codePushClient.uploadRunArtifact(
+            upload: any(named: 'upload'),
+            path: any(named: 'path'),
+          ),
+        ).thenAnswer((_) async {});
+      });
+
+      setUpAll(() {
+        registerFallbackValue(upload);
+      });
+
+      test('offers a bundle the run wrote, with its size', () async {
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async => bundle.writeAsBytesSync([1, 2, 3]));
+
+        final request = sentRequest();
+        expect(
+          request.artifacts,
+          equals([
+            CreateRunArtifact(
+              kind: RunArtifactKind.debugBundle,
+              sizeBytes: 3,
+            ),
+          ]),
+        );
+        expect(request.shareDebugInfo, isNull);
+      });
+
+      test('never offers a bundle a previous run left', () async {
+        bundle.writeAsBytesSync([1]);
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async {});
+
+        expect(sentRequest().artifacts, isNull);
+      });
+
+      test('offers nothing when the run wrote no bundle', () async {
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async {});
+
+        expect(sentRequest().artifacts, isNull);
+      });
+
+      test('says when the run asked to share', () async {
+        final run = startRun()..shareDebugInfo = true;
+
+        await recordRun(run, () async {});
+
+        expect(sentRequest().shareDebugInfo, isTrue);
+        verify(
+          () => logger.warn(
+            any(that: contains('No debugging information was shared')),
+          ),
+        ).called(1);
+      });
+
+      test('offers a bundle this run rewrote within the same mtime', () async {
+        final modified = DateTime(2026, 11, 12, 9);
+        bundle
+          ..writeAsBytesSync([1])
+          ..setLastModifiedSync(modified);
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async {
+          bundle
+            ..writeAsBytesSync([1, 2])
+            ..setLastModifiedSync(modified);
+        });
+
+        expect(sentRequest().artifacts?.single.sizeBytes, equals(2));
+      });
+
+      test('never offers an empty bundle', () async {
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async => bundle.writeAsBytesSync([]));
+
+        expect(sentRequest().artifacts, isNull);
+      });
+
+      test('warns a run that asked to share when the record failed', () async {
+        when(
+          () => codePushClient.createBuildRun(
+            appId: any(named: 'appId'),
+            request: any(named: 'request'),
+          ),
+        ).thenThrow(const CodePushException(message: 'offline'));
+        final run = startRun()..shareDebugInfo = true;
+
+        await recordRun(run, () async {});
+
+        verify(
+          () => logger.warn(
+            'Could not share debugging information with Shorebird.',
+          ),
+        ).called(1);
+      });
+
+      test('uploads the bundle when the server asks for it', () async {
+        answerWith([upload]);
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async => bundle.writeAsBytesSync([1, 2, 3]));
+
+        verify(
+          () => codePushClient.uploadRunArtifact(
+            upload: upload,
+            path: bundle.path,
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'Shared debugging information with Shorebird (org setting)',
+          ),
+        ).called(1);
+      });
+
+      test('uploads nothing when the run wrote no bundle', () async {
+        answerWith([upload]);
+        final run = startRun()..watchDebugBundle(bundle);
+
+        await recordRun(run, () async {});
+
+        verifyNever(
+          () => codePushClient.uploadRunArtifact(
+            upload: any(named: 'upload'),
+            path: any(named: 'path'),
+          ),
+        );
+      });
+
+      test('names the flag when the run shared by it', () async {
+        final byFlag = RunArtifactUpload(
+          id: 3,
+          kind: RunArtifactKind.debugBundle,
+          sharedBy: RunArtifactSharedBy.flag,
+          uploadUrl: upload.uploadUrl,
+        );
+        answerWith([byFlag]);
+        final run = startRun()
+          ..shareDebugInfo = true
+          ..watchDebugBundle(bundle);
+
+        await recordRun(run, () async => bundle.writeAsBytesSync([1]));
+
+        verify(
+          () => logger.info(
+            'Shared debugging information with Shorebird (--share-debug-info)',
+          ),
+        ).called(1);
+      });
+
+      test('keeps the result of a run whose upload failed', () async {
+        answerWith([upload]);
+        when(
+          () => codePushClient.uploadRunArtifact(
+            upload: any(named: 'upload'),
+            path: any(named: 'path'),
+          ),
+        ).thenThrow(const CodePushException(message: 'offline'));
+        final run = startRun()..watchDebugBundle(bundle);
+
+        final result = await runWithOverrides(
+          () => buildHistory.record(run, () async {
+            bundle.writeAsBytesSync([1]);
+            return 'published';
+          }, metadata: () async => {}),
+        );
+
+        expect(result, equals('published'));
+        verify(
+          () => logger.warn(
+            'Could not share debugging information with Shorebird.',
+          ),
+        ).called(1);
       });
     });
 

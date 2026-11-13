@@ -130,7 +130,7 @@ void main() {
           appId: any(named: 'appId'),
           request: any(named: 'request'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
       logger = MockShorebirdLogger();
       progress = MockProgress();
       releaser = MockReleaser();

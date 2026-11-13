@@ -203,6 +203,14 @@ To target the latest release (e.g. the release that was most recently updated) u
         help: CommonArguments.minLinkPercentage.description,
         defaultsTo: CommonArguments.minLinkPercentage.defaultValue,
       )
+      ..addFlag(
+        'share-debug-info',
+        negatable: false,
+        help:
+            "Share this patch's debugging information "
+            '(build/patch-debug.zip, written when patching iOS or macOS) '
+            "with Shorebird, whatever your organization's setting.",
+      )
       ..addOption(
         CommonArguments.ddMaxBytesArg.name,
         hide: true,
@@ -481,11 +489,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     _inferredReleaseVersion = false;
     _diffStatus = null;
     _releaseShorebirdEnv = null;
-    final run = _buildRun = buildHistory.start(
-      command: BuildRunCommand.patch,
-      platform: patcher.releaseType.releasePlatform,
-      dryRun: results['dry-run'] == true,
-    );
+    final run = _buildRun =
+        buildHistory.start(
+            command: BuildRunCommand.patch,
+            platform: patcher.releaseType.releasePlatform,
+            dryRun: results['dry-run'] == true,
+          )
+          ..shareDebugInfo = results['share-debug-info'] == true
+          ..watchDebugBundle(Patcher.debugInfoFile);
     return buildHistory.record(
       run,
       () => createPatch(patcher),
