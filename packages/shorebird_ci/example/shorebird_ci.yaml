@@ -44,7 +44,7 @@ jobs:
           # diff to resolve.
           fetch-depth: 0
       - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
-      - run: dart pub global activate shorebird_ci 0.3.0
+      - run: dart pub global activate shorebird_ci 0.3.1
       # Verify first so we fail fast if CI coverage is broken and
       # don't waste time computing affected packages.
       - name: Verify CI coverage
