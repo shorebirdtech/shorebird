@@ -10,8 +10,12 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
   (`build/patch-debug.zip`, written by iOS and macOS patches) with Shorebird,
   and failed patches share it automatically when your organization's setting
   asks
-- 🐛 iOS and macOS patches built with `--obfuscate` and `--split-debug-info` no
+- 🐛 Patches with `--obfuscate` and `--split-debug-info` on iOS and macOS no
   longer risk crashing the app at launch
+  ([#4407](https://github.com/shorebirdtech/shorebird/issues/4407)), for
+  releases built on Flutter 3.47.9 at revision `6f0092351b` or later. A patch
+  runs on its release's engine, so re-release apps built on an earlier
+  revision (`shorebird releases info --release-version <version>` shows it)
 
 The fixes outside the CLI also reach anyone building with
 `--flutter-version=3.47.9`.
