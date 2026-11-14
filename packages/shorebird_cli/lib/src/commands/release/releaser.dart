@@ -219,27 +219,18 @@ abstract class Releaser {
   /// passed either to Shorebird directly or forwarded to Flutter.
   bool get useObfuscation => argResults.flagPresent('obfuscate');
 
-  /// DD table cascade byte threshold for the release build.
+  /// The Dynamic Dispatch (DD) table cascade byte threshold the user set
+  /// with `--dd-max-bytes`, or null when they set none (or a malformed or
+  /// negative value). `0` turns DD off.
   ///
-  /// Passed to Flutter tools via the SHOREBIRD_DD_MAX_BYTES environment
-  /// variable for backwards compatibility: older Flutter builds that don't
-  /// recognize the variable will silently ignore it, whereas an unknown
-  /// command-line flag would cause a build failure.
-  ///
-  /// The CLI option (`--dd-max-bytes`) carries `defaultsTo: '10000'`, so the
-  /// default-enabled case arrives here as the string `'10000'`. We rely on
-  /// the option-parsing default rather than re-defaulting null here, so
-  /// callers that explicitly stub `argResults['dd-max-bytes']` to null
-  /// (e.g. tests, programmatic invocations) get DD-disabled rather than
-  /// silently re-enabled.
-  ///
-  /// Returns null when DD should be disabled: the option is absent, or the
-  /// value is `0` (the user's "disable DD" knob), or the value is malformed.
+  /// A debugging option; unset, the build's own default applies. How it
+  /// reaches the build depends on the Flutter version; see
+  /// `ArtifactBuilder._iosDdSettings`.
   int? get ddMaxBytes {
     final value = argResults[CommonArguments.ddMaxBytesArg.name] as String?;
     if (value == null) return null;
     final parsed = int.tryParse(value);
-    return (parsed != null && parsed > 0) ? parsed : null;
+    return (parsed != null && parsed >= 0) ? parsed : null;
   }
 
   /// Path where the obfuscation map is saved during obfuscated builds: the

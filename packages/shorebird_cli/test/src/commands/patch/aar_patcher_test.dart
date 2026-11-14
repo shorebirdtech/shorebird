@@ -354,7 +354,6 @@ void main() {
               buildNumber: any(named: 'buildNumber'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => {});
         });
@@ -412,7 +411,6 @@ void main() {
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async {});
 
@@ -427,7 +425,6 @@ void main() {
               targetPlatforms: [Arch.arm64],
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).called(1);
         });
