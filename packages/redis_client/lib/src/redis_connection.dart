@@ -195,11 +195,9 @@ class RedisConnection {
           : await Socket.connect(uri.host, uri.port, timeout: options.timeout);
       final connection = _SocketConnection(
         socket,
-        onReadError: (error, stackTrace) => logger.error(
-          'Connection read failed.',
-          error: error,
-          stackTrace: stackTrace,
-        ),
+        // At info: once anything has been written, the same error also
+        // completes `outputSink.done` and is logged there as an error.
+        onReadError: (error) => logger.info('Connection read failed: $error'),
       );
       unawaited(onConnectionOpened(connection));
       unawaited(
@@ -258,7 +256,7 @@ class _SocketConnection implements RespServerConnection {
   final Socket _socket;
 
   /// Called with a read error that arrives before [close].
-  final void Function(Object error, StackTrace stackTrace) onReadError;
+  final void Function(Object error) onReadError;
 
   var _closing = false;
 
@@ -269,8 +267,11 @@ class _SocketConnection implements RespServerConnection {
   ///
   /// A read error before [close], such as a reset from the server
   /// (`Connection reset by peer`), goes to [onReadError], and the socket is
-  /// destroyed, which completes [outputSink]'s `done` so the reconnect loop
-  /// dials again. Commands waiting on a reply then fail by their timeout.
+  /// destroyed and closed. The close is what completes [outputSink]'s `done`,
+  /// which the reconnect loop watches, when nothing has been written yet:
+  /// [Socket.destroy] alone doesn't, and the socket completes it with the
+  /// error itself only once something has. Commands waiting on a reply then
+  /// fail by their timeout.
   ///
   /// One after [close] has begun is expected and dropped: on a
   /// [SecureSocket], [Socket.close] closes only the write side, with a FIN
@@ -280,11 +281,12 @@ class _SocketConnection implements RespServerConnection {
   @override
   late final Stream<List<int>> inputStream = _socket.handleError((
     Object error,
-    StackTrace stackTrace,
   ) {
     if (_closing) return;
-    onReadError(error, stackTrace);
-    _socket.destroy();
+    onReadError(error);
+    _socket
+      ..destroy()
+      ..close().ignore();
   });
 
   /// Flushes and closes the socket.
