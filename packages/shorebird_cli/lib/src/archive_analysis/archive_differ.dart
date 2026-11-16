@@ -82,11 +82,21 @@ abstract class ArchiveDiffer {
   }
 
   /// Returns a map of file paths to their respective checksums.
+  ///
+  /// Throws an [ArchiveException] if [archive] is not a readable zip, such as
+  /// one cut short, rather than returning no paths, which would read as every
+  /// file having been added.
   Future<PathHashes> fileHashes(File archive) async {
     return Isolate.run(() {
       final input = InputFileStream(archive.path);
       try {
-        final zipDirectory = ZipDirectory()..read(input);
+        final zipDirectory = ZipDirectory()..read(input, verify: true);
+        // A zip cut short, or a file that is not a zip, has no end of
+        // central directory record; `read` then finds no entries rather than
+        // throwing.
+        if (zipDirectory.filePosition < 0) {
+          throw ArchiveException('zip: end of central directory not found');
+        }
         return {
           for (final file in zipDirectory.fileHeaders)
             // Zip files contain an (optional) crc32 checksum for a file. IPAs

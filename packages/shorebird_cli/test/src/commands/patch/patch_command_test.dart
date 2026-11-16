@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
@@ -1437,6 +1438,38 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                     ).captured.single
                     as Directory;
             expect(supplementDirectory.existsSync(), isFalse);
+          });
+
+          group('when the supplement is damaged', () {
+            setUp(() {
+              when(
+                () => artifactManager.extractZip(
+                  zipFile: any(named: 'zipFile'),
+                  outputDirectory: any(named: 'outputDirectory'),
+                ),
+              ).thenThrow(ArchiveException('zip: crc32 mismatch'));
+            });
+
+            test('exits naming the fix, without creating the patch', () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithError(
+                  message:
+                      'The release artifact downloaded from Shorebird is '
+                      'damaged: zip: crc32 mismatch',
+                  hint: damagedReleaseArtifactHint(ReleaseType.android),
+                  exitCode: ExitCode.software,
+                ),
+              );
+              verifyNever(
+                () => patcher.createPatchArtifacts(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              );
+            });
           });
 
           group('when the artifact is not found', () {
@@ -3604,6 +3637,33 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             exitsDeclined,
           );
           verify(() => logger.err('Aborting.')).called(1);
+        });
+      });
+
+      group('when an archive cannot be read', () {
+        setUp(() {
+          when(
+            () => patcher.assertUnpatchableDiffs(
+              releaseArtifact: any(named: 'releaseArtifact'),
+              releaseArchive: any(named: 'releaseArchive'),
+              patchArchive: any(named: 'patchArchive'),
+            ),
+          ).thenThrow(
+            ArchiveException('zip: end of central directory not found'),
+          );
+        });
+
+        test('exits naming the fix', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithError(
+              message:
+                  'Could not compare the patch with the release: '
+                  'zip: end of central directory not found',
+              hint: damagedReleaseArtifactHint(ReleaseType.android),
+              exitCode: ExitCode.software,
+            ),
+          );
         });
       });
 

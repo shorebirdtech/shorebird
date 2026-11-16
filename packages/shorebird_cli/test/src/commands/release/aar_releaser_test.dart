@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -591,6 +592,23 @@ void main() {
             ),
             extractedAarDir: Directory('path').path,
             architectures: Arch.values,
+          ),
+        ).called(1);
+      });
+
+      test('extracts the aar checking each entry', () async {
+        await runWithOverrides(
+          () => aarReleaser.uploadReleaseArtifacts(
+            release: release,
+            appId: appId,
+          ),
+        );
+
+        verify(
+          () => shorebirdAndroidArtifacts.extractAar(
+            packageName: any(named: 'packageName'),
+            buildNumber: any(named: 'buildNumber'),
+            unzipFn: extractVerifiedZip,
           ),
         ).called(1);
       });

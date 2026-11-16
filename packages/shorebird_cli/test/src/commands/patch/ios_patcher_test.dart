@@ -1528,6 +1528,42 @@ This may indicate that the patch contains native changes, which cannot be applie
             );
           });
         });
+
+        group('when the release artifact is damaged', () {
+          setUp(() {
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenThrow(
+              ArchiveException('zip: end of central directory not found'),
+            );
+          });
+
+          test('fails progress and exits naming the fix', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              ),
+              exitsWithError(
+                message:
+                    'The release artifact downloaded from Shorebird is '
+                    'damaged: zip: end of central directory not found',
+                hint: allOf(
+                  startsWith('Re-run to download it again.'),
+                  endsWith('Run: shorebird release ios'),
+                ),
+                exitCode: ExitCode.software,
+              ),
+            );
+            verify(() => progress.fail()).called(1);
+          });
+        });
       });
     });
 

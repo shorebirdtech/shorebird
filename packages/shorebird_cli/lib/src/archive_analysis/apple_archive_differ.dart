@@ -325,7 +325,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     final result = <String, Uint8List>{};
     final input = InputFileStream(archivePath);
     try {
-      final archive = ZipDecoder().decodeStream(input);
+      final archive = ZipDecoder().decodeStream(input, verify: true);
       for (final file in archive.files) {
         if (file.isFile && paths.contains(file.name)) {
           result[file.name] = Uint8List.fromList(file.content);
@@ -373,7 +373,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   ) async {
     final input = InputFileStream(archivePath);
     try {
-      return await body(ZipDecoder().decodeStream(input));
+      return await body(ZipDecoder().decodeStream(input, verify: true));
     } finally {
       await input.close();
     }

@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -585,6 +586,24 @@ void main() {
           )..createSync();
           return diffPath.path;
         });
+      });
+
+      test('extracts the patch aar checking each entry', () async {
+        await runWithOverrides(
+          () => patcher.createPatchArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            releaseArtifact: releaseArtifactFile,
+          ),
+        );
+
+        verify(
+          () => shorebirdAndroidArtifacts.extractAar(
+            packageName: any(named: 'packageName'),
+            buildNumber: any(named: 'buildNumber'),
+            unzipFn: extractVerifiedZip,
+          ),
+        ).called(1);
       });
 
       group('when release artifact download fails', () {

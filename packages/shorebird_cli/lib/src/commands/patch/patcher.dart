@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -22,6 +23,43 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+
+/// The hint for a [releaseType] release artifact downloaded from Shorebird
+/// that can't be read: download it again, and if that keeps failing, replace
+/// the release.
+String damagedReleaseArtifactHint(ReleaseType releaseType) =>
+    'Re-run to download it again. If this persists, the release artifact '
+    'is damaged: create a new release and patch that one. '
+    'Run: ${releaseType.releaseCommand(releaseVersion: '<new version>')}';
+
+/// Extracts [zipFile], a [releaseType] release artifact downloaded from
+/// Shorebird, to [outputDirectory].
+///
+/// If [zipFile] is not a readable zip (cut short, or damaged in storage),
+/// fails [progress] and throws a [CommandError] with
+/// [damagedReleaseArtifactHint], exiting with [ExitCode.software].
+Future<void> extractReleaseArtifact({
+  required File zipFile,
+  required Directory outputDirectory,
+  required ReleaseType releaseType,
+  Progress? progress,
+}) async {
+  try {
+    await artifactManager.extractZip(
+      zipFile: zipFile,
+      outputDirectory: outputDirectory,
+    );
+  } on ArchiveException catch (error) {
+    progress?.fail();
+    throw CommandError(
+      message:
+          'The release artifact downloaded from Shorebird is damaged: '
+          '${error.message}',
+      hint: damagedReleaseArtifactHint(releaseType),
+      exitCode: ExitCode.software,
+    );
+  }
+}
 
 /// {@template patcher}
 /// Platform-specific functionality to create a patch.

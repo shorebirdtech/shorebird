@@ -116,9 +116,11 @@ class IosPatcher extends Patcher
         ? Directory.systemTemp.createTempSync()
         : null;
     try {
-      await artifactManager.extractZip(
+      await extractReleaseArtifact(
         zipFile: releaseArtifact,
         outputDirectory: releaseXcarchiveDirectory,
+        releaseType: releaseType,
+        progress: unzipProgress,
       );
 
       unzipProgress.complete();
@@ -130,10 +132,7 @@ class IosPatcher extends Patcher
           message:
               'The release .xcarchive downloaded from Shorebird has no '
               'Products/Applications/*.app directory.',
-          hint:
-              'Re-run to download it again. If this persists, the release '
-              'artifact is damaged: create a new release and patch that one. '
-              'Run: shorebird release ios',
+          hint: damagedReleaseArtifactHint(releaseType),
           exitCode: ExitCode.software,
         );
       }
