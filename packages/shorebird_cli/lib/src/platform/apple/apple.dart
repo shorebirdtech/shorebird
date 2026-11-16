@@ -214,6 +214,7 @@ class Apple {
     required File aotOutputFile,
     required File vmCodeFile,
     int? ddMaxBytes,
+    String? obfuscationMapPath,
   }) async {
     final patch = aotOutputFile;
     final buildDirectory = shorebirdEnv.buildDirectory;
@@ -348,6 +349,7 @@ $error''');
           linkMetadata = await aotTools.getLinkMetadata(
             debugDir: dumpDebugInfoDir.path,
             workingDirectory: buildDirectory.path,
+            obfuscationMapPath: obfuscationMapPath,
           );
         }
       } on Exception catch (error) {

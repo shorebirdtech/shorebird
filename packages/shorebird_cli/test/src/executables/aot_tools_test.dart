@@ -1411,6 +1411,46 @@ Run "aot_tools help <command>" for more information about a command.
           },
         );
 
+        group('with an obfuscation map', () {
+          List<String> linkMetadataArgs() => verify(
+            () => process.start(
+              any(),
+              captureAny(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).captured.cast<List<String>>().last;
+
+          test('passes it when link_metadata lists the flag', () async {
+            stdout = '{"help": "--obfuscation-map"}';
+            await runWithOverrides(
+              () => aotTools.getLinkMetadata(
+                debugDir: '/debug',
+                obfuscationMapPath: '/map.json',
+              ),
+            );
+            final args = linkMetadataArgs();
+            expect(args, contains('--obfuscation-map=/map.json'));
+            expect(args.last, equals('/debug'));
+          });
+
+          test(
+            'leaves it out when link_metadata does not list the flag',
+            () async {
+              stdout = '{}';
+              await runWithOverrides(
+                () => aotTools.getLinkMetadata(
+                  debugDir: '/debug',
+                  obfuscationMapPath: '/map.json',
+                ),
+              );
+              expect(
+                linkMetadataArgs(),
+                isNot(contains(startsWith('--obfuscation-map'))),
+              );
+            },
+          );
+        });
+
         test(
           'throws FormatException when aot_tools outputs invalid json',
           () async {
