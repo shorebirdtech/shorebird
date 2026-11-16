@@ -424,6 +424,48 @@ void main() {
         });
       });
 
+      group('when the release artifact is damaged', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenThrow(
+            ArchiveException('zip: end of central directory not found'),
+          );
+        });
+
+        test('fails progress and exits naming the fix', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: 'app-id',
+                releaseId: 42,
+                releaseArtifact: releaseArtifact,
+              ),
+            ),
+            exitsWithError(
+              message:
+                  'The release artifact downloaded from Shorebird is '
+                  'damaged: zip: end of central directory not found',
+              hint: allOf(
+                startsWith('Re-run to download it again.'),
+                endsWith('Run: shorebird release linux'),
+              ),
+              exitCode: ExitCode.software,
+            ),
+          );
+          verify(() => progress.fail()).called(1);
+          verifyNever(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+            ),
+          );
+        });
+      });
+
       group('when creating the diff succeeds', () {
         setUp(() {
           when(

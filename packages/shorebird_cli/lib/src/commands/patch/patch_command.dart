@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
@@ -758,9 +759,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     File? obfuscationMapFile;
     if (supplementArchive != null) {
       supplementDirectory = Directory.systemTemp.createTempSync();
-      await artifactManager.extractZip(
+      await extractReleaseArtifact(
         zipFile: supplementArchive,
         outputDirectory: supplementDirectory,
+        releaseType: patcher.releaseType,
       );
       final candidateMapFile = File(
         p.join(supplementDirectory.path, 'obfuscation_map.json'),
@@ -1444,6 +1446,12 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       _failWithChanges({e.change}, status: e.status);
       logger.err('Aborting.');
       throw PromptDeclinedExit();
+    } on ArchiveException catch (e) {
+      throw CommandError(
+        message: 'Could not compare the patch with the release: ${e.message}',
+        hint: damagedReleaseArtifactHint(patcher.releaseType),
+        exitCode: ExitCode.software,
+      );
     } on UnpatchableChangeException catch (e) {
       // The diff checker has already listed the changes.
       final changes = e.changes;

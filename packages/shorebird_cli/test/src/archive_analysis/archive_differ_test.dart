@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:archive/archive.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:test/test.dart';
@@ -54,6 +59,61 @@ void main() {
             archiveDiffer.changedFileSetDiff,
           ),
           isTrue,
+        );
+      });
+    });
+
+    group('fileHashes', () {
+      late Directory tempDir;
+
+      setUp(() {
+        tempDir = Directory.systemTemp.createTempSync();
+      });
+
+      tearDown(() {
+        tempDir.deleteSync(recursive: true);
+      });
+
+      File writeFile(String name, List<int> bytes) =>
+          File(p.join(tempDir.path, name))..writeAsBytesSync(bytes);
+
+      List<int> zipBytes() => ZipEncoder().encode(
+        Archive()..addFile(ArchiveFile.string('lib/libapp.so', 'a' * 4096)),
+      );
+
+      test("maps each entry's path to its crc32", () async {
+        final zip = writeFile('release.zip', zipBytes());
+
+        expect(
+          await archiveDiffer.fileHashes(zip),
+          equals({
+            'lib/libapp.so': getCrc32(utf8.encode('a' * 4096)).toString(),
+          }),
+        );
+      });
+
+      test('maps an empty zip to no paths', () async {
+        final zip = writeFile('empty.zip', ZipEncoder().encode(Archive()));
+
+        expect(await archiveDiffer.fileHashes(zip), isEmpty);
+      });
+
+      test('throws for a zip cut short', () async {
+        final bytes = zipBytes();
+        final zip = writeFile('cut.zip', bytes.sublist(0, bytes.length - 30));
+
+        await expectLater(
+          archiveDiffer.fileHashes(zip),
+          throwsA(isA<ArchiveException>()),
+        );
+      });
+
+      test('throws for a file that is not a zip', () async {
+        final notZip = writeFile('release.zip', utf8.encode('not a zip'));
+
+        await expectLater(
+          archiveDiffer.fileHashes(notZip),
+          throwsA(isA<ArchiveException>()),
         );
       });
     });

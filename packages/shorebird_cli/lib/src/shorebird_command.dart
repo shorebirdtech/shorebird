@@ -25,8 +25,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
 
 /// An [UnzipFn] that extracts [zipFilePath] into [outputDir], checking each
-/// entry's checksum so a damaged zip throws an `ArchiveException` instead of
-/// extracting partial contents.
+/// entry's checksum so a damaged zip throws an `ArchiveException` at the first
+/// damaged entry. Entries extracted before it stay on disk.
 Future<void> extractVerifiedZip(String zipFilePath, String outputDir) =>
     extractFileToDisk(zipFilePath, outputDir, verify: true);
 

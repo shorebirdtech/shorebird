@@ -106,9 +106,11 @@ abstract class DesktopPatcher extends Patcher {
     ]);
     final releaseDirectory = Directory.systemTemp.createTempSync();
     try {
-      await artifactManager.extractZip(
+      await extractReleaseArtifact(
         zipFile: releaseArtifact,
         outputDirectory: releaseDirectory,
+        releaseType: releaseType,
+        progress: createDiffProgress,
       );
 
       // The diff is written to its own temporary directory, so the extracted

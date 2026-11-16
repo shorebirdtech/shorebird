@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
+import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -172,10 +173,16 @@ class PatchDiffChecker {
       'Verifying patch can be applied to release',
     );
 
-    final contentDiffs = await archiveDiffer.changedFiles(
-      releaseArchive.path,
-      localArchive.path,
-    );
+    final FileSetDiff contentDiffs;
+    try {
+      contentDiffs = await archiveDiffer.changedFiles(
+        releaseArchive.path,
+        localArchive.path,
+      );
+    } on Exception {
+      progress.fail();
+      rethrow;
+    }
     progress.complete();
 
     final status = DiffStatus(

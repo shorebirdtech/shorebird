@@ -179,6 +179,20 @@ void main() {
             return path;
           }
 
+          test('throws reading a damaged native .so file', () async {
+            const soPath = 'base/lib/arm64-v8a/libnative.so';
+            final oldAab = writeZip('old_damaged.aab', {
+              soPath: Uint8List.fromList([1, 2, 3]),
+            });
+            final newAab = p.join(tempDir.path, 'new_damaged.aab');
+            File(newAab).writeAsBytesSync(damagedZipBytes(entryName: soPath));
+
+            await expectLater(
+              differ.changedFiles(oldAab, newAab),
+              throwsA(isA<ArchiveException>()),
+            );
+          });
+
           test(
             'filters out native .so files that differ only in build-id and '
             'debuglink',

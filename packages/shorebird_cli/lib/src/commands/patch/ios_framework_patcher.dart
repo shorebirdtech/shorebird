@@ -113,9 +113,11 @@ class IosFrameworkPatcher extends Patcher
         ? Directory.systemTemp.createTempSync()
         : null;
     try {
-      await artifactManager.extractZip(
+      await extractReleaseArtifact(
         zipFile: releaseArtifact,
         outputDirectory: releaseXcframeworkDirectory,
+        releaseType: releaseType,
+        progress: unzipProgress,
       );
 
       unzipProgress.complete();

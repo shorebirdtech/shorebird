@@ -1032,6 +1032,41 @@ void main() {
         expect(diff.machODiffResults[runnerPath]!.isSafe, isFalse);
         expect(diff.frameworkVersionChanges, isEmpty);
       });
+
+      group('when an entry is damaged', () {
+        String writeDamagedZip(String fileName, String entryName) {
+          final path = p.join(tempDir.path, fileName);
+          File(path).writeAsBytesSync(damagedZipBytes(entryName: entryName));
+          return path;
+        }
+
+        test('throws reading a Flutter framework binary', () async {
+          const appPath = 'Payload/Runner.app/Frameworks/App.framework/App';
+          final oldZip = writeSyntheticZip('old_app.zip', {
+            appPath: Uint8List.fromList([1, 2, 3]),
+          });
+          final newZip = writeDamagedZip('new_app.zip', appPath);
+
+          await expectLater(
+            differ.changedFiles(oldZip, newZip),
+            throwsA(isA<ArchiveException>()),
+          );
+        });
+
+        test('throws reading a framework Info.plist', () async {
+          const plistPath =
+              'Payload/Runner.app/Frameworks/Foo.framework/Info.plist';
+          final oldZip = writeSyntheticZip('old_plist.zip', {
+            plistPath: xmlPlist(),
+          });
+          final newZip = writeDamagedZip('new_plist.zip', plistPath);
+
+          await expectLater(
+            differ.changedFiles(oldZip, newZip),
+            throwsA(isA<ArchiveException>()),
+          );
+        });
+      });
     });
   });
 }

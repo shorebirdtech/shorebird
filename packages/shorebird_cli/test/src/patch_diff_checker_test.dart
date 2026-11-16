@@ -106,6 +106,32 @@ void main() {
     });
 
     group('confirmUnpatchableDiffsIfNecessary', () {
+      group('when an archive cannot be read', () {
+        setUp(() {
+          when(
+            () => archiveDiffer.changedFiles(any(), any()),
+          ).thenThrow(const FormatException('damaged'));
+        });
+
+        test('fails progress and rethrows', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            ),
+            throwsA(isA<FormatException>()),
+          );
+
+          verify(() => progress.fail()).called(1);
+          verifyNever(() => progress.complete());
+        });
+      });
+
       group('when native diffs are detected', () {
         setUp(() {
           when(

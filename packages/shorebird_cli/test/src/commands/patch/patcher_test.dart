@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -31,6 +32,7 @@ void main() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(DeploymentTrack.stable);
       registerFallbackValue(FakeFile());
+      registerFallbackValue(FakeDirectory());
     });
 
     group('linkPercentage', () {
@@ -457,6 +459,129 @@ void main() {
           ),
         );
         verify(() => progress.fail()).called(1);
+      });
+    });
+
+    group('damagedReleaseArtifactHint', () {
+      test('names the release command for the platform', () {
+        expect(
+          damagedReleaseArtifactHint(ReleaseType.ios),
+          equals(
+            'Re-run to download it again. If this persists, the release '
+            'artifact is damaged: create a new release and patch that one. '
+            'Run: shorebird release ios',
+          ),
+        );
+      });
+
+      test('asks an add-to-app release for a new version', () {
+        expect(
+          damagedReleaseArtifactHint(ReleaseType.iosFramework),
+          endsWith(
+            'Run: shorebird release ios-framework '
+            '--release-version=<new version>',
+          ),
+        );
+      });
+    });
+
+    group('extractReleaseArtifact', () {
+      late ArtifactManager artifactManager;
+      late Progress progress;
+      final zipFile = File('release.zip');
+      final outputDirectory = Directory('out');
+
+      setUp(() {
+        artifactManager = MockArtifactManager();
+        progress = MockProgress();
+      });
+
+      Future<void> runWithOverrides(Future<void> Function() body) {
+        return runScoped(
+          body,
+          values: {artifactManagerRef.overrideWith(() => artifactManager)},
+        );
+      }
+
+      test('extracts the artifact', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((_) async {});
+
+        await runWithOverrides(
+          () => extractReleaseArtifact(
+            zipFile: zipFile,
+            outputDirectory: outputDirectory,
+            releaseType: ReleaseType.linux,
+            progress: progress,
+          ),
+        );
+
+        verify(
+          () => artifactManager.extractZip(
+            zipFile: zipFile,
+            outputDirectory: outputDirectory,
+          ),
+        ).called(1);
+        verifyNever(() => progress.fail(any()));
+      });
+
+      test('fails progress and exits when the artifact is damaged', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenThrow(
+          ArchiveException('zip: end of central directory not found'),
+        );
+
+        await expectLater(
+          () => runWithOverrides(
+            () => extractReleaseArtifact(
+              zipFile: zipFile,
+              outputDirectory: outputDirectory,
+              releaseType: ReleaseType.linux,
+              progress: progress,
+            ),
+          ),
+          exitsWithError(
+            message:
+                'The release artifact downloaded from Shorebird is damaged: '
+                'zip: end of central directory not found',
+            hint: damagedReleaseArtifactHint(ReleaseType.linux),
+            exitCode: ExitCode.software,
+          ),
+        );
+        verify(() => progress.fail()).called(1);
+      });
+
+      test('exits without a progress to fail', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenThrow(ArchiveException('zip: crc32 mismatch'));
+
+        await expectLater(
+          () => runWithOverrides(
+            () => extractReleaseArtifact(
+              zipFile: zipFile,
+              outputDirectory: outputDirectory,
+              releaseType: ReleaseType.linux,
+            ),
+          ),
+          exitsWithError(
+            message:
+                'The release artifact downloaded from Shorebird is damaged: '
+                'zip: crc32 mismatch',
+            exitCode: ExitCode.software,
+          ),
+        );
       });
     });
 

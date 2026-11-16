@@ -17,6 +17,8 @@ class FakeCreateBuildRunRequest extends Fake implements CreateBuildRunRequest {}
 
 class FakeDiffStatus extends Fake implements DiffStatus {}
 
+class FakeDirectory extends Fake implements Directory {}
+
 class FakeFile extends Fake implements File {}
 
 class FakeIOSink extends Fake implements IOSink {}

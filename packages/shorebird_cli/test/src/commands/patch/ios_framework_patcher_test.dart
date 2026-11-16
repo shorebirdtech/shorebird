@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -847,6 +848,45 @@ void main() {
           );
 
           expect(supplementDirectory.existsSync(), isTrue);
+        });
+      });
+
+      group('when the release artifact is damaged', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenThrow(
+            ArchiveException('zip: end of central directory not found'),
+          );
+        });
+
+        test('fails progress and exits naming the fix', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            ),
+            exitsWithError(
+              message:
+                  'The release artifact downloaded from Shorebird is '
+                  'damaged: zip: end of central directory not found',
+              hint: allOf(
+                startsWith('Re-run to download it again.'),
+                endsWith(
+                  'Run: shorebird release ios-framework '
+                  '--release-version=<new version>',
+                ),
+              ),
+              exitCode: ExitCode.software,
+            ),
+          );
+          verify(() => progress.fail()).called(1);
         });
       });
     });

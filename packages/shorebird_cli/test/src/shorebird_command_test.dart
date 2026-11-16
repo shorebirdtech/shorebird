@@ -638,7 +638,7 @@ void main() {
     });
   });
 
-  group(extractVerifiedZip, () {
+  group('extractVerifiedZip', () {
     const entryName = 'lib/libapp.so';
     late Directory tempDir;
 
