@@ -175,6 +175,7 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
         aotOutputFile: File(aotOutputPath),
         vmCodeFile: File(vmcodeOutputPath),
         ddMaxBytes: ddMaxBytes,
+        obfuscationMapPath: obfuscationMapPath,
       );
       final linkPercentage = result.linkPercentage;
       final exitCode = result.exitCode;

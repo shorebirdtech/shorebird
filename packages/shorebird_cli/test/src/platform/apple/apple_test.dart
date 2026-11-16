@@ -669,6 +669,33 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           expect(tempRoot.listSync(), isEmpty);
         });
 
+        test('passes the obfuscation map to link_metadata', () async {
+          when(
+            () => aotTools.getLinkMetadata(
+              debugDir: any(named: 'debugDir'),
+              workingDirectory: any(named: 'workingDirectory'),
+              obfuscationMapPath: any(named: 'obfuscationMapPath'),
+            ),
+          ).thenAnswer((_) async => {});
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+              obfuscationMapPath: '/map.json',
+            ),
+          );
+          verify(
+            () => aotTools.getLinkMetadata(
+              debugDir: any(named: 'debugDir'),
+              workingDirectory: any(named: 'workingDirectory'),
+              obfuscationMapPath: '/map.json',
+            ),
+          ).called(1);
+        });
+
         test('dumps debug info', () async {
           await runWithOverrides(
             () => apple.runLinker(

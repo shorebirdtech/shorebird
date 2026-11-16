@@ -321,14 +321,32 @@ class AotTools {
     return result.stdout.toString().contains('link_metadata');
   }
 
+  /// Whether the current aot_tools' `link_metadata` takes
+  /// `--obfuscation-map`, which names the interpreted framework functions of
+  /// an obfuscated patch. Older versions reject the flag as unknown.
+  Future<bool> isLinkMetadataObfuscationMapSupported() async {
+    final result = await _exec(['link_metadata', '--help']);
+    return result.stdout.toString().contains('obfuscation-map');
+  }
+
   /// Dump json metadata from a link debug result.
+  ///
+  /// [obfuscationMapPath] is the release's obfuscation map, for an obfuscated
+  /// patch. It is passed on only when this aot_tools takes it (see
+  /// [isLinkMetadataObfuscationMapSupported]); without it, an obfuscated
+  /// patch's metadata leaves out the interpreted framework summary.
   // Added in Flutter 3.29.3
   Future<Map<String, dynamic>> getLinkMetadata({
     required String debugDir,
     String? workingDirectory,
+    String? obfuscationMapPath,
   }) async {
+    final passObfuscationMap =
+        obfuscationMapPath != null &&
+        await isLinkMetadataObfuscationMapSupported();
     final result = await _exec([
       'link_metadata',
+      if (passObfuscationMap) '--obfuscation-map=$obfuscationMapPath',
       debugDir,
     ], workingDirectory: workingDirectory);
     final stdout = result.stdout.toString();
