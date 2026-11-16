@@ -263,7 +263,7 @@ symbolize" command with the right program symbol file is required to obtain a hu
     defaultValue: '20',
     description:
         '''
-The minimum link percentage ($minLinkPercentageMin-$minLinkPercentageMax) required in order to generate a patch (Apple platforms only).
+The minimum link percentage ($minLinkPercentageMin-$minLinkPercentageMax) required in order to generate a patch (iOS and iOS framework only).
 
 Patches with a lower link percentage than what is provided here will fail. Pass 0 to accept any link percentage.
 ''',

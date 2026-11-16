@@ -1870,6 +1870,118 @@ void main() {
       });
     });
 
+    group('createBuildRun', () {
+      const appId = 'test-app-id';
+      final request = CreateBuildRunRequest(
+        runId: 'run-id',
+        command: BuildRunCommand.patch,
+        platform: ReleasePlatform.ios,
+        outcome: BuildRunOutcome.failed,
+        reason: BuildRunFailureReason.linkPercentage,
+        releaseId: 1,
+        startedAt: DateTime.utc(2026, 11, 10),
+        durationMs: 1000,
+        dryRun: false,
+      );
+
+      test('posts the run to the app', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode({
+                  'id': 7,
+                  'artifact_uploads': [
+                    {
+                      'id': 3,
+                      'kind': 'debug_bundle',
+                      'shared_by': 'flag',
+                      'upload_url': 'https://storage.example/session',
+                    },
+                  ],
+                }),
+              ),
+            ),
+            HttpStatus.created,
+          ),
+        );
+
+        final response = await codePushClient.createBuildRun(
+          appId: appId,
+          request: request,
+        );
+
+        expect(
+          response,
+          equals(
+            CreateBuildRunResponse(
+              id: 7,
+              artifactUploads: [
+                RunArtifactUpload(
+                  id: 3,
+                  kind: RunArtifactKind.debugBundle,
+                  sharedBy: RunArtifactSharedBy.flag,
+                  uploadUrl: Uri.parse('https://storage.example/session'),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final sent =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(sent.method, equals('POST'));
+        expect(sent.url, equals(v1('apps/$appId/runs')));
+        expect(sent.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(sent.body), equals(request.toJson()));
+      });
+
+      test('throws a CodePushException when the server refuses', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.forbidden),
+        );
+
+        await expectLater(
+          codePushClient.createBuildRun(appId: appId, request: request),
+          throwsA(isA<CodePushException>()),
+        );
+      });
+    });
+
+    group('uploadRunArtifact', () {
+      test('puts the file to the upload session', () async {
+        final dir = Directory.systemTemp.createTempSync();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final file = File('${dir.path}/patch-debug.zip')
+          ..writeAsBytesSync([1, 2, 3]);
+        final upload = RunArtifactUpload(
+          id: 3,
+          kind: RunArtifactKind.debugBundle,
+          sharedBy: RunArtifactSharedBy.setting,
+          uploadUrl: Uri.parse('https://storage.example/session'),
+        );
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await codePushClient.uploadRunArtifact(
+          upload: upload,
+          path: file.path,
+        );
+
+        final sent =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(sent.method, equals('PUT'));
+        expect(sent.url, equals(upload.uploadUrl));
+        expect(sent.headers['content-range'], equals('bytes 0-2/3'));
+        expect(sent.bodyBytes, equals([1, 2, 3]));
+      });
+    });
+
     group('updateReleaseStatus', () {
       const appId = 'test-app-id';
       const releaseId = 42;

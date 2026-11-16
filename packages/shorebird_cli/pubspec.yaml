@@ -1,6 +1,6 @@
 name: shorebird_cli
 description: Command-line tool to interact with Shorebird's services.
-version: 1.6.138
+version: 1.6.140
 repository: https://github.com/shorebirdtech/shorebird
 resolution: workspace
 
@@ -65,3 +65,10 @@ dev_dependencies:
 
 executables:
   shorebird:
+
+shorebird_ci:
+  runners:
+    - macos-latest
+    - windows-latest
+    - ubuntu-latest
+  min_coverage: 94.7

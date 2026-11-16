@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 /// One of a fixed number of machine-wide slots, so at most that many runs
-/// check something at once and the rest queue.
+/// check something at once and the rest wait in arrival order. The default
+/// is four ([defaultSlots]).
 ///
-/// Runs that overlap compete for the same cores and finish no sooner than
-/// they would one after another: four agent-verify runs at once took three
-/// to four times as long each as one alone, and the overload timed tests
-/// out. A slot turns that into a queue.
+/// Overlapping runs compete for the same cores, so each of the four takes
+/// longer than it would alone: on 10-21, four agent-verify runs at once took
+/// 880 to 1,290 s each against about 300 s alone, and the overload timed
+/// tests out on a 12-core machine. That is what the default costs, and
+/// `VERIFY_CACHE_SLOTS` sets a lower number where it is too much.
 ///
 /// Like a `KeyLock`, a slot is the operating system's lock on a file, under
 /// `slots/`, so the kernel drops it when its holder exits.

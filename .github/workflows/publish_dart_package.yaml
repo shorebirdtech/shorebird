@@ -65,7 +65,7 @@ jobs:
 
       - name: 🔍 Analyze
         working-directory: ${{ inputs.working_directory }}
-        run: dart analyze --fatal-warnings lib test
+        run: dart analyze --fatal-infos lib test
 
       - name: 🧪 Test
         working-directory: ${{ inputs.working_directory }}

@@ -32,6 +32,16 @@ Future<int?> runGenerate(
   ]);
 }
 
+/// A generated Run Tests step, with the workflow and job holding it.
+typedef TestSite = ({
+  String name,
+  String executable,
+  String style,
+  bool hasCodecov,
+  String workflow,
+  String job,
+});
+
 void main() {
   setUpTempDir('shorebird_ci_generate_');
 
@@ -324,6 +334,7 @@ void main() {
         contains(
           '            foo:\n'
           '              - .github/workflows/_shorebird_ci_dart.yaml\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/foo/**\n'
           '              - pubspec.lock\n'
           '              - pubspec.yaml\n',
@@ -334,8 +345,47 @@ void main() {
         contains(
           '            solo:\n'
           '              - .github/workflows/_shorebird_ci_dart.yaml\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - tools/solo/**\n',
         ),
+      );
+    });
+
+    test('every static filter matches the orchestrator itself', () async {
+      // Every package's job is declared in the orchestrator, so a commit
+      // touching only it would skip every job a filter that misses it.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar');
+      createPackage(tempDir, 'packages/baz', 'baz', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final filters = _readStaticFilters(_readMain(tempDir));
+      expect(filters.keys, containsAll(['bar', 'baz', 'foo']));
+      for (final MapEntry(key: slug, value: paths) in filters.entries) {
+        expect(
+          paths,
+          contains('.github/workflows/shorebird_ci.yaml'),
+          reason: slug,
+        );
+      }
+    });
+
+    test('every static filter matches a custom --output path', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--output', '.github/workflows/ci.yaml'],
+      );
+
+      final filters = _readStaticFilters(readWorkflow('ci.yaml'));
+      expect(filters['foo'], contains('.github/workflows/ci.yaml'));
+      expect(
+        filters['foo'],
+        isNot(contains('.github/workflows/shorebird_ci.yaml')),
       );
     });
 
@@ -797,10 +847,6 @@ void main() {
         mode: FileMode.append,
       );
     }
-
-    String readWorkflow(String name) => File(
-      p.join(tempDir.path, '.github', 'workflows', name),
-    ).readAsStringSync();
 
     test('dynamic: no bloc steps when no package uses bloc_lint', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
@@ -1329,10 +1375,6 @@ void main() {
   });
 
   group('v0.3.0 features', () {
-    String readWorkflow(String name) => File(
-      p.join(tempDir.path, '.github', 'workflows', name),
-    ).readAsStringSync();
-
     test('--filters-only updates dorny/paths-filter in place', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       createPackage(tempDir, 'packages/bar', 'bar');
@@ -1372,8 +1414,10 @@ jobs:
         contains(
           '          filters: |\n'
           '            bar:\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/bar/**\n'
           '            foo:\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/foo/**\n',
         ),
       );
@@ -1617,12 +1661,295 @@ shorebird_ci:
       },
     );
   });
+
+  group('Run Tests step', () {
+    /// Every generated step the retry wraps.
+    const sites = <TestSite>[
+      (
+        name: 'static dart',
+        executable: 'dart',
+        style: 'static',
+        hasCodecov: false,
+        workflow: '_shorebird_ci_dart.yaml',
+        job: 'ci',
+      ),
+      (
+        name: 'static flutter',
+        executable: 'flutter',
+        style: 'static',
+        hasCodecov: false,
+        workflow: '_shorebird_ci_flutter.yaml',
+        job: 'ci',
+      ),
+      (
+        name: 'dynamic dart',
+        executable: 'dart',
+        style: 'dynamic',
+        hasCodecov: true,
+        workflow: 'shorebird_ci.yaml',
+        job: 'dart_ci',
+      ),
+      (
+        name: 'dynamic flutter',
+        executable: 'flutter',
+        style: 'dynamic',
+        hasCodecov: true,
+        workflow: 'shorebird_ci.yaml',
+        job: 'flutter_ci',
+      ),
+    ];
+
+    /// The `run:` script of the Run Tests step in [job] of [workflow].
+    String runTestsStep(String workflow, String job) {
+      final steps =
+          ((loadYaml(workflow) as YamlMap)['jobs'] as YamlMap)[job] as YamlMap;
+      final step = (steps['steps'] as YamlList).cast<YamlMap>().firstWhere(
+        (step) => step['name'] == 'Run Tests',
+      );
+      return step['run'] as String;
+    }
+
+    /// Writes an [executable] into [dir] that answers each `test` invocation
+    /// with the next entry of [runs] and every other invocation with success,
+    /// recording the `test` ones in `attempts` beside itself. The last entry
+    /// answers every `test` invocation after it.
+    void writeStub(
+      Directory dir,
+      String executable,
+      List<({String output, int exitCode})> runs,
+    ) {
+      final cases = [
+        for (final (index, run) in runs.indexed)
+          '''
+  ${index == runs.length - 1 ? '*' : index + 1})
+    printf '%s\\n' '${run.output}'
+    exit ${run.exitCode}
+    ;;''',
+      ].join('\n');
+      final stub = File(p.join(dir.path, executable))
+        ..writeAsStringSync('''
+#!/usr/bin/env bash
+if [ "\$1" != test ]; then
+  exit 0
+fi
+attempts="\$(dirname "\$0")/attempts"
+echo "$executable \$*" >> "\$attempts"
+case "\$(grep -c . "\$attempts")" in
+$cases
+esac
+''');
+      Process.runSync('chmod', ['+x', stub.path]);
+    }
+
+    /// Runs [site]'s generated step over one test file, against an SDK
+    /// answering with [runs]. Returns the step's exit code and how many
+    /// times it ran the SDK's `test`.
+    Future<({int exitCode, int testRuns})> runStep(
+      TestSite site,
+      List<({String output, int exitCode})> runs,
+    ) async {
+      final isFlutter = site.executable == 'flutter';
+      createPackage(
+        tempDir,
+        'pkg',
+        'pkg',
+        addTestDir: true,
+        flutterLine: isFlutter ? 'any' : null,
+      );
+      if (site.hasCodecov) {
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      }
+      initGitRepo(tempDir);
+      await runGenerate(tempDir, extra: ['--style', site.style]);
+
+      final stubDir = Directory(p.join(tempDir.path, 'stub'))..createSync();
+      writeStub(stubDir, site.executable, runs);
+      final script = File(p.join(tempDir.path, 'step.sh'))
+        ..writeAsStringSync(
+          runTestsStep(readWorkflow(site.workflow), site.job),
+        );
+
+      // The static workflows declare `shell: bash`, which GitHub runs with
+      // `-eo pipefail`. The dynamic ones take the default `bash -e`, so the
+      // step cannot lean on its caller for pipefail.
+      final result = Process.runSync(
+        'bash',
+        [
+          '--noprofile',
+          '--norc',
+          if (site.style == 'static') ...['-eo', 'pipefail'] else '-e',
+          script.path,
+        ],
+        workingDirectory: p.join(tempDir.path, 'pkg'),
+        environment: {
+          'MIN_COVERAGE': '',
+          'PATH': '${stubDir.path}:${Platform.environment['PATH']}',
+          'RUNNER_OS_NAME': 'ubuntu-latest',
+          'SHARD_INDEX': '0',
+          'TOTAL_SHARDS': '1',
+        },
+      );
+      printOnFailure('${result.stdout}${result.stderr}');
+      final attempts = File(p.join(stubDir.path, 'attempts'));
+      return (
+        exitCode: result.exitCode,
+        testRuns: attempts.existsSync()
+            ? attempts.readAsLinesSync().where((l) => l.isNotEmpty).length
+            : 0,
+      );
+    }
+
+    const droppedConnection =
+        'Failed to load "test/example_test.dart": '
+        'Connection closed before full header was received';
+
+    for (final site in sites) {
+      group(site.name, () {
+        test('a dropped suite connection passes on the second run', () async {
+          final step = await runStep(site, [
+            (output: droppedConnection, exitCode: 1),
+            (output: 'All tests passed!', exitCode: 0),
+          ]);
+
+          expect(step, (exitCode: 0, testRuns: 2));
+        }, testOn: '!windows');
+
+        test('a failing test is not retried and fails the step', () async {
+          final step = await runStep(site, [
+            (output: 'Some tests failed.', exitCode: 1),
+          ]);
+
+          expect(step.exitCode, isNot(0));
+          expect(step.testRuns, 1);
+        }, testOn: '!windows');
+
+        test('a connection that drops twice fails the step', () async {
+          final step = await runStep(site, [
+            (output: droppedConnection, exitCode: 1),
+          ]);
+
+          expect(step.exitCode, isNot(0));
+          expect(step.testRuns, 2);
+        }, testOn: '!windows');
+      });
+    }
+  });
+
+  group('the repository-wide shorebird_ci block', () {
+    void declare(String block) {
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(block, mode: FileMode.append);
+    }
+
+    setUp(() {
+      createWorkspaceRoot(tempDir, members: ['packages/foo']);
+      createPackage(
+        tempDir,
+        'packages/foo',
+        'foo',
+        useWorkspace: true,
+        addTestDir: true,
+      );
+    });
+
+    test('required: true emits the aggregator w/o the flag', () async {
+      declare('shorebird_ci:\n  required: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), contains('\n  required:\n'));
+    });
+
+    test('fatal_infos: true emits --fatal-infos w/o the flag', () async {
+      declare('shorebird_ci:\n  fatal_infos: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-infos .'),
+      );
+    });
+
+    test('codecov_token_secret threads the token w/o the flag', () async {
+      declare('shorebird_ci:\n  codecov_token_secret: CODECOV_TOKEN\n');
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
+      );
+    });
+
+    test('an empty codecov_token_secret reads as unset', () async {
+      declare('shorebird_ci:\n  codecov_token_secret: ""\n');
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        isNot(contains('secrets.')),
+      );
+    });
+
+    test('a block that is not a map reads as no configuration', () async {
+      declare('shorebird_ci: nope\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), isNot(contains('\n  required:\n')));
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-warnings .'),
+      );
+    });
+
+    test('a flag still wins over a block that leaves it out', () async {
+      declare('shorebird_ci:\n  required: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--fatal-infos'],
+      );
+
+      expect(_readMain(tempDir), contains('\n  required:\n'));
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-infos .'),
+      );
+    });
+  });
 }
 
 String _readMain(Directory repoRoot) {
   return File(
     p.join(repoRoot.path, '.github', 'workflows', 'shorebird_ci.yaml'),
   ).readAsStringSync();
+}
+
+/// The `dorny/paths-filter` patterns in a static orchestrator, by slug.
+Map<String, List<String>> _readStaticFilters(String yaml) {
+  final jobs = (loadYaml(yaml) as YamlMap)['jobs'] as YamlMap;
+  final steps = (jobs['changes'] as YamlMap)['steps'] as YamlList;
+  final step =
+      steps.firstWhere((step) => (step as YamlMap)['id'] == 'filter')
+          as YamlMap;
+  final filters =
+      loadYaml((step['with'] as YamlMap)['filters'] as String) as YamlMap;
+  return {
+    for (final MapEntry(key: slug, value: paths) in filters.entries)
+      slug as String: (paths as YamlList).cast<String>().toList(),
+  };
 }
 
 String _readAll(Directory dir) => [

@@ -185,13 +185,20 @@ class RedisConnection {
     try {
       logger.info('Connecting to ${options._connectionUri}.');
       final uri = options._connectionUri;
-      final connection = options.tls
-          ? await _connectSecureSocket(uri)
-          : await connectSocket(
+      final socket = options.tls
+          ? await SecureSocket.connect(
               uri.host,
-              port: uri.port,
+              uri.port,
+              context: options.securityContext,
               timeout: options.timeout,
-            );
+            )
+          : await Socket.connect(uri.host, uri.port, timeout: options.timeout);
+      final connection = _SocketConnection(
+        socket,
+        // At info: once anything has been written, the same error also
+        // completes `outputSink.done` and is logged there as an error.
+        onReadError: (error) => logger.info('Connection read failed: $error'),
+      );
       unawaited(onConnectionOpened(connection));
       unawaited(
         connection.outputSink.done
@@ -229,16 +236,6 @@ class RedisConnection {
     if (result.isError) throw RedisException(result.toString());
   }
 
-  Future<RespServerConnection> _connectSecureSocket(Uri uri) async {
-    final socket = await SecureSocket.connect(
-      uri.host,
-      uri.port,
-      context: options.securityContext,
-      timeout: options.timeout,
-    );
-    return _SocketConnection(socket);
-  }
-
   void _reset() {
     _connected = Completer<void>();
     _connection = null;
@@ -247,29 +244,50 @@ class RedisConnection {
   }
 }
 
-/// A [RespServerConnection] over an already-open [Socket], such as a
-/// [SecureSocket]. `resp_client`'s own socket connection is plaintext only.
+/// A [RespServerConnection] over an already-open [Socket] or [SecureSocket].
+///
+/// Used for plaintext too, in place of `resp_client`'s own socket
+/// connection, because `resp_client` reads [inputStream] without an error
+/// handler: a read error passed through to it is an unhandled error that
+/// ends the process.
 class _SocketConnection implements RespServerConnection {
-  _SocketConnection(this._socket);
+  _SocketConnection(this._socket, {required this.onReadError});
 
   final Socket _socket;
+
+  /// Called with a read error that arrives before [close].
+  final void Function(Object error) onReadError;
+
   var _closing = false;
 
   @override
   StreamSink<List<int>> get outputSink => _socket;
 
-  /// The socket's input, minus any error that arrives once [close] has begun.
+  /// The socket's input, minus its errors.
   ///
-  /// On a [SecureSocket], [Socket.close] closes only the write side, with a
-  /// FIN and no TLS close_notify, and the read side keeps listening. OpenSSL
+  /// A read error before [close], such as a reset from the server
+  /// (`Connection reset by peer`), goes to [onReadError], and the socket is
+  /// destroyed and closed. The close is what completes [outputSink]'s `done`,
+  /// which the reconnect loop watches, when nothing has been written yet:
+  /// [Socket.destroy] alone doesn't, and the socket completes it with the
+  /// error itself only once something has. Commands waiting on a reply then
+  /// fail by their timeout.
+  ///
+  /// One after [close] has begun is expected and dropped: on a
+  /// [SecureSocket], [Socket.close] closes only the write side, with a FIN
+  /// and no TLS close_notify, and the read side keeps listening. OpenSSL
   /// servers, Memorystore for Valkey among them, answer that with a fatal
-  /// alert. `resp_client` reads this stream without an error handler, so
-  /// passed through, that alert would be an unhandled error.
+  /// alert.
   @override
-  late final Stream<List<int>> inputStream = _socket.handleError(
-    (Object _) {},
-    test: (_) => _closing,
-  );
+  late final Stream<List<int>> inputStream = _socket.handleError((
+    Object error,
+  ) {
+    if (_closing) return;
+    onReadError(error);
+    _socket
+      ..destroy()
+      ..close().ignore();
+  });
 
   /// Flushes and closes the socket.
   ///

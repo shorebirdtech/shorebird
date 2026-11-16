@@ -1,6 +1,15 @@
-# cspell:words cmdline sdkmanager LASTEXITCODE
+# cspell:words sdkmanager LASTEXITCODE
 
 name: e2e
+# The inputs a run was dispatched with, which GitHub's API doesn't otherwise
+# return: the Flutter release's CLI e2e preflight (_build_engine
+# release_flutter) finds a green run of its leg on the CLI commit by this
+# name, e.g. "e2e cli_ref=<sha> patch_matrix", rather than dispatching
+# another. Inputs a run ignores (patch_matrix without cli_ref,
+# flutter_version without cli_version) are left out, as in the concurrency
+# group. A scheduled run is plain "e2e".
+run-name: >-
+  e2e${{ inputs.cli_ref && format(' cli_ref={0}', inputs.cli_ref) || '' }}${{ inputs.cli_ref && inputs.patch_matrix && ' patch_matrix' || '' }}${{ inputs.cli_version && format(' cli_version={0}', inputs.cli_version) || '' }}${{ inputs.cli_version && inputs.flutter_version && format(' flutter_version={0}', inputs.flutter_version) || '' }}
 
 concurrency:
   # A cli_ref dispatch tests one CLI ref (with the patch matrix only when
@@ -73,6 +82,26 @@ permissions:
   contents: read
 
 jobs:
+  # actions/checkout reads a short SHA as a branch name: every job then fails
+  # its checkout after three retries with no clear error, testing nothing
+  # (run 43290432219). Fail once, up front, and say what to pass.
+  check_cli_ref:
+    name: check cli_ref
+    # Not on a cli_version dispatch, which reads no cli_ref and runs only its
+    # own job: the release gate counts the jobs that ran.
+    if: ${{ !inputs.cli_version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 🔎 Reject a short SHA
+        env:
+          CLI_REF: ${{ inputs.cli_ref }}
+        run: |
+          if [[ "$CLI_REF" =~ ^[0-9a-fA-F]{7,39}$ ]]; then
+            echo "::error::cli_ref '$CLI_REF' looks like a short SHA; actions/checkout can't fetch one. Pass the full 40-char SHA."
+            exit 1
+          fi
+
   patch:
     # Without this the job name lists every matrix value, android-packages
     # included.
@@ -80,6 +109,7 @@ jobs:
     # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
     # unrelated jobs that would only burn runner time, unless patch_matrix
     # asks for it (a release candidate).
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version && (!inputs.cli_ref || inputs.patch_matrix) }}
     strategy:
       fail-fast: false
@@ -151,7 +181,7 @@ jobs:
         shell: bash
 
       - name: ☕ Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: "temurin"
           java-version: "17"
@@ -163,15 +193,51 @@ jobs:
       - name: 🎯 Use Shorebird's Dart
         run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
-      # A bad download fails this step instead of `shorebird release`
-      # mid-build. Unquoted so the list splits into one argument per package.
+      # The env context only holds what a workflow sets, so ANDROID_HOME is
+      # copied into it for the Android cache paths. NDK_VERSION is the leg's
+      # NDK, empty if it installs none.
+      - name: 🤖 Android Cache Paths
+        env:
+          ANDROID_PACKAGES: ${{ matrix.android-packages }}
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+          ndk=$(tr ' ' '\n' <<< "$ANDROID_PACKAGES" | sed -n 's/^ndk;//p')
+          echo "NDK_VERSION=${ndk}" >> "$GITHUB_ENV"
+
+      # Every NDK leg downloaded its ~700 MB NDK from dl.google.com on every
+      # run, and a corrupt or stalled download failed legs that tested nothing
+      # (runs 41553186726, 42728409530, 43237646183). The runner image ships
+      # none of the NDKs these Flutter versions pin. Restored, sdkmanager finds
+      # it installed and downloads nothing. Keyed on the NDK alone, so legs
+      # sharing one share an entry: three entries, about 2 GB.
+      - name: 🤖 NDK Cache
+        if: ${{ env.NDK_VERSION != '' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+          key: android-ndk-${{ env.NDK_VERSION }}-${{ runner.os }}
+
+      # A cli_ref run checks out cli_ref, which may predate this workflow's
+      # helper scripts (scripts/install_android_sdk_packages.sh came in
+      # #4431), so the helper comes from this workflow's own commit.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .e2e_workflow
+          sparse-checkout: scripts/install_android_sdk_packages.sh
+          sparse-checkout-cone-mode: false
+
+      # Downloads what the cache didn't restore. A bad download is retried
+      # (see the script) instead of failing `shorebird release` mid-build.
+      # Unquoted so the list splits into one argument per package.
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
+        timeout-minutes: 17
         env:
           ANDROID_PACKAGES: ${{ matrix.android-packages }}
         run: |
           # shellcheck disable=SC2086
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install $ANDROID_PACKAGES
+          ./.e2e_workflow/scripts/install_android_sdk_packages.sh $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -205,12 +271,7 @@ jobs:
 
       # android-emulator-runner installs the API 30 system image on every run.
       # A bad download of it has failed a nightly ("Error on ZipFile unknown
-      # archive"); restored here, its sdkmanager finds it installed. The env
-      # context only holds what a workflow sets, so ANDROID_HOME is copied
-      # into it for the cache path.
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
-
+      # archive"); restored here, its sdkmanager finds it installed.
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -287,7 +348,7 @@ jobs:
         run: shorebird --version
 
       - name: ☕ Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: "temurin"
           java-version: "17"
@@ -299,10 +360,20 @@ jobs:
       # The patch matrix's default entry's packages: the current version
       # line's, the only one the release gate releases. Move them with that
       # entry when the line moves.
+      # See the patch job.
+      - name: 🤖 Android Cache Paths
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      # The patch job's entry for this NDK.
+      - name: 🤖 NDK Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          key: android-ndk-28.2.13676358-${{ runner.os }}
+
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 17
+        run: ./scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -323,9 +394,6 @@ jobs:
             ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-default-${{ hashFiles('bin/internal/flutter.version') }}
-
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -350,6 +418,7 @@ jobs:
   # and unlike the patch job also on a cli_ref dispatch, testing that ref.
   linux_signing:
     name: linux signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -387,6 +456,7 @@ jobs:
 
   macos_signing:
     name: macos signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     # The release gate waits on this workflow's slowest job, and this one's
     # six serial builds took 9 minutes on macos-latest's 3 vCPUs.
@@ -423,6 +493,7 @@ jobs:
 
   windows_signing:
     name: windows signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: windows-latest
     timeout-minutes: 20
@@ -459,6 +530,7 @@ jobs:
 
   android_signing:
     name: android signing
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -485,7 +557,7 @@ jobs:
         run: shorebird --version
 
       - name: ☕ Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: "temurin"
           java-version: "17"
@@ -496,10 +568,31 @@ jobs:
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
+      # See the patch job.
+      - name: 🤖 Android Cache Paths
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      # The patch job's entry for this NDK.
+      - name: 🤖 NDK Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          key: android-ndk-28.2.13676358-${{ runner.os }}
+
+      # A cli_ref run checks out cli_ref, which may predate this workflow's
+      # helper scripts (scripts/install_android_sdk_packages.sh came in
+      # #4431), so the helper comes from this workflow's own commit.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .e2e_workflow
+          sparse-checkout: scripts/install_android_sdk_packages.sh
+          sparse-checkout-cone-mode: false
+
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 17
+        run: ./.e2e_workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -517,9 +610,6 @@ jobs:
             ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
-
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -544,6 +634,7 @@ jobs:
   # dispatch, like linux_signing.
   linux_rollback:
     name: linux rollback
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -584,6 +675,7 @@ jobs:
   # (scripts/boot_recovery_e2e.dart). Runs when linux_signing does.
   linux_boot:
     name: linux boot
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -622,6 +714,7 @@ jobs:
   # The same checks on an Android emulator, set up as in android_signing.
   android_boot:
     name: android boot
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -648,7 +741,7 @@ jobs:
         run: shorebird --version
 
       - name: ☕ Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: "temurin"
           java-version: "17"
@@ -659,10 +752,31 @@ jobs:
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
+      # See the patch job.
+      - name: 🤖 Android Cache Paths
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      # The patch job's entry for this NDK.
+      - name: 🤖 NDK Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          key: android-ndk-28.2.13676358-${{ runner.os }}
+
+      # A cli_ref run checks out cli_ref, which may predate this workflow's
+      # helper scripts (scripts/install_android_sdk_packages.sh came in
+      # #4431), so the helper comes from this workflow's own commit.
+      - name: 📚 Workflow Scripts Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .e2e_workflow
+          sparse-checkout: scripts/install_android_sdk_packages.sh
+          sparse-checkout-cone-mode: false
+
       - name: 🤖 Install Android SDK Packages
-        timeout-minutes: 10
-        run: |
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+        timeout-minutes: 17
+        run: ./.e2e_workflow/scripts/install_android_sdk_packages.sh "ndk;28.2.13676358"
 
       - name: 🚀 Enable KVM
         run: |
@@ -679,9 +793,6 @@ jobs:
             ~/.gradle/wrapper/dists/*/*/*
             !~/.gradle/wrapper/dists/*/*/*.zip
           key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
-
-      - name: 🤖 System Image Cache Path
-        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
 
       - name: 🤖 System Image Cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -700,6 +811,7 @@ jobs:
           script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
   cli:
+    needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
     strategy:
       fail-fast: false
@@ -796,7 +908,7 @@ jobs:
         shell: powershell
 
       - name: ☕ Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: "temurin"
           java-version: "17"

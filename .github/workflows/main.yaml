@@ -1,3 +1,5 @@
+# cspell:words cmdline sdkmanager dists
+
 name: ci
 
 concurrency:
@@ -62,6 +64,7 @@ jobs:
 
     outputs:
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
+      android_build_e2e: ${{ steps.android_build_e2e.outputs.android }}
 
     name: 👀 Detect Changes
 
@@ -95,6 +98,102 @@ jobs:
               - pubspec.lock
               - pubspec.yaml
 
+      # What a real `shorebird release android` and `patch android` run:
+      # the CLI and the packages it builds from, the Flutter it pins, and
+      # this job.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        name: Android Build E2E Detection
+        id: android_build_e2e
+        with:
+          filters: |
+            android:
+              - ./.github/workflows/main.yaml
+              - bin/**
+              - scripts/patch_e2e.dart
+              - scripts/e2e_helpers.dart
+              - scripts/no_android_sdk_downloads.sh
+              - packages/dex/**
+              - packages/elf/**
+              - packages/macho/**
+              - packages/scoped_deps/**
+              - packages/shorebird_build_trace/**
+              - packages/shorebird_cli/bin/**
+              - packages/shorebird_cli/lib/**
+              - packages/shorebird_cli/pubspec.yaml
+              - packages/shorebird_code_push_client/lib/**
+              - packages/shorebird_code_push_protocol/lib/**
+              - pubspec.lock
+              - pubspec.yaml
+
+  # A real Android release and patch built by this PR's CLI against dev,
+  # with no device: PR CI's unit tests mock the builds, so a `flutter build`
+  # or Gradle invocation no Flutter accepts used to show first in the nightly
+  # e2e (#4406's `--init-script`, red on 11-11 and 11-12). The nightly also
+  # runs the app on an emulator and covers older Flutter versions.
+  #
+  # Signs in with OIDC as dev's Shorebird E2E (437) e2e account, whose trust
+  # rule admits this file on refs/pull/*. GitHub gives a fork's PR no OIDC
+  # token, so a fork's PR skips it, as do Dependabot's (the nightly covers
+  # those).
+  android_build_e2e:
+    name: 🤖 Android Build E2E
+    needs: changes
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      needs.changes.outputs.android_build_e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      # The packages the pinned Flutter's build downloads otherwise; see
+      # e2e.yaml's patch job.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        run: |
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+
+      # e2e.yaml's android_signing cache (same app template and pinned
+      # Flutter), saved on main. Restore only: a PR's own save is usable by
+      # no other ref and fills the repo's 10 GB cache.
+      - name: 🐘 Gradle Cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-signing-${{ hashFiles('bin/internal/flutter.version') }}
+
+      - name: 🧪 Release and Patch Android
+        # With the Dart of the Flutter the CLI pins, as e2e.yaml's patch job.
+        run: ./scripts/no_android_sdk_downloads.sh "bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/dart" scripts/patch_e2e.dart --no-device
+
   verify_packages:
     needs: changes
     if: ${{ needs.changes.outputs.needs_verify != '[]' }}
@@ -117,7 +216,7 @@ jobs:
           working_directory: packages/${{ matrix.package }}
 
   ci:
-    needs: [actionlint, changes, license_check, verify_packages]
+    needs: [actionlint, android_build_e2e, changes, license_check, verify_packages]
     # Not always(): that keeps this job alive through a run cancellation,
     # so a superseded push would report ci red on the stale commit. A
     # skipped required check reports success, which is the right answer
