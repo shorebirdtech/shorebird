@@ -47,8 +47,8 @@ enum ReleaseType {
   }
 
   /// Whether this is an add-to-app release (a module embedded in a host
-  /// Android or iOS app), whose version is the host app's and must be passed
-  /// with `--release-version`.
+  /// Android or iOS app), whose version is the module build's own and must be
+  /// passed with `--release-version`.
   bool get isAddToApp =>
       this == ReleaseType.aar || this == ReleaseType.iosFramework;
 

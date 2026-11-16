@@ -262,7 +262,7 @@ void main() {
               exitsWithError(
                 message:
                     'An aar release needs --release-version: the version of '
-                    'the Android app that embeds this module.',
+                    'this module build, new for every release.',
                 hint:
                     'Run: shorebird release aar '
                     '--release-version=$releaseVersionExample',
@@ -329,8 +329,10 @@ void main() {
 
       setUp(() {
         when(() => argResults['artifact']).thenReturn('apk');
+        when(() => argResults['release-version']).thenReturn(' 1.0.0+1 ');
         when(
           () => artifactBuilder.buildAar(
+            releaseVersion: any(named: 'releaseVersion'),
             buildNumber: any(named: 'buildNumber'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
@@ -354,6 +356,7 @@ void main() {
             expect(aar.path, p.join(projectRoot.path, 'release'));
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 targetPlatforms: Arch.values.toSet(),
                 args: ['--verbose'],
@@ -370,6 +373,7 @@ void main() {
           expect(aar.path, p.join(projectRoot.path, 'release'));
           verify(
             () => artifactBuilder.buildAar(
+              releaseVersion: '1.0.0+1',
               buildNumber: buildNumber,
               targetPlatforms: Arch.values.toSet(),
               args: [],
@@ -396,6 +400,7 @@ void main() {
 
             when(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
@@ -416,6 +421,7 @@ void main() {
 
               verify(
                 () => artifactBuilder.buildAar(
+                  releaseVersion: any(named: 'releaseVersion'),
                   buildNumber: buildNumber,
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
@@ -446,6 +452,7 @@ void main() {
             // Simulate the build creating the obfuscation map.
             when(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
@@ -468,6 +475,7 @@ void main() {
 
             final captured = verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: captureAny(named: 'args'),

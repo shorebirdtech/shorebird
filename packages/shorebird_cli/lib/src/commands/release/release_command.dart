@@ -141,9 +141,13 @@ Also accepts the following special values:
       )
       ..addOption(
         'release-version',
-        help: '''
-The version of the Android or iOS app that embeds this module
-(e.g. "$releaseVersionExample"). Required for aar and ios-framework only.''',
+        help:
+            '''
+The version of this module build (e.g. "$releaseVersionExample"), new for
+every release. Required for aar and ios-framework only. It is built into the
+module, so its patches reach every app that embeds it, whatever that app's
+version. With a Flutter version that can't build it in, it must equal the
+version of the app that embeds the module.''',
       )
       ..addMultiOption(
         'target-platform',

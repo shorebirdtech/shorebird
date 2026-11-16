@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
@@ -17,6 +17,72 @@ void main() {
 
     setUp(() {
       archiveDiffer = TestArchiveDiffer();
+    });
+
+    group('shorebirdYamlHash', () {
+      const yaml = 'app_id: abc\nrelease_version: 1.0.0\nauto_update: true\n';
+
+      test('ignores the release_version line', () {
+        expect(
+          ArchiveDiffer.shorebirdYamlHash(utf8.encode(yaml)),
+          equals(
+            ArchiveDiffer.shorebirdYamlHash(
+              utf8.encode('app_id: abc\nauto_update: true\n'),
+            ),
+          ),
+        );
+        expect(
+          ArchiveDiffer.shorebirdYamlHash(utf8.encode(yaml)),
+          equals(
+            ArchiveDiffer.shorebirdYamlHash(
+              utf8.encode(yaml.replaceFirst('1.0.0', '2.0.0')),
+            ),
+          ),
+        );
+      });
+
+      test('sees changes to other lines', () {
+        expect(
+          ArchiveDiffer.shorebirdYamlHash(utf8.encode(yaml)),
+          isNot(
+            equals(
+              ArchiveDiffer.shorebirdYamlHash(
+                utf8.encode(yaml.replaceFirst('abc', 'xyz')),
+              ),
+            ),
+          ),
+        );
+      });
+    });
+
+    group('fileHashes', () {
+      File zipWith(String name, String yaml) {
+        final archive = Archive()
+          ..addFile(
+            ArchiveFile.bytes(
+              'assets/flutter_assets/shorebird.yaml',
+              utf8.encode(yaml),
+            ),
+          );
+        return File(p.join(Directory.current.path, name))
+          ..writeAsBytesSync(ZipEncoder().encodeBytes(archive));
+      }
+
+      test('ignores the release_version line in shorebird.yaml', () async {
+        final release = zipWith(
+          'release.zip',
+          'app_id: abc\nrelease_version: 1.0.0\n',
+        );
+        final patch = zipWith('patch.zip', 'app_id: abc\n');
+        final changed = zipWith('changed.zip', 'app_id: xyz\n');
+
+        final releaseHashes = await archiveDiffer.fileHashes(release);
+        expect(await archiveDiffer.fileHashes(patch), equals(releaseHashes));
+        expect(
+          await archiveDiffer.fileHashes(changed),
+          isNot(equals(releaseHashes)),
+        );
+      });
     });
 
     group('containsPotentiallyBreakingAssetDiffs', () {

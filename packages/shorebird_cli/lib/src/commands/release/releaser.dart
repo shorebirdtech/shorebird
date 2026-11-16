@@ -70,17 +70,16 @@ abstract class Releaser {
 
   /// Requires `--release-version` with a concrete version, for add-to-app
   /// releases (aar, ios-framework), whose version cannot be read from the
-  /// built module: it is the version of the app that embeds the module.
+  /// built module: the developer names each module build.
   /// Rejects a missing, blank or `latest` value.
   void assertReleaseVersionProvided() {
     final value = (argResults['release-version'] as String?)?.trim();
     if (value != null && value.isNotEmpty && value != 'latest') return;
 
-    final hostPlatform = releaseType.releasePlatform.displayName;
     throw CommandError(
       message:
           'An ${releaseType.cliName} release needs --release-version: the '
-          'version of the $hostPlatform app that embeds this module.',
+          'version of this module build, new for every release.',
       hint: 'Run: ${releaseType.releaseCommand()}',
     );
   }

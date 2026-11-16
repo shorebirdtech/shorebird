@@ -168,7 +168,7 @@ void main() {
               exitsWithError(
                 message:
                     'An ios-framework release needs --release-version: the '
-                    'version of the iOS app that embeds this module.',
+                    'version of this module build, new for every release.',
                 hint:
                     'Run: shorebird release ios-framework '
                     '--release-version=$releaseVersionExample',
@@ -271,8 +271,12 @@ void main() {
       }
 
       setUp(() {
+        when(() => argResults['release-version']).thenReturn(' 1.0.0+1 ');
         when(
-          () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+          () => artifactBuilder.buildIosFramework(
+            releaseVersion: any(named: 'releaseVersion'),
+            args: any(named: 'args'),
+          ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
         );
@@ -303,6 +307,7 @@ void main() {
 
           when(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
@@ -326,6 +331,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
               ),
@@ -342,7 +348,10 @@ void main() {
         test('forwards --no-codesign to flutter', () async {
           await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
           verify(
-            () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: ['--no-codesign'],
+            ),
           ).called(1);
         });
       });
@@ -359,7 +368,10 @@ void main() {
 
           expect(xcframework.path, p.join(projectRoot.path, 'release'));
           verify(
-            () => artifactBuilder.buildIosFramework(args: ['--verbose']),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: ['--verbose'],
+            ),
           ).called(1);
         });
       });
@@ -370,7 +382,12 @@ void main() {
         );
 
         expect(xcframework.path, p.join(projectRoot.path, 'release'));
-        verify(() => artifactBuilder.buildIosFramework(args: [])).called(1);
+        verify(
+          () => artifactBuilder.buildIosFramework(
+            releaseVersion: '1.0.0+1',
+            args: [],
+          ),
+        ).called(1);
       });
 
       test(
@@ -412,6 +429,7 @@ void main() {
       test('forwards the target to buildIosFramework', () async {
         when(
           () => artifactBuilder.buildIosFramework(
+            releaseVersion: any(named: 'releaseVersion'),
             target: any(named: 'target'),
             args: any(named: 'args'),
           ),
@@ -426,6 +444,7 @@ void main() {
 
         verify(
           () => artifactBuilder.buildIosFramework(
+            releaseVersion: any(named: 'releaseVersion'),
             target: 'lib/main_prod.dart',
             args: [],
           ),
@@ -447,6 +466,7 @@ void main() {
           // Simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: any(named: 'args'),
             ),
           ).thenAnswer((_) async {
@@ -468,6 +488,7 @@ void main() {
 
           final captured = verify(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: captureAny(named: 'args'),
             ),
           ).captured;

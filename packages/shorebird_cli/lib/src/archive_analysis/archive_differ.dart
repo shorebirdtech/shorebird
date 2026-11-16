@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 
@@ -81,6 +83,39 @@ abstract class ArchiveDiffer {
     );
   }
 
+  /// Matches the `release_version` line Flutter bakes into an add-to-app
+  /// module's compiled shorebird.yaml.
+  static final _releaseVersionLine = RegExp(
+    r'^release_version:.*(?:\r?\n|$)',
+    multiLine: true,
+  );
+
+  /// The checksum of a compiled shorebird.yaml's [content] without its
+  /// `release_version` line.
+  ///
+  /// A patch can't change the release's shorebird.yaml, and the line only
+  /// differs when the release and the patch were built by different CLI
+  /// versions (one passed the module's release version to Flutter and the
+  /// other didn't), so it is not a change worth warning about.
+  @visibleForTesting
+  static String shorebirdYamlHash(List<int> content) {
+    final text = utf8.decode(content, allowMalformed: true);
+    return getCrc32(
+      utf8.encode(text.replaceAll(_releaseVersionLine, '')),
+    ).toString();
+  }
+
+  static String _headerHash(ZipFileHeader header) {
+    final file = header.file;
+    if (file != null && p.basename(header.filename) == 'shorebird.yaml') {
+      return shorebirdYamlHash(file.readBytes());
+    }
+    // Zip files contain an (optional) crc32 checksum for a file. IPAs and AARs
+    // seem to always include this for files, so a quick way for us to tell if
+    // file contents differ is if their checksums differ.
+    return header.crc32.toString();
+  }
+
   /// Returns a map of file paths to their respective checksums.
   ///
   /// Throws an [ArchiveException] if [archive] is not a readable zip, such as
@@ -98,12 +133,8 @@ abstract class ArchiveDiffer {
           throw ArchiveException('zip: end of central directory not found');
         }
         return {
-          for (final file in zipDirectory.fileHeaders)
-            // Zip files contain an (optional) crc32 checksum for a file. IPAs
-            // and AARs seem to always include this for files, so a quick way
-            // for us to tell if file contents differ is if their checksums
-            // differ.
-            file.filename: file.crc32.toString(),
+          for (final header in zipDirectory.fileHeaders)
+            header.filename: _headerHash(header),
         };
       } finally {
         input.closeSync();

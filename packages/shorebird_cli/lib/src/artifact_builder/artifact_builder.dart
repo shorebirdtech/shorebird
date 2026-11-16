@@ -64,13 +64,22 @@ ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 /// backwards compatibility: older Flutter builds that don't recognize a
 /// variable will silently ignore it, whereas an unknown flag would cause
 /// a build failure.
+///
+/// [releaseVersion] is an add-to-app module's release version (aar and
+/// ios-framework only). Flutter bakes it into the module's compiled
+/// shorebird.yaml, and the updater reports it as the release version instead
+/// of the host app's version.
 Map<String, String>? buildEnvironment({
   String? base64PublicKey,
   int? ddMaxBytes,
+  String? releaseVersion,
 }) {
   final env = <String, String>{};
   if (base64PublicKey != null) {
     env['SHOREBIRD_PUBLIC_KEY'] = base64PublicKey;
+  }
+  if (releaseVersion != null) {
+    env['SHOREBIRD_RELEASE_VERSION'] = releaseVersion;
   }
   if (ddMaxBytes != null) {
     env['SHOREBIRD_DD_MAX_BYTES'] = ddMaxBytes.toString();
@@ -248,8 +257,11 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
   }
 
   /// Builds an AAR using `flutter build aar`.
+  ///
+  /// [releaseVersion] is baked into the module (see [buildEnvironment]).
   Future<void> buildAar({
     required String buildNumber,
+    String? releaseVersion,
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
@@ -268,6 +280,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       args: args,
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
+      releaseVersion: releaseVersion,
       fixRecommendation: _androidBuildFixRecommendation,
     );
   }
@@ -344,7 +357,10 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
   }
 
   /// Builds a release iOS framework (.xcframework) for the current project.
+  ///
+  /// [releaseVersion] is baked into the module (see [buildEnvironment]).
   Future<AppleBuildResult> buildIosFramework({
+    String? releaseVersion,
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
@@ -366,6 +382,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       args: args,
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
+      releaseVersion: releaseVersion,
     );
   }
 
@@ -383,6 +400,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     required List<String> args,
     required String? base64PublicKey,
     required int? ddMaxBytes,
+    String? releaseVersion,
     String Function(String buildCommand) fixRecommendation =
         runVanillaFlutterBuildRecommendation,
   }) async {
@@ -402,6 +420,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       environment: buildEnvironment(
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
+        releaseVersion: releaseVersion,
       ),
       // Never run in shell because we always have a fully resolved
       // executable path.
@@ -444,15 +463,17 @@ Reason: Exited with code $exitCode.''',
     required List<String> args,
     required String? base64PublicKey,
     required int? ddMaxBytes,
+    String? releaseVersion,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Make every target of this platform's builds re-run. On a Flutter that
     // doesn't copy its kernel (see [_shorebirdKernelFile]) we find the kernel
     // by the AOT target's stamp, which a skipped target would not rewrite. A
     // cached build would also be stale on older Flutters: there the
-    // SHOREBIRD_PUBLIC_KEY and (on iOS only; the macOS DD pass is skipped)
-    // SHOREBIRD_DD_MAX_BYTES environment variables change the build's output
-    // but are not inputs Flutter's build system tracks.
+    // SHOREBIRD_PUBLIC_KEY, SHOREBIRD_RELEASE_VERSION and (on iOS only; the
+    // macOS DD pass is skipped) SHOREBIRD_DD_MAX_BYTES environment variables
+    // change the build's output but are not inputs Flutter's build system
+    // tracks.
     _deleteBuildStamps(projectRoot: projectRoot, platform: platformSubdir);
     // Delete the kernel copy a previous build left, so that a build with a
     // Flutter that doesn't write one can't be handed an old kernel.
@@ -484,6 +505,7 @@ Reason: Exited with code $exitCode.''',
       args: args,
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
+      releaseVersion: releaseVersion,
     );
     if (shorebirdKernelFile.existsSync()) {
       appDillPath = shorebirdKernelFile.path;
