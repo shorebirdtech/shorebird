@@ -168,7 +168,8 @@ void main() {
               exitsWithError(
                 message:
                     'An ios-framework release needs --release-version: the '
-                    'version of this module build, new for every release.',
+                    'version of this module build, a new one for each build '
+                    'you release.',
                 hint:
                     'Run: shorebird release ios-framework '
                     '--release-version=$releaseVersionExample',

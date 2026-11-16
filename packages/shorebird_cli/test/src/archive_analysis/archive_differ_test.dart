@@ -41,6 +41,29 @@ void main() {
         );
       });
 
+      test('ignores release_version as Flutter writes it', () {
+        // Flutter's yaml_edit output: quoted, last key, no trailing newline.
+        expect(
+          ArchiveDiffer.shorebirdYamlHash(
+            utf8.encode('app_id: base-app-id\nrelease_version: "1.10"'),
+          ),
+          equals(
+            ArchiveDiffer.shorebirdYamlHash(utf8.encode('app_id: base-app-id')),
+          ),
+        );
+      });
+
+      test('falls back to the raw bytes for invalid yaml', () {
+        expect(
+          ArchiveDiffer.shorebirdYamlHash(utf8.encode('a: [')),
+          equals(getCrc32(utf8.encode('a: [')).toString()),
+        );
+        expect(
+          ArchiveDiffer.shorebirdYamlHash(utf8.encode('a: [')),
+          isNot(equals(ArchiveDiffer.shorebirdYamlHash(utf8.encode('a: [1')))),
+        );
+      });
+
       test('sees changes to other lines', () {
         expect(
           ArchiveDiffer.shorebirdYamlHash(utf8.encode(yaml)),
@@ -56,14 +79,13 @@ void main() {
     });
 
     group('fileHashes', () {
-      File zipWith(String name, String yaml) {
+      File zipWith(
+        String name,
+        String yaml, {
+        String path = 'assets/flutter_assets/shorebird.yaml',
+      }) {
         final archive = Archive()
-          ..addFile(
-            ArchiveFile.bytes(
-              'assets/flutter_assets/shorebird.yaml',
-              utf8.encode(yaml),
-            ),
-          );
+          ..addFile(ArchiveFile.bytes(path, utf8.encode(yaml)));
         return File(p.join(Directory.current.path, name))
           ..writeAsBytesSync(ZipEncoder().encodeBytes(archive));
       }
@@ -81,6 +103,24 @@ void main() {
         expect(
           await archiveDiffer.fileHashes(changed),
           isNot(equals(releaseHashes)),
+        );
+      });
+
+      test('sees release_version in a project asset of that name', () async {
+        const path = 'assets/flutter_assets/assets/config/shorebird.yaml';
+        final release = zipWith(
+          'release.zip',
+          'release_version: 1.0.0\n',
+          path: path,
+        );
+        final patch = zipWith(
+          'patch.zip',
+          'release_version: 2.0.0\n',
+          path: path,
+        );
+        expect(
+          await archiveDiffer.fileHashes(patch),
+          isNot(equals(await archiveDiffer.fileHashes(release))),
         );
       });
     });

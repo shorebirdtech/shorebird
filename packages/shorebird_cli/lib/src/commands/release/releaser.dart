@@ -74,15 +74,30 @@ abstract class Releaser {
   /// Rejects a missing, blank or `latest` value.
   void assertReleaseVersionProvided() {
     final value = (argResults['release-version'] as String?)?.trim();
-    if (value != null && value.isNotEmpty && value != 'latest') return;
-
-    throw CommandError(
-      message:
-          'An ${releaseType.cliName} release needs --release-version: the '
-          'version of this module build, new for every release.',
-      hint: 'Run: ${releaseType.releaseCommand()}',
-    );
+    if (value == null || value.isEmpty || value == 'latest') {
+      throw CommandError(
+        message:
+            'An ${releaseType.cliName} release needs --release-version: the '
+            'version of this module build, a new one for each build you '
+            'release.',
+        hint: 'Run: ${releaseType.releaseCommand()}',
+      );
+    }
+    // Checked before the build: the value is built into the module, and the
+    // updater and server accept only these characters.
+    if (!_moduleReleaseVersionPattern.hasMatch(value)) {
+      throw CommandError(
+        message:
+            '--release-version "$value" can only use letters, digits, '
+            '".", "_", "+" and "-", up to 128 characters.',
+        hint: 'Run: ${releaseType.releaseCommand()}',
+      );
+    }
   }
+
+  static final _moduleReleaseVersionPattern = RegExp(
+    r'^[A-Za-z0-9._+-]{1,128}$',
+  );
 
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).

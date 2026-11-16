@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -262,7 +263,8 @@ void main() {
               exitsWithError(
                 message:
                     'An aar release needs --release-version: the version of '
-                    'this module build, new for every release.',
+                    'this module build, a new one for each build you '
+                    'release.',
                 hint:
                     'Run: shorebird release aar '
                     '--release-version=$releaseVersionExample',
@@ -271,6 +273,39 @@ void main() {
           });
         });
       }
+
+      group('when release-version has a character the updater rejects', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn('1.0 beta');
+        });
+
+        test('exits naming the allowed characters', () async {
+          await expectLater(
+            () => runWithOverrides(aarReleaser.assertArgsAreValid),
+            exitsWithError(
+              message:
+                  '--release-version "1.0 beta" can only use letters, '
+                  'digits, ".", "_", "+" and "-", up to 128 characters.',
+              hint:
+                  'Run: shorebird release aar '
+                  '--release-version=$releaseVersionExample',
+            ),
+          );
+        });
+      });
+
+      group('when release-version is longer than 128 characters', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn('1' * 129);
+        });
+
+        test('exits', () async {
+          await expectLater(
+            () => runWithOverrides(aarReleaser.assertArgsAreValid),
+            throwsA(isA<CommandError>()),
+          );
+        });
+      });
 
       group('when arguments are valid', () {
         setUp(() {

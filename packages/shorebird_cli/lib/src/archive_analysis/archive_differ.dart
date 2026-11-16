@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:yaml/yaml.dart';
 
 /// {@template archive_differ}
 /// Computes content differences between two archives.
@@ -83,31 +84,44 @@ abstract class ArchiveDiffer {
     );
   }
 
-  /// Matches the `release_version` line Flutter bakes into an add-to-app
-  /// module's compiled shorebird.yaml.
-  static final _releaseVersionLine = RegExp(
-    r'^release_version:.*(?:\r?\n|$)',
-    multiLine: true,
-  );
-
-  /// The checksum of a compiled shorebird.yaml's [content] without its
-  /// `release_version` line.
+  /// The checksum of a generated (bundled) shorebird.yaml's [content],
+  /// leaving out its `release_version` key.
   ///
-  /// A patch can't change the release's shorebird.yaml, and the line only
+  /// Flutter bakes an add-to-app module's release version into that file. A
+  /// patch can't change the release's shorebird.yaml, and the key only
   /// differs when the release and the patch were built by different CLI
   /// versions (one passed the module's release version to Flutter and the
-  /// other didn't), so it is not a change worth warning about.
+  /// other didn't), so it is not a change worth warning about. The YAML is
+  /// compared parsed, so quoting, line endings and a trailing newline don't
+  /// count as changes either.
   @visibleForTesting
   static String shorebirdYamlHash(List<int> content) {
-    final text = utf8.decode(content, allowMalformed: true);
-    return getCrc32(
-      utf8.encode(text.replaceAll(_releaseVersionLine, '')),
-    ).toString();
+    Object? parsed;
+    try {
+      parsed = loadYaml(utf8.decode(content));
+    } on Exception {
+      parsed = null;
+    }
+    if (parsed is! Map) return getCrc32(content).toString();
+    final canonical = jsonEncode({
+      for (final key in parsed.keys.map((k) => '$k').toList()..sort())
+        if (key != 'release_version') key: parsed[key],
+    });
+    return getCrc32(utf8.encode(canonical)).toString();
+  }
+
+  /// Whether [path] is the generated (bundled) shorebird.yaml, which sits
+  /// directly in `flutter_assets`, not a project asset of the same name.
+  static bool _isBundledShorebirdYaml(String path) {
+    final parts = p.posix.split(path);
+    return parts.length >= 2 &&
+        parts.last == 'shorebird.yaml' &&
+        parts[parts.length - 2] == 'flutter_assets';
   }
 
   static String _headerHash(ZipFileHeader header) {
     final file = header.file;
-    if (file != null && p.basename(header.filename) == 'shorebird.yaml') {
+    if (file != null && _isBundledShorebirdYaml(header.filename)) {
       return shorebirdYamlHash(file.readBytes());
     }
     // Zip files contain an (optional) crc32 checksum for a file. IPAs and AARs
