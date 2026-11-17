@@ -655,6 +655,7 @@ void main() {
     });
 
     group('assemble category classification', () {
+      // Back to back: concurrent spans would count once.
       test('aot_assembly / aot_elf / ios_aot → genSnapshot bucket', () {
         final s = BuildTraceSummary.fromEvents([
           _event(
@@ -667,14 +668,14 @@ void main() {
           _event(
             name: 'aot_elf_release',
             cat: 'assemble',
-            ts: 0,
+            ts: 1_000_000,
             dur: 2_000_000,
             tid: 3,
           ),
           _event(
             name: 'ios_aot',
             cat: 'assemble',
-            ts: 0,
+            ts: 3_000_000,
             dur: 3_000_000,
             tid: 3,
           ),
@@ -720,21 +721,21 @@ void main() {
           _event(
             name: 'install_code_assets',
             cat: 'assemble',
-            ts: 0,
+            ts: 100_000,
             dur: 200_000,
             tid: 3,
           ),
           _event(
             name: 'unpack_macos',
             cat: 'assemble',
-            ts: 0,
+            ts: 300_000,
             dur: 300_000,
             tid: 3,
           ),
           _event(
             name: 'copy_framework',
             cat: 'assemble',
-            ts: 0,
+            ts: 600_000,
             dur: 400_000,
             tid: 3,
           ),
@@ -931,6 +932,177 @@ void main() {
         );
         final json = iosStats.toJson();
         expect(json.keys, containsAll(<String>['podInstall', 'xcode']));
+      });
+    });
+
+    group('concurrent spans count as wall time', () {
+      // One gen_snapshot per Android arch, all started together inside
+      // gradle: [10s, 13s), [10s, 14s), [10s, 15s) within [5s, 35s).
+      List<Map<String, Object?>> perArch() => [
+        for (final (i, secs) in [3, 4, 5].indexed)
+          _event(
+            name: 'android_aot',
+            cat: 'assemble',
+            ts: 10_000_000,
+            dur: secs * 1_000_000,
+            tid: i + 1,
+          ),
+        _event(
+          name: 'gradle bundleRelease',
+          cat: 'gradle',
+          ts: 5_000_000,
+          dur: 30_000_000,
+          tid: 9,
+        ),
+      ];
+
+      test('genSnapshot is the union, not the sum, of per-arch runs', () {
+        final s = BuildTraceSummary.fromEvents(perArch(), platform: 'android');
+        expect(s.dart.genSnapshot, const Duration(seconds: 5));
+        expect(s.dart.total, const Duration(seconds: 5));
+      });
+
+      test('dart.total unions kernel and gen_snapshot', () {
+        final s = BuildTraceSummary.fromEvents([
+          ...perArch(),
+          // Overlaps the gen_snapshot runs by 1s.
+          _event(
+            name: 'kernel_snapshot_program',
+            cat: 'assemble',
+            ts: 8_000_000,
+            dur: 3_000_000,
+            tid: 5,
+          ),
+        ], platform: 'android');
+        expect(s.dart.kernelSnapshot, const Duration(seconds: 3));
+        expect(s.dart.total, const Duration(seconds: 7));
+      });
+
+      test('native.compile subtracts their wall time once', () {
+        final s = BuildTraceSummary.fromEvents(perArch(), platform: 'android');
+        expect(s.native.compile, const Duration(seconds: 25));
+      });
+
+      test('repeated identical events count once', () {
+        final s = BuildTraceSummary.fromEvents([
+          ...perArch(),
+          ...perArch(),
+        ], platform: 'android');
+        expect(s.dart.genSnapshot, const Duration(seconds: 5));
+      });
+
+      test('events without ts are summed, as before timestamps', () {
+        final s = BuildTraceSummary.fromEvents([
+          for (var i = 0; i < 2; i++)
+            {'ph': 'X', 'name': 'android_aot', 'cat': 'assemble', 'dur': 2e6},
+        ], platform: 'android');
+        expect(s.dart.genSnapshot, const Duration(seconds: 4));
+      });
+
+      test('network counts concurrent requests once', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(name: 'PUT a', cat: 'network', ts: 0, dur: 2_000_000, tid: 1),
+          _event(
+            name: 'PUT b',
+            cat: 'network',
+            ts: 1_000_000,
+            dur: 2_000_000,
+            tid: 2,
+          ),
+          _event(
+            name: 'GET c',
+            cat: 'network',
+            ts: 5_000_000,
+            dur: 1_000_000,
+            tid: 1,
+          ),
+        ], platform: 'android');
+        expect(s.network.duration, const Duration(seconds: 4));
+        expect(s.network.callCount, 3);
+      });
+
+      test('setup counts nested cache refreshes once', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'setup: shorebird_cache',
+            cat: 'setup',
+            ts: 0,
+            dur: 2_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'setup: shorebird_cache',
+            cat: 'setup',
+            ts: 500_000,
+            dur: 1_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'setup: flutter_precache',
+            cat: 'setup',
+            ts: 1_000_000,
+            dur: 3_000_000,
+            tid: 2,
+          ),
+        ], platform: 'android');
+        expect(s.setup.shorebirdCache, const Duration(seconds: 2));
+        expect(s.setup.flutterPrecache, const Duration(seconds: 3));
+        expect(s.setup.total, const Duration(seconds: 4));
+      });
+    });
+
+    // Real traces from `shorebird release android` on an e2e app.
+    // Expected values were computed outside Dart from the same files
+    // (union of each bucket's [ts, ts + dur) spans).
+    group('real traces', () {
+      BuildTraceSummary summarize(String name) => BuildTraceSummary.fromEvents(
+        BuildTraceSummary.tryReadEvents(
+          File(p.join(fixturesDirectory, 'build_trace', name)),
+        )!,
+        platform: 'android',
+      );
+
+      void expectStagesFitTheirParents(BuildTraceSummary s) {
+        expect(s.dart.total, lessThanOrEqualTo(s.flutterBuild));
+        expect(
+          s.dart.total,
+          lessThanOrEqualTo(s.dart.kernelSnapshot + s.dart.genSnapshot),
+        );
+        expect(
+          s.setup.total,
+          lessThanOrEqualTo(
+            s.setup.flutterInstall +
+                s.setup.flutterPrecache +
+                s.setup.shorebirdCache,
+          ),
+        );
+        expect(s.native.compile, lessThanOrEqualTo(s.native.build));
+      }
+
+      test('a clean release run', () {
+        final s = summarize('android_clean.json');
+        // Three gen_snapshot runs (arm, arm64, x64) overlap: summed
+        // they are 4845 ms.
+        expect(s.dart.genSnapshot.inMilliseconds, 2286);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 1185);
+        expect(s.dart.total.inMilliseconds, 3471);
+        expect(s.network.duration.inMilliseconds, 7696);
+        // Nested shorebird_cache refreshes: summed they are 2493 ms.
+        expect(s.setup.total.inMilliseconds, 1948);
+        expectStagesFitTheirParents(s);
+      });
+
+      test('an accumulated trace counts repeated events once', () {
+        // Two commands' worth of events, with the first command's
+        // assemble events written twice: what CLIs before summary
+        // version 10 left behind.
+        final s = summarize('android_accumulated.json');
+        // Summed: 13776 ms, as the version 9 summary of this file says.
+        expect(s.dart.genSnapshot.inMilliseconds, 4167);
+        expect(s.dart.total.inMilliseconds, 6528);
+        expect(s.network.duration.inMilliseconds, 14538);
+        expect(s.setup.total.inMilliseconds, 47839);
+        expectStagesFitTheirParents(s);
       });
     });
   });

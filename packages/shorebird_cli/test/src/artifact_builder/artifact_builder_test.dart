@@ -789,7 +789,7 @@ void main() {
                     'ph': 'X',
                     'name': 'android_aot',
                     'cat': 'assemble',
-                    'ts': 500000,
+                    'ts': 502000,
                     'dur': 200_000,
                     'pid': 1,
                     'tid': 3,
