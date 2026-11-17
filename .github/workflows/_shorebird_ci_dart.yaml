@@ -157,5 +157,5 @@ jobs:
           EXCLUDES: ${{ inputs.coverage_excludes }}
           MIN_COVERAGE: ${{ inputs.min_coverage }}
         run: |
-          dart pub global activate shorebird_ci 0.3.0
+          dart pub global activate shorebird_ci 0.3.1
           shorebird_ci check_coverage coverage/lcov.info --min "$MIN_COVERAGE" --exclude "$EXCLUDES"
