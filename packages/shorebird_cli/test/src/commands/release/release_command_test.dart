@@ -135,6 +135,9 @@ void main() {
       progress = MockProgress();
       releaser = MockReleaser();
       when(() => releaser.minimumFlutterVersion).thenReturn(Version(0, 0, 0));
+      when(
+        () => releaser.addsToActiveRelease(any()),
+      ).thenAnswer((_) async => false);
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
@@ -370,6 +373,49 @@ void main() {
           ),
         ).called(1);
         verifyNever(() => releaser.buildReleaseArtifacts());
+      });
+
+      group('when the releaser adds to the active release', () {
+        setUp(() {
+          when(
+            () => releaser.addsToActiveRelease(existingRelease),
+          ).thenAnswer((_) async => true);
+        });
+
+        test('uploads to it without making it a draft', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.success.code));
+          verifyNever(
+            () => codePushClientWrapper.ensureReleaseIsNotActive(
+              release: any(named: 'release'),
+              platform: any(named: 'platform'),
+            ),
+          );
+          verifyNever(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: ReleaseStatus.draft,
+            ),
+          );
+          verify(
+            () => releaser.uploadReleaseArtifacts(
+              release: existingRelease,
+              appId: appId,
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: appId,
+              releaseId: existingRelease.id,
+              platform: ReleasePlatform.android,
+              status: ReleaseStatus.active,
+              metadata: any(named: 'metadata'),
+            ),
+          ).called(1);
+        });
       });
     });
 

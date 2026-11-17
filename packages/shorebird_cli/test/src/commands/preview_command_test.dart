@@ -11,6 +11,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -3005,12 +3006,14 @@ channel: ${DeploymentTrack.staging.channel}
       late Process process;
       late Directory windowsReleaseDirectory;
       late Windows windowsMock;
+      late LocalAbi abi;
 
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
           () => runScoped(
             body,
             values: {
+              abiRef.overrideWith(() => abi),
               artifactManagerRef.overrideWith(() => artifactManager),
               authRef.overrideWith(() => auth),
               cacheRef.overrideWith(() => cache),
@@ -3054,6 +3057,11 @@ channel: ${DeploymentTrack.staging.channel}
         shorebirdProcess = MockShorebirdProcess();
         process = MockProcess();
         windowsMock = MockWindows();
+        abi = MockAbi();
+        when(() => abi.hostArchitecture).thenReturn('x64');
+        when(
+          () => shorebirdEnv.flutterDirectory,
+        ).thenReturn(Directory.systemTemp.createTempSync());
 
         platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         when(
@@ -3281,6 +3289,62 @@ channel: ${DeploymentTrack.staging.channel}
           ).called(1);
           verify(() => logger.info('hello world')).called(1);
           verify(() => logger.err('hello error')).called(1);
+        });
+      });
+
+      group('on an arm64 machine', () {
+        setUp(() {
+          when(() => abi.hostArchitecture).thenReturn('arm64');
+          File(
+            p.join(windowsReleaseDirectory.path, 'runner.exe'),
+          ).createSync(recursive: true);
+          createShorebirdYaml();
+        });
+
+        test('runs the arm64 build when the release has one', () async {
+          when(
+            () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'win_archive_arm64',
+              platform: ReleasePlatform.windows,
+            ),
+          ).thenAnswer((_) async => windowsReleaseArtifact);
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'win_archive_arm64',
+              platform: ReleasePlatform.windows,
+            ),
+          ).called(1);
+        });
+
+        test('runs the x64 build when the release has no arm64 one', () async {
+          when(
+            () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => null);
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: primaryWindowsReleaseArtifactArch,
+              platform: ReleasePlatform.windows,
+            ),
+          ).called(1);
         });
       });
 

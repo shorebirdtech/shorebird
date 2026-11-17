@@ -494,7 +494,7 @@ Flutter, it must equal the version of the app that embeds the module.''',
     await ensureVersionIsReleasable(
       version: buildNumber != null ? '$version+$buildNumber' : version,
       flutterRevision: flutterRevision,
-      releasePlatform: releaser.releaseType.releasePlatform,
+      releaser: releaser,
     );
   }
 
@@ -527,7 +527,7 @@ Flutter, it must equal the version of the app that embeds the module.''',
     await ensureVersionIsReleasable(
       version: releaseVersion,
       flutterRevision: flutterRevision,
-      releasePlatform: releaser.releaseType.releasePlatform,
+      releaser: releaser,
     );
 
     if (results['dry-run'] == true) {
@@ -830,24 +830,29 @@ Flutter, it must equal the version of the app that embeds the module.''',
 
   /// Asserts that a release with version [version] can be released using
   /// flutter revision [flutterRevision]. If a release has already been
-  /// published with the given [version] for the platform [releasePlatform], or
-  /// if a release already exists with [version] but was compiled with a
-  /// different Flutter revision, an error will be thrown.
+  /// published with the given [version] for [releaser]'s platform (unless
+  /// [Releaser.addsToActiveRelease] allows adding to it), or if a release
+  /// already exists with [version] but was compiled with a different Flutter
+  /// revision, an error will be thrown.
   Future<void> ensureVersionIsReleasable({
     required String version,
     required String flutterRevision,
-    required ReleasePlatform releasePlatform,
+    required Releaser releaser,
   }) async {
+    final releasePlatform = releaser.releaseType.releasePlatform;
     final existingRelease = await codePushClientWrapper.maybeGetRelease(
       appId: appId,
       releaseVersion: version,
     );
 
     if (existingRelease != null) {
-      codePushClientWrapper.ensureReleaseIsNotActive(
-        release: existingRelease,
-        platform: releasePlatform,
-      );
+      if (!existingRelease.isActiveOn(releasePlatform) ||
+          !await releaser.addsToActiveRelease(existingRelease)) {
+        codePushClientWrapper.ensureReleaseIsNotActive(
+          release: existingRelease,
+          platform: releasePlatform,
+        );
+      }
 
       // All artifacts associated with a given release must be built
       // with the same Flutter revision.
@@ -935,10 +940,15 @@ ${summary.join('\n')}
   }
 
   /// Prepares the release by updating the release status to draft.
+  ///
+  /// A release already active on this platform (one this run adds another
+  /// architecture to, see [Releaser.addsToActiveRelease]) stays active, so
+  /// its devices keep getting patches while this run uploads.
   Future<void> prepareRelease({
     required Release release,
     required Releaser releaser,
   }) async {
+    if (release.isActiveOn(releaser.releaseType.releasePlatform)) return;
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,

@@ -52,6 +52,15 @@ final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 /// available in this version.
 final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
 
+/// The minimum Flutter version to release or patch a Windows app built for
+/// arm64.
+///
+/// 3.47.9 is the first Shorebird Flutter whose windows-arm64 engine is built
+/// by Shorebird (shorebirdtech/flutter#279), so it has the updater. Earlier
+/// versions serve upstream Flutter's windows-arm64 engine, which builds and
+/// runs but never checks for patches.
+final minimumSupportedWindowsArm64FlutterVersion = Version(3, 47, 9);
+
 /// The first Flutter version that builds an add-to-app module's
 /// `--release-version` into its generated (bundled) shorebird.yaml
 /// (shorebirdtech/flutter#333). With an earlier Flutter, a module release's

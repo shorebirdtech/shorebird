@@ -731,7 +731,8 @@ Reason: Exited with code $exitCode.''',
     return File(outFilePath);
   }
 
-  /// Builds a windows app and returns the x64 Release directory
+  /// Builds a windows app and returns its Release directory
+  /// ([ArtifactManager.getWindowsReleaseDirectory]).
   Future<Directory> buildWindowsApp({
     String? target,
     List<String> args = const [],
