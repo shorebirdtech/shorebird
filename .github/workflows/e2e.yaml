@@ -810,6 +810,98 @@ jobs:
           disable-animations: true
           script: ./scripts/no_android_sdk_downloads.sh dart scripts/boot_recovery_e2e.dart android
 
+  # An add-to-app module released once as an AAR and patched once, in two
+  # host apps (scripts/module_e2e.dart), on an emulator set up as in
+  # android_boot. The module versions leg is the Flutter the CLI pins, which
+  # bakes --release-version into the module; the host versions leg is a
+  # Flutter from before that, whose module releases are each host's version.
+  android_module:
+    name: android module (${{ matrix.leg }})
+    needs: check_cli_ref
+    if: ${{ !inputs.cli_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: module versions
+            args: ""
+          - leg: host versions
+            args: --host-versions 3.47.5
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      AUTH_SERVICE_URL: https://auth-dev.shorebird.dev
+      SHOREBIRD_PROJECT_ID: 437
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.cli_ref }}
+
+      - name: 🖥️ Add Shorebird to PATH
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
+
+      - name: 🐦 Install Shorebird
+        run: shorebird --version
+
+      - name: ☕ Set up Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      # See the patch job.
+      - name: 🎯 Use Shorebird's Dart
+        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      # The packages the module's build downloads otherwise; see the patch
+      # job's android-packages.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        run: |
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+
+      - name: 🚀 Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: 🐘 Gradle Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists/*/*/*
+            !~/.gradle/wrapper/dists/*/*/*.zip
+          key: gradle-${{ runner.os }}-module-${{ matrix.args }}-${{ hashFiles('bin/internal/flutter.version') }}
+
+      - name: 🤖 System Image Cache Path
+        run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: 🤖 System Image Cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.ANDROID_HOME }}/system-images/android-30/default/x86_64
+          key: system-image-30-default-x86_64-${{ runner.os }}
+
+      - name: 🧪 Run Android Module E2E Tests
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 30
+          arch: x86_64
+          target: default
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          disable-animations: true
+          script: ./scripts/no_android_sdk_downloads.sh dart scripts/module_e2e.dart ${{ matrix.args }}
+
   cli:
     needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
