@@ -6,69 +6,21 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.141 (November 17, 2026)
 
-- ❓ Ci: declare each package's coverage floor and runners in its pubspec
-- ❓ Test(verify_cache): size bin_test's timeout, tighten its assertions
-- ❓ Fix(shorebird_ci): match the orchestrator's own path in every filter
-- ❓ Test(shorebird_cli): stop archive diff tests timing out under load
-- ❓ Feat(tool): fetch CI's Dart SDK when no Dart on PATH is its version
-- ❓ Docs(verify_cache): say the slot cap is four, served in arrival order
-- ❓ Fix(tool): recover a Dart cache directory that holds no working SDK
-- ❓ Feat(shorebird_ci): fail verify on a workflow a regeneration rewrites
-- ❓ Chore: prepare for release 1.6.140
-- ❓ Docs: say which releases get 1.6.140's iOS obfuscate patch fix
-- ❓ Fix(redis_client): handle a read error on an open connection
-- ❓ Fix(shorebird_cli): retry only idempotent requests in the shared http client
-- ❓ Fix(shorebird_cli): bump archive to 4.7.1 and glob to 2.2.0, and stop on
-  damaged zips
-- ❓ Feat(shorebird_cli): pass the release's obfuscation map to aot_tools
-  link_metadata for iOS patches
-- ❓ Test(e2e): expect boot-crash recovery on Flutter past 6f0092351b
-- ❓ Namespace priority tiers: one rule across repos
-- ❓ Chore: release Flutter 3.47.9-rc8
-- ❓ Chore: bump Dart to ab21db5
-- ❓ Chore: bump Dart to b325b22
-- ❓ Feat(flutter_tools): bake an add-to-app module's release version into the
-  generated shorebird.yaml
-- ❓ Feat(shorebird): pass the host app's bundle ID to the updater (Android, iOS)
-- ❓ Ci(shorebird): build the Android engine on engine PRs
-- ❓ Fix(shorebird): report launch success when Engine::Run returns, paused while
-  an engine is built and not run
-- ❓ Ci: install Rust with plain rustup instead of dtolnay/rust-toolchain
-- ❓ Ci(shorebird): engine jobs skip inputs that already passed
-- ❓ Build(windows): allow ccache for clang-cl compiles
-- ❓ Fix(shorebird): run engine_pass.sh with bash instead of its exec bit
-- ❓ Revert "build(windows): allow ccache for clang-cl compiles (#340)" for the
-  3.47.9 respin
-- ❓ Fix(shorebird): add the license header to engine_pass.sh
-- ❓ Feat: add-to-app modules report their baked release_version, plus
-  host_bundle_id and host_version
-- ❓ Feat(updater): report launch paused and resumed
-- ❓ Fix(updater): never retire the patch a boot is using
-- ❓ Ci: build the Linux rows' shorebird SDK once per mode
-- ❓ Ci: start the Linux debug rows first
-- ❓ Test(vm): mark arm64c-slow compile tests Slow, unbaseline their Timeouts
-- ❓ Fix(benchmarks): compile snapshots with aot_tools so they can be linked
-- ❓ Bench: measure FFI from simulated code; record findings
-- ❓ Feat: port --sim_profile and bench_ios to shorebird/dev
-- ❓ Docs(simulator_performance): say bench_ios and --sim_profile live on
-  flutter_release_ex/3.47.0-rc0
-- ❓ Docs(simulator_performance): bench_ios and --sim_profile are on
-  shorebird/dev too
-- ❓ Fix(shorebird): keep DD slot owners where the GC can see them
-- ❓ Feat(aot_tools): add interpreted, which lists every function a patch runs in
-  the interpreter
-- ❓ Feat(aot_tools): link_metadata v2 reports the Flutter framework code a patch
-  interprets
-- ❓ Build(deps): bump the actions group across 2 directories with 6 updates
-- ❓ Fix(shorebird): pair look-alike codes in order in the pool sort; enforce
-  pool pairs in product
-- ❓ Docs: AGENTS.md checkout layout no longer assumes dart-sdk/sdk paths
-- ❓ Ci: drop publish-darwin-arm64's push trigger
-- ❓ Ci: skip Linux x64 host builds whose inputs already built
-- ❓ Ci: release dispatch reuses passed results by inputs
-- ❓ Ci: say the reuse key also leaves out .agents and top-level *.md
+- 🐛 A patch that crashes the app while loading at launch is rolled back on the
+  next launch instead of crashing every launch, and the app still checks for a
+  fixed patch
+- 🐛 Obfuscated iOS patches link nearly as well as unobfuscated ones, so far
+  fewer unchanged functions run in the interpreter, and other iOS patches link a
+  little better
+- 🐛 Creating a release or patch no longer fails with an "already exists" error
+  after a server error or dropped connection, as the CLI no longer retries
+  requests that create or change data
+- 🐛 A damaged or cut-short zip, such as a corrupted release artifact download,
+  stops `shorebird patch` with an error that says how to fix it, instead of
+  extracting partly or reporting native and asset changes that aren't there
 
-Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.140.
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
 
 ## 1.6.140 (November 13, 2026)
 
