@@ -3580,6 +3580,14 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             rolloutSchedule: any(named: 'rolloutSchedule'),
           ),
         );
+        verifyNever(
+          () => logger.chooseOne<DeploymentTrack>(
+            any(),
+            choices: any(named: 'choices'),
+            defaultValue: any(named: 'defaultValue'),
+            display: any(named: 'display'),
+          ),
+        );
         // Its track is the patch's: no prompt, no stable default.
         verify(
           () => logger.info(
@@ -3648,18 +3656,103 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         );
       });
 
-      test('rejects --track and rollout options', () async {
-        when(() => argResults.wasParsed('track')).thenReturn(true);
-        when(() => argResults.wasParsed(rolloutArgName)).thenReturn(true);
-        await expectLater(
-          runWithOverrides(command.run),
-          throwsA(
-            isA<UsageException>().having(
-              (e) => e.message,
-              'message',
-              'Patch 3 keeps its own track and rollout. Remove --track, '
-                  '--$rolloutArgName.',
+      for (final arg in [
+        'track',
+        rolloutArgName,
+        rolloutStepsArgName,
+        pauseWeekendsArgName,
+        timezoneArgName,
+      ]) {
+        test('rejects --$arg', () async {
+          when(() => argResults.wasParsed(arg)).thenReturn(true);
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                'Patch 3 keeps its own track and rollout. Remove --$arg.',
+              ),
             ),
+          );
+        });
+      }
+
+      test("shows the patch's partial rollout and how to raise it", () async {
+        stubPatches([existingPatch(rolloutPercentage: 25)]);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            any(that: contains("Track: ${lightCyan.wrap('Beta')}")),
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                'Patch 3 on release $releaseVersion is rolling out to 25%',
+              ),
+            ),
+          ),
+        );
+      });
+
+      test("reports the patch's rollout schedule in --json", () async {
+        when(() => patcher.linkPercentage).thenReturn(null);
+        stubPatches([
+          ReleasePatch(
+            id: 7,
+            number: 3,
+            channel: 'beta',
+            isRolledBack: false,
+            rolloutPercentage: 10,
+            rolloutSteps: const [
+              RolloutStep(percentage: 1, durationMinutes: 60),
+              RolloutStep(percentage: 10, durationMinutes: 60),
+              RolloutStep(percentage: 100),
+            ],
+            rolloutPauseWeekends: true,
+            rolloutTimezone: 'Europe/Berlin',
+            artifacts: existingPatch().artifacts,
+          ),
+        ]);
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            () => runWithOverrides(command.run),
+            values: {isJsonModeRef.overrideWith(() => true)},
+          ),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map;
+        expect(data['rollout_percentage'], equals(10));
+        expect(data['rollout_steps'], hasLength(3));
+        expect(data['rollout_pause_weekends'], isTrue);
+        expect(data['rollout_timezone'], equals('Europe/Berlin'));
+      });
+
+      test('names the patch in a --json dry run', () async {
+        when(() => argResults['dry-run']).thenReturn(true);
+        when(() => patcher.linkPercentage).thenReturn(null);
+        final captured = <String>[];
+        await expectLater(
+          captureStdout(
+            () => runScoped(
+              () => runWithOverrides(command.run),
+              values: {isJsonModeRef.overrideWith(() => true)},
+            ),
+            captured: captured,
+          ),
+          exitsWithCode(ExitCode.success),
+        );
+        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+        expect(envelope['data'], containsPair('add_to_patch', 3));
+        verifyNever(
+          () => codePushClientWrapper.addPatchArtifacts(
+            appId: any(named: 'appId'),
+            patch: any(named: 'patch'),
+            platform: any(named: 'platform'),
+            patchArtifactBundles: any(named: 'patchArtifactBundles'),
           ),
         );
       });
@@ -3704,6 +3797,39 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             'Patch 3 of release $releaseVersion has no Windows build to add '
             'to.',
           );
+        });
+
+        test('is older than a live patch with this build', () async {
+          stubPatches([
+            existingPatch(),
+            existingPatch(
+              number: 4,
+              artifacts: [(ReleasePlatform.windows, 'aarch64')],
+            ),
+          ]);
+          await expectFails(
+            'Windows arm64 devices on beta take patch 4 of release '
+            '$releaseVersion, which is newer than patch 3, so they would '
+            'never get this build.',
+          );
+        });
+
+        test('is older than a patch with this build elsewhere', () async {
+          stubPatches([
+            existingPatch(),
+            existingPatch(
+              number: 4,
+              channel: 'staging',
+              artifacts: [(ReleasePlatform.windows, 'aarch64')],
+            ),
+            existingPatch(
+              number: 5,
+              isRolledBack: true,
+              artifacts: [(ReleasePlatform.windows, 'aarch64')],
+            ),
+          ]);
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
         });
 
         test('already has a build for this architecture', () async {

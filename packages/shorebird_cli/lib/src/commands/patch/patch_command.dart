@@ -142,7 +142,10 @@ To target the latest release (e.g. the release that was most recently updated) u
             'machine it runs on, so an app shipped for x64 and arm64 is '
             'patched on each kind of machine: patch on one, then add to that '
             'patch on the other, and the fix is one patch number on both. '
-            'The patch keeps its track and rollout.',
+            'Build from the same code as the patch. The patch keeps its '
+            'track and rollout. A patch on a protected track, or waiting for '
+            'approval, cannot be added to: add to it on staging, then '
+            'promote it.',
       )
       ..addOption(
         rolloutArgName,
@@ -378,19 +381,38 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
 
   /// The share of [track]'s devices to publish the patch to (`--rollout`), or
   /// null for all of them. [run] rejects a value that does not parse.
-  double? get rolloutPercentage => switch (results[rolloutArgName]) {
-    final String value => parseRolloutPercentage(
-      value,
-      argName: rolloutArgName,
-    ).percentage,
-    _ => null,
-  };
+  /// When adding to a patch, its current share instead.
+  double? get rolloutPercentage {
+    if (_patchToAddTo case final patch?) return patch.rolloutPercentage;
+    return switch (results[rolloutArgName]) {
+      final String value => parseRolloutPercentage(
+        value,
+        argName: rolloutArgName,
+      ).percentage,
+      _ => null,
+    };
+  }
 
   /// The timed schedule to raise the patch's rollout through
   /// (`--rollout-steps`), or null when the patch is published at a fixed
   /// percentage. [run] rejects a schedule that does not parse.
-  RolloutSchedule? get rolloutSchedule =>
-      readRolloutSchedule(results, percentageArgName: rolloutArgName).schedule;
+  /// When adding to a patch, its schedule instead, if it has one.
+  RolloutSchedule? get rolloutSchedule {
+    if (_patchToAddTo case final patch?) {
+      return switch (patch.rolloutSteps) {
+        final steps? when steps.isNotEmpty => RolloutSchedule(
+          steps: steps,
+          pauseWeekends: patch.rolloutPauseWeekends ?? false,
+          timezone: patch.rolloutTimezone,
+        ),
+        _ => null,
+      };
+    }
+    return readRolloutSchedule(
+      results,
+      percentageArgName: rolloutArgName,
+    ).schedule;
+  }
 
   @override
   Future<int> run() async {
@@ -816,7 +838,15 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       );
     }
     if (patch.isRolledBack) fail('$name is rolled back.');
-    if (patch.channel == null) fail('$name is not on a track.');
+    final channel = patch.channel;
+    if (channel == null) {
+      fail(
+        '$name is not on a track.',
+        hint:
+            'A patch waiting for approval cannot be added to. '
+            '$createPatchHint',
+      );
+    }
     final platformArches = [
       for (final artifact in patch.artifacts)
         if (artifact.platform == platform) artifact.arch,
@@ -832,6 +862,28 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
             'Add to it from a machine of another architecture, or run '
             'without --$addToPatchArgName to ship this build as a new patch.',
       );
+    }
+    // Devices take the newest live patch on their track with a build for
+    // their architecture, so a newer one would leave this build unused.
+    if (patcher.patchArch case final arch?) {
+      final newer = patches.where(
+        (p) =>
+            p.number > patchNumber &&
+            !p.isRolledBack &&
+            p.channel == channel &&
+            p.artifacts.any(
+              (a) => a.platform == platform && a.arch == arch.arch,
+            ),
+      );
+      if (newer.isNotEmpty) {
+        final newest = newer.map((p) => p.number).max;
+        fail(
+          '${platform.displayName} ${arch.name} devices on $channel take '
+          'patch $newest of release ${release.version}, which is newer than '
+          'patch $patchNumber, so they would never get this build.',
+          hint: 'Patch $newest already has their build. $createPatchHint',
+        );
+      }
     }
     return patch;
   }
@@ -1451,6 +1503,7 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
         'release_id': release.id,
         'release_version': release.version,
         'link_percentage': patcher.linkPercentage,
+        'add_to_patch': ?addToPatchNumber,
       });
     } else {
       logger
