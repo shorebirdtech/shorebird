@@ -509,7 +509,7 @@ void main() {
         ),
       ];
 
-      test('bucket by phase and sum repeated phases', () {
+      test('bucket by phase and add back-to-back repeats', () {
         final s = BuildTraceSummary.fromEvents(
           setupEvents(),
           platform: 'android',

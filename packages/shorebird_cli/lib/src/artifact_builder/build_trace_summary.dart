@@ -451,7 +451,9 @@ class BuildTraceSummary {
     // may sum every run since the last `flutter clean` (_shorebird#5890).
     // Dart, network, setup and assemble buckets are wall time (the union
     // of their spans), not sums; earlier versions sum concurrent
-    // gen_snapshot runs once per arch.
+    // gen_snapshot runs once per arch. Gradle task kinds, pod phases,
+    // xcode subsections and flutterTool are still sums: parallel gradle
+    // tasks can add up to more than the native build.
     // In a multi-platform command, later platforms still carry the
     // earlier platforms' Shorebird-side spans and overhead.
     'version': 10,
