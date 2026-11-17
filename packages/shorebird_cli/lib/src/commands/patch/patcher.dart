@@ -151,6 +151,11 @@ More info: ${linkPercentageUrl.toLink()}.
   /// For example, 'aab' for Android, 'xcarchive' for iOS.
   String get primaryReleaseArtifactArch;
 
+  /// The architecture of the patch this machine builds, for a platform that
+  /// builds one architecture per machine (desktop); null where one build
+  /// covers every architecture the release has.
+  Arch? get patchArch => null;
+
   /// The identifier used for any supplementary release artifacts.
   String? get supplementaryReleaseArtifactArch => null;
 
