@@ -6,18 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.141 (November 17, 2026)
 
-- 🐛 A patch that crashes the app while loading at launch is rolled back on the
-  next launch instead of crashing every launch, and the app still checks for a
-  fixed patch
-- 🐛 Obfuscated iOS patches link nearly as well as unobfuscated ones, so far
-  fewer unchanged functions run in the interpreter, and other iOS patches link a
-  little better
-- 🐛 Creating a release or patch no longer fails with an "already exists" error
-  after a server error or dropped connection, as the CLI no longer retries
-  requests that create or change data
-- 🐛 A damaged or cut-short zip, such as a corrupted release artifact download,
-  stops `shorebird patch` with an error that says how to fix it, instead of
-  extracting partly or reporting native and asset changes that aren't there
+- 🐛 A patch that crashes while its code loads at launch is now rolled back
+- 🐛 Improved linking of obfuscated iOS patches
+- 🐛 Creating a release or patch no longer fails with "already exists" after a
+  dropped connection
+- 🐛 `shorebird patch` reports a damaged zip instead of using it
 
 The fixes outside the CLI also reach anyone building with
 `--flutter-version=3.47.9`.
