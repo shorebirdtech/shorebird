@@ -9,7 +9,7 @@ import 'package:shorebird_code_push_protocol/model_helpers.dart';
 class SetPatchRolloutRequest {
   /// {@macro set_patch_rollout_request}
   const SetPatchRolloutRequest({
-    required this.rolloutPercentage,
+    this.rolloutPercentage,
   });
 
   /// Converts a `Map<String, dynamic>` to a [SetPatchRolloutRequest].
@@ -18,7 +18,7 @@ class SetPatchRolloutRequest {
       'SetPatchRolloutRequest',
       json,
       () => SetPatchRolloutRequest(
-        rolloutPercentage: (json['rollout_percentage'] as num).toDouble(),
+        rolloutPercentage: (json['rollout_percentage'] as num?)?.toDouble(),
       ),
     );
   }
@@ -35,12 +35,12 @@ class SetPatchRolloutRequest {
   /// The percentage of the channel's devices to offer the patch to, a
   /// multiple of 0.01 from 0.01 to 100, no lower than the patch's
   /// current one.
-  final double rolloutPercentage;
+  final double? rolloutPercentage;
 
   /// Converts a [SetPatchRolloutRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'rollout_percentage': rolloutPercentage,
+      'rollout_percentage': ?rolloutPercentage,
     };
   }
 
