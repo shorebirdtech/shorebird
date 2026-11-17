@@ -562,9 +562,22 @@ Reason: Exited with code $exitCode.''',
   /// the `shorebirdEnv` override is active so the version gate checks the
   /// correct revision.
   ///
+  /// Each platform gets its own trace window. A later platform of a
+  /// multi-platform command drops the spans [shorebirdTracer] recorded for
+  /// the platforms before it, forgets their summary, and measures its
+  /// Shorebird overhead from now rather than from the command's start, so
+  /// its summary counts only its own work. The first platform keeps the
+  /// setup spans recorded before this call.
+  ///
   /// No-op on older Flutter pins that don't support `--shorebird-trace`
   /// (leaves session fields null → builders emit no tracing args).
   Future<void> prepareBuildTrace({required String platform}) async {
+    if (buildTraceSession.platform != null) {
+      shorebirdTracer.reset();
+      buildTraceSession
+        ..windowStartedAt = clock.now()
+        ..summary = null;
+    }
     buildTraceSession.platform = platform;
     final revision = shorebirdEnv.flutterRevision;
     final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
@@ -658,7 +671,7 @@ Reason: Exited with code $exitCode.''',
   /// `release_command` / `patch_command` can attach it to the outgoing
   /// metadata blob without re-parsing the trace file.
   ///
-  /// Uses [BuildTraceSession.commandStartedAt] to derive the wall-clock time
+  /// Uses [BuildTraceSession.windowStartedAt] to derive the wall-clock time
   /// Shorebird itself spent around the Flutter build, subtracting Flutter's
   /// reported total (the "flutter build X" umbrella event).
   ///
@@ -692,8 +705,8 @@ Reason: Exited with code $exitCode.''',
       events,
       platform: buildPlatform,
     ).flutterBuild;
-    final totalElapsed = DateTime.now().difference(
-      buildTraceSession.commandStartedAt,
+    final totalElapsed = clock.now().difference(
+      buildTraceSession.windowStartedAt,
     );
     final shorebirdOverhead = totalElapsed - flutterBuild;
     // Snapshot the build environment (caching config, CI provider, ...).

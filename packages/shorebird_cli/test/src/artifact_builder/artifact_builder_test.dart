@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -8,6 +9,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -3020,6 +3022,48 @@ Reason: Exited with code 70.'''),
         for (final file in kept) {
           expect(file.existsSync(), isTrue, reason: file.path);
         }
+      });
+
+      test('gives each later platform its own trace window', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => buildTraceSupportConstraint.minVersion);
+        final iosStart = DateTime(2026, 11, 17, 12);
+
+        await runWithOverrides(() async {
+          await shorebirdTracer.span(
+            name: 'setup',
+            category: 'setup',
+            body: () async {},
+          );
+          final commandStartedAt = buildTraceSession.commandStartedAt;
+
+          // The first platform keeps the setup spans and the command start.
+          await builder.prepareBuildTrace(platform: 'android');
+          expect(shorebirdTracer.events, hasLength(1));
+          expect(buildTraceSession.windowStartedAt, commandStartedAt);
+
+          await shorebirdTracer.span(
+            name: 'android work',
+            category: 'shorebird',
+            body: () async {},
+          );
+          buildTraceSession.summary = BuildTraceSummary.fromEvents(
+            const [],
+            platform: 'android',
+          );
+
+          // A later platform starts clean, from now.
+          await withClock(
+            Clock.fixed(iosStart),
+            () => builder.prepareBuildTrace(platform: 'ios'),
+          );
+          expect(shorebirdTracer.events, isEmpty);
+          expect(buildTraceSession.summary, isNull);
+          expect(buildTraceSession.windowStartedAt, iosStart);
+          expect(buildTraceSession.commandStartedAt, commandStartedAt);
+          expect(buildTraceSession.platform, 'ios');
+        });
       });
 
       test(
