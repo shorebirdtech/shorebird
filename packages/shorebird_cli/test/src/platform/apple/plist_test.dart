@@ -140,33 +140,6 @@ void main() {
           ),
         );
       });
-
-      test('throws when release version is blank', () {
-        final file = File(p.join(tempDir.path, 'Info.plist'))
-          ..writeAsStringSync('''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleShortVersionString</key>
-	<string> </string>
-	<key>CFBundleVersion</key>
-	<string>4280</string>
-</dict>
-</plist>
-''');
-
-        expect(
-          () => Plist(file: file).versionNumber,
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              contains('Could not determine release version'),
-            ),
-          ),
-        );
-      });
     });
   });
 

@@ -14,8 +14,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
-import 'package:shorebird_cli/src/command_error.dart';
-import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -1198,28 +1196,6 @@ void main() {
           );
         },
       );
-
-      test('fails with a hint when the version name is empty', () async {
-        when(
-          () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-            any(),
-          ),
-        ).thenThrow(const MissingVersionNameException(versionCode: '4280'));
-        await expectLater(
-          runWithOverrides(
-            () => patcher.extractReleaseVersionFromArtifact(File('')),
-          ),
-          throwsA(
-            isA<CommandError>()
-                .having(
-                  (e) => e.message,
-                  'message',
-                  contains('no versionName (its versionCode is 4280)'),
-                )
-                .having((e) => e.hint, 'hint', passReleaseVersionHint),
-          ),
-        );
-      });
     });
 
     group('updatedCreatePatchMetadata', () {

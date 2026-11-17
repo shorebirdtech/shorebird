@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
-import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/patch/android_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
@@ -168,20 +167,8 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    try {
-      return await shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-        artifact.path,
-      );
-    } on MissingVersionNameException catch (error) {
-      // A release made before empty versionNames were refused is named
-      // `+<versionCode>`; passing that version is how to patch it.
-      throw CommandError(
-        message:
-            'The app bundle has no versionName (its versionCode is '
-            "${error.versionCode}), so its release version can't be read.",
-        hint: passReleaseVersionHint,
-        exitCode: ExitCode.software,
-      );
-    }
+    return shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+      artifact.path,
+    );
   }
 }
