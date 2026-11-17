@@ -6,7 +6,8 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.141 (November 17, 2026)
 
-- 🐛 A patch that crashes while its code loads at launch is now rolled back
+- 🐛 Patches that crash while their code loads at launch are now rolled back,
+  in addition to patches that crash during startup
 - 🐛 Improved linking of obfuscated iOS patches
 - 🐛 Creating a release or patch no longer fails with "already exists" after a
   dropped connection
