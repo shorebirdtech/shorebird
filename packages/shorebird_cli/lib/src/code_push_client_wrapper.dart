@@ -1301,7 +1301,10 @@ to the architectures your project actually builds.''',
         podfileLockHash: podfileLockHash,
         signing: signing,
       );
-    } on CodePushConflictException catch (_) {
+    } on CodePushConflictException catch (error) {
+      if (error.code == conflictingSigningErrorCode) {
+        _handleErrorAndExit(error, progress: progress, message: error.message);
+      }
       // Newlines are due to how logger.info interacts with logger.progress.
       logger.info('''
 
@@ -1314,6 +1317,14 @@ $name artifact already exists, continuing...''');
       );
     }
   }
+
+  /// The server's error code for an artifact whose signing differs from what
+  /// the release, already active on its platform, was signed with (such as
+  /// a second Windows architecture built with another key). Unlike other
+  /// conflicts nothing was stored, so the upload fails.
+  @visibleForTesting
+  static const conflictingSigningErrorCode =
+      'release_artifacts_create_conflicting_signing';
 
   /// Removes all .dylib files from the given .xcarchive to reduce the size of
   /// the uploaded artifact.

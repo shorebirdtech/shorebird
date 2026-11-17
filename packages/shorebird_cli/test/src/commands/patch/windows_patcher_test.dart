@@ -76,6 +76,9 @@ void main() {
       doctor = MockDoctor();
       powershell = MockPowershell();
       shorebirdEnv = MockShorebirdEnv();
+      when(
+        () => shorebirdEnv.flutterDirectory,
+      ).thenReturn(Directory.systemTemp.createTempSync());
       windows = MockWindows();
 
       when(

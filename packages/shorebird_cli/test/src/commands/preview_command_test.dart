@@ -3059,6 +3059,9 @@ channel: ${DeploymentTrack.staging.channel}
         windowsMock = MockWindows();
         abi = MockAbi();
         when(() => abi.hostArchitecture).thenReturn('x64');
+        when(
+          () => shorebirdEnv.flutterDirectory,
+        ).thenReturn(Directory.systemTemp.createTempSync());
 
         platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         when(

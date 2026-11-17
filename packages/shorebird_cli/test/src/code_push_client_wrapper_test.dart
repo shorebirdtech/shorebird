@@ -2673,6 +2673,51 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         );
 
         test(
+          'exits when the release is signed differently on its platform',
+          () async {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(
+              const CodePushConflictException(
+                message: 'signed differently',
+                response: ErrorResponse(
+                  code: CodePushClientWrapper.conflictingSigningErrorCode,
+                  message: 'signed differently',
+                ),
+              ),
+            );
+            setUpProjectRoot();
+
+            await expectLater(
+              () => runWithOverrides(
+                () => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: p.join(projectRoot.path, aabPath),
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail('signed differently')).called(1);
+            verifyNever(
+              () => logger.info(any(that: contains('already exists'))),
+            );
+          },
+        );
+
+        test(
           'exits with code 70 when storage rejects an upload with a 409',
           () async {
             when(

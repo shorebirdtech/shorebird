@@ -66,6 +66,9 @@ void main() {
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      when(
+        () => shorebirdEnv.flutterDirectory,
+      ).thenReturn(Directory.systemTemp.createTempSync());
 
       when(
         () => cache.getArtifactDirectory(any()),

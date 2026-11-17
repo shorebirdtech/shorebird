@@ -1,11 +1,13 @@
 // cspell:words crashpad
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/platform/platform.dart' show Arch;
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// The primary release artifact architecture for x64 Windows releases.
 /// This is a zipped copy of `build/windows/x64/runner/Release`, which is
@@ -20,11 +22,74 @@ const primaryWindowsReleaseArtifactArch = 'win_archive';
 
 /// The architecture `flutter build windows` builds for on this machine.
 ///
-/// Flutter builds a Windows app for the host's own architecture and has no
-/// flag to pick another, so an app shipped for both x64 and arm64 is built
-/// (and released and patched) once on each kind of machine.
-Arch get windowsTargetArch =>
-    abi.hostArchitecture == 'arm64' ? Arch.arm64 : Arch.x86_64;
+/// Flutter builds a Windows app for the architecture of the Dart its tool
+/// runs on (`hostPlatform` in flutter_tools) and has no flag to pick another,
+/// so an app shipped for both x64 and arm64 is built (and released and
+/// patched) once on each kind of machine. That Dart is usually the machine's
+/// own, but Flutter falls back to the x64 Dart on Windows on Arm when it
+/// can't fetch the arm64 one, so this reads the architecture of Flutter's
+/// Dart, and the machine's only when that can't be read.
+Arch get windowsTargetArch {
+  final dart = File(
+    p.join(
+      shorebirdEnv.flutterDirectory.path,
+      'bin',
+      'cache',
+      'dart-sdk',
+      'bin',
+      'dart.exe',
+    ),
+  );
+  return switch (peMachine(dart)) {
+    _imageFileMachineArm64 => Arch.arm64,
+    _imageFileMachineAmd64 => Arch.x86_64,
+    _ => abi.hostArchitecture == 'arm64' ? Arch.arm64 : Arch.x86_64,
+  };
+}
+
+const _imageFileMachineAmd64 = 0x8664;
+const _imageFileMachineArm64 = 0xaa64;
+
+/// The `IMAGE_FILE_MACHINE_*` value in the header of the Windows executable
+/// [file], or null when [file] is missing or isn't one.
+///
+/// See https://learn.microsoft.com/windows/win32/debug/pe-format
+int? peMachine(File file) {
+  if (!file.existsSync()) return null;
+  final RandomAccessFile handle;
+  try {
+    handle = file.openSync();
+  } on FileSystemException {
+    return null;
+  }
+  try {
+    // The DOS header's e_lfanew, at 0x3c, is where the PE header starts:
+    // the signature "PE\0\0" and then the 16-bit Machine field.
+    final dosHeader = handle.readSync(0x40);
+    if (dosHeader.length < 0x40 ||
+        dosHeader[0] != 0x4d ||
+        dosHeader[1] != 0x5a) {
+      return null;
+    }
+    final peOffset = ByteData.sublistView(
+      dosHeader,
+    ).getUint32(0x3c, Endian.little);
+    handle.setPositionSync(peOffset);
+    final peHeader = handle.readSync(6);
+    if (peHeader.length < 6 ||
+        peHeader[0] != 0x50 ||
+        peHeader[1] != 0x45 ||
+        peHeader[2] != 0 ||
+        peHeader[3] != 0) {
+      return null;
+    }
+    return ByteData.sublistView(peHeader).getUint16(4, Endian.little);
+  } on FileSystemException {
+    return null;
+  } finally {
+    handle.closeSync();
+  }
+}
 
 /// The release artifact arch of the zipped `runner/Release` directory built
 /// for [arch]. x64 keeps the name it had before arm64 was supported.
