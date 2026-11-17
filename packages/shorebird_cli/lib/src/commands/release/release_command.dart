@@ -517,6 +517,7 @@ The version of the Android or iOS app that embeds this module
     final releaseVersion = await releaser.getReleaseVersion(
       releaseArtifactRoot: releaseArtifact,
     );
+    _warnIfVersionNameIsEmpty(releaseVersion);
 
     // Ensure we can create a release from what we've built.
     await ensureVersionIsReleasable(
@@ -576,6 +577,24 @@ The version of the Android or iOS app that embeds this module
       ..err(failure.message)
       ..info(failure.hint);
     throw PreconditionFailedExit(failure);
+  }
+
+  /// Warns when [releaseVersion] has a build number but no version name
+  /// (e.g. `+4280`), which happens when the app is built with an empty
+  /// versionName or CFBundleShortVersionString. Such a release works and can
+  /// be patched, but it has no readable version and won't line up with the
+  /// same build on other platforms.
+  void _warnIfVersionNameIsEmpty(String releaseVersion) {
+    if (!releaseVersion.trim().startsWith('+')) return;
+    logger.warn(
+      'The release version "$releaseVersion" has a build number but no '
+      "version name, so it has no readable version and won't match the same "
+      'build on other platforms. It still works and can be patched.\n'
+      'Check that --build-name, if passed, is not empty (e.g. an unset CI '
+      'variable), and that versionName in android/app/build.gradle (or '
+      'build.gradle.kts) or CFBundleShortVersionString in Info.plist is not '
+      'set from something empty.',
+    );
   }
 
   /// Builds the release artifacts, exiting with [ExitCode.software] if the

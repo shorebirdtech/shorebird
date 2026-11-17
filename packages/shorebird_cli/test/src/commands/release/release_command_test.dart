@@ -408,6 +408,31 @@ void main() {
       ]);
     });
 
+    group('when the release version has no version name', () {
+      setUp(() {
+        when(
+          () => releaser.getReleaseVersion(
+            releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
+          ),
+        ).thenAnswer((_) async => ' +4280');
+      });
+
+      test('warns and still releases', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.warn(
+            any(that: contains('" +4280" has a build number but no version')),
+          ),
+        ).called(1);
+      });
+    });
+
+    test('does not warn about the version name when it has one', () async {
+      await runWithOverrides(command.run);
+      verifyNever(() => logger.warn(any(that: contains('no version name'))));
+    });
+
     group("when the app's enterprise requires patch signing", () {
       setUp(() {
         when(
