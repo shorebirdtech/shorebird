@@ -98,11 +98,10 @@ case "\$url" in
     if [ -n "$race_dir" ]; then
       mkdir -p "$race_dir"
       : >"$race_dir/\$\$"
-      waited=0
-      while [ "\$(find "$race_dir" -mindepth 1 -maxdepth 1 | wc -l)" -lt 2 ] && [ "\$waited" -lt 50 ]; do
-        sleep 0.1
-        waited=\$((waited + 1))
-      done
+      # Backdate the lock while holding it across the download so a waiting
+      # fetch exercises its stale-lock check against a live holder.
+      touch -t 202001010000 "\$(dirname "\$(dirname "\$out")")"/.install.* 2>/dev/null || true
+      sleep 1.5
     fi
     cp "$tmp_root/sdk.zip" "\$out"
     ;;
@@ -194,7 +193,8 @@ test_cache_recovery() {
   assert_no_leftovers "$XDG_CACHE_HOME/shorebird-dart-sdks" "cache recovery"
 }
 
-# 3. Two-fetch race: both enter download together, winner installs, loser discards
+# 3. Two-fetch race: winner downloads and installs, loser waits under lock and
+# rechecks cache without downloading or reaping the live lock
 test_two_fetch_race() {
   local case_dir="$tmp_root/case_race"
   local repo="$case_dir/repo" stub_bin="$case_dir/stubbin" race_dir="$case_dir/race"
@@ -205,33 +205,48 @@ test_two_fetch_race() {
   export HOME="$case_dir/home"
   unset DART_BIN
 
-  (
-    # shellcheck source=/dev/null
-    source "$repo/tool/find_dart.sh"
-    dart_bin=""
-    find_dart "$repo"
-    echo "$dart_bin" >"$case_dir/out1"
-  ) 2>/dev/null &
+  (cd "$repo" && "$repo/tool/agent-verify.sh" >/dev/null 2>"$case_dir/err1") &
   local pid1=$!
-  (
-    # shellcheck source=/dev/null
-    source "$repo/tool/find_dart.sh"
-    dart_bin=""
-    find_dart "$repo"
-    echo "$dart_bin" >"$case_dir/out2"
-  ) 2>/dev/null &
+  (cd "$repo" && "$repo/tool/agent-verify.sh" >/dev/null 2>"$case_dir/err2") &
   local pid2=$!
   wait "$pid1"
   wait "$pid2"
 
   local want_bin="$XDG_CACHE_HOME/shorebird-dart-sdks/dartsdk-$host_os-$host_arch-$fake_version/dart-sdk/bin/dart"
-  assert_eq "$(cat "$case_dir/out1")" "$want_bin" "race fetch 1 dart_bin"
-  assert_eq "$(cat "$case_dir/out2")" "$want_bin" "race fetch 2 dart_bin"
-  assert_eq "$(find "$race_dir" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" "2" "both fetches raced through curl"
+  assert_eq "$(find "$race_dir" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" "1" "only one fetch downloaded the sdk"
   # shellcheck source=/dev/null
   source "$repo/tool/find_dart.sh"
   assert_eq "$(_find_dart_version_of "$want_bin")" "$fake_version" "race cached sdk version"
   assert_no_leftovers "$XDG_CACHE_HOME/shorebird-dart-sdks" "two-fetch race"
+}
+
+# 3b. Dead lock holder is reaped rather than waited out
+test_dead_lock_reap() {
+  local case_dir="$tmp_root/case_dead_lock"
+  local repo="$case_dir/repo" stub_bin="$case_dir/stubbin"
+  make_repo_fixture "$repo"
+  write_stub_curl "$stub_bin"
+  export PATH="$stub_bin:$sysbin"
+  export XDG_CACHE_HOME="$case_dir/cache"
+  export HOME="$case_dir/home"
+  unset DART_BIN
+
+  local lock="$XDG_CACHE_HOME/shorebird-dart-sdks/.install.$host_os-$host_arch-$fake_version"
+  mkdir -p "$lock"
+  # Spawn and reap a short-lived process to get a guaranteed-dead PID.
+  sh -c 'exit 0' &
+  local dead_pid=$!
+  wait "$dead_pid"
+  printf '%s\n' "$dead_pid" >"$lock/pid"
+
+  # shellcheck source=/dev/null
+  source "$repo/tool/find_dart.sh"
+  dart_bin=""
+  find_dart "$repo" 2>/dev/null
+
+  local want_bin="$XDG_CACHE_HOME/shorebird-dart-sdks/dartsdk-$host_os-$host_arch-$fake_version/dart-sdk/bin/dart"
+  assert_eq "$dart_bin" "$want_bin" "dead lock reaped and sdk fetched"
+  assert_no_leftovers "$XDG_CACHE_HOME/shorebird-dart-sdks" "dead lock reap"
 }
 
 write_stub_dart() {
@@ -331,6 +346,7 @@ EOF
 run_case "sdk_fetch" test_sdk_fetch
 run_case "cache_recovery" test_cache_recovery
 run_case "two_fetch_race" test_two_fetch_race
+run_case "dead_lock_reap" test_dead_lock_reap
 run_case "verify_exit_0" test_verify_exit_0
 run_case "verify_exit_1" test_verify_exit_1
 run_case "verify_exit_2" test_verify_exit_2
