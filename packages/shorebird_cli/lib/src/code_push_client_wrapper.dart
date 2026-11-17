@@ -1755,6 +1755,26 @@ $name artifact already exists, continuing...''');
     return patch;
   }
 
+  /// Adds [patchArtifactBundles] to [patch], which already exists and is on
+  /// its track: devices of the added architectures get it on their next
+  /// patch check, at the patch's rollout.
+  Future<CreatePatchResponse> addPatchArtifacts({
+    required String appId,
+    required CreatePatchResponse patch,
+    required ReleasePlatform platform,
+    required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
+  }) async {
+    await createPatchArtifacts(
+      appId: appId,
+      patch: patch,
+      platform: platform,
+      patchArtifactBundles: patchArtifactBundles,
+    );
+    final arches = patchArtifactBundles.keys.map((arch) => arch.name);
+    logger.success('\n✅ Added ${arches.join(', ')} to Patch ${patch.number}!');
+    return patch;
+  }
+
   /// Returns a GCP download link for measuring download speed.
   Future<Uri> getGCPDownloadSpeedTestUrl() {
     return codePushClient.getGCPDownloadSpeedTestUrl();

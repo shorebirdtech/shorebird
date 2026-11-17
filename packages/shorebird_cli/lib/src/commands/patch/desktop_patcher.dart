@@ -45,6 +45,7 @@ abstract class DesktopPatcher extends Patcher {
   ArchiveDiffer get archiveDiffer;
 
   /// The architecture of the patch this machine builds.
+  @override
   Arch get patchArch => Arch.x86_64;
 
   /// The directory the build writes the app to.

@@ -4502,6 +4502,61 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         );
       });
 
+      group('addPatchArtifacts', () {
+        test('uploads the artifacts to the patch without promoting', () async {
+          when(
+            () => codePushClient.createPatchArtifact(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              artifactPath: any(named: 'artifactPath'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+            ),
+          ).thenAnswer((_) async {});
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.addPatchArtifacts(
+              appId: appId,
+              patch: patch,
+              platform: releasePlatform,
+              patchArtifactBundles: patchArtifactBundles,
+            ),
+          );
+
+          expect(result, equals(patch));
+          verify(
+            () => codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: patchArtifactBundle.path,
+              patchId: patchId,
+              arch: arch.arch,
+              platform: releasePlatform,
+              hash: patchArtifactBundle.hash,
+            ),
+          ).called(1);
+          verifyNever(
+            () => codePushClient.createPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              metadata: any(named: 'metadata'),
+            ),
+          );
+          verifyNever(
+            () => codePushClient.promotePatch(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              channelId: any(named: 'channelId'),
+            ),
+          );
+          verify(
+            () => logger.success(
+              '\n✅ Added ${arch.name} to Patch ${patch.number}!',
+            ),
+          ).called(1);
+        });
+      });
+
       group('createPatchArtifacts', () {
         test('exits with code 70 when creating patch artifact fails', () async {
           const error = 'something went wrong';
