@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group(SetPatchRolloutRequest, () {
     test('can be (de)serialized with rolloutPercentage', () {
-      const request = SetPatchRolloutRequest(rolloutPercentage: 25.5);
+      const request = SetPatchRolloutPercentageRequest(rolloutPercentage: 25.5);
       final json = request.toJson();
       expect(json['rollout_percentage'], equals(25.5));
       expect(json, isNot(contains('rollout_steps')));
@@ -12,7 +12,7 @@ void main() {
     });
 
     test('can be (de)serialized with a timed rollout schedule', () {
-      const request = SetPatchRolloutRequest(
+      const request = SetPatchRolloutScheduleRequest(
         rolloutSteps: [
           RolloutStep(percentage: 10, durationMinutes: 720),
           RolloutStep(percentage: 100),

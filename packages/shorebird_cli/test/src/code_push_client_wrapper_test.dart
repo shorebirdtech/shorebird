@@ -215,6 +215,9 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(
+        const SetPatchRolloutPercentageRequest(rolloutPercentage: 100),
+      );
       registerFallbackValue(ReleaseStatus.draft);
       registerFallbackValue(
         const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
@@ -4220,7 +4223,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               patchId: any(named: 'patchId'),
-              rolloutPercentage: any(named: 'rolloutPercentage'),
+              request: any(named: 'request'),
             ),
           ).thenThrow(error);
 
@@ -4234,7 +4237,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               patchId: any(named: 'patchId'),
-              rolloutPercentage: any(named: 'rolloutPercentage'),
+              request: any(named: 'request'),
             ),
           ).thenAnswer((_) async {});
 
@@ -4249,20 +4252,54 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               patchId: patchId,
-              rolloutPercentage: 50,
+              request: const SetPatchRolloutPercentageRequest(
+                rolloutPercentage: 50,
+              ),
             ),
           ).called(1);
         });
+        test('throws without a percentage or a schedule', () {
+          expect(
+            () => runWithOverrides(
+              () => codePushClientWrapper.setPatchRollout(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+                patchNumber: patchNumber,
+              ),
+            ),
+            throwsArgumentError,
+          );
+        });
+
+        test('throws given both a percentage and a schedule', () {
+          expect(
+            () => runWithOverrides(
+              () => codePushClientWrapper.setPatchRollout(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+                patchNumber: patchNumber,
+                rolloutPercentage: 50,
+                rolloutSchedule: const RolloutSchedule(
+                  steps: [
+                    RolloutStep(percentage: 10, durationMinutes: 720),
+                    RolloutStep(percentage: 100),
+                  ],
+                ),
+              ),
+            ),
+            throwsArgumentError,
+          );
+        });
+
         test('sets the rollout schedule given', () async {
           when(
             () => codePushClient.setPatchRollout(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               patchId: any(named: 'patchId'),
-              rolloutPercentage: any(named: 'rolloutPercentage'),
-              rolloutSteps: any(named: 'rolloutSteps'),
-              rolloutPauseWeekends: any(named: 'rolloutPauseWeekends'),
-              rolloutTimezone: any(named: 'rolloutTimezone'),
+              request: any(named: 'request'),
             ),
           ).thenAnswer((_) async {});
 
@@ -4292,11 +4329,13 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               patchId: patchId,
-              rolloutSteps: const [
-                RolloutStep(percentage: 10, durationMinutes: 720),
-                RolloutStep(percentage: 100),
-              ],
-              rolloutPauseWeekends: false,
+              request: const SetPatchRolloutScheduleRequest(
+                rolloutSteps: [
+                  RolloutStep(percentage: 10, durationMinutes: 720),
+                  RolloutStep(percentage: 100),
+                ],
+                rolloutPauseWeekends: false,
+              ),
             ),
           ).called(1);
         });

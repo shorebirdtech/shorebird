@@ -3344,7 +3344,7 @@ void main() {
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
-        rolloutPercentage: 50,
+        request: const SetPatchRolloutPercentageRequest(rolloutPercentage: 50),
       );
 
       test('makes the correct request', () async {
@@ -3386,12 +3386,14 @@ void main() {
           appId: appId,
           releaseId: releaseId,
           patchId: patchId,
-          rolloutSteps: const [
-            RolloutStep(percentage: 10, durationMinutes: 720),
-            RolloutStep(percentage: 100),
-          ],
-          rolloutPauseWeekends: true,
-          rolloutTimezone: 'America/New_York',
+          request: const SetPatchRolloutScheduleRequest(
+            rolloutSteps: [
+              RolloutStep(percentage: 10, durationMinutes: 720),
+              RolloutStep(percentage: 100),
+            ],
+            rolloutPauseWeekends: true,
+            rolloutTimezone: 'America/New_York',
+          ),
         );
 
         final request =
