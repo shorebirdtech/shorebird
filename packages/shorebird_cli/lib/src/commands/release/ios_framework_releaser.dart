@@ -61,6 +61,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
         args: [...buildArgs, if (!argResults.appleCodesign) '--no-codesign'],
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
+        applyLegacyDdDefault: true,
       ),
     );
 

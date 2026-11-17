@@ -68,7 +68,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
         target: target,
         args: buildArgs,
         base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
       ),
     );
 

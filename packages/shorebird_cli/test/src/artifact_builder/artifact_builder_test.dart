@@ -1715,6 +1715,11 @@ Reason: Exited with code 70.'''),
     group('buildIpa', () {
       late File appDill;
       setUp(() {
+        // A Flutter that builds with aot_tools gen-snapshot, where the CLI
+        // adds no DD setting. 'iOS DD settings' covers older versions.
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => aotToolsGenSnapshotConstraint.minVersion);
         when(
           () => shorebirdProcess.stream(
             any(),
@@ -2237,9 +2242,122 @@ Reason: Exited with code 70.'''),
       });
     });
 
+    group('iOS DD settings', () {
+      late List<String> buildArgs;
+      late Map<String, String>? buildEnv;
+      setUp(() {
+        when(
+          () => shorebirdProcess.stream(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+            onStart: any(named: 'onStart'),
+          ),
+        ).thenAnswer((invocation) async {
+          buildArgs = invocation.positionalArguments[1] as List<String>;
+          buildEnv =
+              invocation.namedArguments[#environment] as Map<String, String>?;
+          writeAppleKernel(hash: 'h', aotTargetName: 'aot_assembly_release');
+          return ExitCode.success.code;
+        });
+      });
+
+      void useFlutterVersion(Version? version) => when(
+        () => shorebirdFlutter.resolveFlutterVersion(any()),
+      ).thenAnswer((_) async => version);
+
+      final newFlutter = aotToolsGenSnapshotConstraint.minVersion;
+      final oldFlutter = Version(3, 47, 9);
+      const ddOption = '--extra-gen-snapshot-options=--dd_max_bytes';
+
+      group('on Flutter with aot_tools gen-snapshot', () {
+        setUp(() => useFlutterVersion(newFlutter));
+
+        test('passes no DD setting by default', () async {
+          await runWithOverrides(
+            () => builder.buildIpa(applyLegacyDdDefault: true),
+          );
+          expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
+        });
+
+        test('passes --dd-max-bytes as a gen_snapshot option', () async {
+          await runWithOverrides(() => builder.buildIpa(ddMaxBytes: 2048));
+          expect(buildArgs, contains('$ddOption=2048'));
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
+        });
+
+        test('passes --dd-max-bytes=0 through to turn DD off', () async {
+          await runWithOverrides(() => builder.buildIpa(ddMaxBytes: 0));
+          expect(buildArgs, contains('$ddOption=0'));
+        });
+
+        test('passes --dd-max-bytes to ios-framework builds', () async {
+          await runWithOverrides(
+            () => builder.buildIosFramework(ddMaxBytes: 2048),
+          );
+          expect(buildArgs, contains('$ddOption=2048'));
+        });
+      });
+
+      group('on Flutter before aot_tools gen-snapshot', () {
+        setUp(() => useFlutterVersion(oldFlutter));
+
+        test('turns DD on with the default cap for releases', () async {
+          await runWithOverrides(
+            () => builder.buildIpa(applyLegacyDdDefault: true),
+          );
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], equals('10000'));
+          expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
+        });
+
+        test('sets nothing for patch builds by default', () async {
+          await runWithOverrides(builder.buildIpa);
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
+          expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
+        });
+
+        test('sets --dd-max-bytes in the environment only', () async {
+          await runWithOverrides(() => builder.buildIpa(ddMaxBytes: 2048));
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], equals('2048'));
+          // gen_snapshot there rejects --dd_max_bytes as an unknown flag.
+          expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
+        });
+
+        test('leaves DD off for --dd-max-bytes=0', () async {
+          await runWithOverrides(
+            () => builder.buildIpa(ddMaxBytes: 0, applyLegacyDdDefault: true),
+          );
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
+          expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
+        });
+
+        test('turns DD on for ios-framework releases', () async {
+          await runWithOverrides(
+            () => builder.buildIosFramework(applyLegacyDdDefault: true),
+          );
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], equals('10000'));
+        });
+      });
+
+      test('treats an unknown Flutter version as one before '
+          'aot_tools gen-snapshot', () async {
+        useFlutterVersion(null);
+        await runWithOverrides(() => builder.buildIpa(ddMaxBytes: 2048));
+        expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], equals('2048'));
+        expect(buildArgs.where((a) => a.contains('dd_max_bytes')), isEmpty);
+      });
+    });
+
     group('buildIosFramework', () {
       late File appDill;
       setUp(() {
+        // A Flutter that builds with aot_tools gen-snapshot, where the CLI
+        // adds no DD setting. 'iOS DD settings' covers older versions.
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => aotToolsGenSnapshotConstraint.minVersion);
         when(
           () => shorebirdProcess.stream(
             any(),

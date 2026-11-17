@@ -7,6 +7,7 @@ import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
@@ -57,8 +58,7 @@ ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
 /// Builds the environment map for Flutter build subprocesses.
 ///
-/// Merges the public key (if present) with any additional environment
-/// variables (e.g. DD table configuration).
+/// Merges the public key (if present) with [extra] environment variables.
 ///
 /// Environment variables are used (rather than command-line flags) for
 /// backwards compatibility: older Flutter builds that don't recognize a
@@ -66,14 +66,11 @@ ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 /// a build failure.
 Map<String, String>? buildEnvironment({
   String? base64PublicKey,
-  int? ddMaxBytes,
+  Map<String, String> extra = const {},
 }) {
-  final env = <String, String>{};
+  final env = <String, String>{...extra};
   if (base64PublicKey != null) {
     env['SHOREBIRD_PUBLIC_KEY'] = base64PublicKey;
-  }
-  if (ddMaxBytes != null) {
-    env['SHOREBIRD_DD_MAX_BYTES'] = ddMaxBytes.toString();
   }
   return env.isEmpty ? null : env;
 }
@@ -178,7 +175,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
-    int? ddMaxBytes,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
     await _runFlutterBuild(
@@ -192,7 +188,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
       fixRecommendation: _androidBuildFixRecommendation,
     );
 
@@ -214,7 +209,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     bool splitPerAbi = false,
     List<String> args = const [],
     String? base64PublicKey,
-    int? ddMaxBytes,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
     await _runFlutterBuild(
@@ -233,7 +227,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
       fixRecommendation: _androidBuildFixRecommendation,
     );
 
@@ -253,7 +246,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
-    int? ddMaxBytes,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
     await _runFlutterBuild(
@@ -267,7 +259,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
       fixRecommendation: _androidBuildFixRecommendation,
     );
   }
@@ -278,7 +269,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
-    int? ddMaxBytes,
   }) async {
     await _runFlutterBuild(
       command: 'linux',
@@ -286,7 +276,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       flags: ['--release', if (target != null) '--target=$target'],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
     );
   }
 
@@ -297,7 +286,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
-    int? ddMaxBytes,
   }) {
     return _buildAppleKernel(
       command: 'macos',
@@ -312,7 +300,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
     );
   }
 
@@ -325,7 +312,12 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
-  }) {
+    bool applyLegacyDdDefault = false,
+  }) async {
+    final dd = await _iosDdSettings(
+      ddMaxBytes,
+      applyLegacyDdDefault: applyLegacyDdDefault,
+    );
     return _buildAppleKernel(
       command: 'ipa',
       description: 'IPA',
@@ -336,10 +328,60 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
+        ...dd.flags,
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
+      environment: dd.environment,
+    );
+  }
+
+  /// How an iOS `flutter build` gets the user's `--dd-max-bytes`
+  /// ([ddMaxBytes], null when they set none; `0` turns DD off): flags to add
+  /// and environment variables to set.
+  ///
+  /// On Flutter versions with `aot_tools gen-snapshot`
+  /// ([aotToolsGenSnapshotConstraint]) DD is on by default with Dart's cap,
+  /// and a setting rides in `--extra-gen-snapshot-options`, which Flutter
+  /// also records in `Generated.xcconfig` so Xcode rebuilds keep it.
+  ///
+  /// Everything else here is a quirk of the Flutter versions before that,
+  /// 3.44.0 through 3.47.x (about nine months of releases), and this is the
+  /// only place in the CLI that knows about it: they run the DD pass only
+  /// when `SHOREBIRD_DD_MAX_BYTES` is set, so the CLI sets it, and their
+  /// gen_snapshot rejects `--dd_max_bytes` as an unknown flag. Release builds
+  /// ([applyLegacyDdDefault]) default it to 10000; patch builds set it only
+  /// when the user does, as they always have, since the patch's DD table
+  /// comes from the release. A revision whose version is unknown (a pinned dev
+  /// revision) is treated as one of these: newer versions ignore the
+  /// variable, while the flag would break an older build. Delete this branch
+  /// once those versions are out of support.
+  Future<({List<String> flags, Map<String, String> environment})>
+  _iosDdSettings(int? ddMaxBytes, {required bool applyLegacyDdDefault}) async {
+    final revision = shorebirdEnv.flutterRevision;
+    final version = await shorebirdFlutter.resolveFlutterVersion(revision);
+    final usesAotToolsGenSnapshot = aotToolsGenSnapshotConstraint.isSatisfiedBy(
+      version: version ?? Version.none,
+      revision: revision,
+    );
+    if (usesAotToolsGenSnapshot) {
+      return (
+        flags: [
+          if (ddMaxBytes != null)
+            '--extra-gen-snapshot-options=--dd_max_bytes=$ddMaxBytes',
+        ],
+        environment: const <String, String>{},
+      );
+    }
+    const legacyDefaultDdMaxBytes = 10000;
+    final legacyDdMaxBytes =
+        ddMaxBytes ?? (applyLegacyDdDefault ? legacyDefaultDdMaxBytes : null);
+    return (
+      flags: const <String>[],
+      environment: {
+        if (legacyDdMaxBytes != null && legacyDdMaxBytes > 0)
+          'SHOREBIRD_DD_MAX_BYTES': legacyDdMaxBytes.toString(),
+      },
     );
   }
 
@@ -349,9 +391,14 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
-  }) {
+    bool applyLegacyDdDefault = false,
+  }) async {
     _deleteForeignModuleXcodeProperties(
       shorebirdEnv.getShorebirdProjectRoot()!,
+    );
+    final dd = await _iosDdSettings(
+      ddMaxBytes,
+      applyLegacyDdDefault: applyLegacyDdDefault,
     );
     return _buildAppleKernel(
       command: 'ios-framework',
@@ -362,10 +409,11 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         '--no-debug',
         '--no-profile',
         if (target != null) '--target=$target',
+        ...dd.flags,
       ],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
+      environment: dd.environment,
     );
   }
 
@@ -382,7 +430,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     required List<String> flags,
     required List<String> args,
     required String? base64PublicKey,
-    required int? ddMaxBytes,
+    Map<String, String> environment = const {},
     String Function(String buildCommand) fixRecommendation =
         runVanillaFlutterBuildRecommendation,
   }) async {
@@ -401,7 +449,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       arguments,
       environment: buildEnvironment(
         base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
+        extra: environment,
       ),
       // Never run in shell because we always have a fully resolved
       // executable path.
@@ -443,16 +491,15 @@ Reason: Exited with code $exitCode.''',
     required List<String> flags,
     required List<String> args,
     required String? base64PublicKey,
-    required int? ddMaxBytes,
+    Map<String, String> environment = const {},
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Make every target of this platform's builds re-run. On a Flutter that
     // doesn't copy its kernel (see [_shorebirdKernelFile]) we find the kernel
     // by the AOT target's stamp, which a skipped target would not rewrite. A
-    // cached build would also be stale on older Flutters: there the
-    // SHOREBIRD_PUBLIC_KEY and (on iOS only; the macOS DD pass is skipped)
-    // SHOREBIRD_DD_MAX_BYTES environment variables change the build's output
-    // but are not inputs Flutter's build system tracks.
+    // cached build would also be stale on older Flutters: there environment
+    // variables such as SHOREBIRD_PUBLIC_KEY change the build's output but are
+    // not inputs Flutter's build system tracks.
     _deleteBuildStamps(projectRoot: projectRoot, platform: platformSubdir);
     // Delete the kernel copy a previous build left, so that a build with a
     // Flutter that doesn't write one can't be handed an old kernel.
@@ -483,7 +530,7 @@ Reason: Exited with code $exitCode.''',
       flags: flags,
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
+      environment: environment,
     );
     if (shorebirdKernelFile.existsSync()) {
       appDillPath = shorebirdKernelFile.path;
@@ -714,7 +761,6 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
-    int? ddMaxBytes,
   }) async {
     await _runFlutterBuild(
       command: 'windows',
@@ -722,7 +768,6 @@ Reason: Exited with code $exitCode.''',
       flags: ['--release', if (target != null) '--target=$target'],
       args: args,
       base64PublicKey: base64PublicKey,
-      ddMaxBytes: ddMaxBytes,
     );
 
     return artifactManager.getWindowsReleaseDirectory();

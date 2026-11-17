@@ -747,7 +747,6 @@ This may indicate that the patch contains native changes, which cannot be applie
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
@@ -943,7 +942,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 
@@ -974,7 +972,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 
