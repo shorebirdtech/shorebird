@@ -481,6 +481,29 @@ void main() {
         );
         verify(() => cache.updateAll()).called(1);
       });
+
+      test('throws when the version name is empty', () async {
+        when(
+          () => bundletool.getVersionName(any()),
+        ).thenAnswer((_) async => '');
+        when(
+          () => bundletool.getVersionCode(any()),
+        ).thenAnswer((_) async => '4280');
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+              'path/to/appbundle',
+            ),
+          ),
+          throwsA(
+            isA<MissingVersionNameException>().having(
+              (e) => e.toString(),
+              'message',
+              contains('has no versionName (its versionCode is 4280)'),
+            ),
+          ),
+        );
+      });
     });
 
     group('extractAar', () {

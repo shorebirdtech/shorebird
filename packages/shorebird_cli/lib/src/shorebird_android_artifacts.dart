@@ -10,6 +10,23 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
+/// Thrown when an app bundle's manifest has no (or an empty) versionName, which
+/// would otherwise make a release version like `+4280`.
+class MissingVersionNameException implements Exception {
+  /// Creates a [MissingVersionNameException].
+  const MissingVersionNameException({required this.versionCode});
+
+  /// The app bundle's versionCode, which was present.
+  final String versionCode;
+
+  @override
+  String toString() =>
+      'The app bundle has no versionName (its versionCode is $versionCode). '
+      'Set a version in pubspec.yaml (or pass a non-empty --build-name) and '
+      'make sure android/app/build.gradle (or build.gradle.kts) sets '
+      'versionName, which is flutter.versionName by default.';
+}
+
 /// Thrown when multiple artifacts are found in the build directory.
 class MultipleArtifactsFoundException implements Exception {
   /// Creates a [MultipleArtifactsFoundException].
@@ -210,7 +227,10 @@ class ShorebirdAndroidArtifacts {
     'flutter_release-$buildNumber.aar',
   );
 
-  /// Extract the release version from an appbundle.
+  /// Extract the release version (`versionName+versionCode`) from an
+  /// appbundle.
+  ///
+  /// Throws a [MissingVersionNameException] if the bundle has no versionName.
   Future<String> extractReleaseVersionFromAppBundle(
     String appBundlePath,
   ) async {
@@ -221,6 +241,9 @@ class ShorebirdAndroidArtifacts {
       bundletool.getVersionCode(appBundlePath),
     ]);
 
+    if (versionName.isEmpty) {
+      throw MissingVersionNameException(versionCode: versionCode);
+    }
     return '$versionName+$versionCode';
   }
 
