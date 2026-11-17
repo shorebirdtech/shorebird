@@ -150,10 +150,58 @@ dependencies:
 ''');
   File('${app.path}/analysis_options.yaml').deleteSync();
   setLabel(app, 'release');
+  await _init(app);
+  return app;
+}
+
+/// Makes a fresh Flutter module (add-to-app), `e2e_module` in [work], at
+/// pubspec [version], printing the label `release`, with Shorebird
+/// initialized against the server under test as in [createApp]. Its Android
+/// package is `com.example.e2e_module`. It is deleted when the run ends.
+Future<Directory> createModule(
+  Directory work, {
+  required String version,
+}) async {
+  await timed(
+    'create',
+    () => sh(work, pinnedFlutter(), [
+      'create',
+      '--template',
+      'module',
+      '--org',
+      'com.example',
+      'e2e_module',
+    ]),
+  );
+  final module = Directory('${work.path}/e2e_module');
+  // A module's pubspec carries its `flutter: module:` section, so it is
+  // edited rather than replaced as [createApp] replaces an app's. The pinned
+  // Flutter's SDK constraint and lints are ones older Flutter versions can't
+  // resolve.
+  final pubspec = File('${module.path}/pubspec.yaml');
+  pubspec.writeAsStringSync(
+    pubspec
+        .readAsStringSync()
+        .replaceFirst(
+          RegExp('^  sdk: .*', multiLine: true),
+          "  sdk: '>=3.0.0 <4.0.0'",
+        )
+        .replaceFirst(RegExp('^  flutter_lints: .*\n', multiLine: true), ''),
+  );
+  File('${module.path}/analysis_options.yaml').deleteSync();
+  setVersion(module, version);
+  setLabel(module, 'release');
+  await _init(module);
+  return module;
+}
+
+/// Runs `shorebird init` in [project] against the server under test, and
+/// remembers the app it made to delete at the end.
+Future<void> _init(Directory project) async {
   final orgId = Platform.environment['SHOREBIRD_ORG_ID'];
   await timed(
     'init',
-    () => sh(app, 'shorebird', [
+    () => sh(project, 'shorebird', [
       'init',
       '--force',
       if (orgId != null) '--org-id=$orgId',
@@ -163,12 +211,11 @@ dependencies:
   final hostedUrl =
       Platform.environment['SHOREBIRD_HOSTED_URL'] ??
       'https://api-dev.shorebird.dev';
-  final shorebirdYaml = File('${app.path}/shorebird.yaml')
+  final shorebirdYaml = File('${project.path}/shorebird.yaml')
     ..writeAsStringSync('base_url: $hostedUrl\n', mode: FileMode.append);
   _appId = RegExp(
     r'app_id: (\S+)',
   ).firstMatch(shorebirdYaml.readAsStringSync())!.group(1);
-  return app;
 }
 
 /// Makes the app print `e2e-label: <label>` when it starts.
@@ -266,13 +313,20 @@ Future<(bool, String)> launchLinux(
 /// first). Not `am start -W`: that waits for the activity's first
 /// frame, which the e2e apps never draw (they only print), so every launch
 /// waited out its 10 s timeout.
-Future<String?> startAndroidApp(String package) async {
+///
+/// [activity] is the activity's class, relative to [package] when it starts
+/// with a dot: an add-to-app host's class lives in its own Java package,
+/// whatever application ID it is built with.
+Future<String?> startAndroidApp(
+  String package, {
+  String activity = '.MainActivity',
+}) async {
   await sh(Directory.current, 'adb', [
     'shell',
     'am',
     'start',
     '-n',
-    '$package/.MainActivity',
+    '$package/$activity',
   ]);
   return waitForAndroidApp(
     package,
