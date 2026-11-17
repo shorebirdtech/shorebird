@@ -6,9 +6,14 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.142 (November 17, 2026)
 
-- ❓ Fix(shorebird_cli): warn when a release has no version name
-- ❓ Chore: prepare for release 1.6.141
-- ❓ Feat(shorebird_cli): --release-version is an add-to-app module's own version
+- ✨ `shorebird release` warns when the release version has a build number but no
+  version name (such as `+4280`), which usually means an empty `--build-name` or
+  `versionName`
+- 🔧 `shorebird release aar` and `shorebird release ios-framework` treat
+  `--release-version` as the module build's own version and build it into the
+  module on Flutter 3.47.9 or later, where it may only use letters, digits, `.`,
+  `_`, `+` and `-`, up to 128 characters. With an earlier Flutter it must still
+  equal the host app's version
 
 Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.141.
 
