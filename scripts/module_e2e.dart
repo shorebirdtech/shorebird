@@ -196,9 +196,9 @@ void check(String name, String want, String actual) {
 
 /// Checks the fields [host]'s updater sent in its patch check, from the line
 /// it logs (updater network.rs `log_line`). With module versions that's the
-/// module's release version and the host's bundle ID and version; with host
-/// versions the host's version is the release version, so only that is
-/// checked.
+/// module's release version and the host's bundle ID and version. With host
+/// versions each host sends its own version as the release version, so only
+/// that is checked.
 void checkPatchCheck(
   Host host,
   String log,
@@ -208,11 +208,17 @@ void checkPatchCheck(
   final line = RegExp(
     'Sending patch check request: (.*)',
   ).firstMatch(log)?.group(1);
+  // Updaters before network.rs `log_line` printed the request with Debug,
+  // which quotes each string.
   String field(String name) => line == null
       ? '(no patch check logged)'
-      : RegExp('$name: ([^,]+)').firstMatch(line)?.group(1) ?? '(none)';
+      : RegExp('$name: "?([^,"]+)').firstMatch(line)?.group(1) ?? '(none)';
   final prefix = 'host ${host.name} patch check';
-  check('$prefix release_version', releaseVersion, field('release_version'));
+  check(
+    '$prefix release_version',
+    hostVersions ? host.version : releaseVersion,
+    field('release_version'),
+  );
   if (hostVersions) return;
   check('$prefix host_bundle_id', host.id, field('host_bundle_id'));
   check('$prefix host_version', host.version, field('host_version'));
