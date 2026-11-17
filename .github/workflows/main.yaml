@@ -63,6 +63,7 @@ jobs:
       pull-requests: read
 
     outputs:
+      agent_scripts: ${{ steps.agent_scripts.outputs.tool }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
       android_build_e2e: ${{ steps.android_build_e2e.outputs.android }}
       protocol_codegen: ${{ steps.protocol_codegen.outputs.protocol }}
@@ -72,6 +73,15 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        name: Agent Scripts Detection
+        id: agent_scripts
+        with:
+          filters: |
+            tool:
+              - ./.github/workflows/main.yaml
+              - ./tool/**
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Verify Detection
@@ -255,8 +265,20 @@ jobs:
             exit 1
           fi
 
+  agent_scripts_test:
+    name: 🧪 Test Agent Scripts
+    needs: changes
+    if: ${{ needs.changes.outputs.agent_scripts == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: 🧪 Run tool/agent_scripts_test.sh
+        run: ./tool/agent_scripts_test.sh
+
   ci:
-    needs: [actionlint, android_build_e2e, changes, license_check, protocol_codegen, verify_packages]
+    needs: [actionlint, agent_scripts_test, android_build_e2e, changes, license_check, protocol_codegen, verify_packages]
     # Not always(): that keeps this job alive through a run cancellation,
     # so a superseded push would report ci red on the stale commit. A
     # skipped required check reports success, which is the right answer
