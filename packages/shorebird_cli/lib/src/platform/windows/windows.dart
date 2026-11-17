@@ -1,4 +1,4 @@
-// cspell:words crashpad
+// cspell:words crashpad lfanew
 import 'dart:io';
 import 'dart:typed_data';
 

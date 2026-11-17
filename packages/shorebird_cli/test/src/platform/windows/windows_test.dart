@@ -1,3 +1,4 @@
+// cspell:words lfanew
 import 'dart:io';
 import 'dart:typed_data';
 
