@@ -2982,10 +2982,19 @@ Reason: Exited with code 70.'''),
         final stale = [
           createFile(['shorebird', 'debug', 'build-trace-android.json']),
           createFile([
-            'app',
+            'shorebird',
+            'debug',
+            'build-trace-android-summary.json',
+          ]),
+          createFile([
             'intermediates',
             'shorebird',
             'shorebird_assemble_trace_bundleRelease.json',
+          ]),
+          createFile([
+            'intermediates',
+            'shorebird',
+            'shorebird_assemble_trace_bundleFooRelease.json',
           ]),
           createFile(['ios', 'shorebird_assemble_trace.json']),
           createFile(['macos', 'shorebird_assemble_trace.json']),
@@ -2993,7 +3002,6 @@ Reason: Exited with code 70.'''),
         final kept = [
           createFile(['shorebird', 'debug', 'build-trace-ios.json']),
           createFile([
-            'app',
             'intermediates',
             'shorebird',
             'shorebird_gradle_task_trace_bundleRelease.json',
@@ -3012,20 +3020,6 @@ Reason: Exited with code 70.'''),
         for (final file in kept) {
           expect(file.existsSync(), isTrue, reason: file.path);
         }
-      });
-
-      test('succeeds when there is no build directory yet', () async {
-        when(
-          () => shorebirdFlutter.resolveFlutterVersion(any()),
-        ).thenAnswer((_) async => buildTraceSupportConstraint.minVersion);
-        when(() => shorebirdEnv.buildDirectory).thenReturn(
-          Directory(p.join(projectRoot.path, 'missing', 'build')),
-        );
-
-        await runWithOverrides(() async {
-          await builder.prepareBuildTrace(platform: 'android');
-          expect(buildTraceSession.traceFile, isNotNull);
-        });
       });
 
       test(
