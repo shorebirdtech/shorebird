@@ -4,15 +4,46 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
+import 'package:shorebird_cli/src/platform/platform.dart' show Arch;
 
-/// The primary release artifact architecture for Windows releases.
+/// The primary release artifact architecture for x64 Windows releases.
 /// This is a zipped copy of `build/windows/x64/runner/Release`, which is
 /// produced by the `flutter build windows --release` command. It contains, at
 /// its top level:
 ///   - flutter.dll
 ///   - app.exe (where `app` is the name of the Flutter app)
 ///   - data/, which contains flutter assets and the app.so file
+///
+/// An arm64 release's is [windowsReleaseArtifactArch] of [Arch.arm64].
 const primaryWindowsReleaseArtifactArch = 'win_archive';
+
+/// The architecture `flutter build windows` builds for on this machine.
+///
+/// Flutter builds a Windows app for the host's own architecture and has no
+/// flag to pick another, so an app shipped for both x64 and arm64 is built
+/// (and released and patched) once on each kind of machine.
+Arch get windowsTargetArch =>
+    abi.hostArchitecture == 'arm64' ? Arch.arm64 : Arch.x86_64;
+
+/// The release artifact arch of the zipped `runner/Release` directory built
+/// for [arch]. x64 keeps the name it had before arm64 was supported.
+String windowsReleaseArtifactArch(Arch arch) => switch (arch) {
+  Arch.arm64 => 'win_archive_arm64',
+  _ => primaryWindowsReleaseArtifactArch,
+};
+
+/// The release artifact arch of the supplement built for [arch].
+String windowsSupplementArtifactArch(Arch arch) => switch (arch) {
+  Arch.arm64 => 'windows_supplement_arm64',
+  _ => 'windows_supplement',
+};
+
+/// The directory under `build/windows/` that Flutter builds [arch] into.
+String windowsBuildDirectoryName(Arch arch) => switch (arch) {
+  Arch.arm64 => 'arm64',
+  _ => 'x64',
+};
 
 /// A reference to a [Windows] instance.
 final windowsRef = create(Windows.new);

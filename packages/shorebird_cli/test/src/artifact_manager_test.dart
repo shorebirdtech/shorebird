@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -34,11 +35,13 @@ void main() {
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
+    late LocalAbi abi;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
         values: {
+          abiRef.overrideWith(() => abi),
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
@@ -54,6 +57,8 @@ void main() {
     });
 
     setUp(() {
+      abi = MockAbi();
+      when(() => abi.hostArchitecture).thenReturn('x64');
       cacheArtifactDirectory = Directory.systemTemp.createTempSync();
       cache = MockCache();
       httpClient = MockHttpClient();
@@ -1327,6 +1332,23 @@ void main() {
               'build',
               'windows',
               'x64',
+              'runner',
+              'Release',
+            ),
+          ),
+        );
+      });
+
+      test('returns the arm64 build on an arm64 machine', () {
+        when(() => abi.hostArchitecture).thenReturn('arm64');
+        expect(
+          runWithOverrides(artifactManager.getWindowsReleaseDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'windows',
+              'arm64',
               'runner',
               'Release',
             ),

@@ -492,10 +492,16 @@ jobs:
         run: dart scripts/patch_signing_e2e.dart macos
 
   windows_signing:
-    name: windows signing
+    name: windows signing (${{ matrix.os }})
     needs: check_cli_ref
     if: ${{ !inputs.cli_version }}
-    runs-on: windows-latest
+    # windows-11-arm builds a native arm64 app, which releases and patches
+    # under its own artifact names (shorebird#4456).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
 
     permissions:

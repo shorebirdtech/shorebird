@@ -55,6 +55,12 @@ abstract class Releaser {
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 
+  /// Whether this run may add its artifacts to [release], which is already
+  /// active on this platform. Most platforms build every architecture in one
+  /// run, so a second release of the same version is refused; Windows builds
+  /// one architecture per machine and adds the other to the same release.
+  Future<bool> addsToActiveRelease(Release release) async => false;
+
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
 

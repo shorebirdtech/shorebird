@@ -1137,6 +1137,7 @@ Looked in:
     required String appId,
     required int releaseId,
     required Directory releaseDirectory,
+    String arch = primaryWindowsReleaseArtifactArch,
     ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
@@ -1148,7 +1149,7 @@ Looked in:
         releaseId: releaseId,
         file: zippedRelease,
         name: 'Windows release (exe)',
-        arch: primaryWindowsReleaseArtifactArch,
+        arch: arch,
         platform: ReleasePlatform.windows,
         canSideload: true,
         progress: createArtifactProgress,

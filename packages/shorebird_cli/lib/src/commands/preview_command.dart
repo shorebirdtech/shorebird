@@ -555,11 +555,23 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.windows;
+    // This machine's own build when the release has one; otherwise the x64
+    // build, which Windows on Arm runs under emulation.
+    final nativeArch = windowsReleaseArtifactArch(windowsTargetArch);
+    final hasNativeBuild =
+        nativeArch == primaryWindowsReleaseArtifactArch ||
+        await codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: appId,
+              releaseId: release.id,
+              arch: nativeArch,
+              platform: platform,
+            ) !=
+            null;
     final appDirectory = await _downloadReleaseApp(
       appId: appId,
       release: release,
       platform: platform,
-      arch: primaryWindowsReleaseArtifactArch,
+      arch: hasNativeBuild ? nativeArch : primaryWindowsReleaseArtifactArch,
       fileExtension: 'exe',
     );
 
