@@ -65,6 +65,7 @@ jobs:
     outputs:
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
       android_build_e2e: ${{ steps.android_build_e2e.outputs.android }}
+      protocol_codegen: ${{ steps.protocol_codegen.outputs.protocol }}
 
     name: 👀 Detect Changes
 
@@ -122,6 +123,17 @@ jobs:
               - packages/shorebird_cli/pubspec.yaml
               - packages/shorebird_code_push_client/lib/**
               - packages/shorebird_code_push_protocol/lib/**
+              - pubspec.lock
+              - pubspec.yaml
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        name: Protocol Codegen Detection
+        id: protocol_codegen
+        with:
+          filters: |
+            protocol:
+              - ./.github/workflows/main.yaml
+              - packages/shorebird_code_push_protocol/**
               - pubspec.lock
               - pubspec.yaml
 
@@ -215,8 +227,36 @@ jobs:
         with:
           working_directory: packages/${{ matrix.package }}
 
+  protocol_codegen:
+    name: 🔄 Verify Protocol Codegen
+    needs: changes
+    if: ${{ needs.changes.outputs.protocol_codegen == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: 🎯 Setup Dart
+        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+
+      - name: 📦 Install Dependencies
+        run: dart pub get --no-example -C packages/shorebird_code_push_protocol
+
+      - name: 🔄 Run Protocol Codegen
+        run: dart run packages/shorebird_code_push_protocol/tool/gen.dart
+
+      - name: 🔍 Check for Uncommitted Changes
+        run: |
+          status=$(git status --porcelain -- packages/shorebird_code_push_protocol)
+          if [ -n "$status" ]; then
+            echo "::error::packages/shorebird_code_push_protocol is out of date with openapi.yaml. Run: dart run packages/shorebird_code_push_protocol/tool/gen.dart"
+            git status --short -- packages/shorebird_code_push_protocol
+            git diff -- packages/shorebird_code_push_protocol
+            exit 1
+          fi
+
   ci:
-    needs: [actionlint, android_build_e2e, changes, license_check, verify_packages]
+    needs: [actionlint, android_build_e2e, changes, license_check, protocol_codegen, verify_packages]
     # Not always(): that keeps this job alive through a run cancellation,
     # so a superseded push would report ci red on the stale commit. A
     # skipped required check reports success, which is the right answer
