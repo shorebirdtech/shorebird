@@ -149,8 +149,9 @@ Future<void> run(String? flutterVersion, {required bool hostVersions}) async {
     () => sh(module, 'shorebird', [
       'patch',
       'aar',
+      // A patch builds with its release's Flutter; `patch` takes no
+      // --flutter-version.
       '--release-version=$releaseVersion',
-      ...flutterArgs,
       '-v',
     ]),
   );
