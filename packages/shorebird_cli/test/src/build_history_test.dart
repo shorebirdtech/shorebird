@@ -11,6 +11,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/build_history.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
@@ -36,6 +37,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdLogger logger;
     late BuildHistory buildHistory;
+    late ShorebirdTracer shorebirdTracer;
     late DateTime now;
 
     R runWithOverrides<R>(R Function() body) => runScoped(
@@ -45,6 +47,7 @@ void main() {
         buildTraceSessionRef.overrideWith(() => buildTraceSession),
         codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
         loggerRef.overrideWith(() => logger),
+        shorebirdTracerRef.overrideWith(() => shorebirdTracer),
       },
     );
 
@@ -94,6 +97,7 @@ void main() {
       now = startedAt;
       artifactBuilder = MockArtifactBuilder();
       buildTraceSession = BuildTraceSession(commandStartedAt: startedAt);
+      shorebirdTracer = ShorebirdTracer();
       codePushClient = MockCodePushClient();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
@@ -127,6 +131,31 @@ void main() {
         expect(buildTraceSession.summary, isNull);
         expect(run.runId, equals('run-id'));
         expect(run.startedAt, equals(startedAt));
+      });
+
+      test('gives each later platform its own trace window', () async {
+        Future<void> recordSpan(String name) => runWithOverrides(
+          () => shorebirdTracer.span(
+            name: name,
+            category: 'shorebird',
+            body: () async {},
+          ),
+        );
+
+        // The first platform keeps what was traced since the command began.
+        await recordSpan('setup');
+        startRun();
+        expect(shorebirdTracer.events, hasLength(1));
+        expect(buildTraceSession.windowStartedAt, equals(startedAt));
+
+        // A later platform starts with no spans, from its own start.
+        await recordSpan('android build');
+        now = startedAt.add(const Duration(minutes: 5));
+        final second = startRun();
+        expect(shorebirdTracer.events, isEmpty);
+        expect(buildTraceSession.windowStartedAt, equals(now));
+        expect(second.startedAt, equals(now));
+        expect(buildTraceSession.commandStartedAt, equals(startedAt));
       });
     });
 
