@@ -141,7 +141,7 @@ void main() {
         );
       });
 
-      test('throws when release version is empty', () {
+      test('throws when release version is blank', () {
         final file = File(p.join(tempDir.path, 'Info.plist'))
           ..writeAsStringSync('''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -149,7 +149,7 @@ void main() {
 <plist version="1.0">
 <dict>
 	<key>CFBundleShortVersionString</key>
-	<string></string>
+	<string> </string>
 	<key>CFBundleVersion</key>
 	<string>4280</string>
 </dict>

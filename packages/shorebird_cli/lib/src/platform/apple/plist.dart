@@ -103,7 +103,7 @@ class Plist {
         : properties;
     final releaseVersion = applicationProperties[releaseVersionKey] as String?;
     final buildNumber = applicationProperties[buildNumberKey] as String?;
-    if (releaseVersion == null || releaseVersion.isEmpty) {
+    if (releaseVersion == null || releaseVersion.trim().isEmpty) {
       throw Exception('Could not determine release version');
     }
 
