@@ -590,7 +590,42 @@ Reason: Exited with code $exitCode.''',
       ),
     );
     traceFile.parent.createSync(recursive: true);
+    _deleteStaleTraces(traceFile);
     buildTraceSession.traceFile = traceFile;
+  }
+
+  /// Deletes trace files a previous run left in the build directory.
+  ///
+  /// Every trace writer merges into the file it finds (flutter_tools,
+  /// [ShorebirdTracer.mergeInto]), and Flutter's assemble step writes an
+  /// intermediate that flutter_tools merges back in on each build, so
+  /// without this each summary sums every run since the last
+  /// `flutter clean` (shorebirdtech/_shorebird#5890).
+  ///
+  /// The intermediates are where the Flutter fork writes them:
+  /// - Android: `build/<module>/intermediates/shorebird/`
+  ///   `shorebird_assemble_trace_<task>.json`
+  /// - iOS/macOS: `build/<platform>/shorebird_assemble_trace.json`
+  void _deleteStaleTraces(File traceFile) {
+    final stale = <File>[traceFile];
+    final buildDir = shorebirdEnv.buildDirectory;
+    if (buildDir.existsSync()) {
+      for (final dir in buildDir.listSync().whereType<Directory>()) {
+        stale.add(File(p.join(dir.path, 'shorebird_assemble_trace.json')));
+        final android = Directory(
+          p.join(dir.path, 'intermediates', 'shorebird'),
+        );
+        if (!android.existsSync()) continue;
+        stale.addAll(
+          android.listSync().whereType<File>().where(
+            (f) => p.basename(f.path).startsWith('shorebird_assemble_trace'),
+          ),
+        );
+      }
+    }
+    for (final file in stale) {
+      if (file.existsSync()) file.deleteSync();
+    }
   }
 
   /// Emits a flow-start event (`ph: "s"`) on the shorebird_cli tracer
