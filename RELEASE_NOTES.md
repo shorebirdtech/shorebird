@@ -4,6 +4,14 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.142 (November 17, 2026)
+
+- ❓ Fix(shorebird_cli): warn when a release has no version name
+- ❓ Chore: prepare for release 1.6.141
+- ❓ Feat(shorebird_cli): --release-version is an add-to-app module's own version
+
+Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.141.
+
 ## 1.6.141 (November 17, 2026)
 
 - 🐛 Patches that crash while their code loads at launch are now rolled back,
