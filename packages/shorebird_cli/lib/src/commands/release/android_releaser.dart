@@ -15,7 +15,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template android_releaser}
 /// Functions to create an Android release.
@@ -152,23 +151,20 @@ class AndroidReleaser extends Releaser {
   }
 
   @override
-  Future<void> uploadReleaseArtifacts({
-    required String appId,
-    required Release release,
-  }) async {
+  Future<List<ReleaseArtifactUpload>> prepareReleaseArtifacts({
+    required Directory stagingDirectory,
+  }) {
     final aabFile = shorebirdAndroidArtifacts.findAab(
       project: projectRoot,
       flavor: flavor,
     );
-    await codePushClientWrapper.createAndroidReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
+    return codePushClientWrapper.prepareAndroidReleaseArtifacts(
       projectRoot: projectRoot.path,
       aabPath: aabFile.path,
       platform: releaseType.releasePlatform,
       architectures: architectures,
+      stagingDirectory: stagingDirectory,
       flavor: flavor,
-      signing: signing,
     );
   }
 

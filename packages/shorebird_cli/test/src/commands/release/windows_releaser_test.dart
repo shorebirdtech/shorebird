@@ -446,14 +446,11 @@ void main() {
       });
     });
 
-    group('uploadReleaseArtifacts', () {
-      const appId = 'my-app';
-      const releaseId = 123;
-      late Release release;
+    group('prepareReleaseArtifacts', () {
+      late Directory stagingDirectory;
 
       setUp(() {
-        release = MockRelease();
-        when(() => release.id).thenReturn(releaseId);
+        stagingDirectory = Directory.systemTemp.createTempSync();
       });
 
       group('when release directory does not exist', () {
@@ -461,47 +458,62 @@ void main() {
           releaseDirectory.deleteSync();
         });
 
-        test(
-          'exits with an error saying no release directory was found',
-          () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => releaser.uploadReleaseArtifacts(
-                  release: release,
-                  appId: appId,
-                ),
+        test('fails progress, exits', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => releaser.prepareReleaseArtifacts(
+                stagingDirectory: stagingDirectory,
               ),
-              exitsWithError(
-                message: startsWith('No release directory found at'),
-                hint: 'Re-run with --verbose to see the build output.',
-                exitCode: ExitCode.software,
-              ),
-            );
-          },
-        );
+            ),
+            exitsWithError(
+              message: startsWith('No release directory found at'),
+              hint: 'Re-run with --verbose to see the build output.',
+              exitCode: ExitCode.software,
+            ),
+          );
+        });
       });
 
       group('when release directory exists', () {
+        late List<ReleaseArtifactUpload> artifacts;
+
         setUp(() {
-          when(
-            () => codePushClientWrapper.createWindowsReleaseArtifacts(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              releaseDirectory: any(named: 'releaseDirectory'),
+          artifacts = [
+            ReleaseArtifactUpload(
+              file: File(p.join(stagingDirectory.path, 'Release.zip')),
+              name: 'Windows release (exe)',
+              arch: 'win_archive',
+              platform: ReleasePlatform.windows,
+              canSideload: true,
             ),
-          ).thenAnswer((_) async {});
+          ];
+          when(
+            () => codePushClientWrapper.prepareWindowsReleaseArtifacts(
+              releaseDirectory: any(named: 'releaseDirectory'),
+              stagingDirectory: any(named: 'stagingDirectory'),
+            ),
+          ).thenAnswer((_) async => artifacts);
         });
 
-        test('zips and uploads release directory', () async {
-          await runWithOverrides(
-            () =>
-                releaser.uploadReleaseArtifacts(release: release, appId: appId),
+        test('returns the prepared release directory artifacts', () async {
+          final result = await runWithOverrides(
+            () => releaser.prepareReleaseArtifacts(
+              stagingDirectory: stagingDirectory,
+            ),
           );
+
+          expect(result, equals(artifacts));
           verify(
-            () => codePushClientWrapper.createWindowsReleaseArtifacts(
-              appId: appId,
-              releaseId: releaseId,
-              releaseDirectory: any(named: 'releaseDirectory'),
+            () => codePushClientWrapper.prepareWindowsReleaseArtifacts(
+              releaseDirectory: any(
+                named: 'releaseDirectory',
+                that: isA<Directory>().having(
+                  (d) => d.path,
+                  'path',
+                  releaseDirectory.path,
+                ),
+              ),
+              stagingDirectory: stagingDirectory,
             ),
           ).called(1);
         });
