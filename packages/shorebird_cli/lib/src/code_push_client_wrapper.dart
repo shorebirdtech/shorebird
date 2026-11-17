@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -1568,16 +1569,23 @@ $name artifact already exists, continuing...''');
   }
 
   /// Promotes a patch to a specific [channel], starting a rollout there at
-  /// [rolloutPercentage], or to every device on it when that is null.
+  /// [rolloutPercentage], on the timed schedule [rolloutSchedule], or to
+  /// every device on it when both are null.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
     required Channel channel,
     double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) {
-    final share = rolloutPercentage == null
-        ? ''
-        : ' (${formatRolloutPercentage(rolloutPercentage)})';
+    final share = switch ((rolloutPercentage, rolloutSchedule)) {
+      (final double percentage, _) =>
+        ' (${formatRolloutPercentage(percentage)})',
+      (_, final RolloutSchedule schedule) =>
+        ' (${formatRolloutPercentage(schedule.initialPercentage)}, '
+            'rising on a schedule)',
+      _ => '',
+    };
     return _withProgress(
       'Promoting patch to ${channel.name}$share',
       () => codePushClient.promotePatch(
@@ -1585,12 +1593,17 @@ $name artifact already exists, continuing...''');
         patchId: patchId,
         channelId: channel.id,
         rolloutPercentage: rolloutPercentage,
+        rolloutSteps: rolloutSchedule?.steps,
+        rolloutPauseWeekends: rolloutSchedule?.pauseWeekends,
+        rolloutTimezone: rolloutSchedule?.timezone,
       ),
     );
   }
 
   /// Raises the rollout of the patch identified by [patchId] under
-  /// [releaseId] to [rolloutPercentage] of the devices on its track.
+  /// [releaseId] to [rolloutPercentage] of the devices on its track, or puts
+  /// it on the timed schedule [rolloutSchedule]. Exactly one of the two says
+  /// what the rollout becomes.
   ///
   /// [patchNumber] is used purely for the human-readable progress message.
   Future<void> setPatchRollout({
@@ -1598,16 +1611,27 @@ $name artifact already exists, continuing...''');
     required int releaseId,
     required int patchId,
     required int patchNumber,
-    required double rolloutPercentage,
+    double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) {
+    final target = switch ((rolloutPercentage, rolloutSchedule)) {
+      (final double percentage, _) =>
+        'to ${formatRolloutPercentage(percentage)}',
+      (_, final RolloutSchedule schedule) =>
+        'on a schedule from '
+            '${formatRolloutPercentage(schedule.initialPercentage)}',
+      _ => 'further',
+    };
     return _withProgress(
-      'Rolling out patch $patchNumber to '
-      '${formatRolloutPercentage(rolloutPercentage)}',
+      'Rolling out patch $patchNumber $target',
       () => codePushClient.setPatchRollout(
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
         rolloutPercentage: rolloutPercentage,
+        rolloutSteps: rolloutSchedule?.steps,
+        rolloutPauseWeekends: rolloutSchedule?.pauseWeekends,
+        rolloutTimezone: rolloutSchedule?.timezone,
       ),
     );
   }
@@ -1679,7 +1703,7 @@ $name artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track], at [rolloutPercentage] of its
-  /// devices when given.
+  /// devices or on the timed schedule [rolloutSchedule] when given.
   Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
@@ -1688,6 +1712,7 @@ $name artifact already exists, continuing...''');
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
     double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) async {
     final patch = await createPatch(
       appId: appId,
@@ -1711,6 +1736,7 @@ $name artifact already exists, continuing...''');
       patchId: patch.id,
       channel: channel,
       rolloutPercentage: rolloutPercentage,
+      rolloutSchedule: rolloutSchedule,
     );
 
     logger.success('\n✅ Published Patch ${patch.number}!');
