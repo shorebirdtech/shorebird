@@ -4,6 +4,18 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.141 (November 17, 2026)
+
+- 🐛 Patches that crash while their code loads at launch are now rolled back,
+  in addition to patches that crash during startup
+- 🐛 Improved linking of obfuscated iOS patches
+- 🐛 Creating a release or patch no longer fails with "already exists" after a
+  dropped connection
+- 🐛 `shorebird patch` reports a damaged zip instead of using it
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
 ## 1.6.140 (November 13, 2026)
 
 - ✨ `shorebird patch --share-debug-info` shares the patch's debug bundle
