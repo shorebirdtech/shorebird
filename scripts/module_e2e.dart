@@ -91,7 +91,12 @@ Future<void> main(List<String> args) async {
       for (final host in [hostA, hostB]) {
         await Process.run('adb', ['uninstall', host.id]);
       }
-      work.deleteSync(recursive: true);
+      // On a cancel, Gradle and the CLI may still be writing under it.
+      try {
+        work.deleteSync(recursive: true);
+      } on FileSystemException catch (e) {
+        print('⚠️  Failed to delete ${work.path}: $e');
+      }
     },
   );
 }
@@ -139,6 +144,7 @@ Future<void> run(String? flutterVersion, {required bool hostVersions}) async {
       'host ${host.name}',
       launcher(host),
     );
+    checkUpdated('host ${host.name} before the patch', updateLog);
     check('host ${host.name} before the patch', 'release', label);
     checkPatchCheck(host, updateLog, releaseVersion, hostVersions);
   }
@@ -157,10 +163,13 @@ Future<void> run(String? flutterVersion, {required bool hostVersions}) async {
   );
 
   for (final host in [hostA, hostB]) {
-    final (updateLog: _, bootLog: _, :label) = await updateAndBoot(
+    final (:updateLog, bootLog: _, :label) = await updateAndBoot(
       'host ${host.name}',
       launcher(host),
     );
+    // With host versions B's patch check finding no release must be the
+    // server's answer, not a failed request.
+    checkUpdated('host ${host.name} after the patch', updateLog);
     // With host versions only A's version has the release.
     final gets = !hostVersions || host == hostA;
     check(
@@ -173,19 +182,39 @@ Future<void> run(String? flutterVersion, {required bool hostVersions}) async {
   // `install -r` updates the app in place, keeping its data, as a store
   // update does.
   await sh(work, 'adb', ['install', '-r', apks[hostA2]!.path]);
-  // Until its update check finishes, which logs the patch check; the label
-  // is printed at boot, before it.
-  final (_, firstLog) = await launcher(hostA2)(
-    until: RegExp('Update thread finished|Update failed'),
-    timeout: updateTimeout,
+  // The first launch after the update boots what the updater kept. Its
+  // update check runs alongside and may finish before or after the label, so
+  // it's read from the second launch.
+  final (booted, firstLog) = await launcher(hostA2)(
+    until: RegExp('e2e-label: '),
+    timeout: bootTimeout,
   );
   check(
     'host A updated to ${hostA2.version}, first launch',
     hostVersions ? 'release' : 'patch',
-    labelIn(firstLog) ?? '(no label)',
+    booted ? labelIn(firstLog)! : '(no label: exited or ran past $bootTimeout)',
   );
-  if (!hostVersions) checkPatchCheck(hostA2, firstLog, releaseVersion, false);
+  final (checked, updateLog) = await launcher(hostA2)(
+    until: RegExp('Update thread finished|Update failed'),
+    timeout: updateTimeout,
+  );
+  checkUpdated(
+    'host A updated',
+    checked
+        ? updateLog
+        : 'Update failed: no update check within $updateTimeout',
+  );
+  checkPatchCheck(hostA2, updateLog, releaseVersion, hostVersions);
 }
+
+/// Records whether the update check in [log] finished, rather than failing
+/// (a network error or a server error), so that "no patch" is the server's
+/// answer.
+void checkUpdated(String name, String log) => check(
+  '$name: update check',
+  'finished',
+  log.contains('Update failed') ? 'failed' : 'finished',
+);
 
 /// Records a row of the report, failing the run if [actual] isn't [want].
 void check(String name, String want, String actual) {
