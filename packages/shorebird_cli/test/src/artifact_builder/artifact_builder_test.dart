@@ -1097,6 +1097,25 @@ void main() {
         ).called(1);
       });
 
+      test('bakes releaseVersion via SHOREBIRD_RELEASE_VERSION', () async {
+        await runWithOverrides(
+          () => builder.buildAar(
+            buildNumber: buildNumber,
+            releaseVersion: 'module-2',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {'SHOREBIRD_RELEASE_VERSION': 'module-2'},
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 

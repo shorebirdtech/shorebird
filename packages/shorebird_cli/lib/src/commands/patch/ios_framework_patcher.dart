@@ -75,6 +75,9 @@ class IosFrameworkPatcher extends Patcher
       if (!argResults.appleCodesign) '--no-codesign',
     ];
     final buildResult = await artifactBuilder.buildIosFramework(
+      // Bake the release's version, as the release's build did, so the two
+      // builds' shorebird.yaml match.
+      releaseVersion: releaseVersion,
       target: target,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),

@@ -60,9 +60,11 @@ class AarReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    await assertReleaseVersionCanBeBuiltIn();
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildAar(
         buildNumber: buildNumber,
+        releaseVersion: _releaseVersion,
         targetPlatforms: architectures,
         args: buildArgs,
         base64PublicKey: base64PublicKey,
@@ -85,9 +87,10 @@ class AarReleaser extends Releaser {
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
-  }) async {
-    return (argResults['release-version'] as String).trim();
-  }
+  }) async => _releaseVersion;
+
+  String get _releaseVersion =>
+      (argResults['release-version'] as String).trim();
 
   @override
   Future<void> uploadReleaseArtifacts({

@@ -70,20 +70,47 @@ abstract class Releaser {
 
   /// Requires `--release-version` with a concrete version, for add-to-app
   /// releases (aar, ios-framework), whose version cannot be read from the
-  /// built module: it is the version of the app that embeds the module.
+  /// built module: the developer names each module build.
   /// Rejects a missing, blank or `latest` value.
   void assertReleaseVersionProvided() {
     final value = (argResults['release-version'] as String?)?.trim();
-    if (value != null && value.isNotEmpty && value != 'latest') return;
-
-    final hostPlatform = releaseType.releasePlatform.displayName;
-    throw CommandError(
-      message:
-          'An ${releaseType.cliName} release needs --release-version: the '
-          'version of the $hostPlatform app that embeds this module.',
-      hint: 'Run: ${releaseType.releaseCommand()}',
-    );
+    if (value == null || value.isEmpty || value == 'latest') {
+      throw CommandError(
+        message:
+            'An ${releaseType.cliName} release needs --release-version: the '
+            'version of this module build, a new one for each build you '
+            'release.',
+        hint: 'Run: ${releaseType.releaseCommand()}',
+      );
+    }
   }
+
+  /// Rejects a `--release-version` the updater won't accept once it is built
+  /// into the module, which Flutter
+  /// [minimumModuleReleaseVersionFlutterVersion] and later do. Call before the
+  /// build, with the release's Flutter installed. With an earlier Flutter the
+  /// value is still the host app's version, which can be free text (Android's
+  /// `versionName`), so it isn't checked.
+  Future<void> assertReleaseVersionCanBeBuiltIn() async {
+    final flutterVersion = await shorebirdFlutter.getVersion();
+    if (flutterVersion == null ||
+        flutterVersion < minimumModuleReleaseVersionFlutterVersion) {
+      return;
+    }
+    final value = (argResults['release-version'] as String).trim();
+    if (!_moduleReleaseVersionPattern.hasMatch(value)) {
+      throw CommandError(
+        message:
+            '--release-version "$value" can only use letters, digits, '
+            '".", "_", "+" and "-", up to 128 characters.',
+        hint: 'Run: ${releaseType.releaseCommand()}',
+      );
+    }
+  }
+
+  static final _moduleReleaseVersionPattern = RegExp(
+    r'^[A-Za-z0-9._+-]{1,128}$',
+  );
 
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).

@@ -316,7 +316,10 @@ void main() {
         final exception = ArtifactBuildException('Build failed');
         setUp(() {
           when(
-            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: any(named: 'args'),
+            ),
           ).thenThrow(exception);
         });
 
@@ -332,7 +335,10 @@ void main() {
         const exception = FileSystemException('error');
         setUp(() {
           when(
-            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: any(named: 'args'),
+            ),
           ).thenAnswer(
             (_) async => AppleBuildResult(kernelFile: File('app.dill')),
           );
@@ -361,7 +367,10 @@ void main() {
             p.join(Directory.systemTemp.createTempSync().path, 'app.dill'),
           )..createSync(recursive: true);
           when(
-            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: any(named: 'args'),
+            ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -421,6 +430,22 @@ void main() {
           });
         });
 
+        test('bakes the release version into the build', () async {
+          try {
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0+1'),
+            );
+          } on Exception {
+            // ignore
+          }
+          verify(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: '1.0.0+1',
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+        });
+
         group('when obfuscationMapPath is set', () {
           late File obfuscationMapFile;
 
@@ -473,7 +498,10 @@ void main() {
           test('forwards --no-codesign to flutter', () async {
             await runWithOverrides(patcher.buildPatchArtifact);
             verify(
-              () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: ['--no-codesign'],
+              ),
             ).called(1);
           });
         });
@@ -487,7 +515,10 @@ void main() {
             final artifact = await runWithOverrides(patcher.buildPatchArtifact);
             expect(p.basename(artifact.path), equals('App.xcframework.zip'));
             verify(
-              () => artifactBuilder.buildIosFramework(args: ['--verbose']),
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: ['--verbose'],
+              ),
             ).called(1);
           });
         });
@@ -496,6 +527,7 @@ void main() {
           setUp(() {
             when(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 target: any(named: 'target'),
                 args: any(named: 'args'),
               ),
@@ -512,6 +544,7 @@ void main() {
             await runWithOverrides(patcher.buildPatchArtifact);
             verify(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 target: 'lib/main_prod.dart',
                 args: any(named: 'args'),
               ),
@@ -526,6 +559,7 @@ void main() {
             ).thenReturn('public_key_encoded');
             when(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
                 ddMaxBytes: any(named: 'ddMaxBytes'),
@@ -551,6 +585,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: 'public_key_encoded',
               ),
@@ -577,6 +612,7 @@ void main() {
 
               verify(
                 () => artifactBuilder.buildIosFramework(
+                  releaseVersion: any(named: 'releaseVersion'),
                   args: any(named: 'args'),
                   base64PublicKey: 'public_key_encoded',
                 ),

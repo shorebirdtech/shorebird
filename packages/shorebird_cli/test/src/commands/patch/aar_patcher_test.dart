@@ -334,6 +334,7 @@ void main() {
         setUp(() {
           when(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: any(named: 'buildNumber'),
               args: any(named: 'args'),
             ),
@@ -352,6 +353,7 @@ void main() {
         setUp(() {
           when(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: any(named: 'buildNumber'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
@@ -389,6 +391,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 args: ['--verbose'],
               ),
@@ -409,6 +412,7 @@ void main() {
           ).thenAnswer((_) async => {Arch.arm64: FakeReleaseArtifact()});
           when(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: any(named: 'buildNumber'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
@@ -419,11 +423,12 @@ void main() {
 
           await runWithOverrides(() async {
             await patcher.prepareForRelease(appId: 'app-id', release: release);
-            await patcher.buildPatchArtifact();
+            await patcher.buildPatchArtifact(releaseVersion: '1.0.0+1');
           });
 
           verify(
             () => artifactBuilder.buildAar(
+              releaseVersion: '1.0.0+1',
               buildNumber: buildNumber,
               targetPlatforms: [Arch.arm64],
               args: any(named: 'args'),
@@ -458,6 +463,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 args: any(named: 'args'),
                 base64PublicKey: 'public_key_encoded',
@@ -483,6 +489,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 args: any(named: 'args'),
                 base64PublicKey: 'public_key_encoded',
@@ -515,6 +522,7 @@ void main() {
 
           verify(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: buildNumber,
               args: any(named: 'args'),
             ),
