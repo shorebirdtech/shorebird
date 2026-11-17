@@ -1,36 +1,26 @@
+// Some OpenAPI specs flatten inline schemas into class names long
+// enough that `dart format` can't keep imports and call sites under
+// 80 cols as bare identifiers.
+// ignore_for_file: lines_longer_than_80_chars
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 
-/// {@template set_patch_rollout_request}
 /// The request body for PUT
-/// /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout.
-/// {@endtemplate}
-@immutable
-class SetPatchRolloutRequest {
-  /// {@macro set_patch_rollout_request}
-  const SetPatchRolloutRequest({
-    this.rolloutPercentage,
-    this.rolloutSteps,
-    this.rolloutPauseWeekends,
-    this.rolloutTimezone,
-  });
+/// /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout: either
+/// a rollout percentage or a timed rollout schedule.
+sealed class SetPatchRolloutRequest {
+  const SetPatchRolloutRequest();
 
-  /// Converts a `Map<String, dynamic>` to a [SetPatchRolloutRequest].
   factory SetPatchRolloutRequest.fromJson(Map<String, dynamic> json) {
-    return parseFromJson(
-      'SetPatchRolloutRequest',
-      json,
-      () => SetPatchRolloutRequest(
-        rolloutPercentage: (json['rollout_percentage'] as num?)?.toDouble(),
-        rolloutSteps: (json['rollout_steps'] as List?)
-            ?.map<RolloutStep>(
-              (e) => RolloutStep.fromJson(e as Map<String, dynamic>),
-            )
-            .toList(),
-        rolloutPauseWeekends: json['rollout_pause_weekends'] as bool?,
-        rolloutTimezone: json['rollout_timezone'] as String?,
-      ),
+    if (json.containsKey('rollout_percentage')) {
+      return SetPatchRolloutPercentageRequest.fromJson(json);
+    }
+    if (json.containsKey('rollout_steps')) {
+      return SetPatchRolloutScheduleRequest.fromJson(json);
+    }
+    throw FormatException(
+      'No variant of SetPatchRolloutRequest matched json keys: ${json.keys.toList()}',
     );
   }
 
@@ -43,14 +33,110 @@ class SetPatchRolloutRequest {
     return SetPatchRolloutRequest.fromJson(json);
   }
 
+  /// Require all subclasses to implement toJson.
+  Map<String, dynamic> toJson();
+}
+
+/// {@template set_patch_rollout_percentage_request}
+/// Sets a patch's rollout percentage.
+/// {@endtemplate}
+@immutable
+final class SetPatchRolloutPercentageRequest extends SetPatchRolloutRequest {
+  /// {@macro set_patch_rollout_percentage_request}
+  const SetPatchRolloutPercentageRequest({
+    required this.rolloutPercentage,
+  });
+
+  /// Converts a `Map<String, dynamic>` to a [SetPatchRolloutPercentageRequest].
+  factory SetPatchRolloutPercentageRequest.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'SetPatchRolloutPercentageRequest',
+      json,
+      () => SetPatchRolloutPercentageRequest(
+        rolloutPercentage: (json['rollout_percentage'] as num).toDouble(),
+      ),
+    );
+  }
+
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static SetPatchRolloutPercentageRequest? maybeFromJson(
+    Map<String, dynamic>? json,
+  ) {
+    if (json == null) {
+      return null;
+    }
+    return SetPatchRolloutPercentageRequest.fromJson(json);
+  }
+
   /// The percentage of the channel's devices to offer the patch to, a
   /// multiple of 0.01 from 0.01 to 100, no lower than the patch's
-  /// current one. Mutually exclusive with `rollout_steps`.
-  final double? rolloutPercentage;
+  /// current one. Setting the current percentage holds an active timed
+  /// rollout schedule in place.
+  final double rolloutPercentage;
+
+  /// Converts a [SetPatchRolloutPercentageRequest] to a `Map<String, dynamic>`.
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'rollout_percentage': rolloutPercentage,
+    };
+  }
+
+  @override
+  int get hashCode => rolloutPercentage.hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SetPatchRolloutPercentageRequest &&
+        rolloutPercentage == other.rolloutPercentage;
+  }
+}
+
+/// {@template set_patch_rollout_schedule_request}
+/// Starts a timed rollout schedule for a patch.
+/// {@endtemplate}
+@immutable
+final class SetPatchRolloutScheduleRequest extends SetPatchRolloutRequest {
+  /// {@macro set_patch_rollout_schedule_request}
+  const SetPatchRolloutScheduleRequest({
+    required this.rolloutSteps,
+    this.rolloutPauseWeekends,
+    this.rolloutTimezone,
+  });
+
+  /// Converts a `Map<String, dynamic>` to a [SetPatchRolloutScheduleRequest].
+  factory SetPatchRolloutScheduleRequest.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'SetPatchRolloutScheduleRequest',
+      json,
+      () => SetPatchRolloutScheduleRequest(
+        rolloutSteps: (json['rollout_steps'] as List)
+            .map<RolloutStep>(
+              (e) => RolloutStep.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+        rolloutPauseWeekends: json['rollout_pause_weekends'] as bool?,
+        rolloutTimezone: json['rollout_timezone'] as String?,
+      ),
+    );
+  }
+
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static SetPatchRolloutScheduleRequest? maybeFromJson(
+    Map<String, dynamic>? json,
+  ) {
+    if (json == null) {
+      return null;
+    }
+    return SetPatchRolloutScheduleRequest.fromJson(json);
+  }
 
   /// A timed rollout schedule of 2 to 10 strictly increasing percentage
-  /// steps ending at 100. Mutually exclusive with `rollout_percentage`.
-  final List<RolloutStep>? rolloutSteps;
+  /// steps ending at 100.
+  final List<RolloutStep> rolloutSteps;
 
   /// Whether to pause step advancement over weekends in
   /// `rollout_timezone`.
@@ -60,11 +146,11 @@ class SetPatchRolloutRequest {
   /// to `UTC`.
   final String? rolloutTimezone;
 
-  /// Converts a [SetPatchRolloutRequest] to a `Map<String, dynamic>`.
+  /// Converts a [SetPatchRolloutScheduleRequest] to a `Map<String, dynamic>`.
+  @override
   Map<String, dynamic> toJson() {
     return {
-      'rollout_percentage': ?rolloutPercentage,
-      'rollout_steps': ?rolloutSteps?.map((e) => e.toJson()).toList(),
+      'rollout_steps': rolloutSteps.map((e) => e.toJson()).toList(),
       'rollout_pause_weekends': ?rolloutPauseWeekends,
       'rollout_timezone': ?rolloutTimezone,
     };
@@ -72,7 +158,6 @@ class SetPatchRolloutRequest {
 
   @override
   int get hashCode => Object.hashAll([
-    rolloutPercentage,
     listHash(rolloutSteps),
     rolloutPauseWeekends,
     rolloutTimezone,
@@ -81,8 +166,7 @@ class SetPatchRolloutRequest {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is SetPatchRolloutRequest &&
-        rolloutPercentage == other.rolloutPercentage &&
+    return other is SetPatchRolloutScheduleRequest &&
         listsEqual(rolloutSteps, other.rolloutSteps) &&
         rolloutPauseWeekends == other.rolloutPauseWeekends &&
         rolloutTimezone == other.rolloutTimezone;

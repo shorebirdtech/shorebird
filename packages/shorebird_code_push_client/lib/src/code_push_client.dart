@@ -964,9 +964,9 @@ class CodePushClient {
   }
 
   /// Raises the share of its channel's devices that the patch with [patchId]
-  /// under [releaseId] for [appId] is offered to, to [rolloutPercentage], or
-  /// puts it on the timed rollout schedule [rolloutSteps]. Exactly one of the
-  /// two says what the rollout becomes.
+  /// under [releaseId] for [appId] is offered to, to a
+  /// [SetPatchRolloutPercentageRequest]'s percentage, or puts it on a
+  /// [SetPatchRolloutScheduleRequest]'s timed rollout schedule.
   ///
   /// Rollouts only go up: the server answers 409 when the new percentage, or
   /// a schedule's first step, is lower than the current one, and when the
@@ -974,29 +974,19 @@ class CodePushClient {
   /// and changes nothing.
   ///
   /// A schedule holds each step for its duration, and holds over weekends in
-  /// [rolloutTimezone] when [rolloutPauseWeekends] is set. The server answers
+  /// its timezone when it pauses on weekends. The server answers
   /// 403 when the app's plan does not include schedules.
   Future<void> setPatchRollout({
     required String appId,
     required int releaseId,
     required int patchId,
-    double? rolloutPercentage,
-    List<RolloutStep>? rolloutSteps,
-    bool? rolloutPauseWeekends,
-    String? rolloutTimezone,
+    required SetPatchRolloutRequest request,
   }) async {
     final response = await _httpClient.put(
       Uri.parse(
         '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollout',
       ),
-      body: json.encode(
-        SetPatchRolloutRequest(
-          rolloutPercentage: rolloutPercentage,
-          rolloutSteps: rolloutSteps,
-          rolloutPauseWeekends: rolloutPauseWeekends,
-          rolloutTimezone: rolloutTimezone,
-        ).toJson(),
-      ),
+      body: json.encode(request.toJson()),
     );
 
     if (!response.isSuccess) {

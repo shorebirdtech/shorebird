@@ -1484,6 +1484,83 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
+  /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/ReleaseId'
+      - $ref: '#/components/parameters/PatchId'
+    put:
+      tags:
+        - patches
+      summary: Set a patch's rollout percentage on its channel.
+      description: |
+        Raises the percentage of the patch's channel that receives it, up
+        to `100`. Rollouts only go up; to stop serving a patch, roll it
+        back instead.
+
+        A patch on a protected channel is refused. Raise its rollout by
+        promoting it to that channel at the new percentage, which files an
+        approval request for it.
+
+        Patches for different platforms can share a number. This sets the
+        rollout of the patch in the path only; the other platforms' patches
+        under the number keep their own.
+        Unstable: this may change shape until patch linking ships.
+      operationId: setPatchRollout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPatchRolloutRequest'
+      responses:
+        '204':
+          description: The patch's rollout percentage was updated.
+        '400':
+          description: |
+            The body, `rollout_percentage`, or timed rollout schedule is
+            malformed (`patch_rollout_malformed_request_body`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            The caller lacks the required permission for the patch's
+            channel (`patches.promoteToStable` on `stable`, or
+            `patches.updateChannel` on another channel), timed rollout
+            schedules require Enterprise
+            (`rollout_schedule_enterprise_only`), an active deployment
+            freeze window blocks the rollout increase on `stable`
+            (`deployment_freeze_active`), or the app's enterprise requires
+            patch signing and the patch isn't signed
+            (`patch_signing_required`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The app (`app_not_found`), release (`release_not_found`) or
+            patch (`patch_not_found`) does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            The patch is on no channel (`patch_not_on_channel`), the
+            requested percentage is lower than the patch's current one
+            (`rollout_percentage_lower`), the patch is on a protected
+            channel (`patch_rollout_protected_channel`), or the patch
+            moved track or was raised concurrently
+            (`patch_rollout_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
   /apps/{appId}/metrics/version-distribution:
     parameters:
       - $ref: '#/components/parameters/AppId'
@@ -6355,6 +6432,51 @@ components:
           description: |
             A timed rollout schedule of 2 to 10 strictly increasing percentage
             steps ending at 100. Mutually exclusive with `rollout_percentage`.
+        rollout_pause_weekends:
+          type: boolean
+          description: |
+            Whether to pause step advancement over weekends in
+            `rollout_timezone`.
+        rollout_timezone:
+          type: string
+          description: |
+            The IANA timezone name used to evaluate weekend pauses. Defaults
+            to `UTC`.
+    SetPatchRolloutRequest:
+      description: |
+        The request body for PUT
+        /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout: either
+        a rollout percentage or a timed rollout schedule.
+      oneOf:
+        - $ref: '#/components/schemas/SetPatchRolloutPercentageRequest'
+        - $ref: '#/components/schemas/SetPatchRolloutScheduleRequest'
+    SetPatchRolloutPercentageRequest:
+      type: object
+      description: Sets a patch's rollout percentage.
+      required:
+        - rollout_percentage
+      properties:
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to, a
+            multiple of 0.01 from 0.01 to 100, no lower than the patch's
+            current one. Setting the current percentage holds an active timed
+            rollout schedule in place.
+    SetPatchRolloutScheduleRequest:
+      type: object
+      description: Starts a timed rollout schedule for a patch.
+      required:
+        - rollout_steps
+      properties:
+        rollout_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolloutStep'
+          description: |
+            A timed rollout schedule of 2 to 10 strictly increasing percentage
+            steps ending at 100.
         rollout_pause_weekends:
           type: boolean
           description: |

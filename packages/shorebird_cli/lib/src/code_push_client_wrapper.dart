@@ -1614,13 +1614,23 @@ $name artifact already exists, continuing...''');
     double? rolloutPercentage,
     RolloutSchedule? rolloutSchedule,
   }) {
-    final target = switch ((rolloutPercentage, rolloutSchedule)) {
-      (final double percentage, _) =>
+    final (target, request) = switch ((rolloutPercentage, rolloutSchedule)) {
+      (final double percentage, null) => (
         'to ${formatRolloutPercentage(percentage)}',
-      (_, final RolloutSchedule schedule) =>
+        SetPatchRolloutPercentageRequest(rolloutPercentage: percentage),
+      ),
+      (null, final RolloutSchedule schedule) => (
         'on a schedule from '
             '${formatRolloutPercentage(schedule.initialPercentage)}',
-      _ => 'further',
+        SetPatchRolloutScheduleRequest(
+          rolloutSteps: schedule.steps,
+          rolloutPauseWeekends: schedule.pauseWeekends,
+          rolloutTimezone: schedule.timezone,
+        ),
+      ),
+      _ => throw ArgumentError(
+        'Pass exactly one of rolloutPercentage and rolloutSchedule.',
+      ),
     };
     return _withProgress(
       'Rolling out patch $patchNumber $target',
@@ -1628,10 +1638,7 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
-        rolloutPercentage: rolloutPercentage,
-        rolloutSteps: rolloutSchedule?.steps,
-        rolloutPauseWeekends: rolloutSchedule?.pauseWeekends,
-        rolloutTimezone: rolloutSchedule?.timezone,
+        request: request,
       ),
     );
   }
