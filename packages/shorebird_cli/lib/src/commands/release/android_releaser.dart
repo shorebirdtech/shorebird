@@ -145,6 +145,8 @@ class AndroidReleaser extends Releaser {
       return;
     }
     final versionName = releaseVersion.split('+').first;
+    // An empty name is warned about by the release command.
+    if (versionName.isEmpty) return;
     if (RegExp(r'^[0-9.]+$').hasMatch(versionName)) return;
     logger.info(
       '''Android's version name $versionName has characters iOS versions can't (they are only digits and dots), so an iOS release of this build will be a different Shorebird release, and each needs its own patches. To share one release across platforms, drop the versionNameSuffix in android/app/build.gradle (or build.gradle.kts) and any pre-release part of the version.''',

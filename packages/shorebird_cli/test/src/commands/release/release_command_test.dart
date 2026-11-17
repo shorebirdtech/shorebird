@@ -414,7 +414,7 @@ void main() {
           () => releaser.getReleaseVersion(
             releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
           ),
-        ).thenAnswer((_) async => '+4280');
+        ).thenAnswer((_) async => ' +4280');
       });
 
       test('warns and still releases', () async {
@@ -422,7 +422,7 @@ void main() {
         expect(exitCode, equals(ExitCode.success.code));
         verify(
           () => logger.warn(
-            any(that: contains('"+4280" has a build number but no version')),
+            any(that: contains('" +4280" has a build number but no version')),
           ),
         ).called(1);
       });

@@ -666,6 +666,23 @@ void main() {
         });
       });
 
+      group('when the version name is empty', () {
+        test('explains nothing', () async {
+          when(
+            () => shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
+              any(),
+            ),
+          ).thenAnswer((_) async => '+4280');
+          Directory(p.join(projectRoot.path, 'ios')).createSync();
+          await runWithOverrides(
+            () => androidReleaser.getReleaseVersion(
+              releaseArtifactRoot: Directory(''),
+            ),
+          );
+          verifyNever(() => logger.info(any(that: contains('version name'))));
+        });
+      });
+
       group('when the version name is only digits and dots', () {
         test('explains nothing', () async {
           Directory(p.join(projectRoot.path, 'ios')).createSync();

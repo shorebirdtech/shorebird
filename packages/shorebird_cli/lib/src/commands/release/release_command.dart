@@ -588,10 +588,12 @@ The version of the Android or iOS app that embeds this module
     if (!releaseVersion.trim().startsWith('+')) return;
     logger.warn(
       'The release version "$releaseVersion" has a build number but no '
-      'version name.\n'
-      'The release will work and can be patched, but set a version in '
-      'pubspec.yaml (or pass a non-empty --build-name) so it has a readable '
-      'version that matches the same build on other platforms.',
+      "version name, so it has no readable version and won't match the same "
+      'build on other platforms. It still works and can be patched.\n'
+      'Check that --build-name, if passed, is not empty (e.g. an unset CI '
+      'variable), and that versionName in android/app/build.gradle (or '
+      'build.gradle.kts) or CFBundleShortVersionString in Info.plist is not '
+      'set from something empty.',
     );
   }
 
