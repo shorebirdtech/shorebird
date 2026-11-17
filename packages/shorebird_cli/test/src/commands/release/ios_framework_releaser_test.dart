@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -104,6 +105,10 @@ void main() {
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
       xcodeBuild = MockXcodeBuild();
+
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => minimumModuleReleaseVersionFlutterVersion);
 
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['codesign']).thenReturn(true);

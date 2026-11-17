@@ -144,10 +144,10 @@ Also accepts the following special values:
         help:
             '''
 The version of this module build (e.g. "$releaseVersionExample"), a new one
-for each build you release. Required for aar and ios-framework only. It is built into the
-module, so its patches reach every app that embeds it, whatever that app's
-version. With a Flutter version that can't build it in, it must equal the
-version of the app that embeds the module.''',
+for each build you release. Required for aar and ios-framework only.
+Flutter $minimumModuleReleaseVersionFlutterVersion and later build it into the module, so its patches
+reach every app that embeds it, whatever that app's version. With an earlier
+Flutter, it must equal the version of the app that embeds the module.''',
       )
       ..addMultiOption(
         'target-platform',

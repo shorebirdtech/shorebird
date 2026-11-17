@@ -52,6 +52,12 @@ final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 /// available in this version.
 final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
 
+/// The first Flutter version that builds an add-to-app module's
+/// `--release-version` into its generated (bundled) shorebird.yaml
+/// (shorebirdtech/flutter#333). With an earlier Flutter, a module release's
+/// version must equal the version of the app that embeds it.
+final minimumModuleReleaseVersionFlutterVersion = Version(3, 47, 9);
+
 /// The minimum allowed Flutter version for a new release of [releaseType].
 Version minimumReleaseFlutterVersion(ReleaseType releaseType) =>
     switch (releaseType) {

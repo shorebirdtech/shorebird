@@ -105,6 +105,10 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => minimumModuleReleaseVersionFlutterVersion);
+
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(
         () => argResults['target-platform'],
@@ -274,39 +278,6 @@ void main() {
         });
       }
 
-      group('when release-version has a character the updater rejects', () {
-        setUp(() {
-          when(() => argResults['release-version']).thenReturn('1.0 beta');
-        });
-
-        test('exits naming the allowed characters', () async {
-          await expectLater(
-            () => runWithOverrides(aarReleaser.assertArgsAreValid),
-            exitsWithError(
-              message:
-                  '--release-version "1.0 beta" can only use letters, '
-                  'digits, ".", "_", "+" and "-", up to 128 characters.',
-              hint:
-                  'Run: shorebird release aar '
-                  '--release-version=$releaseVersionExample',
-            ),
-          );
-        });
-      });
-
-      group('when release-version is longer than 128 characters', () {
-        setUp(() {
-          when(() => argResults['release-version']).thenReturn('1' * 129);
-        });
-
-        test('exits', () async {
-          await expectLater(
-            () => runWithOverrides(aarReleaser.assertArgsAreValid),
-            throwsA(isA<CommandError>()),
-          );
-        });
-      });
-
       group('when arguments are valid', () {
         setUp(() {
           when(() => argResults['release-version']).thenReturn('1.0.0+1');
@@ -332,6 +303,82 @@ void main() {
           );
         });
       });
+    });
+
+    group('assertReleaseVersionCanBeBuiltIn', () {
+      group('with a Flutter that builds the version in', () {
+        group('when release-version has a character the updater rejects', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn('1.0 beta');
+          });
+
+          test('exits naming the allowed characters', () async {
+            await expectLater(
+              () => runWithOverrides(
+                aarReleaser.assertReleaseVersionCanBeBuiltIn,
+              ),
+              exitsWithError(
+                message:
+                    '--release-version "1.0 beta" can only use letters, '
+                    'digits, ".", "_", "+" and "-", up to 128 characters.',
+                hint:
+                    'Run: shorebird release aar '
+                    '--release-version=$releaseVersionExample',
+              ),
+            );
+          });
+        });
+
+        group('when release-version is longer than 128 characters', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn('1' * 129);
+          });
+
+          test('exits', () async {
+            await expectLater(
+              () => runWithOverrides(
+                aarReleaser.assertReleaseVersionCanBeBuiltIn,
+              ),
+              throwsA(isA<CommandError>()),
+            );
+          });
+        });
+
+        group('when release-version is valid', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn(' 1.0.0+1 ');
+          });
+
+          test('completes', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertReleaseVersionCanBeBuiltIn),
+              completes,
+            );
+          });
+        });
+      });
+
+      for (final (description, version) in [
+        ('an earlier Flutter', Version(3, 47, 8)),
+        ('a Flutter version that cannot be read', null),
+      ]) {
+        group('with $description', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => version);
+            // The host app's versionName, which can be free text.
+            when(() => argResults['release-version']).thenReturn('1.0 beta');
+          });
+
+          test('accepts any release-version', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertReleaseVersionCanBeBuiltIn),
+              completes,
+            );
+          });
+        });
+      }
     });
 
     group('buildReleaseArtifacts', () {
@@ -375,6 +422,27 @@ void main() {
         ).thenAnswer((_) async => File(''));
 
         setUpProjectRootArtifacts();
+      });
+
+      group('when release-version is not accepted by the updater', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn('1.0 beta');
+        });
+
+        test('exits before building', () async {
+          await expectLater(
+            () => runWithOverrides(aarReleaser.buildReleaseArtifacts),
+            throwsA(isA<CommandError>()),
+          );
+          verifyNever(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+            ),
+          );
+        });
       });
 
       group('when build succeeds', () {

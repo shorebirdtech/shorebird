@@ -53,6 +53,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    await assertReleaseVersionCanBeBuiltIn();
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIosFramework(
         releaseVersion: _releaseVersion,

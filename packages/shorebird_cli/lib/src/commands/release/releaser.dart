@@ -83,8 +83,21 @@ abstract class Releaser {
         hint: 'Run: ${releaseType.releaseCommand()}',
       );
     }
-    // Checked before the build: the value is built into the module, and the
-    // updater and server accept only these characters.
+  }
+
+  /// Rejects a `--release-version` the updater won't accept once it is built
+  /// into the module, which Flutter
+  /// [minimumModuleReleaseVersionFlutterVersion] and later do. Call before the
+  /// build, with the release's Flutter installed. With an earlier Flutter the
+  /// value is still the host app's version, which can be free text (Android's
+  /// `versionName`), so it isn't checked.
+  Future<void> assertReleaseVersionCanBeBuiltIn() async {
+    final flutterVersion = await shorebirdFlutter.getVersion();
+    if (flutterVersion == null ||
+        flutterVersion < minimumModuleReleaseVersionFlutterVersion) {
+      return;
+    }
+    final value = (argResults['release-version'] as String).trim();
     if (!_moduleReleaseVersionPattern.hasMatch(value)) {
       throw CommandError(
         message:
