@@ -4,6 +4,19 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.142 (November 17, 2026)
+
+- ✨ `shorebird release` warns when the release version has a build number but no
+  version name (such as `+4280`), which usually means an empty `--build-name` or
+  `versionName`
+- 🔧 `shorebird release aar` and `shorebird release ios-framework` treat
+  `--release-version` as the module build's own version and build it into the
+  module on Flutter 3.47.9 or later, where it may only use letters, digits, `.`,
+  `_`, `+` and `-`, up to 128 characters. With an earlier Flutter it must still
+  equal the host app's version
+
+Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.141.
+
 ## 1.6.141 (November 17, 2026)
 
 - 🐛 Patches that crash while their code loads at launch are now rolled back,
