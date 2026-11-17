@@ -45,7 +45,8 @@ class SetPatchRolloutRequest {
 
   /// The percentage of the channel's devices to offer the patch to, a
   /// multiple of 0.01 from 0.01 to 100, no lower than the patch's
-  /// current one. Mutually exclusive with `rollout_steps`.
+  /// current one. Setting the current percentage holds an active timed
+  /// rollout schedule in place. Mutually exclusive with `rollout_steps`.
   final double? rolloutPercentage;
 
   /// A timed rollout schedule of 2 to 10 strictly increasing percentage
@@ -53,11 +54,11 @@ class SetPatchRolloutRequest {
   final List<RolloutStep>? rolloutSteps;
 
   /// Whether to pause step advancement over weekends in
-  /// `rollout_timezone`.
+  /// `rollout_timezone`. Requires `rollout_steps`.
   final bool? rolloutPauseWeekends;
 
   /// The IANA timezone name used to evaluate weekend pauses. Defaults
-  /// to `UTC`.
+  /// to `UTC`. Requires `rollout_steps`.
   final String? rolloutTimezone;
 
   /// Converts a [SetPatchRolloutRequest] to a `Map<String, dynamic>`.
