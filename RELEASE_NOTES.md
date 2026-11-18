@@ -4,6 +4,33 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.143 (November 18, 2026)
+
+- ❓ Feat(shorebird_cli): add timed rollout schedules w/ --rollout-steps
+- ❓ Chore(shorebird_ci): prepare for release 0.3.1
+- ❓ Feat(shorebird_cli): release and patch Windows arm64 builds
+- ❓ Test(e2e): add-to-app module released once, patched in two host apps
+- ❓ Feat(shorebird_cli): shorebird patch windows --add-to-patch, one patch
+  number for x64 and arm64
+- ❓ Feat(shorebird_code_push_protocol): make SetPatchRolloutRequest a oneOf of a
+  percentage or a schedule
+- ❓ Ci(shorebird_ci): bump activate pin to 0.3.1
+- ❓ Chore: prepare for release 1.6.142
+- ❓ Feat(ci): verify protocol codegen matches openapi.yaml
+- ❓ Test(ci): cover tool/find_dart.sh and agent-verify.sh in CI
+- ❓ Fix(ci): take SDK cache install lock before download
+- ❓ Fix(shorebird_cli): start each release/patch with a clean build trace
+- ❓ Fix(shorebird_cli): give each platform of a multi-platform run its own build
+  trace window
+- ❓ Fix(shorebird_cli): report build trace stages as wall time, not sums of
+  concurrent spans
+- ❓ Fix(shorebird_cli): report Shorebird's own network time in the build trace
+  summary
+- ❓ Fix(shorebird_cli): shorebirdLocalMs subtracts only Shorebird's own network
+  time
+
+Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.142.
+
 ## 1.6.142 (November 17, 2026)
 
 - ✨ `shorebird release` warns when the release version has a build number but no
