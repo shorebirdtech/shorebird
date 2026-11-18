@@ -139,8 +139,9 @@ void main() {
       expect(s.flutterBuild, const Duration(milliseconds: 3005));
       expect(s.shorebirdOverhead, const Duration(milliseconds: 500));
       expect(s.total, const Duration(milliseconds: 3505));
-      // shorebirdLocal = overhead 500 − network 300 = 200
-      expect(s.shorebirdLocal, const Duration(milliseconds: 200));
+      // The POST lies inside the flutter build span, so none of it is
+      // Shorebird's network time: shorebirdLocal is all of overhead.
+      expect(s.shorebirdLocal, const Duration(milliseconds: 500));
 
       // Network
       expect(s.network.duration, const Duration(milliseconds: 300));
@@ -1022,57 +1023,91 @@ void main() {
       });
 
       test('network.shorebird leaves out setup and the flutter build', () {
-        final s = BuildTraceSummary.fromEvents([
-          // A shorebird_cache download inside setup [0s, 3s).
-          _event(
-            name: 'setup: shorebird_cache',
-            cat: 'setup',
-            ts: 0,
-            dur: 3_000_000,
-            tid: 1,
-          ),
-          _event(name: 'GET a', cat: 'network', ts: 0, dur: 2_000_000, tid: 2),
-          // Straddles the end of setup: 1s inside, 1s outside.
-          _event(
-            name: 'GET b',
-            cat: 'network',
-            ts: 2_000_000,
-            dur: 2_000_000,
-            tid: 2,
-          ),
-          // A request inside the flutter build [5s, 15s).
-          _event(
-            name: 'flutter build appbundle',
-            cat: 'flutter',
-            ts: 5_000_000,
-            dur: 10_000_000,
-            tid: 3,
-          ),
-          _event(
-            name: 'GET c',
-            cat: 'network',
-            ts: 6_000_000,
-            dur: 1_000_000,
-            tid: 4,
-          ),
-          // Shorebird's upload after the build.
-          _event(
-            name: 'PUT d',
-            cat: 'network',
-            ts: 16_000_000,
-            dur: 2_000_000,
-            tid: 2,
-          ),
-          // No ts: can't be placed, so it counts.
-          {'ph': 'X', 'name': 'GET e', 'cat': 'network', 'dur': 500_000},
-        ], platform: 'android');
+        final s = BuildTraceSummary.fromEvents(
+          [
+            // A shorebird_cache download inside setup [0s, 3s).
+            _event(
+              name: 'setup: shorebird_cache',
+              cat: 'setup',
+              ts: 0,
+              dur: 3_000_000,
+              tid: 1,
+            ),
+            _event(
+              name: 'GET a',
+              cat: 'network',
+              ts: 0,
+              dur: 2_000_000,
+              tid: 2,
+            ),
+            // Straddles the end of setup: 1s inside, 1s outside.
+            _event(
+              name: 'GET b',
+              cat: 'network',
+              ts: 2_000_000,
+              dur: 2_000_000,
+              tid: 2,
+            ),
+            // A request inside the flutter build [5s, 15s).
+            _event(
+              name: 'flutter build appbundle',
+              cat: 'flutter',
+              ts: 5_000_000,
+              dur: 10_000_000,
+              tid: 3,
+            ),
+            _event(
+              name: 'GET c',
+              cat: 'network',
+              ts: 6_000_000,
+              dur: 1_000_000,
+              tid: 4,
+            ),
+            // Shorebird's upload after the build.
+            _event(
+              name: 'PUT d',
+              cat: 'network',
+              ts: 16_000_000,
+              dur: 2_000_000,
+              tid: 2,
+            ),
+            // No ts: can't be placed, so it counts.
+            {'ph': 'X', 'name': 'GET e', 'cat': 'network', 'dur': 500_000},
+          ],
+          platform: 'android',
+          shorebirdOverhead: const Duration(seconds: 10),
+        );
         expect(s.network.duration, const Duration(milliseconds: 7500));
         expect(s.network.shorebird, const Duration(milliseconds: 3500));
+        // Overhead less Shorebird's network, not less network.ms (7.5s):
+        // setup's downloads stay in setup, Flutter's in the build.
+        expect(s.shorebirdLocal, const Duration(milliseconds: 6500));
         expect(
           (s.toJson()['network']! as Map)['shorebirdMs'],
           3500,
         );
       });
+
+      test(
+        'shorebirdLocal is zero when Shorebird network exceeds overhead',
+        () {
+          final s = BuildTraceSummary.fromEvents(
+            [
+              _event(
+                name: 'PUT a',
+                cat: 'network',
+                ts: 0,
+                dur: 2_000_000,
+                tid: 2,
+              ),
+            ],
+            platform: 'android',
+            shorebirdOverhead: const Duration(seconds: 1),
+          );
+          expect(s.network.shorebird, const Duration(seconds: 2));
+          expect(s.shorebirdLocal, Duration.zero);
+        },
+      );
 
       test('network.shorebird subtracts overlapping windows once', () {
         final s = BuildTraceSummary.fromEvents([
