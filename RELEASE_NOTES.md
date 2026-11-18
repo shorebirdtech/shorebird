@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.143 (November 18, 2026)
 
+- 🐦 Flutter 3.47.9 / Dart 3.13.7, with an updated Shorebird engine that fixes
+  patches of `--obfuscate` releases: a patch could reuse an obfuscated name the
+  release already used, so it could call the wrong method or read the wrong
+  field. A patch builds with its release's Flutter, so make a new release with
+  this version to get the fix
 - ✨ Ramp a patch's rollout on a schedule with `--rollout-steps` on `shorebird
   patch`, `shorebird patches set-track` and `shorebird patches rollout`,
   optionally pausing on weekends with `--pause-weekends` and `--timezone`
@@ -15,8 +20,6 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 - ✨ `shorebird patch windows --add-to-patch=<n>` adds this machine's
   architecture to an existing patch, so one fix for x64 and arm64 shares one
   patch number, track and rollout
-
-Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.142.
 
 ## 1.6.142 (November 17, 2026)
 
