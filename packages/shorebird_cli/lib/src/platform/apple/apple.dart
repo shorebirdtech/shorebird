@@ -104,6 +104,9 @@ class Apple {
       'App.field_table.json',
       'App.dt.link',
       'App.dispatch_table.json',
+      // Stack map order: the release's is passed to the patch's final
+      // gen_snapshot pass so the patch keeps the release's stack map layout.
+      'App.sm.link',
       // DD table files for cascade limiter (produced by 2-pass release build).
       'App.dd.link',
       'App.dd_callers.link',
