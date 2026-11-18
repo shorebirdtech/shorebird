@@ -6,28 +6,15 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.143 (November 18, 2026)
 
-- ❓ Feat(shorebird_cli): add timed rollout schedules w/ --rollout-steps
-- ❓ Chore(shorebird_ci): prepare for release 0.3.1
-- ❓ Feat(shorebird_cli): release and patch Windows arm64 builds
-- ❓ Test(e2e): add-to-app module released once, patched in two host apps
-- ❓ Feat(shorebird_cli): shorebird patch windows --add-to-patch, one patch
-  number for x64 and arm64
-- ❓ Feat(shorebird_code_push_protocol): make SetPatchRolloutRequest a oneOf of a
-  percentage or a schedule
-- ❓ Ci(shorebird_ci): bump activate pin to 0.3.1
-- ❓ Chore: prepare for release 1.6.142
-- ❓ Feat(ci): verify protocol codegen matches openapi.yaml
-- ❓ Test(ci): cover tool/find_dart.sh and agent-verify.sh in CI
-- ❓ Fix(ci): take SDK cache install lock before download
-- ❓ Fix(shorebird_cli): start each release/patch with a clean build trace
-- ❓ Fix(shorebird_cli): give each platform of a multi-platform run its own build
-  trace window
-- ❓ Fix(shorebird_cli): report build trace stages as wall time, not sums of
-  concurrent spans
-- ❓ Fix(shorebird_cli): report Shorebird's own network time in the build trace
-  summary
-- ❓ Fix(shorebird_cli): shorebirdLocalMs subtracts only Shorebird's own network
-  time
+- ✨ Ramp a patch's rollout on a schedule with `--rollout-steps` on `shorebird
+  patch`, `shorebird patches set-track` and `shorebird patches rollout`,
+  optionally pausing on weekends with `--pause-weekends` and `--timezone`
+- ✨ `shorebird release windows` and `shorebird patch windows` handle Windows
+  arm64 builds on Flutter 3.47.9 or later. Run them on an arm64 machine to add
+  an arm64 build to a release, and `shorebird preview` on arm64 runs it
+- ✨ `shorebird patch windows --add-to-patch=<n>` adds this machine's
+  architecture to an existing patch, so one fix for x64 and arm64 shares one
+  patch number, track and rollout
 
 Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.142.
 
