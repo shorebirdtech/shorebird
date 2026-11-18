@@ -75,6 +75,7 @@ class BuildTraceSummary {
     BuildEnvironment? environment,
   }) {
     final flutterBuild = acc.flutterBuild;
+    final setupSpans = _Spans.union(_knownSetupPhases.map(acc.setupPhase.of));
     return BuildTraceSummary(
       platform: platform,
       total: flutterBuild + (shorebirdOverhead ?? Duration.zero),
@@ -82,6 +83,9 @@ class BuildTraceSummary {
       shorebirdOverhead: shorebirdOverhead,
       network: NetworkStats(
         duration: acc.network.wall,
+        shorebird: acc.network.wallOutside(
+          _Spans.union([setupSpans, acc.flutterBuildSpans]),
+        ),
         callCount: acc.networkCount,
       ),
       setup: _setupStats(acc),
@@ -107,7 +111,7 @@ class BuildTraceSummary {
     final ts = (e['ts'] as num?)?.toInt();
     switch (TraceCategory.parse(e['cat'] as String?)) {
       case TraceCategory.flutter:
-        _processFlutterEvent(acc, name: name, dur: dur);
+        _processFlutterEvent(acc, name: name, ts: ts, dur: dur);
       case TraceCategory.subprocess:
         _processSubprocessEvent(acc, name: name, dur: dur);
       case TraceCategory.gradle:
@@ -138,6 +142,7 @@ class BuildTraceSummary {
   static void _processFlutterEvent(
     _Accumulator acc, {
     required String name,
+    required int? ts,
     required Duration dur,
   }) {
     // Flutter emits exactly one `flutter build <target>` umbrella span
@@ -146,6 +151,7 @@ class BuildTraceSummary {
     // since "exactly one" is a special case of "sum".
     if (name.startsWith(TraceNames.flutterBuildSpanPrefix)) {
       acc.flutterBuild += dur;
+      acc.flutterBuildSpans.add(ts, dur);
     } else {
       acc.flutterTool += dur;
     }
@@ -202,14 +208,16 @@ class BuildTraceSummary {
     );
   }
 
+  /// The setup phases [SetupStats.total] counts.
+  static const _knownSetupPhases = [
+    SetupPhase.flutterInstall,
+    SetupPhase.flutterPrecache,
+    SetupPhase.shorebirdCache,
+  ];
+
   static SetupStats _setupStats(_Accumulator acc) {
-    const known = [
-      SetupPhase.flutterInstall,
-      SetupPhase.flutterPrecache,
-      SetupPhase.shorebirdCache,
-    ];
     return SetupStats(
-      total: _Spans.union(known.map(acc.setupPhase.of)).wall,
+      total: _Spans.union(_knownSetupPhases.map(acc.setupPhase.of)).wall,
       flutterInstall: acc.setupPhase.of(SetupPhase.flutterInstall).wall,
       flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache).wall,
       shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache).wall,
@@ -454,6 +462,7 @@ class BuildTraceSummary {
     // gen_snapshot runs once per arch. Gradle task kinds, pod phases,
     // xcode subsections and flutterTool are still sums: parallel gradle
     // tasks can add up to more than the native build.
+    // network.shorebirdMs is new in 10.
     // In a multi-platform command, later platforms still carry the
     // earlier platforms' Shorebird-side spans and overhead.
     'version': 10,
@@ -486,12 +495,25 @@ class BuildTraceSummary {
 /// on the network" will understate a cold start by minutes.
 class NetworkStats {
   /// Creates a [NetworkStats].
-  NetworkStats({required this.duration, required this.callCount});
+  NetworkStats({
+    required this.duration,
+    required this.shorebird,
+    required this.callCount,
+  });
 
   /// Wall time with any HTTP request in flight, measured from request
   /// start to the last byte of the response body (not to first byte).
   /// Concurrent requests count once.
   final Duration duration;
+
+  /// The part of [duration] outside setup and the `flutter build` span:
+  /// Shorebird's own requests (auth, Code Push API calls, uploads).
+  /// [duration] also holds the shorebird-cache downloads [SetupStats]
+  /// already counts and Flutter's own requests inside its build, so this
+  /// is the network time to take out of Shorebird's overhead without
+  /// counting any of it twice. Requests with no `ts` can't be placed and
+  /// are counted here.
+  final Duration shorebird;
 
   /// Number of HTTP requests.
   final int callCount;
@@ -499,6 +521,7 @@ class NetworkStats {
   /// JSON form.
   Map<String, Object?> toJson() => {
     'ms': duration.inMilliseconds,
+    'shorebirdMs': shorebird.inMilliseconds,
     'callCount': callCount,
   };
 }
@@ -845,6 +868,10 @@ enum _AssembleCategory {
 /// arguments between the per-event handlers.
 class _Accumulator {
   Duration flutterBuild = Duration.zero;
+
+  /// The `flutter build` umbrella spans, so network time inside them can
+  /// be told from Shorebird's own.
+  final flutterBuildSpans = _Spans();
   Duration flutterTool = Duration.zero;
   Duration nativeBuild = Duration.zero;
   int assembleCount = 0;
@@ -937,6 +964,18 @@ class _Spans {
   /// Wall time: the length of the union of the timed spans plus the
   /// total of spans without a `ts`.
   Duration get wall => merged.fold(Duration.zero, (sum, i) => sum + i.dur);
+
+  /// Wall time of these spans outside every span of [other]. Spans of
+  /// either without a `ts` can't be placed: this side's count in full,
+  /// [other]'s take nothing away.
+  Duration wallOutside(_Spans other) {
+    final others = other.merged.where((i) => i.start != null).toList();
+    return merged.fold(
+      Duration.zero,
+      (sum, i) =>
+          sum + (i.start == null ? i.dur : i.dur - i.overlapWith(others)),
+    );
+  }
 }
 
 /// A `[start, start + dur)` window in trace microseconds. [start] is

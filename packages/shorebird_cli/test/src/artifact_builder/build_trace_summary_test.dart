@@ -1021,6 +1021,59 @@ void main() {
         expect(s.network.callCount, 3);
       });
 
+      test('network.shorebird leaves out setup and the flutter build', () {
+        final s = BuildTraceSummary.fromEvents([
+          // A shorebird_cache download inside setup [0s, 3s).
+          _event(
+            name: 'setup: shorebird_cache',
+            cat: 'setup',
+            ts: 0,
+            dur: 3_000_000,
+            tid: 1,
+          ),
+          _event(name: 'GET a', cat: 'network', ts: 0, dur: 2_000_000, tid: 2),
+          // Straddles the end of setup: 1s inside, 1s outside.
+          _event(
+            name: 'GET b',
+            cat: 'network',
+            ts: 2_000_000,
+            dur: 2_000_000,
+            tid: 2,
+          ),
+          // Flutter's own request inside its build [5s, 15s).
+          _event(
+            name: 'flutter build appbundle',
+            cat: 'flutter',
+            ts: 5_000_000,
+            dur: 10_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'GET c',
+            cat: 'network',
+            ts: 6_000_000,
+            dur: 1_000_000,
+            tid: 4,
+          ),
+          // Shorebird's upload after the build.
+          _event(
+            name: 'PUT d',
+            cat: 'network',
+            ts: 16_000_000,
+            dur: 2_000_000,
+            tid: 2,
+          ),
+          // No ts: can't be placed, so it counts.
+          {'ph': 'X', 'name': 'GET e', 'cat': 'network', 'dur': 500_000},
+        ], platform: 'android');
+        expect(s.network.duration, const Duration(milliseconds: 7500));
+        expect(s.network.shorebird, const Duration(milliseconds: 3500));
+        expect(
+          (s.toJson()['network']! as Map)['shorebirdMs'],
+          3500,
+        );
+      });
+
       test('setup counts nested cache refreshes once', () {
         final s = BuildTraceSummary.fromEvents([
           _event(
@@ -1077,6 +1130,7 @@ void main() {
           ),
         );
         expect(s.native.compile, lessThanOrEqualTo(s.native.build));
+        expect(s.network.shorebird, lessThanOrEqualTo(s.network.duration));
       }
 
       test('a clean release run', () {
@@ -1087,6 +1141,7 @@ void main() {
         expect(s.dart.kernelSnapshot.inMilliseconds, 1185);
         expect(s.dart.total.inMilliseconds, 3471);
         expect(s.network.duration.inMilliseconds, 7696);
+        expect(s.network.shorebird.inMilliseconds, 7696);
         // Nested shorebird_cache refreshes: summed they are 2493 ms.
         expect(s.setup.total.inMilliseconds, 1948);
         expectStagesFitTheirParents(s);
@@ -1101,6 +1156,8 @@ void main() {
         expect(s.dart.genSnapshot.inMilliseconds, 4167);
         expect(s.dart.total.inMilliseconds, 6528);
         expect(s.network.duration.inMilliseconds, 14538);
+        // 3053 ms of it ran inside setup or a flutter build.
+        expect(s.network.shorebird.inMilliseconds, 11485);
         expect(s.setup.total.inMilliseconds, 47839);
         expectStagesFitTheirParents(s);
       });
