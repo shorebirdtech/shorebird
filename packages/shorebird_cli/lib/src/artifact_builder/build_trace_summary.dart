@@ -463,8 +463,6 @@ class BuildTraceSummary {
     // xcode subsections and flutterTool are still sums: parallel gradle
     // tasks can add up to more than the native build.
     // network.shorebirdMs is new in 10.
-    // In a multi-platform command, later platforms still carry the
-    // earlier platforms' Shorebird-side spans and overhead.
     'version': 10,
     'platform': platform,
     'totalMs': total.inMilliseconds,
@@ -509,7 +507,8 @@ class NetworkStats {
   /// The part of [duration] outside setup and the `flutter build` span:
   /// Shorebird's own requests (auth, Code Push API calls, uploads).
   /// [duration] also holds the shorebird-cache downloads [SetupStats]
-  /// already counts and Flutter's own requests inside its build, so this
+  /// already counts, and any request Flutter traces inside its build
+  /// (today's traces have none: every request is Shorebird's), so this
   /// is the network time to take out of Shorebird's overhead without
   /// counting any of it twice. Requests with no `ts` can't be placed and
   /// are counted here.
