@@ -158,6 +158,17 @@ class Git {
     return '${result.stdout}'.trim();
   }
 
+  /// The output of `git status --porcelain` for the working tree containing
+  /// [directory]: one line per changed or untracked file anywhere in it, or
+  /// empty when it is clean.
+  Future<String> statusPorcelain({required String directory}) async {
+    final result = await git([
+      'status',
+      '--porcelain',
+    ], workingDirectory: directory);
+    return '${result.stdout}';
+  }
+
   /// The output of `git symbolic-ref [revision]` for the git repository located
   /// in [directory]. If not provided, [revision] defaults to 'HEAD'.
   Future<String> symbolicRef({

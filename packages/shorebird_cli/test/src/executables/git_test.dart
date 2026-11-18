@@ -441,6 +441,25 @@ origin/flutter_release/3.10.6''';
       });
     });
 
+    group('statusPorcelain', () {
+      const directory = './output';
+
+      test('executes correct command', () async {
+        const output = ' M lib/main.dart\n';
+        when(() => processResult.stdout).thenReturn(output);
+        await expectLater(
+          runWithOverrides(() => git.statusPorcelain(directory: directory)),
+          completion(equals(output)),
+        );
+        verify(
+          () => process.run('git', [
+            'status',
+            '--porcelain',
+          ], workingDirectory: directory),
+        ).called(1);
+      });
+    });
+
     group('symbolicRef', () {
       setUp(() {
         when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
