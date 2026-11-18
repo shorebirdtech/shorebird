@@ -175,17 +175,18 @@ void main() {
       });
     });
 
-    group('findPatchOrReport', () {
+    group('findPatchNumberOrReport', () {
       test('returns the patch with the given number', () {
         final result = runWithOverrides(
-          () => command.findPatchOrReport(
+          () => command.findPatchNumberOrReport(
             patches: patches,
             patchNumber: 2,
             releaseVersion: releaseVersion,
           ),
         );
 
-        expect(result.patch, equals(patches[1]));
+        expect(result.patch!.number, equals(2));
+        expect(result.patch!.patches, equals([patches[1]]));
         expect(result.errorCode, isNull);
         verifyNever(() => logger.err(any()));
       });
@@ -193,7 +194,7 @@ void main() {
       group('when no patch has the number', () {
         test('lists the available patches as the hint', () {
           final result = runWithOverrides(
-            () => command.findPatchOrReport(
+            () => command.findPatchNumberOrReport(
               patches: patches,
               patchNumber: 5,
               releaseVersion: releaseVersion,
@@ -216,7 +217,7 @@ void main() {
 
         test('says the release has no patches when there are none', () {
           final result = runWithOverrides(
-            () => command.findPatchOrReport(
+            () => command.findPatchNumberOrReport(
               patches: const [],
               patchNumber: 5,
               releaseVersion: releaseVersion,
@@ -233,7 +234,7 @@ void main() {
         test('reports the same message and hint in --json mode', () async {
           final (:exitCode, :json) = await captureJson(() async {
             final result = runWithOverrides(
-              () => command.findPatchOrReport(
+              () => command.findPatchNumberOrReport(
                 patches: patches,
                 patchNumber: 5,
                 releaseVersion: releaseVersion,

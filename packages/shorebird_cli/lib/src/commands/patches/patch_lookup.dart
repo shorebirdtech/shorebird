@@ -252,22 +252,6 @@ mixin PatchLookup on ShorebirdCommand {
     return (patch: null, errorCode: errorCode);
   }
 
-  /// Finds patch [patchNumber] among [patches] of release [releaseVersion],
-  /// the first the server lists when several platforms share the number.
-  /// Reports a missing patch as [findPatchNumberOrReport] does.
-  ({ReleasePatch? patch, int? errorCode}) findPatchOrReport({
-    required List<ReleasePatch> patches,
-    required int patchNumber,
-    required String releaseVersion,
-  }) {
-    final (:patch, :errorCode) = findPatchNumberOrReport(
-      patches: patches,
-      patchNumber: patchNumber,
-      releaseVersion: releaseVersion,
-    );
-    return (patch: patch?.patches.first, errorCode: errorCode);
-  }
-
   /// Decides which of [patch]'s platforms to [verb].
   ///
   /// With `--platforms`, those platforms, after checking each has a patch
@@ -314,27 +298,46 @@ mixin PatchLookup on ShorebirdCommand {
       );
     }
 
-    if (confirm && known.length > 1 && shorebirdEnv.canAcceptUserInput) {
-      logger.info(
-        'Patch ${patch.number} on release $releaseVersion has patches for '
-        '${known.length} platforms:',
+    if (confirm) {
+      confirmAllPlatforms(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        verb: verb,
+        confirmSuffix: confirmSuffix,
       );
-      for (final p in patch.patches) {
-        logger.info('  ${PatchNumber.platformName(p)}: ${patch.stateOf(p)}');
-      }
-      final proceed = logger.confirm(
-        '${verb[0].toUpperCase()}${verb.substring(1)} all of them'
-        '$confirmSuffix?',
-      );
-      if (!proceed) {
-        logger.info(
-          'To $verb only some, pass --$platformsArgName, e.g. '
-          '--$platformsArgName=${known.first.value}.',
-        );
-        throw PromptDeclinedExit();
-      }
     }
     return (platforms: null, patches: patch.patches, errorCode: null);
+  }
+
+  /// When [patch] has several platforms and the CLI can ask, lists them and
+  /// asks "<[verb]> all of them<[confirmSuffix]>?", throwing
+  /// [PromptDeclinedExit] when the answer is no.
+  void confirmAllPlatforms({
+    required PatchNumber patch,
+    required String releaseVersion,
+    required String verb,
+    String confirmSuffix = '',
+  }) {
+    final known = patch.platforms;
+    if (known.length < 2 || !shorebirdEnv.canAcceptUserInput) return;
+    logger.info(
+      'Patch ${patch.number} on release $releaseVersion has patches for '
+      '${known.length} platforms:',
+    );
+    for (final p in patch.patches) {
+      logger.info('  ${PatchNumber.platformName(p)}: ${patch.stateOf(p)}');
+    }
+    final proceed = logger.confirm(
+      '${verb[0].toUpperCase()}${verb.substring(1)} all of them'
+      '$confirmSuffix?',
+    );
+    if (!proceed) {
+      logger.info(
+        'To $verb only some, pass --$platformsArgName, e.g. '
+        '--$platformsArgName=${known.first.value}.',
+      );
+      throw PromptDeclinedExit();
+    }
   }
 
   /// Says that the platforms under [patch] are in different states, so the
