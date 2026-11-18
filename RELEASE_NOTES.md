@@ -4,6 +4,12 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.144 (November 18, 2026)
+
+- 🐦 Flutter 3.50.0 / Dart 3.14.0
+- 🐛 Improved Apple patch linking by copying `App.sm.link` next to the patch
+  snapshots
+
 ## 1.6.143 (November 18, 2026)
 
 - 🐦 Flutter 3.47.9 / Dart 3.13.7, with an updated Shorebird engine that fixes
