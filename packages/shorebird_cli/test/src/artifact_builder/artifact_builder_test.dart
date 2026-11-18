@@ -825,7 +825,7 @@ void main() {
                 jsonDecode(summaryFile.readAsStringSync())
                     as Map<String, Object?>;
             expect(summary['platform'], 'android');
-            expect(summary['version'], 9);
+            expect(summary['version'], 10);
             // 500ms kernel + 200ms aot
             expect((summary['dart']! as Map)['totalMs'], 700);
             expect(summary['flutterBuildMs'], 3000);
@@ -2968,6 +2968,58 @@ Reason: Exited with code 70.'''),
           await builder.prepareBuildTrace(platform: 'android');
           expect(buildTraceSession.traceFile, isNotNull);
         });
+      });
+
+      test('deletes traces a previous run left behind', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => buildTraceSupportConstraint.minVersion);
+        final buildDir = p.join(projectRoot.path, 'build');
+        File createFile(List<String> parts) =>
+            File(p.join(buildDir, p.joinAll(parts)))
+              ..createSync(recursive: true)
+              ..writeAsStringSync('[]');
+        final stale = [
+          createFile(['shorebird', 'debug', 'build-trace-android.json']),
+          createFile([
+            'shorebird',
+            'debug',
+            'build-trace-android-summary.json',
+          ]),
+          createFile([
+            'intermediates',
+            'shorebird',
+            'shorebird_assemble_trace_bundleRelease.json',
+          ]),
+          createFile([
+            'intermediates',
+            'shorebird',
+            'shorebird_assemble_trace_bundleFooRelease.json',
+          ]),
+          createFile(['ios', 'shorebird_assemble_trace.json']),
+          createFile(['macos', 'shorebird_assemble_trace.json']),
+        ];
+        final kept = [
+          createFile(['shorebird', 'debug', 'build-trace-ios.json']),
+          createFile([
+            'intermediates',
+            'shorebird',
+            'shorebird_gradle_task_trace_bundleRelease.json',
+          ]),
+          createFile(['app', 'outputs', 'app-release.aab']),
+        ];
+
+        await runWithOverrides(() async {
+          await builder.prepareBuildTrace(platform: 'android');
+          expect(buildTraceSession.traceFile!.parent.existsSync(), isTrue);
+        });
+
+        for (final file in stale) {
+          expect(file.existsSync(), isFalse, reason: file.path);
+        }
+        for (final file in kept) {
+          expect(file.existsSync(), isTrue, reason: file.path);
+        }
       });
 
       test(

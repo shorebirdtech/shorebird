@@ -431,7 +431,11 @@ class BuildTraceSummary {
   /// subtraction (`flutterBuildMs - dart.totalMs`) — kept out of the
   /// on-wire shape so there's exactly one way to read each value.
   Map<String, Object?> toJson() => <String, Object?>{
-    'version': 9,
+    // 10: the trace holds no data from earlier commands; earlier versions
+    // may sum every run since the last `flutter clean` (_shorebird#5890).
+    // In a multi-platform command, later platforms still carry the
+    // earlier platforms' Shorebird-side spans and overhead.
+    'version': 10,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,

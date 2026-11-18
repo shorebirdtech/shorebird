@@ -463,7 +463,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 9);
+      expect(j['version'], 10);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
