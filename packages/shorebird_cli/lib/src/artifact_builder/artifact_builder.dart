@@ -750,10 +750,10 @@ Reason: Exited with code $exitCode.''',
     // in Perfetto and rolls into the trace summary's subprocess bucket.
     // gen_snapshot itself doesn't emit a trace; this is the best signal we
     // have for how long native codegen took during patching.
-    final exitCode = await shorebirdTracer.span<int>(
+    final result = await shorebirdTracer.span<ShorebirdProcessResult>(
       name: 'gen_snapshot',
       category: 'subprocess',
-      body: () => process.stream(
+      body: () => process.run(
         shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
         arguments,
         // Never run in shell because we always have a fully resolved
@@ -762,7 +762,13 @@ Reason: Exited with code $exitCode.''',
       ),
     );
 
-    if (exitCode != ExitCode.success.code) {
+    // gen_snapshot isn't interactive, so its output is captured and shown
+    // here, less the warnings flutter_tools also hides
+    // (packages/flutter_tools/lib/src/base/build.dart, kIgnoredWarnings).
+    _genSnapshotOutputLines(result.stdout).forEach(logger.info);
+    _genSnapshotOutputLines(result.stderr).forEach(logger.err);
+
+    if (result.exitCode != ExitCode.success.code) {
       throw ArtifactBuildException('Failed to create snapshot');
     }
 
@@ -936,3 +942,25 @@ Reason: Exited with code $exitCode.''',
     return appDill.existsSync() ? appDill.path : null;
   }
 }
+
+/// gen_snapshot warnings that say nothing actionable, the same set
+/// flutter_tools' `GenSnapshot.kIgnoredWarnings` drops.
+const _ignoredGenSnapshotWarnings = <String>{
+  // --strip on an ELF snapshot.
+  'Warning: Generating ELF library without DWARF debugging information.',
+  // --obfuscate, in two lines.
+  _obfuscationWarning,
+  '         See dartbug.com/30524 for more information.',
+};
+
+const _obfuscationWarning =
+    'Warning: This VM has been configured to obfuscate symbol information '
+    'which violates the Dart standard.';
+
+/// The non-empty lines of gen_snapshot's [output], less
+/// [_ignoredGenSnapshotWarnings].
+Iterable<String> _genSnapshotOutputLines(Object? output) => const LineSplitter()
+    .convert(output as String? ?? '')
+    .where(
+      (line) => line.isNotEmpty && !_ignoredGenSnapshotWarnings.contains(line),
+    );

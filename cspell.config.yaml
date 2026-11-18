@@ -37,6 +37,7 @@ words:
   - codesign
   - codesigned
   - codesigning
+  - dartbug
   - deflavored
   - develocity
   - devicectl
@@ -44,6 +45,7 @@ words:
   - dorny # From .github dir, doesn't show up in "**" check?
   - dyld
   - dylib
+  - dynsym
   - endtemplate
   - Entra
   - esac # bash case terminator

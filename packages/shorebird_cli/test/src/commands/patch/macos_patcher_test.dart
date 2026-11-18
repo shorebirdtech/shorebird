@@ -539,6 +539,7 @@ This may indicate that the patch contains native changes, which cannot be applie
               appDillPath: any(named: 'appDillPath'),
               outFilePath: any(named: 'outFilePath'),
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+              additionalArgs: any(named: 'additionalArgs'),
             ),
           ).thenThrow(exception);
         });
