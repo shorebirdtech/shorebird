@@ -423,25 +423,23 @@ class BuildTraceSummary {
   /// "slow despite caching being on" in field data.
   final BuildEnvironment? environment;
 
-  /// Shorebird CLI's wall-clock time around Flutter with network I/O
-  /// subtracted — i.e. what Shorebird spent doing local work (file I/O,
-  /// hashing, archive assembly, aot_tools link/gen_snapshot bookkeeping
-  /// outside their own spans). Null when [shorebirdOverhead] is null.
+  /// Shorebird CLI's wall-clock time around Flutter less its own network
+  /// time ([NetworkStats.shorebird]). Null when [shorebirdOverhead] is
+  /// null.
   ///
-  /// **Not** "overhead minus all waiting on the network". [network] only
-  /// covers HTTP shorebird_cli issues itself, so on a cold machine the
-  /// bulk of [setup] — the fork clone and the precache downloads —
-  /// remains inside this value and makes network-bound time look like
-  /// local work. Subtract [setup] as well (`shorebirdLocalMs -
-  /// setup.totalMs`) to approximate genuinely local work, accepting that
-  /// the shorebird-cache downloads are counted in both and so come off
-  /// twice.
+  /// It still holds [setup]: the fork clone, precache and shorebird-cache
+  /// downloads. [NetworkStats.shorebird] leaves out every request inside
+  /// setup, so subtracting [setup] as well (`shorebirdLocalMs -
+  /// setup.totalMs`) gives Shorebird's local work (file I/O, hashing,
+  /// archive assembly, linking) with nothing taken off twice. Before
+  /// summary version 10 this subtracted all of [NetworkStats.duration],
+  /// which counts the shorebird-cache downloads setup holds.
   ///
-  /// Clamped to zero if the network tally exceeds overhead.
+  /// Clamped to zero if the network time exceeds overhead.
   Duration? get shorebirdLocal {
     final overhead = shorebirdOverhead;
     if (overhead == null) return null;
-    final local = overhead - network.duration;
+    final local = overhead - network.shorebird;
     return local.isNegative ? Duration.zero : local;
   }
 
@@ -462,7 +460,8 @@ class BuildTraceSummary {
     // gen_snapshot runs once per arch. Gradle task kinds, pod phases,
     // xcode subsections and flutterTool are still sums: parallel gradle
     // tasks can add up to more than the native build.
-    // network.shorebirdMs is new in 10.
+    // network.shorebirdMs is new in 10, and shorebirdLocalMs subtracts it
+    // rather than network.ms.
     'version': 10,
     'platform': platform,
     'totalMs': total.inMilliseconds,
