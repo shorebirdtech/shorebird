@@ -319,6 +319,9 @@ void main() {
               args,
               contains('--load-obfuscation-map=$obfuscationMapPath'),
             );
+            // Unstripped, an obfuscated patch would carry the unobfuscated
+            // names in its DWARF.
+            expect(args, contains('--strip'));
           },
         );
 
