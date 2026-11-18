@@ -155,6 +155,14 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           );
           expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(9));
           expect(Directory(patchSnapshotDir.path).listSync(), hasLength(9));
+          expect(
+            File(p.join(releaseSnapshotDir.path, 'App.sm.link')).existsSync(),
+            isTrue,
+          );
+          expect(
+            File(p.join(patchSnapshotDir.path, 'out.sm.link')).existsSync(),
+            isTrue,
+          );
         });
 
         test('copies only some files next to snapshots', () {
