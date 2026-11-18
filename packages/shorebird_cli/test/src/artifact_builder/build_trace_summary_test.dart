@@ -1088,6 +1088,27 @@ void main() {
         );
       });
 
+      test(
+        'shorebirdLocal is zero when Shorebird network exceeds overhead',
+        () {
+          final s = BuildTraceSummary.fromEvents(
+            [
+              _event(
+                name: 'PUT a',
+                cat: 'network',
+                ts: 0,
+                dur: 2_000_000,
+                tid: 2,
+              ),
+            ],
+            platform: 'android',
+            shorebirdOverhead: const Duration(seconds: 1),
+          );
+          expect(s.network.shorebird, const Duration(seconds: 2));
+          expect(s.shorebirdLocal, Duration.zero);
+        },
+      );
+
       test('network.shorebird subtracts overlapping windows once', () {
         final s = BuildTraceSummary.fromEvents([
           // Setup [0s, 4s) overlaps the first build [2s, 6s); a second
