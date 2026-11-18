@@ -68,6 +68,7 @@ class IosPatcher extends Patcher
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,
+      ...argResults.iosExportArgs,
       ...extraBuildArgs,
       ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
     ];
