@@ -25,6 +25,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 import '../helpers.dart';
 import '../mocks.dart';
@@ -145,6 +146,7 @@ environment:
       when(
         () => shorebirdEnv.getShorebirdYamlFile(cwd: any(named: 'cwd')),
       ).thenReturn(shorebirdYamlFile);
+      when(() => shorebirdYamlFile.existsSync()).thenReturn(false);
       when(
         () => shorebirdEnv.getPubspecYamlFile(cwd: any(named: 'cwd')),
       ).thenReturn(pubspecYamlFile);
@@ -270,45 +272,39 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       },
     );
 
-    test(
-      'shows up-to-date error when yaml exists without flavors '
-      'and no flavors detected',
-      () async {
-        when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
-        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
-        when(() => shorebirdYaml.appId).thenReturn(appId);
-        when(() => shorebirdYaml.flavors).thenReturn(null);
-        // Default setUp has no product flavors (gradlew returns empty set).
-        final exitCode = await runWithOverrides(command.run);
-        verify(
-          () => logger.err(
-            'A "shorebird.yaml" file already exists and seems up-to-date.',
-          ),
-        ).called(1);
-        expect(exitCode, ExitCode.software.code);
-      },
-    );
+    test('shows up-to-date error when yaml exists without flavors '
+        'and no flavors detected', () async {
+      when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdYaml.appId).thenReturn(appId);
+      when(() => shorebirdYaml.flavors).thenReturn(null);
+      // Default setUp has no product flavors (gradlew returns empty set).
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err(
+          'A "shorebird.yaml" file already exists and seems up-to-date.',
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
 
-    test(
-      'shows up-to-date error when yaml exists with flavors '
-      'and no new flavors detected',
-      () async {
-        when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
-        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
-        when(() => shorebirdYaml.appId).thenReturn(appId);
-        when(() => shorebirdYaml.flavors).thenReturn({'dev': 'id-1'});
-        when(
-          () => gradlew.productFlavors(any()),
-        ).thenAnswer((_) async => {'dev'});
-        final exitCode = await runWithOverrides(command.run);
-        verify(
-          () => logger.err(
-            'A "shorebird.yaml" file already exists and seems up-to-date.',
-          ),
-        ).called(1);
-        expect(exitCode, ExitCode.software.code);
-      },
-    );
+    test('shows up-to-date error when yaml exists with flavors '
+        'and no new flavors detected', () async {
+      when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+      when(() => shorebirdYaml.appId).thenReturn(appId);
+      when(() => shorebirdYaml.flavors).thenReturn({'dev': 'id-1'});
+      when(
+        () => gradlew.productFlavors(any()),
+      ).thenAnswer((_) async => {'dev'});
+      final exitCode = await runWithOverrides(command.run);
+      verify(
+        () => logger.err(
+          'A "shorebird.yaml" file already exists and seems up-to-date.',
+        ),
+      ).called(1);
+      expect(exitCode, ExitCode.software.code);
+    });
 
     test('does not prompt for name when unable to accept user input', () async {
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
@@ -361,6 +357,63 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           any(that: contains('app_id: $appId')),
         ),
       ).called(1);
+    });
+
+    group('--force with an existing shorebird.yaml', () {
+      setUp(() {
+        when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+        when(() => argResults['force']).thenReturn(true);
+        when(() => shorebirdYamlFile.existsSync()).thenReturn(true);
+      });
+
+      String writtenYaml() =>
+          verify(
+                () => shorebirdYamlFile.writeAsStringSync(captureAny()),
+              ).captured.single
+              as String;
+
+      test('keeps keys and comments init does not set', () async {
+        when(() => shorebirdYamlFile.readAsStringSync()).thenReturn('''
+# A comment of mine.
+app_id: old-app-id
+base_url: https://api-dev.shorebird.dev
+auto_update: false
+''');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        expect(writtenYaml(), '''
+# A comment of mine.
+app_id: $appId
+base_url: https://api-dev.shorebird.dev
+auto_update: false
+''');
+      });
+
+      test('removes flavors when the project has none', () async {
+        when(() => shorebirdYamlFile.readAsStringSync()).thenReturn('''
+app_id: old-app-id
+flavors:
+  dev: old-dev-app-id
+base_url: https://api-dev.shorebird.dev
+''');
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, ExitCode.success.code);
+        final written = loadYaml(writtenYaml()) as YamlMap;
+        expect(written['app_id'], appId);
+        expect(written.containsKey('flavors'), isFalse);
+        expect(written['base_url'], 'https://api-dev.shorebird.dev');
+      });
+
+      for (final contents in ['', 'not: [valid', '- a list']) {
+        test('writes the template when the file holds "$contents"', () async {
+          when(() => shorebirdYamlFile.readAsStringSync()).thenReturn(contents);
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, ExitCode.success.code);
+          final written = writtenYaml();
+          expect(written, contains('app_id: $appId'));
+          expect(written, contains('# auto_update: false'));
+        });
+      }
     });
 
     test('gracefully handles missing android project exceptions', () async {
@@ -542,9 +595,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           hint: any(named: 'hint'),
         ),
       ).called(1);
-      verify(
-        () => logger.err('Failed to create the app: $error'),
-      ).called(1);
+      verify(() => logger.err('Failed to create the app: $error')).called(1);
       verify(
         () => logger.info(
           '''Re-run "shorebird init" once the error above is resolved. If it persists, contact us on Discord or at contact@shorebird.dev.''',
@@ -608,13 +659,9 @@ Organization ids are integers, e.g. --org-id 42. Your organizations: Test Organi
             await expectLater(
               runWithOverrides(command.run),
               throwsA(
-                isA<UsageException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
+                isA<UsageException>().having((e) => e.message, 'message', '''
 You are not a member of organization 999999.
-Your organizations: Test Organization (id: $organizationId).''',
-                ),
+Your organizations: Test Organization (id: $organizationId).'''),
               ),
             );
           });
@@ -622,9 +669,7 @@ Your organizations: Test Organization (id: $organizationId).''',
 
         group('when organization with matching id exists', () {
           setUp(() {
-            when(
-              () => argResults['org-id'],
-            ).thenReturn('$organizationId');
+            when(() => argResults['org-id']).thenReturn('$organizationId');
           });
 
           test('creates app with provided organization id', () async {
@@ -690,14 +735,8 @@ Your organizations: Test Organization (id: $organizationId).''',
           () => codePushClientWrapper.getOrganizationMemberships(),
         ).thenAnswer(
           (_) async => [
-            OrganizationMembership(
-              role: Role.owner,
-              organization: org1,
-            ),
-            OrganizationMembership(
-              role: Role.owner,
-              organization: org2,
-            ),
+            OrganizationMembership(role: Role.owner, organization: org1),
+            OrganizationMembership(role: Role.owner, organization: org2),
           ],
         );
         when(
@@ -741,31 +780,28 @@ Your organizations: Test Organization (id: $organizationId).''',
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
-        test(
-          'throws a usage exception listing organizations',
-          () async {
-            await expectLater(
-              runWithOverrides(command.run),
-              throwsA(
-                isA<UsageException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
+        test('throws a usage exception listing organizations', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                '''
 You can create apps in multiple organizations. Pass --org-id=<id> to choose one.
 Organizations you can create apps in: ${org1.name} (id: ${org1.id}), ${org2.name} (id: ${org2.id}).''',
-                ),
               ),
-            );
-            verifyNever(
-              () => logger.chooseOne<Organization>(
-                any(),
-                choices: any(named: 'choices'),
-                display: any(named: 'display'),
-                hint: any(named: 'hint'),
-              ),
-            );
-          },
-        );
+            ),
+          );
+          verifyNever(
+            () => logger.chooseOne<Organization>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+              hint: any(named: 'hint'),
+            ),
+          );
+        });
       });
     });
 
@@ -861,13 +897,9 @@ Organizations you can create apps in: ${org1.name} (id: ${org1.id}), ${org2.name
             await expectLater(
               runWithOverrides(command.run),
               throwsA(
-                isA<UsageException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
+                isA<UsageException>().having((e) => e.message, 'message', '''
 You can create apps in multiple organizations. Pass --org-id=<id> to choose one.
-Organizations you can create apps in: owned (id: 1), managed (id: 2).''',
-                ),
+Organizations you can create apps in: owned (id: 1), managed (id: 2).'''),
               ),
             );
           });
@@ -1004,9 +1036,7 @@ Organizations you can create apps in: owned (id: 1), managed (id: 2).''',
 
       group('when ios directory is empty', () {
         setUp(() {
-          when(
-            () => apple.flavors(platform: any(named: 'platform')),
-          ).thenThrow(
+          when(() => apple.flavors(platform: any(named: 'platform'))).thenThrow(
             MissingXcodeProjectException(
               platformFolderPath: projectRoot.path,
               platform: ApplePlatform.ios,
@@ -1795,9 +1825,7 @@ flavors:
 
         test('names the fix when the existing app is gone', () async {
           when(
-            () => codePushClientWrapper.maybeGetApp(
-              appId: any(named: 'appId'),
-            ),
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
           ).thenAnswer((_) async => null);
 
           await expectLater(
@@ -1813,9 +1841,7 @@ flavors:
 
         test('does not blame app_id when the lookup itself fails', () async {
           when(
-            () => codePushClientWrapper.maybeGetApp(
-              appId: any(named: 'appId'),
-            ),
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
           ).thenThrow(ProcessExit(ExitCode.software.code));
 
           await expectLater(
@@ -1860,9 +1886,8 @@ flavors:
 
           setUp(() {
             when(
-              () => codePushClientWrapper.maybeGetApp(
-                appId: any(named: 'appId'),
-              ),
+              () =>
+                  codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
             ).thenAnswer((_) async => existingApp);
             when(
               () => codePushClientWrapper.createApp(
@@ -1913,9 +1938,8 @@ flavors:
               updatedAt: DateTime(2023),
             );
             when(
-              () => codePushClientWrapper.maybeGetApp(
-                appId: any(named: 'appId'),
-              ),
+              () =>
+                  codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
             ).thenAnswer((_) async => appWithOrg);
             when(
               () => codePushClientWrapper.findAppOrganization(
@@ -2062,9 +2086,7 @@ flavors:
 
         test('exits when no organization lists the existing app', () async {
           when(
-            () => codePushClientWrapper.maybeGetApp(
-              appId: any(named: 'appId'),
-            ),
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
           ).thenAnswer(
             (_) async => AppMetadata(
               appId: appId,
@@ -2088,6 +2110,38 @@ flavors:
               '($appId) is in.',
             ),
           ).called(1);
+        });
+
+        test('keeps the other keys in shorebird.yaml', () async {
+          when(
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
+          ).thenAnswer(
+            (_) async => AppMetadata(
+              appId: appId,
+              displayName: 'my-app',
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+            ),
+          );
+          when(() => shorebirdYamlFile.existsSync()).thenReturn(true);
+          when(() => shorebirdYamlFile.readAsStringSync()).thenReturn('''
+app_id: $appId
+flavors:
+  a: test-appId-1
+  b: test-appId-2
+base_url: https://api-dev.shorebird.dev
+''');
+
+          await runWithOverrides(command.run);
+
+          final written =
+              verify(
+                    () => shorebirdYamlFile.writeAsStringSync(captureAny()),
+                  ).captured.single
+                  as String;
+          final yaml = loadYaml(written) as YamlMap;
+          expect(yaml['base_url'], 'https://api-dev.shorebird.dev');
+          expect((yaml['flavors'] as YamlMap).keys, ['a', 'b', 'c', 'd']);
         });
 
         test('creates new flavor entries in shorebird.yaml', () async {

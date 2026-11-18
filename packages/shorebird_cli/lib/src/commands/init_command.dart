@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 /// {@template init_command}
@@ -531,9 +532,7 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     } else if (creatableMemberships.isEmpty) {
       logger
         ..err('You cannot create apps in any of your organizations.')
-        ..info(
-          '${_rolesIn(memberships)}\n$_askForRole',
-        );
+        ..info('${_rolesIn(memberships)}\n$_askForRole');
       return null;
     } else {
       if (skippedMemberships.isNotEmpty) {
@@ -574,13 +573,43 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     }
   }
 
+  /// Writes [appId] and [flavors] to the project's shorebird.yaml. An
+  /// existing file is edited in place so the keys init does not set, such as
+  /// `base_url` and `auto_update`, and its comments are kept.
   ShorebirdYaml _addShorebirdYamlToProject({
     required String appId,
     required Directory projectRoot,
     Map<String, String>? flavors,
   }) {
-    const content =
-        '''
+    final file = shorebirdEnv.getShorebirdYamlFile(cwd: projectRoot);
+    final editor = YamlEditor(_existingYamlMap(file) ?? _shorebirdYamlTemplate)
+      ..update(['app_id'], appId);
+
+    if (flavors != null) {
+      editor.update(['flavors'], flavors);
+    } else if ((editor.parseAt([]) as YamlMap).containsKey('flavors')) {
+      editor.remove(['flavors']);
+    }
+
+    file.writeAsStringSync(editor.toString());
+
+    return ShorebirdYaml(appId: appId);
+  }
+
+  /// The contents of [file] when it exists and holds a YAML map, else null.
+  String? _existingYamlMap(File file) {
+    if (!file.existsSync()) return null;
+    final contents = file.readAsStringSync();
+    try {
+      return loadYaml(contents) is YamlMap ? contents : null;
+    } on YamlException {
+      return null;
+    }
+  }
+}
+
+const _shorebirdYamlTemplate =
+    '''
 # This file is used to configure the Shorebird updater used by your app.
 # Learn more at $docsUrl
 # This file does not contain any sensitive information and should be checked into version control.
@@ -596,18 +625,6 @@ app_id:
 # Uncomment the following line to disable automatic updates.
 # auto_update: false
 ''';
-
-    final editor = YamlEditor(content)..update(['app_id'], appId);
-
-    if (flavors != null) editor.update(['flavors'], flavors);
-
-    shorebirdEnv
-        .getShorebirdYamlFile(cwd: projectRoot)
-        .writeAsStringSync(editor.toString());
-
-    return ShorebirdYaml(appId: appId);
-  }
-}
 
 /// Whether [role] in an organization lets its holder create apps there,
 /// matching the server's `create(apps)` permission.
