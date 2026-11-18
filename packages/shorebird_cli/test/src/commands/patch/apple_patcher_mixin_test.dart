@@ -266,7 +266,7 @@ void main() {
                 ),
               ),
               releaseArtifact: releaseArtifactFile,
-              splitDebugInfoArgs: [],
+              splitDebugInfoArgs: ['--strip'],
               aotOutputFile: any(
                 named: 'aotOutputFile',
                 that: isA<File>().having(

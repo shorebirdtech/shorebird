@@ -65,8 +65,8 @@ mixin ApplePatcherMixin on Patcher {
   String get appDillCopyPath =>
       p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
 
-  /// The gen_snapshot arguments for `--split-debug-info` and obfuscation,
-  /// shared by the ELF snapshot build and the linker.
+  /// The gen_snapshot arguments for `--split-debug-info`, obfuscation and
+  /// stripping, shared by the ELF snapshot build and the linker.
   List<String> get appleGenSnapshotArgs => _appleGenSnapshotArgs();
 
   List<String> _appleGenSnapshotArgs({
@@ -74,6 +74,14 @@ mixin ApplePatcherMixin on Patcher {
   }) => [
     ...splitDebugInfoArgs(splitDebugInfoPath, fileName: splitDebugInfoFileName),
     ...obfuscationGenSnapshotArgs,
+    // Strip the ELF symbol table and DWARF from the patch snapshot, as
+    // Flutter's own builds do. Nothing on the device reads them (the engine
+    // loads the snapshot through .dynsym), the release's diff base has none,
+    // so without this every patch carries them: about 12% of the app's Dart
+    // binary (3.7 MB for Flutter Gallery) even for a one-line change.
+    // Symbols for --split-debug-info are saved by --save-debugging-info
+    // above, and obfuscated patches don't leak the names they hide.
+    '--strip',
   ];
 
   /// Builds an ELF AOT snapshot of [appDillPath] at [outFilePath] with
