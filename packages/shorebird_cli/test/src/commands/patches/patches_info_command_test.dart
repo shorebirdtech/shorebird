@@ -192,7 +192,7 @@ void main() {
           ),
         ).called(1);
         verify(
-          () => logger.info(any(that: startsWith('Available patches: '))),
+          () => logger.info('Available patches:\n  #99  track: stable'),
         ).called(1);
       });
     });
@@ -436,6 +436,69 @@ void main() {
             releaseVersion: any(named: 'releaseVersion'),
           ),
         );
+      });
+    });
+
+    group('when patches for several platforms share the number', () {
+      const androidPatch = ReleasePatch(
+        id: 10,
+        number: patchNumber,
+        channel: 'stable',
+        isRolledBack: false,
+        artifacts: [],
+        platform: ReleasePlatform.android,
+      );
+      const iosPatch = ReleasePatch(
+        id: 11,
+        number: patchNumber,
+        channel: 'beta',
+        isRolledBack: false,
+        artifacts: [],
+        platform: ReleasePlatform.ios,
+      );
+
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer((_) async => [androidPatch, iosPatch]);
+      });
+
+      test('shows each platform and says the tracks differ', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verifyInOrder([
+          () => logger.info(
+            'Patch $patchNumber has patches for several platforms, on '
+            'different tracks.',
+          ),
+          () => logger.info('Android:'),
+          () => logger.info('  ID:          10'),
+          () => logger.info('iOS:'),
+          () => logger.info('  ID:          11'),
+          () => logger.info('  Track:       beta'),
+        ]);
+      });
+
+      test('with --platforms shows only those platforms', () async {
+        when(() => argResults['platforms']).thenReturn(['ios']);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(() => logger.info('ID:          11')).called(1);
+        verifyNever(() => logger.info(any(that: contains('ID:          10'))));
+      });
+
+      test('rejects a platform without a patch under the number', () async {
+        when(() => argResults['platforms']).thenReturn(['windows']);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
       });
     });
   });

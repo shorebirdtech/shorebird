@@ -172,14 +172,10 @@ void main() {
     });
 
     group('human-readable output', () {
-      test('prints each patch with id, number, and channel', () async {
+      test('prints each patch number and its track', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.info(
-            any(that: allOf(contains('7'), contains('#1'), contains('stable'))),
-          ),
-        ).called(1);
+        verify(() => logger.info('#1  track: stable')).called(1);
       });
 
       group('when patch has no track', () {
@@ -334,6 +330,48 @@ void main() {
           () => runJsonMode(command.run),
         );
         verifyNever(() => logger.progress(any()));
+      });
+    });
+
+    group('when patches for several platforms share a number', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => const [
+            ReleasePatch(
+              id: 1,
+              number: 1,
+              channel: 'stable',
+              isRolledBack: false,
+              artifacts: [],
+              platform: ReleasePlatform.android,
+            ),
+            ReleasePatch(
+              id: 2,
+              number: 1,
+              channel: 'beta',
+              isRolledBack: false,
+              artifacts: [],
+              platform: ReleasePlatform.ios,
+            ),
+          ],
+        );
+      });
+
+      test('prints one line for the number with its platforms', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            '#1  android, ios  on different tracks '
+            '(android: stable, ios: beta)',
+          ),
+        ).called(1);
       });
     });
   });
