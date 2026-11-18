@@ -1,6 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/confirm_delete.dart' show yesArgName;
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
@@ -11,6 +12,7 @@ import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
 import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 const _jsonExample =
@@ -78,6 +80,15 @@ class SetTrackCommand extends ShorebirdCommand
         timezoneArgName,
         help: timezoneHelp,
         valueHelp: 'name',
+      )
+      ..addFlag(
+        yesArgName,
+        abbr: 'y',
+        negatable: false,
+        help:
+            'Create the track if it does not exist, without asking. '
+            'Required to create a track with --json, in CI or without a '
+            'terminal.',
       );
     addAppScopeOptions();
   }
@@ -227,28 +238,26 @@ class SetTrackCommand extends ShorebirdCommand
       name: targetChannel,
     );
     if (channel == null) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.interactivePromptRequired,
-          message: 'Channel "$targetChannel" does not exist.',
-          hint:
-              'Create it by publishing a patch with --track=$targetChannel, '
-              'or run without --json to create it interactively.',
+      final createHint =
+          'Re-run with --$yesArgName to create track "$targetChannel", or '
+          'pass --track=<existing track>.';
+      if (results[yesArgName] != true) {
+        if (!shorebirdEnv.canAcceptUserInput) {
+          return reportError(
+            code: JsonErrorCode.interactivePromptRequired,
+            message: 'Channel "$targetChannel" does not exist.',
+            hint: createHint,
+          );
+        }
+        final shouldCreate = logger.confirm(
+          'No channel named ${lightCyan.wrap(targetChannel)} found. '
+          'Do you want to create it?',
+          hint: createHint,
         );
-        return ExitCode.usage.code;
-      }
-      final shouldCreate = logger.confirm(
-        'No channel named ${lightCyan.wrap(targetChannel)} found. '
-        'Do you want to create it?',
-        hint:
-            'Pass --track=<existing-channel> to use an existing channel. '
-            'Channels are auto-created when a patch is published with '
-            '--track=<name>; set-track itself has no flag to skip this '
-            'confirmation.',
-      );
-      if (!shouldCreate) {
-        logger.err('Aborting.');
-        throw PromptDeclinedExit();
+        if (!shouldCreate) {
+          logger.err('Aborting.');
+          throw PromptDeclinedExit();
+        }
       }
 
       channel = await codePushClientWrapper.createChannel(

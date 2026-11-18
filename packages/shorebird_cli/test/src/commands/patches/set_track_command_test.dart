@@ -402,6 +402,7 @@ void main() {
         when(
           () => logger.confirm(any(), hint: any(named: 'hint')),
         ).thenReturn(false);
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       });
 
       test('prompts to create the channel', () async {
@@ -433,6 +434,50 @@ void main() {
               name: targetChannel.name,
             ),
           ).called(1);
+        });
+      });
+
+      group('with --yes', () {
+        setUp(() {
+          when(() => argResults['yes']).thenReturn(true);
+        });
+
+        test('creates the channel without prompting', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(() => logger.confirm(any(), hint: any(named: 'hint')));
+          verify(
+            () => codePushClientWrapper.createChannel(
+              appId: appId,
+              name: targetChannel.name,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when it cannot prompt', () {
+        setUp(() {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        });
+
+        test('fails with a hint to pass --yes', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              any(that: contains('Channel "${targetChannel.name}" does not')),
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(any(that: contains('Re-run with --yes'))),
+          ).called(1);
+          verifyNever(() => logger.confirm(any(), hint: any(named: 'hint')));
+          verifyNever(
+            () => codePushClientWrapper.createChannel(
+              appId: any(named: 'appId'),
+              name: any(named: 'name'),
+            ),
+          );
         });
       });
 
@@ -1082,6 +1127,7 @@ void main() {
               name: any(named: 'name'),
             ),
           ).thenAnswer((_) async => null);
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
         test('emits interactive_prompt_required error', () async {
@@ -1090,10 +1136,26 @@ void main() {
           );
           expect(exitCode, equals(ExitCode.usage.code));
           expect(json['status'], 'error');
-          expect(
-            (json['error'] as Map<String, dynamic>)['code'],
-            'interactive_prompt_required',
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], 'interactive_prompt_required');
+          expect(error['hint'], contains('--yes'));
+        });
+
+        test('creates the channel with --yes', () async {
+          when(() => argResults['yes']).thenReturn(true);
+
+          final (:exitCode, :json) = await captureJson(
+            () => runJsonMode(command.run),
           );
+
+          expect(exitCode, equals(ExitCode.success.code));
+          expect(json['status'], 'success');
+          verify(
+            () => codePushClientWrapper.createChannel(
+              appId: appId,
+              name: targetChannel.name,
+            ),
+          ).called(1);
         });
       });
 
