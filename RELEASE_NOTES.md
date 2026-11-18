@@ -4,6 +4,23 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.143 (November 18, 2026)
+
+- 🐦 Flutter 3.47.9 / Dart 3.13.7, with an updated Shorebird engine that fixes
+  patches of `--obfuscate` releases: a patch could reuse an obfuscated name the
+  release already used, so it could call the wrong method or read the wrong
+  field. A patch builds with its release's Flutter, so make a new release with
+  this version to get the fix
+- ✨ Ramp a patch's rollout on a schedule with `--rollout-steps` on `shorebird
+  patch`, `shorebird patches set-track` and `shorebird patches rollout`,
+  optionally pausing on weekends with `--pause-weekends` and `--timezone`
+- ✨ `shorebird release windows` and `shorebird patch windows` handle Windows
+  arm64 builds on Flutter 3.47.9 or later. Run them on an arm64 machine to add
+  an arm64 build to a release, and `shorebird preview` on arm64 runs it
+- ✨ `shorebird patch windows --add-to-patch=<n>` adds this machine's
+  architecture to an existing patch, so one fix for x64 and arm64 shares one
+  patch number, track and rollout
+
 ## 1.6.142 (November 17, 2026)
 
 - ✨ `shorebird release` warns when the release version has a build number but no
