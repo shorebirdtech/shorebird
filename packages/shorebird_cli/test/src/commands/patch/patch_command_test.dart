@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/build_flags.dart';
 import 'package:shorebird_cli/src/build_history.dart';
@@ -167,6 +168,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdTracerRef.overrideWith(ShorebirdTracer.new),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
@@ -2100,12 +2102,23 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               const DiffStatus(hasAssetChanges: true, hasNativeChanges: false),
         );
         var builds = 0;
+        late List<Object?> tracedBeforeSecondBuild;
         when(
           () => patcher.buildPatchArtifact(
             releaseVersion: any(named: 'releaseVersion'),
           ),
         ).thenAnswer((_) async {
-          if (++builds == 2) throw Exception('gradle');
+          if (++builds == 2) {
+            tracedBeforeSecondBuild = [
+              for (final event in shorebirdTracer.events) event['name'],
+            ];
+            throw Exception('gradle');
+          }
+          await shorebirdTracer.span(
+            name: 'first platform build',
+            category: 'shorebird',
+            body: () async {},
+          );
           return File('');
         });
 
@@ -2132,6 +2145,11 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         expect(described.first.hasAssetChanges, isTrue);
         // The failed platform never reached the diff check.
         expect(described.last.hasAssetChanges, isFalse);
+        // The second platform's trace doesn't carry the first one's spans.
+        expect(
+          tracedBeforeSecondBuild,
+          isNot(contains('first platform build')),
+        );
       });
 
       test('records every change the diff check found', () async {

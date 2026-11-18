@@ -658,7 +658,7 @@ Reason: Exited with code $exitCode.''',
   /// `release_command` / `patch_command` can attach it to the outgoing
   /// metadata blob without re-parsing the trace file.
   ///
-  /// Uses [BuildTraceSession.commandStartedAt] to derive the wall-clock time
+  /// Uses [BuildTraceSession.windowStartedAt] to derive the wall-clock time
   /// Shorebird itself spent around the Flutter build, subtracting Flutter's
   /// reported total (the "flutter build X" umbrella event).
   ///
@@ -692,8 +692,8 @@ Reason: Exited with code $exitCode.''',
       events,
       platform: buildPlatform,
     ).flutterBuild;
-    final totalElapsed = DateTime.now().difference(
-      buildTraceSession.commandStartedAt,
+    final totalElapsed = clock.now().difference(
+      buildTraceSession.windowStartedAt,
     );
     final shorebirdOverhead = totalElapsed - flutterBuild;
     // Snapshot the build environment (caching config, CI provider, ...).

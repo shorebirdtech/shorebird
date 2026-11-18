@@ -31,7 +31,7 @@ const int _shorebirdTid = 2;
 /// facade, not a wire-format reimplementation.
 class ShorebirdTracer {
   /// The underlying [BuildTracer] that holds the raw events.
-  final BuildTracer _tracer = BuildTracer();
+  BuildTracer _tracer = BuildTracer();
 
   /// Real pid of the shorebird_cli process — captured at construction
   /// so every event emitted through this tracer is tagged with it.
@@ -39,6 +39,14 @@ class ShorebirdTracer {
 
   /// Raw event buffer, for tests that need to inspect individual spans.
   List<Map<String, Object?>> get events => _tracer.events;
+
+  /// Drops every event recorded so far, so the next [mergeInto] writes only
+  /// what happens from now on. Called when a multi-platform command starts
+  /// its next platform, whose trace mustn't carry the previous platform's
+  /// spans.
+  void reset() {
+    _tracer = BuildTracer();
+  }
 
   /// Record a completed network span on the shorebird_cli row.
   void addNetworkEvent({

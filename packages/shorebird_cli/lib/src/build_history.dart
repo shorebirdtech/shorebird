@@ -10,6 +10,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/build_flags.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
@@ -176,15 +177,29 @@ class BuildHistory {
   @visibleForTesting
   static const maxDebugBundleBytes = 1 << 30;
 
+  /// Whether [start] has begun a platform's record in this process.
+  bool _startedPlatform = false;
+
   /// Starts the record of [platform]'s part of [command].
   ///
   /// Clears the build trace a previous platform left, so this platform's
-  /// record never carries another's timings.
+  /// record never carries another's timings. For every platform after the
+  /// first, that also drops the spans [shorebirdTracer] recorded for the
+  /// platforms before it and starts the trace window now, so the platform's
+  /// Shorebird overhead counts only its own work. The first platform keeps
+  /// the spans recorded since the command started, and its window starts
+  /// with the command.
   BuildRun start({
     required BuildRunCommand command,
     required ReleasePlatform platform,
     required bool dryRun,
   }) {
+    final startedAt = clock.now();
+    if (_startedPlatform) {
+      shorebirdTracer.reset();
+      buildTraceSession.windowStartedAt = startedAt;
+    }
+    _startedPlatform = true;
     buildTraceSession
       ..traceFile = null
       ..platform = null
@@ -194,7 +209,7 @@ class BuildHistory {
       command: command,
       platform: platform,
       dryRun: dryRun,
-      startedAt: clock.now(),
+      startedAt: startedAt,
     );
   }
 
