@@ -127,6 +127,7 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             'App.ct.link',
             'App.dt.link',
             'App.ft.link',
+            'App.sm.link',
             'App.dd.link',
             'App.dd_callers.link',
           ];
@@ -152,8 +153,16 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
               patchSnapshotDir: patchSnapshotDir,
             ),
           );
-          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(8));
-          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(8));
+          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(9));
+          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(9));
+          expect(
+            File(p.join(releaseSnapshotDir.path, 'App.sm.link')).existsSync(),
+            isTrue,
+          );
+          expect(
+            File(p.join(patchSnapshotDir.path, 'out.sm.link')).existsSync(),
+            isTrue,
+          );
         });
 
         test('copies only some files next to snapshots', () {
