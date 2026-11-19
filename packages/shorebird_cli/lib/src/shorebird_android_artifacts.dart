@@ -229,7 +229,9 @@ class ShorebirdAndroidArtifacts {
     return Isolate.run(() {
       final input = InputFileStream(aarPath);
       try {
-        final archive = ZipDecoder().decodeStream(input, verify: true);
+        // Not verified: the AAR was just built, and verifying would checksum
+        // every entry to read this one small file.
+        final archive = ZipDecoder().decodeStream(input);
         final file = archive.findFile('assets/flutter_assets/shorebird.yaml');
         return file == null ? null : utf8.decode(file.readBytes()!);
       } finally {

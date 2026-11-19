@@ -66,11 +66,9 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
         ddMaxBytes: ddMaxBytes,
       ),
     );
-    if (moduleAppId != null) {
-      assertModuleCarriesAppId(
-        artifactManager.readAppXcframeworkShorebirdYaml(),
-      );
-    }
+    await assertModuleCarriesAppId(
+      () async => artifactManager.readAppXcframeworkShorebirdYaml(),
+    );
 
     // Copy release xcframework to a new directory to avoid overwriting with
     // subsequent patch builds.

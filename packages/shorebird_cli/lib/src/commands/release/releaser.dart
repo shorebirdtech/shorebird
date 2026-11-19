@@ -129,26 +129,42 @@ abstract class Releaser {
           flavor: flavor,
         );
 
-  /// Rejects a module build whose generated (bundled) shorebird.yaml,
-  /// [bundledShorebirdYaml] (null if the build has none), doesn't carry
-  /// [moduleAppId]. The apps that embed it would check for patches under
-  /// that other app ID and never get this release's. Flutter before
-  /// shorebirdtech/flutter#358 ignores the app ID the CLI hands it and builds
-  /// every module with the top-level `app_id` (shorebird#3746).
-  void assertModuleCarriesAppId(String? bundledShorebirdYaml) {
+  /// With `--flavor`, rejects a module build whose generated (bundled)
+  /// shorebird.yaml, as [readBundledShorebirdYaml] returns it (null if the
+  /// build has none), doesn't carry [moduleAppId]. The apps that embed it
+  /// would check for patches under that other app ID and never get this
+  /// release's. Flutter before shorebirdtech/flutter#358 ignores the app ID
+  /// the CLI hands it and builds every module with the top-level `app_id`
+  /// (shorebird#3746). Does nothing without `--flavor`.
+  Future<void> assertModuleCarriesAppId(
+    Future<String?> Function() readBundledShorebirdYaml,
+  ) async {
     final expected = moduleAppId;
     if (expected == null) return;
-    final actual = _appIdIn(bundledShorebirdYaml);
+    final actual = _appIdIn(await readBundledShorebirdYaml());
     if (actual == expected) return;
+    if (actual == null) {
+      throw CommandError(
+        message:
+            "Couldn't read the app ID from this module's generated "
+            'shorebird.yaml, so the CLI cannot check that it carries '
+            '$expected, the app ID of flavor "$flavor".',
+        hint:
+            'Please file an issue: '
+            'https://github.com/shorebirdtech/shorebird/issues/new',
+        exitCode: ExitCode.software,
+      );
+    }
     throw CommandError(
       message:
-          'This module was built with app ID ${actual ?? '(none)'}, not '
-          '$expected, the app ID of flavor "$flavor" in shorebird.yaml, so '
-          'the apps that embed it would never get its patches. This Flutter '
-          'version builds a module with the top-level app_id only.',
+          'This module was built with app ID $actual, not $expected, the app '
+          'ID of flavor "$flavor" in shorebird.yaml, so the apps that embed '
+          'it would never get its patches. This Flutter version builds a '
+          'module with the top-level app_id only.',
       hint:
           'Release with a newer Flutter (--flutter-version), or with the '
           "flavor's app ID as the top-level app_id and no --flavor.",
+      exitCode: ExitCode.config,
     );
   }
 

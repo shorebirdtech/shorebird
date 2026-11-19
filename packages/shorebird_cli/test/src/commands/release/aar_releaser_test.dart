@@ -568,7 +568,7 @@ void main() {
                 isA<CommandError>().having(
                   (e) => e.message,
                   'message',
-                  contains('built with app ID (none)'),
+                  contains("Couldn't read the app ID"),
                 ),
               ),
             );
@@ -579,7 +579,13 @@ void main() {
 
             await expectLater(
               runWithOverrides(aarReleaser.buildReleaseArtifacts),
-              throwsA(isA<CommandError>()),
+              throwsA(
+                isA<CommandError>().having(
+                  (e) => e.message,
+                  'message',
+                  contains("Couldn't read the app ID"),
+                ),
+              ),
             );
           });
         });

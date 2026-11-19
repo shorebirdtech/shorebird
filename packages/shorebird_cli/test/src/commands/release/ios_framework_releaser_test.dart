@@ -437,6 +437,23 @@ void main() {
           ).called(1);
         });
 
+        test('fails when the module has no shorebird.yaml', () async {
+          when(
+            () => artifactManager.readAppXcframeworkShorebirdYaml(),
+          ).thenReturn(null);
+
+          await expectLater(
+            runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts),
+            throwsA(
+              isA<CommandError>().having(
+                (e) => e.message,
+                'message',
+                contains("Couldn't read the app ID"),
+              ),
+            ),
+          );
+        });
+
         test('fails when Flutter built in another app ID', () async {
           when(
             () => artifactManager.readAppXcframeworkShorebirdYaml(),
