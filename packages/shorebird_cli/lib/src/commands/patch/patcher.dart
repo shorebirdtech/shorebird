@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
@@ -102,6 +103,15 @@ More info: ${linkPercentageUrl.toLink()}.
 
   /// The flavor of the release, if any.
   final String? flavor;
+
+  /// The app ID an add-to-app module (aar, ios-framework) patched with
+  /// `--flavor` is built with, as its release was (see
+  /// `Releaser.moduleAppId`). Null without `--flavor`.
+  String? get moduleAppId => flavor == null
+      ? null
+      : shorebirdEnv.getShorebirdYaml()!.getAppId(
+          flavor: flavor,
+        );
 
   /// The target script to run, if any.
   final String? target;

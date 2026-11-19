@@ -57,6 +57,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIosFramework(
         releaseVersion: _releaseVersion,
+        appId: moduleAppId,
         target: target,
         // `release` parses `--no-codesign` itself (for ipa builds), so it
         // isn't forwarded with the rest.
@@ -65,6 +66,11 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
         ddMaxBytes: ddMaxBytes,
       ),
     );
+    if (moduleAppId != null) {
+      assertModuleCarriesAppId(
+        artifactManager.readAppXcframeworkShorebirdYaml(),
+      );
+    }
 
     // Copy release xcframework to a new directory to avoid overwriting with
     // subsequent patch builds.

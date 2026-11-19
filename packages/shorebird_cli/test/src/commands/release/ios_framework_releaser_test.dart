@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/release/ios_framework_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -394,6 +395,64 @@ void main() {
             args: [],
           ),
         ).called(1);
+      });
+
+      group('when released with a flavor', () {
+        const flavorAppId = 'internal-app-id';
+
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'default-app-id',
+              flavors: {'internal': flavorAppId},
+            ),
+          );
+          when(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: any(named: 'appId'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+          iosFrameworkReleaser = IosFrameworkReleaser(
+            argResults: argResults,
+            flavor: 'internal',
+            target: null,
+          );
+        });
+
+        test('builds the module with the flavor app ID', () async {
+          when(
+            () => artifactManager.readAppXcframeworkShorebirdYaml(),
+          ).thenReturn('app_id: $flavorAppId');
+
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+          verify(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: '1.0.0+1',
+              appId: flavorAppId,
+              args: [],
+            ),
+          ).called(1);
+        });
+
+        test('fails when Flutter built in another app ID', () async {
+          when(
+            () => artifactManager.readAppXcframeworkShorebirdYaml(),
+          ).thenReturn('app_id: default-app-id');
+
+          await expectLater(
+            runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts),
+            throwsA(
+              isA<CommandError>().having(
+                (e) => e.message,
+                'message',
+                contains('built with app ID default-app-id, not $flavorAppId'),
+              ),
+            ),
+          );
+        });
       });
 
       test(

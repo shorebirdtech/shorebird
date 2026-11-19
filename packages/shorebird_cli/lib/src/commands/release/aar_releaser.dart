@@ -65,11 +65,20 @@ class AarReleaser extends Releaser {
       (buildArgs, base64PublicKey) => artifactBuilder.buildAar(
         buildNumber: buildNumber,
         releaseVersion: _releaseVersion,
+        appId: moduleAppId,
         targetPlatforms: architectures,
         args: buildArgs,
         base64PublicKey: base64PublicKey,
       ),
     );
+    if (moduleAppId != null) {
+      assertModuleCarriesAppId(
+        await shorebirdAndroidArtifacts.readAarShorebirdYaml(
+          packageName: shorebirdEnv.androidPackageName!,
+          buildNumber: buildNumber,
+        ),
+      );
+    }
 
     // Copy release AAR to a new directory to avoid overwriting with
     // subsequent patch builds.

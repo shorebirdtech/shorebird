@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -482,6 +483,105 @@ void main() {
               args: [],
             ),
           ).called(1);
+        });
+
+        group('when released with a flavor', () {
+          const flavorAppId = 'internal-app-id';
+
+          void stubBundledShorebirdYaml(String? contents) {
+            when(
+              () => shorebirdAndroidArtifacts.readAarShorebirdYaml(
+                packageName: any(named: 'packageName'),
+                buildNumber: any(named: 'buildNumber'),
+              ),
+            ).thenAnswer((_) async => contents);
+          }
+
+          setUp(() {
+            when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+              const ShorebirdYaml(
+                appId: 'default-app-id',
+                flavors: {'internal': flavorAppId},
+              ),
+            );
+            when(
+              () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
+                appId: any(named: 'appId'),
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+              ),
+            ).thenAnswer((_) async => File(''));
+            aarReleaser = AarReleaser(
+              argResults: argResults,
+              flavor: 'internal',
+              target: null,
+            );
+          });
+
+          test('builds the module with the flavor app ID', () async {
+            stubBundledShorebirdYaml('app_id: $flavorAppId');
+
+            await runWithOverrides(aarReleaser.buildReleaseArtifacts);
+
+            verify(
+              () => artifactBuilder.buildAar(
+                releaseVersion: '1.0.0+1',
+                appId: flavorAppId,
+                buildNumber: buildNumber,
+                targetPlatforms: Arch.values.toSet(),
+                args: [],
+              ),
+            ).called(1);
+            verify(
+              () => shorebirdAndroidArtifacts.readAarShorebirdYaml(
+                packageName: packageName,
+                buildNumber: buildNumber,
+              ),
+            ).called(1);
+          });
+
+          test('fails when Flutter built in another app ID', () async {
+            stubBundledShorebirdYaml('app_id: default-app-id');
+
+            await expectLater(
+              runWithOverrides(aarReleaser.buildReleaseArtifacts),
+              throwsA(
+                isA<CommandError>().having(
+                  (e) => e.message,
+                  'message',
+                  contains(
+                    'built with app ID default-app-id, not $flavorAppId',
+                  ),
+                ),
+              ),
+            );
+          });
+
+          test('fails when the module has no shorebird.yaml', () async {
+            stubBundledShorebirdYaml(null);
+
+            await expectLater(
+              runWithOverrides(aarReleaser.buildReleaseArtifacts),
+              throwsA(
+                isA<CommandError>().having(
+                  (e) => e.message,
+                  'message',
+                  contains('built with app ID (none)'),
+                ),
+              ),
+            );
+          });
+
+          test('fails when the shorebird.yaml is not valid YAML', () async {
+            stubBundledShorebirdYaml('app_id: [');
+
+            await expectLater(
+              runWithOverrides(aarReleaser.buildReleaseArtifacts),
+              throwsA(isA<CommandError>()),
+            );
+          });
         });
 
         group('when a patch signing key path is provided', () {
