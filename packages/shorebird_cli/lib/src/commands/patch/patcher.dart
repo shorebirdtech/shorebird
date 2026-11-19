@@ -120,6 +120,11 @@ More info: ${linkPercentageUrl.toLink()}.
   /// obfuscation flags when the release was built with obfuscation.
   List<String> extraBuildArgs = const [];
 
+  /// The release's extracted supplement, if it has one. Set by the patch
+  /// command before building; Android patch builds read the release's object
+  /// order (`<abi>/App.ref.link`) from it.
+  Directory? releaseSupplementDirectory;
+
   /// Additional gen_snapshot arguments needed to match the release's
   /// obfuscation flags. Used by Apple patchers for
   /// `ArtifactBuilder.buildElfAotSnapshot`

@@ -198,6 +198,27 @@ void main() {
         ).thenReturn(File('app-release.aab'));
       });
 
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildAppBundle(
+            releaseSupplementDir: 'release_supplement',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       test('invokes the correct flutter build command', () async {
         await runWithOverrides(() => builder.buildAppBundle());
 
@@ -1091,6 +1112,28 @@ void main() {
               '--foo',
               'bar',
             ],
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildAar(
+            buildNumber: buildNumber,
+            releaseSupplementDir: 'release_supplement',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
             runInShell: false,
             onStart: any(named: 'onStart'),
           ),
