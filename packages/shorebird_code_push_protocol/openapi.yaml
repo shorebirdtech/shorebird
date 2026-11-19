@@ -631,6 +631,10 @@ paths:
       tags:
         - collaborators
       summary: Add a collaborator to the app by email.
+      description: |
+        Per-app collaborators are being retired in favour of organization
+        membership. Manage access through organization membership instead,
+        with `POST /organizations/{organizationId}/invitations`.
       operationId: createAppCollaborator
       requestBody:
         required: true
@@ -641,6 +645,15 @@ paths:
       responses:
         '204':
           description: The collaborator was added.
+        '410':
+          description: |
+            Per-app collaborators can no longer be added
+            (`app_collaborators_frozen`), or per-app collaborators have
+            been retired (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
     get:
@@ -674,6 +687,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: |
+            Per-app collaborators have been retired
+            (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/collaborators/{collaboratorId}:
@@ -689,6 +710,10 @@ paths:
       tags:
         - collaborators
       summary: Update a collaborator's role on an app.
+      description: |
+        Per-app collaborators are being retired in favour of organization
+        membership. Manage roles through organization membership instead,
+        with `PATCH /organizations/{organizationId}/users/{userId}`.
       operationId: updateAppCollaborator
       requestBody:
         required: true
@@ -699,6 +724,15 @@ paths:
       responses:
         '204':
           description: The collaborator was updated.
+        '410':
+          description: |
+            Per-app collaborator roles can no longer be updated
+            (`app_collaborators_frozen`), or per-app collaborators have
+            been retired (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
     delete:
@@ -734,6 +768,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: The app does not exist (`app_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: |
+            Per-app collaborators have been retired
+            (`app_collaborators_retired`).
           content:
             application/json:
               schema:
