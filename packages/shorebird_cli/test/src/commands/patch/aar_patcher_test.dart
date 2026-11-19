@@ -358,8 +358,27 @@ void main() {
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => {});
+        });
+
+        test('builds against the release supplement', () async {
+          final releaseSupplementDirectory = Directory.systemTemp;
+          patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verify(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              releaseSupplementDir: releaseSupplementDirectory.path,
+            ),
+          ).called(1);
         });
 
         group('when platform was specified via arg results rest', () {

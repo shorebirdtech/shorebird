@@ -1444,6 +1444,26 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             expect(supplementDirectory.existsSync(), isFalse);
           });
 
+          test('gives the patch build the extracted supplement', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            final supplementDirectory =
+                verify(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: release.id,
+                        releaseArtifact: any(named: 'releaseArtifact'),
+                        supplementDirectory: captureAny(
+                          named: 'supplementDirectory',
+                        ),
+                      ),
+                    ).captured.single
+                    as Directory;
+            verify(
+              () => patcher.releaseSupplementDirectory = supplementDirectory,
+            ).called(1);
+          });
+
           group('when the supplement is damaged', () {
             setUp(() {
               when(

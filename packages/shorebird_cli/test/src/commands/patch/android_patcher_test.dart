@@ -342,8 +342,33 @@ void main() {
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
             ddMaxBytes: any(named: 'ddMaxBytes'),
+            releaseSupplementDir: any(named: 'releaseSupplementDir'),
           ),
         ).thenAnswer((_) async => aabFile);
+      });
+
+      group('when the release has a supplement', () {
+        final releaseSupplementDirectory = Directory.systemTemp;
+
+        setUp(() {
+          setUpProjectRootArtifacts();
+          patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+        });
+
+        test('builds against it, for the release object order', () async {
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verify(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              releaseSupplementDir: releaseSupplementDirectory.path,
+            ),
+          ).called(1);
+        });
       });
 
       // See https://docs.shorebird.dev/getting-started/flutter-version/#flutter-version-notes

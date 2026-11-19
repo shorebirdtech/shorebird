@@ -69,10 +69,16 @@ ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 /// ios-framework only). Flutter bakes it into the module's compiled
 /// shorebird.yaml, and the updater reports it as the release version instead
 /// of the host app's version.
+///
+/// [releaseSupplementDir] is the downloaded supplement of the release a patch
+/// is built against (Android only). Flutter's Android build reads the
+/// release's object order from it, so the patch's snapshot objects keep their
+/// release ids and the patch diffs smaller.
 Map<String, String>? buildEnvironment({
   String? base64PublicKey,
   int? ddMaxBytes,
   String? releaseVersion,
+  String? releaseSupplementDir,
 }) {
   final env = <String, String>{};
   if (base64PublicKey != null) {
@@ -83,6 +89,9 @@ Map<String, String>? buildEnvironment({
   }
   if (ddMaxBytes != null) {
     env['SHOREBIRD_DD_MAX_BYTES'] = ddMaxBytes.toString();
+  }
+  if (releaseSupplementDir != null) {
+    env['SHOREBIRD_RELEASE_SUPPLEMENT_DIR'] = releaseSupplementDir;
   }
   return env.isEmpty ? null : env;
 }
@@ -188,6 +197,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
+    String? releaseSupplementDir,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
     await _runFlutterBuild(
@@ -202,6 +212,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       args: args,
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
+      releaseSupplementDir: releaseSupplementDir,
       fixRecommendation: _androidBuildFixRecommendation,
     );
 
@@ -266,6 +277,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
+    String? releaseSupplementDir,
   }) async {
     final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
     await _runFlutterBuild(
@@ -281,6 +293,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
       releaseVersion: releaseVersion,
+      releaseSupplementDir: releaseSupplementDir,
       fixRecommendation: _androidBuildFixRecommendation,
     );
   }
@@ -401,6 +414,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     required String? base64PublicKey,
     required int? ddMaxBytes,
     String? releaseVersion,
+    String? releaseSupplementDir,
     String Function(String buildCommand) fixRecommendation =
         runVanillaFlutterBuildRecommendation,
   }) async {
@@ -421,6 +435,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
         releaseVersion: releaseVersion,
+        releaseSupplementDir: releaseSupplementDir,
       ),
       // Never run in shell because we always have a fully resolved
       // executable path.
