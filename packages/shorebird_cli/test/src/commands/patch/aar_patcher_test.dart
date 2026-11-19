@@ -364,7 +364,10 @@ void main() {
         });
 
         test('builds against the release supplement', () async {
-          final releaseSupplementDirectory = Directory.systemTemp;
+          final releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final abiDir = p.join(releaseSupplementDirectory.path, 'arm64-v8a');
+          File(p.join(abiDir, 'App.ref.link')).createSync(recursive: true);
           patcher.releaseSupplementDirectory = releaseSupplementDirectory;
 
           await runWithOverrides(patcher.buildPatchArtifact);
@@ -376,7 +379,12 @@ void main() {
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              releaseSupplementDir: releaseSupplementDirectory.path,
+              releaseSupplementDir: p.join(
+                projectRoot.path,
+                'build',
+                'android',
+                'shorebird_release',
+              ),
             ),
           ).called(1);
         });

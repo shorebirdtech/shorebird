@@ -348,16 +348,30 @@ void main() {
       });
 
       group('when the release has a supplement', () {
-        final releaseSupplementDirectory = Directory.systemTemp;
+        late Directory releaseSupplementDirectory;
 
         setUp(() {
           setUpProjectRootArtifacts();
+          releaseSupplementDirectory = Directory.systemTemp.createTempSync();
+          final abiDir = p.join(releaseSupplementDirectory.path, 'arm64-v8a');
+          File(p.join(abiDir, 'App.ref.link'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('order');
+          File(
+            p.join(releaseSupplementDirectory.path, 'obfuscation_map.json'),
+          ).createSync();
           patcher.releaseSupplementDirectory = releaseSupplementDirectory;
         });
 
-        test('builds against it, for the release object order', () async {
+        test('builds against a stable copy of its object order', () async {
           await runWithOverrides(patcher.buildPatchArtifact);
 
+          final staged = p.join(
+            projectRoot.path,
+            'build',
+            'android',
+            'shorebird_release',
+          );
           verify(
             () => artifactBuilder.buildAppBundle(
               flavor: any(named: 'flavor'),
@@ -365,9 +379,16 @@ void main() {
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              releaseSupplementDir: releaseSupplementDirectory.path,
+              releaseSupplementDir: staged,
             ),
           ).called(1);
+          expect(
+            File(
+              p.join(staged, 'arm64-v8a', 'App.ref.link'),
+            ).readAsStringSync(),
+            'order',
+          );
+          expect(Directory(staged).listSync(), hasLength(1));
         });
       });
 

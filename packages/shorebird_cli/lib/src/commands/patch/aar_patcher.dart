@@ -75,7 +75,7 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
       targetPlatforms: releaseTargetPlatforms,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
-      releaseSupplementDir: releaseSupplementDirectory?.path,
+      releaseSupplementDir: stageReleaseSupplement(),
     );
 
     return File(
