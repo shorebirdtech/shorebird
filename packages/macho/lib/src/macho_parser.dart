@@ -1027,24 +1027,26 @@ class MachOSlice {
               // Branches, exception generation and system instructions.
               _forgetAll(adrpByReg, adrpOnlyGotLoads);
             } else {
-              // Any other use of an ADRP's register keeps that ADRP's page
-              // in its token. Registers this instruction may write stop
-              // being tracked; the fields checked are wider than any one
-              // encoding uses, which only gives up a match.
+              // Any other instruction naming an ADRP's register (reading it,
+              // storing it, writing back to it, or overwriting it) keeps that
+              // ADRP's page in its token and ends its tracking. The fields
+              // checked are wider than any one encoding uses, which only
+              // gives up a match.
               for (final reg in [
+                insn & 0x1f,
                 (insn >>> 5) & 0x1f,
-                (insn >>> 16) & 0x1f,
                 (insn >>> 10) & 0x1f,
+                (insn >>> 16) & 0x1f,
               ]) {
-                final adrpIndex = adrpByReg[reg];
+                final adrpIndex = adrpByReg.remove(reg);
                 if (adrpIndex != null) adrpOnlyGotLoads[adrpIndex] = false;
               }
-              adrpByReg
-                ..remove(insn & 0x1f)
-                ..remove((insn >>> 10) & 0x1f);
             }
           }
         }
+        // Code past the end of this chunk (a fall-through into the next
+        // symbol) may still read a tracked page.
+        _forgetAll(adrpByReg, adrpOnlyGotLoads);
 
         // An ADRP used only to load GOT slots carries no meaning of its own:
         // the loads name their symbols, and the page moves with the GOT.

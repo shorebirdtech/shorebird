@@ -938,6 +938,48 @@ void main() {
         );
       });
 
+      test('keeps the page of an ADRP stored, written back, or live at the '
+          'end of a function', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                textInstructions: [
+                  // _a: x8 falls through into _b.
+                  Arm64Encoder.adrp(8, 3),
+                  Arm64Encoder.ldr(9, 8, 8),
+                  // _b at 0x1008: reads the page _a left in x8.
+                  Arm64Encoder.ldr(10, 8, 0),
+                  // str x8, [sp]: the page itself is stored.
+                  Arm64Encoder.adrp(8, 3),
+                  Arm64Encoder.ldr(9, 8, 8),
+                  0xf90003e8,
+                  // ldr x9, [x8, #8]!: x8 no longer holds the page after.
+                  Arm64Encoder.adrp(8, 3),
+                  0xf8408d09,
+                  Arm64Encoder.ldr(10, 8, 0),
+                  Arm64Encoder.ret(),
+                ],
+                extraSections: [gotSection()],
+                symbols: const [
+                  ...gotSymbols,
+                  MachOSymbolSpec(name: '_b', nValue: 0x1008),
+                ],
+                indirectSymbols: const [2, 1],
+                functionStartOffsets: const [0, 8],
+              ),
+            )
+            .slices
+            .single;
+        final [a, b] = slice.resolveFunctions();
+        expect(a.tokensAt(0), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(a.tokensAt(1), 'ldr,x9,x8,G:_objc_msgSend,');
+        expect(b.tokensAt(0), startsWith('insn,'));
+        expect(b.tokensAt(1), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(b.tokensAt(3), startsWith('insn,'));
+        expect(b.tokensAt(4), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(b.tokensAt(6), startsWith('insn,'));
+      });
+
       test('renders __swift5_typeref symbolic references by target', () {
         final slice = parser
             .parse(
