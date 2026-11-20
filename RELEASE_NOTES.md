@@ -4,6 +4,18 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.145 (November 20, 2026)
+
+- 🐛 Improved linking of large iOS patches, so they run faster
+- 🐛 Devices keep their client ID when the updater's state file is damaged or
+  was written by another updater version
+- 🐛 `toByteData` no longer fails on `decodeImageFromPixelsSync` images under
+  Impeller
+- 🔧 iOS patches of large apps are smaller to download and use less memory at
+  launch, for releases made with this version
+
+Flutter 3.50.0 and Dart 3.14.0.
+
 ## 1.6.144 (November 18, 2026)
 
 - 🐦 Flutter 3.50.0 / Dart 3.14.0
