@@ -4,6 +4,28 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.146 (November 20, 2026)
+
+- 🐦 Flutter 3.50.1 / Dart 3.14.0 support
+  - Fix Android builds silently omitting dotfile assets such as `.env` or
+    underscore-prefixed asset folders
+  - Fix Android Gradle configuration failing with plugins and custom or
+    app-only `buildType` settings
+  - Fix Android `--split-per-abi` builds assigning identical `versionCode`s
+    when `versionCode` is set only in `AndroidManifest.xml`
+- ✨ Archive and unarchive apps from the CLI with `shorebird apps archive` and
+  `shorebird apps unarchive`, and pass `--include-archived` to `shorebird apps
+  list` to show archived apps
+- 🐛 `shorebird release aar` and `shorebird release ios-framework` with
+  `--flavor` now build the module with that flavor's app ID so the module
+  checks for patches under the right app
+- 🐛 `shorebird patch ios` and `shorebird patch macos` no longer flag native
+  changes when Xcode lays out GOT slots differently between builds
+- 🐛 `shorebird patch android` no longer flags native changes when non-loaded
+  ELF sections such as `.comment` differ across NDK builds
+- 🐛 Improved linking of large Android patches, so they are smaller to download
+  and run faster, for releases made with this version
+
 ## 1.6.145 (November 20, 2026)
 
 - 🐛 Improved linking of large iOS patches, so they run faster
