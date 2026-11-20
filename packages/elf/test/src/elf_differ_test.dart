@@ -1,6 +1,6 @@
 // cspell:words aarch adrp debuglink dynstr dynsym execinstr fini ifunc insn
 // cspell:words insns libc libfoo libnew libold movz nobits notype progbits
-// cspell:words riscv rodata shndx soname symtab undef
+// cspell:words addralign riscv rodata shndx soname symtab undef
 import 'dart:typed_data';
 
 import 'package:elf/elf.dart';
@@ -107,6 +107,52 @@ void main() {
         expect(
           result.safeDifferences.map((d) => d.kind),
           contains(ElfDifferenceKind.debugInfoChanged),
+        );
+      });
+
+      test('a .comment change (compiler/linker version strings) is '
+          'classified as safe (debugInfoChanged)', () {
+        ElfSectionSpec comment(String text) => ElfSectionSpec(
+          name: '.comment',
+          bytes: Uint8List.fromList('$text\x00'.codeUnits),
+          flags: 0,
+          addralign: 1,
+        );
+        final oldBytes = ElfBuilder.build(
+          symbols: const [ElfSymbolSpec(name: 'native_fn')],
+          extraSections: [comment('Android (12470979, +pgo) clang 18.0.3')],
+        );
+        final newBytes = ElfBuilder.build(
+          symbols: const [ElfSymbolSpec(name: 'native_fn')],
+          extraSections: [comment('Android (13324770, +pgo) clang 19.0.1')],
+        );
+
+        final result = differ.diffBytes(oldBytes, newBytes);
+        expect(result.isSafe, isTrue);
+        expect(
+          result.safeDifferences.single.kind,
+          ElfDifferenceKind.debugInfoChanged,
+        );
+        expect(
+          result.describe(),
+          contains('Non-loaded section changed: .comment'),
+        );
+
+        // Adding or removing a section without SHF_ALLOC is safe too.
+        final noComment = ElfBuilder.build(
+          symbols: const [ElfSymbolSpec(name: 'native_fn')],
+        );
+        final added = differ.diffBytes(noComment, newBytes);
+        expect(added.isSafe, isTrue);
+        expect(
+          added.describe(),
+          contains('Non-loaded section added: .comment'),
+        );
+        final removed = differ.diffBytes(oldBytes, noComment);
+        expect(removed.isSafe, isTrue);
+        expect(
+          removed.describe(),
+          contains('Non-loaded section removed: .comment'),
         );
       });
 
@@ -381,6 +427,40 @@ void main() {
             ElfDifferenceKind.dataChanged,
             ElfDifferenceKind.functionCodeChanged,
           ]),
+        );
+      });
+
+      test('a change to a section with SHF_ALLOC is classified as breaking '
+          'even when it is named like a metadata section', () {
+        ElfSectionSpec loaded(int byte, {int flags = ElfSectionFlags.alloc}) =>
+            ElfSectionSpec(
+              name: '.comment',
+              bytes: Uint8List.fromList([byte]),
+              flags: flags,
+            );
+        final oldBytes = ElfBuilder.build(extraSections: [loaded(1)]);
+        final newBytes = ElfBuilder.build(extraSections: [loaded(2)]);
+
+        final result = differ.diffBytes(oldBytes, newBytes);
+        expect(result.isSafe, isFalse);
+        expect(
+          result.breakingDifferences.single.kind,
+          ElfDifferenceKind.rodataChanged,
+        );
+
+        // A malformed section marked executable but not SHF_ALLOC is compared
+        // as code, not waved through as metadata.
+        final oldExec = ElfBuilder.build(
+          extraSections: [loaded(1, flags: ElfSectionFlags.execinstr)],
+        );
+        final newExec = ElfBuilder.build(
+          extraSections: [loaded(2, flags: ElfSectionFlags.execinstr)],
+        );
+        final execResult = differ.diffBytes(oldExec, newExec);
+        expect(execResult.isSafe, isFalse);
+        expect(
+          execResult.breakingDifferences.single.kind,
+          ElfDifferenceKind.functionCodeChanged,
         );
       });
 
