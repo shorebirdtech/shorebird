@@ -45,8 +45,8 @@ Future<void> runE2e({
     final appIds = [..._appIds];
     _appIds.clear();
     for (final appId in appIds) {
-      // Each run mints an app; delete it so the e2e account's app list stays
-      // flat (see patch_e2e.dart).
+      // Each run mints its apps; delete them so the e2e account's app list
+      // stays flat (see patch_e2e.dart).
       print('Deleting e2e app $appId');
       final result = await Process.run('shorebird', [
         'api',
@@ -203,7 +203,7 @@ Future<Directory> createModule(
 Future<String> addFlavor(Directory project, String flavor) async {
   final shorebirdYaml = File('${project.path}/shorebird.yaml');
   final topLevel = shorebirdYaml.readAsStringSync();
-  final flavorAppId = await _init(project);
+  final flavorAppId = await _init(project, displayName: 'e2e $flavor');
   shorebirdYaml.writeAsStringSync(
     topLevel.replaceFirstMapped(
       RegExp(r'^app_id: \S+\n', multiLine: true),
@@ -215,7 +215,7 @@ Future<String> addFlavor(Directory project, String flavor) async {
 
 /// Runs `shorebird init` in [project] against the server under test, and
 /// remembers the app it made to delete at the end. Returns its app ID.
-Future<String> _init(Directory project) async {
+Future<String> _init(Directory project, {String? displayName}) async {
   final orgId = Platform.environment['SHOREBIRD_ORG_ID'];
   await timed(
     'init',
@@ -223,6 +223,7 @@ Future<String> _init(Directory project) async {
       'init',
       '--force',
       if (orgId != null) '--org-id=$orgId',
+      if (displayName != null) '--display-name=$displayName',
       '-v',
     ]),
   );

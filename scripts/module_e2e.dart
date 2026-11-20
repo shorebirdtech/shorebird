@@ -83,7 +83,9 @@ Future<void> main(List<String> args) async {
   final flavored = args.contains('--flavor');
   final positional = args.where((a) => !a.startsWith('-')).toList();
   if (positional.length > 1 ||
-      args.any((a) => a.startsWith('-') && !flags.contains(a))) {
+      args.any((a) => a.startsWith('-') && !flags.contains(a)) ||
+      // A Flutter from before module versions can't bake a flavor's app ID.
+      (hostVersions && flavored)) {
     print(
       'Usage: dart scripts/module_e2e.dart [--host-versions] [--flavor] '
       '[<flutter-version>]',

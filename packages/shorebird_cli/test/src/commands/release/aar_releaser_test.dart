@@ -548,13 +548,24 @@ void main() {
             await expectLater(
               runWithOverrides(aarReleaser.buildReleaseArtifacts),
               throwsA(
-                isA<CommandError>().having(
-                  (e) => e.message,
-                  'message',
-                  contains(
-                    'built with app ID default-app-id, not $flavorAppId',
-                  ),
-                ),
+                isA<CommandError>()
+                    .having(
+                      (e) => e.message,
+                      'message',
+                      contains(
+                        'built with app ID default-app-id, not $flavorAppId',
+                      ),
+                    )
+                    .having(
+                      (e) => e.hint,
+                      'hint',
+                      contains('--flutter-version=3.50.0'),
+                    )
+                    .having(
+                      (e) => e.exitCode,
+                      'exitCode',
+                      ExitCode.config.code,
+                    ),
               ),
             );
           });
