@@ -62,6 +62,32 @@ void main() {
       expect(appMetadata.organizationId, isNull);
     });
 
+    test('carries archived_at, absent while the app is not archived', () {
+      final appMetadata = AppMetadata(
+        appId: '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        displayName: 'My App',
+        archivedAt: DateTime.utc(2026, 3, 4, 5, 6),
+        createdAt: DateTime(2022),
+        updatedAt: DateTime(2023),
+      );
+      expect(
+        appMetadata.toJson()['archived_at'],
+        equals('2026-03-04T05:06:00.000Z'),
+      );
+      expect(
+        AppMetadata.fromJson(appMetadata.toJson()).archivedAt,
+        equals(DateTime.utc(2026, 3, 4, 5, 6)),
+      );
+      final live = AppMetadata.fromJson({
+        'app_id': '30370f27-dbf1-4673-8b20-fb096e38dffa',
+        'display_name': 'My App',
+        'created_at': DateTime(2022).toIso8601String(),
+        'updated_at': DateTime(2023).toIso8601String(),
+      });
+      expect(live.archivedAt, isNull);
+      expect(live.toJson().containsKey('archived_at'), isFalse);
+    });
+
     test('can be (de)serialized with platforms, latestReleases, '
         'pendingReleases, and iconUrl', () {
       final appMetadata = AppMetadata(

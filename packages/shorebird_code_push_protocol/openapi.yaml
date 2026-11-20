@@ -501,6 +501,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PerPage'
         - $ref: '#/components/parameters/Cursor'
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include archived apps in the response.
       responses:
         '200':
           description: A list of apps.
@@ -2369,6 +2376,13 @@ paths:
           description: |
             The order of `sort`. Defaults to `asc` for `name` and to `desc`
             otherwise, as GitHub's lists do.
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include archived apps in the response.
       responses:
         '200':
           description: The apps belonging to the organization.
@@ -4967,6 +4981,13 @@ components:
         display_name:
           type: string
           description: The display name of the app.
+        archived_at:
+          type: string
+          format: date-time
+          description: |
+            When the app was archived. Absent while it is not archived. An
+            archived app serves no patches, takes no new release or patch,
+            and does not count against its account's app quota.
         patch_signing_required:
           type: boolean
           description: |

@@ -2781,14 +2781,26 @@ void main() {
     });
 
     group('getApps', () {
-      test('makes the correct request', () async {
-        codePushClient.getApps().ignore();
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.BaseRequest;
-        expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('apps')));
-        expect(request.hasHeaders(expectedHeaders), isTrue);
+      group('makes the correct request', () {
+        test('when includeArchived is not specified', () async {
+          codePushClient.getApps().ignore();
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.method, equals('GET'));
+          expect(request.url, equals(v1('apps')));
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+        });
+
+        test('when includeArchived is true', () async {
+          codePushClient.getApps(includeArchived: true).ignore();
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.method, equals('GET'));
+          expect(request.url, equals(v1('apps?includeArchived=true')));
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+        });
       });
 
       test('throws an exception if the http request fails (unknown)', () async {

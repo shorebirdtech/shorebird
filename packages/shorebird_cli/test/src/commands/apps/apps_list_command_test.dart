@@ -33,6 +33,13 @@ void main() {
       createdAt: DateTime(2026, 2),
       updatedAt: DateTime(2026, 2, 2),
     );
+    final archivedApp = AppMetadata(
+      appId: '01K000000000000000000ABCDE',
+      displayName: 'Acme Legacy',
+      archivedAt: DateTime.utc(2026, 3, 4, 5, 6),
+      createdAt: DateTime(2026, 3),
+      updatedAt: DateTime(2026, 3, 2),
+    );
 
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
@@ -61,6 +68,7 @@ void main() {
         ..testArgResults = argResults;
 
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults['include-archived']).thenReturn(false);
       when(
         () => shorebirdValidator.validatePreconditions(
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
@@ -133,6 +141,15 @@ void main() {
         );
       });
 
+      test('leaves off the archived column', () async {
+        await runWithOverrides(command.run);
+        final lines = verify(
+          () => logger.info(captureAny()),
+        ).captured.cast<String>();
+        expect(lines[0], endsWith('1.2.3  4'));
+        expect(lines[1], endsWith('-  -'));
+      });
+
       group('when there are no apps', () {
         setUp(() {
           when(
@@ -145,6 +162,36 @@ void main() {
           expect(result, equals(ExitCode.success.code));
           verify(() => logger.info('No apps found.')).called(1);
         });
+      });
+    });
+
+    group('--include-archived', () {
+      setUp(() {
+        when(() => argResults['include-archived']).thenReturn(true);
+        when(
+          () => codePushClientWrapper.getApps(includeArchived: true),
+        ).thenAnswer((_) async => [appWithReleases, archivedApp]);
+      });
+
+      test('asks the API for archived apps', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.getApps(includeArchived: true),
+        ).called(1);
+      });
+
+      test('ends each line with the date the app was archived', () async {
+        await runWithOverrides(command.run);
+        final lines = verify(
+          () => logger.info(captureAny()),
+        ).captured.cast<String>();
+        expect(lines, hasLength(2));
+        expect(lines[0], endsWith('  -'));
+        expect(
+          lines[1],
+          allOf(contains('Acme Legacy'), endsWith('  2026-03-04')),
+        );
       });
     });
 
@@ -216,7 +263,26 @@ void main() {
         for (final app in apps) {
           expect(app.containsKey('created_at'), isFalse);
           expect(app.containsKey('updated_at'), isFalse);
+          expect(app.containsKey('archived_at'), isFalse);
         }
+      });
+
+      group('with --include-archived', () {
+        setUp(() {
+          when(() => argResults['include-archived']).thenReturn(true);
+          when(
+            () => codePushClientWrapper.getApps(includeArchived: true),
+          ).thenAnswer((_) async => [appWithReleases, archivedApp]);
+        });
+
+        test('names when each app was archived', () async {
+          final json = (await captureJson(() => runJsonMode(command.run))).json;
+          final apps =
+              ((json['data'] as Map<String, dynamic>)['apps'] as List<dynamic>)
+                  .cast<Map<String, dynamic>>();
+          expect(apps[0]['archived_at'], isNull);
+          expect(apps[1]['archived_at'], '2026-03-04T05:06:00.000Z');
+        });
       });
 
       test('emits empty array when there are no apps', () async {
@@ -283,6 +349,13 @@ void main() {
           },
         ],
       });
+    });
+
+    test('takes no --include-archived', () {
+      expect(
+        command.argParser.options.keys,
+        isNot(contains('include-archived')),
+      );
     });
 
     test('says when you are in no enterprise', () async {

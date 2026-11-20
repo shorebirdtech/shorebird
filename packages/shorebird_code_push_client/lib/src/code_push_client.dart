@@ -840,8 +840,16 @@ class CodePushClient {
   }
 
   /// List all apps for the current account.
-  Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
+  ///
+  /// The server leaves archived apps out unless [includeArchived] asks for
+  /// them.
+  Future<List<AppMetadata>> getApps({bool includeArchived = false}) async {
+    var uri = Uri.parse('$_v1/apps');
+    if (includeArchived) {
+      uri = uri.replace(queryParameters: {'includeArchived': 'true'});
+    }
+
+    final response = await _httpClient.get(uri);
 
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
