@@ -784,6 +784,22 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Archives the app with the provided [appId].
+  Future<void> archiveApp({required String appId}) {
+    return _withProgress(
+      'Archiving app',
+      () => codePushClient.archiveApp(appId: appId),
+    );
+  }
+
+  /// Unarchives the app with the provided [appId].
+  Future<void> unarchiveApp({required String appId}) {
+    return _withProgress(
+      'Unarchiving app',
+      () => codePushClient.unarchiveApp(appId: appId),
+    );
+  }
+
   /// Deletes the release with the provided [releaseId], along with every
   /// platform's artifacts and every patch belonging to it.
   Future<void> deleteRelease({required String appId, required int releaseId}) {

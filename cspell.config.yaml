@@ -170,6 +170,9 @@ words:
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unanalyzed
+  - unarchived
+  - unarchives
+  - unarchiving
   - unawaited
   - unheld
   - unmockable
