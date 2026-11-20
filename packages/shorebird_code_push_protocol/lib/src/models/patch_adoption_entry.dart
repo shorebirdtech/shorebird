@@ -4,7 +4,8 @@ import 'package:shorebird_code_push_protocol/src/models/patch_adoption_point.dar
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template patch_adoption_entry}
-/// Cumulative adoption for one patch of the release. Values are
+/// Cumulative adoption for one patch number of the release, across
+/// every platform with a patch under that number. Values are
 /// cumulative — "patch `>= patch_number`" — so they are monotonic
 /// non-increasing in `patch_number`.
 /// {@endtemplate}
@@ -16,6 +17,7 @@ class PatchAdoptionEntry {
     required this.targetPlatforms,
     required this.isRolledBack,
     required this.series,
+    this.rolledBackPlatforms,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PatchAdoptionEntry].
@@ -29,6 +31,9 @@ class PatchAdoptionEntry {
             .map<ReleasePlatform>((e) => ReleasePlatform.fromJson(e as String))
             .toList(),
         isRolledBack: json['is_rolled_back'] as bool,
+        rolledBackPlatforms: (json['rolled_back_platforms'] as List?)
+            ?.map<ReleasePlatform>((e) => ReleasePlatform.fromJson(e as String))
+            .toList(),
         series: (json['series'] as List)
             .map<PatchAdoptionPoint>(
               (e) => PatchAdoptionPoint.fromJson(e as Map<String, dynamic>),
@@ -50,12 +55,17 @@ class PatchAdoptionEntry {
   /// The patch number these cumulative values are anchored at.
   final int patchNumber;
 
-  /// The platform(s) the patch was built for (from its artifacts). The
-  /// denominator counts only devices on these platforms.
+  /// The platforms with a patch under this number. The denominator
+  /// counts only devices on these platforms.
   final List<ReleasePlatform> targetPlatforms;
 
-  /// Whether the patch has been rolled back.
+  /// Whether the patch has been rolled back. When several platforms
+  /// share the number, true only when every one of them is.
   final bool isRolledBack;
+
+  /// The platforms whose patch under this number is rolled back.
+  /// Unstable: this may change shape until patch linking ships.
+  final List<ReleasePlatform>? rolledBackPlatforms;
 
   /// The adoption series. Exactly one point (`period: null`) when no
   /// granularity was requested; otherwise one point per bucket, ordered
@@ -68,6 +78,9 @@ class PatchAdoptionEntry {
       'patch_number': patchNumber,
       'target_platforms': targetPlatforms.map((e) => e.toJson()).toList(),
       'is_rolled_back': isRolledBack,
+      'rolled_back_platforms': ?rolledBackPlatforms
+          ?.map((e) => e.toJson())
+          .toList(),
       'series': series.map((e) => e.toJson()).toList(),
     };
   }
@@ -77,6 +90,7 @@ class PatchAdoptionEntry {
     patchNumber,
     listHash(targetPlatforms),
     isRolledBack,
+    listHash(rolledBackPlatforms),
     listHash(series),
   ]);
 
@@ -87,6 +101,7 @@ class PatchAdoptionEntry {
         patchNumber == other.patchNumber &&
         listsEqual(targetPlatforms, other.targetPlatforms) &&
         isRolledBack == other.isRolledBack &&
+        listsEqual(rolledBackPlatforms, other.rolledBackPlatforms) &&
         listsEqual(series, other.series);
   }
 }
