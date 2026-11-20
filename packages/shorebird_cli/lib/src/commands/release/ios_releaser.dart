@@ -78,7 +78,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
         codesign: argResults.appleCodesign,
         flavor: flavor,
         target: target,
-        args: buildArgs,
+        args: [...buildArgs, ...argResults.iosExportArgs],
         base64PublicKey: base64PublicKey,
         ddMaxBytes: ddMaxBytes,
       );

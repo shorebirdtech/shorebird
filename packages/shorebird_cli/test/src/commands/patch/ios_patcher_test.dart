@@ -972,6 +972,32 @@ This may indicate that the patch contains native changes, which cannot be applie
           });
         });
 
+        group('when --export-method is provided', () {
+          setUp(() {
+            when(
+              () => argResults.wasParsed(CommonArguments.exportMethodArg.name),
+            ).thenReturn(true);
+            when(
+              () => argResults[CommonArguments.exportMethodArg.name],
+            ).thenReturn('development');
+          });
+
+          test('forwards --export-method to builder', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+            verify(
+              () => artifactBuilder.buildIpa(
+                flavor: any(named: 'flavor'),
+                codesign: any(named: 'codesign'),
+                target: any(named: 'target'),
+                args: any(
+                  named: 'args',
+                  that: contains('--export-method=development'),
+                ),
+              ),
+            ).called(1);
+          });
+        });
+
         group('when releaseVersion is provided', () {
           test('forwards --build-name and --build-number to builder', () async {
             await runWithOverrides(
