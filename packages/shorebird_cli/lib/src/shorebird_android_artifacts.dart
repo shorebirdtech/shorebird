@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
+
+import 'package:archive/archive_io.dart';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
@@ -209,6 +213,32 @@ class ShorebirdAndroidArtifacts {
     aarArtifactDirectory(packageName: packageName, buildNumber: buildNumber),
     'flutter_release-$buildNumber.aar',
   );
+
+  /// The generated (bundled) shorebird.yaml in the AAR that `flutter build
+  /// aar` built for [packageName] and [buildNumber], or null if the AAR or the
+  /// file is missing.
+  Future<String?> readAarShorebirdYaml({
+    required String packageName,
+    required String buildNumber,
+  }) async {
+    final aarPath = aarArtifactPath(
+      packageName: packageName,
+      buildNumber: buildNumber,
+    );
+    if (!File(aarPath).existsSync()) return null;
+    return Isolate.run(() {
+      final input = InputFileStream(aarPath);
+      try {
+        // Not verified: the AAR was just built, and verifying would checksum
+        // every entry to read this one small file.
+        final archive = ZipDecoder().decodeStream(input);
+        final file = archive.findFile('assets/flutter_assets/shorebird.yaml');
+        return file == null ? null : utf8.decode(file.readBytes()!);
+      } finally {
+        input.closeSync();
+      }
+    });
+  }
 
   /// Extract the release version from an appbundle.
   Future<String> extractReleaseVersionFromAppBundle(

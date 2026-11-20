@@ -725,4 +725,21 @@ its base/lib for libapp.so will confirm whether the build is dropping it.''');
       p.join(projectRoot.path, 'build', 'ios', 'framework', 'Release'),
     );
   }
+
+  /// The generated (bundled) shorebird.yaml in the device slice of the
+  /// App.xcframework that `flutter build ios-framework` built, or null if it
+  /// has none.
+  String? readAppXcframeworkShorebirdYaml() {
+    final file = File(
+      p.join(
+        getAppXcframeworkDirectory().path,
+        appXcframeworkName,
+        'ios-arm64',
+        'App.framework',
+        'flutter_assets',
+        'shorebird.yaml',
+      ),
+    );
+    return file.existsSync() ? file.readAsStringSync() : null;
+  }
 }

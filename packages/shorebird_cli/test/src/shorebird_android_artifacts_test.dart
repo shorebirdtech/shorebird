@@ -459,6 +459,56 @@ void main() {
       });
     });
 
+    group('readAarShorebirdYaml', () {
+      Future<String?> read() => runWithOverrides(
+        () => shorebirdAndroidArtifacts.readAarShorebirdYaml(
+          packageName: 'com.example',
+          buildNumber: '1',
+        ),
+      );
+
+      File aarFile() => File(
+        p.join(
+          projectRoot.path,
+          'build',
+          'host',
+          'outputs',
+          'repo',
+          'com',
+          'example',
+          'flutter_release',
+          '1',
+          'flutter_release-1.aar',
+        ),
+      );
+
+      void writeAar(Map<String, String> files) {
+        final archive = Archive();
+        for (final MapEntry(:key, :value) in files.entries) {
+          archive.addFile(ArchiveFile.string(key, value));
+        }
+        aarFile()
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(ZipEncoder().encode(archive));
+      }
+
+      test('returns null when there is no aar', () async {
+        expect(await read(), isNull);
+      });
+
+      test('returns null when the aar has no shorebird.yaml', () async {
+        writeAar({'classes.jar': 'jar'});
+        expect(await read(), isNull);
+      });
+
+      test("returns the aar's shorebird.yaml", () async {
+        writeAar({
+          'assets/flutter_assets/shorebird.yaml': 'app_id: internal-app-id',
+        });
+        expect(await read(), 'app_id: internal-app-id');
+      });
+    });
+
     group('extractReleaseVersionFromAppBundle', () {
       setUp(() {
         when(

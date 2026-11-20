@@ -1159,6 +1159,25 @@ void main() {
         ).called(1);
       });
 
+      test('bakes appId via SHOREBIRD_APP_ID', () async {
+        await runWithOverrides(
+          () => builder.buildAar(
+            buildNumber: buildNumber,
+            appId: 'internal-app-id',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {'SHOREBIRD_APP_ID': 'internal-app-id'},
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 
@@ -2624,6 +2643,22 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
               '--no-profile',
               '--target=lib/main_prod.dart',
             ],
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
+      test('bakes appId via SHOREBIRD_APP_ID', () async {
+        await runWithOverrides(
+          () => builder.buildIosFramework(appId: 'internal-app-id'),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'ios-framework', '--no-debug', '--no-profile'],
+            environment: {'SHOREBIRD_APP_ID': 'internal-app-id'},
             runInShell: false,
             onStart: any(named: 'onStart'),
           ),

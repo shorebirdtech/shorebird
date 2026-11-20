@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/split_debug_info.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+import 'package:yaml/yaml.dart';
 
 export 'package:pub_semver/pub_semver.dart';
 
@@ -117,6 +118,66 @@ abstract class Releaser {
   static final _moduleReleaseVersionPattern = RegExp(
     r'^[A-Za-z0-9._+-]{1,128}$',
   );
+
+  /// The app ID an add-to-app module (aar, ios-framework) released with
+  /// `--flavor` is built with: the flavor's, in place of the checked-in
+  /// shorebird.yaml's top-level `app_id` Flutter would build in. Null without
+  /// `--flavor`.
+  String? get moduleAppId => flavor == null
+      ? null
+      : shorebirdEnv.getShorebirdYaml()!.getAppId(
+          flavor: flavor,
+        );
+
+  /// With `--flavor`, rejects a module build whose generated (bundled)
+  /// shorebird.yaml, as [readBundledShorebirdYaml] returns it (null if the
+  /// build has none), doesn't carry [moduleAppId]. The apps that embed it
+  /// would check for patches under that other app ID and never get this
+  /// release's. Flutter before 3.50.0 (shorebirdtech/flutter#358) ignores the
+  /// app ID the CLI hands it and builds every module with the top-level
+  /// `app_id` (shorebird#3746). Does nothing without `--flavor`.
+  Future<void> assertModuleCarriesAppId(
+    Future<String?> Function() readBundledShorebirdYaml,
+  ) async {
+    final expected = moduleAppId;
+    if (expected == null) return;
+    final actual = _appIdIn(await readBundledShorebirdYaml());
+    if (actual == expected) return;
+    if (actual == null) {
+      throw CommandError(
+        message:
+            "Couldn't read the app ID from this module's generated "
+            'shorebird.yaml, so the CLI cannot check that it carries '
+            '$expected, the app ID of flavor "$flavor".',
+        hint:
+            'Please file an issue: '
+            'https://github.com/shorebirdtech/shorebird/issues/new',
+        exitCode: ExitCode.software,
+      );
+    }
+    throw CommandError(
+      message:
+          'This module was built with app ID $actual, not $expected, the app '
+          'ID of flavor "$flavor" in shorebird.yaml, so the apps that embed '
+          'it would never get its patches. This Flutter version builds a '
+          'module with the top-level app_id only.',
+      hint:
+          'Release with Flutter 3.50.0 or newer '
+          '(--flutter-version=3.50.0), or with the '
+          "flavor's app ID as the top-level app_id and no --flavor.",
+      exitCode: ExitCode.config,
+    );
+  }
+
+  static String? _appIdIn(String? shorebirdYaml) {
+    if (shorebirdYaml == null) return null;
+    try {
+      final yaml = loadYaml(shorebirdYaml);
+      return yaml is Map ? yaml['app_id']?.toString() : null;
+    } on YamlException {
+      return null;
+    }
+  }
 
   /// Rejects `--release-version`, which is only valid for releases whose
   /// version cannot be inferred from the built artifact (aar, ios-framework).

@@ -447,6 +447,40 @@ void main() {
           ).called(1);
         });
 
+        test('builds a flavored module with the flavor app ID', () async {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'default-app-id',
+              flavors: {'internal': 'internal-app-id'},
+            ),
+          );
+          when(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: any(named: 'appId'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+          patcher = IosFrameworkPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: 'internal',
+            target: null,
+          );
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          verify(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: 'internal-app-id',
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+        });
+
         group('when obfuscationMapPath is set', () {
           late File obfuscationMapFile;
 

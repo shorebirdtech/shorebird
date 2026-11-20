@@ -819,8 +819,9 @@ jobs:
   # An add-to-app module released once as an AAR and patched once, in two
   # host apps (scripts/module_e2e.dart), on an emulator set up as in
   # android_boot. The module versions leg is the Flutter the CLI pins, which
-  # bakes --release-version into the module; the host versions leg is a
-  # Flutter from before that, whose module releases are each host's version.
+  # bakes --release-version and a --flavor's app ID into the module, released
+  # with a flavor; the host versions leg is a Flutter from before that, whose
+  # module releases are each host's version.
   android_module:
     name: android module (${{ matrix.leg }})
     needs: check_cli_ref
@@ -830,7 +831,7 @@ jobs:
       matrix:
         include:
           - leg: module versions
-            args: ""
+            args: --flavor
           - leg: host versions
             args: --host-versions 3.47.5
     runs-on: ubuntu-latest
