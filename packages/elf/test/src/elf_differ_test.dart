@@ -432,10 +432,12 @@ void main() {
 
       test('a change to a section with SHF_ALLOC is classified as breaking '
           'even when it is named like a metadata section', () {
-        ElfSectionSpec loaded(int byte) => ElfSectionSpec(
-          name: '.comment',
-          bytes: Uint8List.fromList([byte]),
-        );
+        ElfSectionSpec loaded(int byte, {int flags = ElfSectionFlags.alloc}) =>
+            ElfSectionSpec(
+              name: '.comment',
+              bytes: Uint8List.fromList([byte]),
+              flags: flags,
+            );
         final oldBytes = ElfBuilder.build(extraSections: [loaded(1)]);
         final newBytes = ElfBuilder.build(extraSections: [loaded(2)]);
 
@@ -444,6 +446,21 @@ void main() {
         expect(
           result.breakingDifferences.single.kind,
           ElfDifferenceKind.rodataChanged,
+        );
+
+        // A malformed section marked executable but not SHF_ALLOC is compared
+        // as code, not waved through as metadata.
+        final oldExec = ElfBuilder.build(
+          extraSections: [loaded(1, flags: ElfSectionFlags.execinstr)],
+        );
+        final newExec = ElfBuilder.build(
+          extraSections: [loaded(2, flags: ElfSectionFlags.execinstr)],
+        );
+        final execResult = differ.diffBytes(oldExec, newExec);
+        expect(execResult.isSafe, isFalse);
+        expect(
+          execResult.breakingDifferences.single.kind,
+          ElfDifferenceKind.functionCodeChanged,
         );
       });
 
