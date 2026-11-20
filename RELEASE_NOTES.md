@@ -6,35 +6,16 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.145 (November 20, 2026)
 
-- 🐛 Improved linking of large iOS patches, so more of their code runs natively
+- 🐛 Improved linking of large iOS patches, so more of their code runs on the
+  CPU
 - 🐛 Devices keep their client ID when the updater's state file is damaged or
   was written by another updater version
 - 🐛 `toByteData` no longer fails on `decodeImageFromPixelsSync` images under
   Impeller
 - 🔧 iOS patches of large apps are smaller to download and use less memory at
   launch, for releases made with this version
-- ❓ Flutter 3.50.0 / Dart 3.14.0, with an updated Shorebird engine:
-  Test(shorebird): match flutter_tools tests to 3.50's macOS Mach-O build and
-  xcconfig check; Ci(shorebird): delete the dead nested engine third_party_scan
-  workflow; Feat(flutter_tools): bake a flavored add-to-app module's app ID into
-  the generated shorebird.yaml; Chore: bump Dart to cb8e32b; Chore: bump Dart to
-  2eb3a4c; Fix(shorebird): pass 3.50's tool tests and analyze (Platform from
-  toolContext, lints, format); Ci(shorebird): add engine_tests.yaml, the engine
-  test builds for the 3.50 line; [Impeller] Read back decodeImageFromPixelsSync
-  images on the raster thread; Ci(shorebird): engine shards name upstream's
-  ci/builders builds; Ci: replace subosito/flutter-action with local
-  setup_flutter; Fix(updater): keep client_id stable across state errors;
-  Feat(linker): name link-table functions by index, delta-varint encoded;
-  Feat(vm): keep the release's stack map layout in patch builds; Feat(linker):
-  store the link table as runs, binary-searched by the VM; Shorebird: fix audit
-  findings in arm64 stubs, CallCFunction, offsets, and status (forward-port
-  46cf7ad); Feat(vm): write each cluster's ref ids as runs in the snapshot;
-  Fix(shorebird): pool sort assigns the strongest slot votes first, pairs as
-  units; Ci: run the merge queue's Linux debug ffi in 3 shards; Ci: record each
-  test row's result for reuse on its own; Ci: cache the forced-simulator build
-  by tree, built on PR runs; Feat(vm): number a patch snapshot's objects like
-  its release's; Feat(aot_tools): build iOS patches in the release's object
-  order; Ci: a release dispatch builds every package and is named for its commit
+- 🐛 Flavored add-to-app modules embed their flavor's app ID in
+  `shorebird.yaml`
 
 Flutter 3.50.0 and Dart 3.14.0.
 
