@@ -357,6 +357,9 @@ class ElfSection {
 
   /// Whether this section contains writable data (`SHF_WRITE`).
   bool get isWritable => (flags & ElfSectionFlags.write) != 0;
+
+  /// Whether this section occupies memory at run time (`SHF_ALLOC`).
+  bool get isAlloc => (flags & ElfSectionFlags.alloc) != 0;
 }
 
 /// {@template elf_symbol}

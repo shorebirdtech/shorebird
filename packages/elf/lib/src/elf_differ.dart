@@ -11,7 +11,8 @@ enum ElfDifferenceKind {
   /// `.note.gnu.build-id` payload changed (safe — regenerated per build).
   buildIdChanged,
 
-  /// `.gnu_debuglink`, `.debug_*` sections, or section header ordering changed
+  /// `.gnu_debuglink`, `.debug_*` sections, another section without
+  /// `SHF_ALLOC` (such as `.comment`), or section header ordering changed
   /// while runtime payloads match (safe — debug/layout metadata noise).
   debugInfoChanged,
 
@@ -445,13 +446,29 @@ class ElfDiffer {
         s.name == '.hash' ||
         s.name == '.gnu.hash';
 
+    // Sections without SHF_ALLOC (.comment, .ARM.attributes, ...) are never
+    // mapped into memory, so the loader and the running code never see them.
+    // A change there can't change behavior; it is metadata noise such as the
+    // compiler and linker version strings in .comment.
+    _compareNonAllocSections(
+      [
+        for (final s in oldFile.sections)
+          if (!isIgnoredStructural(s) && !s.isAlloc) s,
+      ],
+      [
+        for (final s in newFile.sections)
+          if (!isIgnoredStructural(s) && !s.isAlloc) s,
+      ],
+      differences,
+    );
+
     final oldFiltered = [
       for (final s in oldFile.sections)
-        if (!isIgnoredStructural(s)) s,
+        if (!isIgnoredStructural(s) && s.isAlloc) s,
     ];
     final newFiltered = [
       for (final s in newFile.sections)
-        if (!isIgnoredStructural(s)) s,
+        if (!isIgnoredStructural(s) && s.isAlloc) s,
     ];
 
     final oldMap = {for (final s in oldFiltered) s.name: s};
@@ -526,6 +543,35 @@ class ElfDiffer {
           ),
         );
       }
+    }
+  }
+
+  void _compareNonAllocSections(
+    List<ElfSection> oldSections,
+    List<ElfSection> newSections,
+    List<ElfDifference> differences,
+  ) {
+    final oldMap = {for (final s in oldSections) s.name: s};
+    final newMap = {for (final s in newSections) s.name: s};
+    for (final name in {...oldMap.keys, ...newMap.keys}) {
+      final oldSect = oldMap[name];
+      final newSect = newMap[name];
+      final String change;
+      if (oldSect == null) {
+        change = 'added';
+      } else if (newSect == null) {
+        change = 'removed';
+      } else if (!_bytesEqual(oldSect.bytes, newSect.bytes)) {
+        change = 'changed';
+      } else {
+        continue;
+      }
+      differences.add(
+        ElfDifference(
+          kind: ElfDifferenceKind.debugInfoChanged,
+          description: 'Non-loaded section $change: $name',
+        ),
+      );
     }
   }
 
