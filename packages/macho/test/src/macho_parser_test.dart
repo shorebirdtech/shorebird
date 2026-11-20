@@ -1027,6 +1027,28 @@ void main() {
           isNull,
         );
       });
+
+      test('drops 0xff alignment padding between mangled names', () {
+        String? canonical(List<int> typeRefBytes) => parser
+            .parse(
+              MachOBuilder.buildThin(
+                extraSections: [
+                  MachOSectionSpec(
+                    segname: '__TEXT',
+                    sectname: '__swift5_typeref',
+                    bytes: Uint8List.fromList(typeRefBytes),
+                    addr: 0x2000,
+                  ),
+                ],
+              ),
+            )
+            .slices
+            .single
+            .canonicalSwiftTypeRefs();
+        const names = 'Si\x00Sb\x00';
+        expect(canonical([0xff, 0xff, 0xff, ...names.codeUnits]), names);
+        expect(canonical([0xff, ...names.codeUnits]), names);
+      });
     });
   });
 }

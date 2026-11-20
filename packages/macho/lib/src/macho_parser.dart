@@ -1096,7 +1096,8 @@ class MachOSlice {
   }
 
   /// Returns `__TEXT,__swift5_typeref` with each symbolic reference replaced
-  /// by what it points at, or `null` if the section is absent.
+  /// by what it points at and alignment padding dropped, or `null` if the
+  /// section is absent.
   ///
   /// The section holds mangled type names. A byte `0x01`-`0x17` starts a
   /// symbolic reference: a 4-byte offset relative to itself, to a context
@@ -1128,6 +1129,12 @@ class MachOSlice {
         // Absolute pointer reference: kept as raw bytes.
         buffer.write('{$byte:0x${data.getUint64(i + 1, Endian.little)}}');
         i += 9;
+      } else if (byte == 0xff) {
+        // Alignment padding, which no mangled name can hold: 0xff is never
+        // a valid UTF-8 byte. How much of it precedes a name depends on where
+        // that name landed, so only dropping it keeps a section whose names
+        // merely moved equal.
+        i += 1;
       } else {
         buffer.writeCharCode(byte);
         i += 1;
