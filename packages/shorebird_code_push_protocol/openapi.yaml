@@ -7375,15 +7375,6 @@ components:
         display_name:
           type: string
           description: The user's new display name. At most 256 characters.
-        patch_overage_limit:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: |
-            The most patch installs past the plan's allotment the user
-            agrees to pay for each overage period. `0` turns overage off;
-            `null` removes the limit. Must not be negative.
     NotificationPreferences:
       type: object
       description: How the user wants to be notified.

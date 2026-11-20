@@ -10,7 +10,6 @@ class UpdateUserRequest {
   /// {@macro update_user_request}
   const UpdateUserRequest({
     this.displayName,
-    this.patchOverageLimit,
   });
 
   /// Converts a `Map<String, dynamic>` to a [UpdateUserRequest].
@@ -20,7 +19,6 @@ class UpdateUserRequest {
       json,
       () => UpdateUserRequest(
         displayName: json['display_name'] as String?,
-        patchOverageLimit: json['patch_overage_limit'] as int?,
       ),
     );
   }
@@ -37,30 +35,19 @@ class UpdateUserRequest {
   /// The user's new display name. At most 256 characters.
   final String? displayName;
 
-  /// The most patch installs past the plan's allotment the user
-  /// agrees to pay for each overage period. `0` turns overage off;
-  /// `null` removes the limit. Must not be negative.
-  final int? patchOverageLimit;
-
   /// Converts a [UpdateUserRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'display_name': ?displayName,
-      'patch_overage_limit': patchOverageLimit,
     };
   }
 
   @override
-  int get hashCode => Object.hashAll([
-    displayName,
-    patchOverageLimit,
-  ]);
+  int get hashCode => displayName.hashCode;
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is UpdateUserRequest &&
-        displayName == other.displayName &&
-        patchOverageLimit == other.patchOverageLimit;
+    return other is UpdateUserRequest && displayName == other.displayName;
   }
 }
