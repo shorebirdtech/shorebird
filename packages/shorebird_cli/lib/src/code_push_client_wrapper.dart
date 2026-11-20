@@ -682,9 +682,13 @@ class CodePushClientWrapper {
     );
   }
 
-  /// Fetches the apps for the current user.
-  Future<List<AppMetadata>> getApps() {
-    return _withProgress('Fetching apps', codePushClient.getApps);
+  /// Fetches the apps for the current user, including archived ones when
+  /// [includeArchived] is set.
+  Future<List<AppMetadata>> getApps({bool includeArchived = false}) {
+    return _withProgress(
+      'Fetching apps',
+      () => codePushClient.getApps(includeArchived: includeArchived),
+    );
   }
 
   /// Returns [AppMetadata] for the provided [appId].

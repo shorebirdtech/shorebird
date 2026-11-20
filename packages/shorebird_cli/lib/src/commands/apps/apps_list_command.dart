@@ -8,6 +8,8 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
+const _includeArchivedArgName = 'include-archived';
+
 /// {@template apps_list_command}
 /// `shorebird apps list`
 /// List the apps the current user has access to.
@@ -18,6 +20,15 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
   /// With [enterpriseRoute], it is `shorebird enterprise apps list`.
   AppsListCommand({bool enterpriseRoute = false}) {
     isEnterpriseRoute = enterpriseRoute;
+    // The enterprise listing comes from an endpoint that neither takes
+    // includeArchived nor says when an app was archived.
+    if (!enterpriseRoute) {
+      argParser.addFlag(
+        _includeArchivedArgName,
+        negatable: false,
+        help: 'List archived apps too, with the date each was archived.',
+      );
+    }
   }
 
   @override
@@ -44,6 +55,9 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
       '  01H...  Acme Mobile  1.2.3  4\n'
       '  01J...  Acme Internal  -  -\n\n'
       '"-" indicates no release or patch has been published yet.\n\n'
+      'Archived apps are left out. With --include-archived they are listed '
+      'too, with a trailing archived column: the UTC date the app was '
+      'archived, or "-" when it is not archived.\n\n'
       'For every app in your enterprise, run '
       '`shorebird enterprise apps list`.\n\n'
       '${ShorebirdCommand.jsonHint('shorebird apps list --json')}';
@@ -61,9 +75,13 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
       return reportPreconditionFailure(error);
     }
 
+    final includeArchived = results[_includeArchivedArgName] as bool;
+
     late final List<AppMetadata> apps;
     final fetchError = await guardApiCall(
-      () async => apps = await codePushClientWrapper.getApps(),
+      () async => apps = await codePushClientWrapper.getApps(
+        includeArchived: includeArchived,
+      ),
       code: JsonErrorCode.fetchFailed,
       message: 'Failed to fetch apps.',
     );
@@ -78,6 +96,8 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
               'display_name': app.displayName,
               'latest_release_version': app.latestReleaseVersion,
               'latest_patch_number': app.latestPatchNumber,
+              if (includeArchived)
+                'archived_at': app.archivedAt?.toUtc().toIso8601String(),
             },
         ],
       });
@@ -90,15 +110,22 @@ class AppsListCommand extends ShorebirdCommand with EnterpriseScopedCommand {
     }
 
     for (final app in apps) {
+      final line =
+          '${app.appId}  ${lightCyan.wrap(app.displayName)}  '
+          '${app.latestReleaseVersion ?? '-'}  '
+          '${app.latestPatchNumber ?? '-'}';
       logger.info(
-        '${app.appId}  ${lightCyan.wrap(app.displayName)}  '
-        '${app.latestReleaseVersion ?? '-'}  '
-        '${app.latestPatchNumber ?? '-'}',
+        includeArchived ? '$line  ${_archivedDate(app.archivedAt)}' : line,
       );
     }
 
     return ExitCode.success.code;
   }
+
+  /// [archivedAt]'s UTC calendar date, or `-` when the app is not archived.
+  String _archivedDate(DateTime? archivedAt) => archivedAt == null
+      ? '-'
+      : archivedAt.toUtc().toIso8601String().substring(0, 10);
 
   Future<int> _listEnterpriseApps() async {
     final (:membership, :errorCode) = await resolveEnterprise();
