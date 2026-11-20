@@ -911,12 +911,12 @@ void main() {
 
       test('keeps absolute and unmapped type references', () {
         final bytes = Uint8List(16);
-        final data = ByteData.sublistView(bytes)
+        ByteData.sublistView(bytes)
           ..setUint8(0, 0x01)
           // Points at 0x80000, outside every section.
           ..setInt32(1, 0x80000 - 0x2001, Endian.little)
-          ..setUint8(5, 0x18);
-        data.setUint64(6, 0x1234, Endian.little);
+          ..setUint8(5, 0x18)
+          ..setUint64(6, 0x1234, Endian.little);
         final slice = parser
             .parse(
               MachOBuilder.buildThin(
