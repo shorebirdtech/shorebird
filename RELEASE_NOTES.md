@@ -13,8 +13,6 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
   Impeller
 - 🔧 iOS patches of large apps are smaller to download and use less memory at
   launch, for releases made with this version
-- 🐛 Flavored add-to-app modules embed their flavor's app ID in
-  `shorebird.yaml`
 
 Flutter 3.50.0 and Dart 3.14.0.
 
