@@ -6,8 +6,7 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.145 (November 20, 2026)
 
-- 🐛 Improved linking of large iOS patches, so more of their code runs on the
-  CPU
+- 🐛 Improved linking of large iOS patches, so they run faster
 - 🐛 Devices keep their client ID when the updater's state file is damaged or
   was written by another updater version
 - 🐛 `toByteData` no longer fails on `decodeImageFromPixelsSync` images under
