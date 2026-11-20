@@ -1,6 +1,6 @@
-// cspell:words aarch addralign adrp debuglink dynstr dynsym execinstr fini ifunc insn
+// cspell:words aarch adrp debuglink dynstr dynsym execinstr fini ifunc insn
 // cspell:words insns libc libfoo libnew libold movz nobits notype progbits
-// cspell:words riscv rodata shndx soname symtab undef
+// cspell:words addralign riscv rodata shndx soname symtab undef
 import 'dart:typed_data';
 
 import 'package:elf/elf.dart';
