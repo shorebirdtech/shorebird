@@ -26,12 +26,13 @@ bool failed = false;
 /// Why the run stopped before it finished, if it did.
 String? stoppedEarly;
 
-/// The app [createApp] made, to delete at the end.
-String? _appId;
+/// The apps [createApp], [createModule] and [addFlavor] made, to delete at
+/// the end.
+final _appIds = <String>[];
 
 /// Runs [body]. Then, also when the job is cancelled or times out, prints the
 /// report (a table titled [title] with [columns] and the rows in [results]),
-/// deletes the app [createApp] made, and runs [tearDown]. Exits 1 if [body]
+/// deletes the apps the run made, and runs [tearDown]. Exits 1 if [body]
 /// threw or a check failed.
 Future<void> runE2e({
   required String title,
@@ -41,9 +42,9 @@ Future<void> runE2e({
 }) async {
   Future<void> cleanUp() async {
     report(title, columns);
-    final appId = _appId;
-    _appId = null;
-    if (appId != null) {
+    final appIds = [..._appIds];
+    _appIds.clear();
+    for (final appId in appIds) {
       // Each run mints an app; delete it so the e2e account's app list stays
       // flat (see patch_e2e.dart).
       print('Deleting e2e app $appId');
@@ -195,9 +196,26 @@ Future<Directory> createModule(
   return module;
 }
 
+/// Makes a second app and adds it to [project]'s checked-in shorebird.yaml as
+/// [flavor]'s app ID, keeping the top-level `app_id`. Returns its app ID.
+/// A module has no product flavors for `shorebird init` to find, so the app is
+/// made by running `init --force` again.
+Future<String> addFlavor(Directory project, String flavor) async {
+  final shorebirdYaml = File('${project.path}/shorebird.yaml');
+  final topLevel = shorebirdYaml.readAsStringSync();
+  final flavorAppId = await _init(project);
+  shorebirdYaml.writeAsStringSync(
+    topLevel.replaceFirstMapped(
+      RegExp(r'^app_id: \S+\n', multiLine: true),
+      (m) => '${m[0]}flavors:\n  $flavor: $flavorAppId\n',
+    ),
+  );
+  return flavorAppId;
+}
+
 /// Runs `shorebird init` in [project] against the server under test, and
-/// remembers the app it made to delete at the end.
-Future<void> _init(Directory project) async {
+/// remembers the app it made to delete at the end. Returns its app ID.
+Future<String> _init(Directory project) async {
   final orgId = Platform.environment['SHOREBIRD_ORG_ID'];
   await timed(
     'init',
@@ -213,9 +231,11 @@ Future<void> _init(Directory project) async {
       'https://api-dev.shorebird.dev';
   final shorebirdYaml = File('${project.path}/shorebird.yaml')
     ..writeAsStringSync('base_url: $hostedUrl\n', mode: FileMode.append);
-  _appId = RegExp(
+  final appId = RegExp(
     r'app_id: (\S+)',
-  ).firstMatch(shorebirdYaml.readAsStringSync())!.group(1);
+  ).firstMatch(shorebirdYaml.readAsStringSync())!.group(1)!;
+  _appIds.add(appId);
+  return appId;
 }
 
 /// Makes the app print `e2e-label: <label>` when it starts.

@@ -11,7 +11,8 @@
 // checks each host downloads and boots the patch, that host A updated to a new
 // version keeps it, and what each host's updater sends.
 //
-// Usage: dart scripts/module_e2e.dart [--host-versions] [<flutter-version>]
+// Usage: dart scripts/module_e2e.dart [--host-versions] [--flavor]
+//            [<flutter-version>]
 //
 //   <flutter-version>  Flutter version or commit to release and patch with.
 //                      Default: the Flutter the CLI pins. The module and its
@@ -20,6 +21,12 @@
 //                      version, as every Flutter before module versions did:
 //                      it doesn't bake --release-version into the module.
 //                      Without it the Flutter is expected to bake it.
+//   --flavor           Release and patch with `--flavor internal`, whose app
+//                      ID in shorebird.yaml differs from the top-level
+//                      app_id (shorebird#3746). The Flutter must bake it into
+//                      the module (3.50.0 or newer); the AAR's shorebird.yaml
+//                      is checked to carry it, and the hosts get the patch
+//                      only if they check under it.
 //
 // Module versions (the default): the module is released as 1.0.0+1. Both
 // hosts boot the patch, A keeps it once updated to a new version, and each
@@ -65,15 +72,20 @@ const hostB = Host('B', 'com.example.host_b', '5.2.0', 52);
 /// Host A updated: a new versionName and versionCode, the same app.
 const hostA2 = Host('A updated', 'com.example.host_a', '3.2.0', 32);
 
+/// The flavor `--flavor` releases and patches with.
+const flavor = 'internal';
+
 late Directory work;
 
 Future<void> main(List<String> args) async {
+  const flags = {'--host-versions', '--flavor'};
   final hostVersions = args.contains('--host-versions');
+  final flavored = args.contains('--flavor');
   final positional = args.where((a) => !a.startsWith('-')).toList();
   if (positional.length > 1 ||
-      args.any((a) => a.startsWith('-') && a != '--host-versions')) {
+      args.any((a) => a.startsWith('-') && !flags.contains(a))) {
     print(
-      'Usage: dart scripts/module_e2e.dart [--host-versions] '
+      'Usage: dart scripts/module_e2e.dart [--host-versions] [--flavor] '
       '[<flutter-version>]',
     );
     exit(64);
@@ -84,9 +96,11 @@ Future<void> main(List<String> args) async {
     title:
         'Add-to-app module on Android '
         '(${flutterVersion ?? 'pinned Flutter'}, '
-        '${hostVersions ? 'host versions' : 'module versions'})',
+        '${hostVersions ? 'host versions' : 'module versions'}'
+        '${flavored ? ', flavor $flavor' : ''})',
     columns: const ['Check', 'Expected', 'Actual', 'Result'],
-    body: () => run(flutterVersion, hostVersions: hostVersions),
+    body: () =>
+        run(flutterVersion, hostVersions: hostVersions, flavored: flavored),
     tearDown: () async {
       for (final host in [hostA, hostB]) {
         await Process.run('adb', ['uninstall', host.id]);
@@ -101,12 +115,18 @@ Future<void> main(List<String> args) async {
   );
 }
 
-Future<void> run(String? flutterVersion, {required bool hostVersions}) async {
+Future<void> run(
+  String? flutterVersion, {
+  required bool hostVersions,
+  required bool flavored,
+}) async {
   final module = await createModule(work, version: moduleVersion);
+  final flavorAppId = flavored ? await addFlavor(module, flavor) : null;
   final releaseVersion = hostVersions ? hostA.version : moduleVersion;
   final flutterArgs = [
     if (flutterVersion != null) '--flutter-version=$flutterVersion',
   ];
+  final flavorArgs = [if (flavored) '--flavor=$flavor'];
 
   await timed(
     'release',
@@ -115,18 +135,23 @@ Future<void> run(String? flutterVersion, {required bool hostVersions}) async {
       'aar',
       '--release-version=$releaseVersion',
       ...flutterArgs,
+      ...flavorArgs,
       '-v',
     ]),
   );
-  final baked = RegExp(
-    r'^release_version: *(\S+)',
+  final bundled = await bundledShorebirdYaml(module);
+  String? baked(String key) => RegExp(
+    '^$key: *(\\S+)',
     multiLine: true,
-  ).firstMatch(await bundledShorebirdYaml(module))?.group(1);
+  ).firstMatch(bundled)?.group(1);
   check(
     'release_version in the AAR',
     hostVersions ? '(none)' : moduleVersion,
-    baked ?? '(none)',
+    baked('release_version') ?? '(none)',
   );
+  if (flavorAppId != null) {
+    check('app_id in the AAR', flavorAppId, baked('app_id') ?? '(none)');
+  }
 
   final project = writeHostProject(module);
   final apks = <Host, File>{};
@@ -158,6 +183,7 @@ Future<void> run(String? flutterVersion, {required bool hostVersions}) async {
       // A patch builds with its release's Flutter; `patch` takes no
       // --flutter-version.
       '--release-version=$releaseVersion',
+      ...flavorArgs,
       '-v',
     ]),
   );

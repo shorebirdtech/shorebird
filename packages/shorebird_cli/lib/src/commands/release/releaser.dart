@@ -133,7 +133,7 @@ abstract class Releaser {
   /// shorebird.yaml, as [readBundledShorebirdYaml] returns it (null if the
   /// build has none), doesn't carry [moduleAppId]. The apps that embed it
   /// would check for patches under that other app ID and never get this
-  /// release's. Flutter before shorebirdtech/flutter#358 ignores the app ID
+  /// release's. Flutter before 3.50.0 (shorebirdtech/flutter#358) ignores the app ID
   /// the CLI hands it and builds every module with the top-level `app_id`
   /// (shorebird#3746). Does nothing without `--flavor`.
   Future<void> assertModuleCarriesAppId(
@@ -162,7 +162,8 @@ abstract class Releaser {
           'it would never get its patches. This Flutter version builds a '
           'module with the top-level app_id only.',
       hint:
-          'Release with a newer Flutter (--flutter-version), or with the '
+          'Release with Flutter 3.50.0 or newer '
+          '(--flutter-version=3.50.0), or with the '
           "flavor's app ID as the top-level app_id and no --flavor.",
       exitCode: ExitCode.config,
     );
