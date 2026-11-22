@@ -50,8 +50,9 @@ class UsageCommand extends ShorebirdCommand
 
   String get _organizationDescription =>
       'Shows patch installs this allotment period against your plan.\n\n'
-      "Usage counts every app the organization's owner owns. Other members "
-      "see only this organization's apps in the list.\n\n"
+      "Usage counts every app the organization's billing account pays for. "
+      "The list shows this organization's apps, then one line for the rest "
+      'of the account, when other organizations share it.\n\n'
       'Example output:\n'
       '  Patch installs: 12,345 of 50,000 included\n'
       '  Installs left before patches stop: 37,655\n'
@@ -104,13 +105,22 @@ class UsageCommand extends ShorebirdCommand
           : 'Upgrade your plan at ${ShorebirdWebConsole.baseUri}.',
     );
 
-    if (usage.apps.isEmpty) return ExitCode.success.code;
-    logger.info('Apps (id  name  installs):');
-    for (final app in usage.apps) {
-      logger.info(
-        '  ${app.id}  ${lightCyan.wrap(app.name)}  '
-        '${number.format(app.patchInstallCount)}',
-      );
+    if (usage.apps.isNotEmpty) {
+      logger.info('Apps (id  name  installs):');
+      for (final app in usage.apps) {
+        logger.info(
+          '  ${app.id}  ${lightCyan.wrap(app.name)}  '
+          '${number.format(app.patchInstallCount)}',
+        );
+      }
+    }
+    // The position sums every organization the billing account pays for,
+    // the list only this one's, so the difference is the rest of the account.
+    final rest =
+        usage.position.installs -
+        usage.apps.fold(0, (sum, app) => sum + app.patchInstallCount);
+    if (rest > 0) {
+      logger.info('Rest of the billing account: ${number.format(rest)}');
     }
     return ExitCode.success.code;
   }
