@@ -151,7 +151,6 @@ void main() {
             remainingInstalls: null,
             accruedOverageAmount: '1234.5',
           ),
-          apps: const [],
         ),
       );
       await runWithOverrides(command.run);
@@ -161,11 +160,12 @@ void main() {
       expect(lines, [
         'Patch installs: 12,345 of 50,000 included',
         "Billed as overage: 200 (12.35 so far, in your plan's currency)",
-        'Rest of the billing account: 12,345',
+        'Apps (id  name  installs):',
+        allOf(contains('app-1'), endsWith('12,345')),
       ]);
     });
 
-    test('adds a line for the rest of the billing account', () async {
+    test('adds a line for the other organizations sharing the plan', () async {
       returnUsage(
         usage(
           apps: const [
@@ -182,7 +182,7 @@ void main() {
         'Installs left before patches stop: 37,655',
         'Apps (id  name  installs):',
         allOf(contains('app-1'), endsWith('345')),
-        'Rest of the billing account: 12,000',
+        'Other organizations sharing this plan: 12,000',
       ]);
     });
 

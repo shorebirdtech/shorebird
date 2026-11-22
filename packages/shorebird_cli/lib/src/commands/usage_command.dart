@@ -50,14 +50,16 @@ class UsageCommand extends ShorebirdCommand
 
   String get _organizationDescription =>
       'Shows patch installs this allotment period against your plan.\n\n'
-      "Usage counts every app the organization's billing account pays for. "
-      "The list shows this organization's apps, then one line for the rest "
-      'of the account, when other organizations share it.\n\n'
+      'Usage counts every organization that shares this plan: those on its '
+      'billing account, or with none, those its owner owns. The list shows '
+      "this organization's apps, then one line for the other organizations, "
+      'when there are any.\n\n'
       'Example output:\n'
-      '  Patch installs: 12,345 of 50,000 included\n'
-      '  Installs left before patches stop: 37,655\n'
+      '  Patch installs: 13,345 of 50,000 included\n'
+      '  Installs left before patches stop: 36,655\n'
       '  Apps (id  name  installs):\n'
-      '    0b6c...  Acme Mobile  12,345\n\n'
+      '    0b6c...  Acme Mobile  12,345\n'
+      '  Other organizations sharing this plan: 1,000\n\n'
       "For an enterprise's contract and each organization on it, run "
       '`shorebird enterprise usage`.\n\n'
       '${ShorebirdCommand.jsonHint(
@@ -114,13 +116,16 @@ class UsageCommand extends ShorebirdCommand
         );
       }
     }
-    // The position sums every organization the billing account pays for,
-    // the list only this one's, so the difference is the rest of the account.
+    // The position sums every organization sharing the plan (the billing
+    // account's, or with none the owner's), the list only this one's, so the
+    // difference is the other organizations'.
     final rest =
         usage.position.installs -
         usage.apps.fold(0, (sum, app) => sum + app.patchInstallCount);
     if (rest > 0) {
-      logger.info('Rest of the billing account: ${number.format(rest)}');
+      logger.info(
+        'Other organizations sharing this plan: ${number.format(rest)}',
+      );
     }
     return ExitCode.success.code;
   }
