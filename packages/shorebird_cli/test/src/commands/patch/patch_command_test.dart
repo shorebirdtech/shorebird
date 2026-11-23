@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/build_flags.dart';
@@ -1954,6 +1955,66 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         expect(run.patchId, equals(3));
         expect(run.dryRun, isFalse);
         expect(run.metadata, equals(patchMetadata.toJson()));
+      });
+
+      test('writes the build trace summary again after the upload', () async {
+        await runWithOverrides(command.run);
+
+        verifyInOrder([
+          artifactBuilder.writeBuildTraceSummary,
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+          artifactBuilder.writeBuildTraceSummary,
+          () => codePushClient.createBuildRun(
+            appId: any(named: 'appId'),
+            request: any(named: 'request'),
+          ),
+        ]);
+      });
+
+      test('records the summary that counts the upload', () async {
+        final summaries = ['before upload', 'after upload'];
+        when(artifactBuilder.writeBuildTraceSummary).thenAnswer((_) {
+          buildTraceSession.summary = BuildTraceSummary.fromEvents(
+            const [],
+            platform: summaries.removeAt(0),
+          );
+        });
+        when(
+          () => patcher.updatedCreatePatchMetadata(any()),
+        ).thenAnswer(
+          (invocation) async =>
+              invocation.positionalArguments.single as CreatePatchMetadata,
+        );
+
+        await runWithOverrides(command.run);
+
+        final sentMetadata =
+            verify(
+                  () => patcher.uploadPatchArtifacts(
+                    appId: any(named: 'appId'),
+                    releaseId: any(named: 'releaseId'),
+                    metadata: captureAny(named: 'metadata'),
+                    track: any(named: 'track'),
+                    artifacts: any(named: 'artifacts'),
+                    rolloutPercentage: any(named: 'rolloutPercentage'),
+                    rolloutSchedule: any(named: 'rolloutSchedule'),
+                  ),
+                ).captured.single
+                as Json;
+        expect(
+          (sentMetadata['build_trace_summary'] as Json)['platform'],
+          equals('before upload'),
+        );
+        final runSummary = sentRun().metadata!['build_trace_summary'] as Json;
+        expect(runSummary['platform'], equals('after upload'));
       });
 
       test('records a link percentage below the minimum', () async {

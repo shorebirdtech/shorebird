@@ -1256,8 +1256,8 @@ A patch must be built with the --dart-define values and --target of its release,
 
     // Set up build tracing before any flutter build / aot_tools /
     // gen_snapshot call runs. Version-gated inside prepareBuildTrace —
-    // a no-op on older Flutter pins. Summary is written at the very
-    // end of createPatch, after aot_tools link and artifact uploads.
+    // a no-op on older Flutter pins. Summary is written before the upload
+    // for the patch's metadata, and again after it for build history.
     await artifactBuilder.prepareBuildTrace(
       platform: patcher.releaseType.releasePlatform.name,
     );
@@ -1308,9 +1308,10 @@ Building patch with Flutter $flutterVersionString
     );
 
     // Write the build-trace summary after all compile/link work has
-    // finished — the metadata upload is the last step and it carries
-    // this summary, so we finalize immediately before it. No-op when
-    // tracing wasn't set up (older Flutter pin).
+    // finished, for the patch's metadata, which is sent when the patch is
+    // created, before its artifacts upload. It is written again once the
+    // upload is done, for build history. No-op when tracing wasn't set up
+    // (older Flutter pin).
     artifactBuilder.writeBuildTraceSummary();
 
     final metadata = await _createPatchMetadata(
@@ -1345,6 +1346,13 @@ Building patch with Flutter $flutterVersionString
             ),
     );
     _buildRun?.patchId = patch.id;
+
+    // Write the summary again now the upload is done, so build history's
+    // timing counts it, as a release's does (see finalizeRelease).
+    artifactBuilder.writeBuildTraceSummary();
+    _buildRun?.metadata = metadata
+        .copyWith(buildTraceSummary: buildTraceSession.summary?.toJson())
+        .toJson();
 
     return PublishedPatch(
       platform: patcher.releaseType.releasePlatform,
