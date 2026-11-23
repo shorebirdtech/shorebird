@@ -1075,6 +1075,13 @@ void main() {
           }
         }
         expect(unpinnedActionRefs(_readAll(dir)), isEmpty);
+        // Flutter installs in a run: step, not an action that could call
+        // a nested action by tag, which SHA-pinning-required repos refuse.
+        expect(_readAll(dir), isNot(contains('flutter-action')));
+        expect(
+          _readAll(dir),
+          contains('storage.googleapis.com/flutter_infra_release/releases'),
+        );
         // Every action the templates can emit showed up, so each was
         // checked.
         expect(
@@ -1083,7 +1090,6 @@ void main() {
             'actions/checkout',
             'dart-lang/setup-dart',
             'codecov/codecov-action',
-            'subosito/flutter-action',
             if (style == 'static') 'dorny/paths-filter',
           ]),
         );

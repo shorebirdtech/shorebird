@@ -39,10 +39,6 @@ const pathsFilterAction =
 const codecovAction =
     'codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1';
 
-/// See [checkoutAction].
-const flutterAction =
-    'subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0';
-
 /// An action release: its tag (e.g. `'v5.1.0'`) and the commit [sha] the
 /// tag points at.
 class ActionRelease {
