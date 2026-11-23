@@ -68,7 +68,7 @@ Defaults to the version this Shorebird uses when building with
           flutterRevision: revision,
         ) ??
         shorebirdFlutter.shortRevisionString(revision);
-    logger.info('✅ Flutter $version is installed and precached.');
+    logger.info('✅ Flutter $version is installed and ready to build with.');
     return ExitCode.success.code;
   }
 

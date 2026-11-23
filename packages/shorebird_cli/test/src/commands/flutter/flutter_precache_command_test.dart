@@ -103,7 +103,9 @@ void main() {
         verifyNever(() => shorebirdFlutter.fetchRemoteRefs());
         expect(cacheUpdateRevisions, equals([pinnedRevision, pinnedRevision]));
         verify(
-          () => logger.info('✅ Flutter 3.38.5 is installed and precached.'),
+          () => logger.info(
+            '✅ Flutter 3.38.5 is installed and ready to build with.',
+          ),
         ).called(1);
       });
     });
@@ -207,7 +209,9 @@ void main() {
       ).thenReturn('pinned1234');
       await runWithOverrides(command.run);
       verify(
-        () => logger.info('✅ Flutter pinned1234 is installed and precached.'),
+        () => logger.info(
+          '✅ Flutter pinned1234 is installed and ready to build with.',
+        ),
       ).called(1);
     });
   });
