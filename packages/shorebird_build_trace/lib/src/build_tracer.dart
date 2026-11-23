@@ -436,7 +436,9 @@ class BuildTracer {
   }
 
   /// Reads a trace JSON file written by a subprocess and appends its
-  /// events (complete spans, metadata, and flow events) as-is.
+  /// events (complete spans, metadata, and flow events) as-is. A file
+  /// that can't be read or parsed is skipped: a trace never fails the
+  /// work it traces.
   void mergeEventsFromFile(File file) {
     if (!file.existsSync()) {
       return;
@@ -451,6 +453,8 @@ class BuildTracer {
       }
     } on FormatException {
       // Corrupt trace — skip it rather than abort the outer build.
+    } on FileSystemException {
+      // Unreadable (a read error, or bytes that aren't UTF-8): same.
     }
   }
 

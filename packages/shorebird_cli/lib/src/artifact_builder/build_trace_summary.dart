@@ -614,7 +614,8 @@ class DownloadStats {
   final Duration duration;
 
   /// Time spent on redirects before the request that served the bytes,
-  /// summed over fetches.
+  /// summed over fetches: unlike [duration] it is not wall time, so with
+  /// concurrent fetches it can exceed [duration].
   final Duration redirect;
 
   /// Time to first byte of the request that served each fetch's bytes.
@@ -1058,7 +1059,7 @@ class _Downloads {
     if (ttfb is num) timesToFirstByte.add(Duration(microseconds: ttfb.toInt()));
     final status = args[DownloadArgs.status];
     final failed =
-        args[DownloadArgs.error] != null || status is! num || status >= 400;
+        args[DownloadArgs.error] != null || (status is num && status >= 400);
     if (failed) failedCount++;
 
     final host = _key(

@@ -56,10 +56,11 @@ enum TraceCategory {
   /// shorebird_cli itself rather than by a subprocess producer.
   setup('setup'),
 
-  /// One artifact download by flutter_tools' artifact cache (`flutter
-  /// precache`, or the cache update any command runs first). Its args are
+  /// One artifact download by flutter_tools' artifact cache. Its args are
   /// keyed by [DownloadArgs]. Emitted by `BuildTracer.recordDownloadSpan`
-  /// into the file named by [TraceEnvironment.downloadTraceFile].
+  /// only into the file named by [TraceEnvironment.downloadTraceFile],
+  /// never into a `--shorebird-trace` file, so each download is reported
+  /// once. shorebird_cli sets that variable on `flutter precache` alone.
   download('download'),
 
   /// Consumer-side fallback for a category emitted by a future
@@ -221,7 +222,9 @@ class DownloadArgs {
   /// `storage.googleapis.com`. Absent when it equals [host].
   static const String servedBy = 'servedBy';
 
-  /// Final HTTP status code.
+  /// Final HTTP status code. A fetch counts as failed when it has an
+  /// [error] or a status of 400 or more; a missing status alone is not a
+  /// failure.
   static const String status = 'status';
 
   /// Bytes of response body received.

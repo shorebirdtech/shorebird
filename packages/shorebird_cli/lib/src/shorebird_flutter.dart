@@ -317,10 +317,14 @@ class ShorebirdFlutter {
     // per download here; older ones ignore the variable. The command's
     // trace file doesn't exist yet (ArtifactBuilder.prepareBuildTrace
     // makes it after install), so the spans go through shorebirdTracer.
-    final downloadTraceDir = Directory.systemTemp.createTempSync(
+    // Without a temp directory precache runs untraced: telemetry never
+    // fails an install.
+    final downloadTraceDir = _createTempDirectoryOrNull(
       'shorebird_precache_trace',
     );
-    final downloadTrace = File(p.join(downloadTraceDir.path, 'trace.json'));
+    final downloadTrace = downloadTraceDir == null
+        ? null
+        : File(p.join(downloadTraceDir.path, 'trace.json'));
 
     final ShorebirdProcessResult result;
     try {
@@ -339,7 +343,7 @@ class ShorebirdFlutter {
                 precacheArguments,
                 workingDirectory: targetDirectory.path,
                 environment: {
-                  TraceEnvironment.downloadTraceFile: downloadTrace.path,
+                  TraceEnvironment.downloadTraceFile: ?downloadTrace?.path,
                 },
               ),
               values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
@@ -347,8 +351,10 @@ class ShorebirdFlutter {
           } finally {
             // A failed precache's downloads are kept too: they say where
             // it got to.
-            shorebirdTracer.mergeEventsFromFile(downloadTrace);
-            _deleteQuietly(downloadTraceDir);
+            if (downloadTraceDir != null) {
+              shorebirdTracer.mergeEventsFromFile(downloadTrace!);
+              _deleteQuietly(downloadTraceDir);
+            }
           }
         },
       );
@@ -386,6 +392,16 @@ class ShorebirdFlutter {
     }
     precacheProgress.complete();
     markUsed(targetDirectory);
+  }
+
+  /// A new temp directory named after [prefix], or null if one can't be
+  /// made (a read-only or full TMPDIR).
+  Directory? _createTempDirectoryOrNull(String prefix) {
+    try {
+      return Directory.systemTemp.createTempSync(prefix);
+    } on FileSystemException {
+      return null;
+    }
   }
 
   /// Deletes [directory], ignoring a failure: it's a temp directory, and

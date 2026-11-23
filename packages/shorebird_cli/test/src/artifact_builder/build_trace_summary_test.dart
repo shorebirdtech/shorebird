@@ -695,15 +695,42 @@ void main() {
         expect(s.setup.downloads.edges['other'], 4);
       });
 
-      test('a fetch with no status counts as failed', () {
+      test('a fetch fails on an error, not on a missing status', () {
         final s = BuildTraceSummary.fromEvents([
           download(
             ts: 0,
             dur: 1000,
             args: {'host': 'example.com', 'error': 'connection reset'},
           ),
+          download(ts: 2000, dur: 1000, args: {'host': 'example.com'}),
         ], platform: 'android');
+        expect(s.setup.downloads.count, 2);
         expect(s.setup.downloads.failedCount, 1);
+      });
+
+      test('ignores args of the wrong type', () {
+        final s = BuildTraceSummary.fromEvents([
+          download(
+            ts: 0,
+            dur: 1000,
+            args: {
+              'host': 'example.com',
+              'status': 200,
+              'bytes': '12',
+              'retries': '1',
+              'redirectUs': null,
+              'ttfbUs': 1500.0,
+            },
+          ),
+        ], platform: 'android');
+        final downloads = s.setup.downloads;
+        expect(downloads.bytes, 0);
+        expect(downloads.retryCount, 0);
+        expect(downloads.redirect, Duration.zero);
+        expect(
+          downloads.timeToFirstByte.max,
+          const Duration(microseconds: 1500),
+        );
       });
     });
 

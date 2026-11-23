@@ -422,6 +422,13 @@ void main() {
       expect(t.eventCount, 0);
     });
 
+    test('mergeEventsFromFile skips a file that is not UTF-8', () {
+      final src = File('${tempDir.path}/src.json')
+        ..writeAsBytesSync([0x5b, 0xff, 0xfe, 0x5d]);
+      final t = BuildTracer()..mergeEventsFromFile(src);
+      expect(t.eventCount, 0);
+    });
+
     test('mergeEventsFromFile skips when root is not a list', () {
       final src = File('${tempDir.path}/src.json')
         ..writeAsStringSync('{"not": "an array"}');
