@@ -16,8 +16,10 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 /// before building: the Flutter checkout, its `flutter precache` artifacts
 /// for Android (and iOS on macOS), and Shorebird's own artifacts for both the
 /// pinned and the requested Flutter. A later Android or iOS build with the
-/// same Flutter version then downloads none of it. Use it to bake Flutter
-/// into a Docker image or a CI cache.
+/// same Flutter version then downloads none of it. It suits teams that build
+/// with one pinned Flutter version, such as in a Docker image or on a
+/// self-hosted runner. Patches build with their release's Flutter, so a team
+/// whose releases span several versions gains little from precaching one.
 ///
 /// The engine's Maven artifacts are not among them: an Android build fetches
 /// those into the Gradle cache (`~/.gradle`), which the CI caches as it does
