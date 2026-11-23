@@ -1294,12 +1294,14 @@ ${_checkoutStep(hasSubmodules: hasSubmodules)}''';
             shasum -a 256 -c - <<<"$sum"
           fi
           case "$archive" in
-            *.zip) unzip -q "$archive" -d "$RUNNER_TEMP" ;;
+            *.zip) unzip -q -o "$archive" -d "$RUNNER_TEMP" ;;
             *) tar -xf "$archive" -C "$RUNNER_TEMP" ;;
           esac
           rm "$archive"
-          # GITHUB_PATH takes native paths: pwd -W gives them on Windows.
-          (cd "$RUNNER_TEMP/flutter/bin" && (pwd -W 2>/dev/null || pwd)) >> "$GITHUB_PATH"
+          # GITHUB_PATH and GITHUB_ENV take native paths: pwd -W gives them on Windows.
+          root=$(cd "$RUNNER_TEMP/flutter" && (pwd -W 2>/dev/null || pwd))
+          echo "FLUTTER_ROOT=$root" >> "$GITHUB_ENV"
+          echo "$root/bin" >> "$GITHUB_PATH"
           if [ "$os" = windows ]; then
             echo "$LOCALAPPDATA\Pub\Cache\bin" >> "$GITHUB_PATH"
           else
