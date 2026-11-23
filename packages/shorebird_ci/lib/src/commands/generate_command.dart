@@ -888,8 +888,7 @@ ${_retryTestFunction(executable: 'flutter', exported: true)}          if $collec
 $codecovStep      - name: Integration Tests
         if: inputs.has_integration_tests
         working-directory: \${{ inputs.package_path }}
-        run: flutter test integration_test
-''';
+$_integrationTestsRun''';
   }
 
   static String _checkoutStep({required bool hasSubmodules}) {
@@ -1381,7 +1380,34 @@ ${_retryTestFunction(executable: 'dart', exported: false)}          dart pub glo
   static const _integrationTestsStep = '''
       - name: Integration Tests
         if: matrix.has_integration_tests == true
-        run: flutter test integration_test
+$_integrationTestsRun''';
+
+  // The `run:` of the Integration Tests step, shared by both styles.
+  // `flutter test integration_test` needs a device, and on a hosted
+  // runner the only one is the desktop of the runner's OS, which the
+  // package can build only if it has that platform's directory, so a
+  // leg whose OS has none skips the step with a notice. The Linux
+  // desktop also needs GTK's dev packages, which `ubuntu-latest`
+  // lacks, and a display, which `xvfb-run` provides.
+  static const _integrationTestsRun = r'''
+        run: |
+          case "$RUNNER_OS" in
+            Linux) platform=linux ;;
+            macOS) platform=macos ;;
+            Windows) platform=windows ;;
+            *) platform= ;;
+          esac
+          if [ -z "$platform" ] || [ ! -d "$platform" ]; then
+            echo "::notice::Skipping integration tests: no ${platform:-desktop}/ directory for the $RUNNER_OS runner to build."
+            exit 0
+          fi
+          if [ "$platform" = linux ]; then
+            sudo apt-get update
+            sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev xvfb
+            xvfb-run -a flutter test integration_test -d linux
+          else
+            flutter test integration_test -d "$platform"
+          fi
 ''';
 
   String _codecovUploadStep({required String? codecovTokenSecret}) {
