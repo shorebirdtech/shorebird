@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# Unreleased
+
+- Generated workflows run a Flutter package's integration tests only when it has a `linux/` directory as well as `integration_test/`, and a new per-package `shorebird_ci: integration_tests: true|false` key in `pubspec.yaml` overrides that. `flutter test integration_test` needs a device, and a hosted `ubuntu-latest` runner, where every pull request's leg runs, has only the Linux desktop, so a mobile-only app's integration tests failed every run. Since 0.3.1 `verify` fails on a hand-set `has_integration_tests: false`, so there was no way to turn them off.
+
 # 0.3.2
 
 - Generated workflows install Flutter with a `run:` step instead of `subosito/flutter-action`, so they no longer run a third-party action to install Flutter, and the Flutter archive is checked against the SHA-256 in Flutter's release manifest before it's used. subosito's action calls `actions/cache` by tag, which failed every generated Flutter job in repositories that require SHA-pinned actions. An exact `flutter_version` now resolves on any channel, not only stable. (#4513)
