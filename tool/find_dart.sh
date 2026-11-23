@@ -65,7 +65,7 @@ _find_dart_version_of() {
 _find_dart_take_lock() {
   local lock="$1" waited=0 pid holder_pid reap
   # Bash 3.2 has no BASHPID. `exec` makes sh the command-substitution process
-  # itself, so its parent is this shell rather than a short-lived subshell.
+  # itself, so its parent is this shell rather than a short-lived child shell.
   pid="${BASHPID:-$(exec sh -c 'echo "$PPID"')}"
   until ln -s "$pid" "$lock" 2>/dev/null; do
     if [ "$waited" -ge 1860 ]; then
