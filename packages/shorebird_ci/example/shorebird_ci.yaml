@@ -43,7 +43,7 @@ jobs:
           # the default shallow checkout. Full history is needed for the
           # diff to resolve.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
       - run: dart pub global activate shorebird_ci 0.3.1
       # Verify first so we fail fast if CI coverage is broken and
       # don't waste time computing affected packages.
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
-      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
       - name: Setup Bloc Tools
         if: matrix.has_bloc_lint == true
         run: dart pub global activate bloc_tools 0.1.0-dev.25

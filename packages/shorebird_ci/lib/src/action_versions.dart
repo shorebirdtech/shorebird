@@ -29,7 +29,7 @@ const checkoutAction =
 
 /// See [checkoutAction].
 const setupDartAction =
-    'dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1';
+    'dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2';
 
 /// See [checkoutAction].
 const pathsFilterAction =
