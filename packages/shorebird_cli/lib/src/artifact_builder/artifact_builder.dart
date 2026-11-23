@@ -8,6 +8,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_build_trace/shorebird_build_trace.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
@@ -446,20 +447,28 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     ];
 
     final buildStart = clock.now();
-    final exitCode = await process.stream(
-      executable,
-      arguments,
-      environment: buildEnvironment(
-        base64PublicKey: base64PublicKey,
-        ddMaxBytes: ddMaxBytes,
-        releaseVersion: releaseVersion,
-        releaseSupplementDir: releaseSupplementDir,
-        appId: appId,
+    // The span covers the whole process: flutter_tools' own `flutter build`
+    // span starts only after its pub get and artifact downloads, which
+    // would otherwise count as Shorebird's time in the trace summary.
+    final exitCode = await shorebirdTracer.span(
+      name: TraceNames.flutterProcessSpanName,
+      category: TraceCategory.subprocess.wireName,
+      args: {'command': command},
+      body: () => process.stream(
+        executable,
+        arguments,
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+          releaseVersion: releaseVersion,
+          releaseSupplementDir: releaseSupplementDir,
+          appId: appId,
+        ),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       ),
-      // Never run in shell because we always have a fully resolved
-      // executable path.
-      runInShell: false,
-      onStart: _emitFlutterSpawnFlow,
     );
 
     if (exitCode != ExitCode.success.code) {
@@ -696,8 +705,8 @@ Reason: Exited with code $exitCode.''',
   /// metadata blob without re-parsing the trace file.
   ///
   /// Uses [BuildTraceSession.windowStartedAt] to derive the wall-clock time
-  /// Shorebird itself spent around the Flutter build, subtracting Flutter's
-  /// reported total (the "flutter build X" umbrella event).
+  /// Shorebird itself spent around the Flutter build, subtracting the time
+  /// the `flutter build` processes ran.
   ///
   /// Call from the outer `release_command` / `patch_command` *after* all
   /// post-flutter-build work (aot_tools, gen_snapshot, artifact uploads) has

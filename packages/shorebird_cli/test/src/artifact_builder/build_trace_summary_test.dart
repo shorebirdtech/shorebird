@@ -39,6 +39,113 @@ void main() {
       expect(s.ios, isNull);
     });
 
+    group('flutter process span', () {
+      // Flutter's umbrella starts after its pub get and artifact
+      // downloads; the process span shorebird_cli records starts at spawn.
+      final events = [
+        _event(
+          name: 'flutter process',
+          cat: 'subprocess',
+          ts: 0,
+          dur: 10_000_000,
+          tid: 2,
+          args: {'command': 'ios'},
+        ),
+        _event(
+          name: 'flutter build ios',
+          cat: 'flutter',
+          ts: 4_000_000,
+          dur: 5_000_000,
+          tid: 1,
+        ),
+        // A download during flutter_tools' startup is Flutter's, not
+        // Shorebird's.
+        _event(
+          name: 'GET artifact',
+          cat: 'network',
+          ts: 1_000_000,
+          dur: 2_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'POST patch',
+          cat: 'network',
+          ts: 11_000_000,
+          dur: 1_000_000,
+          tid: 1,
+        ),
+      ];
+
+      test('is the Flutter build, startup included', () {
+        final s = BuildTraceSummary.fromEvents(
+          events,
+          platform: 'ios',
+          shorebirdOverhead: const Duration(seconds: 3),
+        );
+        expect(s.flutterBuild, const Duration(seconds: 10));
+        expect(s.total, const Duration(seconds: 13));
+        expect(s.network.shorebird, const Duration(seconds: 1));
+        // Not double counted as flutter-tool time.
+        expect(s.flutterTool, Duration.zero);
+      });
+
+      test('sums one span per flutter build', () {
+        final s = BuildTraceSummary.fromEvents([
+          ...events,
+          _event(
+            name: 'flutter process',
+            cat: 'subprocess',
+            ts: 20_000_000,
+            dur: 6_000_000,
+            tid: 2,
+            args: {'command': 'apk'},
+          ),
+        ], platform: 'android');
+        expect(s.flutterBuild, const Duration(seconds: 16));
+      });
+
+      test('falls back to the umbrella without one', () {
+        final s = BuildTraceSummary.fromEvents(
+          events.where((e) => e['name'] != 'flutter process').toList(),
+          platform: 'ios',
+        );
+        expect(s.flutterBuild, const Duration(seconds: 5));
+        // The startup download is outside the umbrella, so Shorebird's.
+        expect(s.network.shorebird, const Duration(seconds: 3));
+      });
+    });
+
+    test('toJson totals add up in whole milliseconds', () {
+      final s = BuildTraceSummary.fromEvents(
+        [
+          _event(
+            name: 'flutter process',
+            cat: 'subprocess',
+            ts: 0,
+            dur: 1_000_600,
+            tid: 2,
+          ),
+          _event(
+            name: 'POST patch',
+            cat: 'network',
+            ts: 2_000_000,
+            dur: 400_600,
+            tid: 1,
+          ),
+        ],
+        platform: 'android',
+        shorebirdOverhead: const Duration(microseconds: 2_000_600),
+      );
+      final j = s.toJson();
+      // 1000.6 + 2000.6 is 3001.2 ms, but the parts read 1000 + 2000.
+      expect(j['flutterBuildMs'], 1000);
+      expect(j['shorebirdOverheadMs'], 2000);
+      expect(j['totalMs'], 3000);
+      // 2000 - 400, not 1599 (2000.6 - 400.6 rounded down).
+      expect((j['network']! as Map)['shorebirdMs'], 400);
+      expect(j['shorebirdLocalMs'], 1600);
+    });
+
     test('unknown cat is dropped — does not contribute to any bucket', () {
       // A future producer emits a category this consumer doesn't know yet.
       // Forward-compat contract: parse to TraceCategory.unknown and skip.
@@ -464,7 +571,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 11);
+      expect(j['version'], 12);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
@@ -868,6 +975,20 @@ void main() {
           ),
         ], platform: 'android');
         expect(s.dart.genSnapshot, const Duration(milliseconds: 6000));
+      });
+
+      test('compile_macos_framework → genSnapshot bucket', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'compile_macos_framework',
+            cat: 'assemble',
+            ts: 0,
+            dur: 4_000_000,
+            tid: 3,
+          ),
+        ], platform: 'macos');
+        expect(s.dart.genSnapshot, const Duration(seconds: 4));
+        expect(s.flutterAssemble.other, Duration.zero);
       });
 
       test('dart_build → DartStats.build', () {
