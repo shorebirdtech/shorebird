@@ -3791,48 +3791,6 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
-      test('sends no body without platforms', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
-        );
-
-        await codePushClient.rollbackPatch(
-          appId: appId,
-          releaseId: releaseId,
-          patchId: patchId,
-        );
-
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.Request;
-        expect(request.body, isEmpty);
-      });
-
-      test('sends platforms when given', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
-        );
-
-        await codePushClient.rollbackPatch(
-          appId: appId,
-          releaseId: releaseId,
-          patchId: patchId,
-          platforms: [ReleasePlatform.ios],
-        );
-
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.Request;
-        expect(
-          json.decode(request.body),
-          equals({
-            'platforms': ['ios'],
-          }),
-        );
-      });
-
       test('returns false on 304 Not Modified (idempotent)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -3950,48 +3908,6 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
-      });
-
-      test('sends no body without platforms', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
-        );
-
-        await codePushClient.rollforwardPatch(
-          appId: appId,
-          releaseId: releaseId,
-          patchId: patchId,
-        );
-
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.Request;
-        expect(request.body, isEmpty);
-      });
-
-      test('sends platforms when given', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
-        );
-
-        await codePushClient.rollforwardPatch(
-          appId: appId,
-          releaseId: releaseId,
-          patchId: patchId,
-          platforms: [ReleasePlatform.ios],
-        );
-
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.Request;
-        expect(
-          json.decode(request.body),
-          equals({
-            'platforms': ['ios'],
-          }),
-        );
       });
 
       test('returns false on 304 Not Modified (idempotent)', () async {

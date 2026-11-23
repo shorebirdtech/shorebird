@@ -1791,15 +1791,11 @@ $name artifact already exists, continuing...''');
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
-  ///
-  /// [platforms] limits the change to those platforms' patches under the
-  /// patch's number; without it the server changes every platform's.
   Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
     required int patchId,
     int? patchNumber,
-    List<ReleasePlatform>? platforms,
   }) async {
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling back $label');
@@ -1808,7 +1804,6 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
-        platforms: platforms,
       );
       // A completed spinner would claim the rollback happened, so say so when
       // the server reported there was nothing to change.
@@ -1829,15 +1824,11 @@ $name artifact already exists, continuing...''');
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
-  ///
-  /// [platforms] limits the change to those platforms' patches under the
-  /// patch's number; without it the server changes every platform's.
   Future<bool> rollforwardPatch({
     required String appId,
     required int releaseId,
     required int patchId,
     int? patchNumber,
-    List<ReleasePlatform>? platforms,
   }) async {
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling forward $label');
@@ -1846,7 +1837,6 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
-        platforms: platforms,
       );
       // A completed spinner would claim the rollforward happened, so say so
       // when the server reported there was nothing to change.
