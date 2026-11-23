@@ -1,3 +1,4 @@
+# cspell:words connrefused
 name: publish_cli
 
 # Builds the CLI with `dart compile exe` for each platform we support and, for
@@ -15,7 +16,8 @@ name: publish_cli
 #
 # A pull request that changes this workflow, the bootstrap or the dependencies
 # (what can break `dart compile exe` while analyze and tests still pass) builds
-# and checks every binary but uploads nothing. Only a push to stable (or a dispatch on stable) uploads, and
+# and checks every binary, and that the bootstrap installs it, but uploads
+# nothing. Only a push to stable (or a dispatch on stable) uploads, and
 # only once all five built and passed their checks, so a commit has all its binaries or none (bin/shorebird
 # falls back to today's bootstrap when its platform's binary is missing).
 
@@ -128,6 +130,38 @@ jobs:
           echo "$hash  $zip_name" > "dist/$zip_name.sha256"
           ls -l dist
           cat "dist/$zip_name.sha256"
+
+      # bin/shorebird and shorebird.ps1 install a commit's zip when it has one.
+      # Serve this one as download.shorebird.dev would and check the bootstrap
+      # installs it and runs it, rather than building the snapshot.
+      - name: 🧪 Bootstrap installs the binary
+        shell: bash
+        run: |
+          sha="$(git rev-parse HEAD)"
+          mkdir -p "served/shorebird-cli/$sha"
+          cp dist/* "served/shorebird-cli/$sha/"
+          python=python3
+          if [[ "$RUNNER_OS" == "Windows" ]]; then python=python; fi
+          "$python" -m http.server 8765 --bind 127.0.0.1 --directory served > /dev/null 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          curl --silent --retry 10 --retry-connrefused --retry-delay 1 --output /dev/null http://127.0.0.1:8765/
+          export SHOREBIRD_DOWNLOAD_URL=http://127.0.0.1:8765
+
+          rm -f bin/cache/shorebird.stamp "bin/cache/$EXE"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            pwsh -NoProfile -File bin/shorebird.ps1 --version
+          else
+            bin/shorebird --version
+          fi
+          test -x "bin/cache/$EXE"
+          test "$(tr -d '\r\n' < bin/cache/shorebird-cli.stamp)" == "$sha"
+          test ! -e bin/cache/shorebird.stamp
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            # shorebird.bat picks the binary by its stamp.
+            cmd.exe //c 'bin\shorebird.bat --version' | tee out.txt
+            grep -q '^Shorebird [0-9]' out.txt
+          fi
 
       - name: ⬆️ Keep the zip for the upload job
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
