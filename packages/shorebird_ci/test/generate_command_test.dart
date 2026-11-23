@@ -949,6 +949,143 @@ void main() {
     });
   });
 
+  group('integration tests step', () {
+    /// The Integration Tests step of [job] in [workflow].
+    YamlMap integrationStep(String workflow, String job) {
+      final jobs = (loadYaml(workflow) as YamlMap)['jobs'] as YamlMap;
+      final steps = (jobs[job] as YamlMap)['steps'] as YamlList;
+      return steps.cast<YamlMap>().singleWhere(
+        (step) => step['name'] == 'Integration Tests',
+      );
+    }
+
+    Future<YamlMap> staticStep() async {
+      createPackage(tempDir, 'packages/app', 'app', flutterLine: 'any');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+      return integrationStep(readWorkflow('_shorebird_ci_flutter.yaml'), 'ci');
+    }
+
+    Future<YamlMap> dynamicStep() async {
+      createPackage(tempDir, 'packages/app', 'app', flutterLine: 'any');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      return integrationStep(_readMain(tempDir), 'flutter_ci');
+    }
+
+    test('static and dynamic share one script', () async {
+      final static = await staticStep();
+      final dynamic = await dynamicStep();
+      expect(static['if'], 'inputs.has_integration_tests');
+      expect(static['working-directory'], r'${{ inputs.package_path }}');
+      expect(dynamic['if'], 'matrix.has_integration_tests == true');
+      expect(static['run'], dynamic['run']);
+    });
+
+    group('script', () {
+      late Directory package;
+      late File log;
+
+      /// Runs the step's script as RUNNER_OS [os] in a package with the
+      /// platform directories [platforms], with `flutter`, `sudo` and
+      /// `xvfb-run` stubbed to log their arguments.
+      Future<ProcessResult> runScript(
+        String script, {
+        required String os,
+        List<String> platforms = const [],
+      }) async {
+        package = Directory(p.join(tempDir.path, 'run'))..createSync();
+        for (final platform in platforms) {
+          Directory(p.join(package.path, platform)).createSync();
+        }
+        final bin = Directory(p.join(tempDir.path, 'bin'))..createSync();
+        log = File(p.join(tempDir.path, 'calls.log'));
+        for (final tool in ['flutter', 'sudo', 'xvfb-run']) {
+          final stub = File(p.join(bin.path, tool))
+            ..writeAsStringSync(
+              '#!/bin/sh\necho "$tool \$*" >> "${log.path}"\n',
+            );
+          Process.runSync('chmod', ['+x', stub.path]);
+        }
+        return Process.run(
+          'bash',
+          ['-e', '-c', script],
+          workingDirectory: package.path,
+          environment: {
+            'RUNNER_OS': os,
+            'PATH': '${bin.path}:${Platform.environment['PATH']}',
+          },
+        );
+      }
+
+      List<String> calls() =>
+          log.existsSync() ? log.readAsLinesSync() : const [];
+
+      test(
+        'sets up the Linux desktop and runs under xvfb on Linux',
+        () async {
+          final script = (await dynamicStep())['run'] as String;
+          final result = await runScript(
+            script,
+            os: 'Linux',
+            platforms: ['linux'],
+          );
+          expect(result.exitCode, 0, reason: '${result.stderr}');
+          const install =
+              'sudo apt-get install -y clang cmake ninja-build pkg-config '
+              'libgtk-3-dev xvfb';
+          expect(calls(), [
+            'sudo apt-get update',
+            install,
+            'xvfb-run -a flutter test integration_test -d linux',
+          ]);
+        },
+        testOn: '!windows',
+      );
+
+      test(
+        "runs on the runner OS's desktop when it has that directory",
+        () async {
+          final script = (await dynamicStep())['run'] as String;
+          final result = await runScript(
+            script,
+            os: 'macOS',
+            platforms: ['linux', 'macos'],
+          );
+          expect(result.exitCode, 0, reason: '${result.stderr}');
+          expect(calls(), ['flutter test integration_test -d macos']);
+        },
+        testOn: '!windows',
+      );
+
+      for (final (os, platforms) in [
+        ('Linux', ['macos', 'windows']),
+        ('macOS', ['linux']),
+        ('Windows', ['linux', 'macos']),
+        ('FreeBSD', ['linux', 'macos', 'windows']),
+      ]) {
+        test(
+          'skips with a notice on $os without its platform directory',
+          () async {
+            final script = (await dynamicStep())['run'] as String;
+            final result = await runScript(
+              script,
+              os: os,
+              platforms: platforms,
+            );
+            expect(result.exitCode, 0, reason: '${result.stderr}');
+            expect(calls(), isEmpty);
+            expect(
+              result.stdout,
+              startsWith('::notice::Skipping integration tests'),
+            );
+          },
+          testOn: '!windows',
+        );
+      }
+    });
+  });
+
   group('dependabot.yml', () {
     test('creates dependabot.yml when missing', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
