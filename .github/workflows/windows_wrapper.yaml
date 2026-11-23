@@ -45,6 +45,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # The first run sets up Flutter and builds the CLI; that output goes to
       # stderr, so `$(shorebird ...)` captures only the command's own.
@@ -67,9 +69,13 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 🧪 Run shorebird through cmd.exe
-        shell: cmd
+        # cmd.exe is what this job tests; zizmor can't analyze cmd scripts,
+        # and this one expands no ${{ }} context.
+        shell: cmd # zizmor: ignore[misfeature]
         run: |
           REM The first run sets up Flutter and builds the CLI; that output
           REM goes to stderr, so a capture of stdout holds only --version's.
