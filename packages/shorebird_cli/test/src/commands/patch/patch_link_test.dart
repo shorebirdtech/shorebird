@@ -84,6 +84,15 @@ void main() {
         expect(link.canSkipPublished, isFalse);
       });
 
+      test('does not skip published platforms on a clean tree', () async {
+        stubCheckout(status: '');
+
+        final link = await resolve(patchKey: 'my-key');
+
+        expect(link.checkout?.dirty, isFalse);
+        expect(link.canSkipPublished, isFalse);
+      });
+
       test('uses the key outside a git checkout', () async {
         stubNoCheckout();
 

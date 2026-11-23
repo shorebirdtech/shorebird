@@ -922,8 +922,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   }
 
   /// Returns [patcher]'s platform's patch on [release] that an earlier run
-  /// published from this commit under this run's key to [track], or null
-  /// when this run should build and publish it.
+  /// published under this run's key, which is this commit's SHA, to
+  /// [track], or null when this run should build and publish it.
   ///
   /// Only the platform's newest patch on the release counts, so a platform
   /// that has moved on to a newer patch is published again, and only once
@@ -935,10 +935,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     required Release release,
   }) async {
     final key = _link.key;
-    final checkout = _link.checkout;
-    if (key == null || checkout == null || !_link.canSkipPublished) {
-      return null;
-    }
+    if (key == null || !_link.canSkipPublished) return null;
     if (results['dry-run'] == true) return null;
 
     // The whole list, not only the key's patches, to see whether the
@@ -960,7 +957,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       (p) =>
           p.number == newest &&
           p.linkKey == key &&
-          p.gitSha == checkout.sha &&
           p.artifacts.isNotEmpty &&
           !p.isRolledBack &&
           p.channel == track.channel,
@@ -1612,8 +1608,11 @@ Building patch with Flutter $flutterVersionString
     final name = platform.displayName;
     final number = patch.number;
     final others = [
-      for (final p in link.platforms ?? const <ReleasePlatform>[])
-        p.displayName,
+      for (final p in link.platforms ?? const <String>[])
+        ReleasePlatform.values
+                .firstWhereOrNull((r) => r.value == p)
+                ?.displayName ??
+            p,
     ];
     switch (link.result) {
       case 'linked':
@@ -1636,6 +1635,8 @@ Building patch with Flutter $flutterVersionString
           null => 'a newer patch',
         };
         final why = switch (link.reason) {
+          'platform_already_patched' =>
+            '$name already published $linkedPatch under this key',
           'platform_has_newer_patch' =>
             '$name already has $newerPatch on release ${release.version}, '
                 'so it cannot join $linkedPatch',

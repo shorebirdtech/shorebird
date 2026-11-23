@@ -714,7 +714,6 @@ void main() {
         required ReleasePlatform platform,
         required int number,
         String? linkKey = sha,
-        String? gitSha = sha,
         String? channel = 'stable',
         bool hasArtifacts = true,
         bool isRolledBack = false,
@@ -737,7 +736,6 @@ void main() {
         isRolledBack: isRolledBack,
         platform: platform,
         linkKey: linkKey,
-        gitSha: gitSha,
       );
 
       void stubLinkedPatches(List<ReleasePatch> patches) {
@@ -895,7 +893,7 @@ void main() {
           await publishWith(
             const PatchLink(
               result: 'linked',
-              platforms: [ReleasePlatform.ios],
+              platforms: ['ios'],
             ),
           );
           verify(
@@ -909,7 +907,7 @@ void main() {
           await publishWith(
             const PatchLink(
               result: 'linked',
-              platforms: [ReleasePlatform.ios],
+              platforms: ['ios'],
             ),
           );
           verify(
@@ -962,6 +960,32 @@ void main() {
               '$releaseVersion, so it cannot join patch 5. Android is '
               'patch 7.',
             ),
+          ).called(1);
+        });
+
+        test('when the platform already published under the key', () async {
+          await publishWith(
+            const PatchLink(
+              result: 'not_linked',
+              reason: 'platform_already_patched',
+              linkNumber: 5,
+            ),
+          );
+          verify(
+            () => logger.info(
+              'Not linked: Android already published patch 5 under this '
+              'key. Android is patch 7.',
+            ),
+          ).called(1);
+        });
+
+        test('names an unknown platform as the server sent it', () async {
+          await publishWith(
+            const PatchLink(result: 'linked', platforms: ['web']),
+          );
+          verify(
+            () =>
+                logger.info('Linked Android to patch 7 (web, commit abc1234).'),
           ).called(1);
         });
 
@@ -1256,7 +1280,7 @@ void main() {
                 number: 2,
                 link: PatchLink(
                   result: 'linked',
-                  platforms: [ReleasePlatform.android],
+                  platforms: ['android'],
                 ),
               ),
             );
@@ -1399,29 +1423,16 @@ void main() {
           await expectBuilt(built: true);
         });
 
-        test('builds when the key was reused on another commit', () async {
+        test('builds with --patch-key, which does not name a commit', () async {
           when(() => argResults['patch-key']).thenReturn('hotfix');
           stubLinkedPatches([
             publishedRow(
               platform: ReleasePlatform.android,
               number: 2,
               linkKey: 'hotfix',
-              gitSha: 'f00f00f',
             ),
           ]);
           await expectBuilt(built: true);
-        });
-
-        test('skips a --patch-key patch built from this commit', () async {
-          when(() => argResults['patch-key']).thenReturn('hotfix');
-          stubLinkedPatches([
-            publishedRow(
-              platform: ReleasePlatform.android,
-              number: 2,
-              linkKey: 'hotfix',
-            ),
-          ]);
-          await expectBuilt(built: false);
         });
 
         test('builds when the platform has a newer patch', () async {
@@ -1431,7 +1442,6 @@ void main() {
               platform: ReleasePlatform.android,
               number: 3,
               linkKey: 'other',
-              gitSha: 'f00f00f',
             ),
           ]);
           await expectBuilt(built: true);

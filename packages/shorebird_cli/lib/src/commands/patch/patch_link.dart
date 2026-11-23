@@ -58,10 +58,12 @@ class PatchLinkPlan {
   final GitCheckout? checkout;
 
   /// Whether a platform the server already published under [key] can be
-  /// skipped: true only on a clean tree, where the key names exactly what
-  /// would be built again.
+  /// skipped: true only when [key] is the commit's SHA and the tree is
+  /// clean, so the key names exactly what would be built again. The server
+  /// does not return the commit a patch was built from, so a `--patch-key`
+  /// patch cannot be matched to this commit.
   bool get canSkipPublished =>
-      key != null && checkout != null && !checkout!.dirty;
+      source == PatchLinkSource.commit && checkout != null && !checkout!.dirty;
 }
 
 /// Reads HEAD and whether the working tree is clean for the git checkout
