@@ -1,3 +1,5 @@
+// cspell:words ltrimstr
+
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -835,12 +837,7 @@ jobs:
       run:
         shell: bash
     steps:
-${_checkoutStep(hasSubmodules: hasSubmodules)}      - name: Setup Flutter
-        uses: $flutterAction
-        with:
-          flutter-version: \${{ inputs.flutter_version || '' }}
-          channel: \${{ inputs.flutter_version && '' || 'stable' }}
-${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
+${_checkoutStep(hasSubmodules: hasSubmodules)}${_flutterSetupStep(source: 'inputs')}${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
         run: |
           flutter pub get --no-example
@@ -1239,18 +1236,79 @@ ${hasSubmodules ? '          submodules: recursive\n' : ''}          # affected_
 ${_checkoutStep(hasSubmodules: hasSubmodules)}''';
   }
 
-  // For Flutter, use `flutter_version` from the matrix if the pubspec
-  // pins an exact version; otherwise fall back to `channel: stable`.
   String _sdkSetupStep({required bool isFlutter}) {
     if (!isFlutter) return '      - uses: $setupDartAction\n';
-    return '''
-      - name: Setup Flutter
-        uses: $flutterAction
-        with:
-          flutter-version: \${{ matrix.flutter_version || '' }}
-          channel: \${{ matrix.flutter_version && '' || 'stable' }}
-''';
+    return _flutterSetupStep(source: 'matrix');
   }
+
+  /// Installs the Flutter release named by `<source>.flutter_version` (the
+  /// latest stable when it's empty) from Flutter's release archives,
+  /// checking the archive against the manifest's SHA-256.
+  ///
+  /// A `run:` step rather than an action: `subosito/flutter-action` calls
+  /// `actions/cache` by tag, so a repo that requires SHA-pinned actions
+  /// (nested ones included) fails every job using it before its first
+  /// step. A step with no `uses:` has nothing to pin.
+  static String _flutterSetupStep({required String source}) =>
+      '''
+      - name: Setup Flutter
+        shell: bash
+        env:
+          FLUTTER_VERSION: \${{ $source.flutter_version || '' }}
+'''
+      r'''
+        run: |
+          set -euo pipefail
+          case "$RUNNER_OS" in
+            Linux) os=linux ;;
+            macOS) os=macos ;;
+            Windows) os=windows ;;
+            *) echo "::error::No Flutter release for $RUNNER_OS"; exit 1 ;;
+          esac
+          case "$RUNNER_ARCH" in
+            X64) arch=x64 ;;
+            ARM64) arch=arm64 ;;
+            *) echo "::error::No Flutter release for $RUNNER_ARCH"; exit 1 ;;
+          esac
+          base=https://storage.googleapis.com/flutter_infra_release/releases
+          # Releases from before arm64 builds have no dart_sdk_arch: x64.
+          release=$(curl -fsSL --retry 5 "$base/releases_$os.json" | jq -c \
+            --arg version "$FLUTTER_VERSION" --arg arch "$arch" '
+              .current_release.stable as $stable
+              | [.releases[]
+                  | select(if $version == ""
+                      then .hash == $stable and .channel == "stable"
+                      else (.version | ltrimstr("v")) == $version end)
+                  | select((.dart_sdk_arch // "x64") == $arch)
+                ][0] // empty')
+          if [ -z "$release" ]; then
+            echo "::error::No Flutter release '${FLUTTER_VERSION:-stable}' for $os/$arch"
+            exit 1
+          fi
+          archive="$RUNNER_TEMP/$(basename "$(jq -r .archive <<<"$release")")"
+          curl -fsSL --retry 5 -o "$archive" "$base/$(jq -r .archive <<<"$release")"
+          sum="$(jq -r .sha256 <<<"$release")  $archive"
+          if command -v sha256sum >/dev/null; then
+            sha256sum -c - <<<"$sum"
+          else
+            shasum -a 256 -c - <<<"$sum"
+          fi
+          case "$archive" in
+            *.zip) unzip -q -o "$archive" -d "$RUNNER_TEMP" ;;
+            *) tar -xf "$archive" -C "$RUNNER_TEMP" ;;
+          esac
+          rm "$archive"
+          # GITHUB_PATH and GITHUB_ENV take native paths: pwd -W gives them on Windows.
+          root=$(cd "$RUNNER_TEMP/flutter" && (pwd -W 2>/dev/null || pwd))
+          echo "FLUTTER_ROOT=$root" >> "$GITHUB_ENV"
+          echo "$root/bin" >> "$GITHUB_PATH"
+          if [ "$os" = windows ]; then
+            echo "$LOCALAPPDATA\Pub\Cache\bin" >> "$GITHUB_PATH"
+          else
+            echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+          fi
+          "$RUNNER_TEMP/flutter/bin/flutter" --version
+''';
 
   static const _blocToolsSetupStep =
       '''
