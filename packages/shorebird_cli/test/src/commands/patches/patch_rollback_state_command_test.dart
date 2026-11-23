@@ -630,6 +630,17 @@ void main() {
           ]);
         });
 
+        test('in --json mode, reports the platforms and the --platforms '
+            "command, not the server's message", () async {
+          final (:exitCode, :json) = await runJson();
+
+          expect(exitCode, equals(ExitCode.software.code));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['api_code'], equals('patch_platforms_differ'));
+          expect(error['message'], isNot(contains('The platforms differ.')));
+          expect(error['hint'], contains('--platforms=android'));
+        });
+
         test('rethrows other API errors', () async {
           command.onChange = () async => throw ApiErrorExit(
             const CodePushException(message: 'oops'),

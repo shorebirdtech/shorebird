@@ -375,11 +375,18 @@ mixin PatchLookup on ShorebirdCommand {
       platforms: suggested.isEmpty ? patch.platforms : suggested,
       extraArgs: extraArgs,
     );
-    if (reason != null && isJsonMode) {
-      return reportError(
-        message: reason,
-        hint: 'To choose which to change, run: $command',
+    if (isJsonMode) {
+      final hint = 'To choose which to change, run: $command';
+      if (reason != null) return reportError(message: reason, hint: hint);
+      emitJsonError(
+        code: JsonErrorCode.softwareError,
+        message:
+            "Patch ${patch.number}'s platforms are in different states, so "
+            'pass --$platformsArgName to choose which to change.',
+        hint: hint,
+        apiCode: patchPlatformsDifferCode,
       );
+      return ExitCode.software.code;
     }
     if (reason != null) logger.err(reason);
     logger.info(

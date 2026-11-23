@@ -1504,6 +1504,60 @@ void main() {
           ),
         ]);
       });
+
+      test('in --json mode, reports the server saying they differ without '
+          "the server's message", () async {
+        when(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            platforms: any(named: 'platforms'),
+          ),
+        ).thenThrow(
+          ApiErrorExit(
+            const CodePushConflictException(
+              message: 'The platforms differ.',
+              response: ErrorResponse(
+                code: 'patch_platforms_differ',
+                message: 'The platforms differ.',
+              ),
+            ),
+            ExitCode.software.code,
+          ),
+        );
+        // The tracks matched when read, then changed before the promote.
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [androidPatch, iosPatch.copyWith(channel: 'stable')],
+        );
+
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+
+        expect(exitCode, equals(ExitCode.software.code));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['api_code'], equals('patch_platforms_differ'));
+        expect(error['message'], isNot(contains('The platforms differ.')));
+        expect(error['hint'], contains('--platforms=android,ios'));
+      });
     });
   });
 }

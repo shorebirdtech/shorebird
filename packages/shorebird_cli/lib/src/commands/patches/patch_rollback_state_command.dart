@@ -140,22 +140,29 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     // Only the POST can say whether the patch changed: the read above can go
     // stale, and the server answers 304 when there was nothing to do.
     late final bool changed;
-    final int? changeError;
-    try {
-      changeError = await guardApiCall(
-        () async => changed = await changePatchState(
-          appId: appId,
-          releaseId: fetched.release!.id,
-          patchId: chosen.patches.first.id,
-          patchNumber: patch.number,
-          platforms: chosen.platforms,
-        ),
-        code: JsonErrorCode.softwareError,
-        message:
-            'Failed to $verb patch $patchNumber of release "$releaseVersion".',
-      );
-    } on ApiErrorExit catch (e) {
-      if (!isPlatformsDiffer(e)) rethrow;
+    // Caught inside the guarded call, which would otherwise report the
+    // server's message for older clients in --json mode.
+    var platformsDiffer = false;
+    final changeError = await guardApiCall(
+      () async {
+        try {
+          changed = await changePatchState(
+            appId: appId,
+            releaseId: fetched.release!.id,
+            patchId: chosen.patches.first.id,
+            patchNumber: patch.number,
+            platforms: chosen.platforms,
+          );
+        } on ApiErrorExit catch (e) {
+          if (!isPlatformsDiffer(e)) rethrow;
+          platformsDiffer = true;
+        }
+      },
+      code: JsonErrorCode.softwareError,
+      message:
+          'Failed to $verb patch $patchNumber of release "$releaseVersion".',
+    );
+    if (platformsDiffer) {
       return reportPlatformsDiffer(
         patch: patch,
         releaseVersion: releaseVersion,

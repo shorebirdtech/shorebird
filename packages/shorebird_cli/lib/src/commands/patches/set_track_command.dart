@@ -316,26 +316,33 @@ class SetTrackCommand extends ShorebirdCommand
 
     // Non-null here; bind it so the closure below keeps the promotion.
     final trackChannel = channel;
-    final int? promoteError;
-    try {
-      promoteError = await guardApiCall(
-        () => codePushClientWrapper.promotePatch(
-          appId: appId,
-          patchId: toMove.first.id,
-          channel: trackChannel,
-          rolloutPercentage: rolloutPercentage,
-          rolloutSchedule: schedule,
-          platforms: alreadyThere.isEmpty
-              ? chosen.platforms
-              : [for (final p in toMove) ?p.resolvedPlatform],
-        ),
-        code: JsonErrorCode.softwareError,
-        message:
-            'Failed to set track for patch $patchNumber '
-            'of release "$releaseVersion".',
-      );
-    } on ApiErrorExit catch (e) {
-      if (!isPlatformsDiffer(e)) rethrow;
+    // Caught inside the guarded call, which would otherwise report the
+    // server's message for older clients in --json mode.
+    var platformsDiffer = false;
+    final promoteError = await guardApiCall(
+      () async {
+        try {
+          await codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: toMove.first.id,
+            channel: trackChannel,
+            rolloutPercentage: rolloutPercentage,
+            rolloutSchedule: schedule,
+            platforms: alreadyThere.isEmpty
+                ? chosen.platforms
+                : [for (final p in toMove) ?p.resolvedPlatform],
+          );
+        } on ApiErrorExit catch (e) {
+          if (!isPlatformsDiffer(e)) rethrow;
+          platformsDiffer = true;
+        }
+      },
+      code: JsonErrorCode.softwareError,
+      message:
+          'Failed to set track for patch $patchNumber '
+          'of release "$releaseVersion".',
+    );
+    if (platformsDiffer) {
       return reportPlatformsDiffer(
         patch: patch,
         releaseVersion: releaseVersion,
