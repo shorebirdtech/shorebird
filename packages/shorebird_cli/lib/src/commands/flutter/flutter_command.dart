@@ -10,6 +10,7 @@ class FlutterCommand extends ShorebirdCommand {
   FlutterCommand() {
     addSubcommand(FlutterVersionsCommand());
     addSubcommand(FlutterConfigCommand());
+    addSubcommand(FlutterPrecacheCommand());
   }
 
   @override
