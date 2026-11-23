@@ -1139,15 +1139,22 @@ class CodePushClient {
   /// `true` when it changed the patch. The server is the only authority on
   /// this, since another actor may roll the patch back between a read and this
   /// call.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
     required int patchId,
+    List<ReleasePlatform>? platforms,
   }) async {
     final response = await _httpClient.post(
       Uri.parse(
         '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollback',
       ),
+      body: platforms == null
+          ? null
+          : json.encode(RollbackPatchRequest(platforms: platforms).toJson()),
     );
 
     if (response.statusCode == HttpStatus.notModified) return false;
@@ -1166,15 +1173,22 @@ class CodePushClient {
   /// answers `304 Not Modified` because the patch was already active, `true`
   /// when it changed the patch. The server is the only authority on this, since
   /// another actor may roll the patch forward between a read and this call.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollforwardPatch({
     required String appId,
     required int releaseId,
     required int patchId,
+    List<ReleasePlatform>? platforms,
   }) async {
     final response = await _httpClient.post(
       Uri.parse(
         '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollforward',
       ),
+      body: platforms == null
+          ? null
+          : json.encode(RollforwardPatchRequest(platforms: platforms).toJson()),
     );
 
     if (response.statusCode == HttpStatus.notModified) return false;
