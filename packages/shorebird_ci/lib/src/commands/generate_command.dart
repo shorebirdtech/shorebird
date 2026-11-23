@@ -1397,8 +1397,12 @@ $_integrationTestsRun''';
             Windows) platform=windows ;;
             *) platform= ;;
           esac
-          if [ -z "$platform" ] || [ ! -d "$platform" ]; then
-            echo "::notice::Skipping integration tests: no ${platform:-desktop}/ directory for the $RUNNER_OS runner to build."
+          if [ -z "$platform" ]; then
+            echo "::notice::Skipping integration tests: Flutter has no desktop device on a $RUNNER_OS runner."
+            exit 0
+          fi
+          if [ ! -d "$platform" ]; then
+            echo "::notice::Skipping integration tests: the package has no $platform/ directory to build on this $RUNNER_OS runner."
             exit 0
           fi
           if [ "$platform" = linux ]; then

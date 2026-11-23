@@ -212,8 +212,10 @@ Each leg runs the tests on its runner's desktop (`-d linux`, `-d
 macos`, `-d windows`), and skips them with a notice when the package
 has no directory for that platform. On Linux the step installs GTK's
 dev packages and runs the tests under `xvfb-run`. Pull requests always
-run on `ubuntu-latest`, so `true` on a package without `linux/` runs
-them only on the push legs of its `runners:`.
+run on `ubuntu-latest`, as does every leg in the dynamic style, so
+`true` on a package without `linux/` runs them only on the push legs
+of a `--style static` workflow's `runners:`, and never in the dynamic
+style.
 
 Repository-wide, in the repository root's `pubspec.yaml`:
 

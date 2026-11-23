@@ -1062,6 +1062,7 @@ void main() {
         ('Linux', ['macos', 'windows']),
         ('macOS', ['linux']),
         ('Windows', ['linux', 'macos']),
+        ('FreeBSD', ['linux', 'macos', 'windows']),
       ]) {
         test(
           'skips with a notice on $os without its platform directory',
