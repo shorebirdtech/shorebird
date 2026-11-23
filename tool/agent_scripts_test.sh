@@ -11,7 +11,7 @@ trap 'rm -rf "$tmp_root"' EXIT
 
 sysbin="$tmp_root/sysbin"
 mkdir -p "$sysbin"
-for cmd in git zip unzip sed mkdir dirname cat realpath uname find mktemp cut mv rmdir rm sleep env bash sh tr ls wc touch chmod cp; do
+for cmd in git zip unzip sed mkdir dirname cat realpath uname find mktemp cut mv rmdir rm sleep env bash sh tr ls wc touch chmod cp ln readlink; do
   if p="$(command -v "$cmd" 2>/dev/null)"; then
     ln -sf "$p" "$sysbin/$cmd"
   else
@@ -98,9 +98,6 @@ case "\$url" in
     if [ -n "$race_dir" ]; then
       mkdir -p "$race_dir"
       : >"$race_dir/\$\$"
-      # Backdate the lock while holding it across the download so a waiting
-      # fetch exercises its stale-lock check against a live holder.
-      touch -t 202001010000 "\$(dirname "\$(dirname "\$out")")"/.install.* 2>/dev/null || true
       sleep 1.5
     fi
     cp "$tmp_root/sdk.zip" "\$out"
@@ -128,7 +125,7 @@ assert_eq() {
 assert_no_leftovers() {
   local root="$1" msg="$2"
   local leftover
-  leftover="$(find "$root" -maxdepth 1 \( -name '.fetch.*' -o -name '.install.*' \))"
+  leftover="$(find "$root" -maxdepth 1 \( -name '.fetch.*' -o -name '.lock.*' \))"
   if [ -n "$leftover" ]; then
     echo "FAIL: $msg: leftover temp/lock entries: $leftover" >&2
     exit 1
@@ -231,13 +228,13 @@ test_dead_lock_reap() {
   export HOME="$case_dir/home"
   unset DART_BIN
 
-  local lock="$XDG_CACHE_HOME/shorebird-dart-sdks/.install.$host_os-$host_arch-$fake_version"
-  mkdir -p "$lock"
+  local lock="$XDG_CACHE_HOME/shorebird-dart-sdks/.lock.$host_os-$host_arch-$fake_version"
+  mkdir -p "$(dirname "$lock")"
   # Spawn and reap a short-lived process to get a guaranteed-dead PID.
   sh -c 'exit 0' &
   local dead_pid=$!
   wait "$dead_pid"
-  printf '%s\n' "$dead_pid" >"$lock/pid"
+  ln -s "$dead_pid" "$lock"
 
   # shellcheck source=/dev/null
   source "$repo/tool/find_dart.sh"
