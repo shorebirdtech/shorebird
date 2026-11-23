@@ -313,7 +313,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Linux's sha256sum and GNU tools, macOS's shasum and BSD tools.
+        # GNU and BSD tools. The test hides sha256sum to run the shasum
+        # branch on both.
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
@@ -331,17 +332,35 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.prebuilt_cli == 'true' }}
     runs-on: windows-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # Pester 5 comes with the runner image.
-      - name: 🧪 Run tool/prebuilt_cli.Tests.ps1
+      # Pester 5, installed if the runner image's PowerShell lacks it.
+      - name: 🧪 Run tool/prebuilt_cli.Tests.ps1 (PowerShell 7)
         shell: pwsh
         run: |
+          if (!(Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
+            Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          Import-Module Pester -MinimumVersion 5.0
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'tool/prebuilt_cli.Tests.ps1'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
+
+      # shorebird.bat runs shorebird.ps1 with Windows PowerShell 5.1 when
+      # PowerShell 7 isn't installed.
+      - name: 🧪 Run tool/prebuilt_cli.Tests.ps1 (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          if (!(Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
+            Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          }
           Import-Module Pester -MinimumVersion 5.0
           $config = New-PesterConfiguration
           $config.Run.Path = 'tool/prebuilt_cli.Tests.ps1'

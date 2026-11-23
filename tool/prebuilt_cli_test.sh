@@ -78,7 +78,8 @@ publish() {
 # Zips a fake CLI printing [version] (exit [code]) and publishes it.
 publish_cli() {
   local version="$1" code="${2:-0}"
-  local src="$tmp_root/src-$RANDOM"
+  local src
+  src="$(mktemp -d "$tmp_root/src.XXXXXX")"
   fake_cli "$src" "$version" "$code"
   (cd "$src" && python3 -m zipfile -c "$src.zip" shorebird)
   publish "$src.zip"
@@ -90,7 +91,7 @@ publish_cli() {
 # REVISION, so each case empties the server.
 new_root() {
   rm -rf "${www:?}"/*
-  SHOREBIRD_ROOT="$tmp_root/root-$RANDOM"
+  SHOREBIRD_ROOT="$(mktemp -d "$tmp_root/root.XXXXXX")"
   mkdir -p "$SHOREBIRD_ROOT/bin/cache" "$SHOREBIRD_ROOT/packages"
   echo "#!/bin/sh" > "$SHOREBIRD_ROOT/bin/shorebird"
   echo "name: x" > "$SHOREBIRD_ROOT/packages/pubspec.yaml"
@@ -154,10 +155,22 @@ case_installs() {
   prebuilt_is_current || fail "prebuilt_is_current is false"
 }
 
+# Every install of a commit with no binaries (main, a branch, a fork) takes
+# this path, so it says nothing.
 case_404() {
   new_root
   install
   expect_fallback
+  [[ ! -s "$tmp_root/out.log" ]] || fail "printed: $(cat "$tmp_root/out.log")"
+}
+
+case_zip_missing() {
+  new_root
+  publish_cli 1.2.3
+  rm "$www/shorebird-cli/$REVISION/shorebird-$platform.zip"
+  install
+  expect_fallback
+  grep -q "Couldn't download" "$tmp_root/out.log" || fail "didn't say it couldn't download"
 }
 
 case_checksum_mismatch() {
@@ -221,14 +234,57 @@ case_upgrade_from_source_build() {
   expect_installed 1.2.3
 }
 
+case_upgrade_from_prebuilt() {
+  new_root
+  fake_cli "$SHOREBIRD_ROOT/bin/cache" 1.0.0
+  echo "0000000000000000000000000000000000000000" > "$PREBUILT_STAMP_PATH"
+  publish_cli 1.2.3
+  install
+  expect_installed 1.2.3
+}
+
+# sha256_of takes sha256sum when there is one, which macOS 14 and later have
+# too, so its shasum branch runs only with sha256sum hidden: each PATH
+# directory holding one is replaced by links to the rest of it.
+case_shasum_only() {
+  new_root
+  publish_cli 1.2.3
+  local path="" dir entry farm
+  local IFS=:
+  for dir in $PATH; do
+    if [[ -e "$dir/sha256sum" ]]; then
+      farm="$(mktemp -d "$tmp_root/path.XXXXXX")"
+      for entry in "$dir"/*; do
+        [[ "$(basename "$entry")" == sha256sum ]] || ln -s "$entry" "$farm/"
+      done
+      dir="$farm"
+    fi
+    path="${path:+$path:}$dir"
+  done
+  unset IFS
+  PATH="$path" bash -c 'hash sha256sum' 2>/dev/null && fail "sha256sum still on PATH"
+  local saved_path="$PATH"
+  PATH="$path"
+  hash -r
+  install
+  PATH="$saved_path"
+  hash -r
+  expect_installed 1.2.3
+}
+
 run_case "installs the published CLI" case_installs
-run_case "falls back on a 404" case_404
+run_case "falls back silently on a 404" case_404
+run_case "falls back when the zip is missing" case_zip_missing
 run_case "falls back on a checksum mismatch" case_checksum_mismatch
 run_case "falls back on a corrupt zip" case_corrupt_zip
 run_case "falls back when the binary fails --version" case_binary_fails
 run_case "falls back with local changes under bin, packages and third_party" case_local_changes
 run_case "falls back on a platform with no binary" case_unknown_platform
 run_case "upgrades a source-built install" case_upgrade_from_source_build
+run_case "upgrades an earlier prebuilt install" case_upgrade_from_prebuilt
+if hash shasum 2>/dev/null; then
+  run_case "installs with shasum and no sha256sum" case_shasum_only
+fi
 
 if [[ $failures != 0 ]]; then
   echo "❌ $failures check(s) failed."

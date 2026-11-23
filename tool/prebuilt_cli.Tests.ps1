@@ -7,7 +7,9 @@
 # real binary; this checks the install around it.
 #
 # Windows only: the fake CLI is compiled with the .NET Framework's csc.exe,
-# and the install runs curl.exe. Needs Pester 5, git and python.
+# and the install runs curl.exe. Needs Pester 5, git and python. CI runs it
+# under PowerShell 7 and Windows PowerShell 5.1, which shorebird.bat falls
+# back to.
 # Usage: Invoke-Pester tool/prebuilt_cli.Tests.ps1 -Output Detailed
 
 BeforeAll {
@@ -31,32 +33,37 @@ BeforeAll {
     $www = Join-Path $tmpRoot www
     New-Item -ItemType Directory -Path $www -Force | Out-Null
 
-    # Fake CLIs: each prints a version and exits with a code.
+    # Fake CLIs: each prints a version and exits with a code; with `wait`
+    # first it runs for a minute, as a CLI does during `shorebird upgrade`.
     $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
     function New-FakeCli($version, $code = 0) {
         $dir = Join-Path $tmpRoot "cli-$([guid]::NewGuid())"
         New-Item -ItemType Directory -Path $dir | Out-Null
-        Set-Content "$dir\main.cs" "class P { static int Main() { System.Console.WriteLine(`"Shorebird $version`"); return $code; } }"
+        Set-Content "$dir\main.cs" @"
+class P {
+    static int Main(string[] args) {
+        if (args.Length > 0 && args[0] == "wait") System.Threading.Thread.Sleep(60000);
+        System.Console.WriteLine("Shorebird $version");
+        return $code;
+    }
+}
+"@
         & $csc /nologo "/out:$dir\shorebird.exe" "$dir\main.cs" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "csc failed." }
         return "$dir\shorebird.exe"
     }
 
-    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
-    $listener.Start()
-    $port = $listener.LocalEndpoint.Port
-    $listener.Stop()
-    $server = Start-Process python -ArgumentList '-m', 'http.server', $port, '--bind', '127.0.0.1', '--directory', $www `
-        -PassThru -WindowStyle Hidden
-    $ready = $false
-    for ($i = 0; $i -lt 100 -and !$ready; $i++) {
-        try {
-            Invoke-WebRequest "http://127.0.0.1:$port/" -UseBasicParsing | Out-Null
-            $ready = $true
-        }
-        catch { Start-Sleep -Milliseconds 100 }
+    # Port 0: the server binds a free port and prints it.
+    $serverLog = Join-Path $tmpRoot server.log
+    $server = Start-Process python -ArgumentList '-u', '-m', 'http.server', '0', '--bind', '127.0.0.1', '--directory', "`"$www`"" `
+        -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverLog -RedirectStandardError "$serverLog.err"
+    $port = $null
+    for ($i = 0; $i -lt 100 -and !$port; $i++) {
+        Start-Sleep -Milliseconds 100
+        $line = Get-Content $serverLog -ErrorAction SilentlyContinue | Select-String 'port (\d+)' | Select-Object -First 1
+        if ($line) { $port = $line.Matches[0].Groups[1].Value }
     }
-    if (!$ready) { throw "The HTTP server didn't start." }
+    if (!$port) { throw "The HTTP server didn't start: $(Get-Content "$serverLog.err" -Raw)" }
     $savedDownloadUrl = $env:SHOREBIRD_DOWNLOAD_URL
     $env:SHOREBIRD_DOWNLOAD_URL = "http://127.0.0.1:$port/"
 
@@ -99,35 +106,57 @@ BeforeAll {
         Publish $revision $zip
     }
 
-    function Assert-Installed($revision, $version, $result) {
+    # Runs Install-PrebuiltCli, keeping what it writes to stderr in
+    # $global:installLog. Returns everything it output, as an array when
+    # that's more than one value.
+    function Invoke-Install($revision) {
+        $saved = [Console]::Error
+        $log = [IO.StringWriter]::new()
+        [Console]::SetError($log)
+        try { $result = Install-PrebuiltCli $revision }
+        finally {
+            [Console]::SetError($saved)
+            $global:installLog = $log.ToString()
+        }
+        return , $result
+    }
+
+    function Assert-Result($result, $expected) {
         # One value: shorebird.ps1 tests it with `!`, and anything else the
         # function writes would make a failure read as success.
         @($result).Count | Should -Be 1
-        $result | Should -BeTrue
+        @($result)[0] | Should -Be $expected
+    }
+
+    function Assert-Installed($revision, $version, $result, [switch]$oldStillRunning) {
+        Assert-Result $result $true
         (Get-Content $prebuiltStampPath -Raw).Trim() | Should -Be $revision
         (& $prebuiltPath --version) | Should -Be "Shorebird $version"
         Test-Path $stampPath | Should -BeFalse
         Get-ChildItem $shorebirdCacheDir -Filter 'shorebird-cli.*.tmp' | Should -BeNullOrEmpty
-        Get-ChildItem $shorebirdCacheDir -Filter 'shorebird.exe.*.old' | Should -BeNullOrEmpty
+        # A running exe can only be renamed; a later install removes it.
+        if (!$oldStillRunning) {
+            Get-ChildItem $shorebirdCacheDir -Filter 'shorebird.exe.*.old' | Should -BeNullOrEmpty
+        }
         Test-PrebuiltIsCurrent $revision | Should -BeTrue
     }
 
     # A fallback: $false, and nothing that makes shorebird.ps1 run a binary.
-    function Assert-Fallback($revision, $result) {
-        # One value: shorebird.ps1 tests it with `!`, and anything else the
-        # function writes would make a failure read as success.
-        @($result).Count | Should -Be 1
-        $result | Should -BeFalse
+    function Assert-Fallback($revision, $result, $message) {
+        Assert-Result $result $false
         Test-Path $prebuiltStampPath | Should -BeFalse
         Test-Path $prebuiltPath | Should -BeFalse
         Get-ChildItem $shorebirdCacheDir -Filter 'shorebird-cli.*.tmp' | Should -BeNullOrEmpty
         Test-PrebuiltIsCurrent $revision | Should -BeFalse
+        if ($message) { $installLog | Should -BeLike "*$message*" }
     }
 }
 
 AfterAll {
     if ($server) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
     $env:SHOREBIRD_DOWNLOAD_URL = $savedDownloadUrl
+    Remove-Variable -Scope Global -ErrorAction SilentlyContinue -Name `
+        shorebirdRootDir, shorebirdCacheDir, stampPath, prebuiltPath, prebuiltStampPath, installLog
     Remove-Item $tmpRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
@@ -135,12 +164,22 @@ Describe 'Install-PrebuiltCli' {
     It 'installs the published CLI' {
         $revision = New-Root
         Publish-Cli $revision 1.2.3
-        Assert-Installed $revision 1.2.3 (Install-PrebuiltCli $revision)
+        Assert-Installed $revision 1.2.3 (Invoke-Install $revision)
     }
 
-    It 'falls back on a 404' {
+    # Every install of a commit with no binaries (main, a branch, a fork)
+    # takes this path, so it says nothing.
+    It 'falls back silently on a 404' {
         $revision = New-Root
-        Assert-Fallback $revision (Install-PrebuiltCli $revision)
+        Assert-Fallback $revision (Invoke-Install $revision)
+        $installLog | Should -BeNullOrEmpty
+    }
+
+    It 'falls back when the zip is missing' {
+        $revision = New-Root
+        Publish-Cli $revision 1.2.3
+        Remove-Item (Join-Path $www "shorebird-cli\$revision\shorebird-windows-x64.zip")
+        Assert-Fallback $revision (Invoke-Install $revision) "Couldn't download"
     }
 
     It 'falls back on a checksum mismatch' {
@@ -148,7 +187,7 @@ Describe 'Install-PrebuiltCli' {
         $exe = New-FakeCli 1.2.3
         Compress-Archive -Path $exe -DestinationPath "$exe.zip"
         Publish $revision "$exe.zip" ('0' * 64)
-        Assert-Fallback $revision (Install-PrebuiltCli $revision)
+        Assert-Fallback $revision (Invoke-Install $revision) "doesn't match its checksum"
     }
 
     It 'falls back on a corrupt zip' {
@@ -156,13 +195,13 @@ Describe 'Install-PrebuiltCli' {
         $zip = Join-Path $tmpRoot "corrupt-$([guid]::NewGuid()).zip"
         Set-Content $zip 'not a zip'
         Publish $revision $zip
-        Assert-Fallback $revision (Install-PrebuiltCli $revision)
+        Assert-Fallback $revision (Invoke-Install $revision) "Couldn't install the downloaded Shorebird"
     }
 
     It 'falls back when the binary fails --version' {
         $revision = New-Root
         Publish-Cli $revision 1.2.3 1
-        Assert-Fallback $revision (Install-PrebuiltCli $revision)
+        Assert-Fallback $revision (Invoke-Install $revision) "didn't start"
     }
 
     It 'falls back with local changes under <_>' -ForEach @(
@@ -173,7 +212,7 @@ Describe 'Install-PrebuiltCli' {
         $path = Join-Path $shorebirdRootDir $_
         New-Item -ItemType Directory -Path (Split-Path $path) -Force | Out-Null
         Add-Content $path 'changed'
-        Assert-Fallback $revision (Install-PrebuiltCli $revision)
+        Assert-Fallback $revision (Invoke-Install $revision)
     }
 
     It 'falls back on a platform with no binary' {
@@ -183,7 +222,7 @@ Describe 'Install-PrebuiltCli' {
         try {
             $env:PROCESSOR_ARCHITECTURE = 'ARM64'
             $env:PROCESSOR_ARCHITEW6432 = $null
-            $result = Install-PrebuiltCli $revision
+            $result = Invoke-Install $revision
         }
         finally {
             $env:PROCESSOR_ARCHITECTURE, $env:PROCESSOR_ARCHITEW6432 = $saved
@@ -197,6 +236,22 @@ Describe 'Install-PrebuiltCli' {
         Set-Content $stampPath ('0' * 40)
         Copy-Item (New-FakeCli 1.0.0) $prebuiltPath
         Publish-Cli $revision 1.2.3
-        Assert-Installed $revision 1.2.3 (Install-PrebuiltCli $revision)
+        Assert-Installed $revision 1.2.3 (Invoke-Install $revision)
+    }
+
+    # `shorebird upgrade` on a prebuilt install: the old binary is running
+    # while the new one replaces it.
+    It 'upgrades an earlier prebuilt install while it runs' {
+        $revision = New-Root
+        Copy-Item (New-FakeCli 1.0.0) $prebuiltPath
+        Set-Content $prebuiltStampPath ('0' * 40)
+        Publish-Cli $revision 1.2.3
+        $old = Start-Process $prebuiltPath -ArgumentList 'wait' -PassThru -WindowStyle Hidden
+        try {
+            Assert-Installed $revision 1.2.3 (Invoke-Install $revision) -oldStillRunning
+        }
+        finally {
+            Stop-Process -Id $old.Id -Force -ErrorAction SilentlyContinue
+        }
     }
 }
