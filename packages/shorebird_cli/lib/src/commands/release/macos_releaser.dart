@@ -10,8 +10,6 @@ import 'package:shorebird_cli/src/commands/apple_build_helpers.dart';
 import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -47,23 +45,13 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   @override
   Future<void> assertArgsAreValid() async {
     assertReleaseVersionFlagNotProvided();
+    assertMacosCodesignNotDisabled(argResults);
   }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    if (!argResults.appleCodesign) {
-      logger
-        ..info(
-          '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
-        )
-        ..warn(
-          '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
-        );
-    }
-
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildMacos(
-        codesign: argResults.appleCodesign,
         flavor: flavor,
         target: target,
         args: buildArgs,

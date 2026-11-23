@@ -330,8 +330,10 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
   }
 
   /// Builds a macOS app using `flutter build macos`.
+  ///
+  /// The app is signed by the Xcode project's settings: `flutter build macos`
+  /// has no `--no-codesign` flag.
   Future<AppleBuildResult> buildMacos({
-    bool codesign = true,
     String? flavor,
     String? target,
     List<String> args = const [],
@@ -347,7 +349,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         '--release',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
-        if (!codesign) '--no-codesign',
       ],
       args: args,
       base64PublicKey: base64PublicKey,

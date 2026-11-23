@@ -1672,7 +1672,6 @@ Reason: Exited with code 70.'''),
       test('forwards extra arguments to flutter build', () async {
         await runWithOverrides(
           () => builder.buildMacos(
-            codesign: false,
             flavor: 'flavor',
             target: 'target.dart',
             args: ['--foo', 'bar'],
@@ -1688,7 +1687,6 @@ Reason: Exited with code 70.'''),
               '--release',
               '--flavor=flavor',
               '--target=target.dart',
-              '--no-codesign',
               '--foo',
               'bar',
             ],
@@ -1713,7 +1711,7 @@ Reason: Exited with code 70.'''),
 
           test('throws ArtifactBuildException', () {
             expect(
-              () => runWithOverrides(() => builder.buildMacos(codesign: false)),
+              () => runWithOverrides(() => builder.buildMacos()),
               throwsA(
                 isA<ArtifactBuildException>().having(
                   (e) => e.fixRecommendation,
@@ -1744,7 +1742,7 @@ Reason: Exited with code 70.'''),
 
         test('throws ArtifactBuildException', () {
           expect(
-            () => runWithOverrides(() => builder.buildMacos(codesign: false)),
+            () => runWithOverrides(() => builder.buildMacos()),
             throwsA(
               isA<ArtifactBuildException>()
                   .having(
@@ -1765,8 +1763,7 @@ Reason: Exited with code 70.'''),
       group('after a build', () {
         group('when the build is successful', () {
           verifyNoSystemFlutterPubGet(
-            () async =>
-                runWithOverrides(() => builder.buildMacos(codesign: false)),
+            () async => runWithOverrides(() => builder.buildMacos()),
           );
 
           group('when the build fails', () {
@@ -1783,8 +1780,7 @@ Reason: Exited with code 70.'''),
 
             verifyNoSystemFlutterPubGet(
               () async => expectLater(
-                () async =>
-                    runWithOverrides(() => builder.buildMacos(codesign: false)),
+                () async => runWithOverrides(() => builder.buildMacos()),
                 throwsA(isA<ArtifactBuildException>()),
               ),
             );

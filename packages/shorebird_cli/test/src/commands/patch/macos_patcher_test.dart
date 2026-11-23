@@ -215,6 +215,41 @@ void main() {
       });
     });
 
+    group('assertArgsAreValid', () {
+      group('when --no-codesign is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('codesign')).thenReturn(true);
+          when(() => argResults['codesign']).thenReturn(false);
+        });
+
+        test('exits with an error saying the flag is unsupported', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.assertArgsAreValid),
+            exitsWithError(
+              message: '--no-codesign is not supported for macOS.',
+              hint:
+                  'Remove --no-codesign. A macOS app is signed by the signing '
+                  "settings in your Xcode project's Runner target.",
+            ),
+          );
+        });
+      });
+
+      group('when --codesign is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('codesign')).thenReturn(true);
+          when(() => argResults['codesign']).thenReturn(true);
+        });
+
+        test('completes', () async {
+          await expectLater(
+            runWithOverrides(patcher.assertArgsAreValid),
+            completes,
+          );
+        });
+      });
+    });
+
     group('assertPreconditions', () {
       setUp(() {
         when(() => doctor.macosCommandValidators).thenReturn([flavorValidator]);
@@ -504,7 +539,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -525,7 +559,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -556,7 +589,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -601,7 +633,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -657,7 +688,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -743,7 +773,6 @@ This may indicate that the patch contains native changes, which cannot be applie
           )..createSync(recursive: true);
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -785,7 +814,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             await runWithOverrides(patcher.buildPatchArtifact);
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: flavor,
                 target: any(named: 'target'),
@@ -805,7 +833,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             verify(
               () => artifactBuilder.buildMacos(
                 flavor: any(named: 'flavor'),
-                codesign: any(named: 'codesign'),
                 target: any(named: 'target'),
                 args: any(
                   named: 'args',
@@ -841,7 +868,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
@@ -868,7 +894,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
@@ -888,7 +913,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             expect(p.basename(artifact.path), endsWith('.zip'));
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: ['--verbose'],
               ),
             ).called(1);
@@ -939,7 +963,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             final captured = verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: captureAny(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
@@ -970,7 +993,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             final captured = verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: captureAny(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),

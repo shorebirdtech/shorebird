@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
@@ -32,5 +33,21 @@ String readReleaseVersionFromInfoPlist(File plistFile, {String? hint}) {
     return Plist(file: plistFile).versionNumber;
   } on Exception catch (error) {
     fail('Failed to determine release version from ${plistFile.path}: $error');
+  }
+}
+
+/// Refuses `--no-codesign` for a macOS release or patch.
+///
+/// `flutter build macos` has no `--no-codesign` flag: the app is signed by
+/// the macOS Xcode project's own signing settings, so the build would stop
+/// with "Could not find an option named --no-codesign".
+void assertMacosCodesignNotDisabled(ArgResults argResults) {
+  if (argResults.wasParsed('codesign') && argResults['codesign'] != true) {
+    throw CommandError(
+      message: '--no-codesign is not supported for macOS.',
+      hint:
+          'Remove --no-codesign. A macOS app is signed by the signing '
+          "settings in your Xcode project's Runner target.",
+    );
   }
 }
