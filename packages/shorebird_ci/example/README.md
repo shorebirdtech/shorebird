@@ -16,15 +16,19 @@ Reproduce it with:
 
 ```sh
 dart pub global activate shorebird_ci
-shorebird_ci generate --repo-root . --dry-run
+shorebird_ci generate --repo-root . --dry-run --no-update-actions
 ```
 
-The workflow has two jobs. `setup` activates `shorebird_ci` on the
+(`--no-update-actions` keeps the action pins built into shorebird_ci;
+without it they move to each action's latest release.)
+
+The workflow has three jobs. `setup` activates `shorebird_ci` on the
 runner, calls `verify` to fail fast if CI coverage has drifted from the
 dep graph, then calls `affected_packages` to emit the JSON matrix.
 `dart_ci` fans out across that matrix, running format / analyze / test
 for each affected package — including transitive dependents (a change
-to `core` runs `app` too).
+to `core` runs `app` too). `zizmor` lints every workflow in
+`.github/workflows/` with a pinned, checksummed zizmor release.
 
 For Flutter packages a parallel `flutter_ci` job is added, with
 `flutter_version` resolved from the pubspec when pinned. With codecov
