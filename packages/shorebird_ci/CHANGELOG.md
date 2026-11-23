@@ -1,5 +1,11 @@
 <!-- cspell:words toplevel -->
 
+# Unreleased
+
+- Generated workflows get a `zizmor` job that lints every workflow in `.github/workflows/` with [zizmor](https://docs.zizmor.sh/) 1.33.1, and the `required` aggregator depends on it. The job downloads zizmor's own release and checks its SHA-256 rather than running a third-party action, and runs `--offline` with a read-only token that checkout doesn't keep and no secrets. `generate` runs the same zizmor after writing and prints its findings, so a repository's first run isn't a surprise red; `--no-zizmor` skips that run. Findings are accepted in `.github/zizmor.yml` or with `# zizmor: ignore[...]` comments.
+- Generated workflows pass zizmor themselves. Every `actions/checkout` sets `persist-credentials: false`, since nothing after it pushes or fetches, so pub and test steps can't read the token from `.git/config`. `subpackages` reaches `run:` scripts through an environment variable instead of a `${{ }}` expansion. Static orchestrators call their reusable workflows as `$/.github/workflows/...`, GitHub's self-repository syntax, which zizmor requires and which lets GitHub enforce a fully-pinned policy.
+- `--codecov-token-secret` in `--style static` now passes that one secret to each reusable workflow call, which declares it, instead of `secrets: inherit`, which handed every repository secret to the pub and test steps.
+
 # 0.3.3
 
 - Generated workflows run a Flutter package's integration tests only when it has a `linux/` directory as well as `integration_test/`, and a new per-package `shorebird_ci: integration_tests: true|false` key in `pubspec.yaml` overrides that. `flutter test integration_test` needs a device, and a hosted `ubuntu-latest` runner, where every pull request's leg runs, has only the Linux desktop, so a mobile-only app's integration tests failed every run. Since 0.3.1 `verify` fails on a hand-set `has_integration_tests: false`, so there was no way to turn them off. (#4522)

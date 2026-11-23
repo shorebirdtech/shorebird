@@ -14,14 +14,17 @@ import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
 import 'package:shorebird_ci/src/repository_description.dart';
 import 'package:shorebird_ci/src/version.dart';
+import 'package:shorebird_ci/src/zizmor.dart';
 
 /// Generates a GitHub Actions CI workflow for a Dart/Flutter repository.
 class GenerateCommand extends Command<int> with RepoRootOption {
   /// Creates a [GenerateCommand]. The optional [resolveLatestRelease] is
   /// exposed for tests so they don't have to hit the live GitHub API
   /// when verifying the `--update-actions` path.
-  GenerateCommand({LatestReleaseResolver? resolveLatestRelease})
-    : _resolveLatestRelease = resolveLatestRelease {
+  /// [zizmor] runs zizmor over the written workflows; tests pass a fake.
+  GenerateCommand({LatestReleaseResolver? resolveLatestRelease, Zizmor? zizmor})
+    : _resolveLatestRelease = resolveLatestRelease,
+      _zizmor = zizmor {
     addRepoRootOption();
     argParser
       ..addOption(
@@ -59,8 +62,8 @@ Name of the GitHub Actions secret holding the Codecov upload token.
 When set, the codecov-action step receives
 `token: ${{ secrets.<NAME> }}` in both --style dynamic (default) and
 --style static output. In --style static, the generated orchestrator
-additionally emits `secrets: inherit` on each reusable workflow call
-so the secret is reachable inside the reusable workflow. When unset
+also passes that one secret to each reusable workflow call, which
+declares it. When unset
 (the default), no token plumbing is emitted. Refer to Codecov's docs
 for whether your repo requires a token to upload. Also readable as
 `codecov_token_secret` in the repository root's `shorebird_ci:` block,
@@ -90,6 +93,15 @@ or matrix strategies.''',
         negatable: false,
       )
       ..addFlag(
+        'no-zizmor',
+        help: '''
+Skip running zizmor over .github/workflows once the workflows are
+written. That run prints what the generated `zizmor` job would fail
+on, so its first run isn't a surprise. It uses a `zizmor` on PATH at
+the version the job pins, or downloads that release.''',
+        negatable: false,
+      )
+      ..addFlag(
         'fatal-infos',
         help: '''
 Pass --fatal-infos to `dart analyze` and `flutter analyze` in the
@@ -100,6 +112,7 @@ root's `shorebird_ci:` block, which is where `verify` looks.''',
   }
 
   final LatestReleaseResolver? _resolveLatestRelease;
+  final Zizmor? _zizmor;
 
   @override
   String get name => 'generate';
@@ -235,7 +248,42 @@ root's `shorebird_ci:` block, which is where `verify` looks.''',
       );
     }
 
+    if (!argResults!.flag('no-zizmor')) await _runZizmor();
+
     return 0;
+  }
+
+  /// Runs zizmor over the repository's workflows as the generated
+  /// `zizmor` job will, and prints what it finds. Informational: a finding
+  /// or a failed download never fails `generate`.
+  Future<void> _runZizmor() async {
+    stderr.writeln('Running zizmor $zizmorVersion on .github/workflows...');
+    final ZizmorResult result;
+    try {
+      result = await (_zizmor ?? Zizmor()).run(repoRoot);
+      // A full or read-only cache, a missing `tar`, a broken cached binary:
+      // whatever goes wrong here, the workflows are already written.
+    } on Exception catch (e) {
+      stderr.writeln(
+        'Could not run zizmor ($e). The generated zizmor job runs it in CI.',
+      );
+      return;
+    }
+    // zizmor logs progress to stderr; its findings go to stdout.
+    stdout.write(result.stdout);
+    // zizmor exits 10 and up when it reports findings, by their severity.
+    if (result.exitCode == 0) {
+      stderr.writeln('zizmor: no findings.');
+    } else if (result.exitCode >= 10) {
+      stderr.writeln(
+        'The generated zizmor job fails until these are fixed or ignored '
+        '(https://docs.zizmor.sh/usage/#ignoring-results).',
+      );
+    } else {
+      stderr
+        ..write(result.stderr)
+        ..writeln('zizmor exited with code ${result.exitCode}.');
+    }
   }
 
   /// Rewrites each file in place w/ latest-release action pins. Best-effort:
@@ -412,7 +460,7 @@ updates:
     required String outputPath,
     required Map<PackageDescription, String> slugs,
   }) {
-    final emitSecretsInherit =
+    final passCodecovSecret =
         codecovTokenSecret != null &&
         codecovTokenSecret.isNotEmpty &&
         repository.hasCodecov;
@@ -463,6 +511,7 @@ jobs:
         with:
 ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
+          persist-credentials: false
       - uses: $setupDartAction
       - run: dart pub global activate shorebird_ci $packageVersion
       - name: Verify CI coverage
@@ -520,11 +569,14 @@ ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          
       final slug = slugs[package]!;
       final ciConfig = RepositoryAnalyzer.ciConfig(root: package.root);
 
+      // `$/`, GitHub's self-repository syntax, rather than `./`: zizmor's
+      // self-repository audit fails the zizmor job on `./`, and GitHub can
+      // enforce a "fully pinned" policy only on the `$/` form.
       buffer.write('''
   $slug:
     needs: changes
     if: needs.changes.outputs.$slug == 'true'
-    uses: ./.github/workflows/$reusable
+    uses: \$/.github/workflows/$reusable
     with:
       package_name: ${package.name}
       package_path: $packageDir
@@ -573,8 +625,14 @@ ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          
           );
       }
 
-      if (emitSecretsInherit) {
-        buffer.writeln('    secrets: inherit');
+      // Only the named secret, not `secrets: inherit`, which would hand
+      // every repository secret to the pub and test steps.
+      if (passCodecovSecret) {
+        buffer
+          ..writeln('    secrets:')
+          ..writeln(
+            '      $codecovTokenSecret: \${{ secrets.$codecovTokenSecret }}',
+          );
       }
 
       buffer.writeln();
@@ -583,12 +641,14 @@ ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          
     if (repository.cspellConfig != null) {
       _writeCspellJob(buffer, repository);
     }
+    _writeZizmorJob(buffer);
 
     if (emitRequiredJob) {
       final needs = <String>[
         'changes',
         for (final package in packages) slugs[package]!,
         if (repository.cspellConfig != null) 'cspell',
+        'zizmor',
       ];
       _writeRequiredJob(buffer, needs);
     }
@@ -663,7 +723,7 @@ ${hasRedis ? _staticRedisInput : ''}      runners:
         required: false
         default: 0
         type: number
-
+${hasCodecov ? _codecovSecretDeclaration(codecovTokenSecret) : ''}
 $_readOnlyPermissionsBlock
 jobs:
   ci:
@@ -679,9 +739,11 @@ jobs:
 ${_checkoutStep(hasSubmodules: hasSubmodules)}${hasRedis ? _staticRedisStep : ''}      - uses: $setupDartAction
 ${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
+        env:
+          SUBPACKAGES: \${{ inputs.subpackages }}
         run: |
           dart pub get --no-example
-          for sub in \${{ inputs.subpackages }}; do
+          for sub in \$SUBPACKAGES; do
             dart pub get --no-example -C "\$sub"
           done
       - working-directory: \${{ inputs.package_path }}
@@ -824,7 +886,7 @@ ${hasBlocLint ? _staticBlocLintInput : ''}      has_integration_tests:
         required: false
         default: 0
         type: number
-
+${hasCodecov ? _codecovSecretDeclaration(codecovTokenSecret) : ''}
 $_readOnlyPermissionsBlock
 jobs:
   ci:
@@ -839,9 +901,11 @@ jobs:
     steps:
 ${_checkoutStep(hasSubmodules: hasSubmodules)}${_flutterSetupStep(source: 'inputs')}${hasBlocLint ? _staticBlocToolsSetupStep : ''}      - name: Install Dependencies
         working-directory: \${{ inputs.package_path }}
+        env:
+          SUBPACKAGES: \${{ inputs.subpackages }}
         run: |
           flutter pub get --no-example
-          for sub in \${{ inputs.subpackages }}; do
+          for sub in \$SUBPACKAGES; do
             flutter pub get --no-example -C "\$sub"
           done
       - working-directory: \${{ inputs.package_path }}
@@ -891,16 +955,14 @@ $codecovStep      - name: Integration Tests
 $_integrationTestsRun''';
   }
 
-  static String _checkoutStep({required bool hasSubmodules}) {
-    if (!hasSubmodules) {
-      return '      - uses: $checkoutAction\n';
-    }
-    return '''
+  /// Nothing after checkout pushes or fetches, so it doesn't leave the
+  /// token in `.git/config` for pub and test steps to read.
+  static String _checkoutStep({required bool hasSubmodules}) =>
+      '''
       - uses: $checkoutAction
         with:
-          submodules: recursive
+${hasSubmodules ? '          submodules: recursive\n' : ''}          persist-credentials: false
 ''';
-  }
 
   /// Whether any of the [packages] built with Flutter (or, when
   /// [isFlutter] is false, with plain Dart) has a bloc_lint dev
@@ -1074,6 +1136,7 @@ jobs:
     if (repository.cspellConfig != null) {
       _writeCspellJob(buffer, repository);
     }
+    _writeZizmorJob(buffer);
 
     if (emitRequiredJob) {
       final needs = <String>[
@@ -1081,6 +1144,7 @@ jobs:
         if (hasDart) 'dart_ci',
         if (hasFlutter) 'flutter_ci',
         if (repository.cspellConfig != null) 'cspell',
+        'zizmor',
       ];
       _writeRequiredJob(buffer, needs);
     }
@@ -1120,6 +1184,7 @@ ${hasSubmodules ? '          submodules: recursive\n' : ''}          # affected_
           # the default shallow checkout. Full history is needed for the
           # diff to resolve.
           fetch-depth: 0
+          persist-credentials: false
       - uses: $setupDartAction
 ''')
       ..writeln(
@@ -1319,9 +1384,11 @@ ${_checkoutStep(hasSubmodules: hasSubmodules)}''';
   String _installDependenciesStep({required String executable}) {
     return '''
       - name: Install Dependencies
+        env:
+          SUBPACKAGES: \${{ matrix.subpackages }}
         run: |
           $executable pub get --no-example
-          for sub in \${{ matrix.subpackages }}; do
+          for sub in \$SUBPACKAGES; do
             $executable pub get --no-example -C "\$sub"
           done
 ''';
@@ -1422,6 +1489,17 @@ $_integrationTestsRun''';
 ${_codecovTokenLine(codecovTokenSecret)}''';
   }
 
+  /// Declares the Codecov token secret a reusable workflow is passed, or
+  /// the empty string when no token secret is configured.
+  static String _codecovSecretDeclaration(String? secret) {
+    if (secret == null || secret.isEmpty) return '';
+    return '''
+    secrets:
+      $secret:
+        required: false
+''';
+  }
+
   /// Emits the `token:` line for a codecov-action `with:` block, or the
   /// empty string when no token secret is configured. Indented 10 spaces
   /// to match `flags:` peers in both static and dynamic templates.
@@ -1452,6 +1530,50 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
         with:
 ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          persist-credentials: false
       - run: npx --yes cspell@$_cspellVersion --config $configPath --no-progress "**"
+''')
+      ..writeln();
+  }
+
+  /// Emits the `zizmor` job, which lints every workflow in
+  /// `.github/workflows/` for GitHub Actions security mistakes.
+  ///
+  /// zizmor is installed from its GitHub release at [zizmorVersion],
+  /// checked against [zizmorSha256], rather than through a third-party
+  /// action. It runs `--offline` with a read-only token that checkout
+  /// doesn't keep and no secrets, since zizmor's online audits would
+  /// need a token.
+  static void _writeZizmorJob(StringBuffer buffer) {
+    String sha(String asset) => zizmorSha256[asset]!;
+    const x64 = 'zizmor-x86_64-unknown-linux-gnu.tar.gz';
+    const arm64 = 'zizmor-aarch64-unknown-linux-gnu.tar.gz';
+    buffer
+      ..write('''
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    # Lints the workflows in .github/workflows for GitHub Actions
+    # security mistakes: https://docs.zizmor.sh/audits/
+    permissions:
+      contents: read
+    steps:
+      - uses: $checkoutAction
+        with:
+          persist-credentials: false
+      - name: Install zizmor
+        run: |
+          set -euo pipefail
+          case "\$RUNNER_ARCH" in
+            X64) asset=$x64 sha=${sha(x64)} ;;
+            ARM64) asset=$arm64 sha=${sha(arm64)} ;;
+            *) echo "::error::No zizmor release for Linux \$RUNNER_ARCH"; exit 1 ;;
+          esac
+          curl -fsSL --retry 5 -o "\$RUNNER_TEMP/\$asset" "${zizmorAssetUrl(r'$asset')}"
+          echo "\$sha  \$RUNNER_TEMP/\$asset" | sha256sum -c -
+          mkdir -p "\$RUNNER_TEMP/zizmor"
+          tar -xzf "\$RUNNER_TEMP/\$asset" -C "\$RUNNER_TEMP/zizmor"
+          echo "\$RUNNER_TEMP/zizmor" >> "\$GITHUB_PATH"
+      - name: Lint workflows
+        run: zizmor ${zizmorArgs.join(' ')}
 ''')
       ..writeln();
   }
