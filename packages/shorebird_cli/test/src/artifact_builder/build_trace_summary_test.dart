@@ -1485,15 +1485,20 @@ void main() {
       });
     });
 
-    // Real traces from `shorebird release android` on an e2e app.
+    // Real traces from `shorebird release` and `shorebird patch` runs.
     // Expected values were computed outside Dart from the same files
-    // (union of each bucket's [ts, ts + dur) spans).
+    // (union of each bucket's [ts, ts + dur) spans). The iOS and macOS
+    // traces predate the `flutter process` span, so their flutterBuild
+    // comes from the umbrella span.
     group('real traces', () {
-      BuildTraceSummary summarize(String name) => BuildTraceSummary.fromEvents(
+      BuildTraceSummary summarize(
+        String name, {
+        String platform = 'android',
+      }) => BuildTraceSummary.fromEvents(
         BuildTraceSummary.tryReadEvents(
           File(p.join(fixturesDirectory, 'build_trace', name)),
         )!,
-        platform: 'android',
+        platform: platform,
       );
 
       void expectStagesFitTheirParents(BuildTraceSummary s) {
@@ -1512,6 +1517,7 @@ void main() {
         );
         expect(s.native.compile, lessThanOrEqualTo(s.native.build));
         expect(s.network.shorebird, lessThanOrEqualTo(s.network.duration));
+        expect(s.native.build, lessThanOrEqualTo(s.flutterBuild));
       }
 
       test('a clean release run', () {
@@ -1540,6 +1546,74 @@ void main() {
         // 3053 ms of it were shorebird_cache downloads inside setup.
         expect(s.network.shorebird.inMilliseconds, 11485);
         expect(s.setup.total.inMilliseconds, 47839);
+        expectStagesFitTheirParents(s);
+      });
+
+      // `shorebird release ios --dry-run` on the e2e app, Flutter 3.41.
+      test('an iOS release run', () {
+        final s = summarize('ios_release.json', platform: 'ios');
+        expect(s.flutterBuild.inMilliseconds, 29544);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 6813);
+        expect(s.dart.genSnapshot.inMilliseconds, 11545);
+        expect(s.dart.total.inMilliseconds, 18358);
+        expect(s.native.build.inMilliseconds, 29452);
+        expect(s.network.duration.inMilliseconds, 409);
+        expect(s.setup.total.inMilliseconds, 555);
+        // Native build minus the assemble time inside it.
+        expect(s.native.compile.inMilliseconds, 9564);
+        expect(s.ios!.xcode.subsectionDistribution.count, 175);
+        // Swift Package Manager: pod install has nothing to do.
+        expect(s.ios!.podInstall.duration.inMilliseconds, 0);
+        expect(s.android, isNull);
+        expectStagesFitTheirParents(s);
+      });
+
+      // `shorebird release macos --dry-run` on the e2e app: one
+      // compile_macos_framework target builds both arches.
+      test('a macOS release run', () {
+        final s = summarize('macos_release.json', platform: 'macos');
+        expect(s.flutterBuild.inMilliseconds, 45862);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 9270);
+        expect(s.dart.genSnapshot.inMilliseconds, 3890);
+        expect(s.dart.total.inMilliseconds, 13160);
+        expect(s.native.build.inMilliseconds, 45694);
+        expect(s.network.duration.inMilliseconds, 742);
+        expect(s.setup.total.inMilliseconds, 852);
+        expect(s.native.compile.inMilliseconds, 23088);
+        expect(s.ios!.xcode.subsectionDistribution.count, 303);
+        expect(s.android, isNull);
+        expectStagesFitTheirParents(s);
+      });
+
+      // `shorebird patch ios --dry-run` on an app with a plugin. The
+      // linker's aot_tools and gen_snapshot runs after the build are not
+      // Dart compile: genSnapshot is the ios_aot target alone.
+      test('an iOS patch run', () {
+        final s = summarize('ios_patch.json', platform: 'ios');
+        expect(s.flutterBuild.inMilliseconds, 152807);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 19635);
+        expect(s.dart.genSnapshot.inMilliseconds, 81020);
+        expect(s.dart.total.inMilliseconds, 100655);
+        expect(s.native.build.inMilliseconds, 152573);
+        expect(s.network.duration.inMilliseconds, 719);
+        expect(s.setup.total.inMilliseconds, 2859);
+        expect(s.native.compile.inMilliseconds, 47622);
+        expect(s.ios!.xcode.subsectionDistribution.count, 209);
+        expectStagesFitTheirParents(s);
+      });
+
+      test('an accumulated iOS patch trace counts repeated events once', () {
+        // Two patch runs' events in one file, with the first run's
+        // assemble events written twice: the shape CLIs before summary
+        // version 10 left behind, which showed Dart compile longer than
+        // the whole run.
+        final s = summarize('ios_patch_accumulated.json', platform: 'ios');
+        // Summed: 233832 ms.
+        expect(s.dart.genSnapshot.inMilliseconds, 152812);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 36050);
+        expect(s.dart.total.inMilliseconds, 188862);
+        expect(s.network.duration.inMilliseconds, 1440);
+        expect(s.setup.total.inMilliseconds, 5654);
         expectStagesFitTheirParents(s);
       });
     });
