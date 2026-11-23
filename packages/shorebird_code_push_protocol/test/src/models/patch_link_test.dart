@@ -6,7 +6,7 @@ void main() {
     test('can be (de)serialized when linked', () {
       const link = PatchLink(
         result: 'linked',
-        platforms: [ReleasePlatform.ios],
+        platforms: ['ios'],
       );
       final json = link.toJson();
       expect(json['platforms'], equals(['ios']));
@@ -21,6 +21,14 @@ void main() {
         platformPatchNumber: 8,
       );
       expect(PatchLink.fromJson(link.toJson()), equals(link));
+    });
+
+    test('reads a platform this client does not know', () {
+      final link = PatchLink.fromJson(const {
+        'result': 'linked',
+        'platforms': ['web'],
+      });
+      expect(link.platforms, equals(['web']));
     });
   });
 }

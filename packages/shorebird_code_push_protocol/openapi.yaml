@@ -1267,8 +1267,16 @@ paths:
             schema:
               $ref: '#/components/schemas/CreatePatchRequest'
       responses:
+        '200':
+          description: |
+            This platform's unfinished patch from an earlier request with the
+            same `link_key`, returned again; `created` is false.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePatchResponse'
         '201':
-          description: The patch, newly created or resumed (see `created`).
+          description: The patch, newly created.
           content:
             application/json:
               schema:
@@ -6560,7 +6568,9 @@ components:
           type: string
           description: |
             Why the patch was not linked, when `result` is `not_linked`.
-            One of `platform_has_newer_patch` (the platform already has a
+            One of `platform_already_patched` (the platform's own patch with
+            the key is under the key's newest number and could not be
+            reused), `platform_has_newer_patch` (the platform already has a
             patch numbered at or above the key's newest number) or
             `number_rolled_back` (a patch under the key's newest number is
             rolled back). Clients should treat other values as a reason
@@ -6569,10 +6579,13 @@ components:
         platforms:
           type: array
           items:
-            $ref: '#/components/schemas/ReleasePlatform'
+            type: string
           description: |
             When `result` is `linked` or `reused`, the other platforms that
-            already have a patch under this number.
+            already have a patch under this number, as `ReleasePlatform`
+            values. Strings rather than `ReleasePlatform`, so a platform this
+            client does not know does not make the response unreadable after
+            the patch was created.
             Unstable: this may change shape until patch linking ships.
         link_number:
           type: integer

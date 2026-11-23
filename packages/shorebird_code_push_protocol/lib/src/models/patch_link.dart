@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template patch_link}
 /// What linking did for a created patch. Absent from servers that
@@ -26,9 +25,7 @@ class PatchLink {
       () => PatchLink(
         result: json['result'] as String,
         reason: json['reason'] as String?,
-        platforms: (json['platforms'] as List?)
-            ?.map<ReleasePlatform>((e) => ReleasePlatform.fromJson(e as String))
-            .toList(),
+        platforms: (json['platforms'] as List?)?.cast<String>(),
         linkNumber: json['link_number'] as int?,
         platformPatchNumber: json['platform_patch_number'] as int?,
       ),
@@ -61,7 +58,9 @@ class PatchLink {
   final String result;
 
   /// Why the patch was not linked, when `result` is `not_linked`.
-  /// One of `platform_has_newer_patch` (the platform already has a
+  /// One of `platform_already_patched` (the platform's own patch with
+  /// the key is under the key's newest number and could not be
+  /// reused), `platform_has_newer_patch` (the platform already has a
   /// patch numbered at or above the key's newest number) or
   /// `number_rolled_back` (a patch under the key's newest number is
   /// rolled back). Clients should treat other values as a reason
@@ -70,9 +69,12 @@ class PatchLink {
   final String? reason;
 
   /// When `result` is `linked` or `reused`, the other platforms that
-  /// already have a patch under this number.
+  /// already have a patch under this number, as `ReleasePlatform`
+  /// values. Strings rather than `ReleasePlatform`, so a platform this
+  /// client does not know does not make the response unreadable after
+  /// the patch was created.
   /// Unstable: this may change shape until patch linking ships.
-  final List<ReleasePlatform>? platforms;
+  final List<String>? platforms;
 
   /// When `result` is `not_linked`, the newest number on the release
   /// created with the same key, which the patch did not join.
@@ -89,7 +91,7 @@ class PatchLink {
     return {
       'result': result,
       'reason': ?reason,
-      'platforms': ?platforms?.map((e) => e.toJson()).toList(),
+      'platforms': ?platforms,
       'link_number': ?linkNumber,
       'platform_patch_number': ?platformPatchNumber,
     };
