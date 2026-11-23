@@ -224,6 +224,12 @@ class BuildTraceSummary {
       flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache).wall,
       shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache).wall,
       downloads: acc.downloads.stats(),
+      // The install and precache spans are emitted only when that work
+      // runs: a revision already cloned with its precache done returns before
+      // either (ShorebirdFlutter.installRevision).
+      cold:
+          acc.setupPhase.of(SetupPhase.flutterInstall).isNotEmpty ||
+          acc.setupPhase.of(SetupPhase.flutterPrecache).isNotEmpty,
     );
   }
 
@@ -467,6 +473,7 @@ class BuildTraceSummary {
     // rather than network.ms.
     // 11: setup.downloads, from the download spans a Flutter fork that
     // traces precache writes; zeros from one that doesn't.
+    // setup.cold is new in 11 too; absent before, which is not false.
     'version': 11,
     'platform': platform,
     'totalMs': total.inMilliseconds,
@@ -545,6 +552,7 @@ class SetupStats {
     required this.flutterPrecache,
     required this.shorebirdCache,
     required this.downloads,
+    required this.cold,
   });
 
   /// Cloning the Flutter fork and checking out the pinned revision.
@@ -556,6 +564,20 @@ class SetupStats {
   /// Refreshing shorebird's own cached artifacts: wall time across calls,
   /// overlapping calls counted once.
   final Duration shorebirdCache;
+
+  /// Whether this platform's build installed Flutter or ran its precache:
+  /// the Flutter fork was cloned, or `flutter precache` ran because the
+  /// install's precache had not finished. A warm build (`false`) found
+  /// both done. Each platform of a multi-platform command has its own
+  /// summary, so only the first platform to install a revision reads
+  /// cold.
+  ///
+  /// Not counted: [shorebirdCache], which runs on every command and
+  /// refreshes only what's missing (its downloads show in its time); the
+  /// CLI's own bundled Flutter, set up by its launcher before any trace;
+  /// and engine artifacts `flutter build` fetches itself, such as desktop
+  /// ones precache doesn't download.
+  final bool cold;
 
   /// Wall time in any setup phase. Phases can nest or overlap (cache
   /// refreshes run inside one another), so this can be less than their
@@ -574,6 +596,7 @@ class SetupStats {
     'flutterPrecacheMs': flutterPrecache.inMilliseconds,
     'shorebirdCacheMs': shorebirdCache.inMilliseconds,
     'downloads': downloads.toJson(),
+    'cold': cold,
   };
 }
 
@@ -1127,6 +1150,9 @@ class _Spans {
   }
 
   final _timed = <_Interval>[];
+
+  /// Whether any span was added, timed or not.
+  bool get isNotEmpty => _timed.isNotEmpty || _withoutTs > Duration.zero;
 
   /// Total of spans with no `ts`, which can't be placed and so are
   /// summed, as before timestamps.

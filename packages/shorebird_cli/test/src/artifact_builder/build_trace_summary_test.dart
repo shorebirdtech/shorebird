@@ -579,7 +579,30 @@ void main() {
             'hosts': <String, Object?>{},
             'edges': <String, Object?>{},
           },
+          'cold': true,
         });
+      });
+
+      test('cold when Flutter was installed or its precache ran', () {
+        // A checkout from an interrupted earlier run: precache only.
+        final precacheOnly = BuildTraceSummary.fromEvents(
+          setupEvents()
+              .where((e) => e['name'] != 'setup: flutter_install')
+              .toList(),
+          platform: 'android',
+        );
+        expect(precacheOnly.setup.cold, isTrue);
+      });
+
+      test('warm when only the shorebird cache was refreshed', () {
+        final s = BuildTraceSummary.fromEvents(
+          setupEvents()
+              .where((e) => e['name'] == 'setup: shorebird_cache')
+              .toList(),
+          platform: 'android',
+        );
+        expect(s.setup.cold, isFalse);
+        expect(s.toJson()['setup'], containsPair('cold', false));
       });
     });
 
