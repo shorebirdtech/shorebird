@@ -110,6 +110,9 @@ class Apple {
       // Snapshot object order: likewise, so the patch's objects keep the
       // release's ref ids and its snapshot the release's layout.
       'App.ref.link',
+      // Object pool keys: the patch's gen_snapshot places each pool entry in
+      // the slot the release gave the same entry.
+      'App.pool.link',
       // DD table files for cascade limiter (produced by 2-pass release build).
       'App.dd.link',
       'App.dd_callers.link',
