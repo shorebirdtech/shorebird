@@ -118,3 +118,21 @@ jobs:
           echo "$RUNNER_TEMP/zizmor" >> "$GITHUB_PATH"
       - name: Lint workflows
         run: zizmor --offline .github/workflows
+
+  required:
+    name: required
+    if: ${{ !cancelled() }}
+    needs:
+      - setup
+      - dart_ci
+      - zizmor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed (or were skipped because nothing changed)."
+

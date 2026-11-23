@@ -2092,6 +2092,43 @@ esac
     });
   });
 
+  test('example/shorebird_ci.yaml is what generate writes for the '
+      'workspace example/README.md describes', () async {
+    // pub.dev shows the example on the package's Example tab, so it must
+    // not lag behind what `generate` writes.
+    File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync(
+      'name: my_repo\n'
+      'environment:\n'
+      '  sdk: ^3.6.0\n'
+      'workspace:\n'
+      '  - packages/app\n'
+      '  - packages/core\n',
+    );
+    createPackage(
+      tempDir,
+      'packages/app',
+      'app',
+      sdkLine: '  sdk: ^3.6.0',
+      useWorkspace: true,
+      dependencies: {'core': '../core'},
+    );
+    createPackage(
+      tempDir,
+      'packages/core',
+      'core',
+      sdkLine: '  sdk: ^3.6.0',
+      useWorkspace: true,
+    );
+    initGitRepo(tempDir);
+
+    await runGenerate(tempDir, extra: ['--required']);
+
+    expect(
+      _readMain(tempDir),
+      File(p.join('example', 'shorebird_ci.yaml')).readAsStringSync(),
+      reason: 'Regenerate the example with the command in example/README.md.',
+    );
+  });
   group('zizmor', () {
     for (final style in ['dynamic', 'static']) {
       test('$style emits a read-only zizmor job that required needs', () async {
