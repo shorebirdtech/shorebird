@@ -45,7 +45,7 @@ function Test-GitInstalled {
         Write-Debug "Git is installed."
     }
     else {
-        Write-Output "No git installation detected. Git is required to use shorebird."
+        [Console]::Error.WriteLine("No git installation detected. Git is required to use shorebird.")
         exit 1
     }
 }
@@ -276,8 +276,11 @@ Test-GitInstalled
 
 $shorebirdArgs = @(Restore-EndOfOptions $args $MyInvocation)
 
+# Setup output (its messages, git, flutter --version, pub get) goes to stderr,
+# so stdout is only the command's own: `$(shorebird flutter path)` and `--json`
+# read it. Write-Host would go to stdout under `powershell -File`.
 if (Test-ShorebirdNeedsUpdate) {
-    Update-Shorebird
+    Update-Shorebird | ForEach-Object { [Console]::Error.WriteLine($_) }
 }
 
 # shorebird.bat runs the snapshot itself, so cmd's arguments reach dart as typed.

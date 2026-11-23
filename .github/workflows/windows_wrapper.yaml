@@ -1,3 +1,4 @@
+# cspell:words errorlevel findstr LASTEXITCODE
 name: windows_wrapper
 
 # bin/shorebird.bat is what cmd.exe users and `shell: cmd` CI steps run.
@@ -45,8 +46,16 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # The first run sets up Flutter and builds the CLI; that output goes to
+      # stderr, so `$(shorebird ...)` captures only the command's own.
       - name: 🧪 Install and run shorebird
-        run: bin/shorebird --version
+        run: |
+          bin/shorebird --version > out.txt
+          cat out.txt
+          if grep -Ev '^(Shorebird|Flutter|Engine) ' out.txt; then
+            echo "Setup output reached stdout."
+            exit 1
+          fi
 
   shorebird_bat:
     name: 🪟 shorebird.bat
@@ -58,7 +67,14 @@ jobs:
       - name: 🧪 Run shorebird through cmd.exe
         shell: cmd
         run: |
-          call bin\shorebird.bat --version || exit /b 1
+          REM The first run sets up Flutter and builds the CLI; that output
+          REM goes to stderr, so a capture of stdout holds only --version's.
+          call bin\shorebird.bat --version > out.txt || exit /b 1
+          type out.txt
+          findstr /R /V /C:"^Shorebird " /C:"^Flutter " /C:"^Engine " out.txt && (
+            echo Setup output reached stdout.
+            exit /b 1
+          )
 
           call bin\shorebird.bat no-such-command
           if not errorlevel 1 (
