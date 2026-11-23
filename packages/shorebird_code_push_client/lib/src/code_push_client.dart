@@ -1273,9 +1273,9 @@ class CodePushClient {
     String? cursor;
     do {
       final response = await _httpClient.get(
-        Uri.parse(
-          '$_v1/organizations/$organizationId/invitations',
-        ).replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
+        Uri.parse('$_v1/organizations/$organizationId/invitations').replace(
+          queryParameters: {'per_page': '100', 'cursor': ?cursor},
+        ),
       );
 
       if (!response.isSuccess) {
@@ -1634,11 +1634,13 @@ class CodePushClient {
 
   /// Gets the enterprises the current user belongs to, with the user's role
   /// in each.
-  Future<List<EnterpriseMembership>> getEnterprises() =>
-      _getEveryPage(Uri.parse('$_v1/enterprises'), (json) {
-        final page = GetEnterprises200Response.fromJson(json);
-        return (items: page.enterprises, nextCursor: page.nextCursor);
-      });
+  Future<List<EnterpriseMembership>> getEnterprises() => _getEveryPage(
+    Uri.parse('$_v1/enterprises'),
+    (json) {
+      final page = GetEnterprises200Response.fromJson(json);
+      return (items: page.enterprises, nextCursor: page.nextCursor);
+    },
+  );
 
   /// Gets enterprise [enterpriseId]: its name and domains.
   Future<Enterprise> getEnterprise({required int enterpriseId}) async {
@@ -1678,22 +1680,25 @@ class CodePushClient {
   /// their enterprise role and the organizations they're in.
   Future<List<EnterpriseMember>> getEnterpriseMembers({
     required int enterpriseId,
-  }) => _getEveryPage(Uri.parse('$_v1/enterprises/$enterpriseId/members'), (
-    json,
-  ) {
-    final page = GetEnterpriseMembers200Response.fromJson(json);
-    return (items: page.members, nextCursor: page.nextCursor);
-  });
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/members'),
+    (json) {
+      final page = GetEnterpriseMembers200Response.fromJson(json);
+      return (items: page.members, nextCursor: page.nextCursor);
+    },
+  );
 
   /// Gets the guests of enterprise [enterpriseId]: people in its
   /// organizations who aren't in its directory.
   Future<List<EnterpriseGuest>> getEnterpriseGuests({
     required int enterpriseId,
-  }) =>
-      _getEveryPage(Uri.parse('$_v1/enterprises/$enterpriseId/guests'), (json) {
-        final page = GetEnterpriseGuests200Response.fromJson(json);
-        return (items: page.guests, nextCursor: page.nextCursor);
-      });
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/guests'),
+    (json) {
+      final page = GetEnterpriseGuests200Response.fromJson(json);
+      return (items: page.guests, nextCursor: page.nextCursor);
+    },
+  );
 
   /// Sets member [userId]'s enterprise role in enterprise [enterpriseId] to
   /// [role].
@@ -1791,16 +1796,15 @@ class CodePushClient {
   /// Gets each organization on enterprise [enterpriseId]'s plan with its
   /// installs this period.
   Future<List<EnterpriseBillingOrganization>>
-  getEnterpriseBillingOrganizations({required int enterpriseId}) =>
-      _getEveryPage(
-        Uri.parse('$_v1/enterprises/$enterpriseId/billing/organizations'),
-        (json) {
-          final page = GetEnterpriseBillingOrganizations200Response.fromJson(
-            json,
-          );
-          return (items: page.organizations, nextCursor: page.nextCursor);
-        },
-      );
+  getEnterpriseBillingOrganizations({
+    required int enterpriseId,
+  }) => _getEveryPage(
+    Uri.parse('$_v1/enterprises/$enterpriseId/billing/organizations'),
+    (json) {
+      final page = GetEnterpriseBillingOrganizations200Response.fromJson(json);
+      return (items: page.organizations, nextCursor: page.nextCursor);
+    },
+  );
 
   /// Gets every item of the paged list at [uri], 100 to a page, reading
   /// each page's items and next cursor with [readPage].
@@ -1836,9 +1840,9 @@ class CodePushClient {
     String? cursor;
     do {
       final response = await _httpClient.get(
-        Uri.parse(
-          '$_v1/invitations',
-        ).replace(queryParameters: {'per_page': '100', 'cursor': ?cursor}),
+        Uri.parse('$_v1/invitations').replace(
+          queryParameters: {'per_page': '100', 'cursor': ?cursor},
+        ),
       );
 
       if (!response.isSuccess) {

@@ -88,8 +88,11 @@ void main() {
         );
       }
 
-      Future<void> createPatch() =>
-          codePushClient.createPatch(appId: appId, releaseId: 1, metadata: {});
+      Future<void> createPatch() => codePushClient.createPatch(
+        appId: appId,
+        releaseId: 1,
+        metadata: {},
+      );
 
       test('passes a notice header to onNotice', () async {
         respondWith({CodePushClient.noticeHeader: '"Patches are paused."'});
@@ -1222,7 +1225,9 @@ void main() {
             );
 
         List<http.BaseRequest> capturedPuts() =>
-            verify(() => httpClient.send(captureAny())).captured
+            verify(
+                  () => httpClient.send(captureAny()),
+                ).captured
                 .cast<http.BaseRequest>()
                 .where((r) => r.method == 'PUT')
                 .toList();
@@ -2034,7 +2039,11 @@ void main() {
                     flutterVersion,
                   )
                   .having((r) => r.displayName, 'displayName', displayName)
-                  .having((r) => r.platforms, 'platforms', isEmpty),
+                  .having(
+                    (r) => r.platforms,
+                    'platforms',
+                    isEmpty,
+                  ),
             ),
           ),
         );
@@ -2441,7 +2450,10 @@ void main() {
         expect(request.method, equals('PATCH'));
         expect(request.url, equals(v1('users/me')));
         expect(request.hasHeaders(expectedHeaders), isTrue);
-        expect(json.decode(request.body), equals({'display_name': 'Jane Doe'}));
+        expect(
+          json.decode(request.body),
+          equals({'display_name': 'Jane Doe'}),
+        );
       });
 
       test('throws an exception if the http request fails', () async {
@@ -3671,8 +3683,10 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
         );
 
         await setPatchRollout();
@@ -3688,7 +3702,10 @@ void main() {
           ),
         );
         expect(request.hasHeaders(expectedHeaders), isTrue);
-        expect(json.decode(request.body), equals({'rollout_percentage': 50}));
+        expect(
+          json.decode(request.body),
+          equals({'rollout_percentage': 50}),
+        );
       });
 
       test('sends the timed rollout schedule when given', () async {
@@ -3776,8 +3793,10 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
         );
 
         await codePushClient.rollbackPatch(
@@ -3861,8 +3880,10 @@ void main() {
 
       test('returns true on 204 No Content', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
         );
 
         await expectLater(
@@ -3933,8 +3954,10 @@ void main() {
 
       test('makes the correct request', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
         );
 
         await codePushClient.rollforwardPatch(
@@ -4018,8 +4041,10 @@ void main() {
 
       test('returns true on 204 No Content', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
         );
 
         await expectLater(
@@ -4659,8 +4684,9 @@ void main() {
       }
 
       final failingCalls = <String, Future<Object?> Function()>{
-        'getServiceAccounts': () =>
-            codePushClient.getServiceAccounts(organizationId: organizationId),
+        'getServiceAccounts': () => codePushClient.getServiceAccounts(
+          organizationId: organizationId,
+        ),
         'createServiceAccount': () => codePushClient.createServiceAccount(
           organizationId: organizationId,
           name: 'release-bot',
@@ -4913,7 +4939,10 @@ void main() {
               verify(() => httpClient.send(captureAny())).captured.single
                   as http.BaseRequest;
           expect(request.method, equals('GET'));
-          expect(request.url, equals(v1('organizations/$organizationId/apps')));
+          expect(
+            request.url,
+            equals(v1('organizations/$organizationId/apps')),
+          );
         });
       });
     });
@@ -5389,9 +5418,9 @@ void main() {
           requests.map((r) => r.url),
           equals([
             v1('invitations').replace(queryParameters: {'per_page': '100'}),
-            v1(
-              'invitations',
-            ).replace(queryParameters: {'per_page': '100', 'cursor': 'next'}),
+            v1('invitations').replace(
+              queryParameters: {'per_page': '100', 'cursor': 'next'},
+            ),
           ]),
         );
       });

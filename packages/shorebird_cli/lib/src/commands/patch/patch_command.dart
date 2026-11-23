@@ -137,7 +137,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         help: allowBuildFlagDiffsHelpText,
         negatable: false,
       )
-      ..addFlag('show-dex-diff', help: showDexDiffHelpText, negatable: false)
+      ..addFlag(
+        'show-dex-diff',
+        help: showDexDiffHelpText,
+        negatable: false,
+      )
       ..addOption(
         'track',
         aliases: const ['channel'],
@@ -169,8 +173,16 @@ To target the latest release (e.g. the release that was most recently updated) u
         help: rolloutStepsHelp('the patch'),
         valueHelp: 'steps',
       )
-      ..addFlag(pauseWeekendsArgName, help: pauseWeekendsHelp, negatable: false)
-      ..addOption(timezoneArgName, help: timezoneHelp, valueHelp: 'name')
+      ..addFlag(
+        pauseWeekendsArgName,
+        help: pauseWeekendsHelp,
+        negatable: false,
+      )
+      ..addOption(
+        timezoneArgName,
+        help: timezoneHelp,
+        valueHelp: 'name',
+      )
       ..addFlag(
         'staging',
         negatable: false,
@@ -1054,7 +1066,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         '--$addToPatchArgName.';
     Never fail(String message, {String? hint}) {
       _buildRun?.failWith(BuildRunFailureReason.releaseIncompatible);
-      throw CommandError(message: message, hint: hint ?? createPatchHint);
+      throw CommandError(
+        message: message,
+        hint: hint ?? createPatchHint,
+      );
     }
 
     final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
@@ -1132,7 +1147,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     if (useLatestRelease) {
       final releases = await codePushClientWrapper.getReleases(appId: appId);
       releases
-        ..removeWhere((release) => !release.hasPlatform(releasePlatform))
+        ..removeWhere(
+          (release) => !release.hasPlatform(releasePlatform),
+        )
         ..sortByUpdatedAt();
       if (releases.isEmpty) {
         throw _noReleasesToPatch(patcher.releaseType);
@@ -1193,7 +1210,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       );
     }
 
-    return (release: release, inferredReleaseVersion: inferredReleaseVersion);
+    return (
+      release: release,
+      inferredReleaseVersion: inferredReleaseVersion,
+    );
   }
 
   /// Downloads [release]'s primary artifact and, if the platform has one, its
@@ -1506,7 +1526,9 @@ Building patch with Flutter $flutterVersionString
 ''');
     patcher.releaseSupplementDirectory = supplementDirectory;
     final patchArtifactFile = await _tryBuildingArtifact<File>(
-      () => patcher.buildPatchArtifact(releaseVersion: release.version),
+      () => patcher.buildPatchArtifact(
+        releaseVersion: release.version,
+      ),
       onBuildFailed: () =>
           _buildRun?.failWith(BuildRunFailureReason.buildFailed),
     );
@@ -1869,7 +1891,10 @@ To have signatures checked, remove `patch_verification` from shorebird.yaml (or 
       throw _noReleasesToPatch(releaseType);
     }
 
-    return chooseRelease(releases: releasesForPlatform, action: 'patch');
+    return chooseRelease(
+      releases: releasesForPlatform,
+      action: 'patch',
+    );
   }
 
   /// The error to throw when there is nothing to patch for [releaseType].
