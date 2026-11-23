@@ -6,10 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.147 (November 23, 2026)
 
-- ❓ Fix(macho): skip 0xff alignment padding in Swift type references
-- ❓ Feat(shorebird_cli): shorebird usage adds a line for other organizations
-  sharing the plan
-- ❓ Fix(deps): bump the gh-deps group across 3 directories with 1 update
+- ✨ `shorebird usage` adds a line for installs from other organizations sharing
+  the plan, so the app rows add up to the total
+- 🐛 `shorebird patch ios` and `shorebird patch macos` no longer flag native
+  changes when a relink only moves Swift type names
 
 Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.146.
 
