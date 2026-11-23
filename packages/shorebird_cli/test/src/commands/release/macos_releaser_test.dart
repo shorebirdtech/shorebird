@@ -225,6 +225,20 @@ void main() {
         });
       });
 
+      group('when --codesign is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('codesign')).thenReturn(true);
+          when(() => argResults['codesign']).thenReturn(true);
+        });
+
+        test('completes', () async {
+          await expectLater(
+            runWithOverrides(releaser.assertArgsAreValid),
+            completes,
+          );
+        });
+      });
+
       group('when --obfuscate is not passed', () {
         test('returns normally', () async {
           await expectLater(
