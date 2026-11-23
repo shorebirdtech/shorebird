@@ -10,6 +10,7 @@ export 'package:shorebird_build_trace/shorebird_build_trace.dart'
         BuildTracer,
         PhaseTracker,
         SetupPhase,
+        TraceEnvironment,
         currentProcessId;
 
 /// Perfetto row id for network (HTTP) spans within the shorebird_cli
@@ -102,6 +103,12 @@ class ShorebirdTracer {
     body: body,
     args: args,
   );
+
+  /// Appends the events a subprocess wrote to [file] (a Chrome Trace
+  /// Event Format JSON array), so they reach the trace with this
+  /// tracer's own on the next [mergeInto]. No-op if [file] is missing or
+  /// malformed.
+  void mergeEventsFromFile(File file) => _tracer.mergeEventsFromFile(file);
 
   /// Emits a flow-start event at [at] with id = [id]. Shorebird
   /// convention uses the child process's real pid as the flow id so

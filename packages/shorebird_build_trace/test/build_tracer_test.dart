@@ -247,6 +247,52 @@ void main() {
       expect(args['contentLength'], 42);
     });
 
+    test('recordDownloadSpan formats name + args', () {
+      BuildTracer()
+        ..recordDownloadSpan(
+          host: 'download.shorebird.dev',
+          servedBy: 'storage.googleapis.com',
+          pid: 1,
+          tid: 4,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          end: DateTime.fromMicrosecondsSinceEpoch(5000),
+          status: 200,
+          bytes: 1024,
+          redirect: const Duration(microseconds: 300),
+          timeToFirstByte: const Duration(microseconds: 700),
+          retries: 1,
+          edge: 'cloudflare:BOM',
+        )
+        ..recordDownloadSpan(
+          host: 'download.shorebird.dev',
+          pid: 1,
+          tid: 4,
+          start: DateTime.fromMicrosecondsSinceEpoch(6000),
+          end: DateTime.fromMicrosecondsSinceEpoch(6000),
+          cacheHit: true,
+        )
+        ..writeToFile(traceFile);
+      final events = (jsonDecode(traceFile.readAsStringSync()) as List)
+          .cast<Map<String, Object?>>();
+      expect(events.first['name'], 'download download.shorebird.dev');
+      expect(events.first['cat'], TraceCategory.download.wireName);
+      expect(events.first['args'], {
+        DownloadArgs.host: 'download.shorebird.dev',
+        DownloadArgs.servedBy: 'storage.googleapis.com',
+        DownloadArgs.status: 200,
+        DownloadArgs.bytes: 1024,
+        DownloadArgs.redirectUs: 300,
+        DownloadArgs.ttfbUs: 700,
+        DownloadArgs.retries: 1,
+        DownloadArgs.edge: 'cloudflare:BOM',
+      });
+      expect(events.last['args'], {
+        DownloadArgs.host: 'download.shorebird.dev',
+        DownloadArgs.retries: 0,
+        DownloadArgs.cacheHit: true,
+      });
+    });
+
     test('writeToFile merges with existing events', () {
       traceFile.writeAsStringSync(
         jsonEncode([
@@ -372,6 +418,13 @@ void main() {
     test('mergeEventsFromFile swallows FormatException on corrupt JSON', () {
       final src = File('${tempDir.path}/src.json')
         ..writeAsStringSync('{not valid json[');
+      final t = BuildTracer()..mergeEventsFromFile(src);
+      expect(t.eventCount, 0);
+    });
+
+    test('mergeEventsFromFile skips a file that is not UTF-8', () {
+      final src = File('${tempDir.path}/src.json')
+        ..writeAsBytesSync([0x5b, 0xff, 0xfe, 0x5d]);
       final t = BuildTracer()..mergeEventsFromFile(src);
       expect(t.eventCount, 0);
     });

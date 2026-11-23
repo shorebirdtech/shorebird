@@ -129,6 +129,7 @@ void main() {
           'flutter',
           any(that: contains('precache')),
           workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => precacheProcessResult);
       when(
@@ -1200,6 +1201,7 @@ origin/flutter_release/3.47.9''';
             'flutter',
             any(that: contains('precache')),
             workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
           ),
         );
       });
@@ -1238,6 +1240,116 @@ origin/flutter_release/3.47.9''';
         expect(lastUsed.lastModifiedSync(), equals(now));
       });
 
+      /// Stubs precache to write one download span where the environment
+      /// says, then return or throw [error]; returns the paths
+      /// it was given.
+      List<String> stubPrecacheWritingSpan({Exception? error}) {
+        final paths = <String>[];
+        when(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer((invocation) async {
+          final environment =
+              invocation.namedArguments[#environment] as Map<String, String>;
+          final path = environment[TraceEnvironment.downloadTraceFile]!;
+          paths.add(path);
+          BuildTracer()
+            ..recordDownloadSpan(
+              host: 'download.shorebird.dev',
+              pid: 7,
+              tid: 1,
+              start: DateTime.fromMicrosecondsSinceEpoch(0),
+              end: DateTime.fromMicrosecondsSinceEpoch(1000),
+              status: 200,
+            )
+            ..writeToFile(File(path));
+          if (error != null) throw error;
+          return precacheProcessResult;
+        });
+        return paths;
+      }
+
+      test('deletes the download trace once merged', () async {
+        final paths = stubPrecacheWritingSpan();
+        await runWithOverrides(
+          () => shorebirdFlutter.installRevision(revision: revision),
+        );
+        expect(File(paths.single).parent.existsSync(), isFalse);
+      });
+
+      test('keeps the download spans of a precache that throws', () async {
+        stubPrecacheWritingSpan(error: const ProcessException('flutter', []));
+        final events = await runWithOverrides(() async {
+          await expectLater(
+            shorebirdFlutter.installRevision(revision: revision),
+            throwsA(isA<CacheCorruptedException>()),
+          );
+          return shorebirdTracer.events;
+        });
+        expect(
+          events.map((e) => e['name']),
+          contains('download download.shorebird.dev'),
+        );
+      });
+
+      test('precaches untraced when no temp directory can be made', () async {
+        await IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          ),
+          getSystemTempDirectory: _ReadOnlyDirectory.new,
+        );
+        verify(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: <String, String>{},
+          ),
+        ).called(1);
+      });
+
+      test('records the download spans precache writes', () async {
+        when(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer((invocation) async {
+          final environment =
+              invocation.namedArguments[#environment] as Map<String, String>;
+          BuildTracer()
+            ..recordDownloadSpan(
+              host: 'download.shorebird.dev',
+              pid: 7,
+              tid: 1,
+              start: DateTime.fromMicrosecondsSinceEpoch(0),
+              end: DateTime.fromMicrosecondsSinceEpoch(1000),
+              status: 200,
+            )
+            ..writeToFile(
+              File(environment[TraceEnvironment.downloadTraceFile]!),
+            );
+          return precacheProcessResult;
+        });
+
+        final events = await runWithOverrides(() async {
+          await shorebirdFlutter.installRevision(revision: revision);
+          return shorebirdTracer.events;
+        });
+
+        expect(
+          events.map((e) => e['name']),
+          contains('download download.shorebird.dev'),
+        );
+      });
+
       group('when the checkout completed but precache did not', () {
         setUp(createCheckout);
 
@@ -1258,6 +1370,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: targetDirectory.path,
+              environment: any(named: 'environment'),
             ),
           ).called(1);
           expect(precacheStamp.existsSync(), isTrue);
@@ -1711,6 +1824,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: targetDirectory.path,
+              environment: any(named: 'environment'),
             ),
           ).called(1);
         });
@@ -1749,6 +1863,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: any(named: 'workingDirectory'),
+              environment: any(named: 'environment'),
             ),
           );
           expect(precacheStamp.existsSync(), isFalse);
@@ -1789,6 +1904,7 @@ origin/flutter_release/3.47.9''';
             'flutter',
             any(that: contains('precache')),
             workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
           ),
         );
       });
@@ -1841,6 +1957,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: any(named: 'workingDirectory'),
+              environment: any(named: 'environment'),
             ),
           ).thenThrow(Exception('oh no!'));
         });
@@ -1912,6 +2029,7 @@ origin/flutter_release/3.47.9''';
             'flutter',
             any(that: contains('precache')),
             workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
           ),
         ).thenAnswer((_) async {
           envDuringPrecache = read(shorebirdEnvRef);
@@ -1945,6 +2063,7 @@ origin/flutter_release/3.47.9''';
                 ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
               ],
               workingDirectory: p.join(flutterDirectory.parent.path, revision),
+              environment: any(named: 'environment'),
             ),
           ).called(1);
           verify(
@@ -2193,4 +2312,11 @@ origin/flutter_release/3.47.9''';
       });
     });
   });
+}
+
+/// A temp directory in which nothing can be created.
+class _ReadOnlyDirectory extends Fake implements Directory {
+  @override
+  Directory createTempSync([String? prefix]) =>
+      throw const FileSystemException('read-only file system');
 }
