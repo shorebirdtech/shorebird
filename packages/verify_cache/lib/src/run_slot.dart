@@ -59,12 +59,21 @@ class RunSlot {
       ticket.lockSync();
     } on FileSystemException {
       ticket.closeSync();
+      try {
+        stagingFile.deleteSync();
+      } on FileSystemException {
+        // Best effort: the refused lock is the failure worth reporting.
+      }
       rethrow;
     }
-    stagingFile.renameSync(ticketFile.path);
-    _locked.add(ticketFile.path);
 
+    // Where the locked ticket is, so a rename that threw unlinks the staging
+    // file rather than a queue entry it never created.
+    var ticketPath = stagingFile.path;
     try {
+      stagingFile.renameSync(ticketFile.path);
+      ticketPath = ticketFile.path;
+      _locked.add(ticketPath);
       var waited = false;
       while (true) {
         if (!_hasWaiterAhead(queue, ticketName)) {
@@ -81,11 +90,20 @@ class RunSlot {
         await sleep(retryInterval);
       }
     } finally {
-      _locked.remove(ticketFile.path);
-      ticketFile.deleteSync();
-      ticket
-        ..unlockSync()
-        ..closeSync();
+      try {
+        File(ticketPath).deleteSync();
+      } on FileSystemException {
+        // Best effort: a ticket left behind is reaped by _hasWaiterAhead,
+        // and a slot handed back matters more than an unlink.
+      } finally {
+        try {
+          ticket
+            ..unlockSync()
+            ..closeSync();
+        } finally {
+          _locked.remove(ticketPath);
+        }
+      }
     }
   }
 
@@ -116,23 +134,29 @@ class RunSlot {
 
   static Future<RandomAccessFile?> _tryLock(File file) async {
     if (!_locked.add(file.path)) return null;
-    // Append, so opening never truncates a file another process holds.
-    final opened = await file.open(mode: FileMode.append);
+    RandomAccessFile? opened;
     try {
+      // Append, so opening never truncates a file another process holds.
+      opened = await file.open(mode: FileMode.append);
       // The default mode: exclusive, and throwing rather than waiting.
       await opened.lock();
       return opened;
     } on FileSystemException {
+      // A refused open has to leave [_locked] as it found it, or nothing in
+      // this process ever takes this slot again.
       _locked.remove(file.path);
-      await opened.close();
+      await opened?.close();
       return null;
     }
   }
 
   static Future<void> _unlock(RandomAccessFile file, String path) async {
-    _locked.remove(path);
+    // Dropped from [_locked] last: an unlock that threw would otherwise free
+    // a path whose descriptor still holds the lock, and the kernel grants a
+    // second lock on that file to the process already holding the first.
     await file.unlock();
     await file.close();
+    _locked.remove(path);
   }
 
   /// Gives the slot up.
