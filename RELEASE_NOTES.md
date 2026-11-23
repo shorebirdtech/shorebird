@@ -4,6 +4,21 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.149 (November 23, 2026)
+
+- ✨ The first run after an install or `shorebird upgrade` downloads a
+  prebuilt Shorebird CLI on macOS, Linux and Windows x64 instead of cloning
+  Flutter and compiling the CLI, and installs the CLI's own Flutter only when
+  a command uses it, so a cold CI run that builds with `--flutter-version`
+  no longer downloads two Flutters
+- ✨ `shorebird flutter path` prints the directory of the Flutter Shorebird
+  builds with, with `--flutter-version` to pick a version installed by
+  `shorebird flutter precache` and `--json` for the path and revision
+- 🐛 Setup output on the first run after an install or `shorebird upgrade` goes
+  to stderr, so `$(shorebird ...)` captures only the command's output
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.148.
+
 ## 1.6.148 (November 23, 2026)
 
 - ✨ `shorebird flutter precache` installs a Flutter version and the artifacts
