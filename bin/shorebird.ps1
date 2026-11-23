@@ -26,8 +26,7 @@ $dart = [IO.Path]::Combine($flutterPath, "bin", "cache", "dart-sdk", "bin", "dar
 # 
 # See https://github.com/PowerShell/PowerShell/issues/4002 for more info.
 function Invoke-SilentlyIfNeeded($command) {
-    $psVersion = $PSVersionTable.PSVersion
-    $isErrorStreamIssueFixed = $psVersion.Major -ge 7 -and $psVersion.Minor -ge 1
+    $isErrorStreamIssueFixed = $PSVersionTable.PSVersion -ge [version]'7.1'
     if ($isErrorStreamIssueFixed) {
         # Execute the command with no redirection.
         & $command
