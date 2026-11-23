@@ -6,36 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.149 (November 23, 2026)
 
-- ❓ Fix(shorebird_ci): install Flutter without subosito/flutter-action so
-  SHA-pinning-required repos pass
-- ❓ Fix(bin): compare the PowerShell version as a version in
-  Invoke-SilentlyIfNeeded
-- ❓ Fix(bin): send launcher setup output to stderr
-- ❓ Feat(shorebird_cli): add shorebird flutter path
-- ❓ Chore(shorebird_ci): prepare for release 0.3.2
-- ❓ Feat(shorebird_cli): carry App.pool.link from the iOS release supplement to
-  the patch
-- ❓ Chore: prepare for release 1.6.148
-- ❓ Fix(shorebird_ci): run integration tests only where the runner has a device,
-  with a pubspec override
-- ❓ Feat(shorebird_cli): build Apple patches against the release's TFA facts
-- ❓ Fix(shorebird_ci): run integration tests on the runner's desktop, set up
-  Linux's, and skip legs with no platform dir
-- ❓ Chore(shorebird_ci): prepare for release 0.3.3
-- ❓ Ci: build the CLI for 5 platforms and publish it to download.shorebird.dev
-  from stable
-- ❓ Test(shorebird_cli): BuildTraceSummary regression tests from real iOS and
-  macOS traces
-- ❓ Feat(shorebird_cli): install the pinned Flutter only when a command uses it
-- ❓ Feat(bin): install the prebuilt CLI for a release commit instead of building
-  it
-- ❓ Feat(shorebird_ci): lint generated repos' workflows with a pinned,
-  checksummed zizmor, and make our own output zizmor-clean
-- ❓ Ci: fix zizmor findings in the hand-written workflows
-- ❓ Fix(tool): make find_dart's SDK-cache lock a PID symlink so a live fetch is
-  never reaped
-- ❓ Chore(shorebird_ci): prepare for release 0.3.4
-- ❓ Chore: bump shorebird_ci to 0.3.4 and regenerate CI workflows
+- ✨ `shorebird flutter path` prints the directory of the Flutter Shorebird
+  builds with, with `--flutter-version` to pick a version installed by
+  `shorebird flutter precache` and `--json` for the path and revision
+- 🐛 Setup output on the first run after an install or `shorebird upgrade` goes
+  to stderr, so `$(shorebird ...)` captures only the command's output
 
 Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.148.
 
