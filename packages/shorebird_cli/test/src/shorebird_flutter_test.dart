@@ -1159,6 +1159,68 @@ origin/flutter_release/3.47.9''';
       );
     });
 
+    group('isInstalled', () {
+      const revision = 'test-revision';
+      late Directory installDirectory;
+
+      setUp(() {
+        installDirectory = runWithOverrides(
+          () => shorebirdFlutter.installDirectory(revision: revision),
+        );
+      });
+
+      test('names the revision beside the pinned Flutter', () {
+        expect(
+          installDirectory.path,
+          equals(p.join(shorebirdRoot.path, revision)),
+        );
+      });
+
+      test('is false when the directory is missing', () {
+        expect(
+          runWithOverrides(
+            () => shorebirdFlutter.isInstalled(revision: revision),
+          ),
+          isFalse,
+        );
+      });
+
+      test('is false when the launcher is missing', () {
+        installDirectory.createSync(recursive: true);
+        expect(
+          runWithOverrides(
+            () => shorebirdFlutter.isInstalled(revision: revision),
+          ),
+          isFalse,
+        );
+      });
+
+      test('is true on Windows when the launcher is flutter.bat', () {
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+        File(
+          p.join(installDirectory.path, 'bin', 'flutter.bat'),
+        ).createSync(recursive: true);
+        expect(
+          runWithOverrides(
+            () => shorebirdFlutter.isInstalled(revision: revision),
+          ),
+          isTrue,
+        );
+      });
+
+      test('is true for a checkout precache never ran in', () {
+        File(
+          p.join(installDirectory.path, 'bin', 'flutter'),
+        ).createSync(recursive: true);
+        expect(
+          runWithOverrides(
+            () => shorebirdFlutter.isInstalled(revision: revision),
+          ),
+          isTrue,
+        );
+      });
+    });
+
     group('installRevision', () {
       const revision = 'test-revision';
       late Directory targetDirectory;

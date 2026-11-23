@@ -212,6 +212,22 @@ class ShorebirdFlutter {
     return !File(p.join(directory.path, 'bin', launcher)).existsSync();
   }
 
+  /// The directory Flutter [revision] is installed in, whether or not it is
+  /// there yet.
+  Directory installDirectory({required String revision}) =>
+      Directory(_workingDirectory(revision: revision));
+
+  /// Whether [revision] has a finished checkout in [installDirectory].
+  ///
+  /// [_cloneAndCheckout] publishes a checkout only once it is complete, and a
+  /// directory without the Flutter launcher is an older, interrupted install.
+  /// This does not ask for [precacheStampName]: the pinned revision is
+  /// installed by the shell bootstrap, which never runs precache.
+  bool isInstalled({required String revision}) {
+    final directory = installDirectory(revision: revision);
+    return directory.existsSync() && !_isUnusableInstall(directory);
+  }
+
   /// Moves an unusable install out of the way so a fresh one can take its
   /// place, and hands the remains to [_reclaimStrandedStagingDirectories].
   ///
