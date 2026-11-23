@@ -479,7 +479,7 @@ class ShorebirdEnv {
       ||
       platform.environment['TRAVIS'] == 'true' ||
       platform.environment['CONTINUOUS_INTEGRATION'] == 'true' ||
-      _ciVariableSet // Travis, AppVeyor and most other CI providers
+      platform.environment.containsKey('CI') // Travis and AppVeyor
       // https://www.appveyor.com/docs/environment-variables/
       ||
       platform.environment.containsKey('APPVEYOR')
@@ -499,11 +499,4 @@ class ShorebirdEnv {
       // https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
       ||
       platform.environment.containsKey('TF_BUILD');
-
-  /// Whether `CI` is set to something other than empty or `false`, which
-  /// developers set locally to turn CI behavior off.
-  bool get _ciVariableSet {
-    final ci = platform.environment['CI'];
-    return ci != null && ci.isNotEmpty && ci.toLowerCase() != 'false';
-  }
 }
