@@ -52,7 +52,11 @@ jobs:
         run: |
           bin/shorebird --version > out.txt
           cat out.txt
-          if grep -Ev '^(Shorebird|Flutter|Engine) ' out.txt; then
+          # Only --version's lines: setup's own "Flutter X • channel" and
+          # "Engine • hash ... (revision" lines don't match these.
+          lines='^(Shorebird [0-9]|Flutter [0-9][0-9.]* .* revision [0-9a-f]|Engine .* revision [0-9a-f])'
+          grep -Eq '^Shorebird [0-9]' out.txt || { echo "No version on stdout."; exit 1; }
+          if grep -Ev "$lines" out.txt; then
             echo "Setup output reached stdout."
             exit 1
           fi
@@ -71,7 +75,13 @@ jobs:
           REM goes to stderr, so a capture of stdout holds only --version's.
           call bin\shorebird.bat --version > out.txt || exit /b 1
           type out.txt
-          findstr /R /V /C:"^Shorebird " /C:"^Flutter " /C:"^Engine " out.txt && (
+          REM Only --version's lines: setup's own "Flutter X . channel" and
+          REM "Engine . hash ... (revision" lines don't match these.
+          findstr /R /C:"^Shorebird [0-9]" out.txt > NUL || (
+            echo No version on stdout.
+            exit /b 1
+          )
+          findstr /R /V /C:"^Shorebird [0-9]" /C:"^Flutter [0-9][0-9.]* .* revision [0-9a-f]" /C:"^Engine .* revision [0-9a-f]" out.txt && (
             echo Setup output reached stdout.
             exit /b 1
           )
