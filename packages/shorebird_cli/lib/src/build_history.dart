@@ -225,8 +225,10 @@ class BuildHistory {
   /// [BuildRunFailureReason.other] for the rest.
   /// Anything else is a crash and isn't recorded.
   ///
-  /// When the run ends without [BuildRun.metadata], [metadata] is asked for
-  /// what the run got as far as. A [metadata] that fails sends none.
+  /// When the run ends without [BuildRun.metadata], [metadata] is asked to
+  /// describe it, after the build trace summary is written again: what a
+  /// run that stopped early got as far as, or a patch's metadata with a
+  /// summary that counts its upload. A [metadata] that fails sends none.
   Future<T> record<T>(
     BuildRun run,
     Future<T> Function() body, {

@@ -605,6 +605,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   /// What the diff check found, once it has run.
   DiffStatus? _diffStatus;
 
+  /// The metadata sent with the patch, once it has been described.
+  CreatePatchMetadata? _patchMetadata;
+
   /// [shorebirdEnv] with the Flutter of the release being patched, once it
   /// is known.
   ShorebirdEnv? _releaseShorebirdEnv;
@@ -614,6 +617,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   Future<PublishedPatch> _recordPatchRun(Patcher patcher) {
     _inferredReleaseVersion = false;
     _diffStatus = null;
+    _patchMetadata = null;
     _releaseShorebirdEnv = null;
     final run = _buildRun =
         buildHistory.start(
@@ -626,22 +630,36 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     return buildHistory.record(
       run,
       () => createPatch(patcher),
-      // Described with the release's Flutter, as the published patch is.
-      metadata: () => runScoped(
-        () async => (await _createPatchMetadata(
-          patcher: patcher,
-          diffStatus:
-              _diffStatus ??
-              const DiffStatus(hasAssetChanges: false, hasNativeChanges: false),
-          inferredReleaseVersion: _inferredReleaseVersion,
-        )).toJson(),
-        values: {
-          if (_releaseShorebirdEnv case final env?)
-            shorebirdEnvRef.overrideWith(() => env),
-        },
-      ),
+      // The patch's metadata with the summary build history just rewrote,
+      // which counts the upload. A run that stopped before the patch was
+      // described is described now, with the release's Flutter, as the
+      // published patch is.
+      metadata: () async {
+        if (_patchMetadata case final sent?) {
+          return sent
+              .copyWith(buildTraceSummary: buildTraceSession.summary?.toJson())
+              .toJson();
+        }
+        return _describeStoppedRun(patcher);
+      },
     );
   }
+
+  /// The metadata of a patch run that stopped before the patch was
+  /// described.
+  Future<Json> _describeStoppedRun(Patcher patcher) => runScoped(
+    () async => (await _createPatchMetadata(
+      patcher: patcher,
+      diffStatus:
+          _diffStatus ??
+          const DiffStatus(hasAssetChanges: false, hasNativeChanges: false),
+      inferredReleaseVersion: _inferredReleaseVersion,
+    )).toJson(),
+    values: {
+      if (_releaseShorebirdEnv case final env?)
+        shorebirdEnvRef.overrideWith(() => env),
+    },
+  );
 
   /// Creates a patch using the provided [patcher].
   ///
@@ -1316,7 +1334,7 @@ Building patch with Flutter $flutterVersionString
     // tracing wasn't set up (older Flutter pin).
     artifactBuilder.writeBuildTraceSummary();
 
-    final metadata = await _createPatchMetadata(
+    final metadata = _patchMetadata = await _createPatchMetadata(
       patcher: patcher,
       diffStatus: diffStatus,
       inferredReleaseVersion: inferredReleaseVersion,
