@@ -12,4 +12,6 @@ REM Upgrade rewrites this file: EXIT ends dart's line, CALL reads its code.
 SET SHOREBIRD_SETUP_ONLY=1
 %ps% -NoProfile -ExecutionPolicy Bypass -File "%bin%shorebird.ps1" || CALL EXIT /B %%ERRORLEVEL%%
 SET SHOREBIRD_SETUP_ONLY=
+REM shorebird.ps1 leaves one stamp: the downloaded CLI's, or the snapshot's.
+IF EXIST "%bin%cache\shorebird-cli.stamp" "%bin%cache\shorebird.exe" %* & CALL EXIT /B %%ERRORLEVEL%%
 "%bin%cache\flutter\%fv%\bin\cache\dart-sdk\bin\dart.exe" --disable-dart-dev --packages="%bin%..\.dart_tool\package_config.json" "%bin%cache\shorebird.snapshot" %* & CALL EXIT /B %%ERRORLEVEL%%

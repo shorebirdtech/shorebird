@@ -1,5 +1,6 @@
-# cspell:words LASTEXITCODE
-# This is the windows equivalent of the `third_party/flutter/bin/internal/shared.sh` script
+# cspell:words ARCHITEW LASTEXITCODE
+# This is the windows equivalent of the `third_party/flutter/bin/internal/shared.sh` script:
+# installs the CLI publish_cli.yaml built for this commit to `bin/cache/shorebird.exe`, or
 # compiles `shorebird_cli/bin/shorebird_cli.dart` to `bin/cache/shorebird.snapshot`
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +14,11 @@ $shorebirdCliDir = [IO.Path]::Combine($shorebirdRootDir, "packages", "shorebird_
 # shorebird.bat builds the same dart and snapshot paths; keep them in sync.
 $snapshotPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.snapshot")
 $stampPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.stamp")
+# The CLI publish_cli.yaml builds for each stable commit, and the commit it's
+# for. Only one of the two stamps exists at a time, so shorebird.bat runs the
+# binary when its stamp does.
+$prebuiltPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird.exe")
+$prebuiltStampPath = [IO.Path]::Combine($shorebirdCacheDir, "shorebird-cli.stamp")
 $flutterPath = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion)
 $flutter = [IO.Path]::Combine($shorebirdCacheDir, "flutter", $flutterVersion, "bin", "flutter.bat")
 $shorebirdScript = [IO.Path]::Combine($shorebirdCliDir, "bin", "shorebird.dart")
@@ -95,6 +101,101 @@ function Test-ShorebirdNeedsUpdate {
 
     Write-Debug "shorebird does not need update"
     return $false
+}
+
+function Test-PrebuiltIsCurrent($revision) {
+    if (!(Test-Path $prebuiltPath) -or !(Test-Path $prebuiltStampPath)) {
+        return $false
+    }
+    # [string]: an empty stamp reads as $null.
+    return ([string](Get-Content $prebuiltStampPath -Raw)).Trim() -eq $revision
+}
+
+# Installs the CLI that publish_cli.yaml built for this commit (every commit
+# pushed to stable has one): a ~5.5 MB download in place of cloning the pinned
+# Flutter and compiling the CLI with its Dart SDK. Returns $false, leaving
+# today's path to build it, when there is none to use: a commit with no
+# binaries (main, a branch, a fork), local changes to what it's built from, a
+# platform it isn't built for, no curl.exe, a failed download, or a binary that
+# doesn't start. Its messages go to stderr itself: its output is the result.
+function Install-PrebuiltCli($revision) {
+    if (!$revision) { return $false }
+    # Native commands' stderr must not stop the script (Windows PowerShell
+    # treats it as an error under "Stop"); each step's result is checked.
+    $ErrorActionPreference = "Continue"
+    $ProgressPreference = "SilentlyContinue"
+
+    $arch = $env:PROCESSOR_ARCHITEW6432
+    if (!$arch) { $arch = $env:PROCESSOR_ARCHITECTURE }
+    if ($arch -ne "AMD64") { return $false }
+    if (!(Get-Command curl.exe -ErrorAction SilentlyContinue)) { return $false }
+
+    # The binary is the commit as published: with local changes, build those.
+    # FullName ends in a backslash, which Windows PowerShell would pass as an
+    # escaped quote inside a quoted (spaced) path.
+    $changes = git -C "$($shorebirdRootDir.TrimEnd('\'))" status --porcelain -- bin packages third_party pubspec.yaml pubspec.lock 2> $null
+    if ($LASTEXITCODE -ne 0 -or $changes) { return $false }
+
+    # Keep the default and the trailing slash handling in sync with
+    # ShorebirdEnv.downloadUrl.
+    $downloadUrl = 'https://download.shorebird.dev'
+    if ($env:SHOREBIRD_DOWNLOAD_URL) { $downloadUrl = $env:SHOREBIRD_DOWNLOAD_URL }
+    $url = "$($downloadUrl.TrimEnd('/'))/shorebird-cli/$revision/shorebird-windows-x64.zip"
+    # Its own directory per run: nothing locks two cold runs apart on Windows.
+    $tmp = [IO.Path]::Combine($shorebirdCacheDir, "shorebird-cli.$([guid]::NewGuid()).tmp")
+    $zip = [IO.Path]::Combine($tmp, "cli.zip")
+    try {
+        New-Item -ItemType Directory -Path $tmp -Force -ErrorAction Stop | Out-Null
+
+        # The checksum first, quietly: a commit with no binaries gets a 404
+        # here, and building it is the normal path for one, not an error.
+        curl.exe --fail --silent --location --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30 --output "$zip.sha256" "$url.sha256" 2> $null
+        if ($LASTEXITCODE -ne 0) { return $false }
+        [Console]::Error.WriteLine("Downloading Shorebird...")
+        curl.exe --fail --silent --location --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30 --output "$zip" "$url" 2> $null
+        if ($LASTEXITCODE -ne 0) {
+            [Console]::Error.WriteLine("Couldn't download $url; building Shorebird instead.")
+            return $false
+        }
+        $expected = ((Get-Content "$zip.sha256" -Raw).Trim() -split '\s+')[0]
+        $actual = (Get-FileHash -Algorithm SHA256 -Path $zip -ErrorAction Stop).Hash
+        if (!$expected -or $actual -ne $expected) {
+            [Console]::Error.WriteLine("$url doesn't match its checksum; building Shorebird instead.")
+            return $false
+        }
+        Expand-Archive -Path $zip -DestinationPath $tmp -Force -ErrorAction Stop
+        $exe = [IO.Path]::Combine($tmp, "shorebird.exe")
+        if (!(Test-Path $exe)) {
+            [Console]::Error.WriteLine("$url has no shorebird.exe; building Shorebird instead.")
+            return $false
+        }
+
+        # During `shorebird upgrade` the old binary is running, so Windows won't
+        # let us overwrite or delete it, only rename it. Each gets its own name:
+        # one moved aside earlier may still be running too.
+        if (Test-Path $prebuiltPath) {
+            Move-Item $prebuiltPath "$prebuiltPath.$([guid]::NewGuid()).old" -ErrorAction Stop
+        }
+        # The CLI finds its install from its own path, so it's checked in place.
+        Move-Item $exe $prebuiltPath -ErrorAction Stop
+        Remove-Item "$prebuiltPath.*.old" -ErrorAction SilentlyContinue
+        & $prebuiltPath --version *> $null
+        if ($LASTEXITCODE -ne 0) {
+            [Console]::Error.WriteLine("The downloaded Shorebird didn't start; building it instead.")
+            Remove-Item $prebuiltPath -ErrorAction SilentlyContinue
+            return $false
+        }
+        Remove-Item $stampPath -ErrorAction SilentlyContinue
+        Set-Content -Path $prebuiltStampPath -Value $revision -ErrorAction Stop
+        return $true
+    }
+    catch {
+        [Console]::Error.WriteLine("Couldn't install the downloaded Shorebird ($_); building it instead.")
+        return $false
+    }
+    finally {
+        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Update-Flutter {
@@ -200,8 +301,10 @@ function Update-Shorebird {
     Move-Item $snapshotTmpPath $snapshotPath
     # Old snapshots still mapped are removed by a later rebuild.
     Remove-Item "$snapshotPath.*.old" -ErrorAction SilentlyContinue
+    Remove-Item "$prebuiltPath.*.old" -ErrorAction SilentlyContinue
 
     Write-Debug "writing $compileKey to $stampPath"
+    Remove-Item $prebuiltStampPath -ErrorAction SilentlyContinue
     Set-Content -Path $stampPath -Value $compileKey
 }
 
@@ -278,13 +381,23 @@ $shorebirdArgs = @(Restore-EndOfOptions $args $MyInvocation)
 # Setup output (its messages, git, flutter --version, pub get) goes to stderr,
 # so stdout is only the command's own: `$(shorebird flutter path)` and `--json`
 # read it. Write-Host would go to stdout under `powershell -File`.
-if (Test-ShorebirdNeedsUpdate) {
-    Update-Shorebird | ForEach-Object { [Console]::Error.WriteLine($_) }
+Push-Location $shorebirdRootDir
+$revision = "$(& { git rev-parse HEAD })".Trim()
+Pop-Location
+if (!(Test-PrebuiltIsCurrent $revision) -and (Test-ShorebirdNeedsUpdate)) {
+    if (!(Install-PrebuiltCli $revision)) {
+        Update-Shorebird | ForEach-Object { [Console]::Error.WriteLine($_) }
+    }
 }
 
 # shorebird.bat runs the snapshot itself, so cmd's arguments reach dart as typed.
 if ($env:SHOREBIRD_SETUP_ONLY) {
     exit 0
+}
+
+if (Test-PrebuiltIsCurrent $revision) {
+    & $prebuiltPath $shorebirdArgs
+    exit $LASTEXITCODE
 }
 
 & $dart --disable-dart-dev --packages="$shorebirdRootDir\.dart_tool\package_config.json" "$snapshotPath" $shorebirdArgs
