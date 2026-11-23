@@ -5599,11 +5599,6 @@ components:
             platforms under the same number share. Absent when it was
             created without one.
             Unstable: this may change shape until patch linking ships.
-        git_sha:
-          type: string
-          description: |
-            The commit the patch was built from, when it was built in a git
-            checkout. Unstable: this may change shape until patch linking ships.
     RolloutStep:
       type: object
       description: A step in a timed rollout schedule on a channel.
@@ -6497,8 +6492,9 @@ components:
           type: string
           description: |
             The commit the patch was built from, when it is built in a git
-            checkout, as at most 64 hex characters. Recorded as provenance whether or not the patch is
-            linked. Unstable: this may change shape until patch linking ships.
+            checkout, as at most 64 hex characters. Recorded as provenance
+            whether or not the patch is linked.
+            Unstable: this may change shape until patch linking ships.
         git_dirty:
           type: boolean
           description: |

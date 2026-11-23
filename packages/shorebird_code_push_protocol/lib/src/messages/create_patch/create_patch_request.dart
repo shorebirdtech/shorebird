@@ -63,9 +63,9 @@ class CreatePatchRequest {
   final String? linkKey;
 
   /// The commit the patch was built from, when it is built in a git
-  /// checkout, as at most 64 hex characters. Recorded as provenance whether
-  /// or not the patch is
-  /// linked. Unstable: this may change shape until patch linking ships.
+  /// checkout, as at most 64 hex characters. Recorded as provenance
+  /// whether or not the patch is linked.
+  /// Unstable: this may change shape until patch linking ships.
   final String? gitSha;
 
   /// Whether the git working tree had uncommitted changes when the

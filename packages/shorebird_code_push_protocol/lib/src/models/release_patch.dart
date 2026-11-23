@@ -25,7 +25,6 @@ class ReleasePatch {
     this.notes,
     this.platform,
     this.linkKey,
-    this.gitSha,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleasePatch].
@@ -58,7 +57,6 @@ class ReleasePatch {
         notes: json['notes'] as String?,
         platform: ReleasePlatform.maybeFromJson(json['platform'] as String?),
         linkKey: json['link_key'] as String?,
-        gitSha: json['git_sha'] as String?,
       ),
     );
   }
@@ -127,10 +125,6 @@ class ReleasePatch {
   /// Unstable: this may change shape until patch linking ships.
   final String? linkKey;
 
-  /// The commit the patch was built from, when it was built in a git
-  /// checkout. Unstable: this may change shape until patch linking ships.
-  final String? gitSha;
-
   /// Converts a [ReleasePatch] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -148,7 +142,6 @@ class ReleasePatch {
       'notes': ?notes,
       'platform': ?platform?.toJson(),
       'link_key': ?linkKey,
-      'git_sha': ?gitSha,
     };
   }
 
@@ -168,7 +161,6 @@ class ReleasePatch {
     notes,
     platform,
     linkKey,
-    gitSha,
   ]);
 
   @override
@@ -188,7 +180,6 @@ class ReleasePatch {
         rolloutTimezone == other.rolloutTimezone &&
         notes == other.notes &&
         platform == other.platform &&
-        linkKey == other.linkKey &&
-        gitSha == other.gitSha;
+        linkKey == other.linkKey;
   }
 }
