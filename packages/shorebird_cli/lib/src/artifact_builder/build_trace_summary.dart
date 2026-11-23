@@ -1018,7 +1018,7 @@ class _Accumulator {
 /// as [DownloadStats] reports them.
 class _Downloads {
   /// Most distinct hosts or edges reported; the rest are summed under
-  /// [_other]. Real precaches see two or three hosts and one edge.
+  /// [_other]. A real precache sees two or three hosts and one edge.
   static const _maxKeys = 16;
 
   static const _other = 'other';
