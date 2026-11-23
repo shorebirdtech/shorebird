@@ -1398,6 +1398,41 @@ void main() {
         );
       });
 
+      test('the suggested command keeps the requested rollout', () async {
+        when(() => argResults['rollout']).thenReturn('10');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.info(
+            'To choose which to change, run:\n'
+            '  shorebird set-track --release-version=$releaseVersion '
+            '--patch-number=$patchNumber --track=${targetChannel.name} '
+            '--rollout=10 --platforms=android,ios',
+          ),
+        ).called(1);
+      });
+
+      test('the suggested command keeps the requested schedule', () async {
+        when(() => argResults['rollout-steps']).thenReturn('10:1d,50:2d,100');
+        when(() => argResults['pause-weekends']).thenReturn(true);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                '--track=${targetChannel.name} --rollout-steps 10:1d,50:2d,100 '
+                '--pause-weekends --platforms=android,ios',
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
       test('without --platforms asks before moving all of them', () async {
         when(
           () => codePushClientWrapper.getReleasePatches(

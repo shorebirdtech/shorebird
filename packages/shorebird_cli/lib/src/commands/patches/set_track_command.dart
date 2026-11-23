@@ -134,6 +134,14 @@ class SetTrackCommand extends ShorebirdCommand
     // patch lands either way.
     final requestedPercentage =
         rolloutPercentage ?? schedule?.initialPercentage;
+    // What a suggested rerun on some of the platforms passes, so it moves
+    // them the way this run asked to.
+    final moveArgs = [
+      '--track=$targetChannel',
+      if (rolloutPercentage != null)
+        '--$rolloutArgName=${formatRolloutArgument(rolloutPercentage)}',
+      if (schedule != null) ...rolloutScheduleArguments(schedule),
+    ];
 
     final fetched = await fetchReleasePatches(
       appId: appId,
@@ -155,7 +163,7 @@ class SetTrackCommand extends ShorebirdCommand
         patch: patch,
         releaseVersion: releaseVersion,
         suggested: _notOn(patch, targetChannel),
-        extraArgs: ['--track=$targetChannel'],
+        extraArgs: moveArgs,
         reason:
             "Patch $patchNumber's platforms are on different tracks, so "
             'pass --${PatchLookup.platformsArgName} to choose which to move.',
@@ -332,7 +340,7 @@ class SetTrackCommand extends ShorebirdCommand
         patch: patch,
         releaseVersion: releaseVersion,
         suggested: _notOn(patch, targetChannel),
-        extraArgs: ['--track=$targetChannel'],
+        extraArgs: moveArgs,
       );
     }
     if (promoteError != null) return promoteError;
