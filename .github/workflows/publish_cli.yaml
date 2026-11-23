@@ -1,7 +1,7 @@
 name: publish_cli
 
-# Builds the CLI with `dart compile exe` for each platform we support and, on
-# a release tag, uploads it to
+# Builds the CLI with `dart compile exe` for each platform we support and, for
+# each commit pushed to stable (every release commit is one), uploads it to
 #   gs://download.shorebird.dev/shorebird-cli/<commit sha>/shorebird-<os>-<arch>.zip
 # with a .sha256 next to each zip. bin/shorebird can then download a ~5.5 MB
 # CLI for a release commit instead of cloning the pinned Flutter and
@@ -13,18 +13,27 @@ name: publish_cli
 # `dart compile exe` can't cross-compile to macOS or Windows, so each platform
 # builds on its own runner.
 #
-# A pull request that changes this workflow builds and checks every binary but
-# uploads nothing. Only a v* tag push uploads, and only once all five built and
-# passed their checks, so a commit has all its binaries or none (bin/shorebird
+# A pull request that changes this workflow, the bootstrap or the dependencies
+# (what can break `dart compile exe` while analyze and tests still pass) builds
+# and checks every binary but uploads nothing. Only a push to stable (or a dispatch on stable) uploads, and
+# only once all five built and passed their checks, so a commit has all its binaries or none (bin/shorebird
 # falls back to today's bootstrap when its platform's binary is missing).
 
+# stable, not v* tags: only the release app or an admin can move stable, and
+# its head is the commit users upgrade to, while anyone with write access can
+# push a tag. The publish identity trusts only stable's ref.
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - stable
+  workflow_dispatch:
   pull_request:
     paths:
       - .github/workflows/publish_cli.yaml
+      - bin/**
+      - third_party/flutter/bin/**
+      - pubspec.lock
+      - "**/pubspec.yaml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -90,7 +99,9 @@ jobs:
           echo "EXE=$exe" >> "$GITHUB_ENV"
 
       # A binary that can't start (built wrong, a missing library) would fail
-      # every user on this platform at their first command.
+      # every user on this platform at their first command. doctor exits 0
+      # even when it finds issues, so it catches only a crash; --version and
+      # `flutter versions list` are the checks that gate.
       - name: 🧪 Check the binary
         shell: bash
         run: |
@@ -111,7 +122,10 @@ jobs:
             # -j stores the file at the zip's root; zip keeps the exec bit.
             zip -j "dist/$zip_name" "bin/cache/$EXE"
           fi
-          (cd dist && sha256sum "$zip_name" > "$zip_name.sha256")
+          # "<hash>  <name>" on every OS: Git Bash's sha256sum on Windows
+          # would write "<hash> *<name>".
+          hash="$(sha256sum "dist/$zip_name" | cut -d' ' -f1)"
+          echo "$hash  $zip_name" > "dist/$zip_name.sha256"
           ls -l dist
           cat "dist/$zip_name.sha256"
 
@@ -126,7 +140,7 @@ jobs:
   upload:
     name: ☁️ Upload to download.shorebird.dev
     needs: build
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/stable' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -149,24 +163,32 @@ jobs:
           done
           (cd dist && sha256sum -c ./*.sha256)
 
-      # Keyless: the provider admits only shorebirdtech/shorebird's v* tag
-      # pushes of this workflow, and the service account can write only
-      # download.shorebird.dev/shorebird-cli/ (_shorebird infra/tofu/envs/prod).
+      # Keyless: the provider admits only shorebirdtech/shorebird's stable, and
+      # the service account can only create objects under
+      # download.shorebird.dev/shorebird-cli/, never overwrite them
+      # (_shorebird#6373, infra/tofu/envs/prod).
       - name: 🔐 Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: projects/523302233293/locations/global/workloadIdentityPools/github-actions/providers/github-shorebird-cli
+          workload_identity_provider: projects/523302233293/locations/global/workloadIdentityPools/github-actions/providers/github-shorebird
           service_account: shorebird-cli-publish@code-push-prod.iam.gserviceaccount.com
 
       - name: ☁️ Set up gcloud
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
       # The path is keyed by the commit, whose contents never change, so the
-      # objects are cached as immutable. A re-run writes the same bytes.
+      # objects are cached as immutable. --no-clobber, since the identity can't
+      # overwrite: a re-run skips what an earlier run uploaded and adds only
+      # what's missing.
       - name: ☁️ Upload
         env:
           SHA: ${{ github.sha }}
         run: |
-          gcloud storage cp dist/* "gs://download.shorebird.dev/shorebird-cli/$SHA/" \
+          # Zips first, checksums second, so a client never finds a .sha256
+          # whose zip isn't there yet.
+          dest="gs://download.shorebird.dev/shorebird-cli/$SHA/"
+          gcloud storage cp --no-clobber dist/*.zip "$dest" \
             --cache-control="public, max-age=31536000, immutable"
-          gcloud storage ls -l "gs://download.shorebird.dev/shorebird-cli/$SHA/"
+          gcloud storage cp --no-clobber dist/*.sha256 "$dest" \
+            --cache-control="public, max-age=31536000, immutable"
+          gcloud storage ls -l "$dest"
