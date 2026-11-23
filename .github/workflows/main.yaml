@@ -30,9 +30,11 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 👀 Check Licenses
-        uses: ./.github/actions/license_check
+        uses: $/.github/actions/license_check
         with:
           working_directory: ${{ github.workspace }}
 
@@ -73,6 +75,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Agent Scripts Detection
@@ -180,6 +184,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 🖥️ Add Shorebird to PATH
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
@@ -231,9 +237,11 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 🔎 Verify ${{ matrix.package }}
-        uses: ./.github/actions/verify_version
+        uses: $/.github/actions/verify_version
         with:
           working_directory: packages/${{ matrix.package }}
 
@@ -245,6 +253,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 🎯 Setup Dart
         uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
@@ -273,6 +283,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 🧪 Run tool/agent_scripts_test.sh
         run: ./tool/agent_scripts_test.sh

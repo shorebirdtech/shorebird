@@ -164,6 +164,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
@@ -223,6 +224,7 @@ jobs:
       - name: 📚 Workflow Scripts Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.sha }}
           path: .e2e_workflow
           sparse-checkout: scripts/install_android_sdk_packages.sh
@@ -340,6 +342,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 🖥️ Add Shorebird to PATH
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
@@ -436,13 +440,14 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐧 Install Linux Build Dependencies
-        uses: ./.github/actions/linux_build_deps
+        uses: $/.github/actions/linux_build_deps
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -476,6 +481,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
@@ -517,6 +523,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
@@ -554,6 +561,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
@@ -591,6 +599,7 @@ jobs:
       - name: 📚 Workflow Scripts Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.sha }}
           path: .e2e_workflow
           sparse-checkout: scripts/install_android_sdk_packages.sh
@@ -658,13 +667,14 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐧 Install Linux Build Dependencies
-        uses: ./.github/actions/linux_build_deps
+        uses: $/.github/actions/linux_build_deps
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -699,13 +709,14 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
         run: echo "${GITHUB_WORKSPACE}/bin/" >> "$GITHUB_PATH"
 
       - name: 🐧 Install Linux Build Dependencies
-        uses: ./.github/actions/linux_build_deps
+        uses: $/.github/actions/linux_build_deps
 
       - name: 🐦 Install Shorebird
         run: shorebird --version
@@ -738,6 +749,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
@@ -775,6 +787,7 @@ jobs:
       - name: 📚 Workflow Scripts Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.sha }}
           path: .e2e_workflow
           sparse-checkout: scripts/install_android_sdk_packages.sh
@@ -850,6 +863,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref }}
 
       - name: 🖥️ Add Shorebird to PATH
@@ -884,6 +898,7 @@ jobs:
       - name: 📚 Workflow Scripts Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.sha }}
           path: .e2e_workflow
           sparse-checkout: scripts/install_android_sdk_packages.sh
@@ -964,6 +979,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ inputs.cli_ref || matrix.branch }}
 
       - name: 🖥️ Add Shorebird to macOS/Linux PATH
