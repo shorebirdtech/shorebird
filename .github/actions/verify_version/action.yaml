@@ -16,10 +16,6 @@ runs:
 
     - name: 🎯 Setup Dart
       uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
-      with:
-        # Its matcher path resolves against the calling composite action rather
-        # than setup-dart itself, so the file is never found. setup-dart#198.
-        problem-matcher: false
 
     - name: 📦 Install Dependencies
       shell: ${{ inputs.shell }}
