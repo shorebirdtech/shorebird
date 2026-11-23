@@ -1,0 +1,172 @@
+name: publish_cli
+
+# Builds the CLI with `dart compile exe` for each platform we support and, on
+# a release tag, uploads it to
+#   gs://download.shorebird.dev/shorebird-cli/<commit sha>/shorebird-<os>-<arch>.zip
+# with a .sha256 next to each zip. bin/shorebird can then download a ~5.5 MB
+# CLI for a release commit instead of cloning the pinned Flutter and
+# compiling the CLI with its Dart SDK (design:
+# https://app.notion.com/p/421f369b53c9819489d7fbae2aeacb0d, section 1).
+#
+# The build uses the pinned Flutter's Dart SDK, the one today's bootstrap
+# compiles the CLI with, so a prebuilt CLI behaves as a bootstrapped one.
+# `dart compile exe` can't cross-compile to macOS or Windows, so each platform
+# builds on its own runner.
+#
+# A pull request that changes this workflow builds and checks every binary but
+# uploads nothing. Only a v* tag push uploads, and only once all five built and
+# passed their checks, so a commit has all its binaries or none (bin/shorebird
+# falls back to today's bootstrap when its platform's binary is missing).
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - .github/workflows/publish_cli.yaml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: 🔨 ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-arm64
+            runner: macos-latest
+          - platform: macos-x64
+            runner: macos-15-intel
+          - platform: linux-x64
+            runner: ubuntu-latest
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: windows-x64
+            runner: windows-latest
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Installs the pinned Flutter (and so its Dart SDK) the way customers'
+      # machines do, and resolves the workspace with --enforce-lockfile.
+      - name: 🐦 Bootstrap (POSIX)
+        if: runner.os != 'Windows'
+        run: bin/shorebird --version
+
+      - name: 🐦 Bootstrap (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./bin/shorebird.ps1 --version
+
+      # The CLI finds its install from its own path (shorebird_env.dart's
+      # shorebirdRoot assumes $ROOT/bin/cache/<executable>), so the binary is
+      # built into and checked from bin/cache.
+      - name: 🔨 Compile
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          flutter_version="$(cat bin/internal/flutter.version)"
+          dart="bin/cache/flutter/$flutter_version/bin/cache/dart-sdk/bin/dart"
+          exe=shorebird
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            dart="$dart.exe"
+            exe=shorebird.exe
+          fi
+          "$dart" --version
+          "$dart" compile exe packages/shorebird_cli/bin/shorebird.dart -o "bin/cache/$exe"
+          echo "EXE=$exe" >> "$GITHUB_ENV"
+
+      # A binary that can't start (built wrong, a missing library) would fail
+      # every user on this platform at their first command.
+      - name: 🧪 Check the binary
+        shell: bash
+        run: |
+          "bin/cache/$EXE" --version
+          "bin/cache/$EXE" doctor
+          "bin/cache/$EXE" flutter versions list > /dev/null
+
+      - name: 📦 Zip
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p dist
+          zip_name="shorebird-$PLATFORM.zip"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            pwsh -NoProfile -Command "Compress-Archive -Path bin/cache/$EXE -DestinationPath dist/$zip_name"
+          else
+            # -j stores the file at the zip's root; zip keeps the exec bit.
+            zip -j "dist/$zip_name" "bin/cache/$EXE"
+          fi
+          (cd dist && sha256sum "$zip_name" > "$zip_name.sha256")
+          ls -l dist
+          cat "dist/$zip_name.sha256"
+
+      - name: ⬆️ Keep the zip for the upload job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shorebird-${{ matrix.platform }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  upload:
+    name: ☁️ Upload to download.shorebird.dev
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: ⬇️ Download the zips
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: shorebird-*
+          path: dist
+          merge-multiple: true
+
+      - name: 🔍 Check all five are here
+        run: |
+          ls -l dist
+          for platform in macos-arm64 macos-x64 linux-x64 linux-arm64 windows-x64; do
+            test -s "dist/shorebird-$platform.zip"
+            test -s "dist/shorebird-$platform.zip.sha256"
+          done
+          (cd dist && sha256sum -c ./*.sha256)
+
+      # Keyless: the provider admits only shorebirdtech/shorebird's v* tag
+      # pushes of this workflow, and the service account can write only
+      # download.shorebird.dev/shorebird-cli/ (_shorebird infra/tofu/envs/prod).
+      - name: 🔐 Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: projects/523302233293/locations/global/workloadIdentityPools/github-actions/providers/github-shorebird-cli
+          service_account: shorebird-cli-publish@code-push-prod.iam.gserviceaccount.com
+
+      - name: ☁️ Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      # The path is keyed by the commit, whose contents never change, so the
+      # objects are cached as immutable. A re-run writes the same bytes.
+      - name: ☁️ Upload
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          gcloud storage cp dist/* "gs://download.shorebird.dev/shorebird-cli/$SHA/" \
+            --cache-control="public, max-age=31536000, immutable"
+          gcloud storage ls -l "gs://download.shorebird.dev/shorebird-cli/$SHA/"
