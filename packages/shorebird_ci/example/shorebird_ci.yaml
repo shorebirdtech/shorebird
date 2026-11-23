@@ -38,13 +38,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
           # affected_packages diffs against origin/main, which isn't in
           # the default shallow checkout. Full history is needed for the
           # diff to resolve.
           fetch-depth: 0
+          persist-credentials: false
       - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
-      - run: dart pub global activate shorebird_ci 0.3.3
+      - run: dart pub global activate shorebird_ci 0.3.4
       # Verify first so we fail fast if CI coverage is broken and
       # don't waste time computing affected packages.
       - name: Verify CI coverage
@@ -78,20 +78,43 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
+          persist-credentials: false
       - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
-      - name: Setup Bloc Tools
-        if: matrix.has_bloc_lint == true
-        run: dart pub global activate bloc_tools 0.1.0-dev.25
       - name: Install Dependencies
+        env:
+          SUBPACKAGES: ${{ matrix.subpackages }}
         run: |
           dart pub get --no-example
-          for sub in ${{ matrix.subpackages }}; do
-            dart pub get --no-example -C $sub
+          for sub in $SUBPACKAGES; do
+            dart pub get --no-example -C "$sub"
           done
       - run: dart format --set-exit-if-changed .
       - run: dart analyze --fatal-warnings .
-      - name: Bloc Lint
-        if: matrix.has_bloc_lint == true
-        run: bloc lint .
       - run: dart test
+
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    # Lints the workflows in .github/workflows for GitHub Actions
+    # security mistakes: https://docs.zizmor.sh/audits/
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install zizmor
+        run: |
+          set -euo pipefail
+          case "$RUNNER_ARCH" in
+            X64) asset=zizmor-x86_64-unknown-linux-gnu.tar.gz sha=3e6a301c7a820a2501915f5a9de8c0486da82bdec7965f068477538a98743d43 ;;
+            ARM64) asset=zizmor-aarch64-unknown-linux-gnu.tar.gz sha=aa487c792a7cbbe86e4f8dccd3b66de33b3b51813c090aaa0842d7ea08a3fc35 ;;
+            *) echo "::error::No zizmor release for Linux $RUNNER_ARCH"; exit 1 ;;
+          esac
+          curl -fsSL --retry 5 -o "$RUNNER_TEMP/$asset" "https://github.com/zizmorcore/zizmor/releases/download/v1.33.1/$asset"
+          echo "$sha  $RUNNER_TEMP/$asset" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zizmor"
+          tar -xzf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP/zizmor"
+          echo "$RUNNER_TEMP/zizmor" >> "$GITHUB_PATH"
+      - name: Lint workflows
+        run: zizmor --offline .github/workflows
