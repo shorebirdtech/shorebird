@@ -1,4 +1,4 @@
-# cspell:words dartsdk mmin
+# cspell:words dartsdk
 # Sourced by tool/agent-verify.sh and scripts/bootstrap.sh. Sets dart_bin to
 # a Dart SDK binary of the version CI runs, or leaves it empty and prints why
 # to stderr.
@@ -56,45 +56,32 @@ _find_dart_version_of() {
   { "$1" --version 2>&1 || true; } | sed -n 's/^Dart SDK version: \([^ ]*\).*/\1/p'
 }
 
-# Takes the one-writer lock on the SDK cache. A directory is the atomic
-# test-and-set every filesystem has, so the lock is one. Non-zero when another
-# fetch still holds it past the download timeout. The holder writes its PID
-# inside the lock so a live download is never reaped as stale, while a lock left
-# by a killed process is moved aside and removed.
+# Takes the one-writer lock on the SDK cache: a symlink whose target is the
+# holder's PID. `ln -s` creates it with its target in one step, the atomic
+# test-and-set every filesystem has, so there is never a lock without a holder
+# to check. Non-zero when another fetch still holds it past the download
+# timeout. A lock whose holder is dead (a killed fetch) is moved aside and
+# removed; a live holder's never is, however long its download takes.
 _find_dart_take_lock() {
-  local lock="$1" waited=0 holder_pid reap
-  until mkdir "$lock" 2>/dev/null; do
+  local lock="$1" waited=0 pid holder_pid reap
+  # Bash 3.2 has no BASHPID. `exec` makes sh the command-substitution process
+  # itself, so its parent is this shell rather than a short-lived subshell.
+  pid="${BASHPID:-$(exec sh -c 'echo "$PPID"')}"
+  until ln -s "$pid" "$lock" 2>/dev/null; do
     if [ "$waited" -ge 1860 ]; then
       return 1
     fi
-    holder_pid="$(cat "$lock/pid" 2>/dev/null || true)"
-    if [ -n "$holder_pid" ]; then
-      if ! kill -0 "$holder_pid" 2>/dev/null; then
-        reap="$lock.reap.$$.$RANDOM"
-        rm -rf "$reap" 2>/dev/null || true
-        if mv "$lock" "$reap" 2>/dev/null; then
-          rm -rf "$reap" 2>/dev/null || true
-          continue
-        fi
-      fi
-    elif [ -n "$(find "$lock" -maxdepth 0 -mmin +1 2>/dev/null || true)" ]; then
+    holder_pid="$(readlink "$lock" 2>/dev/null || true)"
+    if [ -n "$holder_pid" ] && ! kill -0 "$holder_pid" 2>/dev/null; then
       reap="$lock.reap.$$.$RANDOM"
-      rm -rf "$reap" 2>/dev/null || true
       if mv "$lock" "$reap" 2>/dev/null; then
-        rm -rf "$reap" 2>/dev/null || true
+        rm -f "$reap" 2>/dev/null || true
         continue
       fi
     fi
     sleep 1
     waited=$((waited + 1))
   done
-  if [ -n "${BASHPID:-}" ]; then
-    printf '%s\n' "$BASHPID" >"$lock/pid"
-  else
-    # Bash 3.2 has no BASHPID, and $(...) would record the short-lived
-    # command-substitution child shell instead of this shell.
-    sh -c 'echo $PPID' >"$lock/pid"
-  fi
 }
 
 _find_dart_install_locked() {
@@ -209,13 +196,13 @@ _find_dart_fetched() {
     echo "find_dart: Dart $want was not fetched, $root could not be created" >&2
     return 0
   fi
-  lock="$root/.install.$os-$arch-$want"
+  lock="$root/.lock.$os-$arch-$want"
   if ! _find_dart_take_lock "$lock"; then
     echo "find_dart: Dart $want was not fetched, another fetch still holds $lock" >&2
     return 0
   fi
   _find_dart_install_locked "$want" "$root" "$dest" "$url" "$sum"
-  rm -rf "$lock" 2>/dev/null || true
+  rm -f "$lock" 2>/dev/null || true
 }
 
 find_dart() {
