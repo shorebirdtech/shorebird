@@ -4,6 +4,17 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.148 (November 23, 2026)
+
+- ✨ `shorebird flutter precache` installs a Flutter version and the artifacts
+  Android and iOS releases and patches download, ahead of any build, with
+  `--flutter-version` to pick the version
+- 🐛 `shorebird release macos` and `shorebird patch macos` refuse
+  `--no-codesign` before building, with a hint pointing at Xcode's signing
+  settings, instead of failing partway through the build
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.147.
+
 ## 1.6.147 (November 23, 2026)
 
 - ✨ `shorebird usage` adds a line for installs from other organizations sharing
