@@ -28,7 +28,7 @@ dep graph, then calls `affected_packages` to emit the JSON matrix.
 `dart_ci` fans out across that matrix, running format / analyze / test
 for each affected package — including transitive dependents (a change
 to `core` runs `app` too). `zizmor` lints every workflow in
-`.github/workflows/` with a pinned, checksummed zizmor release.
+`.github/workflows/` with a pinned zizmor release, checked against its SHA-256.
 
 For Flutter packages a parallel `flutter_ci` job is added, with
 `flutter_version` resolved from the pubspec when pinned. With codecov
