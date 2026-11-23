@@ -56,6 +56,12 @@ enum TraceCategory {
   /// shorebird_cli itself rather than by a subprocess producer.
   setup('setup'),
 
+  /// One artifact download by flutter_tools' artifact cache (`flutter
+  /// precache`, or the cache update any command runs first). Its args are
+  /// keyed by [DownloadArgs]. Emitted by `BuildTracer.recordDownloadSpan`
+  /// into the file named by [TraceEnvironment.downloadTraceFile].
+  download('download'),
+
   /// Consumer-side fallback for a category emitted by a future
   /// producer version that this consumer doesn't yet recognize. Never
   /// emitted on the wire.
@@ -178,6 +184,71 @@ class TraceNames {
   /// Name prefix for [SetupPhase] spans. Full span name shorebird
   /// matches is `"setup: <phase>"`.
   static const String setupNamePrefix = 'setup';
+}
+
+/// Environment variables the trace producers read.
+class TraceEnvironment {
+  // coverage:ignore-start
+  /// Private constructor — only holds static members.
+  TraceEnvironment._();
+  // coverage:ignore-end
+
+  /// Path of a Chrome Trace Event Format JSON file flutter_tools writes
+  /// its [TraceCategory.download] spans to, set by shorebird_cli on the
+  /// `flutter precache` it runs.
+  ///
+  /// An environment variable rather than a `--shorebird-trace` flag: a
+  /// Flutter fork that predates it ignores it, where an unknown flag
+  /// fails the command, so shorebird_cli can set it on every pin without
+  /// a help probe; and flutter_tools can install its tracer before the
+  /// artifact cache's first download, ahead of any command's arguments.
+  static const String downloadTraceFile = 'SHOREBIRD_DOWNLOAD_TRACE_FILE';
+}
+
+/// `args` keys of a [TraceCategory.download] span. The span's `dur` runs
+/// from the first request to the last byte written, retries included.
+class DownloadArgs {
+  // coverage:ignore-start
+  /// Private constructor — only holds static members.
+  DownloadArgs._();
+  // coverage:ignore-end
+
+  /// Host of the URL requested first (before any redirect), e.g.
+  /// `download.shorebird.dev`.
+  static const String host = 'host';
+
+  /// Host that served the bytes, after redirects, e.g.
+  /// `storage.googleapis.com`. Absent when it equals [host].
+  static const String servedBy = 'servedBy';
+
+  /// Final HTTP status code.
+  static const String status = 'status';
+
+  /// Bytes of response body received.
+  static const String bytes = 'bytes';
+
+  /// Microseconds spent on redirect responses before the request that
+  /// served the bytes was sent.
+  static const String redirectUs = 'redirectUs';
+
+  /// Microseconds from sending the request that served the bytes to its
+  /// response headers (time to first byte).
+  static const String ttfbUs = 'ttfbUs';
+
+  /// Attempts after the first (0 when the first succeeded).
+  static const String retries = 'retries';
+
+  /// True when the artifact was already in the cache and nothing was
+  /// fetched; such a span carries no network fields.
+  static const String cacheHit = 'cacheHit';
+
+  /// The edge that served the response, as `<provider>:<location>` from
+  /// its headers: `cloudflare:BOM` from `cf-ray`, or `google:<x>` from
+  /// Google's front end. Absent when the response names none.
+  static const String edge = 'edge';
+
+  /// Error message of a download that failed.
+  static const String error = 'error';
 }
 
 /// Shorebird-side setup steps, each emitted as a `setup`-category span

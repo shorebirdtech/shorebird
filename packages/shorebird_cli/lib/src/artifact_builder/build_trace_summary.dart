@@ -132,6 +132,8 @@ class BuildTraceSummary {
         acc.networkCount++;
       case TraceCategory.setup:
         _processSetupEvent(acc, name: name, ts: ts, dur: dur);
+      case TraceCategory.download:
+        acc.downloads.add(ts: ts, dur: dur, args: args);
       case TraceCategory.unknown:
         // Future producer version emitted a category we don't know.
         // Dropped on purpose — bucketing it anywhere else would lie.
@@ -221,6 +223,7 @@ class BuildTraceSummary {
       flutterInstall: acc.setupPhase.of(SetupPhase.flutterInstall).wall,
       flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache).wall,
       shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache).wall,
+      downloads: acc.downloads.stats(),
     );
   }
 
@@ -462,7 +465,9 @@ class BuildTraceSummary {
     // tasks can add up to more than the native build.
     // network.shorebirdMs is new in 10, and shorebirdLocalMs subtracts it
     // rather than network.ms.
-    'version': 10,
+    // 11: setup.downloads, from the download spans a Flutter fork that
+    // traces precache writes; zeros from one that doesn't.
+    'version': 11,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,
@@ -539,6 +544,7 @@ class SetupStats {
     required this.flutterInstall,
     required this.flutterPrecache,
     required this.shorebirdCache,
+    required this.downloads,
   });
 
   /// Cloning the Flutter fork and checking out the pinned revision.
@@ -556,12 +562,110 @@ class SetupStats {
   /// sum.
   final Duration total;
 
+  /// The artifact downloads inside [flutterPrecache], one span each from
+  /// a Flutter fork that traces them. All zero on a fork that doesn't,
+  /// or when nothing needed precaching.
+  final DownloadStats downloads;
+
   /// JSON form.
   Map<String, Object?> toJson() => {
     'totalMs': total.inMilliseconds,
     'flutterInstallMs': flutterInstall.inMilliseconds,
     'flutterPrecacheMs': flutterPrecache.inMilliseconds,
     'shorebirdCacheMs': shorebirdCache.inMilliseconds,
+    'downloads': downloads.toJson(),
+  };
+}
+
+/// Flutter's artifact downloads during `flutter precache`: how many, how
+/// big, how long, and which hosts and edges served them, so a slow cold
+/// start can be told apart by where its bytes came from.
+class DownloadStats {
+  /// Creates a [DownloadStats].
+  DownloadStats({
+    required this.count,
+    required this.cacheHitCount,
+    required this.failedCount,
+    required this.retryCount,
+    required this.bytes,
+    required this.duration,
+    required this.redirect,
+    required this.timeToFirstByte,
+    required this.hosts,
+    required this.edges,
+  });
+
+  /// Artifacts fetched (cache hits not counted).
+  final int count;
+
+  /// Artifacts already cached, so not fetched.
+  final int cacheHitCount;
+
+  /// Fetches that ended in an error or a status of 400 or more.
+  final int failedCount;
+
+  /// Attempts after the first, across every fetch.
+  final int retryCount;
+
+  /// Response bytes received.
+  final int bytes;
+
+  /// Wall time with any fetch in flight; concurrent fetches count once.
+  final Duration duration;
+
+  /// Time spent on redirects before the request that served the bytes,
+  /// summed over fetches.
+  final Duration redirect;
+
+  /// Time to first byte of the request that served each fetch's bytes.
+  final DurationDistribution timeToFirstByte;
+
+  /// Fetches by the host that served their bytes.
+  final Map<String, HostDownloadStats> hosts;
+
+  /// Fetches by the edge that served them (`cloudflare:BOM`).
+  final Map<String, int> edges;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'count': count,
+    'cacheHitCount': cacheHitCount,
+    'failedCount': failedCount,
+    'retryCount': retryCount,
+    'bytes': bytes,
+    'ms': duration.inMilliseconds,
+    'redirectMs': redirect.inMilliseconds,
+    'ttfb': timeToFirstByte.toJson(),
+    'hosts': {
+      for (final MapEntry(:key, :value) in hosts.entries) key: value.toJson(),
+    },
+    'edges': edges,
+  };
+}
+
+/// The fetches one host served.
+class HostDownloadStats {
+  /// Creates a [HostDownloadStats].
+  HostDownloadStats({
+    required this.count,
+    required this.bytes,
+    required this.duration,
+  });
+
+  /// Fetches the host served.
+  final int count;
+
+  /// Bytes it served.
+  final int bytes;
+
+  /// Wall time with any of its fetches in flight.
+  final Duration duration;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'count': count,
+    'bytes': bytes,
+    'ms': duration.inMilliseconds,
   };
 }
 
@@ -905,6 +1009,107 @@ class _Accumulator {
   /// which assemble work ran inside the native build.
   final nativeSpans = <_Interval>[];
   final assembleSpans = _Spans();
+
+  /// The artifact cache's downloads (`download` spans).
+  final downloads = _Downloads();
+}
+
+/// Totals of the `download` spans flutter_tools writes during precache,
+/// as [DownloadStats] reports them.
+class _Downloads {
+  /// Most distinct hosts or edges reported; the rest are summed under
+  /// [_other]. Real precaches see two or three hosts and one edge.
+  static const _maxKeys = 16;
+
+  static const _other = 'other';
+
+  /// A host or edge name as reported, or [_other] when it isn't a short
+  /// plain name: these values come from response headers, and the
+  /// summary leaves the machine.
+  static final _plainName = RegExp(r'^[A-Za-z0-9._:-]{1,64}$');
+
+  final spans = _Spans();
+  int count = 0;
+  int cacheHitCount = 0;
+  int failedCount = 0;
+  int retryCount = 0;
+  int bytes = 0;
+  Duration redirect = Duration.zero;
+  final timesToFirstByte = <Duration>[];
+  final hosts = <String, _HostDownloads>{};
+  final edges = <String, int>{};
+
+  void add({
+    required int? ts,
+    required Duration dur,
+    required Map<Object?, Object?> args,
+  }) {
+    if (args[DownloadArgs.cacheHit] == true) {
+      cacheHitCount++;
+      return;
+    }
+    count++;
+    spans.add(ts, dur);
+    final size = _int(args[DownloadArgs.bytes]);
+    bytes += size;
+    retryCount += _int(args[DownloadArgs.retries]);
+    redirect += Duration(microseconds: _int(args[DownloadArgs.redirectUs]));
+    final ttfb = args[DownloadArgs.ttfbUs];
+    if (ttfb is num) timesToFirstByte.add(Duration(microseconds: ttfb.toInt()));
+    final status = args[DownloadArgs.status];
+    final failed =
+        args[DownloadArgs.error] != null || status is! num || status >= 400;
+    if (failed) failedCount++;
+
+    final host = _key(
+      hosts,
+      args[DownloadArgs.servedBy] ?? args[DownloadArgs.host],
+    );
+    (hosts[host] ??= _HostDownloads())
+      ..count += 1
+      ..bytes += size
+      ..spans.add(ts, dur);
+    final edge = args[DownloadArgs.edge];
+    if (edge != null) {
+      final key = _key(edges, edge);
+      edges[key] = (edges[key] ?? 0) + 1;
+    }
+  }
+
+  static int _int(Object? value) => value is num ? value.toInt() : 0;
+
+  /// The key [value] is counted under in [map].
+  static String _key(Map<String, Object?> map, Object? value) {
+    if (value is! String || !_plainName.hasMatch(value)) return _other;
+    if (map.containsKey(value) || map.length < _maxKeys) return value;
+    return _other;
+  }
+
+  DownloadStats stats() => DownloadStats(
+    count: count,
+    cacheHitCount: cacheHitCount,
+    failedCount: failedCount,
+    retryCount: retryCount,
+    bytes: bytes,
+    duration: spans.wall,
+    redirect: redirect,
+    timeToFirstByte: DurationDistribution.fromDurations(timesToFirstByte),
+    hosts: {
+      for (final MapEntry(:key, :value) in hosts.entries)
+        key: HostDownloadStats(
+          count: value.count,
+          bytes: value.bytes,
+          duration: value.spans.wall,
+        ),
+    },
+    edges: Map.unmodifiable(edges),
+  );
+}
+
+class _HostDownloads {
+  int count = 0;
+  int bytes = 0;
+  final spans = _Spans();
 }
 
 /// Spans of one bucket, reported as wall time: the length of their

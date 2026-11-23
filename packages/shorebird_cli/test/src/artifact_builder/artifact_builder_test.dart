@@ -846,7 +846,7 @@ void main() {
                 jsonDecode(summaryFile.readAsStringSync())
                     as Map<String, Object?>;
             expect(summary['platform'], 'android');
-            expect(summary['version'], 10);
+            expect(summary['version'], 11);
             // 500ms kernel + 200ms aot
             expect((summary['dart']! as Map)['totalMs'], 700);
             expect(summary['flutterBuildMs'], 3000);

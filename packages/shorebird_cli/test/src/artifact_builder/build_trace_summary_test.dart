@@ -464,7 +464,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 10);
+      expect(j['version'], 11);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
@@ -567,7 +567,143 @@ void main() {
           'flutterInstallMs': 90_000,
           'flutterPrecacheMs': 240_000,
           'shorebirdCacheMs': 31_000,
+          'downloads': {
+            'count': 0,
+            'cacheHitCount': 0,
+            'failedCount': 0,
+            'retryCount': 0,
+            'bytes': 0,
+            'ms': 0,
+            'redirectMs': 0,
+            'ttfb': DurationDistribution.empty().toJson(),
+            'hosts': <String, Object?>{},
+            'edges': <String, Object?>{},
+          },
         });
+      });
+    });
+
+    group('precache downloads', () {
+      Map<String, Object?> download({
+        required int ts,
+        required int dur,
+        required Map<String, Object?> args,
+      }) => _event(
+        name: 'download ${args['host']}',
+        cat: 'download',
+        ts: ts,
+        dur: dur,
+        tid: 1,
+        args: args,
+      );
+
+      test('totals fetches by host and edge', () {
+        final s = BuildTraceSummary.fromEvents([
+          // Two concurrent fetches redirected to GCS, one retried.
+          download(
+            ts: 0,
+            dur: 4_000_000,
+            args: {
+              'host': 'download.shorebird.dev',
+              'servedBy': 'storage.googleapis.com',
+              'status': 200,
+              'bytes': 1000,
+              'redirectUs': 300_000,
+              'ttfbUs': 500_000,
+              'retries': 1,
+              'edge': 'cloudflare:BOM',
+            },
+          ),
+          download(
+            ts: 1_000_000,
+            dur: 5_000_000,
+            args: {
+              'host': 'download.shorebird.dev',
+              'servedBy': 'storage.googleapis.com',
+              'status': 200,
+              'bytes': 2000,
+              'redirectUs': 200_000,
+              'ttfbUs': 700_000,
+              'retries': 0,
+              'edge': 'cloudflare:BOM',
+            },
+          ),
+          download(
+            ts: 10_000_000,
+            dur: 1_000_000,
+            args: {
+              'host': 'maven.example.com',
+              'status': 404,
+              'bytes': 0,
+              'ttfbUs': 900_000,
+              'retries': 0,
+            },
+          ),
+          download(
+            ts: 12_000_000,
+            dur: 0,
+            args: {'host': 'download.shorebird.dev', 'cacheHit': true},
+          ),
+        ], platform: 'android');
+        final downloads = s.setup.downloads;
+        expect(downloads.count, 3);
+        expect(downloads.cacheHitCount, 1);
+        expect(downloads.failedCount, 1);
+        expect(downloads.retryCount, 1);
+        expect(downloads.bytes, 3000);
+        expect(downloads.duration, const Duration(seconds: 7));
+        expect(downloads.redirect, const Duration(milliseconds: 500));
+        expect(
+          downloads.timeToFirstByte.p50,
+          const Duration(milliseconds: 700),
+        );
+        expect(downloads.toJson()['hosts'], {
+          'storage.googleapis.com': {'count': 2, 'bytes': 3000, 'ms': 6000},
+          'maven.example.com': {'count': 1, 'bytes': 0, 'ms': 1000},
+        });
+        expect(downloads.edges, {'cloudflare:BOM': 2});
+      });
+
+      test('reports names that are not plain hostnames as other', () {
+        final s = BuildTraceSummary.fromEvents([
+          download(
+            ts: 0,
+            dur: 1000,
+            args: {
+              'host': 'https://user:secret@example.com/x',
+              'status': 200,
+              'edge': 'cloudflare BOM; extra',
+            },
+          ),
+        ], platform: 'android');
+        expect(s.setup.downloads.hosts.keys, ['other']);
+        expect(s.setup.downloads.edges, {'other': 1});
+      });
+
+      test('caps distinct hosts and edges', () {
+        final s = BuildTraceSummary.fromEvents([
+          for (var i = 0; i < 20; i++)
+            download(
+              ts: i * 1000,
+              dur: 1000,
+              args: {'host': 'h$i.example.com', 'status': 200, 'edge': 'e:$i'},
+            ),
+        ], platform: 'android');
+        final hosts = s.setup.downloads.hosts;
+        expect(hosts, hasLength(17));
+        expect(hosts['other']!.count, 4);
+        expect(s.setup.downloads.edges['other'], 4);
+      });
+
+      test('a fetch with no status counts as failed', () {
+        final s = BuildTraceSummary.fromEvents([
+          download(
+            ts: 0,
+            dur: 1000,
+            args: {'host': 'example.com', 'error': 'connection reset'},
+          ),
+        ], platform: 'android');
+        expect(s.setup.downloads.failedCount, 1);
       });
     });
 

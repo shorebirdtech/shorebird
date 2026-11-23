@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shorebird_build_trace/src/build_trace_event.dart';
+import 'package:shorebird_build_trace/src/trace_schema.dart';
 
 /// Shorebird convention: all events from one producer share a single pid
 /// (the OS pid of the producing process), plus `process_name` metadata
@@ -20,6 +21,8 @@ import 'package:shorebird_build_trace/src/build_trace_event.dart';
 ///   `Process.runSync` / `Process.start` that emit a subprocess span.
 /// * [recordNetworkSpan] → HTTP-request span with the standard args
 ///   shape (method/host/status/error).
+/// * [recordDownloadSpan] → one artifact-cache download, args keyed by
+///   `DownloadArgs`.
 ///
 /// See also `PhaseTracker` for the `transitionTo(nextPhase)` pattern
 /// used when parsing a subprocess's verbose output.
@@ -388,6 +391,46 @@ class BuildTracer {
         'status': ?status,
         'contentLength': ?contentLength,
         'error': ?error,
+      },
+    );
+  }
+
+  /// Records one artifact download: a [TraceCategory.download] span named
+  /// `download <host>`, with args keyed by [DownloadArgs].
+  void recordDownloadSpan({
+    required String host,
+    required int pid,
+    required int tid,
+    required DateTime start,
+    required DateTime end,
+    String? servedBy,
+    int? status,
+    int? bytes,
+    Duration? redirect,
+    Duration? timeToFirstByte,
+    int retries = 0,
+    bool cacheHit = false,
+    String? edge,
+    String? error,
+  }) {
+    addCompleteEvent(
+      name: 'download $host',
+      cat: TraceCategory.download.wireName,
+      pid: pid,
+      tid: tid,
+      start: start,
+      end: end,
+      args: <String, Object?>{
+        DownloadArgs.host: host,
+        DownloadArgs.servedBy: ?servedBy,
+        DownloadArgs.status: ?status,
+        DownloadArgs.bytes: ?bytes,
+        DownloadArgs.redirectUs: ?redirect?.inMicroseconds,
+        DownloadArgs.ttfbUs: ?timeToFirstByte?.inMicroseconds,
+        DownloadArgs.retries: retries,
+        if (cacheHit) DownloadArgs.cacheHit: true,
+        DownloadArgs.edge: ?edge,
+        DownloadArgs.error: ?error,
       },
     );
   }

@@ -129,6 +129,7 @@ void main() {
           'flutter',
           any(that: contains('precache')),
           workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => precacheProcessResult);
       when(
@@ -1200,6 +1201,7 @@ origin/flutter_release/3.47.9''';
             'flutter',
             any(that: contains('precache')),
             workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
           ),
         );
       });
@@ -1238,6 +1240,43 @@ origin/flutter_release/3.47.9''';
         expect(lastUsed.lastModifiedSync(), equals(now));
       });
 
+      test('records the download spans precache writes', () async {
+        when(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer((invocation) async {
+          final environment =
+              invocation.namedArguments[#environment] as Map<String, String>;
+          BuildTracer()
+            ..recordDownloadSpan(
+              host: 'download.shorebird.dev',
+              pid: 7,
+              tid: 1,
+              start: DateTime.fromMicrosecondsSinceEpoch(0),
+              end: DateTime.fromMicrosecondsSinceEpoch(1000),
+              status: 200,
+            )
+            ..writeToFile(
+              File(environment[TraceEnvironment.downloadTraceFile]!),
+            );
+          return precacheProcessResult;
+        });
+
+        final events = await runWithOverrides(() async {
+          await shorebirdFlutter.installRevision(revision: revision);
+          return shorebirdTracer.events;
+        });
+
+        expect(
+          events.map((e) => e['name']),
+          contains('download download.shorebird.dev'),
+        );
+      });
+
       group('when the checkout completed but precache did not', () {
         setUp(createCheckout);
 
@@ -1258,6 +1297,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: targetDirectory.path,
+              environment: any(named: 'environment'),
             ),
           ).called(1);
           expect(precacheStamp.existsSync(), isTrue);
@@ -1711,6 +1751,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: targetDirectory.path,
+              environment: any(named: 'environment'),
             ),
           ).called(1);
         });
@@ -1749,6 +1790,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: any(named: 'workingDirectory'),
+              environment: any(named: 'environment'),
             ),
           );
           expect(precacheStamp.existsSync(), isFalse);
@@ -1789,6 +1831,7 @@ origin/flutter_release/3.47.9''';
             'flutter',
             any(that: contains('precache')),
             workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
           ),
         );
       });
@@ -1841,6 +1884,7 @@ origin/flutter_release/3.47.9''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: any(named: 'workingDirectory'),
+              environment: any(named: 'environment'),
             ),
           ).thenThrow(Exception('oh no!'));
         });
@@ -1912,6 +1956,7 @@ origin/flutter_release/3.47.9''';
             'flutter',
             any(that: contains('precache')),
             workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
           ),
         ).thenAnswer((_) async {
           envDuringPrecache = read(shorebirdEnvRef);
@@ -1945,6 +1990,7 @@ origin/flutter_release/3.47.9''';
                 ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
               ],
               workingDirectory: p.join(flutterDirectory.parent.path, revision),
+              environment: any(named: 'environment'),
             ),
           ).called(1);
           verify(

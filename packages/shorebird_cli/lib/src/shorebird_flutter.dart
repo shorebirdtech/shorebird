@@ -313,24 +313,44 @@ class ShorebirdFlutter {
       flutterRevisionOverride: revision,
     );
 
+    // A Flutter fork that traces its artifact downloads writes one span
+    // per download here; older ones ignore the variable. The command's
+    // trace file doesn't exist yet (ArtifactBuilder.prepareBuildTrace
+    // makes it after install), so the spans go through shorebirdTracer.
+    final downloadTraceDir = Directory.systemTemp.createTempSync(
+      'shorebird_precache_trace',
+    );
+    final downloadTrace = File(p.join(downloadTraceDir.path, 'trace.json'));
+
     final ShorebirdProcessResult result;
     try {
       // Traced: precache downloads the engine artifacts for every target
       // platform (hundreds of MB) from FLUTTER_STORAGE_BASE_URL. It runs
-      // in the flutter subprocess, and its downloads happen before
-      // flutter_tools installs its own BuildTracer, so this span is the
-      // only record of that time anywhere in the trace.
+      // in the flutter subprocess, so this span is its whole time; the
+      // download spans it writes to [downloadTrace] break it down.
       result = await shorebirdTracer.setupSpan(
         phase: SetupPhase.flutterPrecache,
         args: {'argv': precacheArguments.join(' ')},
-        body: () => runScoped(
-          () => process.run(
-            executable,
-            precacheArguments,
-            workingDirectory: targetDirectory.path,
-          ),
-          values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
-        ),
+        body: () async {
+          try {
+            return await runScoped(
+              () => process.run(
+                executable,
+                precacheArguments,
+                workingDirectory: targetDirectory.path,
+                environment: {
+                  TraceEnvironment.downloadTraceFile: downloadTrace.path,
+                },
+              ),
+              values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
+            );
+          } finally {
+            // A failed precache's downloads are kept too: they say where
+            // it got to.
+            shorebirdTracer.mergeEventsFromFile(downloadTrace);
+            _deleteQuietly(downloadTraceDir);
+          }
+        },
       );
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
@@ -366,6 +386,18 @@ class ShorebirdFlutter {
     }
     precacheProgress.complete();
     markUsed(targetDirectory);
+  }
+
+  /// Deletes [directory], ignoring a failure: it's a temp directory, and
+  /// a leftover one costs nothing.
+  void _deleteQuietly(Directory directory) {
+    try {
+      directory.deleteSync(recursive: true);
+      // coverage:ignore-start
+    } on FileSystemException {
+      // Left for the OS to clear.
+    }
+    // coverage:ignore-end
   }
 
   /// The installed revision whose Dart SDK is running this process, or null
