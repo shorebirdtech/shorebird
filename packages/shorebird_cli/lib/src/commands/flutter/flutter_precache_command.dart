@@ -13,11 +13,11 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 /// needs, without building anything.
 ///
 /// It installs what `shorebird release` and `shorebird patch` would install
-/// before building: the Flutter checkout and its `flutter precache`
-/// artifacts, and Shorebird's own artifacts for both the pinned and the
-/// requested Flutter. A later build with the same Flutter version then
-/// downloads none of it. Use it to bake Flutter into a Docker image or a CI
-/// cache.
+/// before building: the Flutter checkout, its `flutter precache` artifacts
+/// for Android (and iOS on macOS), and Shorebird's own artifacts for both the
+/// pinned and the requested Flutter. A later Android or iOS build with the
+/// same Flutter version then downloads none of it. Use it to bake Flutter
+/// into a Docker image or a CI cache.
 ///
 /// The engine's Maven artifacts are not among them: an Android build fetches
 /// those into the Gradle cache (`~/.gradle`), which the CI caches as it does
@@ -77,6 +77,16 @@ Defaults to the version this Shorebird uses when building with
     if (versionOrHash == null || versionOrHash == 'latest') {
       return shorebirdEnv.flutterRevision;
     }
+    // These ask a project's Flutter for its version; this command runs ahead
+    // of any project.
+    if (versionOrHash == 'system' || versionOrHash == 'fvm') {
+      throw CommandError(
+        message:
+            '--flutter-version=$versionOrHash is not supported by '
+            'shorebird flutter precache.',
+        hint: 'Pass the Flutter version itself, e.g. --flutter-version=3.38.5',
+      );
+    }
 
     // Fetch the latest refs so release branch pointers
     // (e.g. flutter_release/3.38.5) are current, as `shorebird release` does.
@@ -96,7 +106,10 @@ Defaults to the version this Shorebird uses when building with
     }
     if (revision == null) {
       throw CommandError(
-        message: 'Flutter $versionOrHash is not available to Shorebird.',
+        message:
+            'Flutter $versionOrHash is not available to Shorebird. To request '
+            'it, open an issue at '
+            'https://github.com/shorebirdtech/shorebird/issues/new.',
         hint: 'Run: shorebird flutter versions list',
         exitCode: ExitCode.software,
       );

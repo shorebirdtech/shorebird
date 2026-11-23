@@ -158,7 +158,7 @@ void main() {
             isA<CommandError>().having(
               (e) => e.message,
               'message',
-              'Flutter 3.38.5 is not available to Shorebird.',
+              startsWith('Flutter 3.38.5 is not available to Shorebird.'),
             ),
           ),
         );
@@ -185,6 +185,23 @@ void main() {
         );
       });
     });
+
+    for (final alias in ['system', 'fvm']) {
+      test('refuses --flutter-version=$alias', () async {
+        when(() => argResults['flutter-version']).thenReturn(alias);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<CommandError>().having(
+              (e) => e.message,
+              'message',
+              contains('--flutter-version=$alias is not supported'),
+            ),
+          ),
+        );
+        verifyNever(() => shorebirdFlutter.resolveFlutterRevision(any()));
+      });
+    }
 
     test('exits with software error when the install fails', () async {
       when(
