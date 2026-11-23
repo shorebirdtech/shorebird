@@ -565,13 +565,18 @@ class SetupStats {
   /// overlapping calls counted once.
   final Duration shorebirdCache;
 
-  /// Whether this command installed Flutter or ran its precache: the Flutter
-  /// fork was cloned, or `flutter precache` ran because the install's
-  /// precache had not finished. A warm build (`false`) found both done.
+  /// Whether this platform's build installed Flutter or ran its precache:
+  /// the Flutter fork was cloned, or `flutter precache` ran because the
+  /// install's precache had not finished. A warm build (`false`) found
+  /// both done. Each platform of a multi-platform command has its own
+  /// summary, so only the first platform to install a revision reads
+  /// cold.
   ///
-  /// It does not look at [shorebirdCache], which runs on every command
-  /// and refreshes only what's missing; its downloads show in
-  /// [shorebirdCache]'s time.
+  /// Not counted: [shorebirdCache], which runs on every command and
+  /// refreshes only what's missing (its downloads show in its time); the
+  /// CLI's own bundled Flutter, set up by its launcher before any trace;
+  /// and engine artifacts `flutter build` fetches itself, such as desktop
+  /// ones precache doesn't download.
   final bool cold;
 
   /// Wall time in any setup phase. Phases can nest or overlap (cache
@@ -1141,16 +1146,13 @@ class _Spans {
     for (final b in buckets) {
       _timed.addAll(b._timed);
       _withoutTs += b._withoutTs;
-      _withoutTsCount += b._withoutTsCount;
     }
   }
 
   final _timed = <_Interval>[];
 
   /// Whether any span was added, timed or not.
-  bool get isNotEmpty => _timed.isNotEmpty || _withoutTsCount > 0;
-
-  int _withoutTsCount = 0;
+  bool get isNotEmpty => _timed.isNotEmpty || _withoutTs > Duration.zero;
 
   /// Total of spans with no `ts`, which can't be placed and so are
   /// summed, as before timestamps.
@@ -1159,7 +1161,6 @@ class _Spans {
   void add(int? ts, Duration dur) {
     if (ts == null) {
       _withoutTs += dur;
-      _withoutTsCount++;
     } else {
       _timed.add(_Interval(ts, dur));
     }
