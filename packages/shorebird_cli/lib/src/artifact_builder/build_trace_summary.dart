@@ -225,7 +225,7 @@ class BuildTraceSummary {
       shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache).wall,
       downloads: acc.downloads.stats(),
       // The install and precache spans are emitted only when that work
-      // runs: a revision already cloned and precached returns before
+      // runs: a revision already cloned with its precache done returns before
       // either (ShorebirdFlutter.installRevision).
       cold:
           acc.setupPhase.of(SetupPhase.flutterInstall).isNotEmpty ||
@@ -565,9 +565,9 @@ class SetupStats {
   /// overlapping calls counted once.
   final Duration shorebirdCache;
 
-  /// Whether this command installed or precached Flutter: the Flutter
-  /// fork was cloned, or `flutter precache` ran because the install had
-  /// not been precached. A warm build (`false`) found both done.
+  /// Whether this command installed Flutter or ran its precache: the Flutter
+  /// fork was cloned, or `flutter precache` ran because the install's
+  /// precache had not finished. A warm build (`false`) found both done.
   ///
   /// It does not look at [shorebirdCache], which runs on every command
   /// and refreshes only what's missing; its downloads show in
@@ -1141,16 +1141,16 @@ class _Spans {
     for (final b in buckets) {
       _timed.addAll(b._timed);
       _withoutTs += b._withoutTs;
-      _untimedCount += b._untimedCount;
+      _withoutTsCount += b._withoutTsCount;
     }
   }
 
   final _timed = <_Interval>[];
 
   /// Whether any span was added, timed or not.
-  bool get isNotEmpty => _timed.isNotEmpty || _untimedCount > 0;
+  bool get isNotEmpty => _timed.isNotEmpty || _withoutTsCount > 0;
 
-  int _untimedCount = 0;
+  int _withoutTsCount = 0;
 
   /// Total of spans with no `ts`, which can't be placed and so are
   /// summed, as before timestamps.
@@ -1159,7 +1159,7 @@ class _Spans {
   void add(int? ts, Duration dur) {
     if (ts == null) {
       _withoutTs += dur;
-      _untimedCount++;
+      _withoutTsCount++;
     } else {
       _timed.add(_Interval(ts, dur));
     }

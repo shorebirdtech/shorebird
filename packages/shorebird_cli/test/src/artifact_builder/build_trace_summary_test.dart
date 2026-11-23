@@ -583,7 +583,7 @@ void main() {
         });
       });
 
-      test('cold when Flutter was installed or precached', () {
+      test('cold when Flutter was installed or its precache ran', () {
         // A checkout from an interrupted earlier run: precache only.
         final precacheOnly = BuildTraceSummary.fromEvents(
           setupEvents()
