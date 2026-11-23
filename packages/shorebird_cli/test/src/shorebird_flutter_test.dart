@@ -1,4 +1,4 @@
-// cspell:words revis precaches ENOTEMPTY
+// cspell:words revis precaches ENOTEMPTY refspec
 import 'dart:io';
 
 import 'package:clock/clock.dart';
@@ -31,6 +31,7 @@ void main() {
     const flutterRevision = 'flutter-revision';
     late Directory shorebirdRoot;
     late Directory flutterDirectory;
+    late Directory refsDirectory;
     late Git git;
     late ShorebirdLogger logger;
     late TestNativePlatform platform;
@@ -108,6 +109,9 @@ void main() {
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
+      refsDirectory = Directory(p.join(shorebirdRoot.path, 'flutter-refs'))
+        ..createSync();
+      when(() => shorebirdEnv.flutterRefsDirectory).thenReturn(refsDirectory);
       when(() => shorebirdEnv.flutterGitUrl).thenReturn(flutterGitUrl);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -822,6 +826,163 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
       });
     });
 
+    group('git lookups', () {
+      Future<void> lookUp() => runWithOverrides(
+        () => shorebirdFlutter.getVersionForRevision(
+          flutterRevision: flutterRevision,
+        ),
+      );
+
+      String lookupDirectory() =>
+          verify(
+                () => git.forEachRef(
+                  directory: captureAny(named: 'directory'),
+                  contains: any(named: 'contains'),
+                  format: any(named: 'format'),
+                  pattern: any(named: 'pattern'),
+                ),
+              ).captured.single
+              as String;
+
+      group('when the revision is installed', () {
+        setUp(() {
+          File(
+            p.join(shorebirdRoot.path, flutterRevision, 'bin', 'flutter'),
+          ).createSync(recursive: true);
+        });
+
+        test('runs in its checkout', () async {
+          await lookUp();
+          expect(
+            lookupDirectory(),
+            equals(p.join(shorebirdRoot.path, flutterRevision)),
+          );
+        });
+      });
+
+      group('when the revision is not installed', () {
+        group('and the refs repository does not have it', () {
+          setUp(() {
+            when(
+              () => git.revParse(
+                revision: '$flutterRevision^{commit}',
+                directory: refsDirectory.path,
+              ),
+            ).thenThrow(const ProcessException('git', ['rev-parse']));
+          });
+
+          test('fetches it there first', () async {
+            await lookUp();
+            verify(() => git.fetch(directory: refsDirectory.path)).called(1);
+            expect(lookupDirectory(), equals(refsDirectory.path));
+          });
+
+          test('still looks up when the fetch fails', () async {
+            when(
+              () => git.fetch(directory: refsDirectory.path),
+            ).thenThrow(Exception('offline'));
+            await lookUp();
+            expect(lookupDirectory(), equals(refsDirectory.path));
+          });
+        });
+
+        test('does not fetch when the refs repository has it', () async {
+          await lookUp();
+          verifyNever(() => git.fetch(directory: any(named: 'directory')));
+        });
+
+        test('runs in the refs repository', () async {
+          await lookUp();
+          expect(lookupDirectory(), equals(refsDirectory.path));
+          verifyNever(
+            () => git.clone(
+              url: any(named: 'url'),
+              outputDirectory: any(named: 'outputDirectory'),
+              args: any(named: 'args'),
+            ),
+          );
+        });
+
+        group('and the refs repository is missing', () {
+          setUp(() => refsDirectory.deleteSync());
+
+          test('clones it bare and treeless, then looks up there', () async {
+            await lookUp();
+
+            final args =
+                verify(
+                      () => git.clone(
+                        url: flutterGitUrl,
+                        outputDirectory: any(named: 'outputDirectory'),
+                        args: captureAny(named: 'args'),
+                      ),
+                    ).captured.single
+                    as List<String>;
+            expect(args, containsAll(['--bare', '--filter=tree:0']));
+            // Older git ignores the clone's --config refspec; a fetch
+            // before publishing fills refs/remotes/origin either way.
+            verify(
+              () => git.fetch(
+                directory: any(
+                  named: 'directory',
+                  that: startsWith('${refsDirectory.path}.'),
+                ),
+              ),
+            ).called(1);
+            expect(refsDirectory.existsSync(), isTrue);
+            expect(lookupDirectory(), equals(refsDirectory.path));
+            verify(() => progress.complete()).called(1);
+          });
+
+          group('and the clone fails', () {
+            setUp(() {
+              when(
+                () => git.clone(
+                  url: any(named: 'url'),
+                  outputDirectory: any(named: 'outputDirectory'),
+                  args: any(named: 'args'),
+                ),
+              ).thenThrow(const ProcessException('git', ['clone']));
+            });
+
+            test('fails and leaves nothing behind', () async {
+              await expectLater(lookUp, throwsA(isA<ProcessException>()));
+              verify(
+                () =>
+                    progress.fail('Failed to clone the Flutter version index'),
+              ).called(1);
+              expect(refsDirectory.existsSync(), isFalse);
+              expect(
+                shorebirdRoot.listSync().map((e) => p.basename(e.path)),
+                isNot(contains(startsWith('flutter-refs.'))),
+              );
+            });
+
+            group('but a peer published it first', () {
+              setUp(() {
+                when(
+                  () => git.clone(
+                    url: any(named: 'url'),
+                    outputDirectory: any(named: 'outputDirectory'),
+                    args: any(named: 'args'),
+                  ),
+                ).thenAnswer((_) async {
+                  refsDirectory.createSync();
+                  throw const ProcessException('git', ['clone']);
+                });
+              });
+
+              test("uses the peer's", () async {
+                await lookUp();
+                expect(lookupDirectory(), equals(refsDirectory.path));
+                verify(() => progress.complete()).called(1);
+              });
+            });
+          });
+        });
+      });
+    });
+
     group('getRevisionForVersion', () {
       const version = '3.16.3';
       const exception = ProcessException('git', ['rev-parse']);
@@ -945,7 +1106,7 @@ $revision
           );
           verify(
             () => git.forEachRef(
-              directory: p.join(flutterDirectory.parent.path, flutterRevision),
+              directory: refsDirectory.path,
               contains: flutterRevision,
               format: '%(refname:short)',
               pattern: 'refs/remotes/origin/flutter_release/*',
@@ -973,7 +1134,7 @@ $revision
           );
           verify(
             () => git.forEachRef(
-              directory: p.join(flutterDirectory.parent.path, flutterRevision),
+              directory: refsDirectory.path,
               contains: flutterRevision,
               format: '%(refname:short)',
               pattern: 'refs/remotes/origin/flutter_release/*',
@@ -990,7 +1151,7 @@ $revision
           );
           verify(
             () => git.forEachRef(
-              directory: p.join(flutterDirectory.parent.path, flutterRevision),
+              directory: refsDirectory.path,
               contains: flutterRevision,
               format: '%(refname:short)',
               pattern: 'refs/remotes/origin/flutter_release/*',
@@ -1097,7 +1258,7 @@ origin/flutter_release/3.10.6''';
         );
         verify(
           () => git.forEachRef(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
+            directory: refsDirectory.path,
             format: format,
             pattern: pattern,
           ),

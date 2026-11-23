@@ -72,6 +72,15 @@ abstract class ShorebirdCommand extends Command<int> {
   /// and the upgrade notice goes to stderr.
   bool get reservesStdout => false;
 
+  /// Whether this command may use the Flutter `bin/internal/flutter.version`
+  /// pins, so the command runner installs it first if it isn't installed.
+  ///
+  /// False for commands that install the Flutter they use themselves (a
+  /// release or patch builds with the Flutter it resolves) or use none, so
+  /// CI building with `--flutter-version` never downloads a Flutter it
+  /// doesn't build with.
+  bool get usesPinnedFlutter => true;
+
   /// The subcommand that runs when this command is given none, such as
   /// `whoami` for a bare `shorebird account`, or null to print usage as
   /// usual.

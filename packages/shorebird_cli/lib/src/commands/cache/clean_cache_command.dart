@@ -31,6 +31,10 @@ class CleanCacheCommand extends ShorebirdCommand {
   /// Name of the flag that limits cleaning to what has gone unused.
   static const unusedFlag = 'unused';
 
+  // Runs no Flutter.
+  @override
+  bool get usesPinnedFlutter => false;
+
   @override
   String get description => 'Clears the Shorebird cache directory.';
 

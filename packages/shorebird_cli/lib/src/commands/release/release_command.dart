@@ -188,6 +188,10 @@ Flutter, it must equal the version of the app that embeds the module.''',
 
   late final ResolveReleaser _resolveReleaser;
 
+  // Installs the Flutter it builds with (see ShorebirdFlutter.installRevision).
+  @override
+  bool get usesPinnedFlutter => false;
+
   @override
   String get description =>
       'Creates a shorebird release for the provided target platforms.';
@@ -411,7 +415,9 @@ Flutter, it must equal the version of the app that embeds the module.''',
     await assertArgsAreValid(releaser);
     await _validateFlavors(releaser);
 
-    await cache.updateAll();
+    // Artifacts are updated once the target Flutter is in scope
+    // (_buildAndPublishRelease): they are per engine revision, and the
+    // pinned one's would go unused by a --flutter-version build.
 
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
