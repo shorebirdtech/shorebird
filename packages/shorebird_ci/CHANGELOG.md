@@ -1,5 +1,10 @@
 <!-- cspell:words toplevel -->
 
+# 0.3.2
+
+- Generated workflows install Flutter with a `run:` step instead of `subosito/flutter-action`, so they no longer run a third-party action to install Flutter, and the Flutter archive is checked against the SHA-256 in Flutter's release manifest before it's used. subosito's action calls `actions/cache` by tag, which failed every generated Flutter job in repositories that require SHA-pinned actions. An exact `flutter_version` now resolves on any channel, not only stable. (#4513)
+- Bump the built-in `dart-lang/setup-dart` pin to v1.8.2. (#4477)
+
 # 0.3.1
 
 - `generate` reads repository-wide `shorebird_ci:` configuration from the repository root's `pubspec.yaml` (`required`, `fatal_infos`, `codecov_token_secret`), each mirroring the flag of the same name, with the flag winning where both are set. (#4446)
