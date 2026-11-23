@@ -4587,6 +4587,43 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(() => progress.fail(error)).called(1);
         });
 
+        test(
+          'leaves patch_platforms_differ for the command to report',
+          () async {
+            const error = CodePushConflictException(
+              message: 'Upgrade the Shorebird CLI or use the console.',
+              response: ErrorResponse(
+                code: patchPlatformsDifferCode,
+                message: 'Upgrade the Shorebird CLI or use the console.',
+              ),
+            );
+            when(
+              () => codePushClient.rollbackPatch(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                patchId: any(named: 'patchId'),
+              ),
+            ).thenThrow(error);
+
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.rollbackPatch(
+                  appId: appId,
+                  releaseId: releaseId,
+                  patchId: patchId,
+                  patchNumber: patchNumber,
+                ),
+              ),
+              throwsA(
+                isA<ApiErrorExit>().having((e) => e.error, 'error', error),
+              ),
+            );
+            verify(() => progress.fail()).called(1);
+            verifyNever(() => progress.fail(any()));
+            verifyNever(() => logger.info(any(that: contains('Error code'))));
+          },
+        );
+
         test('completes progress when patch is rolled back', () async {
           when(
             () => codePushClient.rollbackPatch(

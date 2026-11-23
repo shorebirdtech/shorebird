@@ -11,10 +11,6 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// The server's error code when a request without `platforms` would act on
-/// platforms under one patch number that are in different states.
-const patchPlatformsDifferCode = 'patch_platforms_differ';
-
 /// Whether [error] is the server refusing to act on every platform under a
 /// patch number because they are in different states.
 bool isPlatformsDiffer(Object error) =>
