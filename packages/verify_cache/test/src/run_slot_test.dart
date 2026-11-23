@@ -90,6 +90,51 @@ void main() {
       expect(order, [1, 2, 3]);
     });
 
+    test('a refused ticket lock leaks no descriptor', () async {
+      final dir = tempDir();
+      final held = await RunSlot.acquire(dir, 1);
+      // Waited on before the waiter starts, so this process's locked ticket
+      // is the one ahead that the waiter is refused on every try.
+      final blocker = await startHoldSlot(dir, 1);
+      final blockerLines = StreamIterator(
+        blocker.stdout.transform(utf8.decoder).transform(const LineSplitter()),
+      );
+      expect(await blockerLines.moveNext(), isTrue);
+      expect(blockerLines.current, 'waiting');
+
+      final waiter = await startHoldSlotUnderDescriptorLimit(
+        dir,
+        1,
+        descriptors: 128,
+      );
+      final lines = StreamIterator(
+        waiter.stdout.transform(utf8.decoder).transform(const LineSplitter()),
+      );
+      expect(await lines.moveNext(), isTrue);
+      expect(lines.current, 'waiting');
+      // Four times the descriptor limit, so one descriptor leaked per try
+      // exhausts it well before the last of these.
+      for (var i = 0; i < 512; i++) {
+        if (!await lines.moveNext()) {
+          // A waiter out of descriptors dies with its cause on stderr and
+          // nothing more on stdout, so the reason is only there.
+          fail(
+            'the waiter stopped on try $i: '
+            '${await waiter.stderr.transform(utf8.decoder).join()}',
+          );
+        }
+        expect(lines.current, 'retry');
+      }
+
+      // Killed, not released: the kernel drops the ticket's lock with the
+      // process, which is what lets the waiter past it.
+      blocker.kill();
+      await held.release();
+      while (lines.current != 'held') {
+        expect(await lines.moveNext(), isTrue);
+      }
+    }, skip: Platform.isWindows ? 'ulimit is a POSIX shell builtin' : null);
+
     test('fewer than one slot is an error', () {
       expect(() => RunSlot.acquire(tempDir(), 0), throwsArgumentError);
     });

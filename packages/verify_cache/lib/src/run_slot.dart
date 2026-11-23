@@ -31,10 +31,14 @@ class RunSlot {
   /// Takes one of [count] slots under [directory], waiting until one is
   /// free. Waiters are served in arrival order. Calls [onWait] once before
   /// waiting, if it has to wait.
+  ///
+  /// [sleep] stands in for the wait between tries, so a test can run the
+  /// wait loop without a real second per try.
   static Future<RunSlot> acquire(
     Directory directory,
     int count, {
     void Function()? onWait,
+    Future<void> Function(Duration) sleep = Future<void>.delayed,
   }) async {
     if (count < 1) throw ArgumentError.value(count, 'count', 'must be >= 1');
     final slots = Directory(p.join(directory.path, 'slots'));
@@ -48,7 +52,15 @@ class RunSlot {
     // Created and locked in a temporary path before entering queue/, so no
     // concurrent waiter ever sees an unlocked ticket in queue/.
     final stagingFile = File(p.join(slots.path, '.$ticketName.tmp'));
-    final ticket = stagingFile.openSync(mode: FileMode.append)..lockSync();
+    // Opened into its own variable rather than cascaded into the lock, so a
+    // refused lock has a descriptor to close instead of leaking one.
+    final ticket = stagingFile.openSync(mode: FileMode.append);
+    try {
+      ticket.lockSync();
+    } on FileSystemException {
+      ticket.closeSync();
+      rethrow;
+    }
     stagingFile.renameSync(ticketFile.path);
     _locked.add(ticketFile.path);
 
@@ -66,7 +78,7 @@ class RunSlot {
           waited = true;
           onWait?.call();
         }
-        await Future<void>.delayed(retryInterval);
+        await sleep(retryInterval);
       }
     } finally {
       _locked.remove(ticketFile.path);
@@ -85,7 +97,12 @@ class RunSlot {
       if (_locked.contains(file.path)) return true;
       RandomAccessFile? stale;
       try {
-        stale = file.openSync()..lockSync(FileLock.shared);
+        stale = file.openSync();
+        // Opened into [stale] first on purpose: the cascade this asks for
+        // assigns only once the lock is taken, so a refused lock on a live
+        // waiter's ticket leaks the descriptor on every try.
+        // ignore: cascade_invocations
+        stale.lockSync(FileLock.shared);
         file.deleteSync();
         stale.unlockSync();
       } on FileSystemException {
