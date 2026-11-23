@@ -66,10 +66,8 @@ class BuildRun {
   /// The patch the run made, once it has one.
   int? patchId;
 
-  /// The metadata the command sent with its release, set when it got that
-  /// far. A patch leaves it unset: its run is described when it ends, so the
-  /// build trace summary counts the upload that follows the patch's
-  /// metadata.
+  /// The metadata the command sent with its release or patch, set when it
+  /// got that far.
   Json? metadata;
 
   /// The run's dart-define and target hashes.
@@ -225,10 +223,8 @@ class BuildHistory {
   /// [BuildRunFailureReason.other] for the rest.
   /// Anything else is a crash and isn't recorded.
   ///
-  /// When the run ends without [BuildRun.metadata], [metadata] is asked to
-  /// describe it, after the build trace summary is written again: what a
-  /// run that stopped early got as far as, or a patch's metadata with a
-  /// summary that counts its upload. A [metadata] that fails sends none.
+  /// When the run ends without [BuildRun.metadata], [metadata] is asked for
+  /// what the run got as far as. A [metadata] that fails sends none.
   Future<T> record<T>(
     BuildRun run,
     Future<T> Function() body, {
@@ -386,12 +382,13 @@ class BuildHistory {
     logger.info('Shared debugging information with Shorebird ($why)');
   }
 
-  /// [metadata], with the build trace summary written first so it covers
-  /// the whole run, including what ran after the command last wrote it (a
-  /// patch's upload), or null if it can't be built.
+  /// [metadata], with the build trace summary written first if the run
+  /// stopped before the command wrote it, or null if it can't be built.
   Future<Json?> _tryMetadata(Future<Json> Function() metadata) async {
     try {
-      artifactBuilder.writeBuildTraceSummary();
+      if (buildTraceSession.summary == null) {
+        artifactBuilder.writeBuildTraceSummary();
+      }
       return await metadata();
     } on Object catch (error) {
       logger.detail('Could not describe this run for build history: $error');

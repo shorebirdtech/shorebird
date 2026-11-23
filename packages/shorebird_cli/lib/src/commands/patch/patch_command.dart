@@ -605,9 +605,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   /// What the diff check found, once it has run.
   DiffStatus? _diffStatus;
 
-  /// The metadata sent with the patch, once it has been described.
-  CreatePatchMetadata? _patchMetadata;
-
   /// [shorebirdEnv] with the Flutter of the release being patched, once it
   /// is known.
   ShorebirdEnv? _releaseShorebirdEnv;
@@ -617,7 +614,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   Future<PublishedPatch> _recordPatchRun(Patcher patcher) {
     _inferredReleaseVersion = false;
     _diffStatus = null;
-    _patchMetadata = null;
     _releaseShorebirdEnv = null;
     final run = _buildRun =
         buildHistory.start(
@@ -630,36 +626,22 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     return buildHistory.record(
       run,
       () => createPatch(patcher),
-      // The patch's metadata with the summary build history just rewrote,
-      // which counts the upload. A run that stopped before the patch was
-      // described is described now, with the release's Flutter, as the
-      // published patch is.
-      metadata: () async {
-        if (_patchMetadata case final sent?) {
-          return sent
-              .copyWith(buildTraceSummary: buildTraceSession.summary?.toJson())
-              .toJson();
-        }
-        return _describeStoppedRun(patcher);
-      },
+      // Described with the release's Flutter, as the published patch is.
+      metadata: () => runScoped(
+        () async => (await _createPatchMetadata(
+          patcher: patcher,
+          diffStatus:
+              _diffStatus ??
+              const DiffStatus(hasAssetChanges: false, hasNativeChanges: false),
+          inferredReleaseVersion: _inferredReleaseVersion,
+        )).toJson(),
+        values: {
+          if (_releaseShorebirdEnv case final env?)
+            shorebirdEnvRef.overrideWith(() => env),
+        },
+      ),
     );
   }
-
-  /// The metadata of a patch run that stopped before the patch was
-  /// described.
-  Future<Json> _describeStoppedRun(Patcher patcher) => runScoped(
-    () async => (await _createPatchMetadata(
-      patcher: patcher,
-      diffStatus:
-          _diffStatus ??
-          const DiffStatus(hasAssetChanges: false, hasNativeChanges: false),
-      inferredReleaseVersion: _inferredReleaseVersion,
-    )).toJson(),
-    values: {
-      if (_releaseShorebirdEnv case final env?)
-        shorebirdEnvRef.overrideWith(() => env),
-    },
-  );
 
   /// Creates a patch using the provided [patcher].
   ///
@@ -1275,8 +1257,7 @@ A patch must be built with the --dart-define values and --target of its release,
     // Set up build tracing before any flutter build / aot_tools /
     // gen_snapshot call runs. Version-gated inside prepareBuildTrace —
     // a no-op on older Flutter pins. Summary is written before the upload
-    // for the patch's metadata, and again for build history once the
-    // command ends.
+    // for the patch's metadata, and again after it for build history.
     await artifactBuilder.prepareBuildTrace(
       platform: patcher.releaseType.releasePlatform.name,
     );
@@ -1328,17 +1309,17 @@ Building patch with Flutter $flutterVersionString
 
     // Write the build-trace summary after all compile/link work has
     // finished, for the patch's metadata, which is sent when the patch is
-    // created, before its artifacts upload. The build history record is
-    // described once the command ends, with the summary written again so
-    // its timing counts the upload (as a release's does). No-op when
-    // tracing wasn't set up (older Flutter pin).
+    // created, before its artifacts upload. It is written again once the
+    // upload is done, for build history. No-op when tracing wasn't set up
+    // (older Flutter pin).
     artifactBuilder.writeBuildTraceSummary();
 
-    final metadata = _patchMetadata = await _createPatchMetadata(
+    final metadata = await _createPatchMetadata(
       patcher: patcher,
       diffStatus: diffStatus,
       inferredReleaseVersion: inferredReleaseVersion,
     );
+    _buildRun?.metadata = metadata.toJson();
 
     final patchToAddTo = _patchToAddTo;
     final patch = await blameFailureOn(
@@ -1365,6 +1346,13 @@ Building patch with Flutter $flutterVersionString
             ),
     );
     _buildRun?.patchId = patch.id;
+
+    // Write the summary again now the upload is done, so build history's
+    // timing counts it, as a release's does (see finalizeRelease).
+    artifactBuilder.writeBuildTraceSummary();
+    _buildRun?.metadata = metadata
+        .copyWith(buildTraceSummary: buildTraceSession.summary?.toJson())
+        .toJson();
 
     return PublishedPatch(
       platform: patcher.releaseType.releasePlatform,

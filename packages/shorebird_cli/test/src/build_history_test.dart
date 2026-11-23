@@ -11,7 +11,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
-import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/build_history.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -221,20 +220,6 @@ void main() {
 
         verify(() => artifactBuilder.writeBuildTraceSummary()).called(1);
       });
-
-      test(
-        'writes the build trace summary again when the command wrote one',
-        () async {
-          await recordRun(startRun(), () async {
-            buildTraceSession.summary = BuildTraceSummary.fromEvents(
-              const [],
-              platform: 'android',
-            );
-          });
-
-          verify(() => artifactBuilder.writeBuildTraceSummary()).called(1);
-        },
-      );
 
       test('sends the reason the command set', () async {
         final run = startRun()..failWith(BuildRunFailureReason.linkPercentage);
