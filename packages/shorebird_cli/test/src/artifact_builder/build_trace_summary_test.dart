@@ -115,6 +115,37 @@ void main() {
       });
     });
 
+    test('toJson totals add up in whole milliseconds', () {
+      final s = BuildTraceSummary.fromEvents(
+        [
+          _event(
+            name: 'flutter process',
+            cat: 'subprocess',
+            ts: 0,
+            dur: 1_000_600,
+            tid: 2,
+          ),
+          _event(
+            name: 'POST patch',
+            cat: 'network',
+            ts: 2_000_000,
+            dur: 400_600,
+            tid: 1,
+          ),
+        ],
+        platform: 'android',
+        shorebirdOverhead: const Duration(microseconds: 2_000_600),
+      );
+      final j = s.toJson();
+      // 1000.6 + 2000.6 is 3001.2 ms, but the parts read 1000 + 2000.
+      expect(j['flutterBuildMs'], 1000);
+      expect(j['shorebirdOverheadMs'], 2000);
+      expect(j['totalMs'], 3000);
+      // 2000 - 400, not 1599 (2000.6 - 400.6 rounded down).
+      expect((j['network']! as Map)['shorebirdMs'], 400);
+      expect(j['shorebirdLocalMs'], 1600);
+    });
+
     test('unknown cat is dropped — does not contribute to any bucket', () {
       // A future producer emits a category this consumer doesn't know yet.
       // Forward-compat contract: parse to TraceCategory.unknown and skip.

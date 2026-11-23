@@ -7,6 +7,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:shorebird_build_trace/shorebird_build_trace.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
@@ -478,39 +479,50 @@ class BuildTraceSummary {
   /// no redundant top-level `dartMs`. `nonDart` is a consumer-side
   /// subtraction (`flutterBuildMs - dart.totalMs`) — kept out of the
   /// on-wire shape so there's exactly one way to read each value.
-  Map<String, Object?> toJson() => <String, Object?>{
-    // 10: the trace holds no data from earlier commands; earlier versions
-    // may sum every run since the last `flutter clean` (_shorebird#5890).
-    // Dart, network, setup and assemble buckets are wall time (the union
-    // of their spans), not sums; earlier versions sum concurrent
-    // gen_snapshot runs once per arch. Gradle task kinds, pod phases,
-    // xcode subsections and flutterTool are still sums: parallel gradle
-    // tasks can add up to more than the native build.
-    // network.shorebirdMs is new in 10, and shorebirdLocalMs subtracts it
-    // rather than network.ms.
-    // 11: setup.downloads, from the download spans a Flutter fork that
-    // traces precache writes; zeros from one that doesn't.
-    // setup.cold is new in 11 too; absent before, which is not false.
-    // 12: flutterBuildMs is the flutter process from spawn to exit, so
-    // flutter_tools' startup (pub get, artifact downloads) moves out of
-    // shorebirdOverheadMs into it; macOS's compile_macos_framework counts
-    // as dart.genSnapshotMs (it was assemble "other").
-    'version': 12,
-    'platform': platform,
-    'totalMs': total.inMilliseconds,
-    'flutterBuildMs': flutterBuild.inMilliseconds,
-    'shorebirdOverheadMs': shorebirdOverhead?.inMilliseconds,
-    'shorebirdLocalMs': shorebirdLocal?.inMilliseconds,
-    'network': network.toJson(),
-    'setup': setup.toJson(),
-    'dart': dart.toJson(),
-    'flutterAssemble': flutterAssemble.toJson(),
-    'native': native.toJson(),
-    'flutterTool': <String, Object?>{'ms': flutterTool.inMilliseconds},
-    'android': ?android?.toJson(),
-    'ios': ?ios?.toJson(),
-    'environment': ?environment?.toJson(),
-  };
+  Map<String, Object?> toJson() {
+    // Whole milliseconds from the rounded parts, so totalMs is exactly
+    // flutterBuildMs + shorebirdOverheadMs, and shorebirdLocalMs exactly
+    // shorebirdOverheadMs - network.shorebirdMs (clamped at 0).
+    final flutterBuildMs = flutterBuild.inMilliseconds;
+    final overheadMs = shorebirdOverhead?.inMilliseconds;
+    final localMs = overheadMs == null
+        ? null
+        : max(0, overheadMs - network.shorebird.inMilliseconds);
+    return <String, Object?>{
+      // 10: the trace holds no data from earlier commands; earlier versions
+      // may sum every run since the last `flutter clean` (_shorebird#5890).
+      // Dart, network, setup and assemble buckets are wall time (the union
+      // of their spans), not sums; earlier versions sum concurrent
+      // gen_snapshot runs once per arch. Gradle task kinds, pod phases,
+      // xcode subsections and flutterTool are still sums: parallel gradle
+      // tasks can add up to more than the native build.
+      // network.shorebirdMs is new in 10, and shorebirdLocalMs subtracts it
+      // rather than network.ms.
+      // 11: setup.downloads, from the download spans a Flutter fork that
+      // traces precache writes; zeros from one that doesn't.
+      // setup.cold is new in 11 too; absent before, which is not false.
+      // 12: flutterBuildMs is the flutter process from spawn to exit, so
+      // flutter_tools' startup (pub get, artifact downloads) moves out of
+      // shorebirdOverheadMs into it; macOS's compile_macos_framework counts
+      // as dart.genSnapshotMs (it was assemble "other"); totalMs and
+      // shorebirdLocalMs are computed from the rounded milliseconds.
+      'version': 12,
+      'platform': platform,
+      'totalMs': flutterBuildMs + (overheadMs ?? 0),
+      'flutterBuildMs': flutterBuildMs,
+      'shorebirdOverheadMs': overheadMs,
+      'shorebirdLocalMs': localMs,
+      'network': network.toJson(),
+      'setup': setup.toJson(),
+      'dart': dart.toJson(),
+      'flutterAssemble': flutterAssemble.toJson(),
+      'native': native.toJson(),
+      'flutterTool': <String, Object?>{'ms': flutterTool.inMilliseconds},
+      'android': ?android?.toJson(),
+      'ios': ?ios?.toJson(),
+      'environment': ?environment?.toJson(),
+    };
+  }
 }
 
 /// Network I/O totals for HTTP that shorebird_cli itself issues (auth,
