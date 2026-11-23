@@ -107,7 +107,8 @@ function Test-PrebuiltIsCurrent($revision) {
     if (!(Test-Path $prebuiltPath) -or !(Test-Path $prebuiltStampPath)) {
         return $false
     }
-    return (Get-Content $prebuiltStampPath -Raw).Trim() -eq $revision
+    # [string]: an empty stamp reads as $null.
+    return ([string](Get-Content $prebuiltStampPath -Raw)).Trim() -eq $revision
 }
 
 # Installs the CLI that publish_cli.yaml built for this commit (every commit
@@ -118,6 +119,7 @@ function Test-PrebuiltIsCurrent($revision) {
 # platform it isn't built for, no curl.exe, a failed download, or a binary that
 # doesn't start. Its messages go to stderr itself: its output is the result.
 function Install-PrebuiltCli($revision) {
+    if (!$revision) { return $false }
     # Native commands' stderr must not stop the script (Windows PowerShell
     # treats it as an error under "Stop"); each step's result is checked.
     $ErrorActionPreference = "Continue"
@@ -129,7 +131,9 @@ function Install-PrebuiltCli($revision) {
     if (!(Get-Command curl.exe -ErrorAction SilentlyContinue)) { return $false }
 
     # The binary is the commit as published: with local changes, build those.
-    $changes = git -C "$shorebirdRootDir" status --porcelain -- bin packages third_party pubspec.yaml pubspec.lock 2> $null
+    # FullName ends in a backslash, which Windows PowerShell would pass as an
+    # escaped quote inside a quoted (spaced) path.
+    $changes = git -C "$($shorebirdRootDir.TrimEnd('\'))" status --porcelain -- bin packages third_party pubspec.yaml pubspec.lock 2> $null
     if ($LASTEXITCODE -ne 0 -or $changes) { return $false }
 
     # Keep the default and the trailing slash handling in sync with
@@ -137,18 +141,18 @@ function Install-PrebuiltCli($revision) {
     $downloadUrl = 'https://download.shorebird.dev'
     if ($env:SHOREBIRD_DOWNLOAD_URL) { $downloadUrl = $env:SHOREBIRD_DOWNLOAD_URL }
     $url = "$($downloadUrl.TrimEnd('/'))/shorebird-cli/$revision/shorebird-windows-x64.zip"
-    $tmp = [IO.Path]::Combine($shorebirdCacheDir, "shorebird-cli.tmp")
+    # Its own directory per run: nothing locks two cold runs apart on Windows.
+    $tmp = [IO.Path]::Combine($shorebirdCacheDir, "shorebird-cli.$([guid]::NewGuid()).tmp")
     $zip = [IO.Path]::Combine($tmp, "cli.zip")
     try {
-        if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force -ErrorAction Stop }
         New-Item -ItemType Directory -Path $tmp -Force -ErrorAction Stop | Out-Null
 
         # The checksum first, quietly: a commit with no binaries gets a 404
         # here, and building it is the normal path for one, not an error.
-        curl.exe --fail --silent --location --retry 3 --output "$zip.sha256" "$url.sha256" 2> $null
+        curl.exe --fail --silent --location --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30 --output "$zip.sha256" "$url.sha256" 2> $null
         if ($LASTEXITCODE -ne 0) { return $false }
         [Console]::Error.WriteLine("Downloading Shorebird...")
-        curl.exe --fail --silent --location --retry 3 --output "$zip" "$url" 2> $null
+        curl.exe --fail --silent --location --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30 --output "$zip" "$url" 2> $null
         if ($LASTEXITCODE -ne 0) {
             [Console]::Error.WriteLine("Couldn't download $url; building Shorebird instead.")
             return $false
@@ -297,6 +301,7 @@ function Update-Shorebird {
     Move-Item $snapshotTmpPath $snapshotPath
     # Old snapshots still mapped are removed by a later rebuild.
     Remove-Item "$snapshotPath.*.old" -ErrorAction SilentlyContinue
+    Remove-Item "$prebuiltPath.*.old" -ErrorAction SilentlyContinue
 
     Write-Debug "writing $compileKey to $stampPath"
     Remove-Item $prebuiltStampPath -ErrorAction SilentlyContinue
@@ -376,7 +381,9 @@ $shorebirdArgs = @(Restore-EndOfOptions $args $MyInvocation)
 # Setup output (its messages, git, flutter --version, pub get) goes to stderr,
 # so stdout is only the command's own: `$(shorebird flutter path)` and `--json`
 # read it. Write-Host would go to stdout under `powershell -File`.
-$revision = (git -C "$shorebirdRootDir" rev-parse HEAD).Trim()
+Push-Location $shorebirdRootDir
+$revision = "$(& { git rev-parse HEAD })".Trim()
+Pop-Location
 if (!(Test-PrebuiltIsCurrent $revision) -and (Test-ShorebirdNeedsUpdate)) {
     if (!(Install-PrebuiltCli $revision)) {
         Update-Shorebird | ForEach-Object { [Console]::Error.WriteLine($_) }

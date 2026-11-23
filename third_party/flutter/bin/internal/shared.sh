@@ -66,7 +66,13 @@ function prebuilt_platform {
     Linux) os=linux ;;
     *) return 0 ;;
   esac
-  case "$(uname -m)" in
+  local machine
+  machine="$(uname -m)"
+  # A shell under Rosetta reports x86_64 on Apple Silicon.
+  if [[ "$os" == macos && "$machine" == x86_64 && "$(sysctl -n hw.optional.arm64 2>/dev/null)" == 1 ]]; then
+    machine=arm64
+  fi
+  case "$machine" in
     x86_64|amd64) arch=x64 ;;
     arm64|aarch64) arch=arm64 ;;
     *) return 0 ;;
@@ -97,6 +103,7 @@ function sha256_of {
 # platform it isn't built for, no curl or unzip, a failed download, or a binary
 # that doesn't start.
 function install_prebuilt_cli {
+  [[ -n "$REVISION" ]] || return 1
   local platform
   platform="$(prebuilt_platform)"
   [[ -n "$platform" ]] || return 1
@@ -117,12 +124,15 @@ function install_prebuilt_cli {
 
   # The checksum first, quietly: a commit with no binaries gets a 404 here,
   # and building it is the normal path for one, not an error.
-  if ! curl --fail --silent --location --retry 3 --output "$tmp/cli.zip.sha256" "$url.sha256"; then
+  # Without a timeout, a network that drops packets would hold the startup
+  # lock, and every other shorebird, for minutes before the fallback.
+  local curl_args=(--fail --location --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30)
+  if ! curl "${curl_args[@]}" --silent --output "$tmp/cli.zip.sha256" "$url.sha256"; then
     rm -rf "$tmp"
     return 1
   fi
   echo "Downloading Shorebird..."
-  if ! curl --fail --silent --show-error --location --retry 3 --output "$tmp/cli.zip" "$url"; then
+  if ! curl "${curl_args[@]}" --silent --show-error --output "$tmp/cli.zip" "$url"; then
     echo "Couldn't download $url; building Shorebird instead."
     rm -rf "$tmp"
     return 1
@@ -140,11 +150,14 @@ function install_prebuilt_cli {
     rm -rf "$tmp"
     return 1
   fi
-  chmod +x "$tmp/shorebird"
-
+  # Called as a condition, so set -e doesn't stop on these: check each.
   # A rename replaces the old binary even while it runs (shorebird upgrade).
   # The CLI finds its install from its own path, so it's checked in place.
-  mv -f "$tmp/shorebird" "$PREBUILT_PATH"
+  if ! chmod +x "$tmp/shorebird" || ! mv -f "$tmp/shorebird" "$PREBUILT_PATH"; then
+    echo "Couldn't install the downloaded Shorebird; building it instead."
+    rm -rf "$tmp"
+    return 1
+  fi
   rm -rf "$tmp"
   if ! "$PREBUILT_PATH" --version > /dev/null 2>&1; then
     echo "The downloaded Shorebird didn't start; building it instead."
@@ -153,7 +166,7 @@ function install_prebuilt_cli {
   fi
   # One stamp at a time: what was set up last for HEAD is what runs.
   rm -f "$STAMP_PATH"
-  echo "$REVISION" > "$PREBUILT_STAMP_PATH"
+  echo "$REVISION" > "$PREBUILT_STAMP_PATH" || return 1
   return 0
 }
 
@@ -352,7 +365,9 @@ function shared::execute() {
     exit 1
   fi
 
-  REVISION="$(cd "$SHOREBIRD_ROOT"; git rev-parse HEAD)"
+  # Not fatal, as before: git refuses a checkout another user owns ("dubious
+  # ownership", root in a container), and the snapshot path still runs.
+  REVISION="$(cd "$SHOREBIRD_ROOT"; git rev-parse HEAD)" || REVISION=""
 
   # Setup output (git, flutter --version, pub get) goes to stderr, so stdout is
   # only the command's own: `$(shorebird flutter path)` and `--json` read it.
