@@ -76,8 +76,9 @@ class BuildTraceSummary {
     BuildEnvironment? environment,
   }) {
     // The process span holds Flutter's startup, which the umbrella span
-    // leaves out; a trace without one (written before summary version 11)
-    // falls back to the umbrella.
+    // leaves out. The CLI merges one into every trace it summarizes; the
+    // umbrella is only for a trace without the CLI's spans (Flutter's
+    // own, or a test's).
     final hasProcess = acc.flutterProcessCount > 0;
     final flutterBuild = hasProcess ? acc.flutterProcess : acc.flutterBuild;
     final flutterBuildSpans = hasProcess
@@ -400,8 +401,11 @@ class BuildTraceSummary {
   /// Wall-clock time of the `flutter build` processes, from spawn to exit
   /// (the [TraceNames.flutterProcessSpanName] spans), including
   /// flutter_tools' startup before its `flutter build *` umbrella span
-  /// (pub get, artifact downloads). A trace with no process span (before
-  /// summary version 11) gives the umbrella span instead.
+  /// (pub get, artifact downloads). Every flutter build the command ran
+  /// counts, including one with no trace of its own: `shorebird patch`
+  /// without `--release-version` builds once more to guess the release,
+  /// so its dart, native and assemble stats cover only the traced build.
+  /// A trace with no process span gives the umbrella span instead.
   final Duration flutterBuild;
 
   /// Wall-clock time the Shorebird CLI spent around Flutter. Null when
