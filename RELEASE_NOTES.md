@@ -4,6 +4,23 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.148 (November 23, 2026)
+
+- ❓ Fix(shorebird_cli): count a patch's upload in its build history timing, as
+  releases do
+- ❓ Fix(tool): agent-verify prints the format command that fixes a failed format
+  step
+- ❓ Chore: prepare for release 1.6.147
+- ❓ Fix(shorebird_cli): refuse --no-codesign for macOS release and patch
+- ❓ Feat(shorebird_cli): fold flutter precache download spans into the build
+  trace summary
+- ❓ Feat(shorebird_cli): mark each build trace summary cold or warm
+- ❓ Fix(shorebird_cli): count Flutter's startup as the Flutter build in build
+  trace summaries
+- ❓ Feat(shorebird_cli): add shorebird flutter precache
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.147.
+
 ## 1.6.147 (November 23, 2026)
 
 - ✨ `shorebird usage` adds a line for installs from other organizations sharing
