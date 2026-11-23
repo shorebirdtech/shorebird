@@ -206,6 +206,39 @@ void main() {
         });
       });
 
+      group('when --no-codesign is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('codesign')).thenReturn(true);
+          when(() => argResults['codesign']).thenReturn(false);
+        });
+
+        test('exits with an error saying the flag is unsupported', () async {
+          await expectLater(
+            () => runWithOverrides(releaser.assertArgsAreValid),
+            exitsWithError(
+              message: '--no-codesign is not supported for macOS.',
+              hint:
+                  'Remove --no-codesign. A macOS app is signed by the signing '
+                  "settings in your Xcode project's Runner target.",
+            ),
+          );
+        });
+      });
+
+      group('when --codesign is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('codesign')).thenReturn(true);
+          when(() => argResults['codesign']).thenReturn(true);
+        });
+
+        test('completes', () async {
+          await expectLater(
+            runWithOverrides(releaser.assertArgsAreValid),
+            completes,
+          );
+        });
+      });
+
       group('when --obfuscate is not passed', () {
         test('returns normally', () async {
           await expectLater(
@@ -226,7 +259,6 @@ void main() {
 
         when(
           () => artifactBuilder.buildMacos(
-            codesign: any(named: 'codesign'),
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
@@ -276,27 +308,6 @@ void main() {
           ).called(1);
           verify(
             () => artifactManager.getMacOSAppDirectory(flavor: flavor),
-          ).called(1);
-        });
-      });
-
-      group('when not codesigning', () {
-        setUp(() {
-          when(() => argResults['codesign']).thenReturn(false);
-        });
-
-        test('logs warning about patching', () async {
-          await runWithOverrides(releaser.buildReleaseArtifacts);
-
-          verify(
-            () => logger.info(
-              '''Building for device with codesigning disabled. You will have to manually codesign before deploying to device.''',
-            ),
-          ).called(1);
-          verify(
-            () => logger.warn(
-              '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
-            ),
           ).called(1);
         });
       });
@@ -397,7 +408,6 @@ void main() {
           // By default, simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
@@ -425,7 +435,6 @@ void main() {
 
           final captured = verify(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
@@ -450,7 +459,6 @@ void main() {
 
           final captured = verify(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: captureAny(named: 'args'),

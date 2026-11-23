@@ -195,7 +195,7 @@ To target the latest release (e.g. the release that was most recently updated) u
       )
       ..addFlag(
         'codesign',
-        help: 'Codesign the app bundle or XCFrameworks (iOS and macOS only).',
+        help: 'Codesign the app bundle or XCFrameworks (iOS only).',
         defaultsTo: true,
       )
       ..addFlag(
