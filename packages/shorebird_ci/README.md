@@ -196,11 +196,17 @@ shorebird_ci:
   min_coverage: 99.7
   runners: [ubuntu-latest, macos-latest]
   needs_redis: true
+  integration_tests: false
   report_on: lib,routes
   coverage_excludes: "lib/generated/**"
   total_shards: 4
   inputs: ["openapi.yaml"]
 ```
+
+`integration_tests` decides whether CI runs `flutter test
+integration_test`. Left out, it runs when the package has both an
+`integration_test/` and a `linux/` directory, since the Linux desktop
+is the only device a hosted `ubuntu-latest` runner has.
 
 Repository-wide, in the repository root's `pubspec.yaml`:
 
