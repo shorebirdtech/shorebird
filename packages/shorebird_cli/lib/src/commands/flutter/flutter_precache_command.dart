@@ -38,6 +38,10 @@ Defaults to the version this Shorebird uses when building with
     );
   }
 
+  // Installs the Flutter it builds with (see ShorebirdFlutter.installRevision).
+  @override
+  bool get usesPinnedFlutter => false;
+
   @override
   String get description =>
       'Install a Flutter version and its build artifacts without building.';
@@ -55,10 +59,8 @@ Defaults to the version this Shorebird uses when building with
       return ExitCode.software.code;
     }
 
-    // `shorebird release` updates the cache once for the pinned Flutter and
-    // again scoped to the one it builds with (aot-tools is per engine
-    // revision), so do both.
-    await cache.updateAll();
+    // `shorebird release` updates the cache scoped to the Flutter it builds
+    // with (aot-tools is per engine revision), so do the same.
     final targetEnv = shorebirdEnv.copyWith(flutterRevisionOverride: revision);
     await runScoped(
       cache.updateAll,

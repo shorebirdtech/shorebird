@@ -377,6 +377,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         }
       }
       try {
+        await _installPinnedFlutterIfUsed(topLevelResults);
         exitCode = await runScoped(
           () => super.runCommand(topLevelResults),
           values: {
@@ -572,9 +573,8 @@ ${currentRunLogFile.absolute.path}
         '`$executableName ${canonical.join(' ')}`.';
   }
 
-  /// Whether the command [topLevelResults] ran is a [ShorebirdCommand] whose
-  /// output owns stdout (see [ShorebirdCommand.reservesStdout]).
-  bool _reservesStdout(ArgResults topLevelResults) {
+  /// The command [topLevelResults] runs, or null if it names none.
+  Command<int>? _commandOf(ArgResults topLevelResults) {
     Command<int>? command;
     var available = commands;
     for (
@@ -583,10 +583,36 @@ ${currentRunLogFile.absolute.path}
       results = results.command
     ) {
       command = available[results.name];
-      if (command == null) return false;
+      if (command == null) return null;
       available = command.subcommands;
     }
+    return command;
+  }
+
+  /// Whether the command [topLevelResults] ran is a [ShorebirdCommand] whose
+  /// output owns stdout (see [ShorebirdCommand.reservesStdout]).
+  bool _reservesStdout(ArgResults topLevelResults) {
+    final command = _commandOf(topLevelResults);
     return command is ShorebirdCommand && command.reservesStdout;
+  }
+
+  /// Installs the pinned Flutter before a command that may use it, if it
+  /// isn't installed (see [ShorebirdCommand.usesPinnedFlutter]).
+  ///
+  /// The launcher no longer needs that Flutter to run the CLI, so it is
+  /// installed here, the first time a command needs it. A command that isn't
+  /// a [ShorebirdCommand] (help, say) needs none.
+  Future<void> _installPinnedFlutterIfUsed(ArgResults topLevelResults) async {
+    final command = _commandOf(topLevelResults);
+    if (command is! ShorebirdCommand || !command.usesPinnedFlutter) return;
+    final revision = shorebirdEnv.flutterRevision;
+    if (shorebirdFlutter.isInstalled(revision: revision)) return;
+    try {
+      await shorebirdFlutter.installRevision(revision: revision);
+    } on Exception {
+      // installRevision has already said what failed.
+      throw ProcessExit(ExitCode.software.code);
+    }
   }
 
   /// Removes Flutter installs, engine artifacts and previews that have gone

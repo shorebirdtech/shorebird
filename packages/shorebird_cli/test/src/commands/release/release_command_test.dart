@@ -432,7 +432,6 @@ void main() {
           flavorArg: null,
           releasePlatform: ReleasePlatform.android,
         ),
-        cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
         () => logger.info(
           'Building $artifactDisplayName with Flutter $flutterRevision',
@@ -851,7 +850,6 @@ void main() {
             flavorArg: flavor,
             releasePlatform: ReleasePlatform.android,
           ),
-          cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
           () => logger.info(
             'Building $artifactDisplayName with Flutter $flutterRevision',

@@ -101,7 +101,7 @@ void main() {
           () => shorebirdFlutter.installRevision(revision: pinnedRevision),
         ).called(1);
         verifyNever(() => shorebirdFlutter.fetchRemoteRefs());
-        expect(cacheUpdateRevisions, equals([pinnedRevision, pinnedRevision]));
+        expect(cacheUpdateRevisions, equals([pinnedRevision]));
         verify(
           () => logger.info(
             '✅ Flutter 3.38.5 is installed and ready to build with.',
@@ -140,12 +140,9 @@ void main() {
         ]);
       });
 
-      test('updates the Shorebird cache for pinned and requested', () async {
+      test('updates the Shorebird cache for the requested only', () async {
         await runWithOverrides(command.run);
-        expect(
-          cacheUpdateRevisions,
-          equals([pinnedRevision, requestedRevision]),
-        );
+        expect(cacheUpdateRevisions, equals([requestedRevision]));
       });
 
       test('throws a CommandError when the version is unknown', () async {

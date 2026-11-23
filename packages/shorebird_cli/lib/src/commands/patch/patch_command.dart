@@ -297,6 +297,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   /// The patch this build is added to, once [createPatch] has found it.
   ReleasePatch? _patchToAddTo;
 
+  // Installs the Flutter it builds with (see ShorebirdFlutter.installRevision).
+  @override
+  bool get usesPinnedFlutter => false;
+
   @override
   String get description =>
       'Creates a shorebird patch for the provided target platforms.';
@@ -651,7 +655,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   Future<PublishedPatch> createPatch(Patcher patcher) async {
     await _assertCanPatch(patcher);
 
-    await cache.updateAll();
+    // Artifacts are updated once the release's Flutter is in scope
+    // (_buildAndPublishPatch): they are per engine revision, and the
+    // pinned one's would go unused when the release used another Flutter.
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
@@ -943,6 +949,16 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         'https://github.com/shorebirdtech/shorebird/issues/4354',
       );
       inferredReleaseVersion = true;
+      // This build uses the pinned Flutter, which nothing has installed yet
+      // (see ShorebirdCommand.usesPinnedFlutter).
+      final pinnedRevision = shorebirdEnv.flutterRevision;
+      if (!shorebirdFlutter.isInstalled(revision: pinnedRevision)) {
+        try {
+          await shorebirdFlutter.installRevision(revision: pinnedRevision);
+        } on Exception {
+          throw ProcessExit(ExitCode.software.code);
+        }
+      }
       final versionArtifact = await _tryBuildingArtifact<File>(
         patcher.buildPatchArtifact,
       );

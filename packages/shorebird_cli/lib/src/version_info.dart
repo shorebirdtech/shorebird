@@ -14,6 +14,16 @@ Future<String?> tryGetFlutterVersion() async {
   }
 }
 
+/// The pinned Flutter's engine revision, or null if that Flutter isn't
+/// installed yet: it is installed the first time a command uses it.
+String? _tryGetEngineRevision() {
+  try {
+    return shorebirdEnv.shorebirdEngineRevision;
+  } on CacheCorruptedException {
+    return null;
+  }
+}
+
 /// The Shorebird, Flutter and engine versions as shown by
 /// `shorebird --version` and `shorebird doctor`.
 String versionBanner({required String? flutterVersion}) {
@@ -24,7 +34,7 @@ String versionBanner({required String? flutterVersion}) {
   return '''
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
-Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''';
+Engine • revision ${_tryGetEngineRevision() ?? 'unknown (Flutter not installed yet)'}''';
 }
 
 /// The Shorebird, Flutter and engine versions as JSON output fields.
@@ -32,5 +42,5 @@ Map<String, String?> versionJson({required String? flutterVersion}) => {
   'shorebird_version': packageVersion,
   'flutter_version': flutterVersion,
   'flutter_revision': shorebirdEnv.flutterRevision,
-  'engine_revision': shorebirdEnv.shorebirdEngineRevision,
+  'engine_revision': _tryGetEngineRevision(),
 };

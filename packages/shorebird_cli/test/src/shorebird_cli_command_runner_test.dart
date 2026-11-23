@@ -84,6 +84,14 @@ void main() {
         () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
       when(() => shorebirdFlutter.pruneUnusedRevisions()).thenReturn([]);
+      when(
+        () => shorebirdFlutter.isInstalled(revision: any(named: 'revision')),
+      ).thenReturn(true);
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => cache.pruneUnusedArtifacts()).thenReturn([]);
       when(() => cache.pruneUnusedPreviews()).thenReturn([]);
       when(() => cache.pruneUnusedReleaseArtifacts()).thenReturn([]);
@@ -203,6 +211,66 @@ void main() {
         expect(
           stderrLines,
           contains('::warning title=Shorebird::Patches are paused.'),
+        );
+      });
+    });
+
+    group('installing the pinned Flutter', () {
+      group('when it is not installed', () {
+        setUp(() {
+          when(
+            () => shorebirdFlutter.isInstalled(revision: flutterRevision),
+          ).thenReturn(false);
+        });
+
+        test('installs it before a command that uses it', () async {
+          commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+          await runWithOverrides(() => commandRunner.run(['test']));
+
+          verify(
+            () => shorebirdFlutter.installRevision(revision: flutterRevision),
+          ).called(1);
+        });
+
+        test('does not install it for a command that uses none', () async {
+          commandRunner.addCommand(_NoPinnedFlutterCommand());
+
+          final result = await runWithOverrides(
+            () => commandRunner.run(['no-pinned-flutter']),
+          );
+
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(
+            () => shorebirdFlutter.installRevision(
+              revision: any(named: 'revision'),
+            ),
+          );
+        });
+
+        test('exits with a software error when the install fails', () async {
+          when(
+            () => shorebirdFlutter.installRevision(revision: flutterRevision),
+          ).thenThrow(Exception('offline'));
+          commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+          final result = await runWithOverrides(
+            () => commandRunner.run(['test']),
+          );
+
+          expect(result, equals(ExitCode.software.code));
+        });
+      });
+
+      test('does not reinstall it when it is installed', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+        await runWithOverrides(() => commandRunner.run(['test']));
+
+        verifyNever(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
         );
       });
     });
@@ -542,6 +610,26 @@ Engine • revision $shorebirdEngineRevision'''),
         // Making sure the only thing that was logged was the version info.
         // https://github.com/shorebirdtech/shorebird/issues/2260
         verifyNever(() => logger.info(any()));
+      });
+
+      test('says when the pinned Flutter is not installed yet', () async {
+        when(
+          () => shorebirdEnv.shorebirdEngineRevision,
+        ).thenThrow(
+          const CacheCorruptedException('Could not read engine.version.'),
+        );
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--version']),
+        );
+        expect(result, equals(ExitCode.success.code));
+
+        verify(
+          () => logger.info('''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+Flutter $flutterVersion • revision $flutterRevision
+Engine • revision unknown (Flutter not installed yet)'''),
+        ).called(1);
       });
     });
 
@@ -1945,6 +2033,21 @@ class _TestCommand extends ShorebirdCommand {
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
   }
+}
+
+/// Succeeds, and installs the Flutter it uses itself.
+class _NoPinnedFlutterCommand extends ShorebirdCommand {
+  @override
+  String get name => 'no-pinned-flutter';
+
+  @override
+  String get description => 'A command that uses no pinned Flutter';
+
+  @override
+  bool get usesPinnedFlutter => false;
+
+  @override
+  Future<int> run() async => ExitCode.success.code;
 }
 
 /// Throws a [CommandError], as a releaser or patcher does on a command's
