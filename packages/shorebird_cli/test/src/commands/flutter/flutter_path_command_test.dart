@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -19,8 +21,9 @@ void main() {
   group(FlutterPathCommand, () {
     const pinnedRevision = 'pinned1234567890';
     const requestedRevision = 'requested1234567890';
-    const pinnedPath = '/shorebird/bin/cache/flutter/$pinnedRevision';
-    const requestedPath = '/shorebird/bin/cache/flutter/$requestedRevision';
+    late Directory tempDirectory;
+    late String pinnedPath;
+    late String requestedPath;
 
     late ArgResults argResults;
     late ShorebirdLogger logger;
@@ -57,6 +60,10 @@ void main() {
     }
 
     setUp(() {
+      tempDirectory = Directory.systemTemp.createTempSync();
+      addTearDown(() => tempDirectory.deleteSync(recursive: true));
+      pinnedPath = p.join(tempDirectory.path, pinnedRevision);
+      requestedPath = p.join(tempDirectory.path, requestedRevision);
       argResults = MockArgResults();
       logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
@@ -64,11 +71,12 @@ void main() {
       command = FlutterPathCommand()..testArgResults = argResults;
 
       when(() => argResults['flutter-version']).thenReturn(null);
+      when(() => argResults.rest).thenReturn([]);
       when(() => logger.level).thenReturn(Level.info);
       when(() => shorebirdEnv.flutterRevision).thenReturn(pinnedRevision);
       when(
         () => shorebirdEnv.logsDirectory,
-      ).thenReturn(Directory.systemTemp.createTempSync());
+      ).thenReturn(Directory(p.join(tempDirectory.path, 'logs')));
       when(
         () => shorebirdFlutter.isInstalled(revision: any(named: 'revision')),
       ).thenReturn(true);
@@ -95,6 +103,14 @@ void main() {
         expect(result.stdout, equals([pinnedPath]));
         verifyNever(() => shorebirdFlutter.resolveFlutterRevision(any()));
         verifyNever(() => shorebirdFlutter.fetchRemoteRefs());
+      });
+
+      test('records the install as used so pruning keeps it', () async {
+        await runCommand();
+        expect(
+          File(p.join(pinnedPath, lastUsedStampName)).existsSync(),
+          isTrue,
+        );
       });
 
       test('fails and suggests precache when not installed', () async {
@@ -151,6 +167,7 @@ void main() {
         final (:exitCode, :error) = await runJsonError();
         expect(exitCode, equals(ExitCode.unavailable.code));
         expect(error['message'], equals('Flutter 3.38.5 is not installed.'));
+        expect(error['hint'], contains('shorebird flutter versions list'));
       });
 
       test('fails when resolving throws', () async {
@@ -161,6 +178,22 @@ void main() {
         expect(exitCode, equals(ExitCode.unavailable.code));
         expect(error['message'], equals('Flutter 3.38.5 is not installed.'));
       });
+    });
+
+    test('refuses a version passed as an argument', () async {
+      when(() => argResults.rest).thenReturn(['3.38.5']);
+      final (:exitCode, :error) = await runJsonError();
+      expect(exitCode, equals(ExitCode.usage.code));
+      expect(error, {
+        'code': 'usage_error',
+        'message': 'shorebird flutter path takes no arguments.',
+        'hint':
+            'Pass a version with --flutter-version, e.g. '
+            '--flutter-version=3.38.5',
+      });
+      verifyNever(
+        () => shorebirdFlutter.isInstalled(revision: any(named: 'revision')),
+      );
     });
 
     for (final alias in ['system', 'fvm']) {

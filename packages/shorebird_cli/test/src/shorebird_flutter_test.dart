@@ -1195,6 +1195,19 @@ origin/flutter_release/3.47.9''';
         );
       });
 
+      test('is true on Windows when the launcher is flutter.bat', () {
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+        File(
+          p.join(installDirectory.path, 'bin', 'flutter.bat'),
+        ).createSync(recursive: true);
+        expect(
+          runWithOverrides(
+            () => shorebirdFlutter.isInstalled(revision: revision),
+          ),
+          isTrue,
+        );
+      });
+
       test('is true for a checkout precache never ran in', () {
         File(
           p.join(installDirectory.path, 'bin', 'flutter'),

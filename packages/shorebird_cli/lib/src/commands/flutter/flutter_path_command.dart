@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -19,6 +20,9 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 ///
 /// It never installs or fetches anything: a Flutter that is not installed is
 /// an error naming the `shorebird flutter precache` command that installs it.
+/// It does record the install as used, as a build would: the caller is about
+/// to build with it, and an install that goes unused for long enough is
+/// pruned after the next command, this one included.
 /// {@endtemplate}
 class FlutterPathCommand extends ShorebirdCommand {
   /// {@macro flutter_path_command}
@@ -57,6 +61,17 @@ Defaults to the version this Shorebird uses when building with
   }
 
   Future<int> _run(IOSink output) async {
+    // `shorebird flutter path 3.38.5` would otherwise print the pinned
+    // Flutter's directory, and a script would build with the wrong Flutter.
+    if (results.rest.isNotEmpty) {
+      return reportError(
+        message: 'shorebird flutter path takes no arguments.',
+        hint:
+            'Pass a version with --flutter-version, e.g. '
+            '--flutter-version=${results.rest.first}',
+      );
+    }
+
     final versionOrHash = results['flutter-version'] as String?;
     final isPinned = versionOrHash == null || versionOrHash == 'latest';
     // These ask a project's Flutter for its version, and the system or fvm
@@ -74,9 +89,13 @@ Defaults to the version this Shorebird uses when building with
         ? 'shorebird flutter precache'
         : 'shorebird flutter precache --flutter-version $versionOrHash';
     final label = isPinned ? "Shorebird's Flutter" : 'Flutter $versionOrHash';
-    int notInstalled() => reportError(
+    int notInstalled({bool isResolved = true}) => reportError(
       message: '$label is not installed.',
-      hint: 'Run: $precacheCommand',
+      hint: isResolved
+          ? 'Run: $precacheCommand'
+          : 'Run: $precacheCommand\n'
+                'shorebird flutter versions list shows the versions '
+                'Shorebird has.',
       code: JsonErrorCode.preconditionFailed,
       exitCode: ExitCode.unavailable.code,
     );
@@ -96,7 +115,7 @@ Defaults to the version this Shorebird uses when building with
       } on Exception catch (error) {
         logger.detail('Unable to resolve Flutter $versionOrHash: $error');
       }
-      if (resolved == null) return notInstalled();
+      if (resolved == null) return notInstalled(isResolved: false);
       revision = resolved;
     }
 
@@ -104,7 +123,9 @@ Defaults to the version this Shorebird uses when building with
       return notInstalled();
     }
 
-    final path = shorebirdFlutter.installDirectory(revision: revision).path;
+    final directory = shorebirdFlutter.installDirectory(revision: revision);
+    markUsed(directory);
+    final path = directory.path;
     if (isJsonMode) {
       emitJsonSuccess({'path': path, 'revision': revision});
     } else {
