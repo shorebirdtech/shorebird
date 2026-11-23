@@ -59,20 +59,28 @@ _find_dart_version_of() {
 # Takes the one-writer lock on the SDK cache: a symlink whose target is the
 # holder's PID. `ln -s` creates it with its target in one step, the atomic
 # test-and-set every filesystem has, so there is never a lock without a holder
-# to check. Non-zero when another fetch still holds it past the download
-# timeout. A lock whose holder is dead (a killed fetch) is moved aside and
+# to check. Non-zero, with the reason on stderr, when another fetch still holds
+# it past the download timeout or no link can be made there at all (a
+# filesystem without symlinks, a read-only cache). A lock whose holder is dead (a killed fetch) is moved aside and
 # removed; a live holder's never is, however long its download takes.
 _find_dart_take_lock() {
-  local lock="$1" waited=0 pid holder_pid reap
+  local lock="$1" waited=0 pid holder_pid reap err
   # Bash 3.2 has no BASHPID. `exec` makes sh the command-substitution process
   # itself, so its parent is this shell rather than a short-lived child shell.
   pid="${BASHPID:-$(exec sh -c 'echo "$PPID"')}"
-  until ln -s "$pid" "$lock" 2>/dev/null; do
+  until err="$(ln -sn "$pid" "$lock" 2>&1)"; do
+    if [ ! -L "$lock" ]; then
+      echo "find_dart: the SDK cache lock $lock could not be made: $err" >&2
+      return 1
+    fi
     if [ "$waited" -ge 1860 ]; then
+      echo "find_dart: another fetch still holds $lock" >&2
       return 1
     fi
     holder_pid="$(readlink "$lock" 2>/dev/null || true)"
-    if [ -n "$holder_pid" ] && ! kill -0 "$holder_pid" 2>/dev/null; then
+    # A lock naming this shell was left by an earlier process that had its
+    # PID, as happens across container runs: this shell isn't holding it.
+    if [ -n "$holder_pid" ] && { [ "$holder_pid" = "$pid" ] || ! kill -0 "$holder_pid" 2>/dev/null; }; then
       reap="$lock.reap.$$.$RANDOM"
       if mv "$lock" "$reap" 2>/dev/null; then
         rm -f "$reap" 2>/dev/null || true
@@ -129,7 +137,13 @@ _find_dart_install_locked() {
   # $dest holding no working SDK has to go first, because `mv` lands a
   # directory inside an existing one rather than over it. Moved aside rather
   # than deleted, so a run already reading what is there keeps the file it
-  # opened.
+  # opened. Checked again first: a fetch that reaped a lock it judged dead may
+  # have installed meanwhile, and its working SDK is kept, not moved aside.
+  if [ "$(_find_dart_version_of "$dest/dart-sdk/bin/dart")" = "$want" ]; then
+    rm -rf "$tmp"
+    echo "$dest/dart-sdk/bin/dart"
+    return 0
+  fi
   if [ -e "$dest" ] && ! err="$(mv "$dest" "$tmp/stale" 2>&1)"; then
     install_err="$dest holds no working Dart $want and would not move aside: $err"
   elif ! err="$(mv "$tmp/unpacked" "$dest" 2>&1)"; then
@@ -198,7 +212,7 @@ _find_dart_fetched() {
   fi
   lock="$root/.lock.$os-$arch-$want"
   if ! _find_dart_take_lock "$lock"; then
-    echo "find_dart: Dart $want was not fetched, another fetch still holds $lock" >&2
+    echo "find_dart: Dart $want was not fetched" >&2
     return 0
   fi
   _find_dart_install_locked "$want" "$root" "$dest" "$url" "$sum"
