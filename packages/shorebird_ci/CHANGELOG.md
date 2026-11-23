@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# 0.3.2
+
+- Generated workflows install Flutter with a `run:` step (Flutter's release manifest, SHA-256 checked) instead of `subosito/flutter-action`, which calls `actions/cache` by tag and so fails in repositories that require SHA-pinned actions. An exact `flutter_version` now resolves on any channel, not only stable. (#4513)
+
 # 0.3.1
 
 - `generate` reads repository-wide `shorebird_ci:` configuration from the repository root's `pubspec.yaml` (`required`, `fatal_infos`, `codecov_token_secret`), each mirroring the flag of the same name, with the flag winning where both are set. (#4446)
