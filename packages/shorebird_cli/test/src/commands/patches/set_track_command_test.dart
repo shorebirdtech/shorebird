@@ -1301,6 +1301,73 @@ void main() {
         );
       });
 
+      test('moves only the platforms not already on the track, so the '
+          "others' rollout does not restart", () async {
+        when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+        when(() => argResults['track']).thenReturn('stable');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: iosPatch.id,
+            channel: targetChannel,
+            platforms: [ReleasePlatform.ios],
+          ),
+        ).called(1);
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion is now in channel '
+            'stable (iOS)!',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info('Android stays in channel stable.'),
+        ).called(1);
+      });
+
+      test(
+        'in --json mode, reports the platform not moved as it was',
+        () async {
+          when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+          when(() => argResults['track']).thenReturn('stable');
+
+          final (:exitCode, :json) = await captureJson(
+            () => runScoped(
+              command.run,
+              values: {
+                codePushClientWrapperRef.overrideWith(
+                  () => codePushClientWrapper,
+                ),
+                isJsonModeRef.overrideWith(() => true),
+                loggerRef.overrideWith(() => logger),
+                shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+                shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+              },
+            ),
+          );
+
+          expect(exitCode, equals(ExitCode.success.code));
+          final data = json['data'] as Map<String, dynamic>;
+          final patches = (data['patches'] as List)
+              .cast<Map<String, dynamic>>();
+          expect(
+            [for (final p in patches) (p['id'], p['channel'])],
+            equals([(androidPatch.id, 'stable'), (iosPatch.id, 'stable')]),
+          );
+          verify(
+            () => codePushClientWrapper.promotePatch(
+              appId: appId,
+              patchId: iosPatch.id,
+              channel: targetChannel,
+              platforms: [ReleasePlatform.ios],
+            ),
+          ).called(1);
+        },
+      );
+
       test('without --platforms, refuses tracks that differ', () async {
         final result = await runWithOverrides(command.run);
 
