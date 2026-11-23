@@ -14,11 +14,15 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 ///
 /// It installs what `shorebird release` and `shorebird patch` would install
 /// before building: the Flutter checkout and its `flutter precache`
-/// artifacts (which include the engine's Maven artifacts in the Gradle cache
-/// when an Android SDK is present), and Shorebird's own artifacts for both
-/// the pinned and the requested Flutter. A later build with the same Flutter
-/// version then downloads none of it. Use it to bake Flutter into a Docker
-/// image or a CI cache.
+/// artifacts, and Shorebird's own artifacts for both the pinned and the
+/// requested Flutter. A later build with the same Flutter version then
+/// downloads none of it. Use it to bake Flutter into a Docker image or a CI
+/// cache.
+///
+/// The engine's Maven artifacts are not among them: an Android build fetches
+/// those into the Gradle cache (`~/.gradle`), which the CI caches as it does
+/// any Gradle dependency. `flutter precache --android_maven` would fetch them,
+/// but Flutter never registers that artifact set, so the flag does nothing.
 /// {@endtemplate}
 class FlutterPrecacheCommand extends ShorebirdCommand {
   /// {@macro flutter_precache_command}
