@@ -937,6 +937,16 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
           'when running non-interactively.',
         );
       }
+      // The guessing build uses the pinned Flutter, which nothing has
+      // installed yet (see ShorebirdCommand.usesPinnedFlutter).
+      final pinnedRevision = shorebirdEnv.flutterRevision;
+      if (!shorebirdFlutter.isInstalled(revision: pinnedRevision)) {
+        try {
+          await shorebirdFlutter.installRevision(revision: pinnedRevision);
+        } on Exception {
+          throw ProcessExit(ExitCode.software.code);
+        }
+      }
       final flutterVersionString = await shorebirdFlutter
           .getVersionAndRevision();
       logger.warn(
@@ -949,16 +959,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         'https://github.com/shorebirdtech/shorebird/issues/4354',
       );
       inferredReleaseVersion = true;
-      // This build uses the pinned Flutter, which nothing has installed yet
-      // (see ShorebirdCommand.usesPinnedFlutter).
-      final pinnedRevision = shorebirdEnv.flutterRevision;
-      if (!shorebirdFlutter.isInstalled(revision: pinnedRevision)) {
-        try {
-          await shorebirdFlutter.installRevision(revision: pinnedRevision);
-        } on Exception {
-          throw ProcessExit(ExitCode.software.code);
-        }
-      }
       final versionArtifact = await _tryBuildingArtifact<File>(
         patcher.buildPatchArtifact,
       );

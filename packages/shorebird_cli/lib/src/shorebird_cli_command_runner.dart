@@ -573,6 +573,24 @@ ${currentRunLogFile.absolute.path}
         '`$executableName ${canonical.join(' ')}`.';
   }
 
+  /// Whether [topLevelResults] only asks for help: `--help` anywhere, or a
+  /// command that has subcommands and no default, which prints its usage.
+  bool _onlyShowsHelp(ArgResults topLevelResults) {
+    for (
+      var results = topLevelResults.command;
+      results != null;
+      results = results.command
+    ) {
+      if (results.options.contains('help') && results.flag('help')) {
+        return true;
+      }
+    }
+    final command = _commandOf(topLevelResults);
+    return command != null &&
+        command.subcommands.isNotEmpty &&
+        (command is! ShorebirdCommand || command.defaultSubcommand == null);
+  }
+
   /// The command [topLevelResults] runs, or null if it names none.
   Command<int>? _commandOf(ArgResults topLevelResults) {
     Command<int>? command;
@@ -605,6 +623,7 @@ ${currentRunLogFile.absolute.path}
   Future<void> _installPinnedFlutterIfUsed(ArgResults topLevelResults) async {
     final command = _commandOf(topLevelResults);
     if (command is! ShorebirdCommand || !command.usesPinnedFlutter) return;
+    if (_onlyShowsHelp(topLevelResults)) return;
     final revision = shorebirdEnv.flutterRevision;
     if (shorebirdFlutter.isInstalled(revision: revision)) return;
     try {

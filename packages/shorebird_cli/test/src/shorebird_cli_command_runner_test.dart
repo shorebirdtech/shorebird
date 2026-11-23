@@ -233,6 +233,35 @@ void main() {
           ).called(1);
         });
 
+        test('does not install it when only asked for help', () async {
+          commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+          await runWithOverrides(() => commandRunner.run(['test', '--help']));
+
+          verifyNever(
+            () => shorebirdFlutter.installRevision(
+              revision: any(named: 'revision'),
+            ),
+          );
+        });
+
+        test(
+          'does not install it for a command group without a default',
+          () async {
+            commandRunner.addCommand(
+              _GroupCommand(),
+            );
+
+            await runWithOverrides(() => commandRunner.run(['group']));
+
+            verifyNever(
+              () => shorebirdFlutter.installRevision(
+                revision: any(named: 'revision'),
+              ),
+            );
+          },
+        );
+
         test('does not install it for a command that uses none', () async {
           commandRunner.addCommand(_NoPinnedFlutterCommand());
 

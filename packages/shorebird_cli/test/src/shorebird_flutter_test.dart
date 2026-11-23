@@ -1,4 +1,4 @@
-// cspell:words revis precaches ENOTEMPTY
+// cspell:words revis precaches ENOTEMPTY refspec
 import 'dart:io';
 
 import 'package:clock/clock.dart';
@@ -861,6 +861,36 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
       });
 
       group('when the revision is not installed', () {
+        group('and the refs repository does not have it', () {
+          setUp(() {
+            when(
+              () => git.revParse(
+                revision: '$flutterRevision^{commit}',
+                directory: refsDirectory.path,
+              ),
+            ).thenThrow(const ProcessException('git', ['rev-parse']));
+          });
+
+          test('fetches it there first', () async {
+            await lookUp();
+            verify(() => git.fetch(directory: refsDirectory.path)).called(1);
+            expect(lookupDirectory(), equals(refsDirectory.path));
+          });
+
+          test('still looks up when the fetch fails', () async {
+            when(
+              () => git.fetch(directory: refsDirectory.path),
+            ).thenThrow(Exception('offline'));
+            await lookUp();
+            expect(lookupDirectory(), equals(refsDirectory.path));
+          });
+        });
+
+        test('does not fetch when the refs repository has it', () async {
+          await lookUp();
+          verifyNever(() => git.fetch(directory: any(named: 'directory')));
+        });
+
         test('runs in the refs repository', () async {
           await lookUp();
           expect(lookupDirectory(), equals(refsDirectory.path));
@@ -889,6 +919,16 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
                     ).captured.single
                     as List<String>;
             expect(args, containsAll(['--bare', '--filter=tree:0']));
+            // Older git ignores the clone's --config refspec; a fetch
+            // before publishing fills refs/remotes/origin either way.
+            verify(
+              () => git.fetch(
+                directory: any(
+                  named: 'directory',
+                  that: startsWith('${refsDirectory.path}.'),
+                ),
+              ),
+            ).called(1);
             expect(refsDirectory.existsSync(), isTrue);
             expect(lookupDirectory(), equals(refsDirectory.path));
             verify(() => progress.complete()).called(1);
@@ -908,7 +948,8 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
             test('fails and leaves nothing behind', () async {
               await expectLater(lookUp, throwsA(isA<ProcessException>()));
               verify(
-                () => progress.fail('Failed to fetch Flutter versions'),
+                () =>
+                    progress.fail('Failed to clone the Flutter version index'),
               ).called(1);
               expect(refsDirectory.existsSync(), isFalse);
               expect(

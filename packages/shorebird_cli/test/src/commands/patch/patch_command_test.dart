@@ -3228,6 +3228,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
 
             verifyInOrder([
               () => shorebirdFlutter.installRevision(revision: flutterRevision),
+              () => shorebirdFlutter.getVersionAndRevision(),
               () => patcher.buildPatchArtifact(),
             ]);
           });

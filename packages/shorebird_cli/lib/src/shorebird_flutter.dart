@@ -1,4 +1,4 @@
-// cspell:words precaching
+// cspell:words precaching refspec
 import 'dart:convert';
 import 'dart:io';
 
@@ -50,15 +50,38 @@ class ShorebirdFlutter {
   /// (the active one by default).
   ///
   /// That revision's checkout when it is installed, since it already holds
-  /// every ref. Otherwise [ShorebirdEnv.flutterRefsDirectory], fetched once,
-  /// so a lookup never needs a Flutter installed: a build with
-  /// `--flutter-version` resolves and installs only the Flutter it uses.
+  /// every ref. Otherwise [ShorebirdEnv.flutterRefsDirectory], so a lookup
+  /// never needs a Flutter installed: a build with `--flutter-version`
+  /// resolves and installs only the Flutter it uses. That clone is fetched
+  /// again when it doesn't know [revision] (a new pin after
+  /// `shorebird upgrade`), as the launcher fetches the pinned checkout today.
   Future<String> _gitDirectory({String? revision}) async {
     revision ??= shorebirdEnv.flutterRevision;
     if (isInstalled(revision: revision)) {
       return _workingDirectory(revision: revision);
     }
-    return _ensureRefsRepository();
+    final refsDirectory = await _ensureRefsRepository();
+    if (!await _hasCommit(directory: refsDirectory, revision: revision)) {
+      try {
+        await git.fetch(directory: refsDirectory);
+      } on Exception catch (error) {
+        logger.detail('Failed to fetch Flutter versions: $error');
+      }
+    }
+    return refsDirectory;
+  }
+
+  /// Whether the git repository at [directory] has commit [revision].
+  Future<bool> _hasCommit({
+    required String directory,
+    required String revision,
+  }) async {
+    try {
+      await git.revParse(revision: '$revision^{commit}', directory: directory);
+      return true;
+    } on ProcessException {
+      return false;
+    }
   }
 
   /// Clones [ShorebirdEnv.flutterRefsDirectory] if it isn't there yet, and
@@ -76,7 +99,7 @@ class ShorebirdFlutter {
       parent: refsDirectory.parent,
       prefix: '${p.basename(refsDirectory.path)}.',
     );
-    final progress = logger.progress('Fetching Flutter versions');
+    final progress = logger.progress('Cloning the Flutter version index');
     final stagingDirectory = Directory(_reclaimablePath(refsDirectory.path));
     try {
       await git.clone(
@@ -91,6 +114,9 @@ class ShorebirdFlutter {
           'remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*',
         ],
       );
+      // Git before 2.27 ignores a fetch refspec set with `--config` for the
+      // clone's own fetch, which would leave refs/remotes/origin empty.
+      await git.fetch(directory: stagingDirectory.path);
       stagingDirectory.renameSync(refsDirectory.path);
       progress.complete();
     } catch (error) {
@@ -100,7 +126,7 @@ class ShorebirdFlutter {
         progress.complete();
         return refsDirectory.path;
       }
-      progress.fail('Failed to fetch Flutter versions');
+      progress.fail('Failed to clone the Flutter version index');
       rethrow;
     }
     return refsDirectory.path;
