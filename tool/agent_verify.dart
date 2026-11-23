@@ -130,8 +130,23 @@ Future<int> _checkPackage(String package) async {
   }
 
   // `-o none` because dart format otherwise writes in place, and the tree it
-  // reformatted would then pass.
-  await check('format', ['format', '-o', 'none', '--set-exit-if-changed', '.']);
+  // reformatted would then pass. Its output is read for the files it would
+  // change, so a failure can say the command that fixes them.
+  stdout.writeln('$package: format');
+  final format = await Process.run('dart', [
+    'format',
+    '-o',
+    'none',
+    '--set-exit-if-changed',
+    '.',
+  ], workingDirectory: package);
+  stdout.write(format.stdout);
+  stderr.write(format.stderr);
+  String? formatFix;
+  if (format.exitCode != 0) {
+    failed.add('format');
+    formatFix = _formatFix(package, format.stdout as String);
+  }
   await check('analyze', ['analyze', '--fatal-infos', '.']);
   final service = _testsNeedServices[package];
   if (service != null) {
@@ -141,8 +156,36 @@ Future<int> _checkPackage(String package) async {
   }
   if (failed.isEmpty) return 0;
   stdout.writeln('$package: failed ${failed.join(', ')}');
+  // Here rather than after the format step, beside the line saying it failed
+  // and past the test output.
+  if (formatFix != null) {
+    stdout.writeln('$package: to fix format, run $formatFix');
+  }
   return 1;
 }
+
+/// The command, run from the repository root, that formats the files
+/// [output] of `dart format` in [package] says it would change, with the
+/// Dart running this script: a Dart of another version formats differently,
+/// and `dart` on the caller's PATH may be that one. Null when [output] names
+/// no file, as when format failed for another reason.
+String? _formatFix(String package, String output) {
+  final files = [
+    for (final line in const LineSplitter().convert(output))
+      if (line.startsWith('Changed ')) '$package/${line.substring(8)}',
+  ];
+  if (files.isEmpty) return null;
+  return [
+    Platform.resolvedExecutable,
+    'format',
+    ...files,
+  ].map(_quote).join(' ');
+}
+
+/// [word] as one shell word.
+String _quote(String word) => RegExp(r'^[\w@%+=:,./-]+$').hasMatch(word)
+    ? word
+    : "'${word.replaceAll("'", r"'\''")}'";
 
 /// The workspace list in the root pubspec, which is the set CI checks. Read
 /// by hand, because package:yaml is not resolved before `dart pub get`. The
