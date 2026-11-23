@@ -145,7 +145,11 @@ Future<int> _checkPackage(String package) async {
   String? formatFix;
   if (format.exitCode != 0) {
     failed.add('format');
-    formatFix = _formatFix(package, format.stdout as String);
+    // 1 is only "would change files"; 65 is a file that does not parse, and
+    // formatting the others would not make the step pass.
+    if (format.exitCode == 1) {
+      formatFix = _formatFix(package, format.stdout as String);
+    }
   }
   await check('analyze', ['analyze', '--fatal-infos', '.']);
   final service = _testsNeedServices[package];
@@ -164,7 +168,7 @@ Future<int> _checkPackage(String package) async {
   return 1;
 }
 
-/// The command, run from the repository root, that formats the files
+/// The command, runnable from any directory, that formats the files
 /// [output] of `dart format` in [package] says it would change, with the
 /// Dart running this script: a Dart of another version formats differently,
 /// and `dart` on the caller's PATH may be that one. Null when [output] names
@@ -172,7 +176,8 @@ Future<int> _checkPackage(String package) async {
 String? _formatFix(String package, String output) {
   final files = [
     for (final line in const LineSplitter().convert(output))
-      if (line.startsWith('Changed ')) '$package/${line.substring(8)}',
+      if (line.startsWith('Changed '))
+        File('$package/${line.substring(8)}').absolute.path,
   ];
   if (files.isEmpty) return null;
   return [
