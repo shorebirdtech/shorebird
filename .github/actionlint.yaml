@@ -4,3 +4,12 @@ self-hosted-runner:
   # Namespace (namespace.so) runner labels used by our workflows.
   labels:
     - nscloud-windows-2022-amd64-8x16
+
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      # actionlint 1.7.12 doesn't know GitHub's `$/` self-repository `uses:`
+      # syntax (rhysd/actionlint#711), which zizmor's self-repository audit
+      # asks for. Drop these once an actionlint release accepts it.
+      - 'specifying action "\$/[^"]*" in invalid format because ref is missing'
+      - 'reusable workflow call "\$/[^"]*" at "uses" is not following the format'
