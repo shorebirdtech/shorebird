@@ -3,6 +3,7 @@
 # 0.3.2
 
 - Generated workflows install Flutter with a `run:` step (Flutter's release manifest, SHA-256 checked) instead of `subosito/flutter-action`, which calls `actions/cache` by tag and so fails in repositories that require SHA-pinned actions. An exact `flutter_version` now resolves on any channel, not only stable. (#4513)
+- Bump the built-in `dart-lang/setup-dart` pin to v1.8.2. (#4477)
 
 # 0.3.1
 
