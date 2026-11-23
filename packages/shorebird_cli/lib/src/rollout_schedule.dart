@@ -318,13 +318,15 @@ List<String> rolloutScheduleArguments(RolloutSchedule schedule) => [
 
 /// The command that puts the rollout of patch [patchNumber] on release
 /// [releaseVersion] on [schedule]. [appId] and [flavor] are passed through
-/// when given.
+/// when given, and [platforms] limits it to those platforms' patches under
+/// the number.
 String scheduleRolloutCommand({
   required String releaseVersion,
   required int patchNumber,
   required RolloutSchedule schedule,
   String? appId,
   String? flavor,
+  List<String>? platforms,
 }) => [
   'shorebird patches rollout',
   '--release-version $releaseVersion',
@@ -332,6 +334,7 @@ String scheduleRolloutCommand({
   if (appId != null) '--app-id $appId',
   if (flavor != null) '--flavor $flavor',
   ...rolloutScheduleArguments(schedule),
+  if (platforms != null) '--platforms ${platforms.join(',')}',
 ].join(' ');
 
 /// Formats [minutes] as it is written on the command line, in the largest

@@ -15,13 +15,15 @@ String rolloutHelp(String subject) =>
 
 /// The command that raises the rollout of patch [patchNumber] on release
 /// [releaseVersion] to [percentage], or to a placeholder when that is null.
-/// [appId] and [flavor] are passed through when given.
+/// [appId] and [flavor] are passed through when given, and [platforms]
+/// limits it to those platforms' patches under the number.
 String raiseRolloutCommand({
   required String releaseVersion,
   required int patchNumber,
   double? percentage,
   String? appId,
   String? flavor,
+  List<String>? platforms,
 }) => [
   'shorebird patches rollout',
   '--release-version $releaseVersion',
@@ -32,6 +34,7 @@ String raiseRolloutCommand({
     '--percentage <percentage>'
   else
     '--percentage ${formatRolloutArgument(percentage)}',
+  if (platforms != null) '--platforms ${platforms.join(',')}',
 ].join(' ');
 
 /// Said wherever a rollout below 100% is set. Engines before Flutter 3.35.7

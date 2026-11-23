@@ -1368,6 +1368,31 @@ void main() {
         },
       );
 
+      test('names the chosen platforms in the patches rollout hint', () async {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [androidPatch.copyWith(rolloutPercentage: 20), iosPatch],
+        );
+        when(() => argResults['platforms']).thenReturn(['android']);
+        when(() => argResults['track']).thenReturn('stable');
+        when(() => argResults['rollout']).thenReturn('50');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.info(
+            'To change its rollout, run: shorebird patches rollout '
+            '--release-version $releaseVersion --patch-number $patchNumber '
+            '--percentage 50 --platforms android',
+          ),
+        ).called(1);
+      });
+
       test('without --platforms, refuses tracks that differ', () async {
         final result = await runWithOverrides(command.run);
 

@@ -201,6 +201,7 @@ class SetTrackCommand extends ShorebirdCommand
               schedule: schedule!,
               appId: results[CommonArguments.appIdArg.name] as String?,
               flavor: results[CommonArguments.flavorArg.name] as String?,
+              platforms: chosen.platforms?.map((p) => p.value).toList(),
             )}',
       );
     }
@@ -241,6 +242,7 @@ class SetTrackCommand extends ShorebirdCommand
               percentage: requestedPercentage,
               appId: results[CommonArguments.appIdArg.name] as String?,
               flavor: results[CommonArguments.flavorArg.name] as String?,
+              platforms: chosen.platforms?.map((p) => p.value).toList(),
             )}',
       );
     }
