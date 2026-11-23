@@ -37,6 +37,9 @@ class ShorebirdTracer {
   /// so every event emitted through this tracer is tagged with it.
   final int _pid = currentProcessId();
 
+  /// Whether [_tracer] holds the process and thread names [mergeInto] adds.
+  bool _labeled = false;
+
   /// Raw event buffer, for tests that need to inspect individual spans.
   List<Map<String, Object?>> get events => _tracer.events;
 
@@ -46,6 +49,7 @@ class ShorebirdTracer {
   /// spans.
   void reset() {
     _tracer = BuildTracer();
+    _labeled = false;
   }
 
   /// Record a completed network span on the shorebird_cli row.
@@ -115,25 +119,34 @@ class ShorebirdTracer {
   /// Format JSON array, as written by Flutter). Also emits our
   /// process_name / thread_name metadata so Perfetto labels our rows.
   /// No-op if the file doesn't exist or isn't a JSON array.
+  ///
+  /// Merging again replaces what an earlier merge wrote, so the file holds
+  /// each of this process's events once.
   void mergeInto(File traceFile) {
     if (!traceFile.existsSync()) return;
     final List<Map<String, Object?>> existingEvents;
     try {
       final decoded = jsonDecode(traceFile.readAsStringSync());
       if (decoded is! List) return;
-      existingEvents = decoded.whereType<Map<String, Object?>>().toList();
+      existingEvents = decoded
+          .whereType<Map<String, Object?>>()
+          .where((event) => event['pid'] != _pid)
+          .toList();
     } on FormatException {
       return;
     }
-    _tracer
-      ..addProcessNameMetadata(pid: _pid, name: 'shorebird_cli')
-      ..addThreadNameMetadata(pid: _pid, tid: _networkTid, name: 'network')
-      ..addThreadNameMetadata(
-        pid: _pid,
-        tid: _shorebirdTid,
-        name: 'shorebird_cli',
-      )
-      ..writeToFile(traceFile, existingEvents: existingEvents);
+    if (!_labeled) {
+      _labeled = true;
+      _tracer
+        ..addProcessNameMetadata(pid: _pid, name: 'shorebird_cli')
+        ..addThreadNameMetadata(pid: _pid, tid: _networkTid, name: 'network')
+        ..addThreadNameMetadata(
+          pid: _pid,
+          tid: _shorebirdTid,
+          name: 'shorebird_cli',
+        );
+    }
+    _tracer.writeToFile(traceFile, existingEvents: existingEvents);
   }
 }
 

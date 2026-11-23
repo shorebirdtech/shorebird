@@ -1956,6 +1956,28 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         expect(run.metadata, equals(patchMetadata.toJson()));
       });
 
+      test('writes the build trace summary again after the upload', () async {
+        await runWithOverrides(command.run);
+
+        verifyInOrder([
+          artifactBuilder.writeBuildTraceSummary,
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+          artifactBuilder.writeBuildTraceSummary,
+          () => codePushClient.createBuildRun(
+            appId: any(named: 'appId'),
+            request: any(named: 'request'),
+          ),
+        ]);
+      });
+
       test('records a link percentage below the minimum', () async {
         when(() => argResults['dry-run']).thenReturn(true);
         when(() => patcher.linkPercentage).thenReturn(12.3);
@@ -4236,7 +4258,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               ),
             ),
           ),
-        ).called(1);
+        ).called(2); // The patch, and its build history run.
       });
     });
 
@@ -4335,7 +4357,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                 ),
               ),
             ),
-          ).called(1);
+          ).called(2); // The patch, and its build history run.
 
           verify(
             () => logger.warn(

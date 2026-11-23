@@ -128,6 +128,50 @@ void main() {
         },
       );
 
+      test('merging again replaces what the last merge wrote', () {
+        traceFile.writeAsStringSync(
+          jsonEncode([
+            {
+              'ph': 'X',
+              'name': 'flutter build',
+              'cat': 'flutter',
+              'ts': 0,
+              'dur': 100,
+              'pid': 1,
+              'tid': 1,
+            },
+          ]),
+        );
+        tracer
+          ..addNetworkEvent(
+            name: 'POST api.shorebird.dev',
+            start: DateTime.fromMicrosecondsSinceEpoch(200),
+            duration: const Duration(microseconds: 50),
+          )
+          ..mergeInto(traceFile)
+          ..addNetworkEvent(
+            name: 'PUT storage.googleapis.com',
+            start: DateTime.fromMicrosecondsSinceEpoch(300),
+            duration: const Duration(microseconds: 50),
+          )
+          ..mergeInto(traceFile);
+
+        final names = (jsonDecode(traceFile.readAsStringSync()) as List)
+            .map((event) => (event as Map)['name'])
+            .toList();
+        expect(
+          names,
+          equals([
+            'flutter build',
+            'POST api.shorebird.dev',
+            'process_name',
+            'thread_name',
+            'thread_name',
+            'PUT storage.googleapis.com',
+          ]),
+        );
+      });
+
       test('no-op when the trace file does not exist', () {
         tracer
           ..addNetworkEvent(
