@@ -92,6 +92,7 @@ void main() {
           patchNumber: any(named: 'patchNumber'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
           rolloutSchedule: any(named: 'rolloutSchedule'),
+          platforms: any(named: 'platforms'),
         ),
       );
     }
@@ -136,6 +137,7 @@ void main() {
           patchNumber: any(named: 'patchNumber'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
           rolloutSchedule: any(named: 'rolloutSchedule'),
+          platforms: any(named: 'platforms'),
         ),
       ).thenAnswer((_) async {});
 
@@ -346,6 +348,7 @@ void main() {
             patchNumber: any(named: 'patchNumber'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
             rolloutSchedule: any(named: 'rolloutSchedule'),
+            platforms: any(named: 'platforms'),
           ),
         ).thenThrow(ApiErrorExit(error, ExitCode.software.code));
       });
@@ -769,13 +772,14 @@ void main() {
         platform: ReleasePlatform.ios,
       );
 
-      void verifyRolloutRequest(int patchId) => verify(
+      void verifyRolloutRequest({List<ReleasePlatform>? platforms}) => verify(
         () => codePushClientWrapper.setPatchRollout(
           appId: appId,
           releaseId: release.id,
-          patchId: patchId,
+          patchId: any(named: 'patchId'),
           patchNumber: patchNumber,
           rolloutPercentage: 50,
+          platforms: platforms,
         ),
       ).called(1);
 
@@ -802,8 +806,9 @@ void main() {
 
         expect(result, equals(ExitCode.success.code));
         verify(() => logger.confirm('Roll out all of them to 50%?')).called(1);
-        verifyRolloutRequest(androidPatch.id);
-        verifyRolloutRequest(iosPatch.id);
+        // One request without platforms, which the server applies to every
+        // platform's patch under the number.
+        verifyRolloutRequest();
         verify(
           () => logger.success(
             'Patch $patchNumber on release $releaseVersion is now rolling out '
@@ -831,17 +836,7 @@ void main() {
 
         expect(result, equals(ExitCode.success.code));
         verifyNever(() => logger.confirm(any()));
-        verifyRolloutRequest(iosPatch.id);
-        verifyNever(
-          () => codePushClientWrapper.setPatchRollout(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            patchId: androidPatch.id,
-            patchNumber: any(named: 'patchNumber'),
-            rolloutPercentage: any(named: 'rolloutPercentage'),
-            rolloutSchedule: any(named: 'rolloutSchedule'),
-          ),
-        );
+        verifyRolloutRequest(platforms: [ReleasePlatform.ios]);
         verify(
           () => logger.success(
             'Patch $patchNumber on release $releaseVersion is now rolling out '
@@ -941,7 +936,7 @@ void main() {
           verifyNever(
             () => logger.err(any(that: contains('already rolling out'))),
           );
-          verifyRolloutRequest(iosPatch.id);
+          verifyRolloutRequest(platforms: [ReleasePlatform.ios]);
         },
       );
 
@@ -993,15 +988,16 @@ void main() {
         expect((data['patch'] as Map<String, dynamic>)['id'], equals(10));
       });
 
-      test('in --json mode, names the platform whose rollout failed', () async {
+      test('reports a failed request once, for every platform', () async {
         when(
           () => codePushClientWrapper.setPatchRollout(
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
-            patchId: iosPatch.id,
+            patchId: any(named: 'patchId'),
             patchNumber: any(named: 'patchNumber'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
             rolloutSchedule: any(named: 'rolloutSchedule'),
+            platforms: any(named: 'platforms'),
           ),
         ).thenThrow(
           ApiErrorExit(
@@ -1021,9 +1017,60 @@ void main() {
         expect(exitCode, equals(ExitCode.software.code));
         expect(
           (json['error'] as Map<String, dynamic>)['message'],
-          'Failed to set the rollout of patch $patchNumber (iOS) of release '
+          'Failed to set the rollout of patch $patchNumber of release '
           '"$releaseVersion". Rollouts only go up.',
         );
+      });
+
+      group('when the server says the platforms differ', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.setPatchRollout(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              patchNumber: any(named: 'patchNumber'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
+              rolloutSchedule: any(named: 'rolloutSchedule'),
+              platforms: any(named: 'platforms'),
+            ),
+          ).thenThrow(
+            ApiErrorExit(
+              const CodePushConflictException(
+                message: 'Upgrade the Shorebird CLI or use the console.',
+                response: ErrorResponse(
+                  code: 'patch_platforms_differ',
+                  message: 'Upgrade the Shorebird CLI or use the console.',
+                ),
+              ),
+              ExitCode.software.code,
+            ),
+          );
+        });
+
+        test('prints each platform and the --platforms command', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => logger.info(
+              'To choose which to change, run:\n'
+              '  shorebird rollout --release-version=$releaseVersion '
+              '--patch-number=$patchNumber --percentage=50 '
+              '--platforms=android,ios',
+            ),
+          ).called(1);
+        });
+
+        test("in --json mode, does not pass on the server's message", () async {
+          final (:exitCode, :json) = await runJson();
+
+          expect(exitCode, equals(ExitCode.software.code));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['api_code'], equals('patch_platforms_differ'));
+          expect(error['message'], isNot(contains('Upgrade')));
+          expect(error['hint'], contains('--platforms=android,ios'));
+        });
       });
     });
   });

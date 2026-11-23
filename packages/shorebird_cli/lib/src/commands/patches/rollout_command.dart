@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
@@ -222,8 +223,8 @@ class RolloutCommand extends ShorebirdCommand
       );
     }
 
-    // Raising one platform and then failing on another would leave them
-    // apart, so a rollout the server would refuse as lower stops here.
+    // The server refuses the whole request when any patch is further along;
+    // this says which ones, and how to raise the others.
     if (percentage case final percentage? when targets.length > 1) {
       final higher = targets
           .where((p) => (p.rolloutPercentage ?? 100) > percentage)
@@ -262,26 +263,45 @@ class RolloutCommand extends ShorebirdCommand
       );
     }
 
-    // The server checks the percentage against the current one: the read
-    // above can go stale, and it answers 409 when the new one is lower.
-    for (final target in targets) {
-      final rolloutError = await guardApiCall(
-        () => codePushClientWrapper.setPatchRollout(
-          appId: appId,
-          releaseId: fetched.release!.id,
-          patchId: target.id,
-          patchNumber: target.number,
-          rolloutPercentage: percentage,
-          rolloutSchedule: schedule,
-        ),
-        code: JsonErrorCode.softwareError,
-        message:
-            'Failed to set the rollout of patch $patchNumber '
-            '${several ? '(${PatchNumber.platformName(target)}) ' : ''}'
-            'of release "$releaseVersion".',
+    // One request: the server updates every chosen platform's patch or
+    // none. It also checks each against its current rollout, since the read
+    // above can go stale. Caught inside the guarded call, which would
+    // otherwise report the server's message for older clients in --json mode.
+    var platformsDiffer = false;
+    final rolloutError = await guardApiCall(
+      () async {
+        try {
+          await codePushClientWrapper.setPatchRollout(
+            appId: appId,
+            releaseId: fetched.release!.id,
+            patchId: targets.first.id,
+            patchNumber: patchNumber,
+            rolloutPercentage: percentage,
+            rolloutSchedule: schedule,
+            platforms: chosen.platforms,
+          );
+        } on ApiErrorExit catch (e) {
+          if (!isPlatformsDiffer(e)) rethrow;
+          platformsDiffer = true;
+        }
+      },
+      code: JsonErrorCode.softwareError,
+      message:
+          'Failed to set the rollout of patch $patchNumber '
+          'of release "$releaseVersion".',
+    );
+    if (platformsDiffer) {
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: [
+          for (final p in targets)
+            if (p.channel == channel) ?p.resolvedPlatform,
+        ],
+        extraArgs: _rolloutArguments(percentage, schedule),
       );
-      if (rolloutError != null) return rolloutError;
     }
+    if (rolloutError != null) return rolloutError;
 
     // A schedule always changes the rollout, since the server starts raising
     // it from the first step even when the patch is already there.
