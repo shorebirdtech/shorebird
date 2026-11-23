@@ -399,7 +399,37 @@ workspace:
         p.join(dir.path, 'integration_test', 'app_test.dart'),
       ).writeAsStringSync('void main() {}');
 
+      // No linux/ directory: a hosted ubuntu runner has no device.
+      expect(RepositoryAnalyzer.hasIntegrationTests(root: dir), isFalse);
+
+      Directory(p.join(dir.path, 'linux')).createSync();
       expect(RepositoryAnalyzer.hasIntegrationTests(root: dir), isTrue);
+    });
+
+    test('hasIntegrationTests follows shorebird_ci: integration_tests', () {
+      createPackage(
+        tempDir,
+        'flutter_pkg',
+        'flutter_pkg',
+        flutterLine: 'any',
+      );
+      final dir = Directory(p.join(tempDir.path, 'flutter_pkg'));
+      File(p.join(dir.path, 'integration_test', 'app_test.dart'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('void main() {}');
+      final pubspec = File(p.join(dir.path, 'pubspec.yaml'));
+      final original = pubspec.readAsStringSync();
+
+      pubspec.writeAsStringSync(
+        '$original\nshorebird_ci:\n  integration_tests: true\n',
+      );
+      expect(RepositoryAnalyzer.hasIntegrationTests(root: dir), isTrue);
+
+      Directory(p.join(dir.path, 'linux')).createSync();
+      pubspec.writeAsStringSync(
+        '$original\nshorebird_ci:\n  integration_tests: false\n',
+      );
+      expect(RepositoryAnalyzer.hasIntegrationTests(root: dir), isFalse);
     });
 
     test('hasIntegrationTests is false for non-flutter packages', () async {
@@ -559,6 +589,7 @@ shorebird_ci:
     - macos-latest
     - ubuntu-latest
   needs_redis: true
+  integration_tests: false
   report_on:
     - lib
     - routes
@@ -571,6 +602,7 @@ shorebird_ci:
       expect(configA.minCoverage, '99.7');
       expect(configA.runners, ['macos-latest', 'ubuntu-latest']);
       expect(configA.needsRedis, isTrue);
+      expect(configA.integrationTests, isFalse);
       expect(configA.reportOn, 'lib,routes');
       expect(configA.coverageExcludes, '**/*.g.dart **/*.freezed.dart');
       expect(configA.totalShards, 4);
@@ -591,6 +623,7 @@ shorebird_ci:
       expect(configB.minCoverage, '100');
       expect(configB.runners, isNull);
       expect(configB.needsRedis, isFalse);
+      expect(configB.integrationTests, isNull);
       expect(configB.reportOn, 'lib,bin');
       expect(configB.coverageExcludes, '**/*.g.dart');
       expect(configB.totalShards, 2);

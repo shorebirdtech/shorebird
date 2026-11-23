@@ -49,8 +49,9 @@ jobs:
         with:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
-      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
-      - run: dart pub global activate shorebird_ci 0.3.1
+          persist-credentials: false
+      - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
+      - run: dart pub global activate shorebird_ci 0.3.4
       - name: Verify CI coverage
         run: shorebird_ci verify
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -136,7 +137,7 @@ jobs:
   dex:
     needs: changes
     if: needs.changes.outputs.dex == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: dex
       package_path: packages/dex
@@ -146,7 +147,7 @@ jobs:
   elf:
     needs: changes
     if: needs.changes.outputs.elf == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: elf
       package_path: packages/elf
@@ -157,7 +158,7 @@ jobs:
   macho:
     needs: changes
     if: needs.changes.outputs.macho == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: macho
       package_path: packages/macho
@@ -168,7 +169,7 @@ jobs:
   scoped_deps:
     needs: changes
     if: needs.changes.outputs.scoped_deps == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: scoped_deps
       package_path: packages/scoped_deps
@@ -180,7 +181,7 @@ jobs:
   shorebird_build_trace:
     needs: changes
     if: needs.changes.outputs.shorebird_build_trace == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: shorebird_build_trace
       package_path: packages/shorebird_build_trace
@@ -190,7 +191,7 @@ jobs:
   shorebird_ci:
     needs: changes
     if: needs.changes.outputs.shorebird_ci == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: shorebird_ci
       package_path: packages/shorebird_ci
@@ -202,7 +203,7 @@ jobs:
   shorebird_cli:
     needs: changes
     if: needs.changes.outputs.shorebird_cli == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: shorebird_cli
       package_path: packages/shorebird_cli
@@ -214,7 +215,7 @@ jobs:
   shorebird_code_push_client:
     needs: changes
     if: needs.changes.outputs.shorebird_code_push_client == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: shorebird_code_push_client
       package_path: packages/shorebird_code_push_client
@@ -226,7 +227,7 @@ jobs:
   shorebird_code_push_protocol:
     needs: changes
     if: needs.changes.outputs.shorebird_code_push_protocol == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: shorebird_code_push_protocol
       package_path: packages/shorebird_code_push_protocol
@@ -238,7 +239,7 @@ jobs:
   shorebird_redis_client:
     needs: changes
     if: needs.changes.outputs.shorebird_redis_client == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: shorebird_redis_client
       package_path: packages/redis_client
@@ -250,7 +251,7 @@ jobs:
   verify_cache:
     needs: changes
     if: needs.changes.outputs.verify_cache == 'true'
-    uses: ./.github/workflows/_shorebird_ci_dart.yaml
+    uses: $/.github/workflows/_shorebird_ci_dart.yaml
     with:
       package_name: verify_cache
       package_path: packages/verify_cache
@@ -270,6 +271,33 @@ jobs:
           persist-credentials: false
       - run: npx --yes cspell@10.4.0 --config cspell.config.yaml --no-progress "**"
 
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    # Lints the workflows in .github/workflows for GitHub Actions
+    # security mistakes: https://docs.zizmor.sh/audits/
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install zizmor
+        run: |
+          set -euo pipefail
+          case "$RUNNER_ARCH" in
+            X64) asset=zizmor-x86_64-unknown-linux-gnu.tar.gz sha=3e6a301c7a820a2501915f5a9de8c0486da82bdec7965f068477538a98743d43 ;;
+            ARM64) asset=zizmor-aarch64-unknown-linux-gnu.tar.gz sha=aa487c792a7cbbe86e4f8dccd3b66de33b3b51813c090aaa0842d7ea08a3fc35 ;;
+            *) echo "::error::No zizmor release for Linux $RUNNER_ARCH"; exit 1 ;;
+          esac
+          curl -fsSL --retry 5 -o "$RUNNER_TEMP/$asset" "https://github.com/zizmorcore/zizmor/releases/download/v1.33.1/$asset"
+          echo "$sha  $RUNNER_TEMP/$asset" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zizmor"
+          tar -xzf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP/zizmor"
+          echo "$RUNNER_TEMP/zizmor" >> "$GITHUB_PATH"
+      - name: Lint workflows
+        run: zizmor --offline .github/workflows
+
   required:
     name: required
     if: ${{ !cancelled() }}
@@ -287,6 +315,7 @@ jobs:
       - shorebird_redis_client
       - verify_cache
       - cspell
+      - zizmor
     runs-on: ubuntu-latest
     steps:
       - name: Check required jobs

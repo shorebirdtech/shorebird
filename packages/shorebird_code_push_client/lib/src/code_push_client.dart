@@ -760,6 +760,35 @@ class CodePushClient {
     }
   }
 
+  /// Archive the app with the provided [appId], stopping it serving patches
+  /// and taking it out of its account's app quota.
+  ///
+  /// Idempotent: archiving an already archived app succeeds and changes
+  /// nothing.
+  Future<void> archiveApp({required String appId}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/apps/$appId/archive'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Unarchive the app with the provided [appId], putting it back to serving
+  /// patches and counting against its account's app quota.
+  ///
+  /// Idempotent, as [archiveApp] is.
+  Future<void> unarchiveApp({required String appId}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/apps/$appId/unarchive'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Move the app with the provided [appId] into [organizationId].
   ///
   /// Requires permission to transfer apps in both the source and destination
@@ -811,8 +840,16 @@ class CodePushClient {
   }
 
   /// List all apps for the current account.
-  Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
+  ///
+  /// The server leaves archived apps out unless [includeArchived] asks for
+  /// them.
+  Future<List<AppMetadata>> getApps({bool includeArchived = false}) async {
+    var uri = Uri.parse('$_v1/apps');
+    if (includeArchived) {
+      uri = uri.replace(queryParameters: {'includeArchived': 'true'});
+    }
+
+    final response = await _httpClient.get(uri);
 
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);

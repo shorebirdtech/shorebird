@@ -805,5 +805,281 @@ void main() {
         );
       });
     });
+
+    group('GOT slot canonicalization', () {
+      test('names each GOT slot by the symbol bound to it', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                extraSections: [gotSection(slotCount: 3)],
+                symbols: gotSymbols,
+                indirectSymbols: const [
+                  2,
+                  1,
+                  MachOSymbolType.indirectSymbolLocal,
+                ],
+              ),
+            )
+            .slices
+            .single;
+        expect(slice.gotSymbolNames, {
+          0x4000: r'_$s8StoreKit7ProductVMn',
+          0x4008: '_objc_msgSend',
+        });
+      });
+
+      test('renders ADRP+LDR and LDR-literal GOT loads by symbol', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                textInstructions: [
+                  // 0x1000: adrp x8, 0x4000; ldr x8, [x8, #8]
+                  Arm64Encoder.adrp(8, 3),
+                  Arm64Encoder.ldr(8, 8, 8),
+                  // 0x1008: ldr x9, 0x4000
+                  Arm64Encoder.ldrLiteral(9, 0x4000 - 0x1008),
+                  // 0x100c: adrp x10, 0x4000 used for a non-GOT load too.
+                  Arm64Encoder.adrp(10, 3),
+                  Arm64Encoder.ldr(11, 10, 8),
+                  Arm64Encoder.addImm(12, 10, 0),
+                  Arm64Encoder.ret(),
+                ],
+                extraSections: [gotSection()],
+                symbols: gotSymbols,
+                indirectSymbols: const [2, 1],
+              ),
+            )
+            .slices
+            .single;
+        final func = slice.resolveFunctions().single;
+        expect(func.tokensAt(0), 'adrp,x8,G,');
+        expect(func.tokensAt(1), 'ldr,x8,x8,G:_objc_msgSend,');
+        expect(func.tokensAt(2), r'ldr,x9,G:_$s8StoreKit7ProductVMn,');
+        // The ADD reads the page, so the ADRP keeps it.
+        expect(func.tokensAt(3), 'adrp,x10,__DATA_CONST,__got+0x0,');
+        expect(func.tokensAt(4), 'ldr,x11,x10,G:_objc_msgSend,');
+      });
+
+      test('keeps the page of an ADRP whose register outlives a branch', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                textInstructions: [
+                  Arm64Encoder.adrp(8, 3),
+                  Arm64Encoder.ldr(9, 8, 8),
+                  Arm64Encoder.b(4),
+                  Arm64Encoder.ldr(10, 8, 0),
+                  Arm64Encoder.ret(),
+                ],
+                extraSections: [gotSection()],
+                symbols: gotSymbols,
+                indirectSymbols: const [2, 1],
+              ),
+            )
+            .slices
+            .single;
+        final func = slice.resolveFunctions().single;
+        expect(func.tokensAt(0), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(func.tokensAt(1), 'ldr,x9,x8,G:_objc_msgSend,');
+        expect(func.tokensAt(3), startsWith('insn,'));
+      });
+
+      test('keeps loads that read no bound slot as raw instructions', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                textInstructions: [
+                  // ldr x9, 0x0ffc: a literal behind the function.
+                  Arm64Encoder.ldrLiteral(9, -4),
+                  // adrp x8, 0x4000; ldr x8, [x8, #0x10]: past the GOT.
+                  Arm64Encoder.adrp(8, 3),
+                  Arm64Encoder.ldr(8, 8, 0x10),
+                  Arm64Encoder.ret(),
+                ],
+                extraSections: [gotSection()],
+                symbols: gotSymbols,
+                indirectSymbols: const [2, 1],
+              ),
+            )
+            .slices
+            .single;
+        final func = slice.resolveFunctions().single;
+        expect(func.tokensAt(0), startsWith('insn,'));
+        expect(func.tokensAt(1), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(func.tokensAt(2), startsWith('insn,'));
+      });
+
+      test('keeps absolute and unmapped type references', () {
+        final bytes = Uint8List(16);
+        ByteData.sublistView(bytes)
+          ..setUint8(0, 0x01)
+          // Points at 0x80000, outside every section.
+          ..setInt32(1, 0x80000 - 0x2001, Endian.little)
+          ..setUint8(5, 0x18)
+          ..setUint64(6, 0x1234, Endian.little);
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                extraSections: [
+                  MachOSectionSpec(
+                    segname: '__TEXT',
+                    sectname: '__swift5_typeref',
+                    bytes: bytes,
+                    addr: 0x2000,
+                  ),
+                ],
+              ),
+            )
+            .slices
+            .single;
+        expect(
+          slice.canonicalSwiftTypeRefs(),
+          '{1:0x80000}{24:0x4660}\x00\x00',
+        );
+      });
+
+      test('keeps the page of an ADRP stored, written back, or live at the '
+          'end of a function', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                textInstructions: [
+                  // _a: x8 falls through into _b.
+                  Arm64Encoder.adrp(8, 3),
+                  Arm64Encoder.ldr(9, 8, 8),
+                  // _b at 0x1008: reads the page _a left in x8.
+                  Arm64Encoder.ldr(10, 8, 0),
+                  // str x8, [sp]: the page itself is stored.
+                  Arm64Encoder.adrp(8, 3),
+                  Arm64Encoder.ldr(9, 8, 8),
+                  0xf90003e8,
+                  // ldr x9, [x8, #8]!: x8 no longer holds the page after.
+                  Arm64Encoder.adrp(8, 3),
+                  0xf8408d09,
+                  Arm64Encoder.ldr(10, 8, 0),
+                  Arm64Encoder.ret(),
+                ],
+                extraSections: [gotSection()],
+                symbols: const [
+                  ...gotSymbols,
+                  MachOSymbolSpec(name: '_b', nValue: 0x1008),
+                ],
+                indirectSymbols: const [2, 1],
+                functionStartOffsets: const [0, 8],
+              ),
+            )
+            .slices
+            .single;
+        final [a, b] = slice.resolveFunctions();
+        expect(a.tokensAt(0), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(a.tokensAt(1), 'ldr,x9,x8,G:_objc_msgSend,');
+        expect(b.tokensAt(0), startsWith('insn,'));
+        expect(b.tokensAt(1), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(b.tokensAt(3), startsWith('insn,'));
+        expect(b.tokensAt(4), 'adrp,x8,__DATA_CONST,__got+0x0,');
+        expect(b.tokensAt(6), startsWith('insn,'));
+      });
+
+      test('renders __swift5_typeref symbolic references by target', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                extraSections: [
+                  typeRefSection(slotAddr: 0x4008),
+                  gotSection(),
+                ],
+                symbols: gotSymbols,
+                indirectSymbols: const [2, 1],
+              ),
+            )
+            .slices
+            .single;
+        expect(slice.canonicalSwiftTypeRefs(), '{2:G:_objc_msgSend}\x00');
+      });
+
+      test('renders a reference to an unbound slot by section offset', () {
+        final slice = parser
+            .parse(
+              MachOBuilder.buildThin(
+                extraSections: [
+                  typeRefSection(slotAddr: 0x4008),
+                  gotSection(),
+                ],
+                symbols: gotSymbols,
+                indirectSymbols: const [
+                  MachOSymbolType.indirectSymbolLocal,
+                  MachOSymbolType.indirectSymbolLocal,
+                ],
+              ),
+            )
+            .slices
+            .single;
+        expect(
+          slice.canonicalSwiftTypeRefs(),
+          '{2:__DATA_CONST,__got+0x8}\x00',
+        );
+        expect(
+          parser
+              .parse(MachOBuilder.buildThin())
+              .slices
+              .single
+              .canonicalSwiftTypeRefs(),
+          isNull,
+        );
+      });
+
+      test('drops 0xff alignment padding between mangled names', () {
+        String? canonical(List<int> typeRefBytes) => parser
+            .parse(
+              MachOBuilder.buildThin(
+                extraSections: [
+                  MachOSectionSpec(
+                    segname: '__TEXT',
+                    sectname: '__swift5_typeref',
+                    bytes: Uint8List.fromList(typeRefBytes),
+                    addr: 0x2000,
+                  ),
+                ],
+              ),
+            )
+            .slices
+            .single
+            .canonicalSwiftTypeRefs();
+        const names = 'Si\x00Sb\x00';
+        expect(canonical([0xff, 0xff, 0xff, ...names.codeUnits]), names);
+        expect(canonical([0xff, ...names.codeUnits]), names);
+      });
+    });
   });
 }
+
+/// A `__DATA_CONST,__got` of [slotCount] slots at [addr], bound by the
+/// indirect symbol table from index 0.
+MachOSectionSpec gotSection({int addr = 0x4000, int slotCount = 2}) =>
+    MachOSectionSpec(
+      segname: '__DATA_CONST',
+      sectname: '__got',
+      bytes: Uint8List(slotCount * 8),
+      addr: addr,
+      flags: MachOSectionType.nonLazySymbolPointers,
+    );
+
+/// A `__TEXT,__swift5_typeref` at [addr] holding one mangled name that is an
+/// indirect (`0x02`) symbolic reference to the slot at [slotAddr].
+MachOSectionSpec typeRefSection({required int slotAddr, int addr = 0x2000}) {
+  final bytes = Uint8List(6);
+  bytes[0] = 0x02;
+  ByteData.sublistView(bytes).setInt32(1, slotAddr - (addr + 1), Endian.little);
+  return MachOSectionSpec(
+    segname: '__TEXT',
+    sectname: '__swift5_typeref',
+    bytes: bytes,
+    addr: addr,
+  );
+}
+
+const gotSymbols = [
+  MachOSymbolSpec(name: '_main'),
+  MachOSymbolSpec.undefined('_objc_msgSend'),
+  MachOSymbolSpec.undefined(r'_$s8StoreKit7ProductVMn'),
+];

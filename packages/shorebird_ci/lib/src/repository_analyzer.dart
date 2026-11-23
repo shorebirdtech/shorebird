@@ -321,6 +321,11 @@ class RepositoryAnalyzer {
 
     final needsRedis = raw['needs_redis'] == true;
 
+    final rawIntegrationTests = raw['integration_tests'];
+    final integrationTests = rawIntegrationTests is bool
+        ? rawIntegrationTests
+        : null;
+
     String? reportOn;
     final rawReportOn = raw['report_on'];
     if (rawReportOn is String) {
@@ -351,6 +356,7 @@ class RepositoryAnalyzer {
       minCoverage: minCoverage,
       runners: runners,
       needsRedis: needsRedis,
+      integrationTests: integrationTests,
       reportOn: reportOn,
       coverageExcludes: coverageExcludes,
       totalShards: totalShards,
@@ -362,10 +368,22 @@ class RepositoryAnalyzer {
     return _hasAnyFile(Directory(p.join(root.path, 'test')));
   }
 
-  /// Whether a package has integration tests (Flutter only).
+  /// Whether CI should run the integration tests of the Flutter
+  /// package at [root].
+  ///
+  /// `flutter test integration_test` needs a device, and the only one
+  /// a hosted `ubuntu-latest` runner (every pull request's leg) has is
+  /// the Linux desktop, so a package with an `integration_test/`
+  /// directory runs them only when it also has a `linux/` directory.
+  /// `shorebird_ci: integration_tests:` in `pubspec.yaml` overrides
+  /// that either way.
   static bool hasIntegrationTests({required Directory root}) {
     if (!isFlutterPackage(root: root)) return false;
-    return _hasAnyFile(Directory(p.join(root.path, 'integration_test')));
+    if (!_hasAnyFile(Directory(p.join(root.path, 'integration_test')))) {
+      return false;
+    }
+    return ciConfig(root: root).integrationTests ??
+        Directory(p.join(root.path, 'linux')).existsSync();
   }
 
   static bool _hasAnyFile(Directory dir) {
@@ -510,6 +528,7 @@ class PackageCiConfig {
     this.minCoverage,
     this.runners,
     this.needsRedis = false,
+    this.integrationTests,
     this.reportOn,
     this.coverageExcludes,
     this.totalShards,
@@ -523,6 +542,10 @@ class PackageCiConfig {
 
   /// Whether the package requires a Redis instance during tests.
   final bool needsRedis;
+
+  /// Whether CI runs the package's integration tests, or null to run
+  /// them only when the package has a `linux/` directory.
+  final bool? integrationTests;
 
   /// Directories passed to `--report-on` when formatting coverage.
   final String? reportOn;

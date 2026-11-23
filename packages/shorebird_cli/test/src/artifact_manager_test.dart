@@ -1422,6 +1422,39 @@ void main() {
       });
     });
 
+    group('readAppXcframeworkShorebirdYaml', () {
+      test('returns null when the device slice has no shorebird.yaml', () {
+        expect(
+          runWithOverrides(artifactManager.readAppXcframeworkShorebirdYaml),
+          isNull,
+        );
+      });
+
+      test("returns the device slice's shorebird.yaml", () {
+        File(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              'App.xcframework',
+              'ios-arm64',
+              'App.framework',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: internal-app-id');
+
+        expect(
+          runWithOverrides(artifactManager.readAppXcframeworkShorebirdYaml),
+          'app_id: internal-app-id',
+        );
+      });
+    });
+
     group('getReleaseSupplementDirectory', () {
       Directory? getDirectory({bool create = false}) => runWithOverrides(
         () => artifactManager.getReleaseSupplementDirectory(

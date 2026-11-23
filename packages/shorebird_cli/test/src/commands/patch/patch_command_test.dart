@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/build_flags.dart';
@@ -421,6 +422,9 @@ void main() {
         () =>
             shorebirdFlutter.installRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
+      when(
+        () => shorebirdFlutter.isInstalled(revision: any(named: 'revision')),
+      ).thenReturn(true);
 
       when(
         () => shorebirdValidator.validateFlavors(
@@ -1444,6 +1448,26 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             expect(supplementDirectory.existsSync(), isFalse);
           });
 
+          test('gives the patch build the extracted supplement', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            final supplementDirectory =
+                verify(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: release.id,
+                        releaseArtifact: any(named: 'releaseArtifact'),
+                        supplementDirectory: captureAny(
+                          named: 'supplementDirectory',
+                        ),
+                      ),
+                    ).captured.single
+                    as Directory;
+            verify(
+              () => patcher.releaseSupplementDirectory = supplementDirectory,
+            ).called(1);
+          });
+
           group('when the supplement is damaged', () {
             setUp(() {
               when(
@@ -1934,6 +1958,66 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         expect(run.patchId, equals(3));
         expect(run.dryRun, isFalse);
         expect(run.metadata, equals(patchMetadata.toJson()));
+      });
+
+      test('writes the build trace summary again after the upload', () async {
+        await runWithOverrides(command.run);
+
+        verifyInOrder([
+          artifactBuilder.writeBuildTraceSummary,
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+          artifactBuilder.writeBuildTraceSummary,
+          () => codePushClient.createBuildRun(
+            appId: any(named: 'appId'),
+            request: any(named: 'request'),
+          ),
+        ]);
+      });
+
+      test('records the summary that counts the upload', () async {
+        final summaries = ['before upload', 'after upload'];
+        when(artifactBuilder.writeBuildTraceSummary).thenAnswer((_) {
+          buildTraceSession.summary = BuildTraceSummary.fromEvents(
+            const [],
+            platform: summaries.removeAt(0),
+          );
+        });
+        when(
+          () => patcher.updatedCreatePatchMetadata(any()),
+        ).thenAnswer(
+          (invocation) async =>
+              invocation.positionalArguments.single as CreatePatchMetadata,
+        );
+
+        await runWithOverrides(command.run);
+
+        final sentMetadata =
+            verify(
+                  () => patcher.uploadPatchArtifacts(
+                    appId: any(named: 'appId'),
+                    releaseId: any(named: 'releaseId'),
+                    metadata: captureAny(named: 'metadata'),
+                    track: any(named: 'track'),
+                    artifacts: any(named: 'artifacts'),
+                    rolloutPercentage: any(named: 'rolloutPercentage'),
+                    rolloutSchedule: any(named: 'rolloutSchedule'),
+                  ),
+                ).captured.single
+                as Json;
+        expect(
+          (sentMetadata['build_trace_summary'] as Json)['platform'],
+          equals('before upload'),
+        );
+        final runSummary = sentRun().metadata!['build_trace_summary'] as Json;
+        expect(runSummary['platform'], equals('after upload'));
       });
 
       test('records a link percentage below the minimum', () async {
@@ -2691,7 +2775,6 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             flavorArg: null,
             releasePlatform: ReleasePlatform.android,
           ),
-          () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getRelease(
             appId: appId,
@@ -2946,7 +3029,6 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               flavorArg: null,
               releasePlatform: ReleasePlatform.android,
             ),
-            () => cache.updateAll(),
             () => codePushClientWrapper.getApp(appId: appId),
             () => codePushClientWrapper.getReleases(appId: appId),
             () => logger.chooseOne<Release>(
@@ -3132,6 +3214,42 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             () => patcher.extraBuildArgs = any(),
             () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
           ]);
+        });
+
+        group('when the pinned Flutter is not installed', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.isInstalled(revision: flutterRevision),
+            ).thenReturn(false);
+          });
+
+          test('installs it before the guessing build', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyInOrder([
+              () => shorebirdFlutter.installRevision(revision: flutterRevision),
+              () => shorebirdFlutter.getVersionAndRevision(),
+              () => patcher.buildPatchArtifact(),
+            ]);
+          });
+
+          test('exits with a software error when the install fails', () async {
+            when(
+              () => shorebirdFlutter.installRevision(revision: flutterRevision),
+            ).thenThrow(Exception('offline'));
+
+            await expectLater(
+              () => runWithOverrides(() => command.createPatch(patcher)),
+              throwsA(
+                isA<ProcessExit>().having(
+                  (e) => e.exitCode,
+                  'exitCode',
+                  ExitCode.software.code,
+                ),
+              ),
+            );
+            verifyNever(() => patcher.buildPatchArtifact());
+          });
         });
 
         test(
@@ -3339,12 +3457,11 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           });
 
           test(
-            'updates cache with both default and release Flutter revisions',
+            'updates the cache only for the release Flutter revision',
             () async {
               await runWithOverrides(command.run);
 
               verifyInOrder([
-                cache.updateAll,
                 () => shorebirdEnv.copyWith(
                   flutterRevisionOverride: releaseFlutterRevision,
                 ),

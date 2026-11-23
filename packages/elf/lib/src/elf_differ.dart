@@ -11,7 +11,8 @@ enum ElfDifferenceKind {
   /// `.note.gnu.build-id` payload changed (safe — regenerated per build).
   buildIdChanged,
 
-  /// `.gnu_debuglink`, `.debug_*` sections, or section header ordering changed
+  /// `.gnu_debuglink`, `.debug_*` sections, another section without
+  /// `SHF_ALLOC` (such as `.comment`), or section header ordering changed
   /// while runtime payloads match (safe — debug/layout metadata noise).
   debugInfoChanged,
 
@@ -42,10 +43,10 @@ enum ElfDifferenceKind {
   /// The `DT_SONAME` shared object name in `.dynamic` changed.
   sonameChanged,
 
-  /// A non-debug ELF section was added.
+  /// A loaded (`SHF_ALLOC`) ELF section was added.
   sectionAdded,
 
-  /// A non-debug ELF section was removed.
+  /// A loaded (`SHF_ALLOC`) ELF section was removed.
   sectionRemoved,
 
   /// ELF class (32/64-bit), endianness, machine architecture, or file type
@@ -172,7 +173,7 @@ class ElfDiffResult {
   final List<ElfDifference> differences;
 
   /// Differences that are safe build noise (`.note.gnu.build-id`,
-  /// `.gnu_debuglink`, `.debug_*`).
+  /// `.gnu_debuglink`, `.debug_*`, other sections without `SHF_ALLOC`).
   Iterable<ElfDifference> get safeDifferences =>
       differences.where((d) => d.kind.isSafe);
 
@@ -347,7 +348,7 @@ class ElfDiffer {
       );
     }
 
-    // 4. Structural non-debug sections and section header ordering.
+    // 4. Structural sections and section header ordering.
     _compareSections(oldFile, newFile, differences);
 
     // 5. Read-only data (.rodata, .rodata.*).
@@ -445,13 +446,31 @@ class ElfDiffer {
         s.name == '.hash' ||
         s.name == '.gnu.hash';
 
+    // Sections without SHF_ALLOC (.comment, .ARM.attributes, ...) are never
+    // mapped into memory, so the loader and the running code never see them.
+    // A change there can't change behavior; it is metadata noise such as the
+    // compiler and linker version strings in .comment. One marked executable
+    // is malformed, so it stays with the loaded sections and is compared there.
+    bool isNonLoaded(ElfSection s) => !s.isAlloc && !s.isExecutable;
+    _compareNonAllocSections(
+      [
+        for (final s in oldFile.sections)
+          if (!isIgnoredStructural(s) && isNonLoaded(s)) s,
+      ],
+      [
+        for (final s in newFile.sections)
+          if (!isIgnoredStructural(s) && isNonLoaded(s)) s,
+      ],
+      differences,
+    );
+
     final oldFiltered = [
       for (final s in oldFile.sections)
-        if (!isIgnoredStructural(s)) s,
+        if (!isIgnoredStructural(s) && !isNonLoaded(s)) s,
     ];
     final newFiltered = [
       for (final s in newFile.sections)
-        if (!isIgnoredStructural(s)) s,
+        if (!isIgnoredStructural(s) && !isNonLoaded(s)) s,
     ];
 
     final oldMap = {for (final s in oldFiltered) s.name: s};
@@ -478,7 +497,7 @@ class ElfDiffer {
       );
     }
 
-    // Check any custom non-debug sections not already covered by .text, .plt,
+    // Check any custom loaded sections not already covered by .text, .plt,
     // .rodata*, .data*, .init_array, .fini_array, or .bss.
     bool isCoveredByDedicatedCheck(String name, ElfSection s) =>
         name == '.text' ||
@@ -513,7 +532,7 @@ class ElfDiffer {
       }
     }
 
-    // If the set of non-debug sections is identical but their order in the
+    // If the set of loaded sections is identical but their order in the
     // section header table changed, record a safe debugInfoChanged difference.
     if (oldNames.length == newNames.length && oldNames.containsAll(newNames)) {
       final oldOrder = [for (final s in oldFiltered) s.name];
@@ -526,6 +545,35 @@ class ElfDiffer {
           ),
         );
       }
+    }
+  }
+
+  void _compareNonAllocSections(
+    List<ElfSection> oldSections,
+    List<ElfSection> newSections,
+    List<ElfDifference> differences,
+  ) {
+    final oldMap = {for (final s in oldSections) s.name: s};
+    final newMap = {for (final s in newSections) s.name: s};
+    for (final name in {...oldMap.keys, ...newMap.keys}) {
+      final oldSect = oldMap[name];
+      final newSect = newMap[name];
+      final String change;
+      if (oldSect == null) {
+        change = 'added';
+      } else if (newSect == null) {
+        change = 'removed';
+      } else if (!_bytesEqual(oldSect.bytes, newSect.bytes)) {
+        change = 'changed';
+      } else {
+        continue;
+      }
+      differences.add(
+        ElfDifference(
+          kind: ElfDifferenceKind.debugInfoChanged,
+          description: 'Non-loaded section $change: $name',
+        ),
+      );
     }
   }
 

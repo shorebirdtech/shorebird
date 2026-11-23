@@ -7,10 +7,12 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 class AppsCommand extends ShorebirdCommand {
   /// {@macro apps_command}
   AppsCommand() {
+    addSubcommand(AppsArchiveCommand());
     addSubcommand(AppsDeleteCommand());
     addSubcommand(AppsListCommand());
     addSubcommand(AppsRenameCommand());
     addSubcommand(AppsTransferCommand());
+    addSubcommand(AppsUnarchiveCommand());
   }
 
   @override
@@ -25,6 +27,7 @@ class AppsCommand extends ShorebirdCommand {
       'Examples:\n'
       '  shorebird apps list\n'
       '  shorebird apps rename --app-id <id> --name "Acme Consumer"\n'
-      '  shorebird apps delete --app-id <id>\n\n'
+      '  shorebird apps delete --app-id <id>\n'
+      '  shorebird apps archive --app-id <id>\n\n'
       'For every app in your enterprise, run `shorebird enterprise apps`.';
 }

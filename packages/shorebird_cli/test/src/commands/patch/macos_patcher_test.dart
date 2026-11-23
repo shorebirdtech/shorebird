@@ -215,6 +215,41 @@ void main() {
       });
     });
 
+    group('assertArgsAreValid', () {
+      group('when --no-codesign is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('codesign')).thenReturn(true);
+          when(() => argResults['codesign']).thenReturn(false);
+        });
+
+        test('exits with an error saying the flag is unsupported', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.assertArgsAreValid),
+            exitsWithError(
+              message: '--no-codesign is not supported for macOS.',
+              hint:
+                  'Remove --no-codesign. A macOS app is signed by the signing '
+                  "settings in your Xcode project's Runner target.",
+            ),
+          );
+        });
+      });
+
+      group('when --codesign is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('codesign')).thenReturn(true);
+          when(() => argResults['codesign']).thenReturn(true);
+        });
+
+        test('completes', () async {
+          await expectLater(
+            runWithOverrides(patcher.assertArgsAreValid),
+            completes,
+          );
+        });
+      });
+    });
+
     group('assertPreconditions', () {
       setUp(() {
         when(() => doctor.macosCommandValidators).thenReturn([flavorValidator]);
@@ -504,7 +539,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -525,7 +559,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -539,6 +572,7 @@ This may indicate that the patch contains native changes, which cannot be applie
               appDillPath: any(named: 'appDillPath'),
               outFilePath: any(named: 'outFilePath'),
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+              additionalArgs: any(named: 'additionalArgs'),
             ),
           ).thenThrow(exception);
         });
@@ -555,7 +589,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -600,7 +633,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -656,7 +688,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -742,12 +773,12 @@ This may indicate that the patch contains native changes, which cannot be applie
           )..createSync(recursive: true);
           when(
             () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
@@ -762,6 +793,75 @@ This may indicate that the patch contains native changes, which cannot be applie
                 File(invocation.namedArguments[#outFilePath] as String)
                   ..createSync(recursive: true),
           );
+        });
+
+        group('when the release has TFA facts', () {
+          setUp(() {
+            final releaseSupplementDirectory = Directory.systemTemp
+                .createTempSync();
+            File(
+              p.join(releaseSupplementDirectory.path, 'App.tfa_facts.json'),
+            ).writeAsStringSync('facts');
+            patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+          });
+
+          test('builds against a stable copy of them', () async {
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception {
+              // ignore
+            }
+            final staged = p.join(
+              projectRoot.path,
+              'build',
+              'macos',
+              'shorebird_release',
+            );
+            verify(
+              () => artifactBuilder.buildMacos(
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+                releaseSupplementDir: staged,
+              ),
+            ).called(1);
+            expect(
+              File(p.join(staged, 'App.tfa_facts.json')).readAsStringSync(),
+              'facts',
+            );
+          });
+        });
+
+        test('builds without the release supplement when it has no TFA '
+            'facts', () async {
+          patcher.releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final staged = Directory(
+            p.join(projectRoot.path, 'build', 'macos', 'shorebird_release'),
+          )..createSync(recursive: true);
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          expect(
+            verify(
+              () => artifactBuilder.buildMacos(
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+                releaseSupplementDir: captureAny(
+                  named: 'releaseSupplementDir',
+                ),
+              ),
+            ).captured.single,
+            isNull,
+          );
+          expect(staged.existsSync(), isFalse);
         });
 
         group('when flavor is provided', () {
@@ -784,7 +884,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             await runWithOverrides(patcher.buildPatchArtifact);
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: flavor,
                 target: any(named: 'target'),
@@ -804,7 +903,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             verify(
               () => artifactBuilder.buildMacos(
                 flavor: any(named: 'flavor'),
-                codesign: any(named: 'codesign'),
                 target: any(named: 'target'),
                 args: any(
                   named: 'args',
@@ -840,7 +938,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
@@ -867,7 +964,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
@@ -887,7 +983,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             expect(p.basename(artifact.path), endsWith('.zip'));
             verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: ['--verbose'],
               ),
             ).called(1);
@@ -938,7 +1033,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             final captured = verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: captureAny(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
@@ -969,7 +1063,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
             final captured = verify(
               () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
                 args: captureAny(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),

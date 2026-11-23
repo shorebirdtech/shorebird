@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/commands.dart';
 import 'package:shorebird_ci/src/version.dart';
+import 'package:shorebird_ci/src/zizmor.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
@@ -28,6 +29,7 @@ Future<int?> runGenerate(
     '--repo-root',
     repoRoot.path,
     '--no-update-actions',
+    '--no-zizmor',
     ...extra,
   ]);
 }
@@ -700,7 +702,7 @@ void main() {
     );
 
     test(
-      '--codecov-token-secret emits secrets: inherit on each '
+      '--codecov-token-secret passes that one secret on each '
       'orchestrator uses: call and threads token into reusable',
       () async {
         createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
@@ -741,11 +743,24 @@ void main() {
           ),
         ).readAsStringSync();
 
-        // One `secrets: inherit` per package job (2 packages).
+        // The one secret, by name, per package job (2 packages): never
+        // `secrets: inherit`, which hands over every secret.
+        expect(mainYaml, isNot(contains('secrets: inherit')));
         expect(
-          'secrets: inherit'.allMatches(mainYaml).length,
+          '    secrets:\n'
+                  r'      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}'
+              .allMatches(mainYaml)
+              .length,
           equals(2),
         );
+        for (final reusable in [dartReusable, flutterReusable]) {
+          expect(
+            reusable,
+            contains(
+              '    secrets:\n      CODECOV_TOKEN:\n        required: false\n',
+            ),
+          );
+        }
         expect(
           dartReusable,
           contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
@@ -949,6 +964,143 @@ void main() {
     });
   });
 
+  group('integration tests step', () {
+    /// The Integration Tests step of [job] in [workflow].
+    YamlMap integrationStep(String workflow, String job) {
+      final jobs = (loadYaml(workflow) as YamlMap)['jobs'] as YamlMap;
+      final steps = (jobs[job] as YamlMap)['steps'] as YamlList;
+      return steps.cast<YamlMap>().singleWhere(
+        (step) => step['name'] == 'Integration Tests',
+      );
+    }
+
+    Future<YamlMap> staticStep() async {
+      createPackage(tempDir, 'packages/app', 'app', flutterLine: 'any');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+      return integrationStep(readWorkflow('_shorebird_ci_flutter.yaml'), 'ci');
+    }
+
+    Future<YamlMap> dynamicStep() async {
+      createPackage(tempDir, 'packages/app', 'app', flutterLine: 'any');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      return integrationStep(_readMain(tempDir), 'flutter_ci');
+    }
+
+    test('static and dynamic share one script', () async {
+      final static = await staticStep();
+      final dynamic = await dynamicStep();
+      expect(static['if'], 'inputs.has_integration_tests');
+      expect(static['working-directory'], r'${{ inputs.package_path }}');
+      expect(dynamic['if'], 'matrix.has_integration_tests == true');
+      expect(static['run'], dynamic['run']);
+    });
+
+    group('script', () {
+      late Directory package;
+      late File log;
+
+      /// Runs the step's script as RUNNER_OS [os] in a package with the
+      /// platform directories [platforms], with `flutter`, `sudo` and
+      /// `xvfb-run` stubbed to log their arguments.
+      Future<ProcessResult> runScript(
+        String script, {
+        required String os,
+        List<String> platforms = const [],
+      }) async {
+        package = Directory(p.join(tempDir.path, 'run'))..createSync();
+        for (final platform in platforms) {
+          Directory(p.join(package.path, platform)).createSync();
+        }
+        final bin = Directory(p.join(tempDir.path, 'bin'))..createSync();
+        log = File(p.join(tempDir.path, 'calls.log'));
+        for (final tool in ['flutter', 'sudo', 'xvfb-run']) {
+          final stub = File(p.join(bin.path, tool))
+            ..writeAsStringSync(
+              '#!/bin/sh\necho "$tool \$*" >> "${log.path}"\n',
+            );
+          Process.runSync('chmod', ['+x', stub.path]);
+        }
+        return Process.run(
+          'bash',
+          ['-e', '-c', script],
+          workingDirectory: package.path,
+          environment: {
+            'RUNNER_OS': os,
+            'PATH': '${bin.path}:${Platform.environment['PATH']}',
+          },
+        );
+      }
+
+      List<String> calls() =>
+          log.existsSync() ? log.readAsLinesSync() : const [];
+
+      test(
+        'sets up the Linux desktop and runs under xvfb on Linux',
+        () async {
+          final script = (await dynamicStep())['run'] as String;
+          final result = await runScript(
+            script,
+            os: 'Linux',
+            platforms: ['linux'],
+          );
+          expect(result.exitCode, 0, reason: '${result.stderr}');
+          const install =
+              'sudo apt-get install -y clang cmake ninja-build pkg-config '
+              'libgtk-3-dev xvfb';
+          expect(calls(), [
+            'sudo apt-get update',
+            install,
+            'xvfb-run -a flutter test integration_test -d linux',
+          ]);
+        },
+        testOn: '!windows',
+      );
+
+      test(
+        "runs on the runner OS's desktop when it has that directory",
+        () async {
+          final script = (await dynamicStep())['run'] as String;
+          final result = await runScript(
+            script,
+            os: 'macOS',
+            platforms: ['linux', 'macos'],
+          );
+          expect(result.exitCode, 0, reason: '${result.stderr}');
+          expect(calls(), ['flutter test integration_test -d macos']);
+        },
+        testOn: '!windows',
+      );
+
+      for (final (os, platforms) in [
+        ('Linux', ['macos', 'windows']),
+        ('macOS', ['linux']),
+        ('Windows', ['linux', 'macos']),
+        ('FreeBSD', ['linux', 'macos', 'windows']),
+      ]) {
+        test(
+          'skips with a notice on $os without its platform directory',
+          () async {
+            final script = (await dynamicStep())['run'] as String;
+            final result = await runScript(
+              script,
+              os: os,
+              platforms: platforms,
+            );
+            expect(result.exitCode, 0, reason: '${result.stderr}');
+            expect(calls(), isEmpty);
+            expect(
+              result.stdout,
+              startsWith('::notice::Skipping integration tests'),
+            );
+          },
+          testOn: '!windows',
+        );
+      }
+    });
+  });
+
   group('dependabot.yml', () {
     test('creates dependabot.yml when missing', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
@@ -1002,6 +1154,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         // No --no-update-actions here — auto-bump is the default.
       ]);
 
@@ -1023,6 +1176,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         '--no-update-actions',
       ]);
 
@@ -1058,6 +1212,7 @@ void main() {
           'generate',
           '--repo-root',
           tempDir.path,
+          '--no-zizmor',
           '--style',
           style,
           '--no-update-actions',
@@ -1068,13 +1223,20 @@ void main() {
         for (final file in dir.listSync().whereType<File>()) {
           for (final m in usesLine.allMatches(file.readAsStringSync())) {
             final ref = m.group(1)!;
-            if (ref.startsWith('./')) continue;
+            if (ref.startsWith(r'$/')) continue;
             repos.add(ref.split('@').first);
             expect(ref, matches(pinned), reason: '${file.path}: $ref');
             expect(m.group(2), matches(RegExp(r'^ # v\d+\.\d+\.\d+$')));
           }
         }
         expect(unpinnedActionRefs(_readAll(dir)), isEmpty);
+        // Flutter installs in a run: step, not an action that could call
+        // a nested action by tag, which SHA-pinning-required repos refuse.
+        expect(_readAll(dir), isNot(contains('flutter-action')));
+        expect(
+          _readAll(dir),
+          contains('storage.googleapis.com/flutter_infra_release/releases'),
+        );
         // Every action the templates can emit showed up, so each was
         // checked.
         expect(
@@ -1083,7 +1245,6 @@ void main() {
             'actions/checkout',
             'dart-lang/setup-dart',
             'codecov/codecov-action',
-            'subosito/flutter-action',
             if (style == 'static') 'dorny/paths-filter',
           ]),
         );
@@ -1186,6 +1347,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         '--style',
         'static',
         '--no-update-actions',
@@ -1929,6 +2091,241 @@ esac
       );
     });
   });
+
+  test('example/shorebird_ci.yaml is what generate writes for the '
+      'workspace example/README.md describes', () async {
+    // pub.dev shows the example on the package's Example tab, so it must
+    // not lag behind what `generate` writes.
+    File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync(
+      'name: my_repo\n'
+      'environment:\n'
+      '  sdk: ^3.6.0\n'
+      'workspace:\n'
+      '  - packages/app\n'
+      '  - packages/core\n',
+    );
+    createPackage(
+      tempDir,
+      'packages/app',
+      'app',
+      sdkLine: '  sdk: ^3.6.0',
+      useWorkspace: true,
+      dependencies: {'core': '../core'},
+    );
+    createPackage(
+      tempDir,
+      'packages/core',
+      'core',
+      sdkLine: '  sdk: ^3.6.0',
+      useWorkspace: true,
+    );
+    initGitRepo(tempDir);
+
+    await runGenerate(tempDir, extra: ['--required']);
+
+    expect(
+      _readMain(tempDir),
+      File(p.join('example', 'shorebird_ci.yaml')).readAsStringSync(),
+      reason: 'Regenerate the example with the command in example/README.md.',
+    );
+  });
+  group('zizmor', () {
+    for (final style in ['dynamic', 'static']) {
+      test('$style emits a read-only zizmor job that required needs', () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', style, '--required']);
+        final yaml = _readMain(tempDir);
+        final jobs = (loadYaml(yaml) as YamlMap)['jobs'] as YamlMap;
+        final job = jobs['zizmor'] as YamlMap;
+
+        expect(job['permissions'], {'contents': 'read'});
+        expect(job.containsKey('secrets'), isFalse);
+        final steps = (job['steps'] as YamlList).cast<YamlMap>();
+        expect(steps.first['uses'], checkoutAction.split(' ').first);
+        expect(steps.first['with'], {'persist-credentials': false});
+        final install = steps[1]['run'] as String;
+        for (final asset in [
+          'zizmor-x86_64-unknown-linux-gnu.tar.gz',
+          'zizmor-aarch64-unknown-linux-gnu.tar.gz',
+        ]) {
+          expect(install, contains('asset=$asset sha=${zizmorSha256[asset]}'));
+        }
+        expect(install, contains('/releases/download/v$zizmorVersion/'));
+        expect(install, contains('sha256sum -c -'));
+        expect(steps.last['run'], 'zizmor --offline .github/workflows');
+        expect(
+          (jobs['required'] as YamlMap)['needs'] as YamlList,
+          contains('zizmor'),
+        );
+      });
+    }
+
+    test('checkouts keep no credentials and run: steps take no '
+        'template expansions of inputs', () async {
+      createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+      createPackage(
+        tempDir,
+        'packages/bar',
+        'bar',
+        flutterLine: 'any',
+        addTestDir: true,
+      );
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      for (final style in ['dynamic', 'static']) {
+        await runGenerate(tempDir, extra: ['--style', style]);
+        final dir = Directory(p.join(tempDir.path, '.github', 'workflows'));
+        for (final file in dir.listSync().whereType<File>()) {
+          final doc = loadYaml(file.readAsStringSync()) as YamlMap;
+          for (final job in (doc['jobs'] as YamlMap).values.cast<YamlMap>()) {
+            for (final step
+                in (job['steps'] as YamlList? ?? const []).cast<YamlMap>()) {
+              if ('${step['uses']}'.startsWith('actions/checkout@')) {
+                expect(
+                  (step['with'] as YamlMap)['persist-credentials'],
+                  isFalse,
+                  reason: file.path,
+                );
+              }
+              expect(
+                '${step['run'] ?? ''}',
+                isNot(matches(RegExp(r'\$\{\{ (inputs|matrix)\.subpackages'))),
+              );
+            }
+          }
+        }
+        dir.deleteSync(recursive: true);
+      }
+    });
+
+    test(
+      'static calls its reusable workflows by self-repository ref',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+
+        expect(
+          _readMain(tempDir),
+          contains(r'uses: $/.github/workflows/_shorebird_ci_dart.yaml'),
+        );
+      },
+    );
+
+    group('the run after writing', () {
+      Future<String> generateWith(Zizmor zizmor) async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+        final out = _CapturedOutput();
+        final code = await IOOverrides.runZoned(
+          () =>
+              (CommandRunner<int>(
+                'test',
+                'test',
+              )..addCommand(GenerateCommand(zizmor: zizmor))).run([
+                'generate',
+                '--repo-root',
+                tempDir.path,
+                '--no-update-actions',
+              ]),
+          stdout: () => out,
+          stderr: () => out,
+        );
+        expect(code, 0);
+        return out.text;
+      }
+
+      test('prints findings and says the job will fail on them', () async {
+        final text = await generateWith(
+          _FakeZizmor((
+            exitCode: 13,
+            stdout: 'error[x]: finding\n',
+            stderr: '',
+          )),
+        );
+        expect(text, contains('error[x]: finding'));
+        expect(text, contains('The generated zizmor job fails until'));
+      });
+
+      test('says so when there are no findings', () async {
+        final text = await generateWith(
+          _FakeZizmor((exitCode: 0, stdout: '', stderr: 'INFO progress')),
+        );
+        expect(text, contains('zizmor: no findings.'));
+        expect(text, isNot(contains('INFO progress')));
+      });
+
+      test("prints zizmor's own errors", () async {
+        final text = await generateWith(
+          _FakeZizmor((exitCode: 1, stdout: '', stderr: 'bad input\n')),
+        );
+        expect(text, contains('bad input'));
+        expect(text, contains('zizmor exited with code 1.'));
+      });
+
+      test('carries on when the cache cannot be written', () async {
+        final text = await generateWith(
+          _FakeZizmor(null, error: const FileSystemException('read-only')),
+        );
+        expect(text, contains('Could not run zizmor'));
+      });
+
+      test('carries on when zizmor cannot be installed', () async {
+        final text = await generateWith(
+          _FakeZizmor(null, error: ZizmorException('offline')),
+        );
+        expect(text, contains('Could not run zizmor (offline)'));
+      });
+
+      test('--no-zizmor skips it', () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+        final zizmor = _FakeZizmor(
+          (exitCode: 0, stdout: '', stderr: ''),
+        );
+        await runGenerate(
+          tempDir,
+          command: GenerateCommand(zizmor: zizmor),
+        );
+        expect(zizmor.runs, 0);
+      });
+    });
+  });
+}
+
+class _FakeZizmor extends Zizmor {
+  _FakeZizmor(this.result, {this.error});
+
+  final ZizmorResult? result;
+  final Exception? error;
+  int runs = 0;
+
+  @override
+  Future<ZizmorResult> run(String repoRoot) async {
+    runs++;
+    if (error != null) throw error!;
+    return result!;
+  }
+}
+
+/// Collects what's written to stdout or stderr.
+class _CapturedOutput implements Stdout {
+  final _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = '']) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 String _readMain(Directory repoRoot) {

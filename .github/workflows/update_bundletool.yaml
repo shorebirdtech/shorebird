@@ -19,7 +19,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: 📚 Git Checkout
+      # Keeps the token in .git/config: the last step pushes the bump branch.
+      # Nothing here uploads an artifact, which is how that token would leak.
+      - name: 📚 Git Checkout # zizmor: ignore[artipacked]
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: ⬆️ Bump bundletool

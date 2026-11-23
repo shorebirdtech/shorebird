@@ -1,4 +1,4 @@
-// cspell:words precaching
+// cspell:words precaching refspec
 import 'dart:convert';
 import 'dart:io';
 
@@ -44,6 +44,92 @@ class ShorebirdFlutter {
   String _workingDirectory({String? revision}) {
     revision ??= shorebirdEnv.flutterRevision;
     return p.join(shorebirdEnv.flutterDirectory.parent.path, revision);
+  }
+
+  /// The git directory that answers version and ref lookups for [revision]
+  /// (the active one by default).
+  ///
+  /// That revision's checkout when it is installed, since it already holds
+  /// every ref. Otherwise [ShorebirdEnv.flutterRefsDirectory], so a lookup
+  /// never needs a Flutter installed: a build with `--flutter-version`
+  /// resolves and installs only the Flutter it uses. That clone is fetched
+  /// again when it doesn't know [revision] (a new pin after
+  /// `shorebird upgrade`), as the launcher fetches the pinned checkout today.
+  Future<String> _gitDirectory({String? revision}) async {
+    revision ??= shorebirdEnv.flutterRevision;
+    if (isInstalled(revision: revision)) {
+      return _workingDirectory(revision: revision);
+    }
+    final refsDirectory = await _ensureRefsRepository();
+    if (!await _hasCommit(directory: refsDirectory, revision: revision)) {
+      try {
+        await git.fetch(directory: refsDirectory);
+      } on Exception catch (error) {
+        logger.detail('Failed to fetch Flutter versions: $error');
+      }
+    }
+    return refsDirectory;
+  }
+
+  /// Whether the git repository at [directory] has commit [revision].
+  Future<bool> _hasCommit({
+    required String directory,
+    required String revision,
+  }) async {
+    try {
+      await git.revParse(revision: '$revision^{commit}', directory: directory);
+      return true;
+    } on ProcessException {
+      return false;
+    }
+  }
+
+  /// Clones [ShorebirdEnv.flutterRefsDirectory] if it isn't there yet, and
+  /// returns its path.
+  ///
+  /// The clone is bare and treeless: commits and refs only (about 60 MB), the
+  /// least that `for-each-ref --contains` and `rev-parse` of a hash need.
+  /// Like an install, it is cloned into a staging directory and published by
+  /// rename, so an interrupted clone is never mistaken for a finished one.
+  Future<String> _ensureRefsRepository() async {
+    final refsDirectory = shorebirdEnv.flutterRefsDirectory;
+    if (refsDirectory.existsSync()) return refsDirectory.path;
+
+    _reclaimStaleDirectories(
+      parent: refsDirectory.parent,
+      prefix: '${p.basename(refsDirectory.path)}.',
+    );
+    final progress = logger.progress('Cloning the Flutter version index');
+    final stagingDirectory = Directory(_reclaimablePath(refsDirectory.path));
+    try {
+      await git.clone(
+        url: shorebirdEnv.flutterGitUrl,
+        outputDirectory: stagingDirectory.path,
+        args: [
+          '--bare',
+          '--filter=tree:0',
+          // The refs a checkout has, so lookups read the same names
+          // whichever directory answers them.
+          '--config',
+          'remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*',
+        ],
+      );
+      // Git before 2.27 ignores a fetch refspec set with `--config` for the
+      // clone's own fetch, which would leave refs/remotes/origin empty.
+      await git.fetch(directory: stagingDirectory.path);
+      stagingDirectory.renameSync(refsDirectory.path);
+      progress.complete();
+    } catch (error) {
+      deleteIgnoringErrors(stagingDirectory);
+      // A peer publishing first is not a failure: its clone is as good.
+      if (refsDirectory.existsSync()) {
+        progress.complete();
+        return refsDirectory.path;
+      }
+      progress.fail('Failed to clone the Flutter version index');
+      rethrow;
+    }
+    return refsDirectory.path;
   }
 
   /// Marker written once `flutter precache` has succeeded for an installed
@@ -212,6 +298,22 @@ class ShorebirdFlutter {
     return !File(p.join(directory.path, 'bin', launcher)).existsSync();
   }
 
+  /// The directory Flutter [revision] is installed in, whether or not it is
+  /// there yet.
+  Directory installDirectory({required String revision}) =>
+      Directory(_workingDirectory(revision: revision));
+
+  /// Whether [revision] has a finished checkout in [installDirectory].
+  ///
+  /// [_cloneAndCheckout] publishes a checkout only once it is complete, and a
+  /// directory without the Flutter launcher is an older, interrupted install.
+  /// This does not ask for [precacheStampName]: the pinned revision is
+  /// installed by the shell bootstrap, which never runs precache.
+  bool isInstalled({required String revision}) {
+    final directory = installDirectory(revision: revision);
+    return directory.existsSync() && !_isUnusableInstall(directory);
+  }
+
   /// Moves an unusable install out of the way so a fresh one can take its
   /// place, and hands the remains to [_reclaimStrandedStagingDirectories].
   ///
@@ -313,24 +415,50 @@ class ShorebirdFlutter {
       flutterRevisionOverride: revision,
     );
 
+    // A Flutter fork that traces its artifact downloads writes one span
+    // per download here; older ones ignore the variable. The command's
+    // trace file doesn't exist yet (ArtifactBuilder.prepareBuildTrace
+    // makes it after install), so the spans go through shorebirdTracer.
+    // Without a temp directory precache runs untraced: telemetry never
+    // fails an install.
+    final downloadTraceDir = _createTempDirectoryOrNull(
+      'shorebird_precache_trace',
+    );
+    final downloadTrace = downloadTraceDir == null
+        ? null
+        : File(p.join(downloadTraceDir.path, 'trace.json'));
+
     final ShorebirdProcessResult result;
     try {
       // Traced: precache downloads the engine artifacts for every target
       // platform (hundreds of MB) from FLUTTER_STORAGE_BASE_URL. It runs
-      // in the flutter subprocess, and its downloads happen before
-      // flutter_tools installs its own BuildTracer, so this span is the
-      // only record of that time anywhere in the trace.
+      // in the flutter subprocess, so this span is its whole time; the
+      // download spans it writes to [downloadTrace] break it down.
       result = await shorebirdTracer.setupSpan(
         phase: SetupPhase.flutterPrecache,
         args: {'argv': precacheArguments.join(' ')},
-        body: () => runScoped(
-          () => process.run(
-            executable,
-            precacheArguments,
-            workingDirectory: targetDirectory.path,
-          ),
-          values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
-        ),
+        body: () async {
+          try {
+            return await runScoped(
+              () => process.run(
+                executable,
+                precacheArguments,
+                workingDirectory: targetDirectory.path,
+                environment: {
+                  TraceEnvironment.downloadTraceFile: ?downloadTrace?.path,
+                },
+              ),
+              values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
+            );
+          } finally {
+            // A failed precache's downloads are kept too: they say where
+            // it got to.
+            if (downloadTraceDir != null) {
+              shorebirdTracer.mergeEventsFromFile(downloadTrace!);
+              _deleteQuietly(downloadTraceDir);
+            }
+          }
+        },
       );
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
@@ -366,6 +494,28 @@ class ShorebirdFlutter {
     }
     precacheProgress.complete();
     markUsed(targetDirectory);
+  }
+
+  /// A new temp directory named after [prefix], or null if one can't be
+  /// made (a read-only or full TMPDIR).
+  Directory? _createTempDirectoryOrNull(String prefix) {
+    try {
+      return Directory.systemTemp.createTempSync(prefix);
+    } on FileSystemException {
+      return null;
+    }
+  }
+
+  /// Deletes [directory], ignoring a failure: it's a temp directory, and
+  /// a leftover one costs nothing.
+  void _deleteQuietly(Directory directory) {
+    try {
+      directory.deleteSync(recursive: true);
+      // coverage:ignore-start
+    } on FileSystemException {
+      // Left for the OS to clear.
+    }
+    // coverage:ignore-end
   }
 
   /// The installed revision whose Dart SDK is running this process, or null
@@ -674,7 +824,7 @@ class ShorebirdFlutter {
       contains: flutterRevision,
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
-      directory: _workingDirectory(),
+      directory: await _gitDirectory(),
     );
 
     return LineSplitter.split(result)
@@ -708,7 +858,7 @@ class ShorebirdFlutter {
     try {
       final fullHash = await git.revParse(
         revision: versionOrHash,
-        directory: _workingDirectory(),
+        directory: await _gitDirectory(),
       );
       return fullHash;
     } on ProcessException {
@@ -768,7 +918,7 @@ class ShorebirdFlutter {
   /// release branch pointers (e.g. `flutter_release/3.38.5`) are up to date.
   Future<void> fetchRemoteRefs() async {
     try {
-      await git.fetch(directory: _workingDirectory());
+      await git.fetch(directory: await _gitDirectory());
     } on Exception {
       logger.warn(
         'Failed to fetch latest Flutter versions. '
@@ -783,7 +933,7 @@ class ShorebirdFlutter {
     try {
       final result = await git.revParse(
         revision: 'refs/remotes/origin/flutter_release/$version',
-        directory: _workingDirectory(),
+        directory: await _gitDirectory(),
       );
       return LineSplitter.split(result).toList().firstOrNull;
     } on ProcessException {
@@ -803,7 +953,7 @@ class ShorebirdFlutter {
     final result = await git.forEachRef(
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
-      directory: _workingDirectory(revision: revision),
+      directory: await _gitDirectory(revision: revision),
     );
     final versions = <Version>[];
     for (final line in LineSplitter.split(result)) {

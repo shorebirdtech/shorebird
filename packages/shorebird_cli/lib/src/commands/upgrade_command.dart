@@ -18,6 +18,10 @@ class UpgradeCommand extends ShorebirdCommand {
   /// {@macro upgrade_command}
   UpgradeCommand();
 
+  // Runs no Flutter.
+  @override
+  bool get usesPinnedFlutter => false;
+
   @override
   String get description => 'Upgrade your copy of Shorebird.';
 

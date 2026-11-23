@@ -370,6 +370,7 @@ void main() {
             () => artifactBuilder.buildIosFramework(
               releaseVersion: any(named: 'releaseVersion'),
               args: any(named: 'args'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
@@ -391,6 +392,69 @@ void main() {
           when(
             () => artifactManager.getAppXcframeworkDirectory(),
           ).thenReturn(projectRoot);
+        });
+
+        group('when the release has TFA facts', () {
+          setUp(() {
+            final releaseSupplementDirectory = Directory.systemTemp
+                .createTempSync();
+            File(
+              p.join(releaseSupplementDirectory.path, 'App.tfa_facts.json'),
+            ).writeAsStringSync('facts');
+            patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+          });
+
+          test('builds against a stable copy of them', () async {
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception {
+              // ignore
+            }
+            final staged = p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird_release',
+            );
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: any(named: 'args'),
+                releaseSupplementDir: staged,
+              ),
+            ).called(1);
+            expect(
+              File(p.join(staged, 'App.tfa_facts.json')).readAsStringSync(),
+              'facts',
+            );
+          });
+        });
+
+        test('builds without the release supplement when it has no TFA '
+            'facts', () async {
+          patcher.releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final staged = Directory(
+            p.join(projectRoot.path, 'build', 'ios', 'shorebird_release'),
+          )..createSync(recursive: true);
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          expect(
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: any(named: 'args'),
+                releaseSupplementDir: captureAny(
+                  named: 'releaseSupplementDir',
+                ),
+              ),
+            ).captured.single,
+            isNull,
+          );
+          expect(staged.existsSync(), isFalse);
         });
 
         group('when --split-debug-info is provided', () {
@@ -424,6 +488,7 @@ void main() {
                   '--dwarf-stack-traces',
                   '--resolve-dwarf-paths',
                   '--save-debugging-info=${splitDebugInfoFile.path}',
+                  '--strip',
                 ],
               ),
             ).called(1);
@@ -441,6 +506,40 @@ void main() {
           verify(
             () => artifactBuilder.buildIosFramework(
               releaseVersion: '1.0.0+1',
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+        });
+
+        test('builds a flavored module with the flavor app ID', () async {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'default-app-id',
+              flavors: {'internal': 'internal-app-id'},
+            ),
+          );
+          when(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: any(named: 'appId'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+          patcher = IosFrameworkPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: 'internal',
+            target: null,
+          );
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          verify(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: 'internal-app-id',
               args: any(named: 'args'),
             ),
           ).called(1);

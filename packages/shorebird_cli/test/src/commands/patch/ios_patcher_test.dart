@@ -849,6 +849,7 @@ This may indicate that the patch contains native changes, which cannot be applie
               appDillPath: any(named: 'appDillPath'),
               outFilePath: any(named: 'outFilePath'),
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+              additionalArgs: any(named: 'additionalArgs'),
             ),
           ).thenThrow(exception);
         });
@@ -875,6 +876,7 @@ This may indicate that the patch contains native changes, which cannot be applie
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
@@ -901,6 +903,77 @@ This may indicate that the patch contains native changes, which cannot be applie
                 File(invocation.namedArguments[#outFilePath] as String)
                   ..createSync(recursive: true),
           );
+        });
+
+        group('when the release has TFA facts', () {
+          setUp(() {
+            final releaseSupplementDirectory = Directory.systemTemp
+                .createTempSync();
+            File(
+              p.join(releaseSupplementDirectory.path, 'App.tfa_facts.json'),
+            ).writeAsStringSync('facts');
+            patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+          });
+
+          test('builds against a stable copy of them', () async {
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception {
+              // ignore
+            }
+            final staged = p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird_release',
+            );
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+                releaseSupplementDir: staged,
+              ),
+            ).called(1);
+            expect(
+              File(p.join(staged, 'App.tfa_facts.json')).readAsStringSync(),
+              'facts',
+            );
+          });
+        });
+
+        test('builds without the release supplement when it has no TFA '
+            'facts', () async {
+          patcher.releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final staged = Directory(
+            p.join(projectRoot.path, 'build', 'ios', 'shorebird_release'),
+          )..createSync(recursive: true);
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          expect(
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+                releaseSupplementDir: captureAny(
+                  named: 'releaseSupplementDir',
+                ),
+              ),
+            ).captured.single,
+            isNull,
+          );
+          expect(staged.existsSync(), isFalse);
         });
 
         group('when --split-debug-info is provided', () {
@@ -934,6 +1007,7 @@ This may indicate that the patch contains native changes, which cannot be applie
                   '--dwarf-stack-traces',
                   '--resolve-dwarf-paths',
                   '--save-debugging-info=${splitDebugInfoFile.path}',
+                  '--strip',
                 ],
               ),
             ).called(1);
@@ -963,6 +1037,7 @@ This may indicate that the patch contains native changes, which cannot be applie
                   '--dwarf-stack-traces',
                   '--resolve-dwarf-paths',
                   '--save-debugging-info=$symbolsPath',
+                  '--strip',
                 ],
               ),
             ).called(1);

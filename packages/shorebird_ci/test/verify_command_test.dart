@@ -36,6 +36,7 @@ Future<void> runGenerateStatic(Directory repoRoot) async {
     '--style',
     'static',
     '--no-update-actions',
+    '--no-zizmor',
   ]);
   expect(result, 0);
 }

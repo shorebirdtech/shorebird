@@ -57,6 +57,119 @@ function pub_get_with_retry {
   return 0
 }
 
+# Prints this machine's platform as publish_cli.yaml names its binaries
+# (macos-arm64, linux-x64, ...), or nothing when it builds none for it.
+function prebuilt_platform {
+  local os arch
+  case "$(uname -s)" in
+    Darwin) os=macos ;;
+    Linux) os=linux ;;
+    *) return 0 ;;
+  esac
+  local machine
+  machine="$(uname -m)"
+  # A shell under Rosetta reports x86_64 on Apple Silicon.
+  if [[ "$os" == macos && "$machine" == x86_64 && "$(sysctl -n hw.optional.arm64 2>/dev/null)" == 1 ]]; then
+    machine=arm64
+  fi
+  case "$machine" in
+    x86_64|amd64) arch=x64 ;;
+    arm64|aarch64) arch=arm64 ;;
+    *) return 0 ;;
+  esac
+  echo "$os-$arch"
+}
+
+# Whether the CLI publish_cli.yaml built for this commit is installed.
+function prebuilt_is_current {
+  [[ -x "$PREBUILT_PATH" && -s "$PREBUILT_STAMP_PATH" && "$(cat "$PREBUILT_STAMP_PATH")" == "$REVISION" ]]
+}
+
+function sha256_of {
+  if hash sha256sum 2>/dev/null; then
+    sha256sum "$1" | cut -d' ' -f1
+  elif hash shasum 2>/dev/null; then
+    shasum -a 256 "$1" | cut -d' ' -f1
+  else
+    return 1
+  fi
+}
+
+# Installs the CLI that publish_cli.yaml built for this commit (every commit
+# pushed to stable has one): a ~5.5 MB download in place of cloning the pinned
+# Flutter and compiling the CLI with its Dart SDK. Returns non-zero, leaving
+# today's path to build it, when there is none to use: a commit with no
+# binaries (main, a branch, a fork), local changes to what it's built from, a
+# platform it isn't built for, no curl or unzip, a failed download, or a binary
+# that doesn't start.
+function install_prebuilt_cli {
+  [[ -n "$REVISION" ]] || return 1
+  local platform
+  platform="$(prebuilt_platform)"
+  [[ -n "$platform" ]] || return 1
+  hash curl 2>/dev/null && hash unzip 2>/dev/null || return 1
+
+  # The binary is the commit as published: with local changes, build those.
+  local changes
+  changes="$(git -C "$SHOREBIRD_ROOT" status --porcelain -- bin packages third_party pubspec.yaml pubspec.lock)" || return 1
+  [[ -z "$changes" ]] || return 1
+
+  # Keep the default and the trailing slash handling in sync with
+  # ShorebirdEnv.downloadUrl.
+  local download_url="${SHOREBIRD_DOWNLOAD_URL:-https://download.shorebird.dev}"
+  local url="${download_url%/}/shorebird-cli/$REVISION/shorebird-$platform.zip"
+  local tmp="$SHOREBIRD_ROOT/bin/cache/shorebird-cli.tmp"
+  rm -rf "$tmp"
+  mkdir -p "$tmp"
+
+  # The checksum first, quietly: a commit with no binaries gets a 404 here,
+  # and building it is the normal path for one, not an error.
+  # Without a timeout, a network that drops packets would hold the startup
+  # lock, and every other shorebird, for minutes before the fallback.
+  local curl_args=(--fail --location --retry 3 --connect-timeout 10 --speed-limit 1024 --speed-time 30)
+  if ! curl "${curl_args[@]}" --silent --output "$tmp/cli.zip.sha256" "$url.sha256"; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  echo "Downloading Shorebird..."
+  if ! curl "${curl_args[@]}" --silent --show-error --output "$tmp/cli.zip" "$url"; then
+    echo "Couldn't download $url; building Shorebird instead."
+    rm -rf "$tmp"
+    return 1
+  fi
+  local expected actual
+  expected="$(cut -d' ' -f1 < "$tmp/cli.zip.sha256")"
+  actual="$(sha256_of "$tmp/cli.zip")" || actual=""
+  if [[ -z "$expected" || "$actual" != "$expected" ]]; then
+    echo "$url doesn't match its checksum; building Shorebird instead."
+    rm -rf "$tmp"
+    return 1
+  fi
+  if ! unzip -q -o "$tmp/cli.zip" -d "$tmp" || [[ ! -f "$tmp/shorebird" ]]; then
+    echo "Couldn't unzip $url; building Shorebird instead."
+    rm -rf "$tmp"
+    return 1
+  fi
+  # Called as a condition, so set -e doesn't stop on these: check each.
+  # A rename replaces the old binary even while it runs (shorebird upgrade).
+  # The CLI finds its install from its own path, so it's checked in place.
+  if ! chmod +x "$tmp/shorebird" || ! mv -f "$tmp/shorebird" "$PREBUILT_PATH"; then
+    echo "Couldn't install the downloaded Shorebird; building it instead."
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$tmp"
+  if ! "$PREBUILT_PATH" --version > /dev/null 2>&1; then
+    echo "The downloaded Shorebird didn't start; building it instead."
+    rm -f "$PREBUILT_PATH"
+    return 1
+  fi
+  # One stamp at a time: what was set up last for HEAD is what runs.
+  rm -f "$STAMP_PATH"
+  echo "$REVISION" > "$PREBUILT_STAMP_PATH" || return 1
+  return 0
+}
+
 # Trap function for removing any remaining lock file at exit.
 function _rmlock () {
   [ -n "$FLUTTER_UPGRADE_LOCK" ] && rm -rf "$FLUTTER_UPGRADE_LOCK"
@@ -137,8 +250,11 @@ function _wait_for_lock () {
 function upgrade_shorebird () (
   mkdir -p "$SHOREBIRD_ROOT/bin/cache"
 
-  local revision="$(cd "$SHOREBIRD_ROOT"; git rev-parse HEAD)"
-  local compilekey="$revision"
+  if prebuilt_is_current; then
+    exit 0
+  fi
+
+  local compilekey="$REVISION"
 
   # Invalidate cache if:
   #  * SNAPSHOT_PATH is not a file, or
@@ -154,8 +270,15 @@ function upgrade_shorebird () (
     _wait_for_lock
 
     # A different shell process might have updated the tool/SDK.
+    if prebuilt_is_current; then
+      exit 0
+    fi
     if [[ -f "$SNAPSHOT_PATH" && -s "$STAMP_PATH" && "$(cat "$STAMP_PATH")" == "$compilekey" && "$SHOREBIRD_CLI_DIR/pubspec.yaml" -ot "$SHOREBIRD_ROOT/pubspec.lock" ]]; then
       exit $?
+    fi
+
+    if install_prebuilt_cli; then
+      exit 0
     fi
 
     >&2 echo Updating Flutter...
@@ -187,6 +310,7 @@ function upgrade_shorebird () (
 
     # Compile...
     $DART_PATH --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_ROOT/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
+    rm -f "$PREBUILT_STAMP_PATH"
     echo "$compilekey" > "$STAMP_PATH"
 
     # Delete any temporary snapshot path.
@@ -208,6 +332,11 @@ function shared::execute() {
   SHOREBIRD_CLI_DIR="$SHOREBIRD_ROOT/packages/shorebird_cli"
   SNAPSHOT_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.snapshot"
   STAMP_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird.stamp"
+  # The CLI publish_cli.yaml builds for each stable commit, and the commit it's
+  # for. Its stamp is kept apart from the snapshot's, which bin/shorebird
+  # clears whenever the pinned Flutter isn't installed (with this CLI it isn't).
+  PREBUILT_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird"
+  PREBUILT_STAMP_PATH="$SHOREBIRD_ROOT/bin/cache/shorebird-cli.stamp"
   SCRIPT_PATH="$SHOREBIRD_CLI_DIR/bin/shorebird.dart"
   FLUTTER_PATH="$SHOREBIRD_ROOT/bin/cache/flutter/$FLUTTER_VERSION"
   export DART_PATH="$FLUTTER_PATH/bin/cache/dart-sdk/bin/dart"
@@ -236,16 +365,20 @@ function shared::execute() {
     exit 1
   fi
 
-  # In JSON mode, redirect bootstrap output to stderr so stdout is pure JSON.
-  if [[ "$SHOREBIRD_JSON_MODE" == "true" ]]; then
-    upgrade_shorebird 7< "$PROG_NAME" 1>&2
-  else
-    upgrade_shorebird 7< "$PROG_NAME"
-  fi
+  # Not fatal, as before: git refuses a checkout another user owns ("dubious
+  # ownership", root in a container), and the snapshot path still runs.
+  REVISION="$(cd "$SHOREBIRD_ROOT"; git rev-parse HEAD)" || REVISION=""
+
+  # Setup output (git, flutter --version, pub get) goes to stderr, so stdout is
+  # only the command's own: `$(shorebird flutter path)` and `--json` read it.
+  upgrade_shorebird 7< "$PROG_NAME" 1>&2
 
   BIN_NAME="$(basename "$PROG_NAME")"
   case "$BIN_NAME" in    
     shorebird*)
+      if prebuilt_is_current; then
+        exec "$PREBUILT_PATH" "$@"
+      fi
       exec "$DART_PATH" "$SNAPSHOT_PATH" "$@"
       ;;
     *)

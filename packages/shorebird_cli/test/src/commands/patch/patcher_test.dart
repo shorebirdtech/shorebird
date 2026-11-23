@@ -119,7 +119,6 @@ void main() {
           equals([
             '--obfuscate',
             '--load-obfuscation-map=map.json',
-            '--strip',
           ]),
         );
       });
@@ -128,7 +127,7 @@ void main() {
         patcher.obfuscate = true;
         expect(
           patcher.obfuscationGenSnapshotArgs,
-          equals(['--obfuscate', '--strip']),
+          equals(['--obfuscate']),
         );
       });
     });

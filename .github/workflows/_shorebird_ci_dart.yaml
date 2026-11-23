@@ -61,17 +61,21 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: 🐳 Run Redis
         if: inputs.needs_redis
         run: |
           docker pull redis/redis-stack-server:latest
           docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
-      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+      - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
       - name: Install Dependencies
         working-directory: ${{ inputs.package_path }}
+        env:
+          SUBPACKAGES: ${{ inputs.subpackages }}
         run: |
           dart pub get --no-example
-          for sub in ${{ inputs.subpackages }}; do
+          for sub in $SUBPACKAGES; do
             dart pub get --no-example -C "$sub"
           done
       - working-directory: ${{ inputs.package_path }}
@@ -157,5 +161,5 @@ jobs:
           EXCLUDES: ${{ inputs.coverage_excludes }}
           MIN_COVERAGE: ${{ inputs.min_coverage }}
         run: |
-          dart pub global activate shorebird_ci 0.3.1
+          dart pub global activate shorebird_ci 0.3.4
           shorebird_ci check_coverage coverage/lcov.info --min "$MIN_COVERAGE" --exclude "$EXCLUDES"

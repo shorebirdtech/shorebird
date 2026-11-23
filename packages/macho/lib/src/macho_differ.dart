@@ -1,5 +1,5 @@
 // cspell:words chkstk cstring cstrings dsym dsyms dylib dylibs funcs linkedit
-// cspell:words ltmp methname objc pext reexport symtab undetailed
+// cspell:words ltmp methname objc pext reexport symtab typeref undetailed
 import 'dart:typed_data';
 
 import 'package:macho/src/macho_parser.dart';
@@ -474,11 +474,7 @@ class MachODiffer {
     );
 
     // 5. Swift descriptors (__swift5_*).
-    _compareSwiftSections(
-      oldSlice.swiftSections,
-      newSlice.swiftSections,
-      differences,
-    );
+    _compareSwiftSections(oldSlice, newSlice, differences);
 
     // 6. C string literals (__TEXT,__cstring).
     _compareCstrings(oldSlice.cstrings, newSlice.cstrings, differences);
@@ -637,10 +633,12 @@ class MachODiffer {
   }
 
   void _compareSwiftSections(
-    Map<String, Uint8List> oldSwift,
-    Map<String, Uint8List> newSwift,
+    MachOSlice oldSlice,
+    MachOSlice newSlice,
     List<MachODifference> differences,
   ) {
+    final oldSwift = oldSlice.swiftSections;
+    final newSwift = newSlice.swiftSections;
     final oldKeys = oldSwift.keys.toSet();
     final newKeys = newSwift.keys.toSet();
 
@@ -663,7 +661,14 @@ class MachODiffer {
     }
 
     for (final key in oldKeys.intersection(newKeys)) {
-      if (!_bytesEqual(oldSwift[key]!, newSwift[key]!)) {
+      // Type references point at descriptors and GOT slots by relative
+      // offset, which change when the linker lays those out differently;
+      // compare what they point at.
+      final equal = key == '__TEXT,__swift5_typeref'
+          ? oldSlice.canonicalSwiftTypeRefs() ==
+                newSlice.canonicalSwiftTypeRefs()
+          : _bytesEqual(oldSwift[key]!, newSwift[key]!);
+      if (!equal) {
         differences.add(
           MachODifference(
             kind: MachODifferenceKind.swiftDescriptorChanged,

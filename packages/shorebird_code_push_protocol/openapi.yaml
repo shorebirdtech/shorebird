@@ -501,6 +501,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PerPage'
         - $ref: '#/components/parameters/Cursor'
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include archived apps in the response.
       responses:
         '200':
           description: A list of apps.
@@ -596,6 +603,91 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
+  /apps/{appId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+    post:
+      tags:
+        - apps
+      summary: Archive the app.
+      description: |
+        Stops the app serving patches and takes it out of its account's app
+        quota, keeping its releases, patches and artifacts. A device that
+        checks in is told there is no new patch and keeps the one it has.
+        Creating a release or a patch on it is refused until it is
+        unarchived. Requires the `apps.update` permission.
+
+        Archiving an app that is already archived changes nothing and still
+        answers 204, so a call that failed partway can be repeated.
+      operationId: archiveApp
+      responses:
+        '204':
+          description: The app is archived.
+        '403':
+          description: The caller lacks the `apps.update` permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The app does not exist (`app_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            The write, or updating a release's cached patch-check response
+            after it, failed (`apps_archive_error`). Repeat the call: where the
+            write landed, the app is already in the state asked for and the
+            repeat reports the releases the failed call never reached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /apps/{appId}/unarchive:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+    post:
+      tags:
+        - apps
+      summary: Bring an archived app back.
+      description: |
+        Puts the app back to serving patches and counting against its
+        account's app quota. Requires the `apps.update` permission.
+
+        Unarchiving an app that is not archived changes nothing and still
+        answers 204, as archiving an archived one does.
+      operationId: unarchiveApp
+      responses:
+        '204':
+          description: The app is not archived.
+        '403':
+          description: The caller lacks the `apps.update` permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The app does not exist (`app_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            The write, or updating a release's cached patch-check response
+            after it, failed (`apps_unarchive_error`). Repeat the call: where the
+            write landed, the app is already in the state asked for and the
+            repeat reports the releases the failed call never reached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
   /apps/{appId}/signing-key:
     parameters:
       - $ref: '#/components/parameters/AppId'
@@ -631,6 +723,10 @@ paths:
       tags:
         - collaborators
       summary: Add a collaborator to the app by email.
+      description: |
+        Per-app collaborators are being retired in favour of organization
+        membership. Manage access through organization membership instead,
+        with `POST /organizations/{organizationId}/invitations`.
       operationId: createAppCollaborator
       requestBody:
         required: true
@@ -641,6 +737,15 @@ paths:
       responses:
         '204':
           description: The collaborator was added.
+        '410':
+          description: |
+            Per-app collaborators can no longer be added
+            (`app_collaborators_frozen`), or per-app collaborators have
+            been retired (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
     get:
@@ -674,6 +779,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: |
+            Per-app collaborators have been retired
+            (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/collaborators/{collaboratorId}:
@@ -689,6 +802,10 @@ paths:
       tags:
         - collaborators
       summary: Update a collaborator's role on an app.
+      description: |
+        Per-app collaborators are being retired in favour of organization
+        membership. Manage roles through organization membership instead,
+        with `PATCH /organizations/{organizationId}/users/{userId}`.
       operationId: updateAppCollaborator
       requestBody:
         required: true
@@ -699,6 +816,15 @@ paths:
       responses:
         '204':
           description: The collaborator was updated.
+        '410':
+          description: |
+            Per-app collaborator roles can no longer be updated
+            (`app_collaborators_frozen`), or per-app collaborators have
+            been retired (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
     delete:
@@ -734,6 +860,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: The app does not exist (`app_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: |
+            Per-app collaborators have been retired
+            (`app_collaborators_retired`).
           content:
             application/json:
               schema:
@@ -2337,6 +2471,13 @@ paths:
           description: |
             The order of `sort`. Defaults to `asc` for `name` and to `desc`
             otherwise, as GitHub's lists do.
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include archived apps in the response.
       responses:
         '200':
           description: The apps belonging to the organization.
@@ -4935,6 +5076,13 @@ components:
         display_name:
           type: string
           description: The display name of the app.
+        archived_at:
+          type: string
+          format: date-time
+          description: |
+            When the app was archived. Absent while it is not archived. An
+            archived app serves no patches, takes no new release or patch,
+            and does not count against its account's app quota.
         patch_signing_required:
           type: boolean
           description: |
@@ -7501,15 +7649,6 @@ components:
         display_name:
           type: string
           description: The user's new display name. At most 256 characters.
-        patch_overage_limit:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: |
-            The most patch installs past the plan's allotment the user
-            agrees to pay for each overage period. `0` turns overage off;
-            `null` removes the limit. Must not be negative.
     NotificationPreferences:
       type: object
       description: How the user wants to be notified.

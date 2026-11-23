@@ -37,6 +37,7 @@ words:
   - codesign
   - codesigned
   - codesigning
+  - dartbug
   - deflavored
   - develocity
   - devicectl
@@ -44,6 +45,7 @@ words:
   - dorny # From .github dir, doesn't show up in "**" check?
   - dyld
   - dylib
+  - dynsym
   - endtemplate
   - Entra
   - esac # bash case terminator
@@ -168,6 +170,9 @@ words:
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unanalyzed
+  - unarchived
+  - unarchives
+  - unarchiving
   - unawaited
   - unheld
   - unmockable
@@ -202,3 +207,5 @@ words:
   - xcworkspace
   - xlarge # GitHub runner labels (macos-latest-xlarge)
   - xlink
+  - zizmor # GitHub Actions linter (docs.zizmor.sh)
+  - zizmorcore # zizmor's GitHub org

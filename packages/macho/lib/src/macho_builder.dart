@@ -54,6 +54,18 @@ abstract final class Arm64Encoder {
         (rd & 0x1f);
   }
 
+  /// Encodes `LDR x<rt>, [x<rn>, #<offsetBytes>]` (unsigned offset, a
+  /// multiple of 8).
+  static int ldr(int rt, int rn, int offsetBytes) =>
+      0xf9400000 |
+      (((offsetBytes ~/ 8) & 0xfff) << 10) |
+      ((rn & 0x1f) << 5) |
+      (rt & 0x1f);
+
+  /// Encodes `LDR x<rt>, <offsetBytes>` (PC-relative literal).
+  static int ldrLiteral(int rt, int offsetBytes) =>
+      0x58000000 | (((offsetBytes ~/ 4) & 0x7ffff) << 5) | (rt & 0x1f);
+
   /// Packs a list of 32-bit ARM64 instruction words into little-endian bytes.
   static Uint8List encodeInstructions(List<int> instructions) {
     final bytes = Uint8List(instructions.length * 4);

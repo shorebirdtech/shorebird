@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   publish:
-    uses: ./.github/workflows/publish_dart_package.yaml
+    uses: $/.github/workflows/publish_dart_package.yaml
     with:
       working_directory: packages/shorebird_ci
       tag_prefix: shorebird_ci-v

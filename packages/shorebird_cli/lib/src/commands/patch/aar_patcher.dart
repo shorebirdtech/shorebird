@@ -69,12 +69,14 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
-      // Bake the release's version, as the release's build did, so the two
-      // builds' shorebird.yaml match.
+      // Bake the release's version and app ID, as the release's build did, so
+      // the two builds' shorebird.yaml match.
       releaseVersion: releaseVersion,
+      appId: moduleAppId,
       targetPlatforms: releaseTargetPlatforms,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
+      releaseSupplementDir: stageReleaseSupplement(),
     );
 
     return File(

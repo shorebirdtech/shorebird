@@ -682,9 +682,13 @@ class CodePushClientWrapper {
     );
   }
 
-  /// Fetches the apps for the current user.
-  Future<List<AppMetadata>> getApps() {
-    return _withProgress('Fetching apps', codePushClient.getApps);
+  /// Fetches the apps for the current user, including archived ones when
+  /// [includeArchived] is set.
+  Future<List<AppMetadata>> getApps({bool includeArchived = false}) {
+    return _withProgress(
+      'Fetching apps',
+      () => codePushClient.getApps(includeArchived: includeArchived),
+    );
   }
 
   /// Returns [AppMetadata] for the provided [appId].
@@ -781,6 +785,22 @@ class CodePushClientWrapper {
     return _withProgress(
       'Renaming app',
       () => codePushClient.updateApp(appId: appId, displayName: displayName),
+    );
+  }
+
+  /// Archives the app with the provided [appId].
+  Future<void> archiveApp({required String appId}) {
+    return _withProgress(
+      'Archiving app',
+      () => codePushClient.archiveApp(appId: appId),
+    );
+  }
+
+  /// Unarchives the app with the provided [appId].
+  Future<void> unarchiveApp({required String appId}) {
+    return _withProgress(
+      'Unarchiving app',
+      () => codePushClient.unarchiveApp(appId: appId),
     );
   }
 

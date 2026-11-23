@@ -59,6 +59,10 @@ class MacosPatcher extends Patcher
   ReleaseType get releaseType => ReleaseType.macos;
 
   @override
+  Future<void> assertArgsAreValid() async =>
+      assertMacosCodesignNotDisabled(argResults);
+
+  @override
   Version? get minimumFlutterVersion => minimumSupportedMacosFlutterVersion;
 
   @override
@@ -93,14 +97,12 @@ class MacosPatcher extends Patcher
       ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
     ];
 
-    // If buildMacos is called with a different codesign value than the
-    // release was, we will erroneously report native diffs.
     final macosBuildResult = await artifactBuilder.buildMacos(
-      codesign: argResults.appleCodesign,
       flavor: flavor,
       target: target,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
+      releaseSupplementDir: stageReleaseTfaFacts(platformSubdir: 'macos'),
     );
 
     await buildAppleElfAotSnapshot(

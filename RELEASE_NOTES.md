@@ -4,6 +4,83 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.148 (November 23, 2026)
+
+- ✨ `shorebird flutter precache` installs a Flutter version and the artifacts
+  Android and iOS releases and patches download, ahead of any build, with
+  `--flutter-version` to pick the version
+- 🐛 `shorebird release macos` and `shorebird patch macos` refuse
+  `--no-codesign` before building, with a hint pointing at Xcode's signing
+  settings, instead of failing partway through the build
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.147.
+
+## 1.6.147 (November 23, 2026)
+
+- ✨ `shorebird usage` adds a line for installs from other organizations sharing
+  the plan, so the app rows add up to the total
+- 🐛 `shorebird patch ios` and `shorebird patch macos` no longer flag native
+  changes when a relink only moves Swift type names
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.146.
+
+## 1.6.146 (November 20, 2026)
+
+- 🐦 Flutter 3.50.1 / Dart 3.14.0 support
+  - Fix Android builds silently omitting dotfile assets such as `.env` or
+    underscore-prefixed asset folders
+  - Fix Android Gradle configuration failing with plugins and custom or
+    app-only `buildType` settings
+  - Fix Android `--split-per-abi` builds assigning identical `versionCode`s
+    when `versionCode` is set only in `AndroidManifest.xml`
+- ✨ Archive and unarchive apps from the CLI with `shorebird apps archive` and
+  `shorebird apps unarchive`, and pass `--include-archived` to `shorebird apps
+  list` to show archived apps
+- 🐛 `shorebird release aar` and `shorebird release ios-framework` with
+  `--flavor` now build the module with that flavor's app ID so the module
+  checks for patches under the right app
+- 🐛 `shorebird patch ios` and `shorebird patch macos` no longer flag native
+  changes when Xcode lays out GOT slots differently between builds
+- 🐛 `shorebird patch android` no longer flags native changes when non-loaded
+  ELF sections such as `.comment` differ across NDK builds
+- 🐛 Improved linking of large Android patches, so they are smaller to download
+  and run faster, for releases made with this version
+
+## 1.6.145 (November 20, 2026)
+
+- 🐛 Improved linking of large iOS patches, so they run faster
+- 🐛 Devices keep their client ID when the updater's state file is damaged or
+  was written by another updater version
+- 🐛 `toByteData` no longer fails on `decodeImageFromPixelsSync` images under
+  Impeller
+- 🔧 iOS patches of large apps are smaller to download and use less memory at
+  launch, for releases made with this version
+
+Flutter 3.50.0 and Dart 3.14.0.
+
+## 1.6.144 (November 18, 2026)
+
+- 🐦 Flutter 3.50.0 / Dart 3.14.0
+- 🐛 Improved Apple patch linking by copying `App.sm.link` next to the patch
+  snapshots
+
+## 1.6.143 (November 18, 2026)
+
+- 🐦 Flutter 3.47.9 / Dart 3.13.7, with an updated Shorebird engine that fixes
+  patches of `--obfuscate` releases: a patch could reuse an obfuscated name the
+  release already used, so it could call the wrong method or read the wrong
+  field. A patch builds with its release's Flutter, so make a new release with
+  this version to get the fix
+- ✨ Ramp a patch's rollout on a schedule with `--rollout-steps` on `shorebird
+  patch`, `shorebird patches set-track` and `shorebird patches rollout`,
+  optionally pausing on weekends with `--pause-weekends` and `--timezone`
+- ✨ `shorebird release windows` and `shorebird patch windows` handle Windows
+  arm64 builds on Flutter 3.47.9 or later. Run them on an arm64 machine to add
+  an arm64 build to a release, and `shorebird preview` on arm64 runs it
+- ✨ `shorebird patch windows --add-to-patch=<n>` adds this machine's
+  architecture to an existing patch, so one fix for x64 and arm64 shares one
+  patch number, track and rollout
+
 ## 1.6.142 (November 17, 2026)
 
 - ✨ `shorebird release` warns when the release version has a build number but no

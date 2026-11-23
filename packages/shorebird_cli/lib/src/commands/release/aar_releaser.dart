@@ -65,9 +65,16 @@ class AarReleaser extends Releaser {
       (buildArgs, base64PublicKey) => artifactBuilder.buildAar(
         buildNumber: buildNumber,
         releaseVersion: _releaseVersion,
+        appId: moduleAppId,
         targetPlatforms: architectures,
         args: buildArgs,
         base64PublicKey: base64PublicKey,
+      ),
+    );
+    await assertModuleCarriesAppId(
+      () => shorebirdAndroidArtifacts.readAarShorebirdYaml(
+        packageName: shorebirdEnv.androidPackageName!,
+        buildNumber: buildNumber,
       ),
     );
 

@@ -103,6 +103,7 @@ See more info about the issue ${link(uri: Uri.parse('https://docs.shorebird.dev/
         ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
       ],
       base64PublicKey: await getEncodedPublicKey(),
+      releaseSupplementDir: stageReleaseSupplement(),
     );
 
     // When the built .aab never packaged libapp.so, fail fast with an accurate

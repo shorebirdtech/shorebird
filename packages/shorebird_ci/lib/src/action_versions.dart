@@ -29,7 +29,7 @@ const checkoutAction =
 
 /// See [checkoutAction].
 const setupDartAction =
-    'dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1';
+    'dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2';
 
 /// See [checkoutAction].
 const pathsFilterAction =
@@ -38,10 +38,6 @@ const pathsFilterAction =
 /// See [checkoutAction].
 const codecovAction =
     'codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1';
-
-/// See [checkoutAction].
-const flutterAction =
-    'subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0';
 
 /// An action release: its tag (e.g. `'v5.1.0'`) and the commit [sha] the
 /// tag points at.
@@ -129,12 +125,13 @@ Future<String> updateActionVersions(
 }
 
 /// The `uses:` refs in [workflowContent] that aren't pinned to a commit
-/// SHA, e.g. `actions/checkout@v4`. Local actions and `docker://` images
-/// aren't listed.
+/// SHA, e.g. `actions/checkout@v4`. Local (`./`) and self-repository
+/// (`$/`) refs and `docker://` images aren't listed.
 List<String> unpinnedActionRefs(String workflowContent) => [
   for (final match in _anyUsesRegex.allMatches(workflowContent))
     if (!RegExp(r'@[0-9a-f]{40}$').hasMatch(match.group(1)!) &&
         !match.group(1)!.startsWith('./') &&
+        !match.group(1)!.startsWith(r'$/') &&
         !match.group(1)!.startsWith('docker://'))
       match.group(1)!,
 ];

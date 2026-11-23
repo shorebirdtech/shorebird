@@ -358,8 +358,35 @@ void main() {
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => {});
+        });
+
+        test('builds against the release supplement', () async {
+          final releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final abiDir = p.join(releaseSupplementDirectory.path, 'arm64-v8a');
+          File(p.join(abiDir, 'App.ref.link')).createSync(recursive: true);
+          patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verify(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              releaseSupplementDir: p.join(
+                projectRoot.path,
+                'build',
+                'android',
+                'shorebird_release',
+              ),
+            ),
+          ).called(1);
         });
 
         group('when platform was specified via arg results rest', () {
@@ -397,6 +424,44 @@ void main() {
               ),
             ).called(1);
           });
+        });
+
+        test('builds a flavored module with the flavor app ID', () async {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'default-app-id',
+              flavors: {'internal': 'internal-app-id'},
+            ),
+          );
+          when(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: any(named: 'appId'),
+              buildNumber: any(named: 'buildNumber'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer((_) async {});
+          patcher = AarPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: 'internal',
+            target: null,
+          );
+
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verify(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: 'internal-app-id',
+              buildNumber: buildNumber,
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).called(1);
         });
 
         test('builds only the architectures the release has', () async {
