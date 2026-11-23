@@ -9,6 +9,9 @@
 #   --plan   Print the packages it would check and exit.
 #   --force  Check every package, even those that already passed.
 #
+# A failed format step ends with the command that fixes it, naming the Dart
+# chosen here, since another formats differently.
+#
 # Exit codes: 0 every package passed, 1 a check failed, 2 usage error,
 # 3 the workspace could not be resolved, so nothing was checked.
 set -euo pipefail
