@@ -139,6 +139,11 @@ void main() {
               ),
             ),
           ).called(1);
+          verify(
+            () => progress.complete(
+              any(that: isNot(contains(NetworkChecker.patchCdnNote))),
+            ),
+          ).called(defaultUrls.length - 1);
         });
       });
 
@@ -150,7 +155,6 @@ void main() {
         test('logs reachability for each checked url', () async {
           await runWithOverrides(networkChecker.checkReachability);
 
-          // Checked first: mocktail counts each call toward one verify only.
           verify(
             () => progress.fail(
               any(
