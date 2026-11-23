@@ -4,6 +4,15 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.147 (November 23, 2026)
+
+- ✨ `shorebird usage` adds a line for installs from other organizations sharing
+  the plan, so the app rows add up to the total
+- 🐛 `shorebird patch ios` and `shorebird patch macos` no longer flag native
+  changes when a relink only moves Swift type names
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.146.
+
 ## 1.6.146 (November 20, 2026)
 
 - 🐦 Flutter 3.50.1 / Dart 3.14.0 support
