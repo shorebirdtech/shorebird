@@ -224,11 +224,23 @@ class RolloutCommand extends ShorebirdCommand
 
     // Raising one platform and then failing on another would leave them
     // apart, so a rollout the server would refuse as lower stops here.
-    if (percentage case final percentage? when several) {
+    if (percentage case final percentage? when targets.length > 1) {
       final higher = targets
           .where((p) => (p.rolloutPercentage ?? 100) > percentage)
           .toList();
       if (higher.isNotEmpty) {
+        final raisable = [
+          for (final p in targets)
+            if (!higher.contains(p)) ?p.resolvedPlatform,
+        ];
+        final rerun = raisable.isEmpty
+            ? null
+            : commandForPlatforms(
+                patch: patch,
+                releaseVersion: releaseVersion,
+                platforms: raisable,
+                extraArgs: _rolloutArguments(percentage, schedule),
+              );
         return reportError(
           message:
               'Patch $patchNumber on release $releaseVersion is already '
@@ -236,9 +248,7 @@ class RolloutCommand extends ShorebirdCommand
               '${formatRolloutPercentage(percentage)} on $channel for '
               '${higher.map(PatchNumber.platformName).join(', ')}, and a '
               'rollout can only be raised.',
-          hint:
-              'To raise the others, pass --${PatchLookup.platformsArgName} '
-              'with only them.',
+          hint: rerun == null ? null : 'To raise only the others, run: $rerun',
         );
       }
     }

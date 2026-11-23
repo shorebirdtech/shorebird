@@ -896,9 +896,54 @@ void main() {
             'rollout can only be raised.',
           ),
         ).called(1);
+        verify(
+          () => logger.info(
+            'To raise only the others, run: shorebird rollout '
+            '--release-version=$releaseVersion --patch-number=$patchNumber '
+            '--percentage=50 --platforms=ios',
+          ),
+        ).called(1);
         verifyNever(() => logger.confirm(any()));
         verifyNoRolloutRequest();
       });
+
+      test('gives no hint when every platform is further along', () async {
+        stubPatches([
+          androidPatch.copyWith(rolloutPercentage: 60),
+          iosPatch.copyWith(rolloutPercentage: 70),
+        ]);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            'Patch $patchNumber on release $releaseVersion is already '
+            'rolling out further than 50% on stable for Android, iOS, and a '
+            'rollout can only be raised.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => logger.info(any(that: startsWith('To raise only the others'))),
+        );
+        verifyNoRolloutRequest();
+      });
+
+      test(
+        'leaves a single chosen platform further along to the server',
+        () async {
+          stubPatches([androidPatch, iosPatch.copyWith(rolloutPercentage: 60)]);
+          when(() => argResults['platforms']).thenReturn(['ios']);
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(
+            () => logger.err(any(that: contains('already rolling out'))),
+          );
+          verifyRolloutRequest(iosPatch.id);
+        },
+      );
 
       test(
         'names the platforms in the promote hint when on no track',
