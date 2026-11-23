@@ -104,7 +104,10 @@ class Zizmor {
             )
           : p.join(
               _environment['XDG_CACHE_HOME'] ??
-                  p.join(_environment['HOME'] ?? '.', '.cache'),
+                  p.join(
+                    _environment['HOME'] ?? Directory.systemTemp.path,
+                    '.cache',
+                  ),
               'shorebird_ci',
               'zizmor',
             ));

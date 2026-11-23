@@ -155,6 +155,10 @@ void main() {
         p.join('/c', 'shorebird_ci', 'zizmor'),
       );
       expect(
+        Zizmor(abi: Abi.linuxX64, environment: {}).cacheDir,
+        p.join(Directory.systemTemp.path, '.cache', 'shorebird_ci', 'zizmor'),
+      );
+      expect(
         Zizmor(
           abi: Abi.windowsX64,
           environment: {'LOCALAPPDATA': r'C:\Users\u\AppData\Local'},

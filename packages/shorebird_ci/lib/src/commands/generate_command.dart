@@ -261,7 +261,9 @@ root's `shorebird_ci:` block, which is where `verify` looks.''',
     final ZizmorResult result;
     try {
       result = await (_zizmor ?? Zizmor()).run(repoRoot);
-    } on ZizmorException catch (e) {
+      // A full or read-only cache, a missing `tar`, a broken cached binary:
+      // whatever goes wrong here, the workflows are already written.
+    } on Exception catch (e) {
       stderr.writeln(
         'Could not run zizmor ($e). The generated zizmor job runs it in CI.',
       );
@@ -567,8 +569,9 @@ ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          
       final slug = slugs[package]!;
       final ciConfig = RepositoryAnalyzer.ciConfig(root: package.root);
 
-      // `$/` names the workflow in this repository at the run's commit,
-      // where `./` loads whatever a step left on the runner's disk there.
+      // `$/`, GitHub's self-repository syntax, rather than `./`: zizmor's
+      // self-repository audit fails the zizmor job on `./`, and GitHub can
+      // enforce a "fully pinned" policy only on the `$/` form.
       buffer.write('''
   $slug:
     needs: changes

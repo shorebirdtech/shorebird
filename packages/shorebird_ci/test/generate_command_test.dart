@@ -2230,6 +2230,13 @@ esac
         expect(text, contains('zizmor exited with code 1.'));
       });
 
+      test('carries on when the cache cannot be written', () async {
+        final text = await generateWith(
+          _FakeZizmor(null, error: const FileSystemException('read-only')),
+        );
+        expect(text, contains('Could not run zizmor'));
+      });
+
       test('carries on when zizmor cannot be installed', () async {
         final text = await generateWith(
           _FakeZizmor(null, error: ZizmorException('offline')),
@@ -2257,7 +2264,7 @@ class _FakeZizmor extends Zizmor {
   _FakeZizmor(this.result, {this.error});
 
   final ZizmorResult? result;
-  final ZizmorException? error;
+  final Exception? error;
   int runs = 0;
 
   @override
