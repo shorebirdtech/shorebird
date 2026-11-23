@@ -224,6 +224,12 @@ class BuildTraceSummary {
       flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache).wall,
       shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache).wall,
       downloads: acc.downloads.stats(),
+      // The install and precache spans are emitted only when that work
+      // runs: a revision already cloned and precached returns before
+      // either (ShorebirdFlutter.installRevision).
+      cold:
+          acc.setupPhase.of(SetupPhase.flutterInstall).isNotEmpty ||
+          acc.setupPhase.of(SetupPhase.flutterPrecache).isNotEmpty,
     );
   }
 
@@ -467,6 +473,7 @@ class BuildTraceSummary {
     // rather than network.ms.
     // 11: setup.downloads, from the download spans a Flutter fork that
     // traces precache writes; zeros from one that doesn't.
+    // setup.cold is new in 11 too; absent before, which is not false.
     'version': 11,
     'platform': platform,
     'totalMs': total.inMilliseconds,
@@ -545,6 +552,7 @@ class SetupStats {
     required this.flutterPrecache,
     required this.shorebirdCache,
     required this.downloads,
+    required this.cold,
   });
 
   /// Cloning the Flutter fork and checking out the pinned revision.
@@ -556,6 +564,15 @@ class SetupStats {
   /// Refreshing shorebird's own cached artifacts: wall time across calls,
   /// overlapping calls counted once.
   final Duration shorebirdCache;
+
+  /// Whether this command installed or precached Flutter: the Flutter
+  /// fork was cloned, or `flutter precache` ran because the install had
+  /// not been precached. A warm build (`false`) found both done.
+  ///
+  /// It does not look at [shorebirdCache], which runs on every command
+  /// and refreshes only what's missing; its downloads show in
+  /// [shorebirdCache]'s time.
+  final bool cold;
 
   /// Wall time in any setup phase. Phases can nest or overlap (cache
   /// refreshes run inside one another), so this can be less than their
@@ -574,6 +591,7 @@ class SetupStats {
     'flutterPrecacheMs': flutterPrecache.inMilliseconds,
     'shorebirdCacheMs': shorebirdCache.inMilliseconds,
     'downloads': downloads.toJson(),
+    'cold': cold,
   };
 }
 
@@ -1123,10 +1141,16 @@ class _Spans {
     for (final b in buckets) {
       _timed.addAll(b._timed);
       _withoutTs += b._withoutTs;
+      _untimedCount += b._untimedCount;
     }
   }
 
   final _timed = <_Interval>[];
+
+  /// Whether any span was added, timed or not.
+  bool get isNotEmpty => _timed.isNotEmpty || _untimedCount > 0;
+
+  int _untimedCount = 0;
 
   /// Total of spans with no `ts`, which can't be placed and so are
   /// summed, as before timestamps.
@@ -1135,6 +1159,7 @@ class _Spans {
   void add(int? ts, Duration dur) {
     if (ts == null) {
       _withoutTs += dur;
+      _untimedCount++;
     } else {
       _timed.add(_Interval(ts, dur));
     }
