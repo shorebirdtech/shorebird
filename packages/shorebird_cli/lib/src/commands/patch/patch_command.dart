@@ -525,10 +525,23 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       try {
         published.add(await _recordPatchRun(patcher));
       } catch (_) {
-        if (published.any((p) => !p.alreadyPublished) && !isJsonMode) {
-          _logPublished(published);
-          if (_link.source == PatchLinkSource.random) {
-            _logResumeCommand(unfinished: patchers.skip(index).toList());
+        if (published.any((p) => !p.alreadyPublished)) {
+          final unfinished = patchers.skip(index).toList();
+          if (isJsonMode) {
+            // A random key is not derived again on a rerun, so a script
+            // needs it to finish the remaining platforms under one number.
+            read(jsonEnvelopeTrackerRef, orElse: () => null)?.errorData = {
+              'link_key': _link.key,
+              'patches': [for (final p in published) p.toJson()],
+              'unfinished_platforms': [
+                for (final p in unfinished) p.releaseType.cliName,
+              ],
+            };
+          } else {
+            _logPublished(published);
+            if (_link.source == PatchLinkSource.random) {
+              _logResumeCommand(unfinished: unfinished);
+            }
           }
         }
         rethrow;
@@ -611,7 +624,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     }
   }
 
-  /// Prints the arguments that publish the [unfinished] platforms under this
+  /// Prints the command that publishes the [unfinished] platforms under this
   /// run's key, for a run whose key no rerun would derive again: this run's
   /// own arguments with the platforms and key replaced, quoted for a shell.
   void _logResumeCommand({required List<Patcher> unfinished}) {
@@ -621,8 +634,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       ..._argumentsWithoutPlatformsOrKey(),
     ].map(shellQuote).join(' ');
     logger.info(
-      'To give the remaining platforms the same patch number, rerun this '
-      'command with:\n  ${lightCyan.wrap(args)}',
+      'To give the remaining platforms the same patch number, run:\n'
+      '  ${lightCyan.wrap('shorebird $name $args')}',
     );
   }
 

@@ -1158,7 +1158,7 @@ void main() {
             ).thenThrow(ProcessExit(ExitCode.software.code));
           });
 
-          test('prints the arguments that finish a random key', () async {
+          test('prints the command that finishes a random key', () async {
             when(() => argResults.arguments).thenReturn([
               '--platforms=android,ios',
               '--release-version=$releaseVersion',
@@ -1182,7 +1182,9 @@ void main() {
               message,
               matches(
                 RegExp(
-                  '--platforms=ios --patch-key=[0-9a-f-]{36} '
+                  '^To give the remaining platforms the same patch number, '
+                  r'run:\n  .*shorebird patch --platforms=ios '
+                  '--patch-key=[0-9a-f-]{36} '
                   '--release-version=${RegExp.escape(releaseVersion)}',
                 ),
               ),
@@ -1227,6 +1229,32 @@ void main() {
               ),
             );
             expect(message, isNot(contains('android')));
+          });
+
+          test('with --json, puts the key and what published in the error '
+              'envelope', () async {
+            final tracker = JsonEnvelopeTracker();
+            await expectLater(
+              runScoped(
+                () => runWithOverrides(command.run),
+                values: {
+                  isJsonModeRef.overrideWith(() => true),
+                  jsonEnvelopeTrackerRef.overrideWith(() => tracker),
+                },
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            final data = tracker.errorData!;
+            expect(data['link_key'], matches(RegExp(r'^[0-9a-f-]{36}$')));
+            expect(data['unfinished_platforms'], equals(['ios']));
+            final patches = data['patches'] as List<Object?>;
+            expect(patches, hasLength(1));
+            verifyNever(
+              () => logger.info(
+                any(that: startsWith('To give the remaining platforms')),
+              ),
+            );
           });
 
           test('says what was published before the failure', () async {
