@@ -125,12 +125,13 @@ Future<String> updateActionVersions(
 }
 
 /// The `uses:` refs in [workflowContent] that aren't pinned to a commit
-/// SHA, e.g. `actions/checkout@v4`. Local actions and `docker://` images
-/// aren't listed.
+/// SHA, e.g. `actions/checkout@v4`. Local (`./`) and self-repository
+/// (`$/`) refs and `docker://` images aren't listed.
 List<String> unpinnedActionRefs(String workflowContent) => [
   for (final match in _anyUsesRegex.allMatches(workflowContent))
     if (!RegExp(r'@[0-9a-f]{40}$').hasMatch(match.group(1)!) &&
         !match.group(1)!.startsWith('./') &&
+        !match.group(1)!.startsWith(r'$/') &&
         !match.group(1)!.startsWith('docker://'))
       match.group(1)!,
 ];

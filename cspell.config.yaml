@@ -207,3 +207,5 @@ words:
   - xcworkspace
   - xlarge # GitHub runner labels (macos-latest-xlarge)
   - xlink
+  - zizmor # GitHub Actions linter (docs.zizmor.sh)
+  - zizmorcore # zizmor's GitHub org

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/commands.dart';
 import 'package:shorebird_ci/src/version.dart';
+import 'package:shorebird_ci/src/zizmor.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
@@ -28,6 +29,7 @@ Future<int?> runGenerate(
     '--repo-root',
     repoRoot.path,
     '--no-update-actions',
+    '--no-zizmor',
     ...extra,
   ]);
 }
@@ -700,7 +702,7 @@ void main() {
     );
 
     test(
-      '--codecov-token-secret emits secrets: inherit on each '
+      '--codecov-token-secret passes that one secret on each '
       'orchestrator uses: call and threads token into reusable',
       () async {
         createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
@@ -741,11 +743,24 @@ void main() {
           ),
         ).readAsStringSync();
 
-        // One `secrets: inherit` per package job (2 packages).
+        // The one secret, by name, per package job (2 packages): never
+        // `secrets: inherit`, which hands over every secret.
+        expect(mainYaml, isNot(contains('secrets: inherit')));
         expect(
-          'secrets: inherit'.allMatches(mainYaml).length,
+          '    secrets:\n'
+                  r'      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}'
+              .allMatches(mainYaml)
+              .length,
           equals(2),
         );
+        for (final reusable in [dartReusable, flutterReusable]) {
+          expect(
+            reusable,
+            contains(
+              '    secrets:\n      CODECOV_TOKEN:\n        required: false\n',
+            ),
+          );
+        }
         expect(
           dartReusable,
           contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
@@ -1139,6 +1154,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         // No --no-update-actions here — auto-bump is the default.
       ]);
 
@@ -1160,6 +1176,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         '--no-update-actions',
       ]);
 
@@ -1195,6 +1212,7 @@ void main() {
           'generate',
           '--repo-root',
           tempDir.path,
+          '--no-zizmor',
           '--style',
           style,
           '--no-update-actions',
@@ -1205,7 +1223,7 @@ void main() {
         for (final file in dir.listSync().whereType<File>()) {
           for (final m in usesLine.allMatches(file.readAsStringSync())) {
             final ref = m.group(1)!;
-            if (ref.startsWith('./')) continue;
+            if (ref.startsWith(r'$/')) continue;
             repos.add(ref.split('@').first);
             expect(ref, matches(pinned), reason: '${file.path}: $ref');
             expect(m.group(2), matches(RegExp(r'^ # v\d+\.\d+\.\d+$')));
@@ -1329,6 +1347,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         '--style',
         'static',
         '--no-update-actions',
@@ -2072,6 +2091,197 @@ esac
       );
     });
   });
+
+  group('zizmor', () {
+    for (final style in ['dynamic', 'static']) {
+      test('$style emits a read-only zizmor job that required needs', () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', style, '--required']);
+        final yaml = _readMain(tempDir);
+        final jobs = (loadYaml(yaml) as YamlMap)['jobs'] as YamlMap;
+        final job = jobs['zizmor'] as YamlMap;
+
+        expect(job['permissions'], {'contents': 'read'});
+        expect(job.containsKey('secrets'), isFalse);
+        final steps = (job['steps'] as YamlList).cast<YamlMap>();
+        expect(steps.first['uses'], checkoutAction.split(' ').first);
+        expect(steps.first['with'], {'persist-credentials': false});
+        final install = steps[1]['run'] as String;
+        for (final asset in [
+          'zizmor-x86_64-unknown-linux-gnu.tar.gz',
+          'zizmor-aarch64-unknown-linux-gnu.tar.gz',
+        ]) {
+          expect(install, contains('asset=$asset sha=${zizmorSha256[asset]}'));
+        }
+        expect(install, contains('/releases/download/v$zizmorVersion/'));
+        expect(install, contains('sha256sum -c -'));
+        expect(steps.last['run'], 'zizmor --offline .github/workflows');
+        expect(
+          (jobs['required'] as YamlMap)['needs'] as YamlList,
+          contains('zizmor'),
+        );
+      });
+    }
+
+    test('checkouts keep no credentials and run: steps take no '
+        'template expansions of inputs', () async {
+      createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+      createPackage(
+        tempDir,
+        'packages/bar',
+        'bar',
+        flutterLine: 'any',
+        addTestDir: true,
+      );
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      for (final style in ['dynamic', 'static']) {
+        await runGenerate(tempDir, extra: ['--style', style]);
+        final dir = Directory(p.join(tempDir.path, '.github', 'workflows'));
+        for (final file in dir.listSync().whereType<File>()) {
+          final doc = loadYaml(file.readAsStringSync()) as YamlMap;
+          for (final job in (doc['jobs'] as YamlMap).values.cast<YamlMap>()) {
+            for (final step
+                in (job['steps'] as YamlList? ?? const []).cast<YamlMap>()) {
+              if ('${step['uses']}'.startsWith('actions/checkout@')) {
+                expect(
+                  (step['with'] as YamlMap)['persist-credentials'],
+                  isFalse,
+                  reason: file.path,
+                );
+              }
+              expect(
+                '${step['run'] ?? ''}',
+                isNot(matches(RegExp(r'\$\{\{ (inputs|matrix)\.subpackages'))),
+              );
+            }
+          }
+        }
+        dir.deleteSync(recursive: true);
+      }
+    });
+
+    test(
+      'static calls its reusable workflows by self-repository ref',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+
+        expect(
+          _readMain(tempDir),
+          contains(r'uses: $/.github/workflows/_shorebird_ci_dart.yaml'),
+        );
+      },
+    );
+
+    group('the run after writing', () {
+      Future<String> generateWith(Zizmor zizmor) async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+        final out = _CapturedOutput();
+        final code = await IOOverrides.runZoned(
+          () =>
+              (CommandRunner<int>(
+                'test',
+                'test',
+              )..addCommand(GenerateCommand(zizmor: zizmor))).run([
+                'generate',
+                '--repo-root',
+                tempDir.path,
+                '--no-update-actions',
+              ]),
+          stdout: () => out,
+          stderr: () => out,
+        );
+        expect(code, 0);
+        return out.text;
+      }
+
+      test('prints findings and says the job will fail on them', () async {
+        final text = await generateWith(
+          _FakeZizmor((
+            exitCode: 13,
+            stdout: 'error[x]: finding\n',
+            stderr: '',
+          )),
+        );
+        expect(text, contains('error[x]: finding'));
+        expect(text, contains('The generated zizmor job fails until'));
+      });
+
+      test('says so when there are no findings', () async {
+        final text = await generateWith(
+          _FakeZizmor((exitCode: 0, stdout: '', stderr: 'INFO progress')),
+        );
+        expect(text, contains('zizmor: no findings.'));
+        expect(text, isNot(contains('INFO progress')));
+      });
+
+      test("prints zizmor's own errors", () async {
+        final text = await generateWith(
+          _FakeZizmor((exitCode: 1, stdout: '', stderr: 'bad input\n')),
+        );
+        expect(text, contains('bad input'));
+        expect(text, contains('zizmor exited with code 1.'));
+      });
+
+      test('carries on when zizmor cannot be installed', () async {
+        final text = await generateWith(
+          _FakeZizmor(null, error: ZizmorException('offline')),
+        );
+        expect(text, contains('Could not run zizmor (offline)'));
+      });
+
+      test('--no-zizmor skips it', () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+        final zizmor = _FakeZizmor(
+          (exitCode: 0, stdout: '', stderr: ''),
+        );
+        await runGenerate(
+          tempDir,
+          command: GenerateCommand(zizmor: zizmor),
+        );
+        expect(zizmor.runs, 0);
+      });
+    });
+  });
+}
+
+class _FakeZizmor extends Zizmor {
+  _FakeZizmor(this.result, {this.error});
+
+  final ZizmorResult? result;
+  final ZizmorException? error;
+  int runs = 0;
+
+  @override
+  Future<ZizmorResult> run(String repoRoot) async {
+    runs++;
+    if (error != null) throw error!;
+    return result!;
+  }
+}
+
+/// Collects what's written to stdout or stderr.
+class _CapturedOutput implements Stdout {
+  final _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = '']) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 String _readMain(Directory repoRoot) {

@@ -65,6 +65,19 @@ Codecov is configured), integration tests (if Flutter with an
 A `cspell` job is added if a cspell config file is present at the repo
 root.
 
+A `zizmor` job lints every workflow in `.github/workflows/`, the
+generated ones and your own, with [zizmor](https://docs.zizmor.sh/),
+which finds GitHub Actions security mistakes such as template
+injection and credentials left on disk. It downloads the zizmor
+release this version of `shorebird_ci` pins from zizmor's GitHub
+releases and checks its SHA-256 before running it, rather than using a
+third-party action. It runs offline, with a read-only token that
+checkout doesn't keep and no secrets. To accept a finding, ignore it
+in `.github/zizmor.yml` or with a `# zizmor: ignore[<audit>]` comment
+([zizmor's docs](https://docs.zizmor.sh/usage/#ignoring-results)).
+`generate` runs the same zizmor once after writing and prints what it
+finds, so the job's first run isn't a surprise.
+
 Auto-detected: Dart vs. Flutter, Dart workspaces, Codecov, cspell,
 nested subpackages, `bloc_lint`, integration tests, pinned Flutter
 versions. Adding or removing packages requires no workflow changes;
@@ -132,8 +145,9 @@ is set: generation fails if any package's slug resolves to `required`
 Pass the name of the GitHub Actions secret holding your Codecov upload
 token. The codecov-action step gets `token: ${{ secrets.<NAME> }}` in
 both `--style static` and `--style dynamic` (the default). In static,
-`secrets: inherit` is also emitted on each reusable workflow call so
-the secret is reachable from inside the reusable workflow.
+each reusable workflow call is passed that one secret by name, and the
+reusable workflow declares it, so the pub and test steps never see the
+repository's other secrets as `secrets: inherit` would give them.
 
 ```sh
 shorebird_ci generate --codecov-token-secret CODECOV_TOKEN
@@ -150,6 +164,15 @@ and pins it by SHA after writing the workflow. `--no-update-actions`
 skips the network call and leaves the SHA pins built into this version
 of `shorebird_ci` as-is. Use it in offline environments. Once you push, Dependabot picks
 up bumps on its weekly schedule.
+
+### `--no-zizmor`
+
+Skips `generate`'s run of zizmor over `.github/workflows/` after
+writing. That run uses a `zizmor` on `PATH` if it's the version the
+generated job pins, and otherwise downloads that release to a per-user
+cache (`~/.cache/shorebird_ci/zizmor`, or `%LOCALAPPDATA%` on
+Windows), checking its SHA-256. Its findings never fail `generate`.
+The generated `zizmor` job is emitted either way.
 
 ### `--style static`
 
