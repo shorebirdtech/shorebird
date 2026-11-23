@@ -1487,7 +1487,9 @@ void main() {
 
     // Real traces from `shorebird release` and `shorebird patch` runs.
     // Expected values were computed outside Dart from the same files
-    // (union of each bucket's [ts, ts + dur) spans).
+    // (union of each bucket's [ts, ts + dur) spans). The iOS and macOS
+    // traces predate the `flutter process` span, so their flutterBuild
+    // comes from the umbrella span.
     group('real traces', () {
       BuildTraceSummary summarize(
         String name, {
@@ -1515,7 +1517,6 @@ void main() {
         );
         expect(s.native.compile, lessThanOrEqualTo(s.native.build));
         expect(s.network.shorebird, lessThanOrEqualTo(s.network.duration));
-        expect(s.flutterBuild, lessThanOrEqualTo(s.total));
         expect(s.native.build, lessThanOrEqualTo(s.flutterBuild));
       }
 
@@ -1558,7 +1559,11 @@ void main() {
         expect(s.native.build.inMilliseconds, 29452);
         expect(s.network.duration.inMilliseconds, 409);
         expect(s.setup.total.inMilliseconds, 555);
-        expect(s.ios, isNotNull);
+        // Native build minus the assemble time inside it.
+        expect(s.native.compile.inMilliseconds, 9564);
+        expect(s.ios!.xcode.subsectionDistribution.count, 175);
+        // Swift Package Manager: pod install has nothing to do.
+        expect(s.ios!.podInstall.duration.inMilliseconds, 0);
         expect(s.android, isNull);
         expectStagesFitTheirParents(s);
       });
@@ -1574,12 +1579,15 @@ void main() {
         expect(s.native.build.inMilliseconds, 45694);
         expect(s.network.duration.inMilliseconds, 742);
         expect(s.setup.total.inMilliseconds, 852);
-        expect(s.ios, isNotNull);
+        expect(s.native.compile.inMilliseconds, 23088);
+        expect(s.ios!.xcode.subsectionDistribution.count, 303);
+        expect(s.android, isNull);
         expectStagesFitTheirParents(s);
       });
 
-      // `shorebird patch ios --dry-run` on an app with a plugin: the
-      // linker's aot_tools and gen_snapshot runs come after the build.
+      // `shorebird patch ios --dry-run` on an app with a plugin. The
+      // linker's aot_tools and gen_snapshot runs after the build are not
+      // Dart compile: genSnapshot is the ios_aot target alone.
       test('an iOS patch run', () {
         final s = summarize('ios_patch.json', platform: 'ios');
         expect(s.flutterBuild.inMilliseconds, 152807);
@@ -1589,6 +1597,8 @@ void main() {
         expect(s.native.build.inMilliseconds, 152573);
         expect(s.network.duration.inMilliseconds, 719);
         expect(s.setup.total.inMilliseconds, 2859);
+        expect(s.native.compile.inMilliseconds, 47622);
+        expect(s.ios!.xcode.subsectionDistribution.count, 209);
         expectStagesFitTheirParents(s);
       });
 
