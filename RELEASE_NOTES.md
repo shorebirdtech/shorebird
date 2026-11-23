@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.149 (November 23, 2026)
 
+- ✨ The first run after an install or `shorebird upgrade` downloads a
+  prebuilt Shorebird CLI on macOS, Linux and Windows x64 instead of cloning
+  Flutter and compiling the CLI, and installs the CLI's own Flutter only when
+  a command uses it, so a cold CI run that builds with `--flutter-version`
+  no longer downloads two Flutters
 - ✨ `shorebird flutter path` prints the directory of the Flutter Shorebird
   builds with, with `--flutter-version` to pick a version installed by
   `shorebird flutter precache` and `--json` for the path and revision
