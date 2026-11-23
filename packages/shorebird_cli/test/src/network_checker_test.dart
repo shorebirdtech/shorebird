@@ -125,6 +125,21 @@ void main() {
             () => progress.complete(any(that: contains('OK'))),
           ).called(defaultUrls.length);
         });
+
+        test('labels the patch CDN as needed by test devices only', () async {
+          await runWithOverrides(networkChecker.checkReachability);
+
+          verify(
+            () => progress.complete(
+              any(
+                that: allOf(
+                  startsWith('https://cdn.shorebird.cloud'),
+                  contains(NetworkChecker.patchCdnNote),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
       });
 
       group('when endpoints are not reachable', () {
@@ -135,9 +150,27 @@ void main() {
         test('logs reachability for each checked url', () async {
           await runWithOverrides(networkChecker.checkReachability);
 
+          // Checked first: mocktail counts each call toward one verify only.
           verify(
-            () => progress.fail(any(that: contains('unreachable'))),
-          ).called(defaultUrls.length);
+            () => progress.fail(
+              any(
+                that: allOf(
+                  startsWith('https://cdn.shorebird.cloud unreachable'),
+                  contains(NetworkChecker.patchCdnNote),
+                ),
+              ),
+            ),
+          ).called(1);
+          verify(
+            () => progress.fail(
+              any(
+                that: allOf(
+                  contains('unreachable'),
+                  isNot(contains(NetworkChecker.patchCdnNote)),
+                ),
+              ),
+            ),
+          ).called(defaultUrls.length - 1);
         });
       });
     });

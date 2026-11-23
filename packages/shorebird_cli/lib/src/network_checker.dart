@@ -58,19 +58,29 @@ class ReachabilityResult {
 /// results.
 /// {@endtemplate}
 class NetworkChecker {
+  /// The CDN apps download patches from. This machine never uses it, but test
+  /// devices on the same network do, so `shorebird doctor` probes it and says
+  /// so.
+  static final patchCdnUri = Uri.https('cdn.shorebird.cloud');
+
+  /// Shown beside [patchCdnUri] so a failure there isn't read as a problem
+  /// with this machine.
+  static const patchCdnNote =
+      '(needed by test devices for patches, not by this machine)';
+
   /// The URLs to check for network reachability: the Shorebird API, auth
   /// and download hosts as configured (an override such as
   /// `SHOREBIRD_DOWNLOAD_URL` replaces the default it overrides), the console,
   /// the bucket release and patch artifacts upload to and download from, and
-  /// the CDN apps download patches from. GitHub, which serves the Flutter
-  /// fork and bundletool, is not probed.
+  /// [patchCdnUri]. GitHub, which serves the Flutter fork and bundletool, is
+  /// not probed.
   List<Uri> get urlsToCheck => [
     shorebirdEnv.hostedUri ?? Uri.parse(productionEnvironment.hostedUrl),
     shorebirdEnv.authServiceUri,
     ShorebirdWebConsole.baseUri,
     Uri.parse(shorebirdEnv.downloadUrl),
     Uri.https('storage.googleapis.com'),
-    Uri.https('cdn.shorebird.cloud'),
+    patchCdnUri,
   ];
 
   /// Checks whether [url] responds to an HTTP GET request.
@@ -95,10 +105,11 @@ class NetworkChecker {
     for (final url in urlsToCheck) {
       final progress = logger.progress('Checking reachability of $url');
       final result = await checkUrl(url);
+      final note = url == patchCdnUri ? ' ${darkGray.wrap(patchCdnNote)}' : '';
       if (result.reachable) {
-        progress.complete('$url ${lightGreen.wrap('OK')}');
+        progress.complete('$url ${lightGreen.wrap('OK')}$note');
       } else {
-        progress.fail('$url unreachable');
+        progress.fail('$url unreachable$note');
         logger.detail('Failed to reach $url: ${result.error}');
       }
     }
