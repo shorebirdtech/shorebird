@@ -58,8 +58,9 @@ activate`s `shorebird_ci`, runs `verify` as a sanity check, then runs
 job fans out over only those packages, running per entry: checkout,
 SDK setup, `pub get` (plus any nested subpackages), format, analyze,
 bloc lint (if `bloc_lint` is a dependency), tests (with coverage if
-Codecov is configured), integration tests (if Flutter and an
-`integration_test/` directory exists), Codecov upload.
+Codecov is configured), integration tests (if Flutter with an
+`integration_test/` directory; see `integration_tests` under
+[Configuration](#configuration)), Codecov upload.
 
 A `cspell` job is added if a cspell config file is present at the repo
 root.
@@ -203,10 +204,12 @@ shorebird_ci:
   inputs: ["openapi.yaml"]
 ```
 
-`integration_tests` decides whether CI runs `flutter test
-integration_test`. Left out, it runs when the package has both an
-`integration_test/` and a `linux/` directory, since the Linux desktop
-is the only device a hosted `ubuntu-latest` runner has.
+`integration_tests` turns `flutter test integration_test` on or off
+for a Flutter package with files under `integration_test/`. Left out,
+it is on when the package also has a `linux/` directory, since the
+Linux desktop is the only device a hosted `ubuntu-latest` runner has.
+Pull requests always run on `ubuntu-latest`, so `true` on a package
+without `linux/` fails there.
 
 Repository-wide, in the repository root's `pubspec.yaml`:
 
