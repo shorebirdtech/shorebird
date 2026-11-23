@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/orgs/organization_scoped_command.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -145,13 +146,6 @@ mixin ServiceAccountScopedCommand
   /// [account]'s name (quoted for a shell when needed) and id.
   String _describe(ServiceAccount account) =>
       '${shellQuote(account.name)} (id: ${account.id})';
-}
-
-/// [value], single-quoted when a shell would split or expand it, so a
-/// command built from it runs when pasted.
-String shellQuote(String value) {
-  if (RegExp(r'^[A-Za-z0-9_@%+=:,./-]+$').hasMatch(value)) return value;
-  return "'${value.replaceAll("'", r"'\''")}'";
 }
 
 /// [time]'s UTC calendar date, as YYYY-MM-DD, or [none] when null.

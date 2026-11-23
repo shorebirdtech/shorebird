@@ -478,10 +478,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       );
     }
 
-    final patchKey = results[patchKeyArgName] as String?;
+    final patchKey = (results[patchKeyArgName] as String?)?.trim();
     final noLink = results[noLinkArgName] == true;
     if (patchKey != null) {
-      if (patchKey.trim().isEmpty) {
+      if (patchKey.isEmpty) {
         usageException('--$patchKeyArgName cannot be empty.');
       }
       if (patchKey.length > patchKeyMaxLength) {
@@ -525,7 +525,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       try {
         published.add(await _recordPatchRun(patcher));
       } catch (_) {
-        if (published.isNotEmpty && !isJsonMode) {
+        if (published.any((p) => !p.alreadyPublished) && !isJsonMode) {
           _logPublished(published);
           if (_link.source == PatchLinkSource.random) {
             _logResumeCommand(unfinished: patchers.skip(index).toList());
@@ -557,21 +557,33 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     }
 
     if (_patchToAddTo == null) _logPublished(published);
+    // A skipped platform keeps the rollout an earlier run gave it.
+    final newlyPublished = [
+      for (final p in published)
+        if (!p.alreadyPublished) p,
+    ];
     if (schedule != null) {
-      _logScheduledRollout(published: published, schedule: schedule);
+      _logScheduledRollout(published: newlyPublished, schedule: schedule);
     } else if (rolloutPercentage case final percentage? when percentage < 100) {
-      _logPartialRollout(published: published, percentage: percentage);
+      _logPartialRollout(published: newlyPublished, percentage: percentage);
     }
 
     return ExitCode.success.code;
   }
 
-  /// Says which patch number each platform in [published] has, one line for
-  /// each number, and that platforms on different releases are not linked.
+  /// Says which patch number each platform this run published in [published]
+  /// has, one line for each number, and that platforms on different releases
+  /// are not linked. Platforms an earlier run published are left out; they
+  /// were reported when skipped.
   void _logPublished(List<PublishedPatch> published) {
+    final newlyPublished = published.where((p) => !p.alreadyPublished);
+    if (newlyPublished.isEmpty) {
+      logger.info('\nNothing new to publish.');
+      return;
+    }
     final releaseVersions = {for (final p in published) p.release.version};
     final groups = <(String, int), List<ReleasePlatform>>{};
-    for (final p in published) {
+    for (final p in newlyPublished) {
       groups
           .putIfAbsent((p.release.version, p.patch.number), () => [])
           .add(p.platform);
@@ -600,25 +612,43 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   }
 
   /// Prints the arguments that publish the [unfinished] platforms under this
-  /// run's key, for a run whose key no rerun would derive again.
+  /// run's key, for a run whose key no rerun would derive again: this run's
+  /// own arguments with the platforms and key replaced, quoted for a shell.
   void _logResumeCommand({required List<Patcher> unfinished}) {
-    final rest = results.rest;
     final args = [
       '--platforms=${unfinished.map((p) => p.releaseType.cliName).join(',')}',
       '--$patchKeyArgName=${_link.key}',
-      if (results['release-version'] case final String version)
-        '--release-version=$version',
-      if (_track case final track?) '--track=${track.channel}',
-      if (results[rolloutArgName] case final String rollout)
-        '--$rolloutArgName=$rollout',
-      if (flavor case final flavor?) '--flavor=$flavor',
-      if (target case final target?) '--target=$target',
-      if (rest.isNotEmpty) '-- ${rest.join(' ')}',
-    ].join(' ');
+      ..._argumentsWithoutPlatformsOrKey(),
+    ].map(shellQuote).join(' ');
     logger.info(
       'To give the remaining platforms the same patch number, rerun this '
       'command with:\n  ${lightCyan.wrap(args)}',
     );
+  }
+
+  /// This run's arguments without `--platforms` (`-p`) and `--patch-key`
+  /// and their values. Arguments after `--` are kept as given.
+  List<String> _argumentsWithoutPlatformsOrKey() {
+    const names = ['platforms', patchKeyArgName];
+    final args = results.arguments;
+    final kept = <String>[];
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      if (arg == '--') {
+        kept.addAll(args.skip(i));
+        break;
+      }
+      if (arg == '-p' || names.any((name) => arg == '--$name')) {
+        i++; // Skips the value in the next argument.
+        continue;
+      }
+      if ((arg.startsWith('-p') && !arg.startsWith('--')) ||
+          names.any((name) => arg.startsWith('--$name='))) {
+        continue;
+      }
+      kept.add(arg);
+    }
+    return kept;
   }
 
   /// Says what a rollout below 100% means for each of [published] and how to

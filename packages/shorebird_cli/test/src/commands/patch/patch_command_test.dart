@@ -282,6 +282,7 @@ void main() {
         () => argResults.wasParsed(CommonArguments.signCmd.name),
       ).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.arguments).thenReturn([]);
 
       // Not a git checkout unless a test says otherwise.
       when(
@@ -818,8 +819,8 @@ void main() {
           );
         });
 
-        test('sends the key given', () async {
-          when(() => argResults['patch-key']).thenReturn('my-key');
+        test('sends the key given, trimmed', () async {
+          when(() => argResults['patch-key']).thenReturn(' my-key ');
 
           await runWithOverrides(command.run);
 
@@ -1134,6 +1135,11 @@ void main() {
           });
 
           test('prints the arguments that finish a random key', () async {
+            when(() => argResults.arguments).thenReturn([
+              '--platforms=android,ios',
+              '--release-version=$releaseVersion',
+            ]);
+
             await expectLater(
               runWithOverrides(command.run),
               exitsWithCode(ExitCode.software),
@@ -1153,41 +1159,50 @@ void main() {
               matches(
                 RegExp(
                   '--platforms=ios --patch-key=[0-9a-f-]{36} '
-                  '--release-version=${RegExp.escape(releaseVersion)} '
-                  '--track=stable',
+                  '--release-version=${RegExp.escape(releaseVersion)}',
                 ),
               ),
             );
           });
 
-          test('keeps --rollout, --flavor and build args in them', () async {
-            when(() => argResults['rollout']).thenReturn('10');
-            when(() => argResults['flavor']).thenReturn('internal');
-            when(() => argResults.rest).thenReturn(['--verbose']);
-            when(
-              () => shorebirdEnv.getShorebirdYaml(),
-            ).thenReturn(
-              const ShorebirdYaml(
-                appId: appId,
-                flavors: {'internal': appId},
-              ),
-            );
+          test('keeps every other argument, quoted for a shell', () async {
+            when(() => argResults.arguments).thenReturn([
+              '-p',
+              'android',
+              '--platforms',
+              'ios',
+              '--rollout-steps=10,50,100',
+              '--pause-weekends',
+              '--dart-define=GREETING=hello world',
+              '--',
+              '--verbose',
+            ]);
 
             await expectLater(
               runWithOverrides(command.run),
               exitsWithCode(ExitCode.software),
             );
 
-            verify(
-              () => logger.info(
-                any(
-                  that: contains(
-                    '--track=stable --rollout=10 --flavor=internal '
-                    '-- --verbose',
-                  ),
+            final message =
+                verify(
+                      () => logger.info(
+                        captureAny(
+                          that: startsWith('To give the remaining platforms'),
+                        ),
+                      ),
+                    ).captured.single
+                    as String;
+            expect(
+              message,
+              matches(
+                RegExp(
+                  '--platforms=ios --patch-key=[0-9a-f-]{36} '
+                  '--rollout-steps=10,50,100 --pause-weekends '
+                  "'--dart-define=GREETING=hello world' -- --verbose",
                 ),
               ),
-            ).called(1);
+            );
+            expect(message, isNot(contains('android')));
           });
 
           test('says what was published before the failure', () async {
@@ -1269,7 +1284,7 @@ void main() {
               ),
             ).called(1);
             verify(
-              () => logger.success('\n✅ Published patch 2 (Android, iOS)!'),
+              () => logger.success('\n✅ Published patch 2 (iOS)!'),
             ).called(1);
           });
         });
@@ -1300,6 +1315,17 @@ void main() {
             publishedRow(platform: ReleasePlatform.android, number: 2),
           ]);
           await expectBuilt(built: false);
+        });
+
+        test('says nothing new was published', () async {
+          stubLinkedPatches([
+            publishedRow(platform: ReleasePlatform.android, number: 2),
+          ]);
+
+          await runWithOverrides(command.run);
+
+          verify(() => logger.info('\nNothing new to publish.')).called(1);
+          verifyNever(() => logger.success(any(that: contains('Published'))));
         });
 
         test('reports the skipped platform in --json', () async {
