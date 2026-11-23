@@ -82,6 +82,7 @@ class IosFrameworkPatcher extends Patcher
       target: target,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
+      releaseSupplementDir: stageReleaseTfaFacts(platformSubdir: 'ios'),
     );
 
     await buildAppleElfAotSnapshot(

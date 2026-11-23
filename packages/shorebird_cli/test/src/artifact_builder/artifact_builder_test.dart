@@ -1660,6 +1660,25 @@ Reason: Exited with code 70.'''),
         });
       });
 
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildMacos(releaseSupplementDir: 'release_supplement'),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'macos', '--release'],
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 
@@ -2125,6 +2144,25 @@ Reason: Exited with code 70.'''),
           ).called(1);
           expect(result.kernelFile.path, equals(appDill.path));
         });
+      });
+
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildIpa(releaseSupplementDir: 'release_supplement'),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'ipa', '--release'],
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
       });
 
       group('when base64PublicKey is not null', () {

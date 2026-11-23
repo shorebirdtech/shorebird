@@ -60,6 +60,36 @@ mixin ApplePatcherMixin on Patcher {
         ]
       : <String>[];
 
+  /// The name of the file holding the facts TFA inferred for a release, in
+  /// its supplement. Flutter writes it on iOS and macOS release builds.
+  static const tfaFactsFileName = 'App.tfa_facts.json';
+
+  /// Copies the release's TFA facts from [releaseSupplementDirectory] to
+  /// `build/<platformSubdir>/shorebird_release/` and returns that directory
+  /// for the patch build, or null when the release has none (no supplement,
+  /// or a Flutter that didn't write them).
+  ///
+  /// Flutter's kernel compile reads them so that TFA widens back what the
+  /// patch narrowed: drop the last `foo(null)` and `foo` would otherwise take
+  /// an unboxed int, changing every unchanged caller so it no longer links.
+  ///
+  /// The path Flutter gets is part of its build cache key, so it must be the
+  /// same on every patch build: the supplement itself is extracted to a new
+  /// temp directory each run, which would start a new cache each time.
+  String? stageReleaseTfaFacts({required String platformSubdir}) {
+    final staged = Directory(
+      p.join(projectRoot.path, 'build', platformSubdir, 'shorebird_release'),
+    );
+    if (staged.existsSync()) staged.deleteSync(recursive: true);
+    final supplement = releaseSupplementDirectory;
+    if (supplement == null) return null;
+    final facts = File(p.join(supplement.path, tfaFactsFileName));
+    if (!facts.existsSync()) return null;
+    staged.createSync(recursive: true);
+    facts.copySync(p.join(staged.path, tfaFactsFileName));
+    return staged.path;
+  }
+
   /// Where the patch build's kernel file is copied so that it can be used to
   /// link the patch.
   String get appDillCopyPath =>

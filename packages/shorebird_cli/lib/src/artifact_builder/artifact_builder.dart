@@ -72,9 +72,11 @@ ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 /// of the host app's version.
 ///
 /// [releaseSupplementDir] is the downloaded supplement of the release a patch
-/// is built against (Android only). Flutter's Android build reads the
-/// release's object order from it, so the patch's snapshot objects keep their
-/// release ids and the patch diffs smaller.
+/// is built against. Flutter's Android build reads the release's object order
+/// from it, so the patch's snapshot objects keep their release ids and the
+/// patch diffs smaller. Its iOS and macOS kernel compile reads the release's
+/// TFA facts from it, so code the patch didn't change compiles as the
+/// release's did and stays linked.
 ///
 /// [appId] is the app ID an add-to-app module (aar and ios-framework only) is
 /// built with in place of the checked-in shorebird.yaml's top-level `app_id`:
@@ -340,6 +342,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
+    String? releaseSupplementDir,
   }) {
     return _buildAppleKernel(
       command: 'macos',
@@ -354,6 +357,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       args: args,
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
+      releaseSupplementDir: releaseSupplementDir,
     );
   }
 
@@ -366,6 +370,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
+    String? releaseSupplementDir,
   }) {
     return _buildAppleKernel(
       command: 'ipa',
@@ -381,6 +386,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       args: args,
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
+      releaseSupplementDir: releaseSupplementDir,
     );
   }
 
@@ -395,6 +401,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     List<String> args = const [],
     String? base64PublicKey,
     int? ddMaxBytes,
+    String? releaseSupplementDir,
   }) {
     _deleteForeignModuleXcodeProperties(
       shorebirdEnv.getShorebirdProjectRoot()!,
@@ -414,6 +421,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       ddMaxBytes: ddMaxBytes,
       releaseVersion: releaseVersion,
       appId: appId,
+      releaseSupplementDir: releaseSupplementDir,
     );
   }
 
@@ -508,6 +516,7 @@ Reason: Exited with code $exitCode.''',
     required int? ddMaxBytes,
     String? releaseVersion,
     String? appId,
+    String? releaseSupplementDir,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Make every target of this platform's builds re-run. On a Flutter that
@@ -551,6 +560,7 @@ Reason: Exited with code $exitCode.''',
       base64PublicKey: base64PublicKey,
       ddMaxBytes: ddMaxBytes,
       releaseVersion: releaseVersion,
+      releaseSupplementDir: releaseSupplementDir,
       appId: appId,
     );
     if (shorebirdKernelFile.existsSync()) {
