@@ -236,12 +236,9 @@ function shared::execute() {
     exit 1
   fi
 
-  # In JSON mode, redirect bootstrap output to stderr so stdout is pure JSON.
-  if [[ "$SHOREBIRD_JSON_MODE" == "true" ]]; then
-    upgrade_shorebird 7< "$PROG_NAME" 1>&2
-  else
-    upgrade_shorebird 7< "$PROG_NAME"
-  fi
+  # Setup output (git, flutter --version, pub get) goes to stderr, so stdout is
+  # only the command's own: `$(shorebird flutter path)` and `--json` read it.
+  upgrade_shorebird 7< "$PROG_NAME" 1>&2
 
   BIN_NAME="$(basename "$PROG_NAME")"
   case "$BIN_NAME" in    
