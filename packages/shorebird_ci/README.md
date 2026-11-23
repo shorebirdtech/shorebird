@@ -229,6 +229,11 @@ shorebird_ci:
 Each repository-wide key mirrors the flag of the same name, and a flag
 still wins where both are set.
 
+A repository of independent packages has no root `pubspec.yaml` to put
+these in. Add one whose `name` starts with `_` (for example `name: _`):
+like a workspace root named that way, it holds settings and is never
+treated as a package to test.
+
 ## Customization
 
 `verify` fails when a workflow `generate --style static` wrote is not

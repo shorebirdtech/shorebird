@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# Unreleased
+
+- A `pubspec.yaml` at the repository root whose `name` starts with `_` is no longer discovered as a package, workspace or not. A repository of independent packages (no Dart workspace) can now hold the repository-wide `shorebird_ci:` settings (`required`, `fatal_infos`, `codecov_token_secret`) that `verify` reads there, without `generate` adding a CI job that analyzes and tests the whole repository as one package. Before, only a workspace root got that exemption.
+
 # 0.3.3
 
 - Generated workflows run a Flutter package's integration tests only when it has a `linux/` directory as well as `integration_test/`, and a new per-package `shorebird_ci: integration_tests: true|false` key in `pubspec.yaml` overrides that. `flutter test integration_test` needs a device, and a hosted `ubuntu-latest` runner, where every pull request's leg runs, has only the Linux desktop, so a mobile-only app's integration tests failed every run. Since 0.3.1 `verify` fails on a hand-set `has_integration_tests: false`, so there was no way to turn them off. (#4522)

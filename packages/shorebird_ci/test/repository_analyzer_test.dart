@@ -67,6 +67,38 @@ void main() {
       expect(names, equals({'foo'}));
     });
 
+    test('skips an underscore root pubspec that only holds settings', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync(
+        'name: _\n'
+        'environment:\n'
+        '  sdk: ^3.5.0\n'
+        'shorebird_ci:\n'
+        '  required: true\n',
+      );
+      initGitRepo(tempDir);
+
+      final analyzer = RepositoryAnalyzer();
+      final repo = analyzer.analyze(repositoryRoot: tempDir);
+
+      expect(repo.packages.map((p) => p.name).toSet(), equals({'foo'}));
+      expect(repo.ciConfig.emitRequiredJob, isTrue);
+    });
+
+    test('keeps a named root package', () async {
+      createPackage(tempDir, '.', 'root_app');
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      final analyzer = RepositoryAnalyzer();
+      final repo = analyzer.analyze(repositoryRoot: tempDir);
+
+      expect(
+        repo.packages.map((p) => p.name).toSet(),
+        equals({'root_app', 'foo'}),
+      );
+    });
+
     test('detects codecov config', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       File(

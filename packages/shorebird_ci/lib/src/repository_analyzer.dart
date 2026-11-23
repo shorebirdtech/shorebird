@@ -248,11 +248,23 @@ class RepositoryAnalyzer {
       }
 
       if (workspace.isWorkspaceStubRoot(pubspec.parent.path)) continue;
+      if (_isSettingsOnlyRoot(pubspec, repositoryRoot)) continue;
 
       packages.add(pubspec);
     }
 
     return packages;
+  }
+
+  /// Whether [pubspec] is the repository root's `pubspec.yaml` and only
+  /// holds repository-wide `shorebird_ci:` settings: its name starts with
+  /// `_`, the same convention as a workspace stub root. A repository of
+  /// independent packages (no workspace) needs a root pubspec for those
+  /// settings, but it isn't a package to test.
+  static bool _isSettingsOnlyRoot(File pubspec, Directory repositoryRoot) {
+    if (!p.equals(pubspec.parent.path, repositoryRoot.path)) return false;
+    final name = packageName(root: pubspec.parent);
+    return name != null && name.startsWith('_');
   }
 
   /// The name of the package at the given [root].
