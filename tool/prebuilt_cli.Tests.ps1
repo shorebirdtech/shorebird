@@ -100,6 +100,9 @@ BeforeAll {
     }
 
     function Assert-Installed($revision, $version, $result) {
+        # One value: shorebird.ps1 tests it with `!`, and anything else the
+        # function writes would make a failure read as success.
+        @($result).Count | Should -Be 1
         $result | Should -BeTrue
         (Get-Content $prebuiltStampPath -Raw).Trim() | Should -Be $revision
         (& $prebuiltPath --version) | Should -Be "Shorebird $version"
@@ -111,6 +114,9 @@ BeforeAll {
 
     # A fallback: $false, and nothing that makes shorebird.ps1 run a binary.
     function Assert-Fallback($revision, $result) {
+        # One value: shorebird.ps1 tests it with `!`, and anything else the
+        # function writes would make a failure read as success.
+        @($result).Count | Should -Be 1
         $result | Should -BeFalse
         Test-Path $prebuiltStampPath | Should -BeFalse
         Test-Path $prebuiltPath | Should -BeFalse
