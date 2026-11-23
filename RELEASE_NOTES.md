@@ -6,18 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.148 (November 23, 2026)
 
-- ❓ Fix(shorebird_cli): count a patch's upload in its build history timing, as
-  releases do
-- ❓ Fix(tool): agent-verify prints the format command that fixes a failed format
-  step
-- ❓ Chore: prepare for release 1.6.147
-- ❓ Fix(shorebird_cli): refuse --no-codesign for macOS release and patch
-- ❓ Feat(shorebird_cli): fold flutter precache download spans into the build
-  trace summary
-- ❓ Feat(shorebird_cli): mark each build trace summary cold or warm
-- ❓ Fix(shorebird_cli): count Flutter's startup as the Flutter build in build
-  trace summaries
-- ❓ Feat(shorebird_cli): add shorebird flutter precache
+- ✨ `shorebird flutter precache` installs a Flutter version and the artifacts
+  Android and iOS releases and patches download, ahead of any build, with
+  `--flutter-version` to pick the version
+- 🐛 `shorebird release macos` and `shorebird patch macos` refuse
+  `--no-codesign` before building, with a hint pointing at Xcode's signing
+  settings, instead of failing partway through the build
 
 Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.147.
 
