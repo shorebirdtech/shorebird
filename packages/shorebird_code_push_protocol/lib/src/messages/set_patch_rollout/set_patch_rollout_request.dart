@@ -4,6 +4,7 @@
 // ignore_for_file: lines_longer_than_80_chars
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 
 /// The request body for PUT
@@ -45,6 +46,7 @@ final class SetPatchRolloutPercentageRequest extends SetPatchRolloutRequest {
   /// {@macro set_patch_rollout_percentage_request}
   const SetPatchRolloutPercentageRequest({
     required this.rolloutPercentage,
+    this.platforms,
   });
 
   /// Converts a `Map<String, dynamic>` to a [SetPatchRolloutPercentageRequest].
@@ -54,6 +56,9 @@ final class SetPatchRolloutPercentageRequest extends SetPatchRolloutRequest {
       json,
       () => SetPatchRolloutPercentageRequest(
         rolloutPercentage: (json['rollout_percentage'] as num).toDouble(),
+        platforms: (json['platforms'] as List?)
+            ?.map<ReleasePlatform>((e) => ReleasePlatform.fromJson(e as String))
+            .toList(),
       ),
     );
   }
@@ -75,22 +80,32 @@ final class SetPatchRolloutPercentageRequest extends SetPatchRolloutRequest {
   /// rollout schedule in place.
   final double rolloutPercentage;
 
+  /// The platforms whose patches under the number to set the rollout
+  /// of, at least one. Omit to set every platform's.
+  /// Unstable: this may change shape until patch linking ships.
+  final List<ReleasePlatform>? platforms;
+
   /// Converts a [SetPatchRolloutPercentageRequest] to a `Map<String, dynamic>`.
   @override
   Map<String, dynamic> toJson() {
     return {
       'rollout_percentage': rolloutPercentage,
+      'platforms': ?platforms?.map((e) => e.toJson()).toList(),
     };
   }
 
   @override
-  int get hashCode => rolloutPercentage.hashCode;
+  int get hashCode => Object.hashAll([
+    rolloutPercentage,
+    listHash(platforms),
+  ]);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is SetPatchRolloutPercentageRequest &&
-        rolloutPercentage == other.rolloutPercentage;
+        rolloutPercentage == other.rolloutPercentage &&
+        listsEqual(platforms, other.platforms);
   }
 }
 
@@ -104,6 +119,7 @@ final class SetPatchRolloutScheduleRequest extends SetPatchRolloutRequest {
     required this.rolloutSteps,
     this.rolloutPauseWeekends,
     this.rolloutTimezone,
+    this.platforms,
   });
 
   /// Converts a `Map<String, dynamic>` to a [SetPatchRolloutScheduleRequest].
@@ -119,6 +135,9 @@ final class SetPatchRolloutScheduleRequest extends SetPatchRolloutRequest {
             .toList(),
         rolloutPauseWeekends: json['rollout_pause_weekends'] as bool?,
         rolloutTimezone: json['rollout_timezone'] as String?,
+        platforms: (json['platforms'] as List?)
+            ?.map<ReleasePlatform>((e) => ReleasePlatform.fromJson(e as String))
+            .toList(),
       ),
     );
   }
@@ -146,6 +165,11 @@ final class SetPatchRolloutScheduleRequest extends SetPatchRolloutRequest {
   /// to `UTC`.
   final String? rolloutTimezone;
 
+  /// The platforms whose patches under the number to set the rollout
+  /// of, at least one. Omit to set every platform's.
+  /// Unstable: this may change shape until patch linking ships.
+  final List<ReleasePlatform>? platforms;
+
   /// Converts a [SetPatchRolloutScheduleRequest] to a `Map<String, dynamic>`.
   @override
   Map<String, dynamic> toJson() {
@@ -153,6 +177,7 @@ final class SetPatchRolloutScheduleRequest extends SetPatchRolloutRequest {
       'rollout_steps': rolloutSteps.map((e) => e.toJson()).toList(),
       'rollout_pause_weekends': ?rolloutPauseWeekends,
       'rollout_timezone': ?rolloutTimezone,
+      'platforms': ?platforms?.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -161,6 +186,7 @@ final class SetPatchRolloutScheduleRequest extends SetPatchRolloutRequest {
     listHash(rolloutSteps),
     rolloutPauseWeekends,
     rolloutTimezone,
+    listHash(platforms),
   ]);
 
   @override
@@ -169,6 +195,7 @@ final class SetPatchRolloutScheduleRequest extends SetPatchRolloutRequest {
     return other is SetPatchRolloutScheduleRequest &&
         listsEqual(rolloutSteps, other.rolloutSteps) &&
         rolloutPauseWeekends == other.rolloutPauseWeekends &&
-        rolloutTimezone == other.rolloutTimezone;
+        rolloutTimezone == other.rolloutTimezone &&
+        listsEqual(platforms, other.platforms);
   }
 }

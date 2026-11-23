@@ -1737,11 +1737,17 @@ paths:
 
         A patch on a protected channel is refused. Raise its rollout by
         promoting it to that channel at the new percentage, which files an
-        approval request for it.
+        approval request for it. Sending the percentage the patch already
+        serves is allowed there, and halts its timed rollout schedule
+        without a new approval.
 
-        Patches for different platforms can share a number. This sets the
-        rollout of the patch in the path only; the other platforms' patches
-        under the number keep their own.
+        Patches for different platforms can share a number. With
+        `platforms` the request sets the rollout of those platforms' patches
+        under the number, and leaves the rest as they are. Without it, it
+        sets every platform's patch under the number that has artifacts, and
+        answers `409` (`patch_platforms_differ`) when they are on different
+        channels or only some are rolled back. Either way the patches are
+        updated together or not at all.
         Unstable: this may change shape until patch linking ships.
       operationId: setPatchRollout
       requestBody:
@@ -1755,8 +1761,11 @@ paths:
           description: The patch's rollout percentage was updated.
         '400':
           description: |
-            The body, `rollout_percentage`, or timed rollout schedule is
-            malformed (`patch_rollout_malformed_request_body`).
+            The body, `rollout_percentage`, timed rollout schedule, or
+            `platforms` is malformed or empty
+            (`patch_rollout_malformed_request_body`), or a platform in
+            `platforms` has no patch under the number
+            (`patch_platform_not_found`).
           content:
             application/json:
               schema:
@@ -1789,9 +1798,17 @@ paths:
             The patch is on no channel (`patch_not_on_channel`), the
             requested percentage is lower than the patch's current one
             (`rollout_percentage_lower`), the patch is on a protected
-            channel (`patch_rollout_protected_channel`), or the patch
-            moved track or was raised concurrently
-            (`patch_rollout_conflict`).
+            channel and the request is not a halt at its current percentage
+            (`patch_rollout_protected_channel`), the patch's live percentage
+            is already at or above every step in `rollout_steps` below `100`
+            (`rollout_steps_already_passed`), a patch moved track or was
+            raised concurrently (`patch_rollout_conflict`), `platforms` was
+            omitted and the number's platforms are on different channels or
+            only some are rolled back (`patch_platforms_differ`), or the
+            patches `platforms` names are on different channels
+            (`patch_platforms_on_several_tracks`). The last two are unstable
+            until patch linking ships. Each check applies to every patch
+            the request covers.
           content:
             application/json:
               schema:
@@ -6836,6 +6853,14 @@ components:
             multiple of 0.01 from 0.01 to 100, no lower than the patch's
             current one. Setting the current percentage holds an active timed
             rollout schedule in place.
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platforms whose patches under the number to set the rollout
+            of, at least one. Omit to set every platform's.
+            Unstable: this may change shape until patch linking ships.
     SetPatchRolloutScheduleRequest:
       type: object
       description: Starts a timed rollout schedule for a patch.
@@ -6859,6 +6884,14 @@ components:
           description: |
             The IANA timezone name used to evaluate weekend pauses. Defaults
             to `UTC`.
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleasePlatform'
+          description: |
+            The platforms whose patches under the number to set the rollout
+            of, at least one. Omit to set every platform's.
+            Unstable: this may change shape until patch linking ships.
     RollbackPatchRequest:
       type: object
       description: |
