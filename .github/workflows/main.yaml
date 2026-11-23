@@ -66,6 +66,7 @@ jobs:
 
     outputs:
       agent_scripts: ${{ steps.agent_scripts.outputs.tool }}
+      prebuilt_cli: ${{ steps.prebuilt_cli.outputs.install }}
       needs_verify: ${{ steps.needs_verify.outputs.changes }}
       android_build_e2e: ${{ steps.android_build_e2e.outputs.android }}
       protocol_codegen: ${{ steps.protocol_codegen.outputs.protocol }}
@@ -86,6 +87,18 @@ jobs:
             tool:
               - ./.github/workflows/main.yaml
               - ./tool/**
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        name: Prebuilt CLI Install Detection
+        id: prebuilt_cli
+        with:
+          filters: |
+            install:
+              - ./.github/workflows/main.yaml
+              - ./bin/**
+              - ./third_party/flutter/bin/**
+              - ./tool/prebuilt_cli_test.sh
+              - ./tool/prebuilt_cli.Tests.ps1
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         name: Verify Detection
@@ -289,8 +302,74 @@ jobs:
       - name: 🧪 Run tool/agent_scripts_test.sh
         run: ./tool/agent_scripts_test.sh
 
+  # How bin/shorebird and bin/shorebird.ps1 install the CLI publish_cli.yaml
+  # built for a stable commit (#4529), against a local server holding a fake
+  # one: that it installs, and falls back to building with nothing left behind.
+  # publish_cli.yaml checks the real binary. Seconds, not a real install.
+  prebuilt_cli_sh:
+    name: 🧪 Prebuilt CLI Install (${{ matrix.os }})
+    needs: changes
+    if: ${{ needs.changes.outputs.prebuilt_cli == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # GNU and BSD tools. The test hides sha256sum to run the shasum
+        # branch on both.
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 🧪 Run tool/prebuilt_cli_test.sh
+        run: ./tool/prebuilt_cli_test.sh
+
+  prebuilt_cli_ps1:
+    name: 🧪 Prebuilt CLI Install (Windows)
+    needs: changes
+    if: ${{ needs.changes.outputs.prebuilt_cli == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Pester 5, installed if the runner image's PowerShell lacks it.
+      - name: 🧪 Run tool/prebuilt_cli.Tests.ps1 (PowerShell 7)
+        shell: pwsh
+        run: |
+          if (!(Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
+            Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          Import-Module Pester -MinimumVersion 5.0
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'tool/prebuilt_cli.Tests.ps1'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
+
+      # shorebird.bat runs shorebird.ps1 with Windows PowerShell 5.1 when
+      # PowerShell 7 isn't installed.
+      - name: 🧪 Run tool/prebuilt_cli.Tests.ps1 (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          if (!(Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
+            Install-Module Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          Import-Module Pester -MinimumVersion 5.0
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'tool/prebuilt_cli.Tests.ps1'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
+
   ci:
-    needs: [actionlint, agent_scripts_test, android_build_e2e, changes, license_check, protocol_codegen, verify_packages]
+    needs: [actionlint, agent_scripts_test, android_build_e2e, changes, license_check, prebuilt_cli_ps1, prebuilt_cli_sh, protocol_codegen, verify_packages]
     # Not always(): that keeps this job alive through a run cancellation,
     # so a superseded push would report ci red on the stale commit. A
     # skipped required check reports success, which is the right answer
