@@ -2710,6 +2710,27 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
         ).called(1);
       });
 
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildIosFramework(
+            releaseSupplementDir: 'release_supplement',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'ios-framework', '--no-debug', '--no-profile'],
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 
