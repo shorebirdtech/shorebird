@@ -74,7 +74,14 @@ class BuildTraceSummary {
     Duration? shorebirdOverhead,
     BuildEnvironment? environment,
   }) {
-    final flutterBuild = acc.flutterBuild;
+    // The process span holds Flutter's startup, which the umbrella span
+    // leaves out; a trace without one (written before summary version 11)
+    // falls back to the umbrella.
+    final hasProcess = acc.flutterProcessCount > 0;
+    final flutterBuild = hasProcess ? acc.flutterProcess : acc.flutterBuild;
+    final flutterBuildSpans = hasProcess
+        ? acc.flutterProcessSpans
+        : acc.flutterBuildSpans;
     final setupSpans = _Spans.union(_knownSetupPhases.map(acc.setupPhase.of));
     return BuildTraceSummary(
       platform: platform,
@@ -84,7 +91,7 @@ class BuildTraceSummary {
       network: NetworkStats(
         duration: acc.network.wall,
         shorebird: acc.network.wallOutside(
-          _Spans.union([setupSpans, acc.flutterBuildSpans]),
+          _Spans.union([setupSpans, flutterBuildSpans]),
         ),
         callCount: acc.networkCount,
       ),
@@ -113,7 +120,7 @@ class BuildTraceSummary {
       case TraceCategory.flutter:
         _processFlutterEvent(acc, name: name, ts: ts, dur: dur);
       case TraceCategory.subprocess:
-        _processSubprocessEvent(acc, name: name, dur: dur);
+        _processSubprocessEvent(acc, name: name, ts: ts, dur: dur);
       case TraceCategory.gradle:
       case TraceCategory.xcode:
         acc.nativeBuild += dur;
@@ -162,10 +169,15 @@ class BuildTraceSummary {
   static void _processSubprocessEvent(
     _Accumulator acc, {
     required String name,
+    required int? ts,
     required Duration dur,
   }) {
     const prefix = '${TraceNames.podInstallNamePrefix}: ';
-    if (name == TraceNames.podInstallSpanName) {
+    if (name == TraceNames.flutterProcessSpanName) {
+      acc.flutterProcess += dur;
+      acc.flutterProcessCount++;
+      acc.flutterProcessSpans.add(ts, dur);
+    } else if (name == TraceNames.podInstallSpanName) {
       acc.podInstall = acc.podInstall + dur;
     } else if (name.startsWith(prefix)) {
       acc.podPhase.add(
@@ -355,6 +367,8 @@ class BuildTraceSummary {
         n.contains('aot_assembly') ||
         n.contains('aot_elf') ||
         n == 'ios_aot' ||
+        // macOS's target runs gen_snapshot once per arch and joins the slices.
+        n == 'compile_macos_framework' ||
         n.contains('aot_bundle')) {
       return _AssembleCategory.genSnapshot;
     }
@@ -382,8 +396,11 @@ class BuildTraceSummary {
   /// Total command wall-clock (Flutter build + Shorebird overhead).
   final Duration total;
 
-  /// Flutter's own reported wall-clock duration (the `flutter build *`
-  /// umbrella event in the trace).
+  /// Wall-clock time of the `flutter build` processes, from spawn to exit
+  /// (the [TraceNames.flutterProcessSpanName] spans), including
+  /// flutter_tools' startup before its `flutter build *` umbrella span
+  /// (pub get, artifact downloads). A trace with no process span (before
+  /// summary version 11) gives the umbrella span instead.
   final Duration flutterBuild;
 
   /// Wall-clock time the Shorebird CLI spent around Flutter. Null when
@@ -474,7 +491,11 @@ class BuildTraceSummary {
     // 11: setup.downloads, from the download spans a Flutter fork that
     // traces precache writes; zeros from one that doesn't.
     // setup.cold is new in 11 too; absent before, which is not false.
-    'version': 11,
+    // 12: flutterBuildMs is the flutter process from spawn to exit, so
+    // flutter_tools' startup (pub get, artifact downloads) moves out of
+    // shorebirdOverheadMs into it; macOS's compile_macos_framework counts
+    // as dart.genSnapshotMs (it was assemble "other").
+    'version': 12,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,
@@ -998,6 +1019,11 @@ class _Accumulator {
   /// The `flutter build` umbrella spans, so network time inside them can
   /// be told from Shorebird's own.
   final flutterBuildSpans = _Spans();
+
+  /// The spans shorebird_cli records around each `flutter build` process.
+  Duration flutterProcess = Duration.zero;
+  int flutterProcessCount = 0;
+  final flutterProcessSpans = _Spans();
   Duration flutterTool = Duration.zero;
   Duration nativeBuild = Duration.zero;
   int assembleCount = 0;

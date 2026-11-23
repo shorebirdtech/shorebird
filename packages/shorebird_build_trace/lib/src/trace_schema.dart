@@ -166,6 +166,13 @@ class TraceNames {
   /// shorebird matches with `startsWith`.
   static const String flutterBuildSpanPrefix = 'flutter build ';
 
+  /// Name of the `subprocess` span shorebird_cli records around the whole
+  /// `flutter build` process, from spawn to exit. It holds what Flutter
+  /// does before its `flutter build <target>` umbrella span starts (pub
+  /// get, artifact downloads), so shorebird uses it, where present, as
+  /// the Flutter build's time.
+  static const String flutterProcessSpanName = 'flutter process';
+
   /// Prefix for the outer gradle span. Span name is
   /// `"gradle <assembleTask>"`.
   static const String gradleSpanPrefix = 'gradle ';

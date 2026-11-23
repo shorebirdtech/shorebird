@@ -829,10 +829,11 @@ void main() {
               return ExitCode.success.code;
             });
 
-            await runWithOverrides(() async {
+            final tracerEvents = await runWithOverrides(() async {
               await builder.prepareBuildTrace(platform: 'android');
               await builder.buildApk();
               builder.writeBuildTraceSummary();
+              return shorebirdTracer.events;
             });
 
             final summaryFile = File(
@@ -846,10 +847,20 @@ void main() {
                 jsonDecode(summaryFile.readAsStringSync())
                     as Map<String, Object?>;
             expect(summary['platform'], 'android');
-            expect(summary['version'], 11);
+            expect(summary['version'], 12);
             // 500ms kernel + 200ms aot
             expect((summary['dart']! as Map)['totalMs'], 700);
-            expect(summary['flutterBuildMs'], 3000);
+            // The flutter process span, not the 3s umbrella the fake
+            // flutter wrote: the process is the Flutter build.
+            final processSpan = tracerEvents.singleWhere(
+              (e) => e['name'] == 'flutter process',
+            );
+            expect(processSpan['cat'], 'subprocess');
+            expect(processSpan['args'], {'command': 'apk'});
+            expect(
+              summary['flutterBuildMs'],
+              (processSpan['dur']! as int) ~/ 1000,
+            );
             expect(summary['shorebirdOverheadMs'], isNonNegative);
             final dart = summary['dart']! as Map<String, Object?>;
             expect(dart['kernelSnapshotMs'], 500);
