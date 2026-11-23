@@ -990,17 +990,13 @@ class CodePushClient {
     return decoded.releases;
   }
 
-  /// Gets [ReleasePatch]es associated with [appId]'s [releaseId], only those
-  /// created with [linkKey] when it is given.
+  /// Gets [ReleasePatch]es associated with [appId]'s [releaseId].
   Future<List<ReleasePatch>> getPatches({
     required String appId,
     required int releaseId,
-    String? linkKey,
   }) async {
     final response = await _httpClient.get(
-      Uri.parse('$_v1/apps/$appId/releases/$releaseId/patches').replace(
-        queryParameters: linkKey == null ? null : {'link_key': linkKey},
-      ),
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId/patches'),
     );
 
     if (!response.isSuccess) {

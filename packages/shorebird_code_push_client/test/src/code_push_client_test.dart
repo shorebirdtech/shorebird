@@ -3351,33 +3351,6 @@ void main() {
           );
           expect(patches, equals([patch]));
         });
-
-        test('queries by link_key when given', () async {
-          await codePushClient.getPatches(
-            appId: appId,
-            releaseId: 123,
-            linkKey: 'abc 123',
-          );
-          final request =
-              verify(() => httpClient.send(captureAny())).captured.single
-                  as http.BaseRequest;
-          expect(
-            request.url,
-            equals(
-              v1(
-                'apps/$appId/releases/123/patches',
-              ).replace(queryParameters: {'link_key': 'abc 123'}),
-            ),
-          );
-        });
-
-        test('sends no query without a link key', () async {
-          await codePushClient.getPatches(appId: appId, releaseId: 123);
-          final request =
-              verify(() => httpClient.send(captureAny())).captured.single
-                  as http.BaseRequest;
-          expect(request.url.hasQuery, isFalse);
-        });
       });
     });
 
