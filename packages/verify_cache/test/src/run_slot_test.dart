@@ -135,6 +135,51 @@ void main() {
       }
     }, skip: Platform.isWindows ? 'ulimit is a POSIX shell builtin' : null);
 
+    group('when the slot lock cannot be opened', () {
+      late Directory dir;
+      late Directory refusedSlot;
+
+      setUp(() {
+        dir = tempDir();
+        // A directory where the slot lock goes, so the open is refused
+        // whatever the uid. A mode bit only stops an unprivileged one.
+        refusedSlot = Directory(p.join(dir.path, 'slots', '0.lock'))
+          ..createSync(recursive: true);
+      });
+
+      test('the slot is taken on the first try that can open it', () async {
+        var waited = false;
+        final slot = await RunSlot.acquire(
+          dir,
+          1,
+          onWait: () => waited = true,
+          sleep: (_) async => refusedSlot.deleteSync(),
+        );
+        await slot.release();
+        expect(waited, isTrue);
+      });
+
+      test('a ticket that cannot be unlinked still hands back the '
+          'slot', () async {
+        final queue = Directory(p.join(dir.path, 'slots', 'queue'));
+        final slot = await RunSlot.acquire(
+          dir,
+          1,
+          sleep: (_) async {
+            refusedSlot.deleteSync();
+            // Swapped for a directory, which File.deleteSync refuses
+            // whatever the uid, so the slot comes back with its unlink
+            // failing.
+            final ticket = queue.listSync().single.path;
+            File(ticket).deleteSync();
+            Directory(ticket).createSync();
+          },
+        );
+        await slot.release();
+        expect(queue.listSync(), hasLength(1));
+      });
+    });
+
     test('fewer than one slot is an error', () {
       expect(() => RunSlot.acquire(tempDir(), 0), throwsArgumentError);
     });
