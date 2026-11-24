@@ -187,12 +187,17 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      # The Dart SDK of the Flutter the CLI pins, which `shorebird --version`
-      # installed above, runs the e2e scripts. No upstream Flutter or Dart is
-      # set up: the app is created with Shorebird's Flutter of the leg's
-      # version too (scripts/patch_e2e.dart), so CI only ever runs ours.
+      # The Dart SDK of the Flutter the CLI pins runs the e2e scripts.
+      # `shorebird flutter path` installs that Flutter if it isn't yet: a
+      # release commit (stable) runs the prebuilt CLI, which never installs
+      # it, and `shorebird --version` doesn't use it
+      # (run 45297183375). No upstream Flutter or Dart is set up: the app is
+      # created with Shorebird's Flutter of the leg's version too
+      # (scripts/patch_e2e.dart), so CI only ever runs ours.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       # The env context only holds what a workflow sets, so ANDROID_HOME is
       # copied into it for the Android cache paths. NDK_VERSION is the leg's
@@ -359,7 +364,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       # The patch matrix's default entry's packages: the current version
       # line's, the only one the release gate releases. Move them with that
@@ -454,7 +461,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run Linux Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart linux
@@ -492,7 +501,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run macOS Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart macos
@@ -536,7 +547,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         shell: pwsh
-        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin\cache\flutter\$((Get-Content bin\internal\flutter.version -Raw).Trim())\bin\cache\dart-sdk\bin"
+        run: Add-Content $env:GITHUB_PATH "$(shorebird flutter path)\bin\cache\dart-sdk\bin"
 
       - name: 🧪 Run Windows Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart windows
@@ -578,7 +589,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
@@ -681,7 +694,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run Linux Rollback E2E Tests
         run: dart scripts/patch_rollback_e2e.dart
@@ -723,7 +738,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🧪 Run Linux Boot E2E Tests
         run: dart scripts/boot_recovery_e2e.dart linux
@@ -766,7 +783,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       # The packages the pinned Flutter's build downloads otherwise; see the
       # patch job's android-packages.
@@ -880,7 +899,9 @@ jobs:
 
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🤖 Android Cache Paths
         run: echo "ANDROID_HOME=${ANDROID_HOME}" >> "$GITHUB_ENV"
@@ -1048,12 +1069,14 @@ jobs:
       - name: 🎯 Use Shorebird's Dart (macOS / Linux)
         if: runner.os != 'Windows'
         shell: bash
-        run: echo "${GITHUB_WORKSPACE}/bin/cache/flutter/$(cat bin/internal/flutter.version)/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+        run: |
+          flutter_dir="$(shorebird flutter path)"
+          echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🎯 Use Shorebird's Dart (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Add-Content $env:GITHUB_PATH "${env:GITHUB_WORKSPACE}\bin\cache\flutter\$((Get-Content bin\internal\flutter.version -Raw).Trim())\bin\cache\dart-sdk\bin"
+        run: Add-Content $env:GITHUB_PATH "$(shorebird flutter path)\bin\cache\dart-sdk\bin"
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test
