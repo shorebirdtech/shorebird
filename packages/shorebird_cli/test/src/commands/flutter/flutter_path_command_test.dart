@@ -87,13 +87,14 @@ void main() {
         () => shorebirdFlutter.installDirectory(revision: requestedRevision),
       ).thenReturn(Directory(requestedPath));
       when(
-        () => shorebirdFlutter.resolveFlutterRevision(any()),
+        () => shorebirdFlutter.resolveInstalledFlutterRevision(any()),
       ).thenAnswer((_) async => requestedRevision);
     });
 
     test('has correct name', () {
       expect(command.name, equals('path'));
       expect(command.reservesStdout, isTrue);
+      expect(command.usesPinnedFlutter, isFalse);
     });
 
     group('when --flutter-version is omitted', () {
@@ -101,7 +102,9 @@ void main() {
         final result = await runCommand();
         expect(result.exitCode, equals(ExitCode.success.code));
         expect(result.stdout, equals([pinnedPath]));
-        verifyNever(() => shorebirdFlutter.resolveFlutterRevision(any()));
+        verifyNever(
+          () => shorebirdFlutter.resolveInstalledFlutterRevision(any()),
+        );
         verifyNever(() => shorebirdFlutter.fetchRemoteRefs());
       });
 
@@ -139,7 +142,7 @@ void main() {
         expect(result.exitCode, equals(ExitCode.success.code));
         expect(result.stdout, equals([requestedPath]));
         verify(
-          () => shorebirdFlutter.resolveFlutterRevision('3.38.5'),
+          () => shorebirdFlutter.resolveInstalledFlutterRevision('3.38.5'),
         ).called(1);
         verifyNever(() => shorebirdFlutter.fetchRemoteRefs());
       });
@@ -162,7 +165,7 @@ void main() {
 
       test('fails when the version is unknown locally', () async {
         when(
-          () => shorebirdFlutter.resolveFlutterRevision(any()),
+          () => shorebirdFlutter.resolveInstalledFlutterRevision(any()),
         ).thenAnswer((_) async => null);
         final (:exitCode, :error) = await runJsonError();
         expect(exitCode, equals(ExitCode.unavailable.code));
@@ -172,7 +175,7 @@ void main() {
 
       test('fails when resolving throws', () async {
         when(
-          () => shorebirdFlutter.resolveFlutterRevision(any()),
+          () => shorebirdFlutter.resolveInstalledFlutterRevision(any()),
         ).thenThrow(const ProcessException('git', ['for-each-ref']));
         final (:exitCode, :error) = await runJsonError();
         expect(exitCode, equals(ExitCode.unavailable.code));
@@ -208,7 +211,9 @@ void main() {
             'shorebird flutter path.',
           ),
         );
-        verifyNever(() => shorebirdFlutter.resolveFlutterRevision(any()));
+        verifyNever(
+          () => shorebirdFlutter.resolveInstalledFlutterRevision(any()),
+        );
       });
     }
 

@@ -18,11 +18,11 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 /// to change. Only the path goes to stdout, so `$(shorebird flutter path)`
 /// captures nothing else.
 ///
-/// Like most commands, it first installs the pinned Flutter if it is missing
-/// (see [ShorebirdCommand.usesPinnedFlutter]), with that install's output on
-/// stderr. It installs nothing else: a `--flutter-version` that is not
-/// installed is an error naming the `shorebird flutter precache` command that
-/// installs it.
+/// It installs nothing, not even the pinned Flutter other commands install
+/// first (see [ShorebirdCommand.usesPinnedFlutter]): a Flutter that is not
+/// installed, pinned or `--flutter-version`, is an error naming the
+/// `shorebird flutter precache` command that installs it, so a script never
+/// waits on a download it didn't ask for.
 /// It does record the install as used, as a build would: the caller is about
 /// to build with it, and an install that goes unused for long enough is
 /// pruned after the next command, this one included.
@@ -49,6 +49,10 @@ Defaults to the version this Shorebird uses when building with
 
   @override
   bool get reservesStdout => true;
+
+  // It reports a missing Flutter instead of installing it.
+  @override
+  bool get usesPinnedFlutter => false;
 
   @override
   Future<int> run() {
@@ -107,12 +111,12 @@ Defaults to the version this Shorebird uses when building with
     if (isPinned) {
       revision = shorebirdEnv.flutterRevision;
     } else {
-      // Resolved from the refs already on disk, without fetching: precache
-      // fetched them when it installed this version, so a version missing
-      // from them is not installed.
+      // Resolved from the refs already on disk, without cloning or fetching:
+      // precache left them there when it installed this version, so a
+      // version missing from them is not installed.
       String? resolved;
       try {
-        resolved = await shorebirdFlutter.resolveFlutterRevision(
+        resolved = await shorebirdFlutter.resolveInstalledFlutterRevision(
           versionOrHash,
         );
       } on Exception catch (error) {
