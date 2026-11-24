@@ -8,6 +8,11 @@ import 'package:test/test.dart';
 
 import 'src/helpers.dart';
 
+/// build_runner compiles its builders AOT by default, which pays off only over
+/// repeated builds; this one cold build spends most of its time on that
+/// compile, so it runs them JIT.
+const buildCommand = ['DART', 'run', 'build_runner', 'build', '--force-jit'];
+
 void main() {
   useTempWorkingDirectory();
   test(
@@ -15,12 +20,12 @@ void main() {
     // Builds and diffs the real package, which `expectBuildClean` finds from
     // the current directory.
     () => IOOverrides.runZoned(
-      () =>
-          expectBuildClean(packageRelativeDirectory: 'packages/shorebird_cli'),
+      () => expectBuildClean(
+        packageRelativeDirectory: 'packages/shorebird_cli',
+        customCommand: buildCommand,
+      ),
       getCurrentDirectory: () => Directory(packagePath('')),
     ),
-    // `dart run build_runner` compiles its builders from scratch first (42 s
-    // on a CI runner), so the whole run takes about a minute.
-    timeout: const Timeout(Duration(minutes: 5)),
+    timeout: const Timeout.factor(2),
   );
 }
