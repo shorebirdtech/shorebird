@@ -190,20 +190,22 @@ void main() {
         final stdoutLines = <String>[];
         final stderrLines = <String>[];
         final realStderr = stderr;
-        // A real logger, so a notice printed outside runWithStdoutOnStderr
-        // would show up on the captured stdout and fail the test.
-        logger = ShorebirdLogger();
-
         await helpers.captureStdout(
-          () => IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => commandRunner.run(['reserves-stdout']),
-            ),
-            stderr: () => helpers.CapturingStdout(
-              baseStdOut: realStderr,
-              captured: stderrLines,
-            ),
-          ),
+          () {
+            // A real logger, made where stdout is captured (it keeps the
+            // stdout it was made with), so a notice printed outside
+            // runWithStdoutOnStderr shows up there and fails the test.
+            logger = ShorebirdLogger();
+            return IOOverrides.runZoned(
+              () => runWithOverrides(
+                () => commandRunner.run(['reserves-stdout']),
+              ),
+              stderr: () => helpers.CapturingStdout(
+                baseStdOut: realStderr,
+                captured: stderrLines,
+              ),
+            );
+          },
           captured: stdoutLines,
         );
 
@@ -275,6 +277,38 @@ void main() {
               revision: any(named: 'revision'),
             ),
           );
+        });
+
+        test('writes what the install prints to stderr when the command '
+            'reserves stdout', () async {
+          when(
+            () => shorebirdFlutter.installRevision(revision: flutterRevision),
+          ).thenAnswer((_) async => read(loggerRef).info('Reinstalling it.'));
+          commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 0));
+          final stdoutLines = <String>[];
+          final stderrLines = <String>[];
+          final realStderr = stderr;
+          await helpers.captureStdout(
+            () {
+              // A real logger, made where stdout is captured (it keeps the
+              // stdout it was made with), so a line printed outside
+              // runWithStdoutOnStderr shows up there and fails the test.
+              logger = ShorebirdLogger();
+              return IOOverrides.runZoned(
+                () => runWithOverrides(
+                  () => commandRunner.run(['reserves-stdout']),
+                ),
+                stderr: () => helpers.CapturingStdout(
+                  baseStdOut: realStderr,
+                  captured: stderrLines,
+                ),
+              );
+            },
+            captured: stdoutLines,
+          );
+
+          expect(stdoutLines, isEmpty);
+          expect(stderrLines, contains('Reinstalling it.'));
         });
 
         test('exits with a software error when the install fails', () async {
@@ -926,20 +960,22 @@ Engine • revision unknown (Flutter not installed yet)'''),
         final stdoutLines = <String>[];
         final stderrLines = <String>[];
         final realStderr = stderr;
-        // A real logger, so a notice logged outside runWithStdoutOnStderr
-        // would show up on the captured stdout and fail the test.
-        logger = ShorebirdLogger();
-
         await helpers.captureStdout(
-          () => IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => commandRunner.run(['owns-stdout']),
-            ),
-            stderr: () => helpers.CapturingStdout(
-              baseStdOut: realStderr,
-              captured: stderrLines,
-            ),
-          ),
+          () {
+            // A real logger, made where stdout is captured (it keeps the
+            // stdout it was made with), so a notice logged outside
+            // runWithStdoutOnStderr shows up there and fails the test.
+            logger = ShorebirdLogger();
+            return IOOverrides.runZoned(
+              () => runWithOverrides(
+                () => commandRunner.run(['owns-stdout']),
+              ),
+              stderr: () => helpers.CapturingStdout(
+                baseStdOut: realStderr,
+                captured: stderrLines,
+              ),
+            );
+          },
           captured: stdoutLines,
         );
 
