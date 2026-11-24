@@ -19,6 +19,8 @@ void main() {
           expectBuildClean(packageRelativeDirectory: 'packages/shorebird_cli'),
       getCurrentDirectory: () => Directory(packagePath('')),
     ),
-    timeout: const Timeout.factor(2),
+    // `dart run build_runner` compiles its builders from scratch first (42 s
+    // on a CI runner), so the whole run takes about a minute.
+    timeout: const Timeout(Duration(minutes: 5)),
   );
 }
