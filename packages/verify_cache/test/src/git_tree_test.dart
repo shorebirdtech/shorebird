@@ -112,6 +112,25 @@ void main() {
         },
       );
 
+      test('hashes a directory asked alongside a path inside it', () async {
+        final repo = gitRepo();
+        File(p.join(repo.path, 'd', 'x.txt'))
+          ..parent.createSync()
+          ..writeAsStringSync('x\n');
+        git(repo, ['add', '-A']);
+        git(repo, ['commit', '-qm', 'd']);
+        final head = git(repo, ['rev-parse', 'HEAD^{tree}']);
+
+        expect(
+          await GitTree(repo.path).hashesIn(head, ['d', 'd/x.txt', 'd/nope']),
+          {
+            'd': git(repo, ['rev-parse', 'HEAD:d']),
+            'd/x.txt': git(repo, ['rev-parse', 'HEAD:d/x.txt']),
+            'd/nope': 'absent',
+          },
+        );
+      });
+
       test('is null for a tree git does not have', () async {
         final repo = gitRepo();
         expect(await GitTree(repo.path).hashesIn('0' * 40, ['a.txt']), isNull);
