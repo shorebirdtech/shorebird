@@ -200,6 +200,18 @@ void main() {
       });
     });
 
+    group('debugInfoFileNames', () {
+      test('names one file per architecture the patch build writes', () {
+        expect(
+          patcher.debugInfoFileNames,
+          equals({
+            Arch.arm64: 'app.darwin-arm64.symbols',
+            Arch.x86_64: 'app.darwin-x86_64.symbols',
+          }),
+        );
+      });
+    });
+
     group('releaseType', () {
       test('is ReleaseType.macos', () {
         expect(patcher.releaseType, ReleaseType.macos);

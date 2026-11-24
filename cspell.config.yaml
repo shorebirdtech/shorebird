@@ -154,6 +154,8 @@ words:
   - rhysd # rhysd/actionlint, the workflow linter
   - rollforward # POST /.../patches/<id>/rollforward — un-rolls-back a patch
   - rollouts # percentage rollouts of a patch on its track
+  - SBSY # magic of Shorebird's own symbol index format
+  - sbsymbols # the SBSY v1 symbol index a release uploads
   - spawnee
   - Retryable
   - RSAPKCS
@@ -172,7 +174,10 @@ words:
   - storepass # From .github/workflows/e2e.yaml
   - storyboardc
   - subpackages
+  - symbolicate
+  - symbolicated
   - symbolication
+  - symbolicator
   - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
@@ -226,3 +231,4 @@ words:
   - xlink
   - zizmor # GitHub Actions linter (docs.zizmor.sh)
   - zizmorcore # zizmor's GitHub org
+  - zstd

@@ -1184,6 +1184,91 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
+  /apps/{appId}/releases/{releaseId}/symbols:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/ReleaseId'
+    post:
+      tags:
+        - releases
+      summary: Register a release's debug symbols and obtain an upload URL.
+      description: |
+        Returns a resumable upload session URI for one architecture's symbol
+        file; clients `PUT` the compressed bytes to it. Nothing is recorded in
+        the database: a symbol file is addressed by its object path, so an
+        upload for a platform and arch already uploaded replaces it.
+
+        Symbols are what turns a crash report's addresses back into Dart
+        frames, so each object is stamped with a 90-day retention in the patch
+        artifacts bucket rather than living for the life of the release beside
+        its binaries. The bucket's own lifecycle policy is what acts on that
+        stamp.
+
+        Requires the `releases.create` permission, the `crashReporting` plan
+        feature, and the app's own Crash Reporting opt-in: symbols are only
+        read to deobfuscate crash reports, which our Terms of Service,
+        Privacy Policy and Data Processing Addendum let us do only for an app
+        whose owner opted in.
+      operationId: createReleaseSymbols
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSymbolsRequest'
+      responses:
+        '200':
+          description: Where to upload the symbol file's bytes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSymbolsResponse'
+        '400':
+          description: |
+            The release id is not an integer, or the arch does not resolve to
+            a single path segment
+            (`release_symbols_create_malformed_request_body`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            The app is archived and takes no new releases or patches
+            (`app_archived`), the plan does not carry crash reporting
+            (`shorebird_plan_insufficient_tier`), or the app is not opted in
+            to Crash Reporting
+            (`release_symbols_create_crash_reporting_disabled`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The release does not exist, or belongs to another app
+            (`release_symbols_create_release_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: |
+            The declared size exceeds the maximum symbol upload size
+            (`release_symbols_create_too_large`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            Reading the release or opening the upload session failed
+            (`release_symbols_create_error`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
   /apps/{appId}/releases/{releaseId}/patches:
     parameters:
       - $ref: '#/components/parameters/AppId'
@@ -1304,6 +1389,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreatePatchArtifactResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /apps/{appId}/patches/{patchId}/symbols:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/PatchId'
+    post:
+      tags:
+        - patches
+      summary: Register a patch's debug symbols and obtain an upload URL.
+      description: |
+        Returns a resumable upload session URI for one architecture's symbol
+        file; clients `PUT` the compressed bytes to it. Nothing is recorded in
+        the database: a symbol file is addressed by its object path, so an
+        upload for a platform and arch already uploaded replaces it.
+
+        A patch's symbols sit beside its `dlc.vmcode`, stamped with a 90-day
+        retention that the bucket's lifecycle policy acts on: long enough to
+        symbolicate the crashes the patch causes while it is rolling out.
+
+        Requires the `patches.create` permission, the `crashReporting` plan
+        feature, and the app's own Crash Reporting opt-in: symbols are only
+        read to deobfuscate crash reports, which our Terms of Service,
+        Privacy Policy and Data Processing Addendum let us do only for an app
+        whose owner opted in.
+      operationId: createPatchSymbols
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSymbolsRequest'
+      responses:
+        '200':
+          description: Where to upload the symbol file's bytes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSymbolsResponse'
+        '400':
+          description: |
+            The patch id is not an integer, or the arch does not resolve to a
+            single path segment
+            (`patch_symbols_create_malformed_request_body`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            The plan does not carry crash reporting
+            (`shorebird_plan_insufficient_tier`), or the app is not opted in
+            to Crash Reporting
+            (`patch_symbols_create_crash_reporting_disabled`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The patch does not exist, or belongs to another app
+            (`patch_symbols_create_patch_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            The patch holds another platform's artifacts, so it takes no
+            symbols for this one (`patch_symbols_create_platform_mismatch`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: |
+            The declared size exceeds the maximum symbol upload size
+            (`patch_symbols_create_too_large`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            Reading the patch or opening the upload session failed
+            (`patch_symbols_create_error`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/patches/promote:
@@ -4988,6 +5163,14 @@ components:
             When the app was archived. Absent while it is not archived. An
             archived app serves no patches, takes no new release or patch,
             and does not count against its account's app quota.
+        crash_reporting_enabled:
+          type: boolean
+          default: false
+          description: |
+            Whether the app's owner opted it in to Crash Reporting under the
+            Crash Reporting Terms of Service. Server-set, and never changed
+            through this payload. A symbol upload for an app whose answer is
+            false is refused.
         patch_signing_required:
           type: boolean
           description: |
@@ -5813,6 +5996,23 @@ components:
         - multipart
         - resumable
       description: How a client should upload an artifact's bytes to storage.
+    SymbolsFormat:
+      type: string
+      enum:
+        - sbsymbols
+      description: |
+        Which symbol file an upload carries. `sbsymbols` is Shorebird's own
+        SBSY v1 table, stored as `app.sbsymbols`. It is the only table
+        symbolication can read, so it is the only one an upload may carry.
+    SymbolsCompression:
+      type: string
+      enum:
+        - gzip
+        - zstd
+      description: |
+        What the symbol file's bytes are compressed with. The server never
+        reads the bytes, so the client says which codec it used and the object
+        carries that as its content type.
     DeleteUserInProgressResponse:
       type: object
       description: |
@@ -6458,6 +6658,52 @@ components:
             How to upload the artifact bytes to `url`: a single multipart POST
             (legacy), or a PUT (chunked, resumable) to a resumable session URI.
             Absent on responses from older servers, which implied multipart.
+    CreateSymbolsRequest:
+      type: object
+      description: |
+        Metadata for one architecture's symbol file. POST to
+        /apps/{appId}/releases/{releaseId}/symbols or
+        /apps/{appId}/patches/{patchId}/symbols and PUT the compressed bytes
+        to the session URI that comes back.
+      required:
+        - platform
+        - arch
+        - format
+        - compression
+        - size
+      properties:
+        platform:
+          $ref: '#/components/schemas/ReleasePlatform'
+          description: The platform the symbols are for.
+        arch:
+          type: string
+          description: The arch the symbols are for.
+        format:
+          $ref: '#/components/schemas/SymbolsFormat'
+          description: Which symbol file this is.
+        compression:
+          $ref: '#/components/schemas/SymbolsCompression'
+          description: What the bytes are compressed with.
+        size:
+          type: integer
+          format: int64
+          description: The size of the compressed file in bytes.
+    CreateSymbolsResponse:
+      type: object
+      description: Where to upload a symbol file's bytes.
+      required:
+        - url
+        - upload_method
+      properties:
+        url:
+          type: string
+          description: The resumable upload session URI for the symbol file.
+        upload_method:
+          $ref: '#/components/schemas/ArtifactUploadMethod'
+          description: |
+            Always `resumable`. A session carries the object's retention
+            metadata, which a signed multipart URL cannot, so there is no
+            multipart path for symbols.
     CreateReleaseArtifactRequest:
       type: object
       description: |

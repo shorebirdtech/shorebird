@@ -170,6 +170,19 @@ void main() {
       });
     });
 
+    group('debugInfoFileNames', () {
+      test("names one file per architecture, as Flutter's build does", () {
+        expect(
+          runWithOverrides(() => patcher.debugInfoFileNames),
+          equals({
+            Arch.arm32: 'app.android-arm.symbols',
+            Arch.arm64: 'app.android-arm64.symbols',
+            Arch.x86_64: 'app.android-x64.symbols',
+          }),
+        );
+      });
+    });
+
     group('primaryReleaseArtifactArch', () {
       test('is "aab"', () {
         expect(patcher.primaryReleaseArtifactArch, equals('aab'));

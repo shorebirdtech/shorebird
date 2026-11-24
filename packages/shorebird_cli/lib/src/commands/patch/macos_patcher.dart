@@ -90,6 +90,12 @@ class MacosPatcher extends Patcher
   static const x64SplitDebugInfoFileName = 'app.darwin-x86_64.symbols';
 
   @override
+  Map<Arch, String> get debugInfoFileNames => const {
+    Arch.arm64: arm64SplitDebugInfoFileName,
+    Arch.x86_64: x64SplitDebugInfoFileName,
+  };
+
+  @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [
       ...argResults.forwardedArgs,

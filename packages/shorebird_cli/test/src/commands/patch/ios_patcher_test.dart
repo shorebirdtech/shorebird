@@ -178,6 +178,15 @@ void main() {
       });
     });
 
+    group('debugInfoFileNames', () {
+      test('names the arm64 file the patch build writes', () {
+        expect(
+          patcher.debugInfoFileNames,
+          equals({Arch.arm64: 'app.ios-arm64.symbols'}),
+        );
+      });
+    });
+
     group('releaseType', () {
       test('is ReleaseType.ios', () {
         expect(patcher.releaseType, ReleaseType.ios);

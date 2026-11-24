@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
@@ -19,6 +20,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -129,6 +131,18 @@ void main() {
     group('artifactDisplayName', () {
       test('has expected value', () {
         expect(releaser.artifactDisplayName, 'macOS app');
+      });
+    });
+
+    group('debugInfoFileNames', () {
+      test('names one file per architecture the macOS build writes', () {
+        expect(
+          releaser.debugInfoFileNames,
+          equals({
+            Arch.arm64: 'app.darwin-arm64.symbols',
+            Arch.x86_64: 'app.darwin-x86_64.symbols',
+          }),
+        );
       });
     });
 
@@ -373,6 +387,30 @@ void main() {
 
         verify(() => artifactManager.getMacOSAppDirectory()).called(1);
       });
+
+      test(
+        'records the slices in App.framework/App as builtArchitectures',
+        () async {
+          final binary = File(
+            p.join(
+              appDirectory.path,
+              'Contents',
+              'Frameworks',
+              'App.framework',
+              'App',
+            ),
+          )..createSync(recursive: true);
+          final header = Uint8List(32);
+          ByteData.sublistView(header)
+            ..setUint32(0, 0xfeedfacf, Endian.little)
+            ..setUint32(4, 0x0100000c, Endian.little);
+          binary.writeAsBytesSync(header);
+
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          expect(releaser.builtArchitectures, equals({Arch.arm64}));
+        },
+      );
 
       group('when app not found after build', () {
         setUp(() {

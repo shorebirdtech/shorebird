@@ -2,10 +2,15 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:shorebird_cli/src/archive_analysis/byte_utils.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 
 const _machOHeaderSize = 32;
 const _uuidLoadCommandType = 0x1b;
 const _machO64Magic = 0xfeedfacf;
+const _fatMagic = 0xcafebabe;
+const _fatMagic64 = 0xcafebabf;
+const _cpuTypeX86_64 = 0x01000007;
+const _cpuTypeArm64 = 0x0100000c;
 const _segment64LoadCommandType = 0x19;
 const _segment64CommandSize = 72;
 const _section64Size = 80;
@@ -22,6 +27,43 @@ class MachO {
     // See https://en.wikipedia.org/wiki/Mach-O#Mach-O_header
     return magic == 0xfeedface || magic == 0xfeedfacf;
   }
+
+  /// The architectures [file] carries slices for, or null when [file] does
+  /// not exist or is not a thin 64-bit or universal Mach-O.
+  static Set<Arch>? architectures(File file) {
+    if (!file.existsSync()) return null;
+    final raf = file.openSync();
+    final Uint8List header;
+    try {
+      header = raf.readSync(2056);
+    } finally {
+      raf.closeSync();
+    }
+    if (header.length < 8) return null;
+    final data = ByteData.sublistView(header);
+    if (data.getUint32(0, Endian.little) == _machO64Magic) {
+      final arch = _archForCpuType(data.getUint32(4, Endian.little));
+      return arch == null ? null : {arch};
+    }
+    final beMagic = data.getUint32(0);
+    if (beMagic != _fatMagic && beMagic != _fatMagic64) return null;
+    final sliceCount = data.getUint32(4);
+    if (sliceCount == 0 || sliceCount > 64) return null;
+    final entrySize = beMagic == _fatMagic64 ? 32 : 20;
+    if (8 + sliceCount * entrySize > header.length) return null;
+    final archs = <Arch>{};
+    for (var i = 0; i < sliceCount; i++) {
+      final arch = _archForCpuType(data.getUint32(8 + i * entrySize));
+      if (arch != null) archs.add(arch);
+    }
+    return archs.isEmpty ? null : archs;
+  }
+
+  static Arch? _archForCpuType(int cpuType) => switch (cpuType) {
+    _cpuTypeArm64 => Arch.arm64,
+    _cpuTypeX86_64 => Arch.x86_64,
+    _ => null,
+  };
 
   /// Returns a copy of the provided Mach-O file with the UUID load command
   /// zeroed out. This is necessary because the same code built in different

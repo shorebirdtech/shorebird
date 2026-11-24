@@ -15,6 +15,12 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// Shared logic for patchers whose release artifacts are per-architecture
 /// libapp.so files (Android app bundles and Android archives).
 mixin AndroidPatcherMixin on Patcher {
+  @override
+  Map<Arch, String> get debugInfoFileNames => {
+    for (final arch in AndroidArch.availableAndroidArchs)
+      arch: 'app.${arch.targetPlatformCliArg}.symbols',
+  };
+
   /// Copies the release's per-ABI object order (`<abi>/App.ref.link`) from
   /// [releaseSupplementDirectory] to `build/android/shorebird_release/` and
   /// returns that directory for the patch build, or null when the release has
