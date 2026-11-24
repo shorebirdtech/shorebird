@@ -1529,7 +1529,9 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
       - uses: $checkoutAction
         with:
 ${repository.hasSubmodules ? '          submodules: recursive\n' : ''}          persist-credentials: false
-      - run: npx --yes cspell@$_cspellVersion --config $configPath --no-progress "**"
+      # .git/ is kept out of --dot because its hooks and object text are
+      # machine-written, and no word list closes them.
+      - run: npx --yes cspell@$_cspellVersion --config $configPath --no-progress --dot --exclude ".git/**" "**"
 ''')
       ..writeln();
   }
