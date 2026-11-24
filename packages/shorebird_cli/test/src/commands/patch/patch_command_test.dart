@@ -186,6 +186,7 @@ void main() {
       registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(release);
       registerFallbackValue(FakeReleaseArtifact());
+      registerFallbackValue(<Arch>[]);
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
     });
@@ -320,6 +321,13 @@ void main() {
           rolloutSchedule: any(named: 'rolloutSchedule'),
         ),
       ).thenAnswer((_) async => const CreatePatchResponse(id: 3, number: 2));
+      when(
+        () => patcher.uploadSymbolArtifacts(
+          appId: any(named: 'appId'),
+          patchId: any(named: 'patchId'),
+          architectures: any(named: 'architectures'),
+        ),
+      ).thenAnswer((_) async {});
 
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
@@ -1401,6 +1409,49 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             });
           },
         );
+
+        group('crash reporting symbols', () {
+          test('skips symbol upload when crash reporting is off', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(() => patcher.crashReportingEnabled = false).called(1);
+            verifyNever(
+              () => patcher.uploadSymbolArtifacts(
+                appId: any(named: 'appId'),
+                patchId: any(named: 'patchId'),
+                architectures: any(named: 'architectures'),
+              ),
+            );
+          });
+
+          test(
+            'uploads symbol artifacts for built architectures when opted in',
+            () async {
+              when(
+                () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+              ).thenAnswer(
+                (_) async => AppMetadata(
+                  appId: appId,
+                  displayName: appDisplayName,
+                  crashReportingEnabled: true,
+                  createdAt: DateTime(2023),
+                  updatedAt: DateTime(2023),
+                ),
+              );
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verify(() => patcher.crashReportingEnabled = true).called(1);
+              verify(
+                () => patcher.uploadSymbolArtifacts(
+                  appId: appId,
+                  patchId: 3,
+                  architectures: patchArtifactBundles.keys,
+                ),
+              ).called(1);
+            },
+          );
+        });
 
         group('when a supplemental release artifact exists', () {
           setUp(() {

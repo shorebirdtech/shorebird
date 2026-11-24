@@ -148,6 +148,11 @@ mixin ApplePatcherMixin on Patcher {
   );
 
   @override
+  Map<Arch, String> get debugInfoFileNames => const {
+    Arch.arm64: splitDebugInfoFileName,
+  };
+
+  @override
   Future<CreatePatchMetadata> updatedCreatePatchMetadata(
     CreatePatchMetadata metadata,
   ) async => metadata.copyWith(

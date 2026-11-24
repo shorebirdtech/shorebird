@@ -14,9 +14,13 @@ import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/split_debug_info.dart';
+import 'package:shorebird_cli/src/symbols/sbsymbols.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -31,6 +35,12 @@ class _TestReleaser extends Releaser {
   _TestReleaser({required super.argResults})
     : super(flavor: null, target: null);
 
+  Set<Arch>? testBuiltArchitectures;
+  Map<Arch, String>? testDebugInfoFileNames = const {
+    Arch.arm64: 'app.test-arm64.symbols',
+    Arch.x86_64: 'app.test-x64.symbols',
+  };
+
   @override
   ReleaseType get releaseType => ReleaseType.linux;
 
@@ -42,6 +52,14 @@ class _TestReleaser extends Releaser {
 
   @override
   String get supplementArtifactArch => 'test_supplement';
+
+  @override
+  Map<Arch, String> get debugInfoFileNames =>
+      testDebugInfoFileNames ?? super.debugInfoFileNames;
+
+  @override
+  Set<Arch> get builtArchitectures =>
+      testBuiltArchitectures ?? super.builtArchitectures;
 
   @override
   String get postReleaseInstructions => '';
@@ -83,6 +101,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdLogger logger;
+    late SymbolExtractor symbolExtractor;
     late _TestReleaser releaser;
 
     R runWithOverrides<R>(R Function() body) {
@@ -95,6 +114,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          symbolExtractorRef.overrideWith(() => symbolExtractor),
         },
       );
     }
@@ -109,6 +129,9 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.linux);
+      registerFallbackValue(File(''));
+      registerFallbackValue(SymbolImage.release);
+      registerFallbackValue(SymbolsFormat.sbsymbols);
     });
 
     setUp(() {
@@ -120,6 +143,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       logger = MockShorebirdLogger();
+      symbolExtractor = MockSymbolExtractor();
 
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(false);
@@ -137,6 +161,19 @@ void main() {
       when(
         () => codeSigner.base64PublicKeyFromPem(managedPem),
       ).thenReturn(managedKeyBase64);
+
+      when(
+        () => symbolExtractor.writeIndex(
+          debugInfo: any(named: 'debugInfo'),
+          output: any(named: 'output'),
+          image: any(named: 'image'),
+        ),
+      ).thenAnswer((invocation) {
+        final output = invocation.namedArguments[const Symbol('output')] as File
+          ..createSync(recursive: true)
+          ..writeAsStringSync('an index');
+        return output;
+      });
 
       releaser = _TestReleaser(argResults: argResults);
     });
@@ -656,6 +693,60 @@ void main() {
         );
       });
 
+      test(
+        "extracts each architecture's symbol index when crash reporting is on",
+        () {
+          releaser.crashReportingEnabled = true;
+          setObfuscate(enabled: true);
+          final debugInfo =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    defaultSplitDebugInfoPath,
+                    'app.test-arm64.symbols',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..writeAsStringSync('debug info');
+
+          runWithOverrides(releaser.assembleSupplementDirectory);
+
+          verify(
+            () => symbolExtractor.writeIndex(
+              debugInfo: any(
+                named: 'debugInfo',
+                that: isA<File>().having((f) => f.path, 'path', debugInfo.path),
+              ),
+              output: any(named: 'output'),
+              image: SymbolImage.release,
+            ),
+          ).called(1);
+        },
+      );
+
+      test('skips symbol extraction when crash reporting is off', () {
+        setObfuscate(enabled: true);
+        File(
+            p.join(
+              projectRoot.path,
+              defaultSplitDebugInfoPath,
+              'app.test-arm64.symbols',
+            ),
+          )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('debug info');
+
+        runWithOverrides(releaser.assembleSupplementDirectory);
+
+        verifyNever(
+          () => symbolExtractor.writeIndex(
+            debugInfo: any(named: 'debugInfo'),
+            output: any(named: 'output'),
+            image: any(named: 'image'),
+          ),
+        );
+      });
+
       test('removes a stale obfuscation map', () {
         File(p.join(supplementDir.path, 'obfuscation_map.json'))
           ..createSync(recursive: true)
@@ -672,6 +763,302 @@ void main() {
             any(that: contains('Removing stale obfuscation map')),
           ),
         ).called(1);
+      });
+    });
+
+    group('splitDebugInfoPath', () {
+      test('is null when the build writes no symbols', () {
+        expect(runWithOverrides(() => releaser.splitDebugInfoPath), isNull);
+      });
+
+      test("is Shorebird's default for an obfuscated release", () {
+        setObfuscate(enabled: true);
+
+        expect(
+          runWithOverrides(() => releaser.splitDebugInfoPath),
+          equals(defaultSplitDebugInfoPath),
+        );
+      });
+
+      test('is the directory the user passed', () {
+        when(() => argResults.wasParsed('split-debug-info')).thenReturn(true);
+        when(() => argResults['split-debug-info']).thenReturn('my/symbols');
+
+        expect(
+          runWithOverrides(() => releaser.splitDebugInfoPath),
+          equals('my/symbols'),
+        );
+      });
+    });
+
+    group('debugInfoFiles', () {
+      setUp(() => setObfuscate(enabled: true));
+
+      File debugInfo(String name) =>
+          File(p.join(projectRoot.path, defaultSplitDebugInfoPath, name));
+
+      test('is empty when the build wrote no symbols', () {
+        setObfuscate(enabled: false);
+
+        expect(runWithOverrides(() => releaser.debugInfoFiles), isEmpty);
+      });
+
+      test('defaults debugInfoFileNames to empty and skips unnamed archs', () {
+        releaser
+          ..testDebugInfoFileNames = null
+          ..testBuiltArchitectures = const {Arch.arm64};
+
+        expect(releaser.debugInfoFileNames, isEmpty);
+        expect(runWithOverrides(() => releaser.debugInfoFiles), isEmpty);
+      });
+
+      test('holds only the architectures the build produced', () {
+        debugInfo('app.test-arm64.symbols')
+          ..createSync(recursive: true)
+          ..writeAsStringSync('arm64 debug info');
+        debugInfo('app.test-x64.symbols')
+          ..createSync(recursive: true)
+          ..writeAsStringSync('stale x64 debug info from an earlier build');
+        releaser.testBuiltArchitectures = const {Arch.arm64};
+
+        final files = runWithOverrides(() => releaser.debugInfoFiles);
+
+        expect(files.keys, equals([Arch.arm64]));
+        expect(
+          files[Arch.arm64]!.path,
+          equals(debugInfo('app.test-arm64.symbols').path),
+        );
+      });
+    });
+
+    group('extractSymbolIndexes', () {
+      setUp(() {
+        releaser.crashReportingEnabled = true;
+        setObfuscate(enabled: true);
+      });
+
+      File debugInfo(String name) =>
+          File(p.join(projectRoot.path, defaultSplitDebugInfoPath, name))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('debug info');
+
+      test("writes an index beside each architecture's debug info", () {
+        final arm64 = debugInfo('app.test-arm64.symbols');
+        final x64 = debugInfo('app.test-x64.symbols');
+
+        runWithOverrides(releaser.extractSymbolIndexes);
+
+        for (final file in [arm64, x64]) {
+          verify(
+            () => symbolExtractor.writeIndex(
+              debugInfo: any(
+                named: 'debugInfo',
+                that: isA<File>().having((f) => f.path, 'path', file.path),
+              ),
+              output: any(
+                named: 'output',
+                that: isA<File>().having(
+                  (f) => f.path,
+                  'path',
+                  p.setExtension(file.path, '.sbsymbols'),
+                ),
+              ),
+              image: SymbolImage.release,
+            ),
+          ).called(1);
+        }
+      });
+
+      test('extracts nothing when crash reporting is off', () {
+        releaser.crashReportingEnabled = false;
+        debugInfo('app.test-arm64.symbols');
+
+        runWithOverrides(releaser.extractSymbolIndexes);
+
+        verifyNever(
+          () => symbolExtractor.writeIndex(
+            debugInfo: any(named: 'debugInfo'),
+            output: any(named: 'output'),
+            image: any(named: 'image'),
+          ),
+        );
+      });
+
+      test('says so at --verbose when there is no index to extract', () {
+        debugInfo('app.test-arm64.symbols');
+        when(
+          () => symbolExtractor.writeIndex(
+            debugInfo: any(named: 'debugInfo'),
+            output: any(named: 'output'),
+            image: any(named: 'image'),
+          ),
+        ).thenReturn(null);
+
+        runWithOverrides(releaser.extractSymbolIndexes);
+
+        verify(
+          () => logger.detail(
+            any(that: contains('No symbol index extracted from')),
+          ),
+        ).called(1);
+      });
+    });
+
+    group('uploadSymbolArtifacts', () {
+      const releaseId = 42;
+
+      setUp(() {
+        releaser.crashReportingEnabled = true;
+        setObfuscate(enabled: true);
+        when(
+          () => codePushClientWrapper.createReleaseSymbols(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            arch: any(named: 'arch'),
+            format: any(named: 'format'),
+            symbols: any(named: 'symbols'),
+          ),
+        ).thenAnswer((_) async {});
+      });
+
+      File debugInfo(String name) =>
+          File(p.join(projectRoot.path, defaultSplitDebugInfoPath, name))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('debug info');
+
+      test('uploads each extracted SBSY v1 index without raw DWARF', () async {
+        final arm64 = debugInfo('app.test-arm64.symbols');
+        runWithOverrides(releaser.extractSymbolIndexes);
+
+        await runWithOverrides(
+          () => releaser.uploadSymbolArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+          ),
+        );
+
+        verify(
+          () => codePushClientWrapper.createReleaseSymbols(
+            appId: appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.linux,
+            arch: 'aarch64',
+            format: SymbolsFormat.sbsymbols,
+            symbols: any(
+              named: 'symbols',
+              that: isA<File>().having(
+                (f) => f.path,
+                'path',
+                p.setExtension(arm64.path, '.sbsymbols'),
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('uploads nothing when crash reporting is off', () async {
+        debugInfo('app.test-arm64.symbols');
+        runWithOverrides(releaser.extractSymbolIndexes);
+        releaser.crashReportingEnabled = false;
+
+        await runWithOverrides(
+          () => releaser.uploadSymbolArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+          ),
+        );
+
+        verifyNever(
+          () => codePushClientWrapper.createReleaseSymbols(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            arch: any(named: 'arch'),
+            format: any(named: 'format'),
+            symbols: any(named: 'symbols'),
+          ),
+        );
+      });
+
+      test('uploads nothing when no index was extracted', () async {
+        debugInfo('app.test-arm64.symbols');
+
+        await runWithOverrides(
+          () => releaser.uploadSymbolArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+          ),
+        );
+
+        verifyNever(
+          () => codePushClientWrapper.createReleaseSymbols(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            arch: any(named: 'arch'),
+            format: any(named: 'format'),
+            symbols: any(named: 'symbols'),
+          ),
+        );
+      });
+
+      test(
+        "uploads nothing when the index on disk is a previous build's",
+        () async {
+          final arm64 = debugInfo('app.test-arm64.symbols');
+          File(p.setExtension(arm64.path, '.sbsymbols'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('an index from an earlier build');
+          when(
+            () => symbolExtractor.writeIndex(
+              debugInfo: any(named: 'debugInfo'),
+              output: any(named: 'output'),
+              image: any(named: 'image'),
+            ),
+          ).thenReturn(null);
+          runWithOverrides(releaser.extractSymbolIndexes);
+
+          await runWithOverrides(
+            () => releaser.uploadSymbolArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+            ),
+          );
+
+          verifyNever(
+            () => codePushClientWrapper.createReleaseSymbols(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              arch: any(named: 'arch'),
+              format: any(named: 'format'),
+              symbols: any(named: 'symbols'),
+            ),
+          );
+        },
+      );
+
+      test('uploads nothing when the build wrote no symbols', () async {
+        setObfuscate(enabled: false);
+
+        await runWithOverrides(
+          () => releaser.uploadSymbolArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+          ),
+        );
+
+        verifyNever(
+          () => codePushClientWrapper.createReleaseSymbols(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            platform: any(named: 'platform'),
+            arch: any(named: 'arch'),
+            format: any(named: 'format'),
+            symbols: any(named: 'symbols'),
+          ),
+        );
       });
     });
 

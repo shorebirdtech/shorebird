@@ -140,6 +140,19 @@ void main() {
       });
     });
 
+    group('debugInfoFileNames', () {
+      test("names one file per architecture, as Flutter's build does", () {
+        expect(
+          runWithOverrides(() => aarReleaser.debugInfoFileNames),
+          equals({
+            Arch.arm32: 'app.android-arm.symbols',
+            Arch.arm64: 'app.android-arm64.symbols',
+            Arch.x86_64: 'app.android-x64.symbols',
+          }),
+        );
+      });
+    });
+
     group('architectures', () {
       test('throws exception when unknown platform is provided', () {
         when(
@@ -785,8 +798,27 @@ void main() {
             extractedAarDir: any(named: 'extractedAarDir'),
             architectures: any(named: 'architectures'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenAnswer((_) async => {Arch.arm64});
       });
+
+      test(
+        'narrows builtArchitectures to the ABIs the archive packaged',
+        () async {
+          expect(
+            runWithOverrides(() => aarReleaser.builtArchitectures),
+            equals(Arch.values.toSet()),
+          );
+
+          await runWithOverrides(
+            () => aarReleaser.uploadReleaseArtifacts(
+              release: release,
+              appId: appId,
+            ),
+          );
+
+          expect(aarReleaser.builtArchitectures, equals({Arch.arm64}));
+        },
+      );
 
       test('uploads artifacts', () async {
         await runWithOverrides(

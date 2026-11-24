@@ -21,7 +21,7 @@ import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform/apple/apple.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -139,6 +139,15 @@ void main() {
     group('artifactDisplayName', () {
       test('has expected value', () {
         expect(iosReleaser.artifactDisplayName, 'iOS app');
+      });
+    });
+
+    group('debugInfoFileNames', () {
+      test('names the arm64 file the iOS build writes', () {
+        expect(
+          iosReleaser.debugInfoFileNames,
+          equals({Arch.arm64: 'app.ios-arm64.symbols'}),
+        );
       });
     });
 

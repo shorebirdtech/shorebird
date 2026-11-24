@@ -35,8 +35,21 @@ class AarReleaser extends Releaser {
     argResults['target-platform'] as List<String>,
   );
 
+  /// The architectures the built archive actually produced, once
+  /// [uploadReleaseArtifacts] has inspected it.
+  Set<Arch>? _uploadedArchitectures;
+
   @override
   ReleaseType get releaseType => ReleaseType.aar;
+
+  @override
+  Map<Arch, String> get debugInfoFileNames => {
+    for (final arch in AndroidArch.availableAndroidArchs)
+      arch: 'app.${arch.targetPlatformCliArg}.symbols',
+  };
+
+  @override
+  Set<Arch> get builtArchitectures => _uploadedArchitectures ?? architectures;
 
   @override
   String get supplementPlatformSubdir => 'android';
@@ -60,6 +73,7 @@ class AarReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    _uploadedArchitectures = null;
     await assertReleaseVersionCanBeBuiltIn();
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildAar(
@@ -112,18 +126,19 @@ class AarReleaser extends Releaser {
     );
     extractAarProgress.complete();
 
-    await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      platform: releaseType.releasePlatform,
-      aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
-        packageName: shorebirdEnv.androidPackageName!,
-        buildNumber: buildNumber,
-      ),
-      extractedAarDir: extractedAarDir.path,
-      architectures: architectures,
-      signing: signing,
-    );
+    _uploadedArchitectures = await codePushClientWrapper
+        .createAndroidArchiveReleaseArtifacts(
+          appId: appId,
+          releaseId: release.id,
+          platform: releaseType.releasePlatform,
+          aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
+            packageName: shorebirdEnv.androidPackageName!,
+            buildNumber: buildNumber,
+          ),
+          extractedAarDir: extractedAarDir.path,
+          architectures: architectures,
+          signing: signing,
+        );
   }
 
   @override

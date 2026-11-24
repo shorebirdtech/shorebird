@@ -159,6 +159,19 @@ void main() {
       });
     });
 
+    group('debugInfoFileNames', () {
+      test("names one file per architecture, as Flutter's build does", () {
+        expect(
+          runWithOverrides(() => androidReleaser.debugInfoFileNames),
+          equals({
+            Arch.arm32: 'app.android-arm.symbols',
+            Arch.arm64: 'app.android-arm64.symbols',
+            Arch.x86_64: 'app.android-x64.symbols',
+          }),
+        );
+      });
+    });
+
     group('architectures', () {
       test('returns all architectures by default', () {
         final architectures = runWithOverrides(
@@ -757,7 +770,7 @@ void main() {
             flavor: any(named: 'flavor'),
             signing: any(named: 'signing'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenAnswer((_) async => {Arch.arm64});
         when(
           () => shorebirdAndroidArtifacts.findAab(
             project: any(named: 'project'),
@@ -812,6 +825,30 @@ void main() {
               flavor: androidReleaser.flavor,
             ),
           ).called(1);
+        },
+      );
+
+      test(
+        'narrows builtArchitectures to the ABIs the bundle packaged',
+        () async {
+          when(
+            () => argResults['target-platform'],
+          ).thenReturn(
+            Arch.values.map((a) => a.targetPlatformCliArg).toList(),
+          );
+          expect(
+            runWithOverrides(() => androidReleaser.builtArchitectures),
+            equals(Arch.values.toSet()),
+          );
+
+          await runWithOverrides(
+            () => androidReleaser.uploadReleaseArtifacts(
+              appId: appId,
+              release: release,
+            ),
+          );
+
+          expect(androidReleaser.builtArchitectures, equals({Arch.arm64}));
         },
       );
     });

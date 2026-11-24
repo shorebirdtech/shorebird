@@ -1425,6 +1425,149 @@ void main() {
       });
     });
 
+    group('symbols', () {
+      const releaseId = 7;
+      const patchId = 11;
+      const arch = 'aarch64';
+      const platform = ReleasePlatform.android;
+      const sessionUrl = 'https://storage.googleapis.com/session?upload_id=s';
+
+      late File symbols;
+
+      setUp(() {
+        final tempDir = Directory.systemTemp.createTempSync();
+        symbols = File(path.join(tempDir.path, 'app.sbsymbols'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5, 6]);
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreateSymbolsResponse(
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+      });
+
+      Future<List<http.BaseRequest>> capturedRequests() async {
+        return verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+      }
+
+      group('createReleaseSymbols', () {
+        test('declares the symbols and PUTs them to the session', () async {
+          await expectLater(
+            codePushClient.createReleaseSymbols(
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: symbols.path,
+            ),
+            completes,
+          );
+
+          final requests = await capturedRequests();
+          expect(requests, hasLength(2));
+          final create = requests.first as http.Request;
+          expect(create.method, equals('POST'));
+          expect(
+            create.url,
+            equals(v1('apps/$appId/releases/$releaseId/symbols')),
+          );
+          expect(create.hasHeaders(expectedHeaders), isTrue);
+          expect(
+            json.decode(create.body),
+            equals({
+              'platform': platform.name,
+              'arch': arch,
+              'format': 'sbsymbols',
+              'compression': 'gzip',
+              'size': 6,
+            }),
+          );
+          final upload = requests.last;
+          expect(upload.method, equals('PUT'));
+          expect(upload.url, equals(Uri.parse(sessionUrl)));
+          expect(upload.headers['content-range'], equals('bytes 0-5/6'));
+        });
+
+        test('throws when the server refuses the symbols', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse))),
+              HttpStatus.forbidden,
+            ),
+          );
+
+          expect(
+            codePushClient.createReleaseSymbols(
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: symbols.path,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (exception) => exception.statusCode,
+                'statusCode',
+                equals(HttpStatus.forbidden),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('createPatchSymbols', () {
+        test('declares the symbols and PUTs them to the session', () async {
+          await expectLater(
+            codePushClient.createPatchSymbols(
+              appId: appId,
+              patchId: patchId,
+              platform: platform,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: symbols.path,
+            ),
+            completes,
+          );
+
+          final requests = await capturedRequests();
+          expect(requests, hasLength(2));
+          final create = requests.first as http.Request;
+          expect(create.method, equals('POST'));
+          expect(
+            create.url,
+            equals(v1('apps/$appId/patches/$patchId/symbols')),
+          );
+          expect(
+            json.decode(create.body),
+            equals({
+              'platform': platform.name,
+              'arch': arch,
+              'format': 'sbsymbols',
+              'compression': 'gzip',
+              'size': 6,
+            }),
+          );
+          expect(requests.last.method, equals('PUT'));
+        });
+      });
+    });
+
     group('createApp', () {
       test('makes the correct request', () async {
         codePushClient
