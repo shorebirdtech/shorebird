@@ -402,6 +402,67 @@ void main() {
         expect(emptied.parent.existsSync(), isFalse);
       });
 
+      test(
+        'reaps stale staging entries without counting live ones against '
+        'maxCachedPreviews',
+        () {
+          final stagingAppDirectory = runWithOverrides(
+            () => Directory(
+              p.join(Cache.shorebirdPreviewsDirectory.path, 'staging-app'),
+            ),
+          )..createSync(recursive: true);
+          final staging = stagingAppDirectory.createTempSync(
+            Cache.releaseArtifactDownloadPrefix,
+          );
+          final created = staging.statSync().modified;
+          File(
+            p.join(
+              stagingAppDirectory.path,
+              'ios_1.0.0_1.app${Cache.previewLastUsedSuffix}',
+            ),
+          ).createSync();
+
+          final cachedPreviews = [
+            for (var i = 0; i < Cache.maxCachedPreviews; i++)
+              runWithOverrides(() {
+                final path = p.join(
+                  Cache.shorebirdPreviewsDirectory.path,
+                  'app',
+                  'android_1.0.${i}_$i.aab',
+                );
+                final file = File(path)..createSync(recursive: true);
+                File('$path${Cache.previewLastUsedSuffix}')
+                  ..createSync()
+                  ..setLastModifiedSync(
+                    created.subtract(Duration(minutes: i + 1)),
+                  );
+                return file;
+              }),
+          ];
+
+          expect(
+            withClock(
+              Clock.fixed(created.add(const Duration(hours: 1))),
+              () => runWithOverrides(() => cache.pruneUnusedPreviews()),
+            ),
+            isEmpty,
+          );
+          expect(staging.existsSync(), isTrue);
+          expect(cachedPreviews.every((p) => p.existsSync()), isTrue);
+
+          expect(
+            withClock(
+              Clock.fixed(created.add(const Duration(days: 2))),
+              () => runWithOverrides(() => cache.pruneUnusedPreviews()),
+            ),
+            equals([staging.path]),
+          );
+          expect(staging.existsSync(), isFalse);
+          expect(stagingAppDirectory.existsSync(), isFalse);
+          expect(cachedPreviews.every((p) => p.existsSync()), isTrue);
+        },
+      );
+
       test('does nothing when no previews have been downloaded', () {
         expect(prune(), isEmpty);
       });
