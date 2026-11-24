@@ -188,14 +188,15 @@ jobs:
           java-version: "17"
 
       # The Dart SDK of the Flutter the CLI pins runs the e2e scripts.
-      # `shorebird flutter path` installs that Flutter if it isn't yet: a
-      # release commit (stable) runs the prebuilt CLI, which never installs
-      # it, and `shorebird --version` doesn't use it
-      # (run 45297183375). No upstream Flutter or Dart is set up: the app is
+      # `shorebird flutter precache` installs that Flutter if it isn't yet
+      # (`shorebird flutter path` only reports it missing): a release commit
+      # (stable) runs the prebuilt CLI, which never installs it, and
+      # `shorebird --version` doesn't use it (run 45297183375). No upstream Flutter or Dart is set up: the app is
       # created with Shorebird's Flutter of the leg's version too
       # (scripts/patch_e2e.dart), so CI only ever runs ours.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -365,6 +366,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -462,6 +464,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -502,6 +505,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -547,7 +551,10 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         shell: pwsh
-        run: Add-Content $env:GITHUB_PATH "$(shorebird flutter path)\bin\cache\dart-sdk\bin"
+        run: |
+          shorebird flutter precache
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Add-Content $env:GITHUB_PATH "$(shorebird flutter path)\bin\cache\dart-sdk\bin"
 
       - name: 🧪 Run Windows Signing E2E Tests
         run: dart scripts/patch_signing_e2e.dart windows
@@ -590,6 +597,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -695,6 +703,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -739,6 +748,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -784,6 +794,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -900,6 +911,7 @@ jobs:
       # See the patch job.
       - name: 🎯 Use Shorebird's Dart
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
@@ -1070,13 +1082,17 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
+          shorebird flutter precache
           flutter_dir="$(shorebird flutter path)"
           echo "$flutter_dir/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 
       - name: 🎯 Use Shorebird's Dart (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Add-Content $env:GITHUB_PATH "$(shorebird flutter path)\bin\cache\dart-sdk\bin"
+        run: |
+          shorebird flutter precache
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Add-Content $env:GITHUB_PATH "$(shorebird flutter path)\bin\cache\dart-sdk\bin"
 
       - name: 🧪 Run Integration Tests
         run: dart test integration_test

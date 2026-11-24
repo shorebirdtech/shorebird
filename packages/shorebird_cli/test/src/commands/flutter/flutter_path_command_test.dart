@@ -94,6 +94,7 @@ void main() {
     test('has correct name', () {
       expect(command.name, equals('path'));
       expect(command.reservesStdout, isTrue);
+      expect(command.usesPinnedFlutter, isFalse);
     });
 
     group('when --flutter-version is omitted', () {
