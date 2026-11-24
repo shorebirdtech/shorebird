@@ -856,20 +856,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
 
-    if (await _findPublishedUnderKey(patcher: patcher, release: release)
-        case final existing?) {
-      logger.info(
-        '${patcher.releaseType.releasePlatform.displayName} already '
-        'published as patch ${existing.number}.',
-      );
-      return PublishedPatch(
-        platform: patcher.releaseType.releasePlatform,
-        release: release,
-        patch: CreatePatchResponse(id: existing.id, number: existing.number),
-        linkPercentage: null,
-        alreadyPublished: true,
-      );
-    }
+    final publishedUnderKey = await _findPublishedUnderKey(
+      patcher: patcher,
+      release: release,
+    );
     _assertCanSignForRelease(release: release, patcher: patcher);
     _assertReleaseSignedForPolicy(app: app, release: release, patcher: patcher);
     _warnIfFlutterRevisionHasKnownIssue(release: release, patcher: patcher);
@@ -934,6 +924,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
           releaseArtifact: downloaded.releaseArtifact,
           releaseArchive: downloaded.releaseArchive,
           supplementDirectory: downloaded.supplementDirectory,
+          publishedUnderKey: publishedUnderKey,
         ),
         values: {
           shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
@@ -948,13 +939,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
 
   /// Returns [patcher]'s platform's patch on [release] that an earlier run
   /// published under this run's key, which is this commit's SHA, to
-  /// [track], or null when this run should build and publish it.
+  /// [track], or null when there is none to compare this run's build with.
   ///
   /// Only the platform's newest patch on the release counts, so a platform
   /// that has moved on to a newer patch is published again, and only once
-  /// its artifacts are uploaded and while it is not rolled back. Skipped on a
-  /// dirty tree or a dry run, where the commit does not prove the build
-  /// would be the same.
+  /// its artifacts are uploaded and while it is not rolled back. Null on a
+  /// dirty tree or a dry run.
   Future<ReleasePatch?> _findPublishedUnderKey({
     required Patcher patcher,
     required Release release,
@@ -1506,6 +1496,7 @@ A patch must be built with the --dart-define values and --target of its release,
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required Directory? supplementDirectory,
+    required ReleasePatch? publishedUnderKey,
   }) async {
     await cache.updateAll();
 
@@ -1552,6 +1543,40 @@ Building patch with Flutter $flutterVersionString
     );
 
     await assertMinLinkPercentage(patcher);
+
+    // A rerun of the same commit builds the same patch unless something the
+    // commit doesn't record changed (a --dart-define, the CLI, an ignored
+    // file), so only an identical build is skipped.
+    if (publishedUnderKey case final existing?) {
+      final platform = patcher.releaseType.releasePlatform;
+      final name = platform.displayName;
+      if (_isSameBuild(
+        patch: existing,
+        platform: platform,
+        bundles: patchArtifactBundles,
+      )) {
+        logger.info('$name already published as patch ${existing.number}.');
+        if (rolloutSchedule != null ||
+            (rolloutPercentage ?? 100) != (existing.rolloutPercentage ?? 100)) {
+          logger.info(
+            'Patch ${existing.number} keeps its rollout. To change it, run:\n'
+            '  shorebird patches rollout --release-version ${release.version} '
+            '--patch-number ${existing.number} --percentage <percentage>',
+          );
+        }
+        return PublishedPatch(
+          platform: platform,
+          release: release,
+          patch: CreatePatchResponse(id: existing.id, number: existing.number),
+          linkPercentage: null,
+          alreadyPublished: true,
+        );
+      }
+      logger.info(
+        "$name's build differs from patch ${existing.number}, built from "
+        'this commit, so it is published again.',
+      );
+    }
 
     _exitIfDryRun(patcher: patcher, release: release);
 
@@ -1630,6 +1655,21 @@ Building patch with Flutter $flutterVersionString
       patch: patch,
       linkPercentage: patcher.linkPercentage,
     );
+  }
+
+  /// Whether [bundles] are the artifacts [patch] already has for [platform]:
+  /// one per arch, each with the same hash.
+  bool _isSameBuild({
+    required ReleasePatch patch,
+    required ReleasePlatform platform,
+    required Map<Arch, PatchArtifactBundle> bundles,
+  }) {
+    final published = {
+      for (final artifact in patch.artifacts)
+        if (artifact.platform == platform) artifact.arch: artifact.hash,
+    };
+    return published.length == bundles.length &&
+        bundles.values.every((bundle) => published[bundle.arch] == bundle.hash);
   }
 
   /// Says what linking did for [platform]'s [patch] on [release].

@@ -717,18 +717,22 @@ void main() {
         String? channel = 'stable',
         bool hasArtifacts = true,
         bool isRolledBack = false,
+        String hash = '#',
+        double? rolloutPercentage,
       }) => ReleasePatch(
         id: number * 10,
         number: number,
         channel: channel,
+        rolloutPercentage: rolloutPercentage,
         artifacts: [
           if (hasArtifacts)
             PatchArtifact(
               id: 1,
               patchId: number * 10,
-              arch: arch,
+              // The arch of patchArtifactBundles, which the patcher builds.
+              arch: 'arm32',
               platform: platform,
-              hash: '#',
+              hash: hash,
               size: 1,
               createdAt: DateTime(2023),
             ),
@@ -1297,6 +1301,7 @@ void main() {
 
             clearInteractions(codePushClientWrapper);
             clearInteractions(logger);
+            clearInteractions(patcher);
             // The server now has Android's patch under the commit.
             stubLinkedPatches([
               publishedRow(platform: ReleasePlatform.android, number: 2),
@@ -1317,8 +1322,16 @@ void main() {
             await runWithOverrides(command.run);
 
             verifyNever(
-              () => patcher.buildPatchArtifact(
-                releaseVersion: any(named: 'releaseVersion'),
+              () => patcher.uploadPatchArtifacts(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                track: any(named: 'track'),
+                artifacts: any(named: 'artifacts'),
+                metadata: any(named: 'metadata'),
+                rolloutPercentage: any(named: 'rolloutPercentage'),
+                linkKey: any(named: 'linkKey'),
+                gitSha: any(named: 'gitSha'),
+                gitDirty: any(named: 'gitDirty'),
               ),
             );
             verify(
@@ -1345,28 +1358,106 @@ void main() {
       group('skipping a platform published under the key', () {
         setUp(stubCleanCheckout);
 
-        Future<void> expectBuilt({required bool built}) async {
+        Future<void> upload() => patcher.uploadPatchArtifacts(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          track: any(named: 'track'),
+          artifacts: any(named: 'artifacts'),
+          metadata: any(named: 'metadata'),
+          rolloutPercentage: any(named: 'rolloutPercentage'),
+          linkKey: any(named: 'linkKey'),
+          gitSha: any(named: 'gitSha'),
+          gitDirty: any(named: 'gitDirty'),
+        );
+
+        Future<void> expectPublished({required bool published}) async {
           await runWithOverrides(command.run);
-          if (built) {
+          if (published) {
+            verify(upload).called(1);
+          } else {
+            verifyNever(upload);
+          }
+        }
+
+        test(
+          'skips when its newest patch on the track is the same build',
+          () async {
+            stubLinkedPatches([
+              publishedRow(platform: ReleasePlatform.android, number: 2),
+            ]);
+            await expectPublished(published: false);
             verify(
               () => patcher.buildPatchArtifact(
                 releaseVersion: any(named: 'releaseVersion'),
               ),
             ).called(1);
-          } else {
+            verify(
+              () => logger.info('Android already published as patch 2.'),
+            ).called(1);
             verifyNever(
-              () => patcher.buildPatchArtifact(
-                releaseVersion: any(named: 'releaseVersion'),
-              ),
+              () => logger.info(any(that: contains('keeps its rollout'))),
             );
-          }
-        }
+          },
+        );
 
-        test('skips when its newest patch is on the track', () async {
+        test('publishes again when the build differs', () async {
           stubLinkedPatches([
-            publishedRow(platform: ReleasePlatform.android, number: 2),
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              hash: 'other',
+            ),
           ]);
-          await expectBuilt(built: false);
+          await expectPublished(published: true);
+          verify(
+            () => logger.info(
+              "Android's build differs from patch 2, built from this commit, "
+              'so it is published again.',
+            ),
+          ).called(1);
+        });
+
+        test('publishes again when the build has another arch', () async {
+          final row = publishedRow(
+            platform: ReleasePlatform.android,
+            number: 2,
+          );
+          stubLinkedPatches([
+            row.copyWith(
+              artifacts: [
+                ...row.artifacts,
+                PatchArtifact(
+                  id: 2,
+                  patchId: row.id,
+                  arch: 'aarch64',
+                  platform: ReleasePlatform.android,
+                  hash: '#',
+                  size: 1,
+                  createdAt: DateTime(2023),
+                ),
+              ],
+            ),
+          ]);
+          await expectPublished(published: true);
+        });
+
+        test('says how to change the rollout of a skipped patch', () async {
+          when(() => argResults['rollout']).thenReturn('50');
+          stubLinkedPatches([
+            publishedRow(
+              platform: ReleasePlatform.android,
+              number: 2,
+              rolloutPercentage: 10,
+            ),
+          ]);
+          await expectPublished(published: false);
+          verify(
+            () => logger.info(
+              'Patch 2 keeps its rollout. To change it, run:\n'
+              '  shorebird patches rollout --release-version $releaseVersion '
+              '--patch-number 2 --percentage <percentage>',
+            ),
+          ).called(1);
         });
 
         test('says nothing new was published', () async {
@@ -1407,7 +1498,7 @@ void main() {
               channel: 'staging',
             ),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test('builds when the patch has no artifacts', () async {
@@ -1418,7 +1509,7 @@ void main() {
               hasArtifacts: false,
             ),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test('builds when a newer patch under the key is unfinished', () async {
@@ -1430,14 +1521,14 @@ void main() {
               channel: null,
             ),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test("builds when only another platform's patch has the key", () async {
           stubLinkedPatches([
             publishedRow(platform: ReleasePlatform.ios, number: 2),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test('builds when the patch does not have the key', () async {
@@ -1448,7 +1539,7 @@ void main() {
               linkKey: null,
             ),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test('builds with --patch-key, which does not name a commit', () async {
@@ -1460,7 +1551,7 @@ void main() {
               linkKey: 'hotfix',
             ),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test('builds when the platform has a newer patch', () async {
@@ -1472,7 +1563,7 @@ void main() {
               linkKey: 'other',
             ),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test('builds when the patch is rolled back', () async {
@@ -1483,7 +1574,7 @@ void main() {
               isRolledBack: true,
             ),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
         });
 
         test('does not look on a dirty tree', () async {
@@ -1492,7 +1583,7 @@ void main() {
           stubLinkedPatches([
             publishedRow(platform: ReleasePlatform.android, number: 2),
           ]);
-          await expectBuilt(built: true);
+          await expectPublished(published: true);
           verifyNever(
             () => codePushClientWrapper.getReleasePatches(
               appId: any(named: 'appId'),
