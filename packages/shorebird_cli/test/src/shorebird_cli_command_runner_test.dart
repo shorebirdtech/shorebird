@@ -190,20 +190,22 @@ void main() {
         final stdoutLines = <String>[];
         final stderrLines = <String>[];
         final realStderr = stderr;
-        // A real logger, so a notice printed outside runWithStdoutOnStderr
-        // would show up on the captured stdout and fail the test.
-        logger = ShorebirdLogger();
-
         await helpers.captureStdout(
-          () => IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => commandRunner.run(['reserves-stdout']),
-            ),
-            stderr: () => helpers.CapturingStdout(
-              baseStdOut: realStderr,
-              captured: stderrLines,
-            ),
-          ),
+          () {
+            // A real logger, made where stdout is captured (it keeps the
+            // stdout it was made with), so a notice printed outside
+            // runWithStdoutOnStderr shows up there and fails the test.
+            logger = ShorebirdLogger();
+            return IOOverrides.runZoned(
+              () => runWithOverrides(
+                () => commandRunner.run(['reserves-stdout']),
+              ),
+              stderr: () => helpers.CapturingStdout(
+                baseStdOut: realStderr,
+                captured: stderrLines,
+              ),
+            );
+          },
           captured: stdoutLines,
         );
 
@@ -286,20 +288,22 @@ void main() {
           final stdoutLines = <String>[];
           final stderrLines = <String>[];
           final realStderr = stderr;
-          // A real logger, so a line printed outside runWithStdoutOnStderr
-          // would show up on the captured stdout and fail the test.
-          logger = ShorebirdLogger();
-
           await helpers.captureStdout(
-            () => IOOverrides.runZoned(
-              () => runWithOverrides(
-                () => commandRunner.run(['reserves-stdout']),
-              ),
-              stderr: () => helpers.CapturingStdout(
-                baseStdOut: realStderr,
-                captured: stderrLines,
-              ),
-            ),
+            () {
+              // A real logger, made where stdout is captured (it keeps the
+              // stdout it was made with), so a line printed outside
+              // runWithStdoutOnStderr shows up there and fails the test.
+              logger = ShorebirdLogger();
+              return IOOverrides.runZoned(
+                () => runWithOverrides(
+                  () => commandRunner.run(['reserves-stdout']),
+                ),
+                stderr: () => helpers.CapturingStdout(
+                  baseStdOut: realStderr,
+                  captured: stderrLines,
+                ),
+              );
+            },
             captured: stdoutLines,
           );
 
@@ -956,20 +960,22 @@ Engine • revision unknown (Flutter not installed yet)'''),
         final stdoutLines = <String>[];
         final stderrLines = <String>[];
         final realStderr = stderr;
-        // A real logger, so a notice logged outside runWithStdoutOnStderr
-        // would show up on the captured stdout and fail the test.
-        logger = ShorebirdLogger();
-
         await helpers.captureStdout(
-          () => IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => commandRunner.run(['owns-stdout']),
-            ),
-            stderr: () => helpers.CapturingStdout(
-              baseStdOut: realStderr,
-              captured: stderrLines,
-            ),
-          ),
+          () {
+            // A real logger, made where stdout is captured (it keeps the
+            // stdout it was made with), so a notice logged outside
+            // runWithStdoutOnStderr shows up there and fails the test.
+            logger = ShorebirdLogger();
+            return IOOverrides.runZoned(
+              () => runWithOverrides(
+                () => commandRunner.run(['owns-stdout']),
+              ),
+              stderr: () => helpers.CapturingStdout(
+                baseStdOut: realStderr,
+                captured: stderrLines,
+              ),
+            );
+          },
           captured: stdoutLines,
         );
 
