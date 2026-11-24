@@ -18,8 +18,11 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 /// to change. Only the path goes to stdout, so `$(shorebird flutter path)`
 /// captures nothing else.
 ///
-/// It never installs or fetches anything: a Flutter that is not installed is
-/// an error naming the `shorebird flutter precache` command that installs it.
+/// Like most commands, it first installs the pinned Flutter if it is missing
+/// (see [ShorebirdCommand.usesPinnedFlutter]), with that install's output on
+/// stderr. It installs nothing else: a `--flutter-version` that is not
+/// installed is an error naming the `shorebird flutter precache` command that
+/// installs it.
 /// It does record the install as used, as a build would: the caller is about
 /// to build with it, and an install that goes unused for long enough is
 /// pruned after the next command, this one included.

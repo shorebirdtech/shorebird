@@ -277,6 +277,36 @@ void main() {
           );
         });
 
+        test('writes what the install prints to stderr when the command '
+            'reserves stdout', () async {
+          when(
+            () => shorebirdFlutter.installRevision(revision: flutterRevision),
+          ).thenAnswer((_) async => read(loggerRef).info('Reinstalling it.'));
+          commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 0));
+          final stdoutLines = <String>[];
+          final stderrLines = <String>[];
+          final realStderr = stderr;
+          // A real logger, so a line printed outside runWithStdoutOnStderr
+          // would show up on the captured stdout and fail the test.
+          logger = ShorebirdLogger();
+
+          await helpers.captureStdout(
+            () => IOOverrides.runZoned(
+              () => runWithOverrides(
+                () => commandRunner.run(['reserves-stdout']),
+              ),
+              stderr: () => helpers.CapturingStdout(
+                baseStdOut: realStderr,
+                captured: stderrLines,
+              ),
+            ),
+            captured: stdoutLines,
+          );
+
+          expect(stdoutLines, isEmpty);
+          expect(stderrLines, contains('Reinstalling it.'));
+        });
+
         test('exits with a software error when the install fails', () async {
           when(
             () => shorebirdFlutter.installRevision(revision: flutterRevision),
