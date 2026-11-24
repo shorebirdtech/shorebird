@@ -191,9 +191,10 @@ jobs:
       # `shorebird flutter precache` installs that Flutter if it isn't yet
       # (`shorebird flutter path` only reports it missing): a release commit
       # (stable) runs the prebuilt CLI, which never installs it, and
-      # `shorebird --version` doesn't use it (run 45297183375). No upstream Flutter or Dart is set up: the app is
-      # created with Shorebird's Flutter of the leg's version too
-      # (scripts/patch_e2e.dart), so CI only ever runs ours.
+      # `shorebird --version` doesn't use it (run 45297183375). No upstream
+      # Flutter or Dart is set up: the app is created with Shorebird's
+      # Flutter of the leg's version too (scripts/patch_e2e.dart), so CI only
+      # ever runs ours.
       - name: 🎯 Use Shorebird's Dart
         run: |
           shorebird flutter precache

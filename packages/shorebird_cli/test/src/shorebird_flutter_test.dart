@@ -983,6 +983,73 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
       });
     });
 
+    group('resolveInstalledFlutterRevision', () {
+      Future<String?> resolve(String versionOrHash) => runWithOverrides(
+        () => shorebirdFlutter.resolveInstalledFlutterRevision(versionOrHash),
+      );
+
+      void verifyNoDownload() {
+        verifyNever(() => git.fetch(directory: any(named: 'directory')));
+        verifyNever(
+          () => git.clone(
+            url: any(named: 'url'),
+            outputDirectory: any(named: 'outputDirectory'),
+            args: any(named: 'args'),
+          ),
+        );
+      }
+
+      String lookupDirectory() =>
+          verify(
+                () => git.revParse(
+                  revision: 'refs/remotes/origin/flutter_release/3.10.6',
+                  directory: captureAny(named: 'directory'),
+                ),
+              ).captured.single
+              as String;
+
+      test('resolves in the pinned checkout when it is installed', () async {
+        File(
+          p.join(shorebirdRoot.path, flutterRevision, 'bin', 'flutter'),
+        ).createSync(recursive: true);
+        expect(await resolve('3.10.6'), equals(flutterRevision));
+        expect(
+          lookupDirectory(),
+          equals(p.join(shorebirdRoot.path, flutterRevision)),
+        );
+        verifyNoDownload();
+      });
+
+      group('when the pinned Flutter is not installed', () {
+        test('resolves in the refs repository without fetching', () async {
+          // Even when the refs repository lacks the pinned commit, which
+          // resolveFlutterRevision would fetch.
+          when(
+            () => git.revParse(
+              revision: '$flutterRevision^{commit}',
+              directory: refsDirectory.path,
+            ),
+          ).thenThrow(const ProcessException('git', ['rev-parse']));
+          expect(await resolve('3.10.6'), equals(flutterRevision));
+          expect(lookupDirectory(), equals(refsDirectory.path));
+          verifyNoDownload();
+        });
+
+        test('returns null without cloning when the refs repository is '
+            'missing', () async {
+          refsDirectory.deleteSync();
+          expect(await resolve('3.10.6'), isNull);
+          verifyNever(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          );
+          verifyNoDownload();
+        });
+      });
+    });
+
     group('getRevisionForVersion', () {
       const version = '3.16.3';
       const exception = ProcessException('git', ['rev-parse']);

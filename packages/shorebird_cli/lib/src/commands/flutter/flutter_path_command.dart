@@ -111,12 +111,12 @@ Defaults to the version this Shorebird uses when building with
     if (isPinned) {
       revision = shorebirdEnv.flutterRevision;
     } else {
-      // Resolved from the refs already on disk, without fetching: precache
-      // fetched them when it installed this version, so a version missing
-      // from them is not installed.
+      // Resolved from the refs already on disk, without cloning or fetching:
+      // precache left them there when it installed this version, so a
+      // version missing from them is not installed.
       String? resolved;
       try {
-        resolved = await shorebirdFlutter.resolveFlutterRevision(
+        resolved = await shorebirdFlutter.resolveInstalledFlutterRevision(
           versionOrHash,
         );
       } on Exception catch (error) {
