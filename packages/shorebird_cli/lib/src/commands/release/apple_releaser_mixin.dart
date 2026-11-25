@@ -1,8 +1,10 @@
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/commands/build_preconditions.dart';
+import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// Shared logic for Apple-platform releasers (iOS, macOS, iOS framework).
@@ -13,6 +15,11 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 mixin AppleReleaserMixin on Releaser {
   /// The doctor validators that should run before this Apple release.
   List<Validator> get applePlatformValidators;
+
+  @override
+  Map<Arch, String> get debugInfoFileNames => const {
+    Arch.arm64: ApplePatcherMixin.splitDebugInfoFileName,
+  };
 
   @override
   Future<void> assertPreconditions() => assertBuildPreconditions(

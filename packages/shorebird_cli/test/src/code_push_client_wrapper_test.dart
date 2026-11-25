@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -209,6 +210,7 @@ void main() {
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          symbolExtractorRef,
         },
       );
     }
@@ -219,6 +221,8 @@ void main() {
         const SetPatchRolloutPercentageRequest(rolloutPercentage: 100),
       );
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(SymbolsFormat.sbsymbols);
+      registerFallbackValue(SymbolsCompression.gzip);
       registerFallbackValue(
         const ArtifactSigningRequest(mode: ReleaseSigningMode.unsigned),
       );
@@ -3873,6 +3877,159 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         );
 
         expect(systemTemp.listSync(), isEmpty);
+      });
+    });
+
+    group('symbols', () {
+      const patchId = 9;
+      const arch = 'aarch64';
+
+      late File symbols;
+      late String? uploadedPath;
+      late List<int>? uploadedBytes;
+
+      /// Records what reached the upload, which runs before the compressed
+      /// copy is deleted.
+      Future<void> record(Invocation invocation) async {
+        uploadedPath = invocation.namedArguments[#symbolsPath] as String;
+        uploadedBytes = File(uploadedPath!).readAsBytesSync();
+      }
+
+      setUp(() {
+        uploadedPath = null;
+        uploadedBytes = null;
+        symbols = File(p.join(projectRoot.path, 'app.sbsymbols'))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(List<int>.filled(64, 3));
+      });
+
+      group('createReleaseSymbols', () {
+        void stubCreateReleaseSymbols({Object? error}) {
+          final stub = when(
+            () => codePushClient.createReleaseSymbols(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              arch: any(named: 'arch'),
+              format: any(named: 'format'),
+              compression: any(named: 'compression'),
+              symbolsPath: any(named: 'symbolsPath'),
+            ),
+          );
+          if (error == null) {
+            stub.thenAnswer(record);
+          } else {
+            stub.thenThrow(error);
+          }
+        }
+
+        Future<void> createSymbols() => runWithOverrides(
+          () => codePushClientWrapper.createReleaseSymbols(
+            appId: app.appId,
+            releaseId: releaseId,
+            platform: ReleasePlatform.android,
+            arch: arch,
+            format: SymbolsFormat.sbsymbols,
+            symbols: symbols,
+          ),
+        );
+
+        test('uploads the symbols gzipped', () async {
+          stubCreateReleaseSymbols();
+
+          await createSymbols();
+
+          verify(
+            () => codePushClient.createReleaseSymbols(
+              appId: app.appId,
+              releaseId: releaseId,
+              platform: ReleasePlatform.android,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: any(named: 'symbolsPath'),
+            ),
+          ).called(1);
+          expect(
+            gzip.decode(uploadedBytes!),
+            equals(symbols.readAsBytesSync()),
+          );
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('deletes the compressed copy it made', () async {
+          stubCreateReleaseSymbols();
+
+          await createSymbols();
+
+          expect(File(uploadedPath!).existsSync(), isFalse);
+        });
+
+        group('when the upload fails', () {
+          setUp(() {
+            stubCreateReleaseSymbols(
+              error: Exception('no crash reporting on this plan'),
+            );
+          });
+
+          test('says it was skipped and carries on', () async {
+            await expectLater(createSymbols(), completes);
+
+            verify(
+              () => progress.complete(
+                'Skipped $arch sbsymbols for release $releaseId',
+              ),
+            ).called(1);
+            verify(
+              () => logger.detail(
+                any(that: contains('no crash reporting on this plan')),
+              ),
+            ).called(1);
+          });
+        });
+      });
+
+      group('createPatchSymbols', () {
+        test('uploads the symbols gzipped', () async {
+          when(
+            () => codePushClient.createPatchSymbols(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              platform: any(named: 'platform'),
+              arch: any(named: 'arch'),
+              format: any(named: 'format'),
+              compression: any(named: 'compression'),
+              symbolsPath: any(named: 'symbolsPath'),
+            ),
+          ).thenAnswer(record);
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createPatchSymbols(
+              appId: app.appId,
+              patchId: patchId,
+              platform: ReleasePlatform.ios,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              symbols: symbols,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createPatchSymbols(
+              appId: app.appId,
+              patchId: patchId,
+              platform: ReleasePlatform.ios,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: any(named: 'symbolsPath'),
+            ),
+          ).called(1);
+          expect(
+            gzip.decode(uploadedBytes!),
+            equals(symbols.readAsBytesSync()),
+          );
+        });
       });
     });
 

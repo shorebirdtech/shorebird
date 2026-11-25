@@ -1,7 +1,7 @@
 $schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
 version: "0.2"
 ignorePaths:
-  ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures", "RELEASE_NOTES.md"]
+  [".dart_tool", "coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures", "RELEASE_NOTES.md"]
 words:
   - aabs
   - aapt
@@ -12,12 +12,15 @@ words:
   - allprojects # From gradle files
   - altool
   - ANDROIDD
+  - androideabi # Tail of the Rust target triple armv7-linux-androideabi
   - Apks
   - appbundle
   - appcircle # Appcircle CI platform
   - appex # Apple app extension bundle
   - archs
   - armeabi
+  - armv # Android ABI prefix, as in armv7 and armv8
+  - artipacked # zizmor audit name for a checkout that keeps its token
   - Azul
   - backboardd
   - backpressure
@@ -28,8 +31,10 @@ words:
   - bryanoltman
   - bundletool
   - Dalvik # Android Dalvik VM / DEX file format
+  - calloc
   - canvaskit
   - carryforward
+  - cbindgen # Generates a C header from Rust
   - ccache
   - cipd
   - codegen
@@ -41,6 +46,7 @@ words:
   - deflavored
   - develocity
   - devicectl
+  - dists # Gradle wrapper's download directory
   - DLRT # Prefix on the Dart VM's runtime entry points, as in DLRT_ExitSafepoint
   - dorny # From .github dir, doesn't show up in "**" check?
   - dyld
@@ -58,6 +64,7 @@ words:
   - fvmrc # fvm's per-project config file
   - genhtml
   - genkey # From .github/workflows/e2e.yaml
+  - GLES # OpenGL ES
   - gradlew
   - hotreload
   - idevicesyslog
@@ -67,6 +74,7 @@ words:
   - iphoneos
   - isatty
   - ITMS # App Store Connect error code prefix, e.g. ITMS-90473
+  - jemalloc
   - keyalg # From .github/workflows/e2e.yaml
   - keypass # From .github/workflows/e2e.yaml
   - keysize # From .github/workflows/e2e.yaml
@@ -74,10 +82,12 @@ words:
   - lerping
   - libapp
   - libapps
+  - libc
   - libflutter
   - libimobiledevice
   - libimobiledeviceglue
   - libplist
+  - libstdc # libstdc++-12-dev, an apt package
   - libusbmuxd
   - lldb
   - LOCALAPPDATA
@@ -103,6 +113,7 @@ words:
   - nonobvious # From analysis_options.yaml
   - noprofile # bash --noprofile
   - norc # bash --norc
+  - nscloud # Namespace (namespace.so) runner label prefix
   - nserror
   - OCSF # Open Cybersecurity Schema Framework, the audit log format
   - Oltman
@@ -134,17 +145,25 @@ words:
   - readlink
   - reimplementation
   - reinit
+  - repr # Rust layout attribute, as in #[repr(C)]
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - reqwest # Rust HTTP client crate
   - resends # "server resends the same patch on rollforward"
+  - respin # A re-cut Flutter release, in the e2e gate's inputs
   - reusables
+  - rhysd # rhysd/actionlint, the workflow linter
   - rollforward # POST /.../patches/<id>/rollforward — un-rolls-back a patch
   - rollouts # percentage rollouts of a patch on its track
+  - SBSY # magic of Shorebird's own symbol index format
+  - sbsymbols # the SBSY v1 symbol index a release uploads
   - spawnee
   - Retryable
   - RSAPKCS
+  - rustup
   - Safepoint # Dart VM thread state, as in DLRT_ExitSafepoint
   - sdcard # From .github/workflows/e2e.yaml
   - sgit # From .github/license_check/action.yaml
+  - shellcheck
   - shorebirdtech
   - sideload
   - sideloadable
@@ -155,7 +174,10 @@ words:
   - storepass # From .github/workflows/e2e.yaml
   - storyboardc
   - subpackages
+  - symbolicate
+  - symbolicated
   - symbolication
+  - symbolicator
   - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
@@ -209,3 +231,4 @@ words:
   - xlink
   - zizmor # GitHub Actions linter (docs.zizmor.sh)
   - zizmorcore # zizmor's GitHub org
+  - zstd

@@ -843,10 +843,36 @@ class ShorebirdFlutter {
   ///
   /// Returns the full hash if valid, or null if it's neither a valid semver
   /// version nor a valid git hash that exists locally.
-  Future<String?> resolveFlutterRevision(String versionOrHash) async {
+  Future<String?> resolveFlutterRevision(String versionOrHash) =>
+      _resolveFlutterRevision(versionOrHash, _gitDirectory);
+
+  /// Like [resolveFlutterRevision], but reads only a git directory already on
+  /// disk (the pinned checkout, else the refs repository) and never clones or
+  /// fetches one, for a command that reports what is installed without
+  /// downloading. Returns null when neither is on disk.
+  ///
+  /// `shorebird flutter precache` leaves the refs it resolved in one of them,
+  /// so a version it installed resolves here.
+  Future<String?> resolveInstalledFlutterRevision(String versionOrHash) async {
+    final String directory;
+    final pinned = shorebirdEnv.flutterRevision;
+    if (isInstalled(revision: pinned)) {
+      directory = _workingDirectory(revision: pinned);
+    } else if (shorebirdEnv.flutterRefsDirectory.existsSync()) {
+      directory = shorebirdEnv.flutterRefsDirectory.path;
+    } else {
+      return null;
+    }
+    return _resolveFlutterRevision(versionOrHash, () async => directory);
+  }
+
+  Future<String?> _resolveFlutterRevision(
+    String versionOrHash,
+    Future<String> Function() gitDirectory,
+  ) async {
     final parsedVersion = tryParseVersion(versionOrHash);
     if (parsedVersion != null) {
-      return getRevisionForVersion(versionOrHash);
+      return _getRevisionForVersion(versionOrHash, gitDirectory);
     }
 
     // If we were unable to parse the version, check if it's a valid git hash.
@@ -858,7 +884,7 @@ class ShorebirdFlutter {
     try {
       final fullHash = await git.revParse(
         revision: versionOrHash,
-        directory: await _gitDirectory(),
+        directory: await gitDirectory(),
       );
       return fullHash;
     } on ProcessException {
@@ -929,11 +955,17 @@ class ShorebirdFlutter {
 
   /// Returns the git revision for the provided [version].
   /// e.g. 3.16.3 -> b9b23902966504a9778f4c07e3a3487fa84dcb2a
-  Future<String?> getRevisionForVersion(String version) async {
+  Future<String?> getRevisionForVersion(String version) =>
+      _getRevisionForVersion(version, _gitDirectory);
+
+  Future<String?> _getRevisionForVersion(
+    String version,
+    Future<String> Function() gitDirectory,
+  ) async {
     try {
       final result = await git.revParse(
         revision: 'refs/remotes/origin/flutter_release/$version',
-        directory: await _gitDirectory(),
+        directory: await gitDirectory(),
       );
       return LineSplitter.split(result).toList().firstOrNull;
     } on ProcessException {

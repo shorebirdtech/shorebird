@@ -117,6 +117,33 @@ Future<Process> startHoldSlot(Directory cacheDir, int count) async {
   return process;
 }
 
+/// Starts a process that queues for one of [count] slots under [cacheDir]
+/// with at most [descriptors] open files, printing `retry` per try. Killed
+/// after the test.
+///
+/// `ulimit` is a shell builtin, so a shell sets the limit and `exec`s the VM
+/// in its own place, which leaves [Process.kill] pointed at the VM.
+Future<Process> startHoldSlotUnderDescriptorLimit(
+  Directory cacheDir,
+  int count, {
+  required int descriptors,
+}) async {
+  final fixture = await _compileFixture('hold_slot.dart');
+  final process = await Process.start('/bin/sh', [
+    '-c',
+    r'ulimit -n "$1" && shift && exec "$@"',
+    'sh',
+    '$descriptors',
+    Platform.resolvedExecutable,
+    fixture,
+    cacheDir.path,
+    '$count',
+    'trace-retries',
+  ]);
+  addTearDown(process.kill);
+  return process;
+}
+
 /// A process holding one of [count] slots under [cacheDir], started and
 /// holding by the time this completes. Killed after the test.
 Future<Process> holdSlot(Directory cacheDir, int count) async {

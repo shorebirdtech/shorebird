@@ -171,7 +171,8 @@ void main() {
         matches(
           RegExp(
             r'run: npx --yes cspell@\d+\.\d+\.\d+ '
-            r'--config \.cspell\.json --no-progress "\*\*"\n',
+            r'--config \.cspell\.json --no-progress '
+            r'--dot --exclude "\.git/\*\*" "\*\*"\n',
           ),
         ),
       );
@@ -644,7 +645,8 @@ void main() {
         matches(
           RegExp(
             r'run: npx --yes cspell@\d+\.\d+\.\d+ '
-            r'--config \.cspell\.json --no-progress "\*\*"\n',
+            r'--config \.cspell\.json --no-progress '
+            r'--dot --exclude "\.git/\*\*" "\*\*"\n',
           ),
         ),
       );

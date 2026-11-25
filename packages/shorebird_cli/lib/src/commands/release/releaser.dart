@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -13,13 +14,15 @@ import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/split_debug_info.dart';
+import 'package:shorebird_cli/src/symbols/sbsymbols.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -439,6 +442,71 @@ abstract class Releaser {
     }
   }
 
+  /// Whether the app has opted in to Crash Reporting, set by `shorebird
+  /// release` from `getApp` before building. Symbol index extraction and
+  /// upload both sit behind this gate.
+  bool crashReportingEnabled = false;
+
+  /// Where this release's build writes its Dart symbols: the
+  /// `--split-debug-info` directory the user passed, or the default
+  /// Shorebird adds for an obfuscated release. Null when the build writes
+  /// none.
+  ///
+  /// Read back off the arguments [runReleaseBuild] builds rather than from
+  /// the user's argument alone, so it answers with the directory the build
+  /// was actually given.
+  String? get splitDebugInfoPath {
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    return splitDebugInfoDirectory(buildArgs);
+  }
+
+  /// The name the build gives each architecture's debug info in
+  /// [splitDebugInfoPath]. Empty for a release type that does not upload
+  /// symbol indexes.
+  Map<Arch, String> get debugInfoFileNames => const {};
+
+  /// The architectures this release's build produced, so [debugInfoFiles]
+  /// ignores symbol files an earlier build left for architectures this build
+  /// skipped.
+  Set<Arch> get builtArchitectures => debugInfoFileNames.keys.toSet();
+
+  /// The debug info this release's build left behind, by architecture.
+  ///
+  /// Only the architectures in [builtArchitectures] whose file exists: an
+  /// architecture the build skipped, and a build that was given no
+  /// `--split-debug-info`, leave nothing here.
+  Map<Arch, File> get debugInfoFiles {
+    final directory = splitDebugInfoPath;
+    if (directory == null) return const {};
+    final files = <Arch, File>{};
+    for (final arch in builtArchitectures) {
+      final name = debugInfoFileNames[arch];
+      if (name == null) continue;
+      final file = File(p.join(projectRoot.path, directory, name));
+      if (file.existsSync()) files[arch] = file;
+    }
+    return files;
+  }
+
+  /// Where the SBSY v1 index extracted from [debugInfo] is written: beside
+  /// it, under the same name.
+  ///
+  /// Outside the supplement directory on purpose. The supplement is zipped
+  /// into a release artifact that every patch build of this release
+  /// downloads, and a symbol index is read by crash symbolication alone.
+  static File _symbolIndexFile(File debugInfo) =>
+      File(p.setExtension(debugInfo.path, '.sbsymbols'));
+
+  /// The indexes [extractSymbolIndexes] wrote, by architecture.
+  ///
+  /// Carried rather than read back off disk, because a release and the
+  /// patches built against it share one `--split-debug-info` directory and
+  /// so name their indexes the same file. A release that extracts none of its
+  /// own would otherwise upload a patch's index as its own and name every
+  /// frame after the patch's code.
+  Map<Arch, File> _symbolIndexes = const {};
+
   /// Platform subdirectory for the supplement directory (e.g. 'android',
   /// 'ios'). Used to construct `build/<platformSubdir>/shorebird/`.
   String get supplementPlatformSubdir;
@@ -496,7 +564,35 @@ abstract class Releaser {
       json.encode(BuildFlags.fromArgs(argResults, target: target).toJson()),
     );
 
+    extractSymbolIndexes();
+
     return supplementDir;
+  }
+
+  /// Extracts a SBSY v1 index from each architecture's debug info when
+  /// [crashReportingEnabled] is true, so a crash report's program counter
+  /// offsets can be named without reading or uploading raw DWARF.
+  @visibleForTesting
+  void extractSymbolIndexes() {
+    if (!crashReportingEnabled) {
+      _symbolIndexes = const {};
+      return;
+    }
+    final indexes = <Arch, File>{};
+    for (final MapEntry(key: arch, value: debugInfo)
+        in debugInfoFiles.entries) {
+      final index = symbolExtractor.writeIndex(
+        debugInfo: debugInfo,
+        output: _symbolIndexFile(debugInfo),
+        image: SymbolImage.release,
+      );
+      if (index == null) {
+        logger.detail('No symbol index extracted from ${debugInfo.path}');
+        continue;
+      }
+      indexes[arch] = index;
+    }
+    _symbolIndexes = indexes;
   }
 
   /// Uploads the supplement artifact (e.g. obfuscation map) if one was
@@ -520,6 +616,30 @@ abstract class Releaser {
         supplementDirectoryPath: supplementDir.path,
         arch: supplementArtifactArch,
         signing: signing,
+      );
+    }
+  }
+
+  /// Uploads each architecture's SBSY v1 symbol index when
+  /// [crashReportingEnabled] is true, which crash symbolication reads to name
+  /// a crash report's frames.
+  ///
+  /// Only the indexes [extractSymbolIndexes] wrote go up, so this runs after
+  /// [uploadSupplementArtifact], which is what assembles the supplement and
+  /// extracts them.
+  Future<void> uploadSymbolArtifacts({
+    required String appId,
+    required int releaseId,
+  }) async {
+    if (!crashReportingEnabled) return;
+    for (final MapEntry(key: arch, value: index) in _symbolIndexes.entries) {
+      await codePushClientWrapper.createReleaseSymbols(
+        appId: appId,
+        releaseId: releaseId,
+        platform: releaseType.releasePlatform,
+        arch: arch.arch,
+        format: SymbolsFormat.sbsymbols,
+        symbols: index,
       );
     }
   }

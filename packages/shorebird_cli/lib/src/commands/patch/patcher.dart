@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -23,6 +24,8 @@ import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/split_debug_info.dart';
+import 'package:shorebird_cli/src/symbols/sbsymbols.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -435,6 +438,11 @@ More info: ${linkPercentageUrl.toLink()}.
     return value == null ? null : int.tryParse(value);
   }
 
+  /// Whether the app has opted in to Crash Reporting, set by `shorebird patch`
+  /// from `getApp` before building. Symbol index extraction and upload both
+  /// sit behind this gate.
+  bool crashReportingEnabled = false;
+
   /// Where the patch's Dart symbols go: the `--split-debug-info` directory the
   /// user passed, or the default added to [extraBuildArgs] for an obfuscated
   /// patch.
@@ -444,6 +452,66 @@ More info: ${linkPercentageUrl.toLink()}.
           argParser: argParser,
         ) ??
         splitDebugInfoDirectory(extraBuildArgs);
+  }
+
+  /// The name gen_snapshot or Flutter gives each architecture's debug info in
+  /// [splitDebugInfoPath]. Empty for a patcher that does not upload symbol
+  /// indexes.
+  Map<Arch, String> get debugInfoFileNames => const {};
+
+  /// The debug info this patch's build left behind for [architectures].
+  ///
+  /// Only the files in [architectures] that exist: an architecture the build
+  /// skipped, and a build that was given no `--split-debug-info`, leave
+  /// nothing here even when an earlier build wrote to the shared directory.
+  Map<Arch, File> debugInfoFiles({required Iterable<Arch> architectures}) {
+    final directory = splitDebugInfoPath;
+    if (directory == null) return const {};
+    final files = <Arch, File>{};
+    for (final arch in architectures) {
+      final name = debugInfoFileNames[arch];
+      if (name == null) continue;
+      final file = File(p.join(projectRoot.path, directory, name));
+      if (file.existsSync()) files[arch] = file;
+    }
+    return files;
+  }
+
+  /// Extracts each built architecture's SBSY v1 index and uploads it for
+  /// [patchId] when [crashReportingEnabled] is true.
+  ///
+  /// `shorebird patch` calls this once the patch is published, passing the
+  /// [architectures] whose patch bundles this build produced. A patch runs
+  /// code the release's own index does not cover, so a crash in it is named
+  /// from the index built here. The linker's own output rides along in the
+  /// patch metadata rather than here.
+  Future<void> uploadSymbolArtifacts({
+    required String appId,
+    required int patchId,
+    required Iterable<Arch> architectures,
+  }) async {
+    if (!crashReportingEnabled) return;
+    for (final MapEntry(key: arch, value: debugInfo) in debugInfoFiles(
+      architectures: architectures,
+    ).entries) {
+      final index = symbolExtractor.writeIndex(
+        debugInfo: debugInfo,
+        output: File(p.setExtension(debugInfo.path, '.sbsymbols')),
+        image: SymbolImage.vmcode,
+      );
+      if (index != null) {
+        await codePushClientWrapper.createPatchSymbols(
+          appId: appId,
+          patchId: patchId,
+          platform: releaseType.releasePlatform,
+          arch: arch.arch,
+          format: SymbolsFormat.sbsymbols,
+          symbols: index,
+        );
+      } else {
+        logger.detail('No symbol index extracted from ${debugInfo.path}');
+      }
+    }
   }
 
   /// The path to the output file for the debug info.

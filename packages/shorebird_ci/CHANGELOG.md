@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# Unreleased
+
+- The generated `cspell` job checks dot directories, with `--dot --exclude ".git/**"`. A bare `"**"` skips every dot directory, so `.github/` and `.vscode/` went unchecked and typos in workflows and editor settings never failed a run. `.git/` stays excluded because its hooks and object text are machine-written and no word list closes them. A repository's first run on the new pin reports the words its dot directories need, which it adds to its own cspell config.
+
 # 0.3.4
 
 - Generated workflows get a `zizmor` job that lints every workflow in `.github/workflows/` with [zizmor](https://docs.zizmor.sh/) 1.33.1, and the `required` aggregator depends on it. The job downloads zizmor's own release and checks its SHA-256 rather than running a third-party action, and runs `--offline` with a read-only token that checkout doesn't keep and no secrets. `generate` runs the same zizmor after writing and prints its findings, so a repository's first run isn't a surprise red; `--no-zizmor` skips that run. Findings are accepted in `.github/zizmor.yml` or with `# zizmor: ignore[...]` comments. (#4530)

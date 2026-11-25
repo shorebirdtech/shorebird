@@ -212,6 +212,12 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(
+        () => releaser.uploadSymbolArtifacts(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
         () => releaser.postReleaseInstructions,
       ).thenReturn(postReleaseInstructions);
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
@@ -433,6 +439,7 @@ void main() {
           releasePlatform: ReleasePlatform.android,
         ),
         () => codePushClientWrapper.getApp(appId: appId),
+        () => releaser.crashReportingEnabled = false,
         () => logger.info(
           'Building $artifactDisplayName with Flutter $flutterRevision',
         ),
@@ -453,6 +460,46 @@ void main() {
           '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platforms=android --release-version=${release.version}')}''',
         ),
       ]);
+      verifyNever(
+        () => releaser.uploadSymbolArtifacts(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      );
+    });
+
+    group('when crash reporting is enabled on the app', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+        ).thenAnswer(
+          (_) async => AppMetadata(
+            appId: appId,
+            displayName: appDisplayName,
+            crashReportingEnabled: true,
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          ),
+        );
+      });
+
+      test('enables symbol extraction and uploads symbol artifacts', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verifyInOrder([
+          () => codePushClientWrapper.getApp(appId: appId),
+          () => releaser.crashReportingEnabled = true,
+          () => releaser.uploadSupplementArtifact(
+            appId: appId,
+            releaseId: release.id,
+          ),
+          () => releaser.uploadSymbolArtifacts(
+            appId: appId,
+            releaseId: release.id,
+          ),
+        ]);
+      });
     });
 
     group('when the release version has no version name', () {

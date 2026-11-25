@@ -28,8 +28,21 @@ class AndroidReleaser extends Releaser {
     required super.target,
   });
 
+  /// The architectures the built app bundle actually produced, once
+  /// [uploadReleaseArtifacts] has inspected it.
+  Set<Arch>? _uploadedArchitectures;
+
   @override
   ReleaseType get releaseType => ReleaseType.android;
+
+  @override
+  Map<Arch, String> get debugInfoFileNames => {
+    for (final arch in AndroidArch.availableAndroidArchs)
+      arch: 'app.${arch.targetPlatformCliArg}.symbols',
+  };
+
+  @override
+  Set<Arch> get builtArchitectures => _uploadedArchitectures ?? architectures;
 
   @override
   String get supplementPlatformSubdir => 'android';
@@ -76,6 +89,7 @@ class AndroidReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    _uploadedArchitectures = null;
     // The APK is built after the obfuscation map check, with the same
     // arguments as the AAB.
     final (aab, buildArgs, base64PublicKey) = await runReleaseBuild(
@@ -162,16 +176,17 @@ class AndroidReleaser extends Releaser {
       project: projectRoot,
       flavor: flavor,
     );
-    await codePushClientWrapper.createAndroidReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      projectRoot: projectRoot.path,
-      aabPath: aabFile.path,
-      platform: releaseType.releasePlatform,
-      architectures: architectures,
-      flavor: flavor,
-      signing: signing,
-    );
+    _uploadedArchitectures = await codePushClientWrapper
+        .createAndroidReleaseArtifacts(
+          appId: appId,
+          releaseId: release.id,
+          projectRoot: projectRoot.path,
+          aabPath: aabFile.path,
+          platform: releaseType.releasePlatform,
+          architectures: architectures,
+          flavor: flavor,
+          signing: signing,
+        );
   }
 
   @override

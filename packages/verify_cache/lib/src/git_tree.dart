@@ -1,3 +1,4 @@
+// cspell:words pathspec
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -55,13 +56,30 @@ class GitTree {
   /// [paths] are relative to [root]. `.` is [tree] itself, and a path [tree]
   /// does not hold is `absent`, so creating it changes the result.
   Future<Map<String, String>?> hashesIn(String tree, List<String> paths) async {
-    final named = [
+    final named = {
       for (final path in paths)
         if (p.normalize(path) != '.') p.normalize(path),
-    ];
+    };
+    // git expands a directory pathspec into its children when a pathspec in
+    // the same call names a path inside it, and the directory is then left
+    // with no entry of its own. It does that whether or not the inside path
+    // exists, so asking again for what came back empty never converges. One
+    // call per nesting depth puts no directory in with a path inside it, and
+    // keeps `absent` to what the tree does not hold.
+    final byDepth = <int, List<String>>{};
+    for (final path in named) {
+      final depth = named.where((other) => p.isWithin(other, path)).length;
+      (byDepth[depth] ??= []).add(path);
+    }
     final found = <String, String>{};
-    if (named.isNotEmpty) {
-      final listing = await _git(['ls-tree', '-z', tree, '--', ...named]);
+    for (final depth in byDepth.keys.toList()..sort()) {
+      final listing = await _git([
+        'ls-tree',
+        '-z',
+        tree,
+        '--',
+        ...byDepth[depth]!,
+      ]);
       if (listing == null) return null;
       for (final entry in listing.split('\x00')) {
         if (entry.isEmpty) continue;

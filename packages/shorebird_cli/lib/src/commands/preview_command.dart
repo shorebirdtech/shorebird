@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -693,18 +694,25 @@ This is only applicable when previewing Android releases.''',
       ),
     );
 
-    if (!aabFile.existsSync()) {
+    if (!aabFile.existsSync() || aabFile.lengthSync() == 0) {
+      aabFile.parent.createSync(recursive: true);
+      final stagingDirectory = aabFile.parent.createTempSync(
+        Cache.releaseArtifactDownloadPrefix,
+      );
       try {
-        aabFile.createSync(recursive: true);
+        final stagedAab = File(
+          p.join(stagingDirectory.path, p.basename(aabFile.path)),
+        )..createSync();
         await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseAabArtifact.url),
           message: 'Downloading ${releaseAabArtifact.arch}',
-          outputPath: aabFile.path,
+          outputPath: stagedAab.path,
         );
+        stagedAab.renameSync(aabFile.path);
       } on Exception catch (error) {
-        // Remove the partial file so the next run does not treat it as cached.
-        if (aabFile.existsSync()) aabFile.deleteSync();
         reportDownloadFailure(releaseAabArtifact, error);
+      } finally {
+        stagingDirectory.deleteTemporarySync();
       }
     }
 
@@ -1204,38 +1212,56 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
   }
 
   /// Downloads the zipped [artifact] and extracts it into [outputDirectory]
-  /// (with [extract], defaulting to [ArtifactManager.extractZip]) unless the
-  /// directory already exists.
+  /// with [extract] or [ArtifactManager.extractZip] unless a non-empty
+  /// directory already exists there.
   ///
-  /// Removes [outputDirectory] if the download or extraction fails so the
-  /// next run does not treat the partial download as a cached artifact.
-  /// Throws [ProcessExit] on failure.
+  /// Stages the download and extraction in a sibling temporary directory under
+  /// [outputDirectory]'s parent so an interrupted run never leaves a partial
+  /// directory at the cached path, and so the final rename stays on the target
+  /// filesystem. Throws [ProcessExit] on failure.
   @visibleForTesting
   Future<void> downloadAndExtractIfNeeded({
     required ReleaseArtifact artifact,
     required Directory outputDirectory,
     Future<void> Function(File archive, Directory outputDirectory)? extract,
   }) async {
-    if (outputDirectory.existsSync()) return;
+    if (outputDirectory.existsSync() && outputDirectory.listSync().isNotEmpty) {
+      return;
+    }
+    outputDirectory.parent.createSync(recursive: true);
+    final stagingDirectory = outputDirectory.parent.createTempSync(
+      Cache.releaseArtifactDownloadPrefix,
+    );
     try {
-      outputDirectory.createSync(recursive: true);
+      final stagedArchive = File(
+        p.join(stagingDirectory.path, '${artifact.id}.zip'),
+      );
+      final stagedOutputDirectory = Directory(
+        p.join(stagingDirectory.path, p.basename(outputDirectory.path)),
+      )..createSync();
       final archiveFile = await artifactManager.downloadWithProgressUpdates(
         Uri.parse(artifact.url),
         message: 'Downloading ${artifact.arch}',
+        outputPath: stagedArchive.path,
       );
       if (extract != null) {
-        await extract(archiveFile, outputDirectory);
+        await extract(archiveFile, stagedOutputDirectory);
       } else {
         await artifactManager.extractZip(
           zipFile: archiveFile,
-          outputDirectory: outputDirectory,
+          outputDirectory: stagedOutputDirectory,
         );
       }
-    } on Exception catch (error) {
       if (outputDirectory.existsSync()) {
-        outputDirectory.deleteSync(recursive: true);
+        if (outputDirectory.listSync().isNotEmpty) return;
+        // Win32 MoveFileExW refuses to replace an existing directory.
+        outputDirectory.deleteSync();
       }
+      stagedOutputDirectory.renameSync(outputDirectory.path);
+    } on Exception catch (error) {
       reportDownloadFailure(artifact, error);
+    } finally {
+      stagingDirectory.deleteTemporarySync();
     }
   }
 

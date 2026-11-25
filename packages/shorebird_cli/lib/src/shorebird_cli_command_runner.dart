@@ -626,8 +626,16 @@ ${currentRunLogFile.absolute.path}
     if (_onlyShowsHelp(topLevelResults)) return;
     final revision = shorebirdEnv.flutterRevision;
     if (shorebirdFlutter.isInstalled(revision: revision)) return;
+    // The install's own lines (a reinstall notice, say) are not the
+    // command's output, so a command that owns stdout gets them on stderr.
+    Future<void> install() =>
+        shorebirdFlutter.installRevision(revision: revision);
     try {
-      await shorebirdFlutter.installRevision(revision: revision);
+      if (_reservesStdout(topLevelResults)) {
+        await runWithStdoutOnStderr(install);
+      } else {
+        await install();
+      }
     } on Exception {
       // installRevision has already said what failed.
       throw ProcessExit(ExitCode.software.code);

@@ -422,6 +422,7 @@ Flutter, it must equal the version of the app that embeds the module.''',
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
+    releaser.crashReportingEnabled = app.crashReportingEnabled;
     _buildRun
       ?..appId = appId
       ..buildFlags = buildHistory.buildFlags(results, target: target);
@@ -554,6 +555,7 @@ Flutter, it must equal the version of the app that embeds the module.''',
 
     final release = await _publishRelease(
       releaser: releaser,
+      app: app,
       releaseVersion: releaseVersion,
     );
     return _refreshReleaseForJson(release);
@@ -663,6 +665,7 @@ Flutter, it must equal the version of the app that embeds the module.''',
   /// artifacts, marks it active, and tells the user how to patch it.
   Future<Release> _publishRelease({
     required Releaser releaser,
+    required AppMetadata app,
     required String releaseVersion,
   }) async {
     final release = await getOrCreateRelease(
@@ -680,6 +683,12 @@ Flutter, it must equal the version of the app that embeds the module.''',
           appId: appId,
           releaseId: release.id,
         );
+        if (app.crashReportingEnabled) {
+          await releaser.uploadSymbolArtifacts(
+            appId: appId,
+            releaseId: release.id,
+          );
+        }
       },
     );
     await finalizeRelease(release: release, releaser: releaser);

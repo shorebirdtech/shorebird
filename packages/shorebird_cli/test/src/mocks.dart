@@ -40,6 +40,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -198,6 +199,8 @@ class MockShorebirdYaml extends Mock implements ShorebirdYaml {}
 class MockStdin extends Mock implements Stdin {}
 
 class MockStdout extends Mock implements Stdout {}
+
+class MockSymbolExtractor extends Mock implements SymbolExtractor {}
 
 class MockValidator extends Mock implements Validator {}
 

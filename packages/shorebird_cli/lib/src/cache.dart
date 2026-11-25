@@ -191,11 +191,12 @@ class Cache {
   static const maxCachedPreviews = 10;
 
   /// Removes cached previews (`bin/cache/previews/<app>/<artifact>`) beyond
-  /// the [maxCachedPreviews] most recently used, and any not used within
-  /// [unusedCacheMaxAge], and returns the paths removed.
+  /// the [maxCachedPreviews] most recently used, any not used within
+  /// [unusedCacheMaxAge], and stale staging directories left behind by runs
+  /// that stopped, and returns the paths removed.
   ///
-  /// A preview is every artifact sharing a name up to its extension (see
-  /// [_previewName]), so an Android release's `.aab` and the `.apks` built
+  /// A preview is every artifact sharing a name up to its extension, see
+  /// [_previewName], so an Android release's `.aab` and the `.apks` built
   /// from it count once. Also
   /// removes markers whose artifact is gone and app directories left empty.
   /// A pruned preview is downloaded again on its next run.
@@ -207,10 +208,23 @@ class Cache {
         .whereType<Directory>()
         .toList();
 
+    final downloadCutoff = clock.now().subtract(releaseArtifactDownloadMaxAge);
+    final removed = <String>[];
     final previews = <String, List<FileSystemEntity>>{};
     for (final appDirectory in appDirectories) {
       for (final artifact in appDirectory.listSync()) {
         if (artifact.path.endsWith(previewLastUsedSuffix)) continue;
+        if (p
+            .basename(artifact.path)
+            .startsWith(
+              releaseArtifactDownloadPrefix,
+            )) {
+          if (!artifact.statSync().modified.isAfter(downloadCutoff) &&
+              deleteIgnoringErrors(artifact)) {
+            removed.add(artifact.path);
+          }
+          continue;
+        }
         previews
             .putIfAbsent(_previewName(artifact.path), () => [])
             .add(artifact);
@@ -231,7 +245,6 @@ class Cache {
         (artifacts: artifacts, lastUsed: lastUsedOf(artifacts)),
     ]..sort((a, b) => b.lastUsed.compareTo(a.lastUsed));
 
-    final removed = <String>[];
     for (final (index, preview) in byRecency.indexed) {
       if (index < maxCachedPreviews && !isUnusedSince(preview.lastUsed)) {
         continue;

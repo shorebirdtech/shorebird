@@ -35,6 +35,8 @@ export 'package:shorebird_code_push_protocol/src/messages/create_service_account
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_key/create_service_account_key_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_key/create_service_account_key_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/create_service_account_trust_rule/create_service_account_trust_rule_request.dart';
+export 'package:shorebird_code_push_protocol/src/messages/create_symbols_request.dart';
+export 'package:shorebird_code_push_protocol/src/messages/create_symbols_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/delete_user_in_progress_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/error_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_active_hours/get_active_hours_response.dart';
@@ -199,6 +201,8 @@ export 'package:shorebird_code_push_protocol/src/models/service_account_role.dar
 export 'package:shorebird_code_push_protocol/src/models/service_account_trust_rule.dart';
 export 'package:shorebird_code_push_protocol/src/models/sign_in_method.dart';
 export 'package:shorebird_code_push_protocol/src/models/signing_key.dart';
+export 'package:shorebird_code_push_protocol/src/models/symbols_compression.dart';
+export 'package:shorebird_code_push_protocol/src/models/symbols_format.dart';
 export 'package:shorebird_code_push_protocol/src/models/trust_rule_provider.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_breakdown_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_current_window.dart';

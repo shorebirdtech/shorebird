@@ -17,6 +17,7 @@ class AppMetadata {
     required this.updatedAt,
     this.organizationId,
     this.archivedAt,
+    this.crashReportingEnabled = false,
     this.patchSigningRequired,
     this.enterpriseName,
     this.latestReleaseVersion,
@@ -37,6 +38,8 @@ class AppMetadata {
         organizationId: json['organization_id'] as int?,
         displayName: json['display_name'] as String,
         archivedAt: maybeParseDateTime(json['archived_at'] as String?),
+        crashReportingEnabled:
+            (json['crash_reporting_enabled'] as bool?) ?? false,
         patchSigningRequired: json['patch_signing_required'] as bool?,
         enterpriseName: json['enterprise_name'] as String?,
         latestReleaseVersion: json['latest_release_version'] as String?,
@@ -89,6 +92,12 @@ class AppMetadata {
   /// archived app serves no patches, takes no new release or patch,
   /// and does not count against its account's app quota.
   final DateTime? archivedAt;
+
+  /// Whether the app's owner opted it in to Crash Reporting under the
+  /// Crash Reporting Terms of Service. Server-set, and never changed
+  /// through this payload. A symbol upload for an app whose answer is
+  /// false is refused.
+  final bool crashReportingEnabled;
 
   /// Whether the enterprise the app's organization is in requires
   /// every release and patch of the app to be signed, so the server
@@ -153,6 +162,7 @@ class AppMetadata {
       'organization_id': ?organizationId,
       'display_name': displayName,
       'archived_at': ?archivedAt?.toUtc().toIso8601String(),
+      'crash_reporting_enabled': crashReportingEnabled,
       'patch_signing_required': ?patchSigningRequired,
       'enterprise_name': ?enterpriseName,
       'latest_release_version': ?latestReleaseVersion,
@@ -176,6 +186,7 @@ class AppMetadata {
     organizationId,
     displayName,
     archivedAt,
+    crashReportingEnabled,
     patchSigningRequired,
     enterpriseName,
     latestReleaseVersion,
@@ -196,6 +207,7 @@ class AppMetadata {
         organizationId == other.organizationId &&
         displayName == other.displayName &&
         archivedAt == other.archivedAt &&
+        crashReportingEnabled == other.crashReportingEnabled &&
         patchSigningRequired == other.patchSigningRequired &&
         enterpriseName == other.enterpriseName &&
         latestReleaseVersion == other.latestReleaseVersion &&

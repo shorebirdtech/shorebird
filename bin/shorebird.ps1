@@ -163,7 +163,9 @@ function Install-PrebuiltCli($revision) {
             [Console]::Error.WriteLine("$url doesn't match its checksum; building Shorebird instead.")
             return $false
         }
-        Expand-Archive -Path $zip -DestinationPath $tmp -Force -ErrorAction Stop
+        # Its output is discarded: a failed one writes an assembly object
+        # first, which would make this function's result truthy.
+        $null = Expand-Archive -Path $zip -DestinationPath $tmp -Force -ErrorAction Stop
         $exe = [IO.Path]::Combine($tmp, "shorebird.exe")
         if (!(Test-Path $exe)) {
             [Console]::Error.WriteLine("$url has no shorebird.exe; building Shorebird instead.")

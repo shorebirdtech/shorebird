@@ -660,6 +660,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     // pinned one's would go unused when the release used another Flutter.
 
     final app = await codePushClientWrapper.getApp(appId: appId);
+    patcher.crashReportingEnabled = app.crashReportingEnabled;
 
     final resolved = await _resolveRelease(patcher);
     final release = resolved.release;
@@ -1362,6 +1363,13 @@ Building patch with Flutter $flutterVersionString
             ),
     );
     _buildRun?.patchId = patch.id;
+    if (app.crashReportingEnabled) {
+      await patcher.uploadSymbolArtifacts(
+        appId: appId,
+        patchId: patch.id,
+        architectures: patchArtifactBundles.keys,
+      );
+    }
 
     // Write the summary again now the upload is done, so build history's
     // timing counts it, as a release's does (see finalizeRelease).

@@ -624,6 +624,85 @@ class CodePushClient {
     return CreatePatchResponse.fromJson(body);
   }
 
+  /// Registers one architecture's symbol file for [releaseId] and uploads
+  /// the compressed bytes at [symbolsPath].
+  Future<void> createReleaseSymbols({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required SymbolsCompression compression,
+    required String symbolsPath,
+  }) => _createSymbols(
+    uri: Uri.parse('$_v1/apps/$appId/releases/$releaseId/symbols'),
+    platform: platform,
+    arch: arch,
+    format: format,
+    compression: compression,
+    symbolsPath: symbolsPath,
+  );
+
+  /// Registers one architecture's symbol file for [patchId] and uploads the
+  /// compressed bytes at [symbolsPath].
+  Future<void> createPatchSymbols({
+    required String appId,
+    required int patchId,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required SymbolsCompression compression,
+    required String symbolsPath,
+  }) => _createSymbols(
+    uri: Uri.parse('$_v1/apps/$appId/patches/$patchId/symbols'),
+    platform: platform,
+    arch: arch,
+    format: format,
+    compression: compression,
+    symbolsPath: symbolsPath,
+  );
+
+  /// POSTs a [CreateSymbolsRequest] to [uri] and PUTs [symbolsPath] to the
+  /// session the server opens.
+  ///
+  /// A symbol file has no artifact row, so the response carries only the
+  /// session URI: the server addresses the object by the platform, arch and
+  /// format declared here, and a second upload of the same three replaces
+  /// the first.
+  Future<void> _createSymbols({
+    required Uri uri,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required SymbolsCompression compression,
+    required String symbolsPath,
+  }) async {
+    final request = CreateSymbolsRequest(
+      platform: platform,
+      arch: arch,
+      format: format,
+      compression: compression,
+      size: await File(symbolsPath).length(),
+    );
+    final response = await _httpClient.post(
+      uri,
+      body: json.encode(request.toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final decoded = CreateSymbolsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+
+    await _resumableUpload(
+      sessionUri: Uri.parse(decoded.url),
+      artifactPath: symbolsPath,
+    );
+  }
+
   /// Records a `shorebird release` or `shorebird patch` run of the app with
   /// the provided [appId] in its build history.
   Future<CreateBuildRunResponse> createBuildRun({
