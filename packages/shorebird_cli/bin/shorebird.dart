@@ -8,6 +8,8 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/asset_patching/asset_extractor.dart';
+import 'package:shorebird_cli/src/asset_patching/asset_patch_planner.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/broken_pipe.dart';
 import 'package:shorebird_cli/src/browser.dart';
@@ -72,6 +74,8 @@ Command: shorebird ${args.join(' ')}
           appleRef,
           artifactBuilderRef,
           artifactManagerRef,
+          assetExtractorRef,
+          assetPatchPlannerRef,
           buildTraceSessionRef.overrideWith(
             () => BuildTraceSession(commandStartedAt: commandStartedAt),
           ),
