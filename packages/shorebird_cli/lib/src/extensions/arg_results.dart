@@ -247,6 +247,14 @@ extension ForwardedArgs on ArgResults {
     };
   }
 
+  /// The `--export-method` and `--export-options-plist` arguments as they
+  /// were passed. Only `flutter build ipa` accepts them, so they are not part
+  /// of [forwardedArgs], which every platform's build receives.
+  List<String> get iosExportArgs => [
+    ..._argsNamed(CommonArguments.exportMethodArg.name),
+    ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
+  ];
+
   /// A list of arguments parsed by Shorebird commands that will be forwarded
   /// to the underlying Flutter commands (that is, placed after `--`).
   List<String> get forwardedArgs {
@@ -265,8 +273,6 @@ extension ForwardedArgs on ArgResults {
       ..._argsNamed(CommonArguments.buildNameArg.name),
       ..._argsNamed(CommonArguments.buildNumberArg.name),
       ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
-      ..._argsNamed(CommonArguments.exportMethodArg.name),
-      ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
       ..._flagNamed(CommonArguments.obfuscateArg.name),
       for (final option in flutterBuildOptions) ..._flutterBuildArgs(option),
     ]);

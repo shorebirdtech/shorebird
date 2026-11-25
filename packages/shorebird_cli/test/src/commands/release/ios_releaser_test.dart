@@ -330,6 +330,33 @@ $body
         ).thenAnswer((_) async => flutterVersionAndRevision);
       });
 
+      group('when --export-method is provided', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed(CommonArguments.exportMethodArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults[CommonArguments.exportMethodArg.name],
+          ).thenReturn('development');
+        });
+
+        test('forwards --export-method to buildIpa', () async {
+          await runWithOverrides(() => iosReleaser.buildReleaseArtifacts());
+
+          verify(
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(
+                named: 'args',
+                that: contains('--export-method=development'),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when a patch signing key path is provided', () {
         setUp(() {
           final patchSigningPublicKeyFile = File(

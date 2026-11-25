@@ -426,11 +426,10 @@ void main() {
     });
 
     group('when export method is provided before the --', () {
-      test('forwards it', () {
+      test('does not forward it', () {
         final args = ['--verbose', '--export-method=development'];
         final result = parser.parse(args);
-        expect(result.forwardedArgs, hasLength(1));
-        expect(result.forwardedArgs, contains('--export-method=development'));
+        expect(result.forwardedArgs, isEmpty);
       });
     });
 
@@ -444,17 +443,13 @@ void main() {
     });
 
     group('when export options plist is provided before the --', () {
-      test('forwards it', () {
+      test('does not forward it', () {
         final args = [
           '--verbose',
           '--export-options-plist=build/ExportOptions.plist',
         ];
         final result = parser.parse(args);
-        expect(result.forwardedArgs, hasLength(1));
-        expect(
-          result.forwardedArgs,
-          contains('--export-options-plist=build/ExportOptions.plist'),
-        );
+        expect(result.forwardedArgs, isEmpty);
       });
     });
 
@@ -488,6 +483,24 @@ void main() {
         final args = ['--verbose'];
         final result = parser.parse(args);
         expect(result.forwardedArgs, isNot(contains('--obfuscate')));
+      });
+    });
+
+    group('iosExportArgs', () {
+      test('is empty when no export arguments are provided', () {
+        final result = parser.parse(['--verbose']);
+        expect(result.iosExportArgs, isEmpty);
+      });
+
+      test('returns --export-method and --export-options-plist', () {
+        final result = parser.parse([
+          '--export-method=development',
+          '--export-options-plist=build/ExportOptions.plist',
+        ]);
+        expect(result.iosExportArgs, [
+          '--export-method=development',
+          '--export-options-plist=build/ExportOptions.plist',
+        ]);
       });
     });
   });
