@@ -179,7 +179,6 @@ Flutter, it must equal the version of the app that embeds the module.''',
       )
       ..addOption(
         CommonArguments.ddMaxBytesArg.name,
-        defaultsTo: '10000',
         hide: true,
         help: CommonArguments.ddMaxBytesArg.description,
       )
@@ -738,6 +737,16 @@ Flutter, it must equal the version of the app that embeds the module.''',
   /// Validates arguments that are common to all release types.
   Future<void> assertArgsAreValid(Releaser releaser) async {
     assertPublicKeyArgsValid();
+
+    // Checked here, as `shorebird patch` does, so a typo fails the release
+    // rather than silently building with the default.
+    final ddMaxBytes = results[CommonArguments.ddMaxBytesArg.name] as String?;
+    if (ddMaxBytes != null && (int.tryParse(ddMaxBytes) ?? -1) < 0) {
+      usageException(
+        '--${CommonArguments.ddMaxBytesArg.name} must be a non-negative '
+        'integer (got $ddMaxBytes).',
+      );
+    }
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
     final hasPublicKey =

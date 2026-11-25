@@ -789,7 +789,6 @@ This may indicate that the patch contains native changes, which cannot be applie
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
               releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
@@ -835,7 +834,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
                 releaseSupplementDir: staged,
               ),
             ).called(1);
@@ -865,7 +863,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
                 releaseSupplementDir: captureAny(
                   named: 'releaseSupplementDir',
                 ),
@@ -1049,7 +1046,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 
@@ -1079,7 +1075,6 @@ This may indicate that the patch contains native changes, which cannot be applie
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 

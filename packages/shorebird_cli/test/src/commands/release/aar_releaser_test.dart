@@ -638,7 +638,6 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((_) async => File(''));
 

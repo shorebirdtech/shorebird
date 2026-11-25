@@ -283,6 +283,7 @@ void main() {
           () => artifactBuilder.buildIosFramework(
             releaseVersion: any(named: 'releaseVersion'),
             args: any(named: 'args'),
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -318,6 +319,7 @@ void main() {
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -341,6 +343,7 @@ void main() {
                 releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
+                applyLegacyDdDefault: true,
               ),
             ).called(1);
           },
@@ -358,6 +361,7 @@ void main() {
             () => artifactBuilder.buildIosFramework(
               releaseVersion: any(named: 'releaseVersion'),
               args: ['--no-codesign'],
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).called(1);
         });
@@ -378,6 +382,7 @@ void main() {
             () => artifactBuilder.buildIosFramework(
               releaseVersion: any(named: 'releaseVersion'),
               args: ['--verbose'],
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).called(1);
         });
@@ -393,6 +398,7 @@ void main() {
           () => artifactBuilder.buildIosFramework(
             releaseVersion: '1.0.0+1',
             args: [],
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).called(1);
       });
@@ -412,6 +418,7 @@ void main() {
               releaseVersion: any(named: 'releaseVersion'),
               appId: any(named: 'appId'),
               args: any(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
           iosFrameworkReleaser = IosFrameworkReleaser(
@@ -433,6 +440,7 @@ void main() {
               releaseVersion: '1.0.0+1',
               appId: flavorAppId,
               args: [],
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).called(1);
         });
@@ -514,6 +522,7 @@ void main() {
             releaseVersion: any(named: 'releaseVersion'),
             target: any(named: 'target'),
             args: any(named: 'args'),
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
         iosFrameworkReleaser = IosFrameworkReleaser(
@@ -529,6 +538,7 @@ void main() {
             releaseVersion: any(named: 'releaseVersion'),
             target: 'lib/main_prod.dart',
             args: [],
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).called(1);
       });
@@ -550,6 +560,7 @@ void main() {
             () => artifactBuilder.buildIosFramework(
               releaseVersion: any(named: 'releaseVersion'),
               args: any(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
@@ -572,6 +583,7 @@ void main() {
             () => artifactBuilder.buildIosFramework(
               releaseVersion: any(named: 'releaseVersion'),
               args: captureAny(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).captured;
 

@@ -277,7 +277,6 @@ void main() {
             target: any(named: 'target'),
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
-            ddMaxBytes: any(named: 'ddMaxBytes'),
           ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -450,7 +449,6 @@ void main() {
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
@@ -477,7 +475,6 @@ void main() {
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).captured;
 
@@ -501,7 +498,6 @@ void main() {
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).captured;
 
