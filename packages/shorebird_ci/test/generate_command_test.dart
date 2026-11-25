@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/commands.dart';
 import 'package:shorebird_ci/src/version.dart';
+import 'package:shorebird_ci/src/zizmor.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
@@ -28,9 +29,20 @@ Future<int?> runGenerate(
     '--repo-root',
     repoRoot.path,
     '--no-update-actions',
+    '--no-zizmor',
     ...extra,
   ]);
 }
+
+/// A generated Run Tests step, with the workflow and job holding it.
+typedef TestSite = ({
+  String name,
+  String executable,
+  String style,
+  bool hasCodecov,
+  String workflow,
+  String job,
+});
 
 void main() {
   setUpTempDir('shorebird_ci_generate_');
@@ -159,7 +171,8 @@ void main() {
         matches(
           RegExp(
             r'run: npx --yes cspell@\d+\.\d+\.\d+ '
-            r'--config \.cspell\.json --no-progress "\*\*"\n',
+            r'--config \.cspell\.json --no-progress '
+            r'--dot --exclude "\.git/\*\*" "\*\*"\n',
           ),
         ),
       );
@@ -324,6 +337,7 @@ void main() {
         contains(
           '            foo:\n'
           '              - .github/workflows/_shorebird_ci_dart.yaml\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/foo/**\n'
           '              - pubspec.lock\n'
           '              - pubspec.yaml\n',
@@ -334,8 +348,47 @@ void main() {
         contains(
           '            solo:\n'
           '              - .github/workflows/_shorebird_ci_dart.yaml\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - tools/solo/**\n',
         ),
+      );
+    });
+
+    test('every static filter matches the orchestrator itself', () async {
+      // Every package's job is declared in the orchestrator, so a commit
+      // touching only it would skip every job a filter that misses it.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar');
+      createPackage(tempDir, 'packages/baz', 'baz', flutterLine: 'any');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final filters = _readStaticFilters(_readMain(tempDir));
+      expect(filters.keys, containsAll(['bar', 'baz', 'foo']));
+      for (final MapEntry(key: slug, value: paths) in filters.entries) {
+        expect(
+          paths,
+          contains('.github/workflows/shorebird_ci.yaml'),
+          reason: slug,
+        );
+      }
+    });
+
+    test('every static filter matches a custom --output path', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--output', '.github/workflows/ci.yaml'],
+      );
+
+      final filters = _readStaticFilters(readWorkflow('ci.yaml'));
+      expect(filters['foo'], contains('.github/workflows/ci.yaml'));
+      expect(
+        filters['foo'],
+        isNot(contains('.github/workflows/shorebird_ci.yaml')),
       );
     });
 
@@ -592,7 +645,8 @@ void main() {
         matches(
           RegExp(
             r'run: npx --yes cspell@\d+\.\d+\.\d+ '
-            r'--config \.cspell\.json --no-progress "\*\*"\n',
+            r'--config \.cspell\.json --no-progress '
+            r'--dot --exclude "\.git/\*\*" "\*\*"\n',
           ),
         ),
       );
@@ -650,7 +704,7 @@ void main() {
     );
 
     test(
-      '--codecov-token-secret emits secrets: inherit on each '
+      '--codecov-token-secret passes that one secret on each '
       'orchestrator uses: call and threads token into reusable',
       () async {
         createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
@@ -691,11 +745,24 @@ void main() {
           ),
         ).readAsStringSync();
 
-        // One `secrets: inherit` per package job (2 packages).
+        // The one secret, by name, per package job (2 packages): never
+        // `secrets: inherit`, which hands over every secret.
+        expect(mainYaml, isNot(contains('secrets: inherit')));
         expect(
-          'secrets: inherit'.allMatches(mainYaml).length,
+          '    secrets:\n'
+                  r'      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}'
+              .allMatches(mainYaml)
+              .length,
           equals(2),
         );
+        for (final reusable in [dartReusable, flutterReusable]) {
+          expect(
+            reusable,
+            contains(
+              '    secrets:\n      CODECOV_TOKEN:\n        required: false\n',
+            ),
+          );
+        }
         expect(
           dartReusable,
           contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
@@ -798,10 +865,6 @@ void main() {
       );
     }
 
-    String readWorkflow(String name) => File(
-      p.join(tempDir.path, '.github', 'workflows', name),
-    ).readAsStringSync();
-
     test('dynamic: no bloc steps when no package uses bloc_lint', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       createPackage(tempDir, 'packages/bar', 'bar', flutterLine: 'any');
@@ -903,6 +966,143 @@ void main() {
     });
   });
 
+  group('integration tests step', () {
+    /// The Integration Tests step of [job] in [workflow].
+    YamlMap integrationStep(String workflow, String job) {
+      final jobs = (loadYaml(workflow) as YamlMap)['jobs'] as YamlMap;
+      final steps = (jobs[job] as YamlMap)['steps'] as YamlList;
+      return steps.cast<YamlMap>().singleWhere(
+        (step) => step['name'] == 'Integration Tests',
+      );
+    }
+
+    Future<YamlMap> staticStep() async {
+      createPackage(tempDir, 'packages/app', 'app', flutterLine: 'any');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+      return integrationStep(readWorkflow('_shorebird_ci_flutter.yaml'), 'ci');
+    }
+
+    Future<YamlMap> dynamicStep() async {
+      createPackage(tempDir, 'packages/app', 'app', flutterLine: 'any');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      return integrationStep(_readMain(tempDir), 'flutter_ci');
+    }
+
+    test('static and dynamic share one script', () async {
+      final static = await staticStep();
+      final dynamic = await dynamicStep();
+      expect(static['if'], 'inputs.has_integration_tests');
+      expect(static['working-directory'], r'${{ inputs.package_path }}');
+      expect(dynamic['if'], 'matrix.has_integration_tests == true');
+      expect(static['run'], dynamic['run']);
+    });
+
+    group('script', () {
+      late Directory package;
+      late File log;
+
+      /// Runs the step's script as RUNNER_OS [os] in a package with the
+      /// platform directories [platforms], with `flutter`, `sudo` and
+      /// `xvfb-run` stubbed to log their arguments.
+      Future<ProcessResult> runScript(
+        String script, {
+        required String os,
+        List<String> platforms = const [],
+      }) async {
+        package = Directory(p.join(tempDir.path, 'run'))..createSync();
+        for (final platform in platforms) {
+          Directory(p.join(package.path, platform)).createSync();
+        }
+        final bin = Directory(p.join(tempDir.path, 'bin'))..createSync();
+        log = File(p.join(tempDir.path, 'calls.log'));
+        for (final tool in ['flutter', 'sudo', 'xvfb-run']) {
+          final stub = File(p.join(bin.path, tool))
+            ..writeAsStringSync(
+              '#!/bin/sh\necho "$tool \$*" >> "${log.path}"\n',
+            );
+          Process.runSync('chmod', ['+x', stub.path]);
+        }
+        return Process.run(
+          'bash',
+          ['-e', '-c', script],
+          workingDirectory: package.path,
+          environment: {
+            'RUNNER_OS': os,
+            'PATH': '${bin.path}:${Platform.environment['PATH']}',
+          },
+        );
+      }
+
+      List<String> calls() =>
+          log.existsSync() ? log.readAsLinesSync() : const [];
+
+      test(
+        'sets up the Linux desktop and runs under xvfb on Linux',
+        () async {
+          final script = (await dynamicStep())['run'] as String;
+          final result = await runScript(
+            script,
+            os: 'Linux',
+            platforms: ['linux'],
+          );
+          expect(result.exitCode, 0, reason: '${result.stderr}');
+          const install =
+              'sudo apt-get install -y clang cmake ninja-build pkg-config '
+              'libgtk-3-dev xvfb';
+          expect(calls(), [
+            'sudo apt-get update',
+            install,
+            'xvfb-run -a flutter test integration_test -d linux',
+          ]);
+        },
+        testOn: '!windows',
+      );
+
+      test(
+        "runs on the runner OS's desktop when it has that directory",
+        () async {
+          final script = (await dynamicStep())['run'] as String;
+          final result = await runScript(
+            script,
+            os: 'macOS',
+            platforms: ['linux', 'macos'],
+          );
+          expect(result.exitCode, 0, reason: '${result.stderr}');
+          expect(calls(), ['flutter test integration_test -d macos']);
+        },
+        testOn: '!windows',
+      );
+
+      for (final (os, platforms) in [
+        ('Linux', ['macos', 'windows']),
+        ('macOS', ['linux']),
+        ('Windows', ['linux', 'macos']),
+        ('FreeBSD', ['linux', 'macos', 'windows']),
+      ]) {
+        test(
+          'skips with a notice on $os without its platform directory',
+          () async {
+            final script = (await dynamicStep())['run'] as String;
+            final result = await runScript(
+              script,
+              os: os,
+              platforms: platforms,
+            );
+            expect(result.exitCode, 0, reason: '${result.stderr}');
+            expect(calls(), isEmpty);
+            expect(
+              result.stdout,
+              startsWith('::notice::Skipping integration tests'),
+            );
+          },
+          testOn: '!windows',
+        );
+      }
+    });
+  });
+
   group('dependabot.yml', () {
     test('creates dependabot.yml when missing', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
@@ -956,6 +1156,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         // No --no-update-actions here — auto-bump is the default.
       ]);
 
@@ -977,6 +1178,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         '--no-update-actions',
       ]);
 
@@ -1012,6 +1214,7 @@ void main() {
           'generate',
           '--repo-root',
           tempDir.path,
+          '--no-zizmor',
           '--style',
           style,
           '--no-update-actions',
@@ -1022,13 +1225,20 @@ void main() {
         for (final file in dir.listSync().whereType<File>()) {
           for (final m in usesLine.allMatches(file.readAsStringSync())) {
             final ref = m.group(1)!;
-            if (ref.startsWith('./')) continue;
+            if (ref.startsWith(r'$/')) continue;
             repos.add(ref.split('@').first);
             expect(ref, matches(pinned), reason: '${file.path}: $ref');
             expect(m.group(2), matches(RegExp(r'^ # v\d+\.\d+\.\d+$')));
           }
         }
         expect(unpinnedActionRefs(_readAll(dir)), isEmpty);
+        // Flutter installs in a run: step, not an action that could call
+        // a nested action by tag, which SHA-pinning-required repos refuse.
+        expect(_readAll(dir), isNot(contains('flutter-action')));
+        expect(
+          _readAll(dir),
+          contains('storage.googleapis.com/flutter_infra_release/releases'),
+        );
         // Every action the templates can emit showed up, so each was
         // checked.
         expect(
@@ -1037,7 +1247,6 @@ void main() {
             'actions/checkout',
             'dart-lang/setup-dart',
             'codecov/codecov-action',
-            'subosito/flutter-action',
             if (style == 'static') 'dorny/paths-filter',
           ]),
         );
@@ -1140,6 +1349,7 @@ void main() {
         'generate',
         '--repo-root',
         tempDir.path,
+        '--no-zizmor',
         '--style',
         'static',
         '--no-update-actions',
@@ -1329,10 +1539,6 @@ void main() {
   });
 
   group('v0.3.0 features', () {
-    String readWorkflow(String name) => File(
-      p.join(tempDir.path, '.github', 'workflows', name),
-    ).readAsStringSync();
-
     test('--filters-only updates dorny/paths-filter in place', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       createPackage(tempDir, 'packages/bar', 'bar');
@@ -1372,8 +1578,10 @@ jobs:
         contains(
           '          filters: |\n'
           '            bar:\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/bar/**\n'
           '            foo:\n'
+          '              - .github/workflows/shorebird_ci.yaml\n'
           '              - packages/foo/**\n',
         ),
       );
@@ -1617,12 +1825,530 @@ shorebird_ci:
       },
     );
   });
+
+  group('Run Tests step', () {
+    /// Every generated step the retry wraps.
+    const sites = <TestSite>[
+      (
+        name: 'static dart',
+        executable: 'dart',
+        style: 'static',
+        hasCodecov: false,
+        workflow: '_shorebird_ci_dart.yaml',
+        job: 'ci',
+      ),
+      (
+        name: 'static flutter',
+        executable: 'flutter',
+        style: 'static',
+        hasCodecov: false,
+        workflow: '_shorebird_ci_flutter.yaml',
+        job: 'ci',
+      ),
+      (
+        name: 'dynamic dart',
+        executable: 'dart',
+        style: 'dynamic',
+        hasCodecov: true,
+        workflow: 'shorebird_ci.yaml',
+        job: 'dart_ci',
+      ),
+      (
+        name: 'dynamic flutter',
+        executable: 'flutter',
+        style: 'dynamic',
+        hasCodecov: true,
+        workflow: 'shorebird_ci.yaml',
+        job: 'flutter_ci',
+      ),
+    ];
+
+    /// The `run:` script of the Run Tests step in [job] of [workflow].
+    String runTestsStep(String workflow, String job) {
+      final steps =
+          ((loadYaml(workflow) as YamlMap)['jobs'] as YamlMap)[job] as YamlMap;
+      final step = (steps['steps'] as YamlList).cast<YamlMap>().firstWhere(
+        (step) => step['name'] == 'Run Tests',
+      );
+      return step['run'] as String;
+    }
+
+    /// Writes an [executable] into [dir] that answers each `test` invocation
+    /// with the next entry of [runs] and every other invocation with success,
+    /// recording the `test` ones in `attempts` beside itself. The last entry
+    /// answers every `test` invocation after it.
+    void writeStub(
+      Directory dir,
+      String executable,
+      List<({String output, int exitCode})> runs,
+    ) {
+      final cases = [
+        for (final (index, run) in runs.indexed)
+          '''
+  ${index == runs.length - 1 ? '*' : index + 1})
+    printf '%s\\n' '${run.output}'
+    exit ${run.exitCode}
+    ;;''',
+      ].join('\n');
+      final stub = File(p.join(dir.path, executable))
+        ..writeAsStringSync('''
+#!/usr/bin/env bash
+if [ "\$1" != test ]; then
+  exit 0
+fi
+attempts="\$(dirname "\$0")/attempts"
+echo "$executable \$*" >> "\$attempts"
+case "\$(grep -c . "\$attempts")" in
+$cases
+esac
+''');
+      Process.runSync('chmod', ['+x', stub.path]);
+    }
+
+    /// Runs [site]'s generated step over one test file, against an SDK
+    /// answering with [runs]. Returns the step's exit code and how many
+    /// times it ran the SDK's `test`.
+    Future<({int exitCode, int testRuns})> runStep(
+      TestSite site,
+      List<({String output, int exitCode})> runs,
+    ) async {
+      final isFlutter = site.executable == 'flutter';
+      createPackage(
+        tempDir,
+        'pkg',
+        'pkg',
+        addTestDir: true,
+        flutterLine: isFlutter ? 'any' : null,
+      );
+      if (site.hasCodecov) {
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      }
+      initGitRepo(tempDir);
+      await runGenerate(tempDir, extra: ['--style', site.style]);
+
+      final stubDir = Directory(p.join(tempDir.path, 'stub'))..createSync();
+      writeStub(stubDir, site.executable, runs);
+      final script = File(p.join(tempDir.path, 'step.sh'))
+        ..writeAsStringSync(
+          runTestsStep(readWorkflow(site.workflow), site.job),
+        );
+
+      // The static workflows declare `shell: bash`, which GitHub runs with
+      // `-eo pipefail`. The dynamic ones take the default `bash -e`, so the
+      // step cannot lean on its caller for pipefail.
+      final result = Process.runSync(
+        'bash',
+        [
+          '--noprofile',
+          '--norc',
+          if (site.style == 'static') ...['-eo', 'pipefail'] else '-e',
+          script.path,
+        ],
+        workingDirectory: p.join(tempDir.path, 'pkg'),
+        environment: {
+          'MIN_COVERAGE': '',
+          'PATH': '${stubDir.path}:${Platform.environment['PATH']}',
+          'RUNNER_OS_NAME': 'ubuntu-latest',
+          'SHARD_INDEX': '0',
+          'TOTAL_SHARDS': '1',
+        },
+      );
+      printOnFailure('${result.stdout}${result.stderr}');
+      final attempts = File(p.join(stubDir.path, 'attempts'));
+      return (
+        exitCode: result.exitCode,
+        testRuns: attempts.existsSync()
+            ? attempts.readAsLinesSync().where((l) => l.isNotEmpty).length
+            : 0,
+      );
+    }
+
+    const droppedConnection =
+        'Failed to load "test/example_test.dart": '
+        'Connection closed before full header was received';
+
+    for (final site in sites) {
+      group(site.name, () {
+        test('a dropped suite connection passes on the second run', () async {
+          final step = await runStep(site, [
+            (output: droppedConnection, exitCode: 1),
+            (output: 'All tests passed!', exitCode: 0),
+          ]);
+
+          expect(step, (exitCode: 0, testRuns: 2));
+        }, testOn: '!windows');
+
+        test('a failing test is not retried and fails the step', () async {
+          final step = await runStep(site, [
+            (output: 'Some tests failed.', exitCode: 1),
+          ]);
+
+          expect(step.exitCode, isNot(0));
+          expect(step.testRuns, 1);
+        }, testOn: '!windows');
+
+        test('a connection that drops twice fails the step', () async {
+          final step = await runStep(site, [
+            (output: droppedConnection, exitCode: 1),
+          ]);
+
+          expect(step.exitCode, isNot(0));
+          expect(step.testRuns, 2);
+        }, testOn: '!windows');
+      });
+    }
+  });
+
+  group('the repository-wide shorebird_ci block', () {
+    void declare(String block) {
+      File(
+        p.join(tempDir.path, 'pubspec.yaml'),
+      ).writeAsStringSync(block, mode: FileMode.append);
+    }
+
+    setUp(() {
+      createWorkspaceRoot(tempDir, members: ['packages/foo']);
+      createPackage(
+        tempDir,
+        'packages/foo',
+        'foo',
+        useWorkspace: true,
+        addTestDir: true,
+      );
+    });
+
+    test('required: true emits the aggregator w/o the flag', () async {
+      declare('shorebird_ci:\n  required: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), contains('\n  required:\n'));
+    });
+
+    test('fatal_infos: true emits --fatal-infos w/o the flag', () async {
+      declare('shorebird_ci:\n  fatal_infos: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-infos .'),
+      );
+    });
+
+    test('codecov_token_secret threads the token w/o the flag', () async {
+      declare('shorebird_ci:\n  codecov_token_secret: CODECOV_TOKEN\n');
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
+      );
+    });
+
+    test('an empty codecov_token_secret reads as unset', () async {
+      declare('shorebird_ci:\n  codecov_token_secret: ""\n');
+      File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        isNot(contains('secrets.')),
+      );
+    });
+
+    test('a block that is not a map reads as no configuration', () async {
+      declare('shorebird_ci: nope\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      expect(_readMain(tempDir), isNot(contains('\n  required:\n')));
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-warnings .'),
+      );
+    });
+
+    test('a flag still wins over a block that leaves it out', () async {
+      declare('shorebird_ci:\n  required: true\n');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--fatal-infos'],
+      );
+
+      expect(_readMain(tempDir), contains('\n  required:\n'));
+      expect(
+        readWorkflow('_shorebird_ci_dart.yaml'),
+        contains('dart analyze --fatal-infos .'),
+      );
+    });
+  });
+
+  test('example/shorebird_ci.yaml is what generate writes for the '
+      'workspace example/README.md describes', () async {
+    // pub.dev shows the example on the package's Example tab, so it must
+    // not lag behind what `generate` writes.
+    File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync(
+      'name: my_repo\n'
+      'environment:\n'
+      '  sdk: ^3.6.0\n'
+      'workspace:\n'
+      '  - packages/app\n'
+      '  - packages/core\n',
+    );
+    createPackage(
+      tempDir,
+      'packages/app',
+      'app',
+      sdkLine: '  sdk: ^3.6.0',
+      useWorkspace: true,
+      dependencies: {'core': '../core'},
+    );
+    createPackage(
+      tempDir,
+      'packages/core',
+      'core',
+      sdkLine: '  sdk: ^3.6.0',
+      useWorkspace: true,
+    );
+    initGitRepo(tempDir);
+
+    await runGenerate(tempDir, extra: ['--required']);
+
+    expect(
+      _readMain(tempDir),
+      File(p.join('example', 'shorebird_ci.yaml')).readAsStringSync(),
+      reason: 'Regenerate the example with the command in example/README.md.',
+    );
+  });
+  group('zizmor', () {
+    for (final style in ['dynamic', 'static']) {
+      test('$style emits a read-only zizmor job that required needs', () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', style, '--required']);
+        final yaml = _readMain(tempDir);
+        final jobs = (loadYaml(yaml) as YamlMap)['jobs'] as YamlMap;
+        final job = jobs['zizmor'] as YamlMap;
+
+        expect(job['permissions'], {'contents': 'read'});
+        expect(job.containsKey('secrets'), isFalse);
+        final steps = (job['steps'] as YamlList).cast<YamlMap>();
+        expect(steps.first['uses'], checkoutAction.split(' ').first);
+        expect(steps.first['with'], {'persist-credentials': false});
+        final install = steps[1]['run'] as String;
+        for (final asset in [
+          'zizmor-x86_64-unknown-linux-gnu.tar.gz',
+          'zizmor-aarch64-unknown-linux-gnu.tar.gz',
+        ]) {
+          expect(install, contains('asset=$asset sha=${zizmorSha256[asset]}'));
+        }
+        expect(install, contains('/releases/download/v$zizmorVersion/'));
+        expect(install, contains('sha256sum -c -'));
+        expect(steps.last['run'], 'zizmor --offline .github/workflows');
+        expect(
+          (jobs['required'] as YamlMap)['needs'] as YamlList,
+          contains('zizmor'),
+        );
+      });
+    }
+
+    test('checkouts keep no credentials and run: steps take no '
+        'template expansions of inputs', () async {
+      createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+      createPackage(
+        tempDir,
+        'packages/bar',
+        'bar',
+        flutterLine: 'any',
+        addTestDir: true,
+      );
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      for (final style in ['dynamic', 'static']) {
+        await runGenerate(tempDir, extra: ['--style', style]);
+        final dir = Directory(p.join(tempDir.path, '.github', 'workflows'));
+        for (final file in dir.listSync().whereType<File>()) {
+          final doc = loadYaml(file.readAsStringSync()) as YamlMap;
+          for (final job in (doc['jobs'] as YamlMap).values.cast<YamlMap>()) {
+            for (final step
+                in (job['steps'] as YamlList? ?? const []).cast<YamlMap>()) {
+              if ('${step['uses']}'.startsWith('actions/checkout@')) {
+                expect(
+                  (step['with'] as YamlMap)['persist-credentials'],
+                  isFalse,
+                  reason: file.path,
+                );
+              }
+              expect(
+                '${step['run'] ?? ''}',
+                isNot(matches(RegExp(r'\$\{\{ (inputs|matrix)\.subpackages'))),
+              );
+            }
+          }
+        }
+        dir.deleteSync(recursive: true);
+      }
+    });
+
+    test(
+      'static calls its reusable workflows by self-repository ref',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+
+        expect(
+          _readMain(tempDir),
+          contains(r'uses: $/.github/workflows/_shorebird_ci_dart.yaml'),
+        );
+      },
+    );
+
+    group('the run after writing', () {
+      Future<String> generateWith(Zizmor zizmor) async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+        final out = _CapturedOutput();
+        final code = await IOOverrides.runZoned(
+          () =>
+              (CommandRunner<int>(
+                'test',
+                'test',
+              )..addCommand(GenerateCommand(zizmor: zizmor))).run([
+                'generate',
+                '--repo-root',
+                tempDir.path,
+                '--no-update-actions',
+              ]),
+          stdout: () => out,
+          stderr: () => out,
+        );
+        expect(code, 0);
+        return out.text;
+      }
+
+      test('prints findings and says the job will fail on them', () async {
+        final text = await generateWith(
+          _FakeZizmor((
+            exitCode: 13,
+            stdout: 'error[x]: finding\n',
+            stderr: '',
+          )),
+        );
+        expect(text, contains('error[x]: finding'));
+        expect(text, contains('The generated zizmor job fails until'));
+      });
+
+      test('says so when there are no findings', () async {
+        final text = await generateWith(
+          _FakeZizmor((exitCode: 0, stdout: '', stderr: 'INFO progress')),
+        );
+        expect(text, contains('zizmor: no findings.'));
+        expect(text, isNot(contains('INFO progress')));
+      });
+
+      test("prints zizmor's own errors", () async {
+        final text = await generateWith(
+          _FakeZizmor((exitCode: 1, stdout: '', stderr: 'bad input\n')),
+        );
+        expect(text, contains('bad input'));
+        expect(text, contains('zizmor exited with code 1.'));
+      });
+
+      test('carries on when the cache cannot be written', () async {
+        final text = await generateWith(
+          _FakeZizmor(null, error: const FileSystemException('read-only')),
+        );
+        expect(text, contains('Could not run zizmor'));
+      });
+
+      test('carries on when zizmor cannot be installed', () async {
+        final text = await generateWith(
+          _FakeZizmor(null, error: ZizmorException('offline')),
+        );
+        expect(text, contains('Could not run zizmor (offline)'));
+      });
+
+      test('--no-zizmor skips it', () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+        final zizmor = _FakeZizmor(
+          (exitCode: 0, stdout: '', stderr: ''),
+        );
+        await runGenerate(
+          tempDir,
+          command: GenerateCommand(zizmor: zizmor),
+        );
+        expect(zizmor.runs, 0);
+      });
+    });
+  });
+}
+
+class _FakeZizmor extends Zizmor {
+  _FakeZizmor(this.result, {this.error});
+
+  final ZizmorResult? result;
+  final Exception? error;
+  int runs = 0;
+
+  @override
+  Future<ZizmorResult> run(String repoRoot) async {
+    runs++;
+    if (error != null) throw error!;
+    return result!;
+  }
+}
+
+/// Collects what's written to stdout or stderr.
+class _CapturedOutput implements Stdout {
+  final _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = '']) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 String _readMain(Directory repoRoot) {
   return File(
     p.join(repoRoot.path, '.github', 'workflows', 'shorebird_ci.yaml'),
   ).readAsStringSync();
+}
+
+/// The `dorny/paths-filter` patterns in a static orchestrator, by slug.
+Map<String, List<String>> _readStaticFilters(String yaml) {
+  final jobs = (loadYaml(yaml) as YamlMap)['jobs'] as YamlMap;
+  final steps = (jobs['changes'] as YamlMap)['steps'] as YamlList;
+  final step =
+      steps.firstWhere((step) => (step as YamlMap)['id'] == 'filter')
+          as YamlMap;
+  final filters =
+      loadYaml((step['with'] as YamlMap)['filters'] as String) as YamlMap;
+  return {
+    for (final MapEntry(key: slug, value: paths) in filters.entries)
+      slug as String: (paths as YamlList).cast<String>().toList(),
+  };
 }
 
 String _readAll(Directory dir) => [

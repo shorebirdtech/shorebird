@@ -174,7 +174,11 @@ class GetApksCommand extends ShorebirdCommand with AppScopedCommand {
     // Extract somewhere fresh first, so the apks reported are the ones this
     // run produced rather than whatever earlier runs left in the output
     // directory.
-    await extractFileToDisk(apksZipFile.path, extractedDirectory.path);
+    await extractFileToDisk(
+      apksZipFile.path,
+      extractedDirectory.path,
+      verify: true,
+    );
     final extractedApkNames = extractedDirectory
         .listSync()
         .whereType<File>()

@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:archive/archive_io.dart';
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
@@ -12,6 +11,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -35,8 +35,21 @@ class AarReleaser extends Releaser {
     argResults['target-platform'] as List<String>,
   );
 
+  /// The architectures the built archive actually produced, once
+  /// [uploadReleaseArtifacts] has inspected it.
+  Set<Arch>? _uploadedArchitectures;
+
   @override
   ReleaseType get releaseType => ReleaseType.aar;
+
+  @override
+  Map<Arch, String> get debugInfoFileNames => {
+    for (final arch in AndroidArch.availableAndroidArchs)
+      arch: 'app.${arch.targetPlatformCliArg}.symbols',
+  };
+
+  @override
+  Set<Arch> get builtArchitectures => _uploadedArchitectures ?? architectures;
 
   @override
   String get supplementPlatformSubdir => 'android';
@@ -60,12 +73,22 @@ class AarReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    _uploadedArchitectures = null;
+    await assertReleaseVersionCanBeBuiltIn();
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildAar(
         buildNumber: buildNumber,
+        releaseVersion: _releaseVersion,
+        appId: moduleAppId,
         targetPlatforms: architectures,
         args: buildArgs,
         base64PublicKey: base64PublicKey,
+      ),
+    );
+    await assertModuleCarriesAppId(
+      () => shorebirdAndroidArtifacts.readAarShorebirdYaml(
+        packageName: shorebirdEnv.androidPackageName!,
+        buildNumber: buildNumber,
       ),
     );
 
@@ -85,9 +108,10 @@ class AarReleaser extends Releaser {
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
-  }) async {
-    return (argResults['release-version'] as String).trim();
-  }
+  }) async => _releaseVersion;
+
+  String get _releaseVersion =>
+      (argResults['release-version'] as String).trim();
 
   @override
   Future<void> uploadReleaseArtifacts({
@@ -98,22 +122,23 @@ class AarReleaser extends Releaser {
     final extractedAarDir = await shorebirdAndroidArtifacts.extractAar(
       packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
-      unzipFn: extractFileToDisk,
+      unzipFn: extractVerifiedZip,
     );
     extractAarProgress.complete();
 
-    await codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      platform: releaseType.releasePlatform,
-      aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
-        packageName: shorebirdEnv.androidPackageName!,
-        buildNumber: buildNumber,
-      ),
-      extractedAarDir: extractedAarDir.path,
-      architectures: architectures,
-      signing: signing,
-    );
+    _uploadedArchitectures = await codePushClientWrapper
+        .createAndroidArchiveReleaseArtifacts(
+          appId: appId,
+          releaseId: release.id,
+          platform: releaseType.releasePlatform,
+          aarPath: ShorebirdAndroidArtifacts.aarArtifactPath(
+            packageName: shorebirdEnv.androidPackageName!,
+            buildNumber: buildNumber,
+          ),
+          extractedAarDir: extractedAarDir.path,
+          architectures: architectures,
+          signing: signing,
+        );
   }
 
   @override

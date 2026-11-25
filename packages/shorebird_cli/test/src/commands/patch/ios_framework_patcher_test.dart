@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -315,7 +316,10 @@ void main() {
         final exception = ArtifactBuildException('Build failed');
         setUp(() {
           when(
-            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: any(named: 'args'),
+            ),
           ).thenThrow(exception);
         });
 
@@ -331,7 +335,10 @@ void main() {
         const exception = FileSystemException('error');
         setUp(() {
           when(
-            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: any(named: 'args'),
+            ),
           ).thenAnswer(
             (_) async => AppleBuildResult(kernelFile: File('app.dill')),
           );
@@ -360,7 +367,11 @@ void main() {
             p.join(Directory.systemTemp.createTempSync().path, 'app.dill'),
           )..createSync(recursive: true);
           when(
-            () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              args: any(named: 'args'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
+            ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -381,6 +392,69 @@ void main() {
           when(
             () => artifactManager.getAppXcframeworkDirectory(),
           ).thenReturn(projectRoot);
+        });
+
+        group('when the release has TFA facts', () {
+          setUp(() {
+            final releaseSupplementDirectory = Directory.systemTemp
+                .createTempSync();
+            File(
+              p.join(releaseSupplementDirectory.path, 'App.tfa_facts.json'),
+            ).writeAsStringSync('facts');
+            patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+          });
+
+          test('builds against a stable copy of them', () async {
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception {
+              // ignore
+            }
+            final staged = p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird_release',
+            );
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: any(named: 'args'),
+                releaseSupplementDir: staged,
+              ),
+            ).called(1);
+            expect(
+              File(p.join(staged, 'App.tfa_facts.json')).readAsStringSync(),
+              'facts',
+            );
+          });
+        });
+
+        test('builds without the release supplement when it has no TFA '
+            'facts', () async {
+          patcher.releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final staged = Directory(
+            p.join(projectRoot.path, 'build', 'ios', 'shorebird_release'),
+          )..createSync(recursive: true);
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          expect(
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: any(named: 'args'),
+                releaseSupplementDir: captureAny(
+                  named: 'releaseSupplementDir',
+                ),
+              ),
+            ).captured.single,
+            isNull,
+          );
+          expect(staged.existsSync(), isFalse);
         });
 
         group('when --split-debug-info is provided', () {
@@ -414,10 +488,61 @@ void main() {
                   '--dwarf-stack-traces',
                   '--resolve-dwarf-paths',
                   '--save-debugging-info=${splitDebugInfoFile.path}',
+                  '--strip',
                 ],
               ),
             ).called(1);
           });
+        });
+
+        test('bakes the release version into the build', () async {
+          try {
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.0.0+1'),
+            );
+          } on Exception {
+            // ignore
+          }
+          verify(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: '1.0.0+1',
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+        });
+
+        test('builds a flavored module with the flavor app ID', () async {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'default-app-id',
+              flavors: {'internal': 'internal-app-id'},
+            ),
+          );
+          when(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: any(named: 'appId'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+          patcher = IosFrameworkPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: 'internal',
+            target: null,
+          );
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          verify(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: 'internal-app-id',
+              args: any(named: 'args'),
+            ),
+          ).called(1);
         });
 
         group('when obfuscationMapPath is set', () {
@@ -472,7 +597,10 @@ void main() {
           test('forwards --no-codesign to flutter', () async {
             await runWithOverrides(patcher.buildPatchArtifact);
             verify(
-              () => artifactBuilder.buildIosFramework(args: ['--no-codesign']),
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: ['--no-codesign'],
+              ),
             ).called(1);
           });
         });
@@ -486,7 +614,10 @@ void main() {
             final artifact = await runWithOverrides(patcher.buildPatchArtifact);
             expect(p.basename(artifact.path), equals('App.xcframework.zip'));
             verify(
-              () => artifactBuilder.buildIosFramework(args: ['--verbose']),
+              () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
+                args: ['--verbose'],
+              ),
             ).called(1);
           });
         });
@@ -495,6 +626,7 @@ void main() {
           setUp(() {
             when(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 target: any(named: 'target'),
                 args: any(named: 'args'),
               ),
@@ -511,6 +643,7 @@ void main() {
             await runWithOverrides(patcher.buildPatchArtifact);
             verify(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 target: 'lib/main_prod.dart',
                 args: any(named: 'args'),
               ),
@@ -525,6 +658,7 @@ void main() {
             ).thenReturn('public_key_encoded');
             when(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
                 ddMaxBytes: any(named: 'ddMaxBytes'),
@@ -550,6 +684,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: 'public_key_encoded',
               ),
@@ -576,6 +711,7 @@ void main() {
 
               verify(
                 () => artifactBuilder.buildIosFramework(
+                  releaseVersion: any(named: 'releaseVersion'),
                   args: any(named: 'args'),
                   base64PublicKey: 'public_key_encoded',
                 ),
@@ -847,6 +983,45 @@ void main() {
           );
 
           expect(supplementDirectory.existsSync(), isTrue);
+        });
+      });
+
+      group('when the release artifact is damaged', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenThrow(
+            ArchiveException('zip: end of central directory not found'),
+          );
+        });
+
+        test('fails progress and exits naming the fix', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            ),
+            exitsWithError(
+              message:
+                  'The release artifact downloaded from Shorebird is '
+                  'damaged: zip: end of central directory not found',
+              hint: allOf(
+                startsWith('Re-run to download it again.'),
+                endsWith(
+                  'Run: shorebird release ios-framework '
+                  '--release-version=<new version>',
+                ),
+              ),
+              exitCode: ExitCode.software,
+            ),
+          );
+          verify(() => progress.fail()).called(1);
         });
       });
     });

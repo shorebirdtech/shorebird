@@ -4,22 +4,34 @@ import 'package:test/test.dart';
 
 void main() {
   group('SetPatchRolloutRequest', () {
-    test('round-trips via maybeFromJson/toJson', () {
-      const instance = SetPatchRolloutRequest(rolloutPercentage: 0);
-      final parsed = SetPatchRolloutRequest.maybeFromJson(instance.toJson());
-      expect(parsed, equals(instance));
-      expect(parsed.hashCode, equals(instance.hashCode));
-    });
+    test(
+      'SetPatchRolloutPercentageRequest round-trips via maybeFromJson/toJson',
+      () {
+        const instance = SetPatchRolloutPercentageRequest(rolloutPercentage: 0);
+        final parsed = SetPatchRolloutPercentageRequest.maybeFromJson(
+          instance.toJson(),
+        )!;
+        expect(parsed, equals(instance));
+        expect(parsed.hashCode, equals(instance.hashCode));
+      },
+    );
+
+    test(
+      'SetPatchRolloutScheduleRequest round-trips via maybeFromJson/toJson',
+      () {
+        const instance = SetPatchRolloutScheduleRequest(
+          rolloutSteps: <RolloutStep>[RolloutStep(percentage: 0)],
+        );
+        final parsed = SetPatchRolloutScheduleRequest.maybeFromJson(
+          instance.toJson(),
+        )!;
+        expect(parsed, equals(instance));
+        expect(parsed.hashCode, equals(instance.hashCode));
+      },
+    );
 
     test('maybeFromJson returns null on null input', () {
       expect(SetPatchRolloutRequest.maybeFromJson(null), isNull);
-    });
-
-    test('maybeFromJson throws FormatException on invalid input', () {
-      expect(
-        () => SetPatchRolloutRequest.maybeFromJson(<String, dynamic>{}),
-        throwsFormatException,
-      );
     });
   });
 }

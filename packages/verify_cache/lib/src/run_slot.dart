@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 /// One of a fixed number of machine-wide slots, so at most that many runs
-/// check something at once and the rest queue.
+/// check something at once and the rest wait in arrival order. The default
+/// is four ([defaultSlots]).
 ///
-/// Runs that overlap compete for the same cores and finish no sooner than
-/// they would one after another: four agent-verify runs at once took three
-/// to four times as long each as one alone, and the overload timed tests
-/// out. A slot turns that into a queue.
+/// Overlapping runs compete for the same cores, so each of the four takes
+/// longer than it would alone: on 10-21, four agent-verify runs at once took
+/// 880 to 1,290 s each against about 300 s alone, and the overload timed
+/// tests out on a 12-core machine. That is what the default costs, and
+/// `VERIFY_CACHE_SLOTS` sets a lower number where it is too much.
 ///
 /// Like a `KeyLock`, a slot is the operating system's lock on a file, under
 /// `slots/`, so the kernel drops it when its holder exits.
@@ -29,10 +31,14 @@ class RunSlot {
   /// Takes one of [count] slots under [directory], waiting until one is
   /// free. Waiters are served in arrival order. Calls [onWait] once before
   /// waiting, if it has to wait.
+  ///
+  /// [sleep] stands in for the wait between tries, so a test can run the
+  /// wait loop without a real second per try.
   static Future<RunSlot> acquire(
     Directory directory,
     int count, {
     void Function()? onWait,
+    Future<void> Function(Duration) sleep = Future<void>.delayed,
   }) async {
     if (count < 1) throw ArgumentError.value(count, 'count', 'must be >= 1');
     final slots = Directory(p.join(directory.path, 'slots'));
@@ -46,11 +52,28 @@ class RunSlot {
     // Created and locked in a temporary path before entering queue/, so no
     // concurrent waiter ever sees an unlocked ticket in queue/.
     final stagingFile = File(p.join(slots.path, '.$ticketName.tmp'));
-    final ticket = stagingFile.openSync(mode: FileMode.append)..lockSync();
-    stagingFile.renameSync(ticketFile.path);
-    _locked.add(ticketFile.path);
-
+    // Opened into its own variable rather than cascaded into the lock, so a
+    // refused lock has a descriptor to close instead of leaking one.
+    final ticket = stagingFile.openSync(mode: FileMode.append);
     try {
+      ticket.lockSync();
+    } on FileSystemException {
+      ticket.closeSync();
+      try {
+        stagingFile.deleteSync();
+      } on FileSystemException {
+        // Best effort: the refused lock is the failure worth reporting.
+      }
+      rethrow;
+    }
+
+    // Where the locked ticket is, so a rename that threw unlinks the staging
+    // file rather than a queue entry it never created.
+    var ticketPath = stagingFile.path;
+    try {
+      stagingFile.renameSync(ticketFile.path);
+      ticketPath = ticketFile.path;
+      _locked.add(ticketPath);
       var waited = false;
       while (true) {
         if (!_hasWaiterAhead(queue, ticketName)) {
@@ -64,14 +87,23 @@ class RunSlot {
           waited = true;
           onWait?.call();
         }
-        await Future<void>.delayed(retryInterval);
+        await sleep(retryInterval);
       }
     } finally {
-      _locked.remove(ticketFile.path);
-      ticketFile.deleteSync();
-      ticket
-        ..unlockSync()
-        ..closeSync();
+      try {
+        File(ticketPath).deleteSync();
+      } on FileSystemException {
+        // Best effort: a ticket left behind is reaped by _hasWaiterAhead,
+        // and a slot handed back matters more than an unlink.
+      } finally {
+        try {
+          ticket
+            ..unlockSync()
+            ..closeSync();
+        } finally {
+          _locked.remove(ticketPath);
+        }
+      }
     }
   }
 
@@ -83,7 +115,12 @@ class RunSlot {
       if (_locked.contains(file.path)) return true;
       RandomAccessFile? stale;
       try {
-        stale = file.openSync()..lockSync(FileLock.shared);
+        stale = file.openSync();
+        // Opened into [stale] first on purpose: the cascade this asks for
+        // assigns only once the lock is taken, so a refused lock on a live
+        // waiter's ticket leaks the descriptor on every try.
+        // ignore: cascade_invocations
+        stale.lockSync(FileLock.shared);
         file.deleteSync();
         stale.unlockSync();
       } on FileSystemException {
@@ -97,23 +134,29 @@ class RunSlot {
 
   static Future<RandomAccessFile?> _tryLock(File file) async {
     if (!_locked.add(file.path)) return null;
-    // Append, so opening never truncates a file another process holds.
-    final opened = await file.open(mode: FileMode.append);
+    RandomAccessFile? opened;
     try {
+      // Append, so opening never truncates a file another process holds.
+      opened = await file.open(mode: FileMode.append);
       // The default mode: exclusive, and throwing rather than waiting.
       await opened.lock();
       return opened;
     } on FileSystemException {
+      // A refused open has to leave [_locked] as it found it, or nothing in
+      // this process ever takes this slot again.
       _locked.remove(file.path);
-      await opened.close();
+      await opened?.close();
       return null;
     }
   }
 
   static Future<void> _unlock(RandomAccessFile file, String path) async {
-    _locked.remove(path);
+    // Dropped from [_locked] last: an unlock that threw would otherwise free
+    // a path whose descriptor still holds the lock, and the kernel grants a
+    // second lock on that file to the process already holding the first.
     await file.unlock();
     await file.close();
+    _locked.remove(path);
   }
 
   /// Gives the slot up.

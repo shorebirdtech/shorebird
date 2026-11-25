@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -333,6 +334,7 @@ void main() {
         setUp(() {
           when(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: any(named: 'buildNumber'),
               args: any(named: 'args'),
             ),
@@ -351,11 +353,39 @@ void main() {
         setUp(() {
           when(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: any(named: 'buildNumber'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => {});
+        });
+
+        test('builds against the release supplement', () async {
+          final releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final abiDir = p.join(releaseSupplementDirectory.path, 'arm64-v8a');
+          File(p.join(abiDir, 'App.ref.link')).createSync(recursive: true);
+          patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verify(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              releaseSupplementDir: p.join(
+                projectRoot.path,
+                'build',
+                'android',
+                'shorebird_release',
+              ),
+            ),
+          ).called(1);
         });
 
         group('when platform was specified via arg results rest', () {
@@ -387,11 +417,48 @@ void main() {
 
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 args: ['--verbose'],
               ),
             ).called(1);
           });
+        });
+
+        test('builds a flavored module with the flavor app ID', () async {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'default-app-id',
+              flavors: {'internal': 'internal-app-id'},
+            ),
+          );
+          when(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: any(named: 'appId'),
+              buildNumber: any(named: 'buildNumber'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer((_) async {});
+          patcher = AarPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: 'internal',
+            target: null,
+          );
+
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verify(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: 'internal-app-id',
+              buildNumber: buildNumber,
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).called(1);
         });
 
         test('builds only the architectures the release has', () async {
@@ -407,6 +474,7 @@ void main() {
           ).thenAnswer((_) async => {Arch.arm64: FakeReleaseArtifact()});
           when(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: any(named: 'buildNumber'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
@@ -416,11 +484,12 @@ void main() {
 
           await runWithOverrides(() async {
             await patcher.prepareForRelease(appId: 'app-id', release: release);
-            await patcher.buildPatchArtifact();
+            await patcher.buildPatchArtifact(releaseVersion: '1.0.0+1');
           });
 
           verify(
             () => artifactBuilder.buildAar(
+              releaseVersion: '1.0.0+1',
               buildNumber: buildNumber,
               targetPlatforms: [Arch.arm64],
               args: any(named: 'args'),
@@ -454,6 +523,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 args: any(named: 'args'),
                 base64PublicKey: 'public_key_encoded',
@@ -479,6 +549,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 args: any(named: 'args'),
                 base64PublicKey: 'public_key_encoded',
@@ -511,6 +582,7 @@ void main() {
 
           verify(
             () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
               buildNumber: buildNumber,
               args: any(named: 'args'),
             ),
@@ -582,6 +654,24 @@ void main() {
           )..createSync();
           return diffPath.path;
         });
+      });
+
+      test('extracts the patch aar checking each entry', () async {
+        await runWithOverrides(
+          () => patcher.createPatchArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            releaseArtifact: releaseArtifactFile,
+          ),
+        );
+
+        verify(
+          () => shorebirdAndroidArtifacts.extractAar(
+            packageName: any(named: 'packageName'),
+            buildNumber: any(named: 'buildNumber'),
+            unzipFn: extractVerifiedZip,
+          ),
+        ).called(1);
       });
 
       group('when release artifact download fails', () {

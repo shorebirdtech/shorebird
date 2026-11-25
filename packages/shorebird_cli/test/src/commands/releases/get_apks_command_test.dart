@@ -664,8 +664,7 @@ void main() {
         });
       });
 
-      // Working around a package:archive bug where it silently fails when
-      // extracting the apks zip, leaving an empty directory.
+      // An .apks archive with no entries extracts nothing.
       test('apks zip is empty', () async {
         await expectLater(
           runWithOverrides(command.run),

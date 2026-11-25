@@ -1,6 +1,6 @@
 // cspell:words adrp cafebabe cafebabf chkstk cstring cstrings dsym dsyms
 // cspell:words dylib dylibs fieldmd func funcs insn insns linkedit methname
-// cspell:words movz objc pext reexport symtab
+// cspell:words movz objc pext reexport symtab typeref
 import 'dart:typed_data';
 
 import 'package:macho/macho.dart';
@@ -739,5 +739,115 @@ void main() {
         expect(fullDesc, isNot(contains('changed functions not detailed')));
       });
     });
+
+    group('GOT layout (shorebird#4492)', () {
+      // The same code, linked twice: build B orders the GOT the other way
+      // round and places it a page later, so every slot offset and page
+      // differs while each load reads the same symbol.
+      List<int> loads({required int pageDelta, required int msgSendOffset}) => [
+        Arm64Encoder.adrp(8, pageDelta),
+        Arm64Encoder.ldr(8, 8, msgSendOffset),
+        Arm64Encoder.ldrLiteral(
+          9,
+          0x4000 + (pageDelta - 3) * 0x1000 + (8 - msgSendOffset) - 0x1008,
+        ),
+        Arm64Encoder.ret(),
+      ];
+
+      Uint8List build({
+        required int gotAddr,
+        required List<int> indirect,
+        required int msgSendOffset,
+        int? typeRefSlot,
+      }) => MachOBuilder.buildThin(
+        textInstructions: loads(
+          pageDelta: (gotAddr - 0x1000) >> 12,
+          msgSendOffset: msgSendOffset,
+        ),
+        extraSections: [
+          typeRefSection(slotAddr: typeRefSlot ?? gotAddr + 8 - msgSendOffset),
+          gotSection(addr: gotAddr),
+        ],
+        symbols: gotSymbols,
+        indirectSymbols: indirect,
+      );
+
+      final buildA = build(
+        gotAddr: 0x4000,
+        indirect: const [2, 1],
+        msgSendOffset: 8,
+      );
+      final buildB = build(
+        gotAddr: 0x5000,
+        indirect: const [1, 2],
+        msgSendOffset: 0,
+      );
+
+      test('equal code over a re-laid-out GOT is identical', () {
+        final result = differ.diffBytes(buildA, buildB);
+        expect(result.differences, isEmpty);
+      });
+
+      test('loading a different symbol is a breaking code change', () {
+        // Same layout as build A, but the ADRP+LDR reads the StoreKit slot.
+        final other = build(
+          gotAddr: 0x4000,
+          indirect: const [2, 1],
+          msgSendOffset: 0,
+          typeRefSlot: 0x4000,
+        );
+        final result = differ.diffBytes(buildA, other);
+        expect(result.isSafe, isFalse);
+        expect(
+          result.breakingDifferences.map((d) => d.kind),
+          contains(MachODifferenceKind.functionCodeChanged),
+        );
+      });
+
+      test('a type reference to a different symbol is breaking', () {
+        final other = build(
+          gotAddr: 0x4000,
+          indirect: const [2, 1],
+          msgSendOffset: 8,
+          typeRefSlot: 0x4008,
+        );
+        final result = differ.diffBytes(buildA, other);
+        expect(
+          result.breakingDifferences.map((d) => d.description),
+          ['Swift descriptor section changed: __TEXT,__swift5_typeref'],
+        );
+      });
+    });
   });
 }
+
+/// A `__DATA_CONST,__got` of [slotCount] slots at [addr], bound by the
+/// indirect symbol table from index 0.
+MachOSectionSpec gotSection({int addr = 0x4000, int slotCount = 2}) =>
+    MachOSectionSpec(
+      segname: '__DATA_CONST',
+      sectname: '__got',
+      bytes: Uint8List(slotCount * 8),
+      addr: addr,
+      flags: MachOSectionType.nonLazySymbolPointers,
+    );
+
+/// A `__TEXT,__swift5_typeref` at [addr] holding one mangled name that is an
+/// indirect (`0x02`) symbolic reference to the slot at [slotAddr].
+MachOSectionSpec typeRefSection({required int slotAddr, int addr = 0x2000}) {
+  final bytes = Uint8List(6);
+  bytes[0] = 0x02;
+  ByteData.sublistView(bytes).setInt32(1, slotAddr - (addr + 1), Endian.little);
+  return MachOSectionSpec(
+    segname: '__TEXT',
+    sectname: '__swift5_typeref',
+    bytes: bytes,
+    addr: addr,
+  );
+}
+
+const gotSymbols = [
+  MachOSymbolSpec(name: '_main'),
+  MachOSymbolSpec.undefined('_objc_msgSend'),
+  MachOSymbolSpec.undefined(r'_$s8StoreKit7ProductVMn'),
+];

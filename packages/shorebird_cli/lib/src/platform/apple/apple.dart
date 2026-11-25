@@ -104,6 +104,15 @@ class Apple {
       'App.field_table.json',
       'App.dt.link',
       'App.dispatch_table.json',
+      // Stack map order: the release's is passed to the patch's final
+      // gen_snapshot pass so the patch keeps the release's stack map layout.
+      'App.sm.link',
+      // Snapshot object order: likewise, so the patch's objects keep the
+      // release's ref ids and its snapshot the release's layout.
+      'App.ref.link',
+      // Object pool keys: the patch's gen_snapshot places each pool entry in
+      // the slot the release gave the same entry.
+      'App.pool.link',
       // DD table files for cascade limiter (produced by 2-pass release build).
       'App.dd.link',
       'App.dd_callers.link',
@@ -214,6 +223,7 @@ class Apple {
     required File aotOutputFile,
     required File vmCodeFile,
     int? ddMaxBytes,
+    String? obfuscationMapPath,
   }) async {
     final patch = aotOutputFile;
     final buildDirectory = shorebirdEnv.buildDirectory;
@@ -348,6 +358,7 @@ $error''');
           linkMetadata = await aotTools.getLinkMetadata(
             debugDir: dumpDebugInfoDir.path,
             workingDirectory: buildDirectory.path,
+            obfuscationMapPath: obfuscationMapPath,
           );
         }
       } on Exception catch (error) {

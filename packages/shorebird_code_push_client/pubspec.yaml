@@ -23,3 +23,10 @@ dev_dependencies:
   build_version: ^2.2.1
   mocktail: ^1.0.5
   test: ^1.33.0
+
+shorebird_ci:
+  runners:
+    - macos-latest
+    - windows-latest
+    - ubuntu-latest
+  min_coverage: 99.4

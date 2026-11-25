@@ -106,6 +106,32 @@ void main() {
     });
 
     group('confirmUnpatchableDiffsIfNecessary', () {
+      group('when an archive cannot be read', () {
+        setUp(() {
+          when(
+            () => archiveDiffer.changedFiles(any(), any()),
+          ).thenThrow(const FormatException('damaged'));
+        });
+
+        test('fails progress and rethrows', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            ),
+            throwsA(isA<FormatException>()),
+          );
+
+          verify(() => progress.fail()).called(1);
+          verifyNever(() => progress.complete());
+        });
+      });
+
       group('when native diffs are detected', () {
         setUp(() {
           when(
@@ -393,8 +419,126 @@ void main() {
                 that: allOf(
                   contains('Dependency versions differ from the release:'),
                   contains('  io.branch.sdk.android:library 5.21.2 -> 5.21.3'),
-                  contains('Gradle dependency locking'),
+                  contains('''
+  dependencies {
+    constraints {
+      implementation("io.branch.sdk.android:library") { version { strictly("5.21.2") } }
+    }
+  }
+Remove these lines before your next release'''),
+                  contains('commit the lockfile with each release'),
                   contains('safe to pass --allow-native-diffs for this patch.'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('writes one constraint per module, none for an added or '
+            'removed library', () async {
+          when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
+            (_) async => const AndroidFileSetDiff(
+              addedPaths: {},
+              removedPaths: {},
+              changedPaths: {'base/dex/classes3.dex'},
+              dependencyVersionChanges: [
+                DependencyVersionChange(
+                  name: 'com.example:added',
+                  oldVersion: null,
+                  newVersion: '1.0.0',
+                ),
+                DependencyVersionChange(
+                  name: 'com.example:removed',
+                  oldVersion: '2.0.0',
+                  newVersion: null,
+                ),
+                DependencyVersionChange(
+                  name: 'com.posthog:posthog',
+                  oldVersion: '6.46.2',
+                  newVersion: '6.46.3',
+                ),
+                DependencyVersionChange(
+                  name: 'com.posthog:posthog-android',
+                  oldVersion: '3.71.6',
+                  newVersion: '3.71.7',
+                ),
+                DependencyVersionChange(
+                  name: 'com.posthog:posthog-android:aar',
+                  oldVersion: '3.71.6',
+                  newVersion: '3.71.7',
+                ),
+              ],
+            ),
+          );
+
+          await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
+              archiveDiffer: archiveDiffer,
+              allowAssetChanges: false,
+              allowNativeChanges: true,
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(
+                that: allOf(
+                  contains('''
+    constraints {
+      implementation("com.posthog:posthog") { version { strictly("6.46.2") } }
+      implementation("com.posthog:posthog-android") { version { strictly("3.71.6") } }
+    }'''),
+                  isNot(contains('com.example:added")')),
+                  isNot(contains('com.example:removed")')),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test('with only added or removed libraries, gives the general '
+            'advice', () async {
+          when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
+            (_) async => const AndroidFileSetDiff(
+              addedPaths: {},
+              removedPaths: {},
+              changedPaths: {'base/dex/classes3.dex'},
+              dependencyVersionChanges: [
+                DependencyVersionChange(
+                  name: 'com.example:added',
+                  oldVersion: null,
+                  newVersion: '1.0.0',
+                ),
+                DependencyVersionChange(
+                  name: 'com.example:removed',
+                  oldVersion: '2.0.0',
+                  newVersion: null,
+                ),
+              ],
+            ),
+          );
+
+          await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
+              archiveDiffer: archiveDiffer,
+              allowAssetChanges: false,
+              allowNativeChanges: true,
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(
+                that: allOf(
+                  contains(
+                    'Pin dependency versions (or use Gradle dependency '
+                    'locking)',
+                  ),
+                  isNot(contains('constraints {')),
                 ),
               ),
             ),

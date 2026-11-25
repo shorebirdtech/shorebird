@@ -39,6 +39,113 @@ void main() {
       expect(s.ios, isNull);
     });
 
+    group('flutter process span', () {
+      // Flutter's umbrella starts after its pub get and artifact
+      // downloads; the process span shorebird_cli records starts at spawn.
+      final events = [
+        _event(
+          name: 'flutter process',
+          cat: 'subprocess',
+          ts: 0,
+          dur: 10_000_000,
+          tid: 2,
+          args: {'command': 'ios'},
+        ),
+        _event(
+          name: 'flutter build ios',
+          cat: 'flutter',
+          ts: 4_000_000,
+          dur: 5_000_000,
+          tid: 1,
+        ),
+        // A download during flutter_tools' startup is Flutter's, not
+        // Shorebird's.
+        _event(
+          name: 'GET artifact',
+          cat: 'network',
+          ts: 1_000_000,
+          dur: 2_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'POST patch',
+          cat: 'network',
+          ts: 11_000_000,
+          dur: 1_000_000,
+          tid: 1,
+        ),
+      ];
+
+      test('is the Flutter build, startup included', () {
+        final s = BuildTraceSummary.fromEvents(
+          events,
+          platform: 'ios',
+          shorebirdOverhead: const Duration(seconds: 3),
+        );
+        expect(s.flutterBuild, const Duration(seconds: 10));
+        expect(s.total, const Duration(seconds: 13));
+        expect(s.network.shorebird, const Duration(seconds: 1));
+        // Not double counted as flutter-tool time.
+        expect(s.flutterTool, Duration.zero);
+      });
+
+      test('sums one span per flutter build', () {
+        final s = BuildTraceSummary.fromEvents([
+          ...events,
+          _event(
+            name: 'flutter process',
+            cat: 'subprocess',
+            ts: 20_000_000,
+            dur: 6_000_000,
+            tid: 2,
+            args: {'command': 'apk'},
+          ),
+        ], platform: 'android');
+        expect(s.flutterBuild, const Duration(seconds: 16));
+      });
+
+      test('falls back to the umbrella without one', () {
+        final s = BuildTraceSummary.fromEvents(
+          events.where((e) => e['name'] != 'flutter process').toList(),
+          platform: 'ios',
+        );
+        expect(s.flutterBuild, const Duration(seconds: 5));
+        // The startup download is outside the umbrella, so Shorebird's.
+        expect(s.network.shorebird, const Duration(seconds: 3));
+      });
+    });
+
+    test('toJson totals add up in whole milliseconds', () {
+      final s = BuildTraceSummary.fromEvents(
+        [
+          _event(
+            name: 'flutter process',
+            cat: 'subprocess',
+            ts: 0,
+            dur: 1_000_600,
+            tid: 2,
+          ),
+          _event(
+            name: 'POST patch',
+            cat: 'network',
+            ts: 2_000_000,
+            dur: 400_600,
+            tid: 1,
+          ),
+        ],
+        platform: 'android',
+        shorebirdOverhead: const Duration(microseconds: 2_000_600),
+      );
+      final j = s.toJson();
+      // 1000.6 + 2000.6 is 3001.2 ms, but the parts read 1000 + 2000.
+      expect(j['flutterBuildMs'], 1000);
+      expect(j['shorebirdOverheadMs'], 2000);
+      expect(j['totalMs'], 3000);
+      // 2000 - 400, not 1599 (2000.6 - 400.6 rounded down).
+      expect((j['network']! as Map)['shorebirdMs'], 400);
+      expect(j['shorebirdLocalMs'], 1600);
+    });
+
     test('unknown cat is dropped — does not contribute to any bucket', () {
       // A future producer emits a category this consumer doesn't know yet.
       // Forward-compat contract: parse to TraceCategory.unknown and skip.
@@ -139,8 +246,9 @@ void main() {
       expect(s.flutterBuild, const Duration(milliseconds: 3005));
       expect(s.shorebirdOverhead, const Duration(milliseconds: 500));
       expect(s.total, const Duration(milliseconds: 3505));
-      // shorebirdLocal = overhead 500 − network 300 = 200
-      expect(s.shorebirdLocal, const Duration(milliseconds: 200));
+      // The POST lies inside the flutter build span, so none of it is
+      // Shorebird's network time: shorebirdLocal is all of overhead.
+      expect(s.shorebirdLocal, const Duration(milliseconds: 500));
 
       // Network
       expect(s.network.duration, const Duration(milliseconds: 300));
@@ -463,7 +571,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 9);
+      expect(j['version'], 12);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
@@ -509,7 +617,7 @@ void main() {
         ),
       ];
 
-      test('bucket by phase and sum repeated phases', () {
+      test('bucket by phase and add back-to-back repeats', () {
         final s = BuildTraceSummary.fromEvents(
           setupEvents(),
           platform: 'android',
@@ -566,7 +674,193 @@ void main() {
           'flutterInstallMs': 90_000,
           'flutterPrecacheMs': 240_000,
           'shorebirdCacheMs': 31_000,
+          'downloads': {
+            'count': 0,
+            'cacheHitCount': 0,
+            'failedCount': 0,
+            'retryCount': 0,
+            'bytes': 0,
+            'ms': 0,
+            'redirectMs': 0,
+            'ttfb': DurationDistribution.empty().toJson(),
+            'hosts': <String, Object?>{},
+            'edges': <String, Object?>{},
+          },
+          'cold': true,
         });
+      });
+
+      test('cold when Flutter was installed or its precache ran', () {
+        // A checkout from an interrupted earlier run: precache only.
+        final precacheOnly = BuildTraceSummary.fromEvents(
+          setupEvents()
+              .where((e) => e['name'] != 'setup: flutter_install')
+              .toList(),
+          platform: 'android',
+        );
+        expect(precacheOnly.setup.cold, isTrue);
+      });
+
+      test('warm when only the shorebird cache was refreshed', () {
+        final s = BuildTraceSummary.fromEvents(
+          setupEvents()
+              .where((e) => e['name'] == 'setup: shorebird_cache')
+              .toList(),
+          platform: 'android',
+        );
+        expect(s.setup.cold, isFalse);
+        expect(s.toJson()['setup'], containsPair('cold', false));
+      });
+    });
+
+    group('precache downloads', () {
+      Map<String, Object?> download({
+        required int ts,
+        required int dur,
+        required Map<String, Object?> args,
+      }) => _event(
+        name: 'download ${args['host']}',
+        cat: 'download',
+        ts: ts,
+        dur: dur,
+        tid: 1,
+        args: args,
+      );
+
+      test('totals fetches by host and edge', () {
+        final s = BuildTraceSummary.fromEvents([
+          // Two concurrent fetches redirected to GCS, one retried.
+          download(
+            ts: 0,
+            dur: 4_000_000,
+            args: {
+              'host': 'download.shorebird.dev',
+              'servedBy': 'storage.googleapis.com',
+              'status': 200,
+              'bytes': 1000,
+              'redirectUs': 300_000,
+              'ttfbUs': 500_000,
+              'retries': 1,
+              'edge': 'cloudflare:BOM',
+            },
+          ),
+          download(
+            ts: 1_000_000,
+            dur: 5_000_000,
+            args: {
+              'host': 'download.shorebird.dev',
+              'servedBy': 'storage.googleapis.com',
+              'status': 200,
+              'bytes': 2000,
+              'redirectUs': 200_000,
+              'ttfbUs': 700_000,
+              'retries': 0,
+              'edge': 'cloudflare:BOM',
+            },
+          ),
+          download(
+            ts: 10_000_000,
+            dur: 1_000_000,
+            args: {
+              'host': 'maven.example.com',
+              'status': 404,
+              'bytes': 0,
+              'ttfbUs': 900_000,
+              'retries': 0,
+            },
+          ),
+          download(
+            ts: 12_000_000,
+            dur: 0,
+            args: {'host': 'download.shorebird.dev', 'cacheHit': true},
+          ),
+        ], platform: 'android');
+        final downloads = s.setup.downloads;
+        expect(downloads.count, 3);
+        expect(downloads.cacheHitCount, 1);
+        expect(downloads.failedCount, 1);
+        expect(downloads.retryCount, 1);
+        expect(downloads.bytes, 3000);
+        expect(downloads.duration, const Duration(seconds: 7));
+        expect(downloads.redirect, const Duration(milliseconds: 500));
+        expect(
+          downloads.timeToFirstByte.p50,
+          const Duration(milliseconds: 700),
+        );
+        expect(downloads.toJson()['hosts'], {
+          'storage.googleapis.com': {'count': 2, 'bytes': 3000, 'ms': 6000},
+          'maven.example.com': {'count': 1, 'bytes': 0, 'ms': 1000},
+        });
+        expect(downloads.edges, {'cloudflare:BOM': 2});
+      });
+
+      test('reports names that are not plain hostnames as other', () {
+        final s = BuildTraceSummary.fromEvents([
+          download(
+            ts: 0,
+            dur: 1000,
+            args: {
+              'host': 'https://user:secret@example.com/x',
+              'status': 200,
+              'edge': 'cloudflare BOM; extra',
+            },
+          ),
+        ], platform: 'android');
+        expect(s.setup.downloads.hosts.keys, ['other']);
+        expect(s.setup.downloads.edges, {'other': 1});
+      });
+
+      test('caps distinct hosts and edges', () {
+        final s = BuildTraceSummary.fromEvents([
+          for (var i = 0; i < 20; i++)
+            download(
+              ts: i * 1000,
+              dur: 1000,
+              args: {'host': 'h$i.example.com', 'status': 200, 'edge': 'e:$i'},
+            ),
+        ], platform: 'android');
+        final hosts = s.setup.downloads.hosts;
+        expect(hosts, hasLength(17));
+        expect(hosts['other']!.count, 4);
+        expect(s.setup.downloads.edges['other'], 4);
+      });
+
+      test('a fetch fails on an error, not on a missing status', () {
+        final s = BuildTraceSummary.fromEvents([
+          download(
+            ts: 0,
+            dur: 1000,
+            args: {'host': 'example.com', 'error': 'connection reset'},
+          ),
+          download(ts: 2000, dur: 1000, args: {'host': 'example.com'}),
+        ], platform: 'android');
+        expect(s.setup.downloads.count, 2);
+        expect(s.setup.downloads.failedCount, 1);
+      });
+
+      test('ignores args of the wrong type', () {
+        final s = BuildTraceSummary.fromEvents([
+          download(
+            ts: 0,
+            dur: 1000,
+            args: {
+              'host': 'example.com',
+              'status': 200,
+              'bytes': '12',
+              'retries': '1',
+              'redirectUs': null,
+              'ttfbUs': 1500.0,
+            },
+          ),
+        ], platform: 'android');
+        final downloads = s.setup.downloads;
+        expect(downloads.bytes, 0);
+        expect(downloads.retryCount, 0);
+        expect(downloads.redirect, Duration.zero);
+        expect(
+          downloads.timeToFirstByte.max,
+          const Duration(microseconds: 1500),
+        );
       });
     });
 
@@ -655,6 +949,7 @@ void main() {
     });
 
     group('assemble category classification', () {
+      // Back to back: concurrent spans would count once.
       test('aot_assembly / aot_elf / ios_aot → genSnapshot bucket', () {
         final s = BuildTraceSummary.fromEvents([
           _event(
@@ -667,19 +962,33 @@ void main() {
           _event(
             name: 'aot_elf_release',
             cat: 'assemble',
-            ts: 0,
+            ts: 1_000_000,
             dur: 2_000_000,
             tid: 3,
           ),
           _event(
             name: 'ios_aot',
             cat: 'assemble',
-            ts: 0,
+            ts: 3_000_000,
             dur: 3_000_000,
             tid: 3,
           ),
         ], platform: 'android');
         expect(s.dart.genSnapshot, const Duration(milliseconds: 6000));
+      });
+
+      test('compile_macos_framework → genSnapshot bucket', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'compile_macos_framework',
+            cat: 'assemble',
+            ts: 0,
+            dur: 4_000_000,
+            tid: 3,
+          ),
+        ], platform: 'macos');
+        expect(s.dart.genSnapshot, const Duration(seconds: 4));
+        expect(s.flutterAssemble.other, Duration.zero);
       });
 
       test('dart_build → DartStats.build', () {
@@ -720,21 +1029,21 @@ void main() {
           _event(
             name: 'install_code_assets',
             cat: 'assemble',
-            ts: 0,
+            ts: 100_000,
             dur: 200_000,
             tid: 3,
           ),
           _event(
             name: 'unpack_macos',
             cat: 'assemble',
-            ts: 0,
+            ts: 300_000,
             dur: 300_000,
             tid: 3,
           ),
           _event(
             name: 'copy_framework',
             cat: 'assemble',
-            ts: 0,
+            ts: 600_000,
             dur: 400_000,
             tid: 3,
           ),
@@ -931,6 +1240,381 @@ void main() {
         );
         final json = iosStats.toJson();
         expect(json.keys, containsAll(<String>['podInstall', 'xcode']));
+      });
+    });
+
+    group('concurrent spans count as wall time', () {
+      // One gen_snapshot per Android arch, all started together inside
+      // gradle: [10s, 13s), [10s, 14s), [10s, 15s) within [5s, 35s).
+      List<Map<String, Object?>> perArch() => [
+        for (final (i, secs) in [3, 4, 5].indexed)
+          _event(
+            name: 'android_aot',
+            cat: 'assemble',
+            ts: 10_000_000,
+            dur: secs * 1_000_000,
+            tid: i + 1,
+          ),
+        _event(
+          name: 'gradle bundleRelease',
+          cat: 'gradle',
+          ts: 5_000_000,
+          dur: 30_000_000,
+          tid: 9,
+        ),
+      ];
+
+      test('genSnapshot is the union, not the sum, of per-arch runs', () {
+        final s = BuildTraceSummary.fromEvents(perArch(), platform: 'android');
+        expect(s.dart.genSnapshot, const Duration(seconds: 5));
+        expect(s.dart.total, const Duration(seconds: 5));
+      });
+
+      test('dart.total unions kernel and gen_snapshot', () {
+        final s = BuildTraceSummary.fromEvents([
+          ...perArch(),
+          // Overlaps the gen_snapshot runs by 1s.
+          _event(
+            name: 'kernel_snapshot_program',
+            cat: 'assemble',
+            ts: 8_000_000,
+            dur: 3_000_000,
+            tid: 5,
+          ),
+        ], platform: 'android');
+        expect(s.dart.kernelSnapshot, const Duration(seconds: 3));
+        expect(s.dart.total, const Duration(seconds: 7));
+      });
+
+      test('native.compile subtracts their wall time once', () {
+        final s = BuildTraceSummary.fromEvents(perArch(), platform: 'android');
+        expect(s.native.compile, const Duration(seconds: 25));
+      });
+
+      test('repeated identical events count once', () {
+        final s = BuildTraceSummary.fromEvents([
+          ...perArch(),
+          ...perArch(),
+        ], platform: 'android');
+        expect(s.dart.genSnapshot, const Duration(seconds: 5));
+      });
+
+      test('events without ts are summed, as before timestamps', () {
+        final s = BuildTraceSummary.fromEvents([
+          for (var i = 0; i < 2; i++)
+            {'ph': 'X', 'name': 'android_aot', 'cat': 'assemble', 'dur': 2e6},
+        ], platform: 'android');
+        expect(s.dart.genSnapshot, const Duration(seconds: 4));
+      });
+
+      test('network counts concurrent requests once', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(name: 'PUT a', cat: 'network', ts: 0, dur: 2_000_000, tid: 1),
+          _event(
+            name: 'PUT b',
+            cat: 'network',
+            ts: 1_000_000,
+            dur: 2_000_000,
+            tid: 2,
+          ),
+          _event(
+            name: 'GET c',
+            cat: 'network',
+            ts: 5_000_000,
+            dur: 1_000_000,
+            tid: 1,
+          ),
+        ], platform: 'android');
+        expect(s.network.duration, const Duration(seconds: 4));
+        expect(s.network.callCount, 3);
+      });
+
+      test('network.shorebird leaves out setup and the flutter build', () {
+        final s = BuildTraceSummary.fromEvents(
+          [
+            // A shorebird_cache download inside setup [0s, 3s).
+            _event(
+              name: 'setup: shorebird_cache',
+              cat: 'setup',
+              ts: 0,
+              dur: 3_000_000,
+              tid: 1,
+            ),
+            _event(
+              name: 'GET a',
+              cat: 'network',
+              ts: 0,
+              dur: 2_000_000,
+              tid: 2,
+            ),
+            // Straddles the end of setup: 1s inside, 1s outside.
+            _event(
+              name: 'GET b',
+              cat: 'network',
+              ts: 2_000_000,
+              dur: 2_000_000,
+              tid: 2,
+            ),
+            // A request inside the flutter build [5s, 15s).
+            _event(
+              name: 'flutter build appbundle',
+              cat: 'flutter',
+              ts: 5_000_000,
+              dur: 10_000_000,
+              tid: 3,
+            ),
+            _event(
+              name: 'GET c',
+              cat: 'network',
+              ts: 6_000_000,
+              dur: 1_000_000,
+              tid: 4,
+            ),
+            // Shorebird's upload after the build.
+            _event(
+              name: 'PUT d',
+              cat: 'network',
+              ts: 16_000_000,
+              dur: 2_000_000,
+              tid: 2,
+            ),
+            // No ts: can't be placed, so it counts.
+            {'ph': 'X', 'name': 'GET e', 'cat': 'network', 'dur': 500_000},
+          ],
+          platform: 'android',
+          shorebirdOverhead: const Duration(seconds: 10),
+        );
+        expect(s.network.duration, const Duration(milliseconds: 7500));
+        expect(s.network.shorebird, const Duration(milliseconds: 3500));
+        // Overhead less Shorebird's network, not less network.ms (7.5s):
+        // setup's downloads stay in setup, Flutter's in the build.
+        expect(s.shorebirdLocal, const Duration(milliseconds: 6500));
+        expect(
+          (s.toJson()['network']! as Map)['shorebirdMs'],
+          3500,
+        );
+      });
+
+      test(
+        'shorebirdLocal is zero when Shorebird network exceeds overhead',
+        () {
+          final s = BuildTraceSummary.fromEvents(
+            [
+              _event(
+                name: 'PUT a',
+                cat: 'network',
+                ts: 0,
+                dur: 2_000_000,
+                tid: 2,
+              ),
+            ],
+            platform: 'android',
+            shorebirdOverhead: const Duration(seconds: 1),
+          );
+          expect(s.network.shorebird, const Duration(seconds: 2));
+          expect(s.shorebirdLocal, Duration.zero);
+        },
+      );
+
+      test('network.shorebird subtracts overlapping windows once', () {
+        final s = BuildTraceSummary.fromEvents([
+          // Setup [0s, 4s) overlaps the first build [2s, 6s); a second
+          // build runs [8s, 10s).
+          _event(
+            name: 'setup: flutter_precache',
+            cat: 'setup',
+            ts: 0,
+            dur: 4_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'flutter build apk',
+            cat: 'flutter',
+            ts: 2_000_000,
+            dur: 4_000_000,
+            tid: 2,
+          ),
+          _event(
+            name: 'flutter build appbundle',
+            cat: 'flutter',
+            ts: 8_000_000,
+            dur: 2_000_000,
+            tid: 2,
+          ),
+          // [1s, 11s) crosses all of them: outside is [6s, 8s) and
+          // [10s, 11s).
+          _event(
+            name: 'GET a',
+            cat: 'network',
+            ts: 1_000_000,
+            dur: 10_000_000,
+            tid: 3,
+          ),
+        ], platform: 'android');
+        expect(s.network.duration, const Duration(seconds: 10));
+        expect(s.network.shorebird, const Duration(seconds: 3));
+      });
+
+      test('setup counts nested cache refreshes once', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'setup: shorebird_cache',
+            cat: 'setup',
+            ts: 0,
+            dur: 2_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'setup: shorebird_cache',
+            cat: 'setup',
+            ts: 500_000,
+            dur: 1_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'setup: flutter_precache',
+            cat: 'setup',
+            ts: 1_000_000,
+            dur: 3_000_000,
+            tid: 2,
+          ),
+        ], platform: 'android');
+        expect(s.setup.shorebirdCache, const Duration(seconds: 2));
+        expect(s.setup.flutterPrecache, const Duration(seconds: 3));
+        expect(s.setup.total, const Duration(seconds: 4));
+      });
+    });
+
+    // Real traces from `shorebird release` and `shorebird patch` runs.
+    // Expected values were computed outside Dart from the same files
+    // (union of each bucket's [ts, ts + dur) spans). The iOS and macOS
+    // traces predate the `flutter process` span, so their flutterBuild
+    // comes from the umbrella span.
+    group('real traces', () {
+      BuildTraceSummary summarize(
+        String name, {
+        String platform = 'android',
+      }) => BuildTraceSummary.fromEvents(
+        BuildTraceSummary.tryReadEvents(
+          File(p.join(fixturesDirectory, 'build_trace', name)),
+        )!,
+        platform: platform,
+      );
+
+      void expectStagesFitTheirParents(BuildTraceSummary s) {
+        expect(s.dart.total, lessThanOrEqualTo(s.flutterBuild));
+        expect(
+          s.dart.total,
+          lessThanOrEqualTo(s.dart.kernelSnapshot + s.dart.genSnapshot),
+        );
+        expect(
+          s.setup.total,
+          lessThanOrEqualTo(
+            s.setup.flutterInstall +
+                s.setup.flutterPrecache +
+                s.setup.shorebirdCache,
+          ),
+        );
+        expect(s.native.compile, lessThanOrEqualTo(s.native.build));
+        expect(s.network.shorebird, lessThanOrEqualTo(s.network.duration));
+        expect(s.native.build, lessThanOrEqualTo(s.flutterBuild));
+      }
+
+      test('a clean release run', () {
+        final s = summarize('android_clean.json');
+        // Three gen_snapshot runs (arm, arm64, x64) overlap: summed
+        // they are 4845 ms.
+        expect(s.dart.genSnapshot.inMilliseconds, 2286);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 1185);
+        expect(s.dart.total.inMilliseconds, 3471);
+        expect(s.network.duration.inMilliseconds, 7696);
+        expect(s.network.shorebird.inMilliseconds, 7696);
+        // Nested shorebird_cache refreshes: summed they are 2493 ms.
+        expect(s.setup.total.inMilliseconds, 1948);
+        expectStagesFitTheirParents(s);
+      });
+
+      test('an accumulated trace counts repeated events once', () {
+        // Two commands' worth of events, with the first command's
+        // assemble events written twice: what CLIs before summary
+        // version 10 left behind.
+        final s = summarize('android_accumulated.json');
+        // Summed: 13776 ms, as the version 9 summary of this file says.
+        expect(s.dart.genSnapshot.inMilliseconds, 4167);
+        expect(s.dart.total.inMilliseconds, 6528);
+        expect(s.network.duration.inMilliseconds, 14538);
+        // 3053 ms of it were shorebird_cache downloads inside setup.
+        expect(s.network.shorebird.inMilliseconds, 11485);
+        expect(s.setup.total.inMilliseconds, 47839);
+        expectStagesFitTheirParents(s);
+      });
+
+      // `shorebird release ios --dry-run` on the e2e app, Flutter 3.41.
+      test('an iOS release run', () {
+        final s = summarize('ios_release.json', platform: 'ios');
+        expect(s.flutterBuild.inMilliseconds, 29544);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 6813);
+        expect(s.dart.genSnapshot.inMilliseconds, 11545);
+        expect(s.dart.total.inMilliseconds, 18358);
+        expect(s.native.build.inMilliseconds, 29452);
+        expect(s.network.duration.inMilliseconds, 409);
+        expect(s.setup.total.inMilliseconds, 555);
+        // Native build minus the assemble time inside it.
+        expect(s.native.compile.inMilliseconds, 9564);
+        expect(s.ios!.xcode.subsectionDistribution.count, 175);
+        // Swift Package Manager: pod install has nothing to do.
+        expect(s.ios!.podInstall.duration.inMilliseconds, 0);
+        expect(s.android, isNull);
+        expectStagesFitTheirParents(s);
+      });
+
+      // `shorebird release macos --dry-run` on the e2e app: one
+      // compile_macos_framework target builds both arches.
+      test('a macOS release run', () {
+        final s = summarize('macos_release.json', platform: 'macos');
+        expect(s.flutterBuild.inMilliseconds, 45862);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 9270);
+        expect(s.dart.genSnapshot.inMilliseconds, 3890);
+        expect(s.dart.total.inMilliseconds, 13160);
+        expect(s.native.build.inMilliseconds, 45694);
+        expect(s.network.duration.inMilliseconds, 742);
+        expect(s.setup.total.inMilliseconds, 852);
+        expect(s.native.compile.inMilliseconds, 23088);
+        expect(s.ios!.xcode.subsectionDistribution.count, 303);
+        expect(s.android, isNull);
+        expectStagesFitTheirParents(s);
+      });
+
+      // `shorebird patch ios --dry-run` on an app with a plugin. The
+      // linker's aot_tools and gen_snapshot runs after the build are not
+      // Dart compile: genSnapshot is the ios_aot target alone.
+      test('an iOS patch run', () {
+        final s = summarize('ios_patch.json', platform: 'ios');
+        expect(s.flutterBuild.inMilliseconds, 152807);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 19635);
+        expect(s.dart.genSnapshot.inMilliseconds, 81020);
+        expect(s.dart.total.inMilliseconds, 100655);
+        expect(s.native.build.inMilliseconds, 152573);
+        expect(s.network.duration.inMilliseconds, 719);
+        expect(s.setup.total.inMilliseconds, 2859);
+        expect(s.native.compile.inMilliseconds, 47622);
+        expect(s.ios!.xcode.subsectionDistribution.count, 209);
+        expectStagesFitTheirParents(s);
+      });
+
+      test('an accumulated iOS patch trace counts repeated events once', () {
+        // Two patch runs' events in one file, with the first run's
+        // assemble events written twice: the shape CLIs before summary
+        // version 10 left behind, which showed Dart compile longer than
+        // the whole run.
+        final s = summarize('ios_patch_accumulated.json', platform: 'ios');
+        // Summed: 233832 ms.
+        expect(s.dart.genSnapshot.inMilliseconds, 152812);
+        expect(s.dart.kernelSnapshot.inMilliseconds, 36050);
+        expect(s.dart.total.inMilliseconds, 188862);
+        expect(s.network.duration.inMilliseconds, 1440);
+        expect(s.setup.total.inMilliseconds, 5654);
+        expectStagesFitTheirParents(s);
       });
     });
   });

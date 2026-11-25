@@ -11,11 +11,13 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/release/ios_framework_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -105,6 +107,10 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       xcodeBuild = MockXcodeBuild();
 
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => minimumModuleReleaseVersionFlutterVersion);
+
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['codesign']).thenReturn(true);
       when(() => argResults.wasParsed(any())).thenReturn(false);
@@ -168,7 +174,8 @@ void main() {
               exitsWithError(
                 message:
                     'An ios-framework release needs --release-version: the '
-                    'version of the iOS app that embeds this module.',
+                    'version of this module build, a new one for each build '
+                    'you release.',
                 hint:
                     'Run: shorebird release ios-framework '
                     '--release-version=$releaseVersionExample',
@@ -271,8 +278,10 @@ void main() {
       }
 
       setUp(() {
+        when(() => argResults['release-version']).thenReturn(' 1.0.0+1 ');
         when(
           () => artifactBuilder.buildIosFramework(
+            releaseVersion: any(named: 'releaseVersion'),
             args: any(named: 'args'),
             applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
@@ -306,6 +315,7 @@ void main() {
 
           when(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
@@ -330,6 +340,7 @@ void main() {
 
             verify(
               () => artifactBuilder.buildIosFramework(
+                releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
                 applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
@@ -348,8 +359,9 @@ void main() {
           await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
           verify(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: ['--no-codesign'],
-              applyLegacyDdDefault: true,
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).called(1);
         });
@@ -368,8 +380,9 @@ void main() {
           expect(xcframework.path, p.join(projectRoot.path, 'release'));
           verify(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: ['--verbose'],
-              applyLegacyDdDefault: true,
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).called(1);
         });
@@ -383,10 +396,88 @@ void main() {
         expect(xcframework.path, p.join(projectRoot.path, 'release'));
         verify(
           () => artifactBuilder.buildIosFramework(
+            releaseVersion: '1.0.0+1',
             args: [],
-            applyLegacyDdDefault: true,
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).called(1);
+      });
+
+      group('when released with a flavor', () {
+        const flavorAppId = 'internal-app-id';
+
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'default-app-id',
+              flavors: {'internal': flavorAppId},
+            ),
+          );
+          when(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
+              appId: any(named: 'appId'),
+              args: any(named: 'args'),
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
+            ),
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: File('')));
+          iosFrameworkReleaser = IosFrameworkReleaser(
+            argResults: argResults,
+            flavor: 'internal',
+            target: null,
+          );
+        });
+
+        test('builds the module with the flavor app ID', () async {
+          when(
+            () => artifactManager.readAppXcframeworkShorebirdYaml(),
+          ).thenReturn('app_id: $flavorAppId');
+
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+          verify(
+            () => artifactBuilder.buildIosFramework(
+              releaseVersion: '1.0.0+1',
+              appId: flavorAppId,
+              args: [],
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
+            ),
+          ).called(1);
+        });
+
+        test('fails when the module has no shorebird.yaml', () async {
+          when(
+            () => artifactManager.readAppXcframeworkShorebirdYaml(),
+          ).thenReturn(null);
+
+          await expectLater(
+            runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts),
+            throwsA(
+              isA<CommandError>().having(
+                (e) => e.message,
+                'message',
+                contains("Couldn't read the app ID"),
+              ),
+            ),
+          );
+        });
+
+        test('fails when Flutter built in another app ID', () async {
+          when(
+            () => artifactManager.readAppXcframeworkShorebirdYaml(),
+          ).thenReturn('app_id: default-app-id');
+
+          await expectLater(
+            runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts),
+            throwsA(
+              isA<CommandError>().having(
+                (e) => e.message,
+                'message',
+                contains('built with app ID default-app-id, not $flavorAppId'),
+              ),
+            ),
+          );
+        });
       });
 
       test(
@@ -428,6 +519,7 @@ void main() {
       test('forwards the target to buildIosFramework', () async {
         when(
           () => artifactBuilder.buildIosFramework(
+            releaseVersion: any(named: 'releaseVersion'),
             target: any(named: 'target'),
             args: any(named: 'args'),
             applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
@@ -443,9 +535,10 @@ void main() {
 
         verify(
           () => artifactBuilder.buildIosFramework(
+            releaseVersion: any(named: 'releaseVersion'),
             target: 'lib/main_prod.dart',
             args: [],
-            applyLegacyDdDefault: true,
+            applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
           ),
         ).called(1);
       });
@@ -465,6 +558,7 @@ void main() {
           // Simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: any(named: 'args'),
               applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
@@ -487,8 +581,9 @@ void main() {
 
           final captured = verify(
             () => artifactBuilder.buildIosFramework(
+              releaseVersion: any(named: 'releaseVersion'),
               args: captureAny(named: 'args'),
-              applyLegacyDdDefault: true,
+              applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
             ),
           ).captured;
 

@@ -237,7 +237,7 @@ symbolize" command with the right program symbol file is required to obtain a hu
     // Hidden from --help on release and patch. To set Dart's DD cap on a
     // release on Flutter with aot_tools gen-snapshot, use the generic
     // pass-through:
-    // `shorebird release ios -- --extra-gen-snapshot-options=--dd_max_bytes=<n>`.
+    // `shorebird release ios -- --extra-gen-snapshot-options=--dd_max_bytes=N`
     description:
         'For debugging Dynamic Dispatch (DD) only; may change or be removed '
         'without notice. Dynamic Dispatch table cascade byte threshold: '

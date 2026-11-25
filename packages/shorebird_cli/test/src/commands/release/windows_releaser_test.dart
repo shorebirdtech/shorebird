@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -33,6 +34,7 @@ import '../../mocks.dart';
 void main() {
   useTempWorkingDirectory();
   group(WindowsReleaser, () {
+    late LocalAbi abi;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
@@ -56,6 +58,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          abiRef.overrideWith(() => abi),
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -79,6 +82,8 @@ void main() {
     });
 
     setUp(() {
+      abi = MockAbi();
+      when(() => abi.hostArchitecture).thenReturn('x64');
       argResults = MockArgResults();
       // Managed signing, the default, is covered in releaser_test.dart.
       when(() => argResults['patch-signing']).thenReturn(false);
@@ -99,6 +104,9 @@ void main() {
       logger = MockShorebirdLogger();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      when(
+        () => shorebirdEnv.flutterDirectory,
+      ).thenReturn(Directory.systemTemp.createTempSync());
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
       windows = MockWindows();
@@ -143,7 +151,67 @@ void main() {
 
     group('minimumFlutterVersion', () {
       test('is 3.32.6', () {
-        expect(releaser.minimumFlutterVersion, Version(3, 32, 6));
+        expect(
+          runWithOverrides(() => releaser.minimumFlutterVersion),
+          Version(3, 32, 6),
+        );
+      });
+
+      test('is 3.47.9 on an arm64 machine', () {
+        when(() => abi.hostArchitecture).thenReturn('arm64');
+        expect(
+          runWithOverrides(() => releaser.minimumFlutterVersion),
+          Version(3, 47, 9),
+        );
+      });
+    });
+
+    group('addsToActiveRelease', () {
+      final release = Release(
+        id: 3,
+        appId: 'app-id',
+        version: '1.0.0+1',
+        flutterRevision: 'rev',
+        flutterVersion: '3.47.9',
+        platforms: const {},
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+
+      setUp(() {
+        when(() => abi.hostArchitecture).thenReturn('arm64');
+      });
+
+      test('is true when the release has no build for this arch', () async {
+        when(
+          () => codePushClientWrapper.maybeGetReleaseArtifact(
+            appId: 'app-id',
+            releaseId: 3,
+            arch: 'win_archive_arm64',
+            platform: ReleasePlatform.windows,
+          ),
+        ).thenAnswer((_) async => null);
+
+        expect(
+          await runWithOverrides(() => releaser.addsToActiveRelease(release)),
+          isTrue,
+        );
+      });
+
+      test('is false when the release has this arch already', () async {
+        when(
+          () => codePushClientWrapper.maybeGetReleaseArtifact(
+            appId: 'app-id',
+            releaseId: 3,
+            arch: 'win_archive_arm64',
+            platform: ReleasePlatform.windows,
+          ),
+        ).thenAnswer((_) async => MockReleaseArtifact());
+
+        expect(
+          await runWithOverrides(() => releaser.addsToActiveRelease(release)),
+          isFalse,
+        );
       });
     });
 
@@ -156,7 +224,18 @@ void main() {
     group('supplement', () {
       test('uploads under the platform supplement names', () {
         expect(releaser.supplementPlatformSubdir, equals('windows'));
-        expect(releaser.supplementArtifactArch, equals('windows_supplement'));
+        expect(
+          runWithOverrides(() => releaser.supplementArtifactArch),
+          equals('windows_supplement'),
+        );
+      });
+
+      test('uploads under the arm64 name on an arm64 machine', () {
+        when(() => abi.hostArchitecture).thenReturn('arm64');
+        expect(
+          runWithOverrides(() => releaser.supplementArtifactArch),
+          equals('windows_supplement_arm64'),
+        );
       });
     });
 
@@ -485,6 +564,7 @@ void main() {
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               releaseDirectory: any(named: 'releaseDirectory'),
+              arch: any(named: 'arch'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -499,6 +579,22 @@ void main() {
               appId: appId,
               releaseId: releaseId,
               releaseDirectory: any(named: 'releaseDirectory'),
+            ),
+          ).called(1);
+        });
+
+        test('uploads under the arm64 name on an arm64 machine', () async {
+          when(() => abi.hostArchitecture).thenReturn('arm64');
+          await runWithOverrides(
+            () =>
+                releaser.uploadReleaseArtifacts(release: release, appId: appId),
+          );
+          verify(
+            () => codePushClientWrapper.createWindowsReleaseArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseDirectory: any(named: 'releaseDirectory'),
+              arch: 'win_archive_arm64',
             ),
           ).called(1);
         });

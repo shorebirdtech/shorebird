@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
@@ -22,6 +23,12 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Signature for a function which takes a path to a zip file.
 typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
+
+/// An [UnzipFn] that extracts [zipFilePath] into [outputDir], checking each
+/// entry's checksum so a damaged zip throws an `ArchiveException` at the first
+/// damaged entry. Entries extracted before it stay on disk.
+Future<void> extractVerifiedZip(String zipFilePath, String outputDir) =>
+    extractFileToDisk(zipFilePath, outputDir, verify: true);
 
 /// Signature for a function which builds a [CodePushClient].
 typedef CodePushClientBuilder =
@@ -64,6 +71,15 @@ abstract class ShorebirdCommand extends Command<int> {
   /// the failure hint is skipped, since the command reports its own errors,
   /// and the upgrade notice goes to stderr.
   bool get reservesStdout => false;
+
+  /// Whether this command may use the Flutter `bin/internal/flutter.version`
+  /// pins, so the command runner installs it first if it isn't installed.
+  ///
+  /// False for commands that install the Flutter they use themselves (a
+  /// release or patch builds with the Flutter it resolves) or use none, so
+  /// CI building with `--flutter-version` never downloads a Flutter it
+  /// doesn't build with.
+  bool get usesPinnedFlutter => true;
 
   /// The subcommand that runs when this command is given none, such as
   /// `whoami` for a bare `shorebird account`, or null to print usage as

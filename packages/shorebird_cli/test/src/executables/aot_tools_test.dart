@@ -1411,6 +1411,87 @@ Run "aot_tools help <command>" for more information about a command.
           },
         );
 
+        group('obfuscation map', () {
+          // The text `link_metadata --help` prints; other calls print JSON.
+          late String linkMetadataHelp;
+
+          setUp(() {
+            linkMetadataHelp = '';
+            when(
+              () => process.start(
+                any(),
+                any(),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((invocation) async {
+              final args = invocation.positionalArguments[1] as List<String>;
+              final out = args.contains('--help') ? linkMetadataHelp : '{}';
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode(out)));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            });
+          });
+
+          /// The aot_tools arguments of each call, after the .dill path.
+          List<List<String>> aotToolsCalls() =>
+              verify(
+                    () => process.start(
+                      any(),
+                      captureAny(),
+                      workingDirectory: any(named: 'workingDirectory'),
+                    ),
+                  ).captured
+                  .cast<List<String>>()
+                  .map((args) => args.skip(1).toList())
+                  .toList();
+
+          test('is passed when link_metadata --help lists the flag', () async {
+            linkMetadataHelp = '--obfuscation-map  The --save-obfuscation-map';
+            await runWithOverrides(
+              () => aotTools.getLinkMetadata(
+                debugDir: '/debug',
+                obfuscationMapPath: '/map.json',
+              ),
+            );
+            expect(aotToolsCalls(), [
+              ['link_metadata', '--help'],
+              ['link_metadata', '--obfuscation-map=/map.json', '/debug'],
+            ]);
+          });
+
+          test(
+            'is left out when link_metadata --help does not list the flag',
+            () async {
+              linkMetadataHelp = 'Usage: aot_tools link_metadata <debug_dir>';
+              await runWithOverrides(
+                () => aotTools.getLinkMetadata(
+                  debugDir: '/debug',
+                  obfuscationMapPath: '/map.json',
+                ),
+              );
+              expect(aotToolsCalls(), [
+                ['link_metadata', '--help'],
+                ['link_metadata', '/debug'],
+              ]);
+            },
+          );
+
+          test('without one, link_metadata --help is not run', () async {
+            await runWithOverrides(
+              () => aotTools.getLinkMetadata(debugDir: '/debug'),
+            );
+            expect(aotToolsCalls(), [
+              ['link_metadata', '/debug'],
+            ]);
+          });
+        });
+
         test(
           'throws FormatException when aot_tools outputs invalid json',
           () async {

@@ -467,8 +467,13 @@ class WindowsTarget extends Target {
   @override
   String get title => 'Windows';
 
-  Directory runner(Directory app) =>
-      Directory('${app.path}/build/windows/x64/runner/Release');
+  /// Flutter builds for the machine's own architecture (arm64 on Windows on
+  /// Arm, else x64), and the app is fresh each run, so only one exists.
+  Directory runner(Directory app) {
+    final arm64 = Directory('${app.path}/build/windows/arm64/runner/Release');
+    if (arm64.existsSync()) return arm64;
+    return Directory('${app.path}/build/windows/x64/runner/Release');
+  }
 
   @override
   Future<String> builtShorebirdYaml(Directory app) async => File(

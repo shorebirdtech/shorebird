@@ -160,7 +160,7 @@ void main() {
               ),
               isFalse,
             );
-            runWithOverrides(() => networkIssue.fix!());
+            await runWithOverrides(() => networkIssue.fix!());
             expect(
               MacosEntitlementsValidator.hasEntitlement(
                 plistFile: releaseEntitlementsFile(),
@@ -186,7 +186,7 @@ void main() {
               ),
               isFalse,
             );
-            runWithOverrides(() => unsignedMemoryIssue.fix!());
+            await runWithOverrides(() => unsignedMemoryIssue.fix!());
             expect(
               MacosEntitlementsValidator.hasEntitlement(
                 plistFile: releaseEntitlementsFile(),

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -10,18 +11,60 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/split_debug_info.dart';
+import 'package:shorebird_cli/src/symbols/sbsymbols.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+
+/// The hint for a [releaseType] release artifact downloaded from Shorebird
+/// that can't be read: download it again, and if that keeps failing, replace
+/// the release.
+String damagedReleaseArtifactHint(ReleaseType releaseType) =>
+    'Re-run to download it again. If this persists, the release artifact '
+    'is damaged: create a new release and patch that one. '
+    'Run: ${releaseType.releaseCommand(releaseVersion: '<new version>')}';
+
+/// Extracts [zipFile], a [releaseType] release artifact downloaded from
+/// Shorebird, to [outputDirectory].
+///
+/// If [zipFile] is not a readable zip (cut short, or damaged in storage),
+/// fails [progress] and throws a [CommandError] with
+/// [damagedReleaseArtifactHint], exiting with [ExitCode.software].
+Future<void> extractReleaseArtifact({
+  required File zipFile,
+  required Directory outputDirectory,
+  required ReleaseType releaseType,
+  Progress? progress,
+}) async {
+  try {
+    await artifactManager.extractZip(
+      zipFile: zipFile,
+      outputDirectory: outputDirectory,
+    );
+  } on ArchiveException catch (error) {
+    progress?.fail();
+    throw CommandError(
+      message:
+          'The release artifact downloaded from Shorebird is damaged: '
+          '${error.message}',
+      hint: damagedReleaseArtifactHint(releaseType),
+      exitCode: ExitCode.software,
+    );
+  }
+}
 
 /// {@template patcher}
 /// Platform-specific functionality to create a patch.
@@ -64,6 +107,15 @@ More info: ${linkPercentageUrl.toLink()}.
   /// The flavor of the release, if any.
   final String? flavor;
 
+  /// The app ID an add-to-app module (aar, ios-framework) patched with
+  /// `--flavor` is built with, as its release was (see
+  /// `Releaser.moduleAppId`). Null without `--flavor`.
+  String? get moduleAppId => flavor == null
+      ? null
+      : shorebirdEnv.getShorebirdYaml()!.getAppId(
+          flavor: flavor,
+        );
+
   /// The target script to run, if any.
   final String? target;
 
@@ -81,6 +133,11 @@ More info: ${linkPercentageUrl.toLink()}.
   /// obfuscation flags when the release was built with obfuscation.
   List<String> extraBuildArgs = const [];
 
+  /// The release's extracted supplement, if it has one. Set by the patch
+  /// command before building; Android patch builds read the release's object
+  /// order (`<abi>/App.ref.link`) from it.
+  Directory? releaseSupplementDirectory;
+
   /// Additional gen_snapshot arguments needed to match the release's
   /// obfuscation flags. Used by Apple patchers for
   /// `ArtifactBuilder.buildElfAotSnapshot`
@@ -95,9 +152,6 @@ More info: ${linkPercentageUrl.toLink()}.
       // --split-debug-info already implies --dwarf-stack-traces, so we only
       // need to pass it as a standalone flag when split debug info isn't used.
       if (splitDebugInfoPath == null) '--dwarf-stack-traces',
-      // Strip DWARF debug info so obfuscated snapshots don't leak the
-      // identifiers that obfuscation was meant to hide.
-      '--strip',
     ],
   ];
 
@@ -111,6 +165,11 @@ More info: ${linkPercentageUrl.toLink()}.
   /// The identifier used for the "primary" release artifact, usually a bundle.
   /// For example, 'aab' for Android, 'xcarchive' for iOS.
   String get primaryReleaseArtifactArch;
+
+  /// The architecture of the patch this machine builds, for a platform that
+  /// builds one architecture per machine (desktop); null where one build
+  /// covers every architecture the release has.
+  Arch? get patchArch => null;
 
   /// The identifier used for any supplementary release artifacts.
   String? get supplementaryReleaseArtifactArch => null;
@@ -173,7 +232,8 @@ More info: ${linkPercentageUrl.toLink()}.
   }
 
   /// Uploads the patch artifacts to the CodePush server and publishes the
-  /// patch to [track], at [rolloutPercentage] of its devices when given.
+  /// patch to [track], at [rolloutPercentage] of its devices or on the timed
+  /// schedule [rolloutSchedule] when given.
   Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
@@ -181,6 +241,7 @@ More info: ${linkPercentageUrl.toLink()}.
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
     double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -190,6 +251,7 @@ More info: ${linkPercentageUrl.toLink()}.
       track: track,
       patchArtifactBundles: artifacts,
       rolloutPercentage: rolloutPercentage,
+      rolloutSchedule: rolloutSchedule,
     );
   }
 
@@ -376,6 +438,11 @@ More info: ${linkPercentageUrl.toLink()}.
     return value == null ? null : int.tryParse(value);
   }
 
+  /// Whether the app has opted in to Crash Reporting, set by `shorebird patch`
+  /// from `getApp` before building. Symbol index extraction and upload both
+  /// sit behind this gate.
+  bool crashReportingEnabled = false;
+
   /// Where the patch's Dart symbols go: the `--split-debug-info` directory the
   /// user passed, or the default added to [extraBuildArgs] for an obfuscated
   /// patch.
@@ -385,6 +452,66 @@ More info: ${linkPercentageUrl.toLink()}.
           argParser: argParser,
         ) ??
         splitDebugInfoDirectory(extraBuildArgs);
+  }
+
+  /// The name gen_snapshot or Flutter gives each architecture's debug info in
+  /// [splitDebugInfoPath]. Empty for a patcher that does not upload symbol
+  /// indexes.
+  Map<Arch, String> get debugInfoFileNames => const {};
+
+  /// The debug info this patch's build left behind for [architectures].
+  ///
+  /// Only the files in [architectures] that exist: an architecture the build
+  /// skipped, and a build that was given no `--split-debug-info`, leave
+  /// nothing here even when an earlier build wrote to the shared directory.
+  Map<Arch, File> debugInfoFiles({required Iterable<Arch> architectures}) {
+    final directory = splitDebugInfoPath;
+    if (directory == null) return const {};
+    final files = <Arch, File>{};
+    for (final arch in architectures) {
+      final name = debugInfoFileNames[arch];
+      if (name == null) continue;
+      final file = File(p.join(projectRoot.path, directory, name));
+      if (file.existsSync()) files[arch] = file;
+    }
+    return files;
+  }
+
+  /// Extracts each built architecture's SBSY v1 index and uploads it for
+  /// [patchId] when [crashReportingEnabled] is true.
+  ///
+  /// `shorebird patch` calls this once the patch is published, passing the
+  /// [architectures] whose patch bundles this build produced. A patch runs
+  /// code the release's own index does not cover, so a crash in it is named
+  /// from the index built here. The linker's own output rides along in the
+  /// patch metadata rather than here.
+  Future<void> uploadSymbolArtifacts({
+    required String appId,
+    required int patchId,
+    required Iterable<Arch> architectures,
+  }) async {
+    if (!crashReportingEnabled) return;
+    for (final MapEntry(key: arch, value: debugInfo) in debugInfoFiles(
+      architectures: architectures,
+    ).entries) {
+      final index = symbolExtractor.writeIndex(
+        debugInfo: debugInfo,
+        output: File(p.setExtension(debugInfo.path, '.sbsymbols')),
+        image: SymbolImage.vmcode,
+      );
+      if (index != null) {
+        await codePushClientWrapper.createPatchSymbols(
+          appId: appId,
+          patchId: patchId,
+          platform: releaseType.releasePlatform,
+          arch: arch.arch,
+          format: SymbolsFormat.sbsymbols,
+          symbols: index,
+        );
+      } else {
+        logger.detail('No symbol index extracted from ${debugInfo.path}');
+      }
+    }
   }
 
   /// The path to the output file for the debug info.

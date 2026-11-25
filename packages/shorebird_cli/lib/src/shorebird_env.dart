@@ -196,6 +196,16 @@ class ShorebirdEnv {
     );
   }
 
+  /// A bare, treeless clone of the Flutter fork that answers version and ref
+  /// lookups when no Flutter checkout is installed. It sits beside the
+  /// Flutter cache rather than in it, so pruning never takes it for a
+  /// revision.
+  Directory get flutterRefsDirectory {
+    return Directory(
+      p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter-refs'),
+    );
+  }
+
   /// The Shorebird-vended Flutter binary.
   File get flutterBinaryFile {
     final flutter = platform.isWindows ? 'flutter.bat' : 'flutter';

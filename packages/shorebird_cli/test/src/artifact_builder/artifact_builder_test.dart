@@ -198,6 +198,27 @@ void main() {
         ).thenReturn(File('app-release.aab'));
       });
 
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildAppBundle(
+            releaseSupplementDir: 'release_supplement',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       test('invokes the correct flutter build command', () async {
         await runWithOverrides(() => builder.buildAppBundle());
 
@@ -789,7 +810,7 @@ void main() {
                     'ph': 'X',
                     'name': 'android_aot',
                     'cat': 'assemble',
-                    'ts': 500000,
+                    'ts': 502000,
                     'dur': 200_000,
                     'pid': 1,
                     'tid': 3,
@@ -808,10 +829,11 @@ void main() {
               return ExitCode.success.code;
             });
 
-            await runWithOverrides(() async {
+            final tracerEvents = await runWithOverrides(() async {
               await builder.prepareBuildTrace(platform: 'android');
               await builder.buildApk();
               builder.writeBuildTraceSummary();
+              return shorebirdTracer.events;
             });
 
             final summaryFile = File(
@@ -825,10 +847,20 @@ void main() {
                 jsonDecode(summaryFile.readAsStringSync())
                     as Map<String, Object?>;
             expect(summary['platform'], 'android');
-            expect(summary['version'], 9);
+            expect(summary['version'], 12);
             // 500ms kernel + 200ms aot
             expect((summary['dart']! as Map)['totalMs'], 700);
-            expect(summary['flutterBuildMs'], 3000);
+            // The flutter process span, not the 3s umbrella the fake
+            // flutter wrote: the process is the Flutter build.
+            final processSpan = tracerEvents.singleWhere(
+              (e) => e['name'] == 'flutter process',
+            );
+            expect(processSpan['cat'], 'subprocess');
+            expect(processSpan['args'], {'command': 'apk'});
+            expect(
+              summary['flutterBuildMs'],
+              (processSpan['dur']! as int) ~/ 1000,
+            );
             expect(summary['shorebirdOverheadMs'], isNonNegative);
             final dart = summary['dart']! as Map<String, Object?>;
             expect(dart['kernelSnapshotMs'], 500);
@@ -1091,6 +1123,66 @@ void main() {
               '--foo',
               'bar',
             ],
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildAar(
+            buildNumber: buildNumber,
+            releaseSupplementDir: 'release_supplement',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
+      test('bakes releaseVersion via SHOREBIRD_RELEASE_VERSION', () async {
+        await runWithOverrides(
+          () => builder.buildAar(
+            buildNumber: buildNumber,
+            releaseVersion: 'module-2',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {'SHOREBIRD_RELEASE_VERSION': 'module-2'},
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
+      test('bakes appId via SHOREBIRD_APP_ID', () async {
+        await runWithOverrides(
+          () => builder.buildAar(
+            buildNumber: buildNumber,
+            appId: 'internal-app-id',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            any(),
+            environment: {'SHOREBIRD_APP_ID': 'internal-app-id'},
             runInShell: false,
             onStart: any(named: 'onStart'),
           ),
@@ -1568,6 +1660,25 @@ Reason: Exited with code 70.'''),
         });
       });
 
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildMacos(releaseSupplementDir: 'release_supplement'),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'macos', '--release'],
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 
@@ -1591,7 +1702,6 @@ Reason: Exited with code 70.'''),
       test('forwards extra arguments to flutter build', () async {
         await runWithOverrides(
           () => builder.buildMacos(
-            codesign: false,
             flavor: 'flavor',
             target: 'target.dart',
             args: ['--foo', 'bar'],
@@ -1607,7 +1717,6 @@ Reason: Exited with code 70.'''),
               '--release',
               '--flavor=flavor',
               '--target=target.dart',
-              '--no-codesign',
               '--foo',
               'bar',
             ],
@@ -1632,7 +1741,7 @@ Reason: Exited with code 70.'''),
 
           test('throws ArtifactBuildException', () {
             expect(
-              () => runWithOverrides(() => builder.buildMacos(codesign: false)),
+              () => runWithOverrides(() => builder.buildMacos()),
               throwsA(
                 isA<ArtifactBuildException>().having(
                   (e) => e.fixRecommendation,
@@ -1663,7 +1772,7 @@ Reason: Exited with code 70.'''),
 
         test('throws ArtifactBuildException', () {
           expect(
-            () => runWithOverrides(() => builder.buildMacos(codesign: false)),
+            () => runWithOverrides(() => builder.buildMacos()),
             throwsA(
               isA<ArtifactBuildException>()
                   .having(
@@ -1684,8 +1793,7 @@ Reason: Exited with code 70.'''),
       group('after a build', () {
         group('when the build is successful', () {
           verifyNoSystemFlutterPubGet(
-            () async =>
-                runWithOverrides(() => builder.buildMacos(codesign: false)),
+            () async => runWithOverrides(() => builder.buildMacos()),
           );
 
           group('when the build fails', () {
@@ -1702,8 +1810,7 @@ Reason: Exited with code 70.'''),
 
             verifyNoSystemFlutterPubGet(
               () async => expectLater(
-                () async =>
-                    runWithOverrides(() => builder.buildMacos(codesign: false)),
+                () async => runWithOverrides(() => builder.buildMacos()),
                 throwsA(isA<ArtifactBuildException>()),
               ),
             );
@@ -2042,6 +2149,25 @@ Reason: Exited with code 70.'''),
           ).called(1);
           expect(result.kernelFile.path, equals(appDill.path));
         });
+      });
+
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildIpa(releaseSupplementDir: 'release_supplement'),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'ipa', '--release'],
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
       });
 
       group('when base64PublicKey is not null', () {
@@ -2686,6 +2812,43 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
         ).called(1);
       });
 
+      test('bakes appId via SHOREBIRD_APP_ID', () async {
+        await runWithOverrides(
+          () => builder.buildIosFramework(appId: 'internal-app-id'),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'ios-framework', '--no-debug', '--no-profile'],
+            environment: {'SHOREBIRD_APP_ID': 'internal-app-id'},
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
+      test('passes the release supplement via '
+          'SHOREBIRD_RELEASE_SUPPLEMENT_DIR', () async {
+        await runWithOverrides(
+          () => builder.buildIosFramework(
+            releaseSupplementDir: 'release_supplement',
+          ),
+        );
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'ios-framework', '--no-debug', '--no-profile'],
+            environment: {
+              'SHOREBIRD_RELEASE_SUPPLEMENT_DIR': 'release_supplement',
+            },
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 
@@ -2777,12 +2940,29 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
       });
 
       group('buildElfAotSnapshot', () {
+        ShorebirdProcessResult genSnapshotResult({
+          int exitCode = 0,
+          String stdout = '',
+          String stderr = '',
+        }) => ShorebirdProcessResult(
+          exitCode: exitCode,
+          stdout: stdout,
+          stderr: stderr,
+        );
+
         setUp(() {
           when(
             () => shorebirdArtifacts.getArtifactPath(
               artifact: ShorebirdArtifact.genSnapshotIos,
             ),
           ).thenReturn('gen_snapshot');
+          when(
+            () => shorebirdProcess.run(
+              'gen_snapshot',
+              any(),
+              runInShell: false,
+            ),
+          ).thenAnswer((_) async => genSnapshotResult());
         });
 
         test('passes additional args to gen_snapshot', () async {
@@ -2796,7 +2976,7 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
           );
 
           verify(
-            () => shorebirdProcess.stream(
+            () => shorebirdProcess.run(
               'gen_snapshot',
               [
                 '--deterministic',
@@ -2807,25 +2987,65 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
                 '/app/dill/path',
               ],
               runInShell: false,
-              onStart: any(named: 'onStart'),
             ),
           ).called(1);
+        });
+
+        test('shows gen_snapshot output except the warnings Flutter '
+            'hides', () async {
+          when(
+            () => shorebirdProcess.run(
+              'gen_snapshot',
+              any(),
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => genSnapshotResult(
+              stdout: 'some output\n',
+              stderr:
+                  'Warning: Generating ELF library without DWARF debugging '
+                  'information.\n'
+                  'Warning: This VM has been configured to obfuscate symbol '
+                  'information which violates the Dart standard.\n'
+                  '         See dartbug.com/30524 for more information.\n'
+                  'something else\n',
+            ),
+          );
+
+          await runWithOverrides(
+            () => builder.buildElfAotSnapshot(
+              appDillPath: '/app/dill/path',
+              outFilePath: '/path/to/out',
+              genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+            ),
+          );
+
+          verify(() => logger.info('some output')).called(1);
+          verify(() => logger.err('something else')).called(1);
+          verifyNever(
+            () => logger.err(any(that: contains('Warning:'))),
+          );
+          verifyNever(() => logger.err(any(that: contains('dartbug'))));
         });
 
         group('when build fails', () {
           setUp(() {
             when(
-              () => shorebirdProcess.stream(
+              () => shorebirdProcess.run(
+                'gen_snapshot',
                 any(),
-                any(),
-                runInShell: any(named: 'runInShell'),
-                onStart: any(named: 'onStart'),
+                runInShell: false,
               ),
-            ).thenAnswer((_) async => ExitCode.software.code);
+            ).thenAnswer(
+              (_) async => genSnapshotResult(
+                exitCode: ExitCode.software.code,
+                stderr: 'gen_snapshot failed\n',
+              ),
+            );
           });
 
-          test('throws ArtifactBuildException', () {
-            expect(
+          test('shows the error and throws ArtifactBuildException', () async {
+            await expectLater(
               () => runWithOverrides(
                 () => builder.buildElfAotSnapshot(
                   appDillPath: 'asdf',
@@ -2835,6 +3055,7 @@ FLUTTER_APPLICATION_PATH=${projectRoot.path}
               ),
               throwsA(isA<ArtifactBuildException>()),
             );
+            verify(() => logger.err('gen_snapshot failed')).called(1);
           });
         });
 
@@ -3067,6 +3288,58 @@ Reason: Exited with code 70.'''),
           await builder.prepareBuildTrace(platform: 'android');
           expect(buildTraceSession.traceFile, isNotNull);
         });
+      });
+
+      test('deletes traces a previous run left behind', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => buildTraceSupportConstraint.minVersion);
+        final buildDir = p.join(projectRoot.path, 'build');
+        File createFile(List<String> parts) =>
+            File(p.join(buildDir, p.joinAll(parts)))
+              ..createSync(recursive: true)
+              ..writeAsStringSync('[]');
+        final stale = [
+          createFile(['shorebird', 'debug', 'build-trace-android.json']),
+          createFile([
+            'shorebird',
+            'debug',
+            'build-trace-android-summary.json',
+          ]),
+          createFile([
+            'intermediates',
+            'shorebird',
+            'shorebird_assemble_trace_bundleRelease.json',
+          ]),
+          createFile([
+            'intermediates',
+            'shorebird',
+            'shorebird_assemble_trace_bundleFooRelease.json',
+          ]),
+          createFile(['ios', 'shorebird_assemble_trace.json']),
+          createFile(['macos', 'shorebird_assemble_trace.json']),
+        ];
+        final kept = [
+          createFile(['shorebird', 'debug', 'build-trace-ios.json']),
+          createFile([
+            'intermediates',
+            'shorebird',
+            'shorebird_gradle_task_trace_bundleRelease.json',
+          ]),
+          createFile(['app', 'outputs', 'app-release.aab']),
+        ];
+
+        await runWithOverrides(() async {
+          await builder.prepareBuildTrace(platform: 'android');
+          expect(buildTraceSession.traceFile!.parent.existsSync(), isTrue);
+        });
+
+        for (final file in stale) {
+          expect(file.existsSync(), isFalse, reason: file.path);
+        }
+        for (final file in kept) {
+          expect(file.existsSync(), isTrue, reason: file.path);
+        }
       });
 
       test(

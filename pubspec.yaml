@@ -17,3 +17,10 @@ workspace:
 
 dev_dependencies:
   very_good_analysis: ^11.0.0
+
+# Repository-wide inputs to `shorebird_ci generate`. Declared here rather
+# than passed as flags so `shorebird_ci verify` can rebuild the workflows
+# in .github/workflows and tell a hand edit from what generation writes.
+shorebird_ci:
+  required: true
+  fatal_infos: true

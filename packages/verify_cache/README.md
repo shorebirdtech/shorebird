@@ -71,13 +71,14 @@ Concurrent runs over one key take an OS file lock (`RandomAccessFile.lock`),
 so the second waits for the first and then takes its pass. The kernel drops
 the lock when its holder exits, so a killed run leaves nothing to clean up.
 
-At most two runs check something at once on one machine, and the rest wait
-in a queue, saying so. Overlapping runs share the same cores and finish no
-sooner than they would one after another: on 10-21, four agent-verify runs
-at once took 880 to 1,290 s each against about 300 s alone, drove a 12-core
-machine's load average to 92, and timed tests out. A recorded pass never
-waits, since only a run that is about to check takes a slot. A slot is an OS
-file lock under `slots/`, so a killed run frees its slot too.
+At most four runs check something at once on one machine, and the rest wait
+in a queue, served in the order they arrived and saying so. Overlapping runs
+share the same cores, so each of the four takes longer than it would alone:
+on 10-21, four agent-verify runs at once took 880 to 1,290 s each against
+about 300 s alone, drove a 12-core machine's load average to 92, and timed
+tests out. That is what the default costs on a machine that size. A recorded
+pass never waits, since only a run that is about to check takes a slot. A
+slot is an OS file lock under `slots/`, so a killed run frees its slot too.
 `VERIFY_CACHE_SLOTS` sets the number (`0` for no limit). A command run under
 a slot gets `VERIFY_CACHE_SLOT_HELD=1`, so a verify_cache inside it, as
 agent-verify runs for each Dart package, uses its parent's slot rather than

@@ -9,7 +9,7 @@
 // the app and checks it runs the patch.
 //
 // Usage: dart scripts/patch_e2e.dart [--cli <path|version>] [--avd <name>]
-//            [--org-id <id>] [<flutter-version>|default]
+//            [--org-id <id>] [--no-device] [<flutter-version>|default]
 //
 //   <flutter-version>  Flutter version to release with. "default" (or
 //                      nothing) uses the Flutter the CLI pins. The app is
@@ -33,6 +33,11 @@
 //                      $SHOREBIRD_E2E_ORG_ID; needed when the account can
 //                      create apps in more than one (Shorebird E2E is 437 on
 //                      dev).
+//   --no-device        Release and patch only, with no device: checks the
+//                      CLI's real `flutter build` and the server accept the
+//                      release and the patch, not that the app runs them.
+//                      PR CI runs this (main.yaml's android_build_e2e).
+//                      Needs no adb or emulator; --avd is ignored.
 //
 // Device: an attached device or running emulator is used as is (set
 // ANDROID_SERIAL to pick one of several). With none attached, it boots the AVD
@@ -173,6 +178,7 @@ class Options {
     required this.cli,
     required this.avd,
     required this.orgId,
+    required this.device,
   });
 
   factory Options.parse(List<String> args) {
@@ -180,9 +186,12 @@ class Options {
     String? cli;
     var avd = Platform.environment['SHOREBIRD_E2E_AVD'];
     var orgId = Platform.environment['SHOREBIRD_E2E_ORG_ID'];
+    var device = true;
     for (var i = 0; i < args.length; i++) {
       final arg = args[i];
-      if (arg.startsWith('-')) {
+      if (arg == '--no-device') {
+        device = false;
+      } else if (arg.startsWith('-')) {
         if (!const {'--cli', '--avd', '--org-id'}.contains(arg)) {
           usageError('Unknown option $arg.');
         }
@@ -205,6 +214,7 @@ class Options {
       cli: cli,
       avd: avd == null || avd.isEmpty ? null : avd,
       orgId: orgId == null || orgId.isEmpty ? null : orgId,
+      device: device,
     );
   }
 
@@ -215,6 +225,9 @@ class Options {
   final String? cli;
   final String? avd;
   final String? orgId;
+
+  /// False with --no-device: release and patch, run nothing.
+  final bool device;
 }
 
 Never usageError(String message) {
@@ -235,7 +248,7 @@ Future<void> run(Options options) async {
   final shorebird = '$cliDir/bin/shorebird';
   await sh(shorebird, ['--version']);
 
-  if (!await hasDevice()) await startEmulator(options.avd);
+  if (options.device && !await hasDevice()) await startEmulator(options.avd);
 
   // Intentionally including a space in the path.
   final work = workspace = Directory.systemTemp.createTempSync(
@@ -353,8 +366,10 @@ Future<void> run(Options options) async {
     ],
     '-v',
   ];
-  await waitForLine('I flutter : hello world', shorebird, preview, dir: app);
-  print("✅ 'hello world' was printed");
+  if (options.device) {
+    await waitForLine('I flutter : hello world', shorebird, preview, dir: app);
+    print("✅ 'hello world' was printed");
+  }
 
   setMessage(app, 'hello shorebird');
   await sh(shorebird, [
@@ -365,6 +380,7 @@ Future<void> run(Options options) async {
     '-v',
     ...splitDebugInfo,
   ], dir: app);
+  if (!options.device) return;
 
   // The preview reinstalls the release, which downloads and installs the
   // patch.

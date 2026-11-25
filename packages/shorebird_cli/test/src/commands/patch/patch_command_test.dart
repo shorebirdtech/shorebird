@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
@@ -15,10 +16,12 @@ import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/build_flags.dart';
 import 'package:shorebird_cli/src/build_history.dart';
-import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/cache.dart' hide PatchArtifact;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
@@ -35,6 +38,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -165,6 +169,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdTracerRef.overrideWith(ShorebirdTracer.new),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
@@ -181,6 +186,7 @@ void main() {
       registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(release);
       registerFallbackValue(FakeReleaseArtifact());
+      registerFallbackValue(<Arch>[]);
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
     });
@@ -238,13 +244,16 @@ void main() {
           appId: any(named: 'appId'),
           request: any(named: 'request'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
       logger = MockShorebirdLogger();
       progress = MockProgress();
       patcher = MockPatcher();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      final buildDirectory = Directory.systemTemp.createTempSync();
+      addTearDown(() => buildDirectory.deleteSync(recursive: true));
+      when(() => shorebirdEnv.buildDirectory).thenReturn(buildDirectory);
 
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
@@ -309,8 +318,16 @@ void main() {
           artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
+          rolloutSchedule: any(named: 'rolloutSchedule'),
         ),
       ).thenAnswer((_) async => const CreatePatchResponse(id: 3, number: 2));
+      when(
+        () => patcher.uploadSymbolArtifacts(
+          appId: any(named: 'appId'),
+          patchId: any(named: 'patchId'),
+          architectures: any(named: 'architectures'),
+        ),
+      ).thenAnswer((_) async {});
 
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
@@ -413,6 +430,9 @@ void main() {
         () =>
             shorebirdFlutter.installRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
+      when(
+        () => shorebirdFlutter.isInstalled(revision: any(named: 'revision')),
+      ).thenReturn(true);
 
       when(
         () => shorebirdValidator.validateFlavors(
@@ -1390,6 +1410,49 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           },
         );
 
+        group('crash reporting symbols', () {
+          test('skips symbol upload when crash reporting is off', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(() => patcher.crashReportingEnabled = false).called(1);
+            verifyNever(
+              () => patcher.uploadSymbolArtifacts(
+                appId: any(named: 'appId'),
+                patchId: any(named: 'patchId'),
+                architectures: any(named: 'architectures'),
+              ),
+            );
+          });
+
+          test(
+            'uploads symbol artifacts for built architectures when opted in',
+            () async {
+              when(
+                () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+              ).thenAnswer(
+                (_) async => AppMetadata(
+                  appId: appId,
+                  displayName: appDisplayName,
+                  crashReportingEnabled: true,
+                  createdAt: DateTime(2023),
+                  updatedAt: DateTime(2023),
+                ),
+              );
+
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              verify(() => patcher.crashReportingEnabled = true).called(1);
+              verify(
+                () => patcher.uploadSymbolArtifacts(
+                  appId: appId,
+                  patchId: 3,
+                  architectures: patchArtifactBundles.keys,
+                ),
+              ).called(1);
+            },
+          );
+        });
+
         group('when a supplemental release artifact exists', () {
           setUp(() {
             when(
@@ -1434,6 +1497,58 @@ A patch cannot change the Flutter version a release was built with. To fix this,
                     ).captured.single
                     as Directory;
             expect(supplementDirectory.existsSync(), isFalse);
+          });
+
+          test('gives the patch build the extracted supplement', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            final supplementDirectory =
+                verify(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: release.id,
+                        releaseArtifact: any(named: 'releaseArtifact'),
+                        supplementDirectory: captureAny(
+                          named: 'supplementDirectory',
+                        ),
+                      ),
+                    ).captured.single
+                    as Directory;
+            verify(
+              () => patcher.releaseSupplementDirectory = supplementDirectory,
+            ).called(1);
+          });
+
+          group('when the supplement is damaged', () {
+            setUp(() {
+              when(
+                () => artifactManager.extractZip(
+                  zipFile: any(named: 'zipFile'),
+                  outputDirectory: any(named: 'outputDirectory'),
+                ),
+              ).thenThrow(ArchiveException('zip: crc32 mismatch'));
+            });
+
+            test('exits naming the fix, without creating the patch', () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithError(
+                  message:
+                      'The release artifact downloaded from Shorebird is '
+                      'damaged: zip: crc32 mismatch',
+                  hint: damagedReleaseArtifactHint(ReleaseType.android),
+                  exitCode: ExitCode.software,
+                ),
+              );
+              verifyNever(
+                () => patcher.createPatchArtifacts(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
+                ),
+              );
+            });
           });
 
           group('when the artifact is not found', () {
@@ -1896,6 +2011,66 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         expect(run.metadata, equals(patchMetadata.toJson()));
       });
 
+      test('writes the build trace summary again after the upload', () async {
+        await runWithOverrides(command.run);
+
+        verifyInOrder([
+          artifactBuilder.writeBuildTraceSummary,
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            track: any(named: 'track'),
+            artifacts: any(named: 'artifacts'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+          artifactBuilder.writeBuildTraceSummary,
+          () => codePushClient.createBuildRun(
+            appId: any(named: 'appId'),
+            request: any(named: 'request'),
+          ),
+        ]);
+      });
+
+      test('records the summary that counts the upload', () async {
+        final summaries = ['before upload', 'after upload'];
+        when(artifactBuilder.writeBuildTraceSummary).thenAnswer((_) {
+          buildTraceSession.summary = BuildTraceSummary.fromEvents(
+            const [],
+            platform: summaries.removeAt(0),
+          );
+        });
+        when(
+          () => patcher.updatedCreatePatchMetadata(any()),
+        ).thenAnswer(
+          (invocation) async =>
+              invocation.positionalArguments.single as CreatePatchMetadata,
+        );
+
+        await runWithOverrides(command.run);
+
+        final sentMetadata =
+            verify(
+                  () => patcher.uploadPatchArtifacts(
+                    appId: any(named: 'appId'),
+                    releaseId: any(named: 'releaseId'),
+                    metadata: captureAny(named: 'metadata'),
+                    track: any(named: 'track'),
+                    artifacts: any(named: 'artifacts'),
+                    rolloutPercentage: any(named: 'rolloutPercentage'),
+                    rolloutSchedule: any(named: 'rolloutSchedule'),
+                  ),
+                ).captured.single
+                as Json;
+        expect(
+          (sentMetadata['build_trace_summary'] as Json)['platform'],
+          equals('before upload'),
+        );
+        final runSummary = sentRun().metadata!['build_trace_summary'] as Json;
+        expect(runSummary['platform'], equals('after upload'));
+      });
+
       test('records a link percentage below the minimum', () async {
         when(() => argResults['dry-run']).thenReturn(true);
         when(() => patcher.linkPercentage).thenReturn(12.3);
@@ -2045,7 +2220,7 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         );
       });
 
-      test('starts each platform with none of the last one\'s '
+      test("starts each platform with none of the last one's "
           'state', () async {
         when(() => argResults['platforms']).thenReturn(['android', 'ios']);
         command = PatchCommand(resolvePatcher: (_) => patcher)
@@ -2062,12 +2237,23 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               const DiffStatus(hasAssetChanges: true, hasNativeChanges: false),
         );
         var builds = 0;
+        late List<Object?> tracedBeforeSecondBuild;
         when(
           () => patcher.buildPatchArtifact(
             releaseVersion: any(named: 'releaseVersion'),
           ),
         ).thenAnswer((_) async {
-          if (++builds == 2) throw Exception('gradle');
+          if (++builds == 2) {
+            tracedBeforeSecondBuild = [
+              for (final event in shorebirdTracer.events) event['name'],
+            ];
+            throw Exception('gradle');
+          }
+          await shorebirdTracer.span(
+            name: 'first platform build',
+            category: 'shorebird',
+            body: () async {},
+          );
           return File('');
         });
 
@@ -2094,6 +2280,11 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         expect(described.first.hasAssetChanges, isTrue);
         // The failed platform never reached the diff check.
         expect(described.last.hasAssetChanges, isFalse);
+        // The second platform's trace doesn't carry the first one's spans.
+        expect(
+          tracedBeforeSecondBuild,
+          isNot(contains('first platform build')),
+        );
       });
 
       test('records every change the diff check found', () async {
@@ -2136,6 +2327,22 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ),
         );
       });
+    });
+
+    test('passes --share-debug-info to the run record', () async {
+      when(() => argResults['share-debug-info']).thenReturn(true);
+
+      await runWithOverrides(command.run);
+
+      final request =
+          verify(
+                () => codePushClient.createBuildRun(
+                  appId: appId,
+                  request: captureAny(named: 'request'),
+                ),
+              ).captured.single
+              as CreateBuildRunRequest;
+      expect(request.shareDebugInfo, isTrue);
     });
 
     group('getPatcher', () {
@@ -2619,7 +2826,6 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             flavorArg: null,
             releasePlatform: ReleasePlatform.android,
           ),
-          () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getRelease(
             appId: appId,
@@ -2874,7 +3080,6 @@ A patch cannot change the Flutter version a release was built with. To fix this,
               flavorArg: null,
               releasePlatform: ReleasePlatform.android,
             ),
-            () => cache.updateAll(),
             () => codePushClientWrapper.getApp(appId: appId),
             () => codePushClientWrapper.getReleases(appId: appId),
             () => logger.chooseOne<Release>(
@@ -3062,8 +3267,44 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ]);
         });
 
+        group('when the pinned Flutter is not installed', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.isInstalled(revision: flutterRevision),
+            ).thenReturn(false);
+          });
+
+          test('installs it before the guessing build', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verifyInOrder([
+              () => shorebirdFlutter.installRevision(revision: flutterRevision),
+              () => shorebirdFlutter.getVersionAndRevision(),
+              () => patcher.buildPatchArtifact(),
+            ]);
+          });
+
+          test('exits with a software error when the install fails', () async {
+            when(
+              () => shorebirdFlutter.installRevision(revision: flutterRevision),
+            ).thenThrow(Exception('offline'));
+
+            await expectLater(
+              () => runWithOverrides(() => command.createPatch(patcher)),
+              throwsA(
+                isA<ProcessExit>().having(
+                  (e) => e.exitCode,
+                  'exitCode',
+                  ExitCode.software.code,
+                ),
+              ),
+            );
+            verifyNever(() => patcher.buildPatchArtifact());
+          });
+        });
+
         test(
-          'builds an obfuscated release\'s patch with its obfuscation map',
+          "builds an obfuscated release's patch with its obfuscation map",
           () async {
             when(
               () => codePushClientWrapper.getRelease(
@@ -3267,12 +3508,11 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           });
 
           test(
-            'updates cache with both default and release Flutter revisions',
+            'updates the cache only for the release Flutter revision',
             () async {
               await runWithOverrides(command.run);
 
               verifyInOrder([
-                cache.updateAll,
                 () => shorebirdEnv.copyWith(
                   flutterRevisionOverride: releaseFlutterRevision,
                 ),
@@ -3334,6 +3574,34 @@ A patch cannot change the Flutter version a release was built with. To fix this,
         verifyNever(() => logger.info(rolloutOlderDevicesNote));
       });
 
+      test('emits the rollout schedule given', () async {
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn('1:4h,10:12h,100');
+        when(() => argResults[pauseWeekendsArgName]).thenReturn(true);
+        when(
+          () => argResults[timezoneArgName],
+        ).thenReturn('America/New_York');
+
+        final (:exitCode, :json) = await captureJson(
+          () => runJson(() => runWithOverrides(command.run)),
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['rollout_percentage'], equals(1));
+        expect(
+          data['rollout_steps'],
+          equals([
+            {'percentage': 1, 'duration_minutes': 240},
+            {'percentage': 10, 'duration_minutes': 720},
+            {'percentage': 100},
+          ]),
+        );
+        expect(data['rollout_pause_weekends'], isTrue);
+        expect(data['rollout_timezone'], equals('America/New_York'));
+      });
+
       group('with --dry-run', () {
         setUp(() {
           when(() => argResults['dry-run']).thenReturn(true);
@@ -3363,6 +3631,401 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             }),
           );
           verifyNever(() => logger.info('No issues detected.'));
+        });
+      });
+    });
+
+    group('--add-to-patch', () {
+      const patchToAddTo = CreatePatchResponse(id: 7, number: 3);
+      final windowsRelease = Release(
+        id: 0,
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: flutterRevision,
+        flutterVersion: flutterVersion,
+        displayName: '1.2.3+1',
+        platforms: const {
+          ReleasePlatform.windows: ReleasePlatformDetails(
+            status: ReleaseStatus.active,
+          ),
+        },
+        createdAt: DateTime(2023),
+        updatedAt: DateTime(2023),
+      );
+
+      ReleasePatch existingPatch({
+        int number = 3,
+        String? channel = 'beta',
+        bool isRolledBack = false,
+        List<(ReleasePlatform, String)> artifacts = const [
+          (ReleasePlatform.windows, 'x86_64'),
+        ],
+        double? rolloutPercentage,
+      }) => ReleasePatch(
+        id: 7,
+        number: number,
+        channel: channel,
+        isRolledBack: isRolledBack,
+        rolloutPercentage: rolloutPercentage,
+        artifacts: [
+          for (final (platform, arch) in artifacts)
+            PatchArtifact(
+              id: 1,
+              patchId: 7,
+              arch: arch,
+              platform: platform,
+              hash: '#',
+              size: 42,
+              createdAt: DateTime(2023),
+            ),
+        ],
+      );
+
+      void stubPatches(List<ReleasePatch> patches) {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer((_) async => patches);
+      }
+
+      setUpAll(() {
+        registerFallbackValue(patchToAddTo);
+        registerFallbackValue(ReleasePlatform.windows);
+      });
+
+      setUp(() {
+        when(() => argResults['add-to-patch']).thenReturn('3');
+        when(() => argResults['platforms']).thenReturn(['windows']);
+        when(() => argResults['track']).thenReturn(null);
+        for (final arg in [
+          'track',
+          rolloutArgName,
+          rolloutStepsArgName,
+          pauseWeekendsArgName,
+          timezoneArgName,
+        ]) {
+          when(() => argResults.wasParsed(arg)).thenReturn(false);
+        }
+        when(() => patcher.releaseType).thenReturn(ReleaseType.windows);
+        when(() => patcher.patchArch).thenReturn(Arch.arm64);
+        when(
+          () => patcher.primaryReleaseArtifactArch,
+        ).thenReturn('win_archive_arm64');
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: 'win_archive_arm64',
+            platform: ReleasePlatform.windows,
+          ),
+        ).thenAnswer((_) async => releaseArtifact);
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => windowsRelease);
+        stubPatches([existingPatch()]);
+        when(
+          () => codePushClientWrapper.addPatchArtifacts(
+            appId: any(named: 'appId'),
+            patch: any(named: 'patch'),
+            platform: any(named: 'platform'),
+            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          ),
+        ).thenAnswer((_) async => patchToAddTo);
+      });
+
+      test('adds the build to the patch instead of a new one', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verify(
+          () => codePushClientWrapper.addPatchArtifacts(
+            appId: appId,
+            patch: any(
+              named: 'patch',
+              that: isA<CreatePatchResponse>()
+                  .having((p) => p.id, 'id', 7)
+                  .having((p) => p.number, 'number', 3),
+            ),
+            platform: ReleasePlatform.windows,
+            patchArtifactBundles: patchArtifactBundles,
+          ),
+        ).called(1);
+        verifyNever(
+          () => patcher.uploadPatchArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            artifacts: any(named: 'artifacts'),
+            track: any(named: 'track'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+        );
+        verifyNever(
+          () => logger.chooseOne<DeploymentTrack>(
+            any(),
+            choices: any(named: 'choices'),
+            defaultValue: any(named: 'defaultValue'),
+            display: any(named: 'display'),
+          ),
+        );
+        // Its track is the patch's: no prompt, no stable default.
+        verify(
+          () => logger.info(
+            any(
+              that: allOf(
+                contains('Ready to add to patch 3!'),
+                contains("Track: ${lightCyan.wrap('Beta')}"),
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('reports the patch, its track and rollout in --json', () async {
+        when(() => patcher.linkPercentage).thenReturn(null);
+        stubPatches([existingPatch(rolloutPercentage: 25)]);
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            () => runWithOverrides(command.run),
+            values: {isJsonModeRef.overrideWith(() => true)},
+          ),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['data'], containsPair('track', 'beta'));
+        expect(json['data'], containsPair('rollout_percentage', 25));
+        expect(
+          (json['data'] as Map)['patches'],
+          equals([
+            {
+              'platform': 'windows',
+              'release_id': windowsRelease.id,
+              'release_version': releaseVersion,
+              'patch_id': 7,
+              'patch_number': 3,
+              'link_percentage': null,
+            },
+          ]),
+        );
+      });
+
+      test('rejects a value that is not a patch number', () async {
+        when(() => argResults['add-to-patch']).thenReturn('latest');
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--add-to-patch must be a patch number (got "latest").',
+            ),
+          ),
+        );
+      });
+
+      test('rejects platforms other than windows', () async {
+        when(() => argResults['platforms']).thenReturn(['android']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              contains('only works with `shorebird patch windows`'),
+            ),
+          ),
+        );
+      });
+
+      for (final arg in [
+        'track',
+        rolloutArgName,
+        rolloutStepsArgName,
+        pauseWeekendsArgName,
+        timezoneArgName,
+      ]) {
+        test('rejects --$arg', () async {
+          when(() => argResults.wasParsed(arg)).thenReturn(true);
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                'Patch 3 keeps its own track and rollout. Remove --$arg.',
+              ),
+            ),
+          );
+        });
+      }
+
+      test("shows the patch's partial rollout and how to raise it", () async {
+        stubPatches([existingPatch(rolloutPercentage: 25)]);
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            any(that: contains("Track: ${lightCyan.wrap('Beta')}")),
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                'Patch 3 on release $releaseVersion is rolling out to 25%',
+              ),
+            ),
+          ),
+        );
+      });
+
+      test("reports the patch's rollout schedule in --json", () async {
+        when(() => patcher.linkPercentage).thenReturn(null);
+        stubPatches([
+          ReleasePatch(
+            id: 7,
+            number: 3,
+            channel: 'beta',
+            isRolledBack: false,
+            rolloutPercentage: 10,
+            rolloutSteps: const [
+              RolloutStep(percentage: 1, durationMinutes: 60),
+              RolloutStep(percentage: 10, durationMinutes: 60),
+              RolloutStep(percentage: 100),
+            ],
+            rolloutPauseWeekends: true,
+            rolloutTimezone: 'Europe/Berlin',
+            artifacts: existingPatch().artifacts,
+          ),
+        ]);
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            () => runWithOverrides(command.run),
+            values: {isJsonModeRef.overrideWith(() => true)},
+          ),
+        );
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map;
+        expect(data['rollout_percentage'], equals(10));
+        expect(data['rollout_steps'], hasLength(3));
+        expect(data['rollout_pause_weekends'], isTrue);
+        expect(data['rollout_timezone'], equals('Europe/Berlin'));
+      });
+
+      test('names the patch in a --json dry run', () async {
+        when(() => argResults['dry-run']).thenReturn(true);
+        when(() => patcher.linkPercentage).thenReturn(null);
+        final captured = <String>[];
+        await expectLater(
+          captureStdout(
+            () => runScoped(
+              () => runWithOverrides(command.run),
+              values: {isJsonModeRef.overrideWith(() => true)},
+            ),
+            captured: captured,
+          ),
+          exitsWithCode(ExitCode.success),
+        );
+        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+        expect(envelope['data'], containsPair('add_to_patch', 3));
+        verifyNever(
+          () => codePushClientWrapper.addPatchArtifacts(
+            appId: any(named: 'appId'),
+            patch: any(named: 'patch'),
+            platform: any(named: 'platform'),
+            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          ),
+        );
+      });
+
+      group('fails before building when the patch', () {
+        Future<void> expectFails(String message) async {
+          await expectLater(
+            runWithOverrides(command.run),
+            exitsWithError(message: message),
+          );
+          verifyNever(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          );
+        }
+
+        test('does not exist', () async {
+          stubPatches([existingPatch(number: 1), existingPatch(number: 2)]);
+          await expectFails('Release $releaseVersion has no patch 3.');
+        });
+
+        test('is rolled back', () async {
+          stubPatches([existingPatch(isRolledBack: true)]);
+          await expectFails(
+            'Patch 3 of release $releaseVersion is rolled back.',
+          );
+        });
+
+        test('is on no track', () async {
+          stubPatches([existingPatch(channel: null)]);
+          await expectFails(
+            'Patch 3 of release $releaseVersion is not on a track.',
+          );
+        });
+
+        test('has no build for this platform', () async {
+          stubPatches([
+            existingPatch(artifacts: [(ReleasePlatform.android, 'aarch64')]),
+          ]);
+          await expectFails(
+            'Patch 3 of release $releaseVersion has no Windows build to add '
+            'to.',
+          );
+        });
+
+        test('is older than a live patch with this build', () async {
+          stubPatches([
+            existingPatch(),
+            existingPatch(
+              number: 4,
+              artifacts: [(ReleasePlatform.windows, 'aarch64')],
+            ),
+          ]);
+          await expectFails(
+            'Windows arm64 devices on beta take patch 4 of release '
+            '$releaseVersion, which is newer than patch 3, so they would '
+            'never get this build.',
+          );
+        });
+
+        test('is older than a patch with this build elsewhere', () async {
+          stubPatches([
+            existingPatch(),
+            existingPatch(
+              number: 4,
+              channel: 'staging',
+              artifacts: [(ReleasePlatform.windows, 'aarch64')],
+            ),
+            existingPatch(
+              number: 5,
+              isRolledBack: true,
+              artifacts: [(ReleasePlatform.windows, 'aarch64')],
+            ),
+          ]);
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+        });
+
+        test('already has a build for this architecture', () async {
+          stubPatches([
+            existingPatch(artifacts: [(ReleasePlatform.windows, 'aarch64')]),
+          ]);
+          await expectFails(
+            'Patch 3 of release $releaseVersion already has a Windows arm64 '
+            'build.',
+          );
         });
       });
     });
@@ -3585,6 +4248,33 @@ A patch cannot change the Flutter version a release was built with. To fix this,
             exitsDeclined,
           );
           verify(() => logger.err('Aborting.')).called(1);
+        });
+      });
+
+      group('when an archive cannot be read', () {
+        setUp(() {
+          when(
+            () => patcher.assertUnpatchableDiffs(
+              releaseArtifact: any(named: 'releaseArtifact'),
+              releaseArchive: any(named: 'releaseArchive'),
+              patchArchive: any(named: 'patchArchive'),
+            ),
+          ).thenThrow(
+            ArchiveException('zip: end of central directory not found'),
+          );
+        });
+
+        test('exits naming the fix', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithError(
+              message:
+                  'Could not compare the patch with the release: '
+                  'zip: end of central directory not found',
+              hint: damagedReleaseArtifactHint(ReleaseType.android),
+              exitCode: ExitCode.software,
+            ),
+          );
         });
       });
 
@@ -3940,6 +4630,128 @@ A patch cannot change the Flutter version a release was built with. To fix this,
           ).called(1);
           verifyNever(() => logger.info(rolloutOlderDevicesNote));
         });
+      });
+    });
+
+    group('--$rolloutStepsArgName', () {
+      const schedule = RolloutSchedule(
+        steps: [
+          RolloutStep(percentage: 1, durationMinutes: 240),
+          RolloutStep(percentage: 10, durationMinutes: 720),
+          RolloutStep(percentage: 100),
+        ],
+      );
+
+      setUp(() {
+        when(
+          () => argResults[rolloutStepsArgName],
+        ).thenReturn('1:4h,10:12h,100');
+      });
+
+      test('rejects a schedule that does not parse before building', () async {
+        when(() => argResults[rolloutStepsArgName]).thenReturn('1:4h,10,100');
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--$rolloutStepsArgName needs a duration on every step but the '
+                  'last, such as "$rolloutStepsExample" (got "10").',
+            ),
+          ),
+        );
+        verifyNever(
+          () => patcher.buildPatchArtifact(
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+
+      test('rejects --$rolloutArgName alongside it', () async {
+        when(() => argResults['rollout']).thenReturn('10');
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--$rolloutArgName and --$rolloutStepsArgName are mutually '
+                  'exclusive: a rollout is either a fixed percentage or a '
+                  'schedule.',
+            ),
+          ),
+        );
+      });
+
+      test('rejects --$timezoneArgName without it', () async {
+        when(() => argResults[rolloutStepsArgName]).thenReturn(null);
+        when(
+          () => argResults[timezoneArgName],
+        ).thenReturn('America/New_York');
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--$timezoneArgName only applies to a timed rollout schedule, '
+                  'which --$rolloutStepsArgName sets (e.g. '
+                  '--$rolloutStepsArgName=$rolloutStepsExample).',
+            ),
+          ),
+        );
+      });
+
+      test('publishes the patch on the schedule', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verify(
+          () => patcher.uploadPatchArtifacts(
+            appId: appId,
+            releaseId: release.id,
+            metadata: any(named: 'metadata'),
+            artifacts: any(named: 'artifacts'),
+            track: DeploymentTrack.stable,
+            rolloutSchedule: schedule,
+          ),
+        ).called(1);
+      });
+
+      test('shows the schedule in the summary', () async {
+        await runWithOverrides(command.run);
+
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                '🟢 Track: ${lightCyan.wrap('Stable')} '
+                '${lightCyan.wrap('(1% for 4h, then 10% for 12h, then 100%)')}',
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('says what the schedule does and how to raise it', () async {
+        await runWithOverrides(command.run);
+
+        final raiseCommand =
+            'shorebird patches rollout --release-version ${release.version} '
+            '--patch-number 2 --percentage <percentage>';
+        verifyInOrder([
+          () => logger.info(
+            'Patch 2 on release ${release.version} is rolling out to stable '
+            'on a schedule: 1% for 4h, then 10% for 12h, then 100%. '
+            'To raise it sooner, run:\n'
+            '  ${lightCyan.wrap(raiseCommand)}',
+          ),
+          () => logger.info(rolloutOlderDevicesNote),
+        ]);
       });
     });
 

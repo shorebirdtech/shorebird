@@ -1425,6 +1425,149 @@ void main() {
       });
     });
 
+    group('symbols', () {
+      const releaseId = 7;
+      const patchId = 11;
+      const arch = 'aarch64';
+      const platform = ReleasePlatform.android;
+      const sessionUrl = 'https://storage.googleapis.com/session?upload_id=s';
+
+      late File symbols;
+
+      setUp(() {
+        final tempDir = Directory.systemTemp.createTempSync();
+        symbols = File(path.join(tempDir.path, 'app.sbsymbols'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5, 6]);
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreateSymbolsResponse(
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+      });
+
+      Future<List<http.BaseRequest>> capturedRequests() async {
+        return verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+      }
+
+      group('createReleaseSymbols', () {
+        test('declares the symbols and PUTs them to the session', () async {
+          await expectLater(
+            codePushClient.createReleaseSymbols(
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: symbols.path,
+            ),
+            completes,
+          );
+
+          final requests = await capturedRequests();
+          expect(requests, hasLength(2));
+          final create = requests.first as http.Request;
+          expect(create.method, equals('POST'));
+          expect(
+            create.url,
+            equals(v1('apps/$appId/releases/$releaseId/symbols')),
+          );
+          expect(create.hasHeaders(expectedHeaders), isTrue);
+          expect(
+            json.decode(create.body),
+            equals({
+              'platform': platform.name,
+              'arch': arch,
+              'format': 'sbsymbols',
+              'compression': 'gzip',
+              'size': 6,
+            }),
+          );
+          final upload = requests.last;
+          expect(upload.method, equals('PUT'));
+          expect(upload.url, equals(Uri.parse(sessionUrl)));
+          expect(upload.headers['content-range'], equals('bytes 0-5/6'));
+        });
+
+        test('throws when the server refuses the symbols', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse))),
+              HttpStatus.forbidden,
+            ),
+          );
+
+          expect(
+            codePushClient.createReleaseSymbols(
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: symbols.path,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (exception) => exception.statusCode,
+                'statusCode',
+                equals(HttpStatus.forbidden),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('createPatchSymbols', () {
+        test('declares the symbols and PUTs them to the session', () async {
+          await expectLater(
+            codePushClient.createPatchSymbols(
+              appId: appId,
+              patchId: patchId,
+              platform: platform,
+              arch: arch,
+              format: SymbolsFormat.sbsymbols,
+              compression: SymbolsCompression.gzip,
+              symbolsPath: symbols.path,
+            ),
+            completes,
+          );
+
+          final requests = await capturedRequests();
+          expect(requests, hasLength(2));
+          final create = requests.first as http.Request;
+          expect(create.method, equals('POST'));
+          expect(
+            create.url,
+            equals(v1('apps/$appId/patches/$patchId/symbols')),
+          );
+          expect(
+            json.decode(create.body),
+            equals({
+              'platform': platform.name,
+              'arch': arch,
+              'format': 'sbsymbols',
+              'compression': 'gzip',
+              'size': 6,
+            }),
+          );
+          expect(requests.last.method, equals('PUT'));
+        });
+      });
+    });
+
     group('createApp', () {
       test('makes the correct request', () async {
         codePushClient
@@ -1886,11 +2029,47 @@ void main() {
 
       test('posts the run to the app', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.created),
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode({
+                  'id': 7,
+                  'artifact_uploads': [
+                    {
+                      'id': 3,
+                      'kind': 'debug_bundle',
+                      'shared_by': 'flag',
+                      'upload_url': 'https://storage.example/session',
+                    },
+                  ],
+                }),
+              ),
+            ),
+            HttpStatus.created,
+          ),
         );
 
-        await codePushClient.createBuildRun(appId: appId, request: request);
+        final response = await codePushClient.createBuildRun(
+          appId: appId,
+          request: request,
+        );
+
+        expect(
+          response,
+          equals(
+            CreateBuildRunResponse(
+              id: 7,
+              artifactUploads: [
+                RunArtifactUpload(
+                  id: 3,
+                  kind: RunArtifactKind.debugBundle,
+                  sharedBy: RunArtifactSharedBy.flag,
+                  uploadUrl: Uri.parse('https://storage.example/session'),
+                ),
+              ],
+            ),
+          ),
+        );
 
         final sent =
             verify(() => httpClient.send(captureAny())).captured.single
@@ -1911,6 +2090,38 @@ void main() {
           codePushClient.createBuildRun(appId: appId, request: request),
           throwsA(isA<CodePushException>()),
         );
+      });
+    });
+
+    group('uploadRunArtifact', () {
+      test('puts the file to the upload session', () async {
+        final dir = Directory.systemTemp.createTempSync();
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final file = File('${dir.path}/patch-debug.zip')
+          ..writeAsBytesSync([1, 2, 3]);
+        final upload = RunArtifactUpload(
+          id: 3,
+          kind: RunArtifactKind.debugBundle,
+          sharedBy: RunArtifactSharedBy.setting,
+          uploadUrl: Uri.parse('https://storage.example/session'),
+        );
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await codePushClient.uploadRunArtifact(
+          upload: upload,
+          path: file.path,
+        );
+
+        final sent =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(sent.method, equals('PUT'));
+        expect(sent.url, equals(upload.uploadUrl));
+        expect(sent.headers['content-range'], equals('bytes 0-2/3'));
+        expect(sent.bodyBytes, equals([1, 2, 3]));
       });
     });
 
@@ -2097,6 +2308,88 @@ void main() {
           codePushClient.updateApp(appId: appId, displayName: displayName),
           completes,
         );
+      });
+    });
+
+    group('archiveApp', () {
+      test('makes the correct request', () async {
+        codePushClient.archiveApp(appId: appId).ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('apps/$appId/archive')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.archiveApp(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(codePushClient.archiveApp(appId: appId), completes);
+      });
+    });
+
+    group('unarchiveApp', () {
+      test('makes the correct request', () async {
+        codePushClient.unarchiveApp(appId: appId).ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('apps/$appId/unarchive')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.unarchiveApp(appId: appId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(codePushClient.unarchiveApp(appId: appId), completes);
       });
     });
 
@@ -2631,14 +2924,26 @@ void main() {
     });
 
     group('getApps', () {
-      test('makes the correct request', () async {
-        codePushClient.getApps().ignore();
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.BaseRequest;
-        expect(request.method, equals('GET'));
-        expect(request.url, equals(v1('apps')));
-        expect(request.hasHeaders(expectedHeaders), isTrue);
+      group('makes the correct request', () {
+        test('when includeArchived is not specified', () async {
+          codePushClient.getApps().ignore();
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.method, equals('GET'));
+          expect(request.url, equals(v1('apps')));
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+        });
+
+        test('when includeArchived is true', () async {
+          codePushClient.getApps(includeArchived: true).ignore();
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.method, equals('GET'));
+          expect(request.url, equals(v1('apps?includeArchived=true')));
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+        });
       });
 
       test('throws an exception if the http request fails (unknown)', () async {
@@ -3160,6 +3465,38 @@ void main() {
         );
       });
 
+      test('sends the timed rollout schedule when given', () async {
+        codePushClient
+            .promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channelId,
+              rolloutSteps: const [
+                RolloutStep(percentage: 1, durationMinutes: 240),
+                RolloutStep(percentage: 100),
+              ],
+              rolloutPauseWeekends: true,
+              rolloutTimezone: 'America/New_York',
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'patch_id': patchId,
+            'channel_id': channelId,
+            'rollout_steps': [
+              {'percentage': 1, 'duration_minutes': 240},
+              {'percentage': 100},
+            ],
+            'rollout_pause_weekends': true,
+            'rollout_timezone': 'America/New_York',
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -3244,7 +3581,7 @@ void main() {
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
-        rolloutPercentage: 50,
+        request: const SetPatchRolloutPercentageRequest(rolloutPercentage: 50),
       );
 
       test('makes the correct request', () async {
@@ -3271,6 +3608,44 @@ void main() {
         expect(
           json.decode(request.body),
           equals({'rollout_percentage': 50}),
+        );
+      });
+
+      test('sends the timed rollout schedule when given', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.setPatchRollout(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+          request: const SetPatchRolloutScheduleRequest(
+            rolloutSteps: [
+              RolloutStep(percentage: 10, durationMinutes: 720),
+              RolloutStep(percentage: 100),
+            ],
+            rolloutPauseWeekends: true,
+            rolloutTimezone: 'America/New_York',
+          ),
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'rollout_steps': [
+              {'percentage': 10, 'duration_minutes': 720},
+              {'percentage': 100},
+            ],
+            'rollout_pause_weekends': true,
+            'rollout_timezone': 'America/New_York',
+          }),
         );
       });
 

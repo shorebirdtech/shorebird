@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -13,6 +12,7 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -69,9 +69,14 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
+      // Bake the release's version and app ID, as the release's build did, so
+      // the two builds' shorebird.yaml match.
+      releaseVersion: releaseVersion,
+      appId: moduleAppId,
       targetPlatforms: releaseTargetPlatforms,
       args: buildArgs,
       base64PublicKey: await getEncodedPublicKey(),
+      releaseSupplementDir: stageReleaseSupplement(),
     );
 
     return File(
@@ -99,7 +104,7 @@ class AarPatcher extends Patcher with AndroidPatcherMixin {
     final extractedAarDirectory = await shorebirdAndroidArtifacts.extractAar(
       packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
-      unzipFn: extractFileToDisk,
+      unzipFn: extractVerifiedZip,
     );
 
     return createAndroidPatchArtifactBundles(

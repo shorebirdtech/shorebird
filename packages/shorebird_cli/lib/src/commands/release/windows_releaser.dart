@@ -33,7 +33,26 @@ class WindowsReleaser extends Releaser {
   String get supplementPlatformSubdir => 'windows';
 
   @override
-  String get supplementArtifactArch => 'windows_supplement';
+  String get supplementArtifactArch =>
+      windowsSupplementArtifactArch(windowsTargetArch);
+
+  @override
+  Version get minimumFlutterVersion => windowsTargetArch == Arch.arm64
+      ? minimumSupportedWindowsArm64FlutterVersion
+      : super.minimumFlutterVersion;
+
+  /// A release built on one architecture can take the other's build: an app
+  /// shipped for x64 and arm64 is released once on each kind of machine.
+  @override
+  Future<bool> addsToActiveRelease(Release release) async {
+    final existing = await codePushClientWrapper.maybeGetReleaseArtifact(
+      appId: release.appId,
+      releaseId: release.id,
+      arch: windowsReleaseArtifactArch(windowsTargetArch),
+      platform: releaseType.releasePlatform,
+    );
+    return existing == null;
+  }
 
   @override
   String get artifactDisplayName => 'Windows app';
@@ -89,6 +108,7 @@ class WindowsReleaser extends Releaser {
       appId: appId,
       releaseId: release.id,
       releaseDirectory: releaseDir,
+      arch: windowsReleaseArtifactArch(windowsTargetArch),
       signing: signing,
     );
   }

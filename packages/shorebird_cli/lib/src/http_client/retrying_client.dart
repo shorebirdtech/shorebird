@@ -13,12 +13,52 @@ final retryFailedRequestsRef = create(() => true);
 
 bool get _retriesEnabled => read(retryFailedRequestsRef, orElse: () => true);
 
-/// An http client that retries requests on connection failures.
-http.Client retryingHttpClient(http.Client client) => RetryClient(
-  client,
-  when: isRetryableResponse,
-  whenError: isRetryableException,
-);
+/// The request methods RFC 9110 (section 9.2.2) defines as idempotent: sending
+/// one twice has the same effect on the server as sending it once.
+const idempotentMethods = {'GET', 'HEAD', 'OPTIONS', 'TRACE', 'PUT', 'DELETE'};
+
+/// An http client that retries idempotent requests on connection failures and
+/// 5xx responses.
+///
+/// A POST or PATCH is sent once: a failed response or a dropped connection
+/// does not tell us the server didn't act on it, and sending it again can
+/// repeat the write (for example, create a release the first attempt already
+/// created). Callers that know a write is safe to repeat retry it themselves.
+http.Client retryingHttpClient(http.Client client) =>
+    IdempotentRetryClient(client);
+
+/// Sends [idempotentMethods] through a [RetryClient] and every other request
+/// straight to the inner client.
+class IdempotentRetryClient extends http.BaseClient {
+  /// Creates an [IdempotentRetryClient] wrapping [_inner]. [delay] is how
+  /// long to wait before each retry, [RetryClient]'s backoff by default.
+  IdempotentRetryClient(this._inner, {Duration Function(int retryCount)? delay})
+    : _retrying = delay == null
+          ? RetryClient(
+              _inner,
+              when: isRetryableResponse,
+              whenError: isRetryableException,
+            )
+          : RetryClient(
+              _inner,
+              when: isRetryableResponse,
+              whenError: isRetryableException,
+              delay: delay,
+            );
+
+  final http.Client _inner;
+  final RetryClient _retrying;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      idempotentMethods.contains(request.method.toUpperCase())
+      ? _retrying.send(request)
+      : _inner.send(request);
+
+  // Closing the RetryClient closes the inner client too.
+  @override
+  void close() => _retrying.close();
+}
 
 /// Returns `true` if the [exception] is a retryable exception.
 bool isRetryableException(Object exception, StackTrace _) {

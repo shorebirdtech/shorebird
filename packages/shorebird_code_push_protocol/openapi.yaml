@@ -501,6 +501,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PerPage'
         - $ref: '#/components/parameters/Cursor'
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include archived apps in the response.
       responses:
         '200':
           description: A list of apps.
@@ -596,6 +603,91 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
+  /apps/{appId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+    post:
+      tags:
+        - apps
+      summary: Archive the app.
+      description: |
+        Stops the app serving patches and takes it out of its account's app
+        quota, keeping its releases, patches and artifacts. A device that
+        checks in is told there is no new patch and keeps the one it has.
+        Creating a release or a patch on it is refused until it is
+        unarchived. Requires the `apps.update` permission.
+
+        Archiving an app that is already archived changes nothing and still
+        answers 204, so a call that failed partway can be repeated.
+      operationId: archiveApp
+      responses:
+        '204':
+          description: The app is archived.
+        '403':
+          description: The caller lacks the `apps.update` permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The app does not exist (`app_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            The write, or updating a release's cached patch-check response
+            after it, failed (`apps_archive_error`). Repeat the call: where the
+            write landed, the app is already in the state asked for and the
+            repeat reports the releases the failed call never reached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /apps/{appId}/unarchive:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+    post:
+      tags:
+        - apps
+      summary: Bring an archived app back.
+      description: |
+        Puts the app back to serving patches and counting against its
+        account's app quota. Requires the `apps.update` permission.
+
+        Unarchiving an app that is not archived changes nothing and still
+        answers 204, as archiving an archived one does.
+      operationId: unarchiveApp
+      responses:
+        '204':
+          description: The app is not archived.
+        '403':
+          description: The caller lacks the `apps.update` permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The app does not exist (`app_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            The write, or updating a release's cached patch-check response
+            after it, failed (`apps_unarchive_error`). Repeat the call: where the
+            write landed, the app is already in the state asked for and the
+            repeat reports the releases the failed call never reached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
   /apps/{appId}/signing-key:
     parameters:
       - $ref: '#/components/parameters/AppId'
@@ -631,6 +723,10 @@ paths:
       tags:
         - collaborators
       summary: Add a collaborator to the app by email.
+      description: |
+        Per-app collaborators are being retired in favour of organization
+        membership. Manage access through organization membership instead,
+        with `POST /organizations/{organizationId}/invitations`.
       operationId: createAppCollaborator
       requestBody:
         required: true
@@ -641,6 +737,15 @@ paths:
       responses:
         '204':
           description: The collaborator was added.
+        '410':
+          description: |
+            Per-app collaborators can no longer be added
+            (`app_collaborators_frozen`), or per-app collaborators have
+            been retired (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
     get:
@@ -674,6 +779,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: |
+            Per-app collaborators have been retired
+            (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/collaborators/{collaboratorId}:
@@ -689,6 +802,10 @@ paths:
       tags:
         - collaborators
       summary: Update a collaborator's role on an app.
+      description: |
+        Per-app collaborators are being retired in favour of organization
+        membership. Manage roles through organization membership instead,
+        with `PATCH /organizations/{organizationId}/users/{userId}`.
       operationId: updateAppCollaborator
       requestBody:
         required: true
@@ -699,6 +816,15 @@ paths:
       responses:
         '204':
           description: The collaborator was updated.
+        '410':
+          description: |
+            Per-app collaborator roles can no longer be updated
+            (`app_collaborators_frozen`), or per-app collaborators have
+            been retired (`app_collaborators_retired`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
     delete:
@@ -734,6 +860,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: The app does not exist (`app_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: |
+            Per-app collaborators have been retired
+            (`app_collaborators_retired`).
           content:
             application/json:
               schema:
@@ -1050,6 +1184,91 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
+  /apps/{appId}/releases/{releaseId}/symbols:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/ReleaseId'
+    post:
+      tags:
+        - releases
+      summary: Register a release's debug symbols and obtain an upload URL.
+      description: |
+        Returns a resumable upload session URI for one architecture's symbol
+        file; clients `PUT` the compressed bytes to it. Nothing is recorded in
+        the database: a symbol file is addressed by its object path, so an
+        upload for a platform and arch already uploaded replaces it.
+
+        Symbols are what turns a crash report's addresses back into Dart
+        frames, so each object is stamped with a 90-day retention in the patch
+        artifacts bucket rather than living for the life of the release beside
+        its binaries. The bucket's own lifecycle policy is what acts on that
+        stamp.
+
+        Requires the `releases.create` permission, the `crashReporting` plan
+        feature, and the app's own Crash Reporting opt-in: symbols are only
+        read to deobfuscate crash reports, which our Terms of Service,
+        Privacy Policy and Data Processing Addendum let us do only for an app
+        whose owner opted in.
+      operationId: createReleaseSymbols
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSymbolsRequest'
+      responses:
+        '200':
+          description: Where to upload the symbol file's bytes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSymbolsResponse'
+        '400':
+          description: |
+            The release id is not an integer, or the arch does not resolve to
+            a single path segment
+            (`release_symbols_create_malformed_request_body`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            The app is archived and takes no new releases or patches
+            (`app_archived`), the plan does not carry crash reporting
+            (`shorebird_plan_insufficient_tier`), or the app is not opted in
+            to Crash Reporting
+            (`release_symbols_create_crash_reporting_disabled`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The release does not exist, or belongs to another app
+            (`release_symbols_create_release_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: |
+            The declared size exceeds the maximum symbol upload size
+            (`release_symbols_create_too_large`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            Reading the release or opening the upload session failed
+            (`release_symbols_create_error`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
   /apps/{appId}/releases/{releaseId}/patches:
     parameters:
       - $ref: '#/components/parameters/AppId'
@@ -1139,6 +1358,10 @@ paths:
       responses:
         '201':
           description: The run was recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBuildRunResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/patches/{patchId}/artifacts:
@@ -1166,6 +1389,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreatePatchArtifactResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /apps/{appId}/patches/{patchId}/symbols:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/PatchId'
+    post:
+      tags:
+        - patches
+      summary: Register a patch's debug symbols and obtain an upload URL.
+      description: |
+        Returns a resumable upload session URI for one architecture's symbol
+        file; clients `PUT` the compressed bytes to it. Nothing is recorded in
+        the database: a symbol file is addressed by its object path, so an
+        upload for a platform and arch already uploaded replaces it.
+
+        A patch's symbols sit beside its `dlc.vmcode`, stamped with a 90-day
+        retention that the bucket's lifecycle policy acts on: long enough to
+        symbolicate the crashes the patch causes while it is rolling out.
+
+        Requires the `patches.create` permission, the `crashReporting` plan
+        feature, and the app's own Crash Reporting opt-in: symbols are only
+        read to deobfuscate crash reports, which our Terms of Service,
+        Privacy Policy and Data Processing Addendum let us do only for an app
+        whose owner opted in.
+      operationId: createPatchSymbols
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSymbolsRequest'
+      responses:
+        '200':
+          description: Where to upload the symbol file's bytes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSymbolsResponse'
+        '400':
+          description: |
+            The patch id is not an integer, or the arch does not resolve to a
+            single path segment
+            (`patch_symbols_create_malformed_request_body`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            The plan does not carry crash reporting
+            (`shorebird_plan_insufficient_tier`), or the app is not opted in
+            to Crash Reporting
+            (`patch_symbols_create_crash_reporting_disabled`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The patch does not exist, or belongs to another app
+            (`patch_symbols_create_patch_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            The patch holds another platform's artifacts, so it takes no
+            symbols for this one (`patch_symbols_create_platform_mismatch`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: |
+            The declared size exceeds the maximum symbol upload size
+            (`patch_symbols_create_too_large`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '424':
+          description: |
+            Reading the patch or opening the upload session failed
+            (`patch_symbols_create_error`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           $ref: '#/components/responses/Error'
   /apps/{appId}/patches/promote:
@@ -1474,6 +1787,83 @@ paths:
             so), or the patch was rolled forward but clearing cached
             patch-check responses failed (`patch_rollforward_cache_error`);
             repeat the request to retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout:
+    parameters:
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/ReleaseId'
+      - $ref: '#/components/parameters/PatchId'
+    put:
+      tags:
+        - patches
+      summary: Set a patch's rollout percentage on its channel.
+      description: |
+        Raises the percentage of the patch's channel that receives it, up
+        to `100`. Rollouts only go up; to stop serving a patch, roll it
+        back instead.
+
+        A patch on a protected channel is refused. Raise its rollout by
+        promoting it to that channel at the new percentage, which files an
+        approval request for it.
+
+        Patches for different platforms can share a number. This sets the
+        rollout of the patch in the path only; the other platforms' patches
+        under the number keep their own.
+        Unstable: this may change shape until patch linking ships.
+      operationId: setPatchRollout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPatchRolloutRequest'
+      responses:
+        '204':
+          description: The patch's rollout percentage was updated.
+        '400':
+          description: |
+            The body, `rollout_percentage`, or timed rollout schedule is
+            malformed (`patch_rollout_malformed_request_body`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: |
+            The caller lacks the required permission for the patch's
+            channel (`patches.promoteToStable` on `stable`, or
+            `patches.updateChannel` on another channel), timed rollout
+            schedules require Enterprise
+            (`rollout_schedule_enterprise_only`), an active deployment
+            freeze window blocks the rollout increase on `stable`
+            (`deployment_freeze_active`), or the app's enterprise requires
+            patch signing and the patch isn't signed
+            (`patch_signing_required`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The app (`app_not_found`), release (`release_not_found`) or
+            patch (`patch_not_found`) does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            The patch is on no channel (`patch_not_on_channel`), the
+            requested percentage is lower than the patch's current one
+            (`rollout_percentage_lower`), the patch is on a protected
+            channel (`patch_rollout_protected_channel`), or the patch
+            moved track or was raised concurrently
+            (`patch_rollout_conflict`).
           content:
             application/json:
               schema:
@@ -2161,6 +2551,13 @@ paths:
           description: |
             The order of `sort`. Defaults to `asc` for `name` and to `desc`
             otherwise, as GitHub's lists do.
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include archived apps in the response.
       responses:
         '200':
           description: The apps belonging to the organization.
@@ -4759,6 +5156,21 @@ components:
         display_name:
           type: string
           description: The display name of the app.
+        archived_at:
+          type: string
+          format: date-time
+          description: |
+            When the app was archived. Absent while it is not archived. An
+            archived app serves no patches, takes no new release or patch,
+            and does not count against its account's app quota.
+        crash_reporting_enabled:
+          type: boolean
+          default: false
+          description: |
+            Whether the app's owner opted it in to Crash Reporting under the
+            Crash Reporting Terms of Service. Server-set, and never changed
+            through this payload. A symbol upload for an app whose answer is
+            false is refused.
         patch_signing_required:
           type: boolean
           description: |
@@ -5234,9 +5646,52 @@ components:
           description: |
             The percentage of `channel`'s devices the patch is offered to.
             Absent when the patch is on no channel.
+        rollout_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolloutStep'
+          description: |
+            The remaining steps of an in-progress timed rollout schedule on
+            `channel`, starting with the active step. Absent when the rollout
+            is fixed or the patch is on no channel.
+        rollout_next_step_at:
+          type: string
+          format: date-time
+          description: |
+            When the next step in `rollout_steps` is scheduled to apply.
+            Absent when `rollout_steps` is absent.
+        rollout_pause_weekends:
+          type: boolean
+          description: |
+            Whether the timed rollout schedule on `channel` pauses step
+            advancement over weekends in `rollout_timezone`. Absent when the
+            patch is on no channel.
+        rollout_timezone:
+          type: string
+          description: |
+            The IANA timezone name used to evaluate weekend pauses on
+            `channel`. Absent when the patch is on no channel.
         notes:
           type: string
           description: Freeform notes associated with the patch, if any.
+    RolloutStep:
+      type: object
+      description: A step in a timed rollout schedule on a channel.
+      required:
+        - percentage
+      properties:
+        percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to at
+            this step, a multiple of 0.01 from 0.01 to 100.
+        duration_minutes:
+          type: integer
+          format: int64
+          description: |
+            How many minutes to hold at `percentage` before advancing to the
+            next step. Absent on the final 100% step.
     ReleasePlatform:
       type: string
       description: A platform to which a Shorebird release can be deployed.
@@ -5541,6 +5996,23 @@ components:
         - multipart
         - resumable
       description: How a client should upload an artifact's bytes to storage.
+    SymbolsFormat:
+      type: string
+      enum:
+        - sbsymbols
+      description: |
+        Which symbol file an upload carries. `sbsymbols` is Shorebird's own
+        SBSY v1 table, stored as `app.sbsymbols`. It is the only table
+        symbolication can read, so it is the only one an upload may carry.
+    SymbolsCompression:
+      type: string
+      enum:
+        - gzip
+        - zstd
+      description: |
+        What the symbol file's bytes are compressed with. The server never
+        reads the bytes, so the client says which codec it used and the object
+        carries that as its content type.
     DeleteUserInProgressResponse:
       type: object
       description: |
@@ -5985,6 +6457,97 @@ components:
             including its build trace summary, as far as the run got.
         build_flags:
           $ref: '#/components/schemas/BuildRunBuildFlags'
+        artifacts:
+          type: array
+          description: |
+            The files the run made that Shorebird may keep, at most one of
+            each kind. The server offers an upload for each the run
+            consented to share: see `RunArtifactKind`.
+          items:
+            $ref: '#/components/schemas/CreateRunArtifact'
+        share_debug_info:
+          type: boolean
+          description: |
+            The person running `shorebird patch --share-debug-info` asked to
+            share this run's `debug_bundle`, whatever the organization's
+            setting and however the run ended.
+    CreateRunArtifact:
+      type: object
+      description: A file a run made, declared so the server can offer its upload.
+      required:
+        - kind
+        - size_bytes
+      properties:
+        kind:
+          $ref: '#/components/schemas/RunArtifactKind'
+        size_bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: |
+            The file's size in bytes, which its upload is held to. Each kind
+            has its own cap: a `debug_bundle` is at most 1073741824 (1 GiB).
+    RunArtifactKind:
+      type: string
+      description: |
+        What a file a run shared is. Each kind has its own rule for when
+        the customer has agreed to share it.
+      enum:
+        - debug_bundle
+      x-enum-descriptions:
+        - |
+          A patch run's `build/patch-debug.zip`. Shared when the run asked
+          with `share_debug_info`, or when it failed and the organization's
+          "Share debugging information with Shorebird" setting is on.
+    CreateBuildRunResponse:
+      type: object
+      description: The response body for POST /apps/{appId}/runs.
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: The id of the recorded run.
+        artifact_uploads:
+          type: array
+          description: |
+            An upload for each declared file the server accepted, in no
+            particular order. Absent when it accepted none.
+          items:
+            $ref: '#/components/schemas/RunArtifactUpload'
+    RunArtifactUpload:
+      type: object
+      description: Where to upload a file the server accepted from a run.
+      required:
+        - id
+        - kind
+        - shared_by
+        - upload_url
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: The artifact's id.
+        kind:
+          $ref: '#/components/schemas/RunArtifactKind'
+        shared_by:
+          $ref: '#/components/schemas/RunArtifactSharedBy'
+        upload_url:
+          type: string
+          format: uri
+          description: |
+            A GCS resumable upload session for the file, held to its
+            declared `size_bytes`.
+    RunArtifactSharedBy:
+      type: string
+      description: Why a run shared a file with Shorebird.
+      enum:
+        - setting
+        - flag
+      x-enum-descriptions:
+        - The organization's "Share debugging information with Shorebird" setting, for a failed patch run.
+        - The run asked with `shorebird patch --share-debug-info`.
     CreatePatchRequest:
       type: object
       description: The request body for POST /apps/{appId}/patches.
@@ -6095,6 +6658,52 @@ components:
             How to upload the artifact bytes to `url`: a single multipart POST
             (legacy), or a PUT (chunked, resumable) to a resumable session URI.
             Absent on responses from older servers, which implied multipart.
+    CreateSymbolsRequest:
+      type: object
+      description: |
+        Metadata for one architecture's symbol file. POST to
+        /apps/{appId}/releases/{releaseId}/symbols or
+        /apps/{appId}/patches/{patchId}/symbols and PUT the compressed bytes
+        to the session URI that comes back.
+      required:
+        - platform
+        - arch
+        - format
+        - compression
+        - size
+      properties:
+        platform:
+          $ref: '#/components/schemas/ReleasePlatform'
+          description: The platform the symbols are for.
+        arch:
+          type: string
+          description: The arch the symbols are for.
+        format:
+          $ref: '#/components/schemas/SymbolsFormat'
+          description: Which symbol file this is.
+        compression:
+          $ref: '#/components/schemas/SymbolsCompression'
+          description: What the bytes are compressed with.
+        size:
+          type: integer
+          format: int64
+          description: The size of the compressed file in bytes.
+    CreateSymbolsResponse:
+      type: object
+      description: Where to upload a symbol file's bytes.
+      required:
+        - url
+        - upload_method
+      properties:
+        url:
+          type: string
+          description: The resumable upload session URI for the symbol file.
+        upload_method:
+          $ref: '#/components/schemas/ArtifactUploadMethod'
+          description: |
+            Always `resumable`. A session carries the object's retention
+            metadata, which a signed multipart URL cannot, so there is no
+            multipart path for symbols.
     CreateReleaseArtifactRequest:
       type: object
       description: |
@@ -6210,6 +6819,68 @@ components:
           description: |
             The percentage of the channel's devices to offer the patch to, a
             multiple of 0.01 from 0.01 to 100. Defaults to 100.
+        rollout_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolloutStep'
+          description: |
+            A timed rollout schedule of 2 to 10 strictly increasing percentage
+            steps ending at 100. Mutually exclusive with `rollout_percentage`.
+        rollout_pause_weekends:
+          type: boolean
+          description: |
+            Whether to pause step advancement over weekends in
+            `rollout_timezone`.
+        rollout_timezone:
+          type: string
+          description: |
+            The IANA timezone name used to evaluate weekend pauses. Defaults
+            to `UTC`.
+    SetPatchRolloutRequest:
+      description: |
+        The request body for PUT
+        /apps/{appId}/releases/{releaseId}/patches/{patchId}/rollout: either
+        a rollout percentage or a timed rollout schedule.
+      oneOf:
+        - $ref: '#/components/schemas/SetPatchRolloutPercentageRequest'
+        - $ref: '#/components/schemas/SetPatchRolloutScheduleRequest'
+    SetPatchRolloutPercentageRequest:
+      type: object
+      description: Sets a patch's rollout percentage.
+      required:
+        - rollout_percentage
+      properties:
+        rollout_percentage:
+          type: number
+          format: double
+          description: |
+            The percentage of the channel's devices to offer the patch to, a
+            multiple of 0.01 from 0.01 to 100, no lower than the patch's
+            current one. Setting the current percentage holds an active timed
+            rollout schedule in place.
+    SetPatchRolloutScheduleRequest:
+      type: object
+      description: Starts a timed rollout schedule for a patch.
+      required:
+        - rollout_steps
+      properties:
+        rollout_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolloutStep'
+          description: |
+            A timed rollout schedule of 2 to 10 strictly increasing percentage
+            steps ending at 100.
+        rollout_pause_weekends:
+          type: boolean
+          description: |
+            Whether to pause step advancement over weekends in
+            `rollout_timezone`.
+        rollout_timezone:
+          type: string
+          description: |
+            The IANA timezone name used to evaluate weekend pauses. Defaults
+            to `UTC`.
     PatchCheckRequest:
       type: object
       description: The request body for POST /patches/check.
@@ -6971,15 +7642,6 @@ components:
         display_name:
           type: string
           description: The user's new display name. At most 256 characters.
-        patch_overage_limit:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: |
-            The most patch installs past the plan's allotment the user
-            agrees to pay for each overage period. `0` turns overage off;
-            `null` removes the limit. Must not be negative.
     NotificationPreferences:
       type: object
       description: How the user wants to be notified.

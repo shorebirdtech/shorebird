@@ -138,6 +138,7 @@ void main() {
           aotOutputFile: any(named: 'aotOutputFile'),
           vmCodeFile: any(named: 'vmCodeFile'),
           ddMaxBytes: any(named: 'ddMaxBytes'),
+          obfuscationMapPath: any(named: 'obfuscationMapPath'),
         ),
       ).thenAnswer((_) async => result);
     }
@@ -265,7 +266,7 @@ void main() {
                 ),
               ),
               releaseArtifact: releaseArtifactFile,
-              splitDebugInfoArgs: [],
+              splitDebugInfoArgs: ['--strip'],
               aotOutputFile: any(
                 named: 'aotOutputFile',
                 that: isA<File>().having(
@@ -287,7 +288,7 @@ void main() {
         });
 
         test(
-          'passes the obfuscation gen_snapshot args to the linker',
+          'passes the obfuscation gen_snapshot args and map to the linker',
           () async {
             final obfuscationMapPath = p.join(
               buildDirectory.path,
@@ -309,6 +310,7 @@ void main() {
                         ),
                         aotOutputFile: any(named: 'aotOutputFile'),
                         vmCodeFile: any(named: 'vmCodeFile'),
+                        obfuscationMapPath: obfuscationMapPath,
                       ),
                     ).captured.single
                     as List<String>;
@@ -317,6 +319,9 @@ void main() {
               args,
               contains('--load-obfuscation-map=$obfuscationMapPath'),
             );
+            // Unstripped, an obfuscated patch would carry the unobfuscated
+            // names in its DWARF.
+            expect(args, contains('--strip'));
           },
         );
 

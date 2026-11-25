@@ -53,8 +53,11 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    await assertReleaseVersionCanBeBuiltIn();
     await runReleaseBuild(
       (buildArgs, base64PublicKey) => artifactBuilder.buildIosFramework(
+        releaseVersion: _releaseVersion,
+        appId: moduleAppId,
         target: target,
         // `release` parses `--no-codesign` itself (for ipa builds), so it
         // isn't forwarded with the rest.
@@ -63,6 +66,9 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
         ddMaxBytes: ddMaxBytes,
         applyLegacyDdDefault: true,
       ),
+    );
+    await assertModuleCarriesAppId(
+      () async => artifactManager.readAppXcframeworkShorebirdYaml(),
     );
 
     // Copy release xcframework to a new directory to avoid overwriting with
@@ -97,9 +103,10 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
-  }) async {
-    return (argResults['release-version'] as String).trim();
-  }
+  }) async => _releaseVersion;
+
+  String get _releaseVersion =>
+      (argResults['release-version'] as String).trim();
 
   @override
   Future<void> uploadReleaseArtifacts({

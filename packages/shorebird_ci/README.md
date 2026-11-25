@@ -58,11 +58,25 @@ activate`s `shorebird_ci`, runs `verify` as a sanity check, then runs
 job fans out over only those packages, running per entry: checkout,
 SDK setup, `pub get` (plus any nested subpackages), format, analyze,
 bloc lint (if `bloc_lint` is a dependency), tests (with coverage if
-Codecov is configured), integration tests (if Flutter and an
-`integration_test/` directory exists), Codecov upload.
+Codecov is configured), integration tests (if Flutter with an
+`integration_test/` directory; see `integration_tests` under
+[Configuration](#configuration)), Codecov upload.
 
 A `cspell` job is added if a cspell config file is present at the repo
 root.
+
+A `zizmor` job lints every workflow in `.github/workflows/`, the
+generated ones and your own, with [zizmor](https://docs.zizmor.sh/),
+which finds GitHub Actions security mistakes such as template
+injection and credentials left on disk. It downloads the zizmor
+release this version of `shorebird_ci` pins from zizmor's GitHub
+releases and checks its SHA-256 before running it, rather than using a
+third-party action. It runs offline, with a read-only token that
+checkout doesn't keep and no secrets. To accept a finding, ignore it
+in `.github/zizmor.yml` or with a `# zizmor: ignore[<audit>]` comment
+([zizmor's docs](https://docs.zizmor.sh/usage/#ignoring-results)).
+`generate` runs the same zizmor once after writing and prints what it
+finds, so the job's first run isn't a surprise.
 
 Auto-detected: Dart vs. Flutter, Dart workspaces, Codecov, cspell,
 nested subpackages, `bloc_lint`, integration tests, pinned Flutter
@@ -131,8 +145,9 @@ is set: generation fails if any package's slug resolves to `required`
 Pass the name of the GitHub Actions secret holding your Codecov upload
 token. The codecov-action step gets `token: ${{ secrets.<NAME> }}` in
 both `--style static` and `--style dynamic` (the default). In static,
-`secrets: inherit` is also emitted on each reusable workflow call so
-the secret is reachable from inside the reusable workflow.
+each reusable workflow call is passed that one secret by name, and the
+reusable workflow declares it, so the pub and test steps never see the
+repository's other secrets as `secrets: inherit` would give them.
 
 ```sh
 shorebird_ci generate --codecov-token-secret CODECOV_TOKEN
@@ -149,6 +164,15 @@ and pins it by SHA after writing the workflow. `--no-update-actions`
 skips the network call and leaves the SHA pins built into this version
 of `shorebird_ci` as-is. Use it in offline environments. Once you push, Dependabot picks
 up bumps on its weekly schedule.
+
+### `--no-zizmor`
+
+Skips `generate`'s run of zizmor over `.github/workflows/` after
+writing. That run uses a `zizmor` on `PATH` if it's the version the
+generated job pins, and otherwise downloads that release to a per-user
+cache (`~/.cache/shorebird_ci/zizmor`, or `%LOCALAPPDATA%` on
+Windows), checking its SHA-256. Its findings never fail `generate`.
+The generated `zizmor` job is emitted either way.
 
 ### `--style static`
 
@@ -181,11 +205,67 @@ packages):
 shorebird_ci verify --ignore e2e,other_package
 ```
 
+## Configuration
+
+Anything that changes what `generate` writes and isn't a fact it can
+read out of the repository goes in a `shorebird_ci:` block, so
+`verify` can rebuild the workflows and tell a hand edit from
+generated output. A flag passed on the command line leaves nothing
+behind, so the next `generate` run drops it.
+
+Per package, in the package's own `pubspec.yaml`:
+
+```yaml
+shorebird_ci:
+  min_coverage: 99.7
+  runners: [ubuntu-latest, macos-latest]
+  needs_redis: true
+  integration_tests: false
+  report_on: lib,routes
+  coverage_excludes: "lib/generated/**"
+  total_shards: 4
+  inputs: ["openapi.yaml"]
+```
+
+`integration_tests` turns `flutter test integration_test` on or off
+for a Flutter package with files under `integration_test/`. Left out,
+it is on when the package also has a `linux/` directory, since the
+Linux desktop is the only device a hosted `ubuntu-latest` runner has.
+Each leg runs the tests on its runner's desktop (`-d linux`, `-d
+macos`, `-d windows`), and skips them with a notice when the package
+has no directory for that platform. On Linux the step installs GTK's
+dev packages and runs the tests under `xvfb-run`. Pull requests always
+run on `ubuntu-latest`, as does every leg in the dynamic style, so
+`true` on a package without `linux/` runs them only on the push legs
+of a `--style static` workflow's `runners:`, and never in the dynamic
+style.
+
+Repository-wide, in the repository root's `pubspec.yaml`:
+
+```yaml
+shorebird_ci:
+  required: true
+  fatal_infos: true
+  codecov_token_secret: CODECOV_TOKEN
+```
+
+Each repository-wide key mirrors the flag of the same name, and a flag
+still wins where both are set.
+
 ## Customization
 
-The generated file is a normal YAML file, not a locked artifact. Edit
-freely. The tool's ongoing role is `verify`, not regeneration. Common
-edits the tool doesn't make for you:
+`verify` fails when a workflow `generate --style static` wrote is not
+what it writes now, naming the line. That holds per file rather than
+per repository, so an orchestrator sitting beside a dynamic workflow
+is still rebuilt and compared. Change the repository or the
+`shorebird_ci:` blocks above and re-run `generate` rather than
+patching the file. An action ref is the exception: `generate`'s own
+update step moves every pin past the ones built into it, and
+Dependabot keeps moving them, so a bumped SHA is not drift.
+
+A `--style dynamic` workflow is a normal YAML file, not a locked
+artifact. Edit freely: the tool's ongoing role there is `verify`, not
+regeneration. Common edits the tool doesn't make for you:
 
 - **Branch name.** The workflow triggers on `pull_request` and `push`
   against `main` only. Repos using `master`, `trunk`, etc. need to
@@ -212,3 +292,6 @@ When `verify` reports missing packages (only possible in repos using
 deps computed. You decide which workflow file and which filter group
 to add it to; read the existing structure and make the call.
 
+When `verify` reports `REGENERATE`, don't patch the line it names. Either
+the repository has drifted from the declaration or the declaration is
+missing: find which, fix that, and re-run `generate`.

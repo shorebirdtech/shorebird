@@ -26,12 +26,13 @@ bool failed = false;
 /// Why the run stopped before it finished, if it did.
 String? stoppedEarly;
 
-/// The app [createApp] made, to delete at the end.
-String? _appId;
+/// The apps [createApp], [createModule] and [addFlavor] made, to delete at
+/// the end.
+final _appIds = <String>[];
 
 /// Runs [body]. Then, also when the job is cancelled or times out, prints the
 /// report (a table titled [title] with [columns] and the rows in [results]),
-/// deletes the app [createApp] made, and runs [tearDown]. Exits 1 if [body]
+/// deletes the apps the run made, and runs [tearDown]. Exits 1 if [body]
 /// threw or a check failed.
 Future<void> runE2e({
   required String title,
@@ -41,11 +42,11 @@ Future<void> runE2e({
 }) async {
   Future<void> cleanUp() async {
     report(title, columns);
-    final appId = _appId;
-    _appId = null;
-    if (appId != null) {
-      // Each run mints an app; delete it so the e2e account's app list stays
-      // flat (see patch_e2e.dart).
+    final appIds = [..._appIds];
+    _appIds.clear();
+    for (final appId in appIds) {
+      // Each run mints its apps; delete them so the e2e account's app list
+      // stays flat (see patch_e2e.dart).
       print('Deleting e2e app $appId');
       final result = await Process.run('shorebird', [
         'api',
@@ -150,25 +151,92 @@ dependencies:
 ''');
   File('${app.path}/analysis_options.yaml').deleteSync();
   setLabel(app, 'release');
+  await _init(app);
+  return app;
+}
+
+/// Makes a fresh Flutter module (add-to-app), `e2e_module` in [work], at
+/// pubspec [version], printing the label `release`, with Shorebird
+/// initialized against the server under test as in [createApp]. Its Android
+/// package is `com.example.e2e_module`. It is deleted when the run ends.
+Future<Directory> createModule(
+  Directory work, {
+  required String version,
+}) async {
+  await timed(
+    'create',
+    () => sh(work, pinnedFlutter(), [
+      'create',
+      '--template',
+      'module',
+      '--org',
+      'com.example',
+      'e2e_module',
+    ]),
+  );
+  final module = Directory('${work.path}/e2e_module');
+  // A module's pubspec carries its `flutter: module:` section, so it is
+  // edited rather than replaced as [createApp] replaces an app's. The pinned
+  // Flutter's SDK constraint and lints are ones older Flutter versions can't
+  // resolve.
+  final pubspec = File('${module.path}/pubspec.yaml');
+  pubspec.writeAsStringSync(
+    pubspec
+        .readAsStringSync()
+        .replaceFirst(
+          RegExp('^  sdk: .*', multiLine: true),
+          "  sdk: '>=3.0.0 <4.0.0'",
+        )
+        .replaceFirst(RegExp('^  flutter_lints: .*\n', multiLine: true), ''),
+  );
+  File('${module.path}/analysis_options.yaml').deleteSync();
+  setVersion(module, version);
+  setLabel(module, 'release');
+  await _init(module);
+  return module;
+}
+
+/// Makes a second app and adds it to [project]'s checked-in shorebird.yaml as
+/// [flavor]'s app ID, keeping the top-level `app_id`. Returns its app ID.
+/// A module has no product flavors for `shorebird init` to find, so the app is
+/// made by running `init --force` again.
+Future<String> addFlavor(Directory project, String flavor) async {
+  final shorebirdYaml = File('${project.path}/shorebird.yaml');
+  final topLevel = shorebirdYaml.readAsStringSync();
+  final flavorAppId = await _init(project, displayName: 'e2e $flavor');
+  shorebirdYaml.writeAsStringSync(
+    topLevel.replaceFirstMapped(
+      RegExp(r'^app_id: \S+\n', multiLine: true),
+      (m) => '${m[0]}flavors:\n  $flavor: $flavorAppId\n',
+    ),
+  );
+  return flavorAppId;
+}
+
+/// Runs `shorebird init` in [project] against the server under test, and
+/// remembers the app it made to delete at the end. Returns its app ID.
+Future<String> _init(Directory project, {String? displayName}) async {
   final orgId = Platform.environment['SHOREBIRD_ORG_ID'];
   await timed(
     'init',
-    () => sh(app, 'shorebird', [
+    () => sh(project, 'shorebird', [
       'init',
       '--force',
       if (orgId != null) '--org-id=$orgId',
+      if (displayName != null) '--display-name=$displayName',
       '-v',
     ]),
   );
   final hostedUrl =
       Platform.environment['SHOREBIRD_HOSTED_URL'] ??
       'https://api-dev.shorebird.dev';
-  final shorebirdYaml = File('${app.path}/shorebird.yaml')
+  final shorebirdYaml = File('${project.path}/shorebird.yaml')
     ..writeAsStringSync('base_url: $hostedUrl\n', mode: FileMode.append);
-  _appId = RegExp(
+  final appId = RegExp(
     r'app_id: (\S+)',
-  ).firstMatch(shorebirdYaml.readAsStringSync())!.group(1);
-  return app;
+  ).firstMatch(shorebirdYaml.readAsStringSync())!.group(1)!;
+  _appIds.add(appId);
+  return appId;
 }
 
 /// Makes the app print `e2e-label: <label>` when it starts.
@@ -266,13 +334,20 @@ Future<(bool, String)> launchLinux(
 /// first). Not `am start -W`: that waits for the activity's first
 /// frame, which the e2e apps never draw (they only print), so every launch
 /// waited out its 10 s timeout.
-Future<String?> startAndroidApp(String package) async {
+///
+/// [activity] is the activity's class, relative to [package] when it starts
+/// with a dot: an add-to-app host's class lives in its own Java package,
+/// whatever application ID it is built with.
+Future<String?> startAndroidApp(
+  String package, {
+  String activity = '.MainActivity',
+}) async {
   await sh(Directory.current, 'adb', [
     'shell',
     'am',
     'start',
     '-n',
-    '$package/.MainActivity',
+    '$package/$activity',
   ]);
   return waitForAndroidApp(
     package,

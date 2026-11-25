@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform/windows/windows.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:stream_transform/stream_transform.dart';
@@ -271,9 +272,16 @@ class ArtifactManager {
   }) async {
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
-      final archive = ZipDecoder().decodeStream(inputStream);
-      await extractArchiveToDisk(archive, outputDirectory.path);
-      inputStream.closeSync();
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        await extractArchiveToDisk(
+          archive,
+          outputDirectory.path,
+          throwOnError: true,
+        );
+      } finally {
+        inputStream.closeSync();
+      }
     });
   }
 
@@ -422,19 +430,24 @@ class ArtifactManager {
     await Isolate.run(() {
       final libappEntry = RegExp(r'^base/lib/([^/]+)/libapp\.so$');
       final inputStream = InputFileStream(aabPath);
-      final archive = ZipDecoder().decodeStream(inputStream);
+      // Verify each entry's checksum so a damaged bundle throws rather than
+      // yielding a partial libapp.so.
       // Entry contents are decompressed lazily from the input stream, so only
       // close it once every libapp.so has been written out.
-      for (final file in archive.files) {
-        if (!file.isFile) continue;
-        final match = libappEntry.firstMatch(file.name);
-        if (match == null) continue;
-        final arch = match.group(1)!;
-        File(p.join(outPath, arch, 'libapp.so'))
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(file.content as List<int>);
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        for (final file in archive.files) {
+          if (!file.isFile) continue;
+          final match = libappEntry.firstMatch(file.name);
+          if (match == null) continue;
+          final arch = match.group(1)!;
+          File(p.join(outPath, arch, 'libapp.so'))
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(file.content as List<int>);
+        }
+      } finally {
+        inputStream.closeSync();
       }
-      inputStream.closeSync();
     });
   }
 
@@ -456,19 +469,15 @@ class ArtifactManager {
     try {
       (entryCount, libsByArch) = await _nativeLibsInAabBaseModule(aab);
     }
-    // A name-only walk of the zip central directory decodes corrupt input to an
-    // empty archive rather than throwing, so this is only reachable via a
-    // filesystem I/O failure that cannot be forced on every CI platform.
-    // coverage:ignore-start
+    // The listing verifies the zip structure, so input that is not a zip or
+    // has a damaged central directory throws here.
     on Exception {
       // Unreadable bundles are handled by the extraction fallback elsewhere.
       return null;
     }
-    // coverage:ignore-end
 
-    // An empty archive means the file is not a real bundle (corrupt or
-    // garbage input decodes to zero entries rather than throwing), so don't
-    // claim libapp.so was dropped. A real .aab always has many entries.
+    // A zip with no entries is not a real bundle, so don't claim libapp.so was
+    // dropped. A real .aab always has many entries.
     if (entryCount == 0) return null;
 
     final hasLibapp = libsByArch.values.any(
@@ -518,18 +527,24 @@ its base/lib for libapp.so will confirm whether the build is dropping it.''');
     return Isolate.run(() {
       final libEntry = RegExp(r'^base/lib/([^/]+)/([^/]+\.so)$');
       final inputStream = InputFileStream(aabPath);
-      final archive = ZipDecoder().decodeStream(inputStream);
-      final result = <String, List<String>>{};
-      var entryCount = 0;
-      for (final file in archive.files) {
-        if (!file.isFile) continue;
-        entryCount++;
-        final match = libEntry.firstMatch(file.name);
-        if (match == null) continue;
-        (result[match.group(1)!] ??= []).add(match.group(2)!);
+      try {
+        // Verify the structure so a damaged bundle throws instead of listing
+        // only the entries before the damage. Names are read without
+        // decompressing any entry.
+        final archive = ZipDecoder().decodeStream(inputStream, verify: true);
+        final result = <String, List<String>>{};
+        var entryCount = 0;
+        for (final file in archive.files) {
+          if (!file.isFile) continue;
+          entryCount++;
+          final match = libEntry.firstMatch(file.name);
+          if (match == null) continue;
+          (result[match.group(1)!] ??= []).add(match.group(2)!);
+        }
+        return (entryCount, result);
+      } finally {
+        inputStream.closeSync();
       }
-      inputStream.closeSync();
-      return (entryCount, result);
     });
   }
 
@@ -615,11 +630,20 @@ its base/lib for libapp.so will confirm whether the build is dropping it.''');
     );
   }
 
-  /// Returns the build/ subdirectory containing the compiled Windows exe.
+  /// Returns the build/ subdirectory containing the compiled Windows exe:
+  /// `build/windows/<arch>/runner/Release`, for the architecture Flutter
+  /// builds on this machine ([windowsTargetArch]).
   Directory getWindowsReleaseDirectory() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return Directory(
-      p.join(projectRoot.path, 'build', 'windows', 'x64', 'runner', 'Release'),
+      p.join(
+        projectRoot.path,
+        'build',
+        'windows',
+        windowsBuildDirectoryName(windowsTargetArch),
+        'runner',
+        'Release',
+      ),
     );
   }
 
@@ -700,5 +724,22 @@ its base/lib for libapp.so will confirm whether the build is dropping it.''');
     return Directory(
       p.join(projectRoot.path, 'build', 'ios', 'framework', 'Release'),
     );
+  }
+
+  /// The generated (bundled) shorebird.yaml in the device slice of the
+  /// App.xcframework that `flutter build ios-framework` built, or null if it
+  /// has none.
+  String? readAppXcframeworkShorebirdYaml() {
+    final file = File(
+      p.join(
+        getAppXcframeworkDirectory().path,
+        appXcframeworkName,
+        'ios-arm64',
+        'App.framework',
+        'flutter_assets',
+        'shorebird.yaml',
+      ),
+    );
+    return file.existsSync() ? file.readAsStringSync() : null;
   }
 }

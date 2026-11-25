@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart' show ArchiveException;
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -15,7 +16,11 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/symbols/sbsymbols.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -31,6 +36,9 @@ void main() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(DeploymentTrack.stable);
       registerFallbackValue(FakeFile());
+      registerFallbackValue(FakeDirectory());
+      registerFallbackValue(SymbolImage.release);
+      registerFallbackValue(SymbolsFormat.sbsymbols);
     });
 
     group('linkPercentage', () {
@@ -116,7 +124,6 @@ void main() {
           equals([
             '--obfuscate',
             '--load-obfuscation-map=map.json',
-            '--strip',
           ]),
         );
       });
@@ -125,7 +132,7 @@ void main() {
         patcher.obfuscate = true;
         expect(
           patcher.obfuscationGenSnapshotArgs,
-          equals(['--obfuscate', '--strip']),
+          equals(['--obfuscate']),
         );
       });
     });
@@ -351,6 +358,311 @@ void main() {
           ),
         ).called(1);
       });
+
+      test('passes the rollout schedule through', () async {
+        final patcher = _TestPatcher(
+          argParser: MockArgParser(),
+          argResults: MockArgResults(),
+          flavor: null,
+          target: null,
+          releaseType: ReleaseType.android,
+        );
+        const schedule = RolloutSchedule(
+          steps: [
+            RolloutStep(percentage: 1, durationMinutes: 240),
+            RolloutStep(percentage: 100),
+          ],
+          pauseWeekends: true,
+          timezone: 'America/New_York',
+        );
+        final codePushClientWrapper = MockCodePushClientWrapper();
+        when(
+          () => codePushClientWrapper.publishPatch(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            metadata: any(named: 'metadata'),
+            platform: any(named: 'platform'),
+            track: any(named: 'track'),
+            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+          ),
+        ).thenAnswer((_) async => const CreatePatchResponse(id: 1, number: 1));
+
+        await runScoped(
+          () => patcher.uploadPatchArtifacts(
+            appId: 'test_app_id',
+            releaseId: 42,
+            metadata: const <String, String>{},
+            artifacts: const <Arch, PatchArtifactBundle>{},
+            track: DeploymentTrack.stable,
+            rolloutSchedule: schedule,
+          ),
+          values: {
+            codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          },
+        );
+
+        verify(
+          () => codePushClientWrapper.publishPatch(
+            appId: 'test_app_id',
+            releaseId: 42,
+            metadata: const <String, String>{},
+            platform: ReleaseType.android.releasePlatform,
+            track: DeploymentTrack.stable,
+            patchArtifactBundles: const <Arch, PatchArtifactBundle>{},
+            rolloutSchedule: schedule,
+          ),
+        ).called(1);
+      });
+    });
+
+    group('uploadSymbolArtifacts', () {
+      const appId = 'test_app_id';
+      const patchId = 7;
+
+      late ArgResults argResults;
+      late CodePushClientWrapper codePushClientWrapper;
+      late Directory projectRoot;
+      late ShorebirdEnv shorebirdEnv;
+      late ShorebirdLogger logger;
+      late SymbolExtractor symbolExtractor;
+      late _TestPatcher patcher;
+
+      R runWithOverrides<R>(R Function() body) => runScoped(
+        body,
+        values: {
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          loggerRef.overrideWith(() => logger),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          symbolExtractorRef.overrideWith(() => symbolExtractor),
+        },
+      );
+
+      File debugInfo([String name = 'app.test-arm64.symbols']) =>
+          File(p.join(projectRoot.path, 'symbols', name))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('debug info');
+
+      setUp(() {
+        argResults = MockArgResults();
+        codePushClientWrapper = MockCodePushClientWrapper();
+        projectRoot = Directory.systemTemp.createTempSync();
+        shorebirdEnv = MockShorebirdEnv();
+        logger = MockShorebirdLogger();
+        symbolExtractor = MockSymbolExtractor();
+
+        when(
+          () => argResults.wasParsed(CommonArguments.splitDebugInfoArg.name),
+        ).thenReturn(true);
+        when(
+          () => argResults[CommonArguments.splitDebugInfoArg.name],
+        ).thenReturn('symbols');
+        when(
+          () => shorebirdEnv.getShorebirdProjectRoot(),
+        ).thenReturn(projectRoot);
+        when(
+          () => symbolExtractor.writeIndex(
+            debugInfo: any(named: 'debugInfo'),
+            output: any(named: 'output'),
+            image: any(named: 'image'),
+          ),
+        ).thenAnswer((invocation) {
+          final output =
+              invocation.namedArguments[const Symbol('output')] as File
+                ..createSync(recursive: true)
+                ..writeAsStringSync('an index');
+          return output;
+        });
+        when(
+          () => codePushClientWrapper.createPatchSymbols(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            platform: any(named: 'platform'),
+            arch: any(named: 'arch'),
+            format: any(named: 'format'),
+            symbols: any(named: 'symbols'),
+          ),
+        ).thenAnswer((_) async {});
+
+        patcher = _TestPatcher(
+          argParser: ArgParser(),
+          argResults: argResults,
+          flavor: null,
+          target: null,
+          releaseType: ReleaseType.ios,
+        )..crashReportingEnabled = true;
+      });
+
+      test(
+        'extracts the index for built architectures and uploads only sbsymbols',
+        () async {
+          final symbols = debugInfo();
+          debugInfo('app.test-x64.symbols');
+
+          await runWithOverrides(
+            () => patcher.uploadSymbolArtifacts(
+              appId: appId,
+              patchId: patchId,
+              architectures: const [Arch.arm64],
+            ),
+          );
+
+          verify(
+            () => symbolExtractor.writeIndex(
+              debugInfo: any(
+                named: 'debugInfo',
+                that: isA<File>().having((f) => f.path, 'path', symbols.path),
+              ),
+              output: any(
+                named: 'output',
+                that: isA<File>().having(
+                  (f) => f.path,
+                  'path',
+                  p.setExtension(symbols.path, '.sbsymbols'),
+                ),
+              ),
+              image: SymbolImage.vmcode,
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.createPatchSymbols(
+              appId: appId,
+              patchId: patchId,
+              platform: ReleasePlatform.ios,
+              arch: 'aarch64',
+              format: SymbolsFormat.sbsymbols,
+              symbols: any(named: 'symbols'),
+            ),
+          ).called(1);
+          verifyNever(
+            () => codePushClientWrapper.createPatchSymbols(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              platform: any(named: 'platform'),
+              arch: 'x86_64',
+              format: any(named: 'format'),
+              symbols: any(named: 'symbols'),
+            ),
+          );
+        },
+      );
+
+      test(
+        'extracts and uploads nothing when crash reporting is off',
+        () async {
+          patcher.crashReportingEnabled = false;
+          debugInfo();
+
+          await runWithOverrides(
+            () => patcher.uploadSymbolArtifacts(
+              appId: appId,
+              patchId: patchId,
+              architectures: const [Arch.arm64],
+            ),
+          );
+
+          verifyNever(
+            () => symbolExtractor.writeIndex(
+              debugInfo: any(named: 'debugInfo'),
+              output: any(named: 'output'),
+              image: any(named: 'image'),
+            ),
+          );
+          verifyNever(
+            () => codePushClientWrapper.createPatchSymbols(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              platform: any(named: 'platform'),
+              arch: any(named: 'arch'),
+              format: any(named: 'format'),
+              symbols: any(named: 'symbols'),
+            ),
+          );
+        },
+      );
+
+      group('when there is no index to extract', () {
+        setUp(() {
+          when(
+            () => symbolExtractor.writeIndex(
+              debugInfo: any(named: 'debugInfo'),
+              output: any(named: 'output'),
+              image: any(named: 'image'),
+            ),
+          ).thenReturn(null);
+        });
+
+        test('uploads nothing and says so at --verbose', () async {
+          debugInfo();
+
+          await runWithOverrides(
+            () => patcher.uploadSymbolArtifacts(
+              appId: appId,
+              patchId: patchId,
+              architectures: const [Arch.arm64],
+            ),
+          );
+
+          verifyNever(
+            () => codePushClientWrapper.createPatchSymbols(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              platform: any(named: 'platform'),
+              arch: any(named: 'arch'),
+              format: any(named: 'format'),
+              symbols: any(named: 'symbols'),
+            ),
+          );
+          verify(
+            () => logger.detail(
+              any(that: contains('No symbol index extracted from')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when the build wrote no symbols', () {
+        test('uploads nothing when split-debug-info was not passed', () async {
+          when(
+            () => argResults.wasParsed(CommonArguments.splitDebugInfoArg.name),
+          ).thenReturn(false);
+          when(() => argResults.rest).thenReturn([]);
+
+          await runWithOverrides(
+            () => patcher.uploadSymbolArtifacts(
+              appId: appId,
+              patchId: patchId,
+              architectures: const [Arch.arm64],
+            ),
+          );
+
+          verifyNever(
+            () => codePushClientWrapper.createPatchSymbols(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              platform: any(named: 'platform'),
+              arch: any(named: 'arch'),
+              format: any(named: 'format'),
+              symbols: any(named: 'symbols'),
+            ),
+          );
+        });
+
+        test(
+          'defaults debugInfoFileNames to empty and skips unnamed archs',
+          () {
+            patcher.testDebugInfoFileNames = null;
+            expect(patcher.debugInfoFileNames, isEmpty);
+            expect(
+              runWithOverrides(
+                () => patcher.debugInfoFiles(architectures: const [Arch.arm32]),
+              ),
+              isEmpty,
+            );
+          },
+        );
+      });
     });
 
     group('createDiffBundle', () {
@@ -457,6 +769,129 @@ void main() {
           ),
         );
         verify(() => progress.fail()).called(1);
+      });
+    });
+
+    group('damagedReleaseArtifactHint', () {
+      test('names the release command for the platform', () {
+        expect(
+          damagedReleaseArtifactHint(ReleaseType.ios),
+          equals(
+            'Re-run to download it again. If this persists, the release '
+            'artifact is damaged: create a new release and patch that one. '
+            'Run: shorebird release ios',
+          ),
+        );
+      });
+
+      test('asks an add-to-app release for a new version', () {
+        expect(
+          damagedReleaseArtifactHint(ReleaseType.iosFramework),
+          endsWith(
+            'Run: shorebird release ios-framework '
+            '--release-version=<new version>',
+          ),
+        );
+      });
+    });
+
+    group('extractReleaseArtifact', () {
+      late ArtifactManager artifactManager;
+      late Progress progress;
+      final zipFile = File('release.zip');
+      final outputDirectory = Directory('out');
+
+      setUp(() {
+        artifactManager = MockArtifactManager();
+        progress = MockProgress();
+      });
+
+      Future<void> runWithOverrides(Future<void> Function() body) {
+        return runScoped(
+          body,
+          values: {artifactManagerRef.overrideWith(() => artifactManager)},
+        );
+      }
+
+      test('extracts the artifact', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((_) async {});
+
+        await runWithOverrides(
+          () => extractReleaseArtifact(
+            zipFile: zipFile,
+            outputDirectory: outputDirectory,
+            releaseType: ReleaseType.linux,
+            progress: progress,
+          ),
+        );
+
+        verify(
+          () => artifactManager.extractZip(
+            zipFile: zipFile,
+            outputDirectory: outputDirectory,
+          ),
+        ).called(1);
+        verifyNever(() => progress.fail(any()));
+      });
+
+      test('fails progress and exits when the artifact is damaged', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenThrow(
+          ArchiveException('zip: end of central directory not found'),
+        );
+
+        await expectLater(
+          () => runWithOverrides(
+            () => extractReleaseArtifact(
+              zipFile: zipFile,
+              outputDirectory: outputDirectory,
+              releaseType: ReleaseType.linux,
+              progress: progress,
+            ),
+          ),
+          exitsWithError(
+            message:
+                'The release artifact downloaded from Shorebird is damaged: '
+                'zip: end of central directory not found',
+            hint: damagedReleaseArtifactHint(ReleaseType.linux),
+            exitCode: ExitCode.software,
+          ),
+        );
+        verify(() => progress.fail()).called(1);
+      });
+
+      test('exits without a progress to fail', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenThrow(ArchiveException('zip: crc32 mismatch'));
+
+        await expectLater(
+          () => runWithOverrides(
+            () => extractReleaseArtifact(
+              zipFile: zipFile,
+              outputDirectory: outputDirectory,
+              releaseType: ReleaseType.linux,
+            ),
+          ),
+          exitsWithError(
+            message:
+                'The release artifact downloaded from Shorebird is damaged: '
+                'zip: crc32 mismatch',
+            exitCode: ExitCode.software,
+          ),
+        );
       });
     });
 
@@ -984,6 +1419,15 @@ class _TestPatcher extends Patcher {
   Future<String> extractReleaseVersionFromArtifact(File artifact) {
     throw UnimplementedError();
   }
+
+  Map<Arch, String>? testDebugInfoFileNames = const {
+    Arch.arm64: 'app.test-arm64.symbols',
+    Arch.x86_64: 'app.test-x64.symbols',
+  };
+
+  @override
+  Map<Arch, String> get debugInfoFileNames =>
+      testDebugInfoFileNames ?? super.debugInfoFileNames;
 
   @override
   String get primaryReleaseArtifactArch => throw UnimplementedError();

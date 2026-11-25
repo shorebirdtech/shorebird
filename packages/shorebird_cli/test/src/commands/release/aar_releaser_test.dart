@@ -10,8 +10,10 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
+import 'package:shorebird_cli/src/command_error.dart';
 import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -19,6 +21,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -103,6 +106,10 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
+      when(
+        () => shorebirdFlutter.getVersion(),
+      ).thenAnswer((_) async => minimumModuleReleaseVersionFlutterVersion);
+
       when(() => argResults['build-number']).thenReturn(buildNumber);
       when(
         () => argResults['target-platform'],
@@ -130,6 +137,19 @@ void main() {
     group('releaseType', () {
       test('is aar', () {
         expect(aarReleaser.releaseType, ReleaseType.aar);
+      });
+    });
+
+    group('debugInfoFileNames', () {
+      test("names one file per architecture, as Flutter's build does", () {
+        expect(
+          runWithOverrides(() => aarReleaser.debugInfoFileNames),
+          equals({
+            Arch.arm32: 'app.android-arm.symbols',
+            Arch.arm64: 'app.android-arm64.symbols',
+            Arch.x86_64: 'app.android-x64.symbols',
+          }),
+        );
       });
     });
 
@@ -261,7 +281,8 @@ void main() {
               exitsWithError(
                 message:
                     'An aar release needs --release-version: the version of '
-                    'the Android app that embeds this module.',
+                    'this module build, a new one for each build you '
+                    'release.',
                 hint:
                     'Run: shorebird release aar '
                     '--release-version=$releaseVersionExample',
@@ -298,6 +319,82 @@ void main() {
       });
     });
 
+    group('assertReleaseVersionCanBeBuiltIn', () {
+      group('with a Flutter that builds the version in', () {
+        group('when release-version has a character the updater rejects', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn('1.0 beta');
+          });
+
+          test('exits naming the allowed characters', () async {
+            await expectLater(
+              () => runWithOverrides(
+                aarReleaser.assertReleaseVersionCanBeBuiltIn,
+              ),
+              exitsWithError(
+                message:
+                    '--release-version "1.0 beta" can only use letters, '
+                    'digits, ".", "_", "+" and "-", up to 128 characters.',
+                hint:
+                    'Run: shorebird release aar '
+                    '--release-version=$releaseVersionExample',
+              ),
+            );
+          });
+        });
+
+        group('when release-version is longer than 128 characters', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn('1' * 129);
+          });
+
+          test('exits', () async {
+            await expectLater(
+              () => runWithOverrides(
+                aarReleaser.assertReleaseVersionCanBeBuiltIn,
+              ),
+              throwsA(isA<CommandError>()),
+            );
+          });
+        });
+
+        group('when release-version is valid', () {
+          setUp(() {
+            when(() => argResults['release-version']).thenReturn(' 1.0.0+1 ');
+          });
+
+          test('completes', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertReleaseVersionCanBeBuiltIn),
+              completes,
+            );
+          });
+        });
+      });
+
+      for (final (description, version) in [
+        ('an earlier Flutter', Version(3, 47, 8)),
+        ('a Flutter version that cannot be read', null),
+      ]) {
+        group('with $description', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getVersion(),
+            ).thenAnswer((_) async => version);
+            // The host app's versionName, which can be free text.
+            when(() => argResults['release-version']).thenReturn('1.0 beta');
+          });
+
+          test('accepts any release-version', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertReleaseVersionCanBeBuiltIn),
+              completes,
+            );
+          });
+        });
+      }
+    });
+
     group('buildReleaseArtifacts', () {
       void setUpProjectRootArtifacts() {
         final aarDir = p.join(
@@ -328,8 +425,10 @@ void main() {
 
       setUp(() {
         when(() => argResults['artifact']).thenReturn('apk');
+        when(() => argResults['release-version']).thenReturn(' 1.0.0+1 ');
         when(
           () => artifactBuilder.buildAar(
+            releaseVersion: any(named: 'releaseVersion'),
             buildNumber: any(named: 'buildNumber'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
@@ -337,6 +436,27 @@ void main() {
         ).thenAnswer((_) async => File(''));
 
         setUpProjectRootArtifacts();
+      });
+
+      group('when release-version is not accepted by the updater', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn('1.0 beta');
+        });
+
+        test('exits before building', () async {
+          await expectLater(
+            () => runWithOverrides(aarReleaser.buildReleaseArtifacts),
+            throwsA(isA<CommandError>()),
+          );
+          verifyNever(
+            () => artifactBuilder.buildAar(
+              releaseVersion: any(named: 'releaseVersion'),
+              buildNumber: any(named: 'buildNumber'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+            ),
+          );
+        });
       });
 
       group('when build succeeds', () {
@@ -353,6 +473,7 @@ void main() {
             expect(aar.path, p.join(projectRoot.path, 'release'));
             verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: buildNumber,
                 targetPlatforms: Arch.values.toSet(),
                 args: ['--verbose'],
@@ -369,11 +490,128 @@ void main() {
           expect(aar.path, p.join(projectRoot.path, 'release'));
           verify(
             () => artifactBuilder.buildAar(
+              releaseVersion: '1.0.0+1',
               buildNumber: buildNumber,
               targetPlatforms: Arch.values.toSet(),
               args: [],
             ),
           ).called(1);
+        });
+
+        group('when released with a flavor', () {
+          const flavorAppId = 'internal-app-id';
+
+          void stubBundledShorebirdYaml(String? contents) {
+            when(
+              () => shorebirdAndroidArtifacts.readAarShorebirdYaml(
+                packageName: any(named: 'packageName'),
+                buildNumber: any(named: 'buildNumber'),
+              ),
+            ).thenAnswer((_) async => contents);
+          }
+
+          setUp(() {
+            when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+              const ShorebirdYaml(
+                appId: 'default-app-id',
+                flavors: {'internal': flavorAppId},
+              ),
+            );
+            when(
+              () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
+                appId: any(named: 'appId'),
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+              ),
+            ).thenAnswer((_) async => File(''));
+            aarReleaser = AarReleaser(
+              argResults: argResults,
+              flavor: 'internal',
+              target: null,
+            );
+          });
+
+          test('builds the module with the flavor app ID', () async {
+            stubBundledShorebirdYaml('app_id: $flavorAppId');
+
+            await runWithOverrides(aarReleaser.buildReleaseArtifacts);
+
+            verify(
+              () => artifactBuilder.buildAar(
+                releaseVersion: '1.0.0+1',
+                appId: flavorAppId,
+                buildNumber: buildNumber,
+                targetPlatforms: Arch.values.toSet(),
+                args: [],
+              ),
+            ).called(1);
+            verify(
+              () => shorebirdAndroidArtifacts.readAarShorebirdYaml(
+                packageName: packageName,
+                buildNumber: buildNumber,
+              ),
+            ).called(1);
+          });
+
+          test('fails when Flutter built in another app ID', () async {
+            stubBundledShorebirdYaml('app_id: default-app-id');
+
+            await expectLater(
+              runWithOverrides(aarReleaser.buildReleaseArtifacts),
+              throwsA(
+                isA<CommandError>()
+                    .having(
+                      (e) => e.message,
+                      'message',
+                      contains(
+                        'built with app ID default-app-id, not $flavorAppId',
+                      ),
+                    )
+                    .having(
+                      (e) => e.hint,
+                      'hint',
+                      contains('--flutter-version=3.50.0'),
+                    )
+                    .having(
+                      (e) => e.exitCode,
+                      'exitCode',
+                      ExitCode.config.code,
+                    ),
+              ),
+            );
+          });
+
+          test('fails when the module has no shorebird.yaml', () async {
+            stubBundledShorebirdYaml(null);
+
+            await expectLater(
+              runWithOverrides(aarReleaser.buildReleaseArtifacts),
+              throwsA(
+                isA<CommandError>().having(
+                  (e) => e.message,
+                  'message',
+                  contains("Couldn't read the app ID"),
+                ),
+              ),
+            );
+          });
+
+          test('fails when the shorebird.yaml is not valid YAML', () async {
+            stubBundledShorebirdYaml('app_id: [');
+
+            await expectLater(
+              runWithOverrides(aarReleaser.buildReleaseArtifacts),
+              throwsA(
+                isA<CommandError>().having(
+                  (e) => e.message,
+                  'message',
+                  contains("Couldn't read the app ID"),
+                ),
+              ),
+            );
+          });
         });
 
         group('when a patch signing key path is provided', () {
@@ -395,6 +633,7 @@ void main() {
 
             when(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
@@ -414,6 +653,7 @@ void main() {
 
               verify(
                 () => artifactBuilder.buildAar(
+                  releaseVersion: any(named: 'releaseVersion'),
                   buildNumber: buildNumber,
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
@@ -444,6 +684,7 @@ void main() {
             // Simulate the build creating the obfuscation map.
             when(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
@@ -466,6 +707,7 @@ void main() {
 
             final captured = verify(
               () => artifactBuilder.buildAar(
+                releaseVersion: any(named: 'releaseVersion'),
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: captureAny(named: 'args'),
@@ -555,8 +797,27 @@ void main() {
             extractedAarDir: any(named: 'extractedAarDir'),
             architectures: any(named: 'architectures'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenAnswer((_) async => {Arch.arm64});
       });
+
+      test(
+        'narrows builtArchitectures to the ABIs the archive packaged',
+        () async {
+          expect(
+            runWithOverrides(() => aarReleaser.builtArchitectures),
+            equals(Arch.values.toSet()),
+          );
+
+          await runWithOverrides(
+            () => aarReleaser.uploadReleaseArtifacts(
+              release: release,
+              appId: appId,
+            ),
+          );
+
+          expect(aarReleaser.builtArchitectures, equals({Arch.arm64}));
+        },
+      );
 
       test('uploads artifacts', () async {
         await runWithOverrides(
@@ -590,6 +851,23 @@ void main() {
             ),
             extractedAarDir: Directory('path').path,
             architectures: Arch.values,
+          ),
+        ).called(1);
+      });
+
+      test('extracts the aar checking each entry', () async {
+        await runWithOverrides(
+          () => aarReleaser.uploadReleaseArtifacts(
+            release: release,
+            appId: appId,
+          ),
+        );
+
+        verify(
+          () => shorebirdAndroidArtifacts.extractAar(
+            packageName: any(named: 'packageName'),
+            buildNumber: any(named: 'buildNumber'),
+            unzipFn: extractVerifiedZip,
           ),
         ).called(1);
       });

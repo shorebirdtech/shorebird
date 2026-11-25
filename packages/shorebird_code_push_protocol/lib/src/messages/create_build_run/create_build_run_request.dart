@@ -4,6 +4,7 @@ import 'package:shorebird_code_push_protocol/src/models/build_run_build_flags.da
 import 'package:shorebird_code_push_protocol/src/models/build_run_command.dart';
 import 'package:shorebird_code_push_protocol/src/models/build_run_failure_reason.dart';
 import 'package:shorebird_code_push_protocol/src/models/build_run_outcome.dart';
+import 'package:shorebird_code_push_protocol/src/models/create_run_artifact.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template create_build_run_request}
@@ -25,6 +26,8 @@ class CreateBuildRunRequest {
     this.patchId,
     this.metadata,
     this.buildFlags,
+    this.artifacts,
+    this.shareDebugInfo,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreateBuildRunRequest].
@@ -47,6 +50,12 @@ class CreateBuildRunRequest {
         buildFlags: BuildRunBuildFlags.maybeFromJson(
           json['build_flags'] as Map<String, dynamic>?,
         ),
+        artifacts: (json['artifacts'] as List?)
+            ?.map<CreateRunArtifact>(
+              (e) => CreateRunArtifact.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+        shareDebugInfo: json['share_debug_info'] as bool?,
       ),
     );
   }
@@ -99,6 +108,16 @@ class CreateBuildRunRequest {
   /// SHA-256 hashes. Never holds dart-define values or paths.
   final BuildRunBuildFlags? buildFlags;
 
+  /// The files the run made that Shorebird may keep, at most one of
+  /// each kind. The server offers an upload for each the run
+  /// consented to share: see `RunArtifactKind`.
+  final List<CreateRunArtifact>? artifacts;
+
+  /// The person running `shorebird patch --share-debug-info` asked to
+  /// share this run's `debug_bundle`, whatever the organization's
+  /// setting and however the run ended.
+  final bool? shareDebugInfo;
+
   /// Converts a [CreateBuildRunRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -114,6 +133,8 @@ class CreateBuildRunRequest {
       'dry_run': dryRun,
       'metadata': ?metadata,
       'build_flags': ?buildFlags?.toJson(),
+      'artifacts': ?artifacts?.map((e) => e.toJson()).toList(),
+      'share_debug_info': ?shareDebugInfo,
     };
   }
 
@@ -131,6 +152,8 @@ class CreateBuildRunRequest {
     dryRun,
     mapHash(metadata),
     buildFlags,
+    listHash(artifacts),
+    shareDebugInfo,
   ]);
 
   @override
@@ -148,6 +171,8 @@ class CreateBuildRunRequest {
         durationMs == other.durationMs &&
         dryRun == other.dryRun &&
         mapsEqual(metadata, other.metadata) &&
-        buildFlags == other.buildFlags;
+        buildFlags == other.buildFlags &&
+        listsEqual(artifacts, other.artifacts) &&
+        shareDebugInfo == other.shareDebugInfo;
   }
 }

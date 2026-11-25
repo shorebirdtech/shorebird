@@ -14,6 +14,10 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
   /// {@macro flutter_versions_list_command}
   FlutterVersionsListCommand();
 
+  // Runs no Flutter.
+  @override
+  bool get usesPinnedFlutter => false;
+
   @override
   String get description => 'List available Flutter versions.';
 

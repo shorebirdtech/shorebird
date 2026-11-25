@@ -10,10 +10,19 @@ import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 /// every API.
 class BuildTraceSession {
   /// {@macro build_trace_session}
-  BuildTraceSession({required this.commandStartedAt});
+  BuildTraceSession({required this.commandStartedAt})
+    : windowStartedAt = commandStartedAt;
 
   /// The wall-clock time at which the current `shorebird` invocation began.
   final DateTime commandStartedAt;
+
+  /// Start of the current platform's trace window: [commandStartedAt] for
+  /// the first platform a command builds, and the moment
+  /// `ArtifactBuilder.prepareBuildTrace` began the next one for each later
+  /// platform of a multi-platform release or patch. Shorebird's overhead in
+  /// a platform's summary is measured from here, so it doesn't count the
+  /// time spent building the platforms before it.
+  DateTime windowStartedAt;
 
   /// The Chrome Trace Event Format JSON file that producers
   /// (`flutter build --shorebird-trace`, `aot_tools --trace`, and

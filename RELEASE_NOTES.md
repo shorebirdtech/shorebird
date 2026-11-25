@@ -4,6 +4,190 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest rustls webpki xcconfig boringssl NSURLSession HttpURLConnection DWARF dSYM notarization ContextMenuButtonKind monorepos symlinked GHSA
  -->
 
+## 1.6.149 (November 23, 2026)
+
+- ✨ The first run after an install or `shorebird upgrade` downloads a
+  prebuilt Shorebird CLI on macOS, Linux and Windows x64 instead of cloning
+  Flutter and compiling the CLI, and installs the CLI's own Flutter only when
+  a command uses it, so a cold CI run that builds with `--flutter-version`
+  no longer downloads two Flutters
+- ✨ `shorebird flutter path` prints the directory of the Flutter Shorebird
+  builds with, with `--flutter-version` to pick a version installed by
+  `shorebird flutter precache` and `--json` for the path and revision
+- 🐛 Setup output on the first run after an install or `shorebird upgrade` goes
+  to stderr, so `$(shorebird ...)` captures only the command's output
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.148.
+
+## 1.6.148 (November 23, 2026)
+
+- ✨ `shorebird flutter precache` installs a Flutter version and the artifacts
+  Android and iOS releases and patches download, ahead of any build, with
+  `--flutter-version` to pick the version
+- 🐛 `shorebird release macos` and `shorebird patch macos` refuse
+  `--no-codesign` before building, with a hint pointing at Xcode's signing
+  settings, instead of failing partway through the build
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.147.
+
+## 1.6.147 (November 23, 2026)
+
+- ✨ `shorebird usage` adds a line for installs from other organizations sharing
+  the plan, so the app rows add up to the total
+- 🐛 `shorebird patch ios` and `shorebird patch macos` no longer flag native
+  changes when a relink only moves Swift type names
+
+Flutter 3.50.1 and Dart 3.14.0 are unchanged from 1.6.146.
+
+## 1.6.146 (November 20, 2026)
+
+- 🐦 Flutter 3.50.1 / Dart 3.14.0 support
+  - Fix Android builds silently omitting dotfile assets such as `.env` or
+    underscore-prefixed asset folders
+  - Fix Android Gradle configuration failing with plugins and custom or
+    app-only `buildType` settings
+  - Fix Android `--split-per-abi` builds assigning identical `versionCode`s
+    when `versionCode` is set only in `AndroidManifest.xml`
+- ✨ Archive and unarchive apps from the CLI with `shorebird apps archive` and
+  `shorebird apps unarchive`, and pass `--include-archived` to `shorebird apps
+  list` to show archived apps
+- 🐛 `shorebird release aar` and `shorebird release ios-framework` with
+  `--flavor` now build the module with that flavor's app ID so the module
+  checks for patches under the right app
+- 🐛 `shorebird patch ios` and `shorebird patch macos` no longer flag native
+  changes when Xcode lays out GOT slots differently between builds
+- 🐛 `shorebird patch android` no longer flags native changes when non-loaded
+  ELF sections such as `.comment` differ across NDK builds
+- 🐛 Improved linking of large Android patches, so they are smaller to download
+  and run faster, for releases made with this version
+
+## 1.6.145 (November 20, 2026)
+
+- 🐛 Improved linking of large iOS patches, so they run faster
+- 🐛 Devices keep their client ID when the updater's state file is damaged or
+  was written by another updater version
+- 🐛 `toByteData` no longer fails on `decodeImageFromPixelsSync` images under
+  Impeller
+- 🔧 iOS patches of large apps are smaller to download and use less memory at
+  launch, for releases made with this version
+
+Flutter 3.50.0 and Dart 3.14.0.
+
+## 1.6.144 (November 18, 2026)
+
+- 🐦 Flutter 3.50.0 / Dart 3.14.0
+- 🐛 Improved Apple patch linking by copying `App.sm.link` next to the patch
+  snapshots
+
+## 1.6.143 (November 18, 2026)
+
+- 🐦 Flutter 3.47.9 / Dart 3.13.7, with an updated Shorebird engine that fixes
+  patches of `--obfuscate` releases: a patch could reuse an obfuscated name the
+  release already used, so it could call the wrong method or read the wrong
+  field. A patch builds with its release's Flutter, so make a new release with
+  this version to get the fix
+- ✨ Ramp a patch's rollout on a schedule with `--rollout-steps` on `shorebird
+  patch`, `shorebird patches set-track` and `shorebird patches rollout`,
+  optionally pausing on weekends with `--pause-weekends` and `--timezone`
+- ✨ `shorebird release windows` and `shorebird patch windows` handle Windows
+  arm64 builds on Flutter 3.47.9 or later. Run them on an arm64 machine to add
+  an arm64 build to a release, and `shorebird preview` on arm64 runs it
+- ✨ `shorebird patch windows --add-to-patch=<n>` adds this machine's
+  architecture to an existing patch, so one fix for x64 and arm64 shares one
+  patch number, track and rollout
+
+## 1.6.142 (November 17, 2026)
+
+- ✨ `shorebird release` warns when the release version has a build number but no
+  version name (such as `+4280`), which usually means an empty `--build-name` or
+  `versionName`
+- 🔧 `shorebird release aar` and `shorebird release ios-framework` treat
+  `--release-version` as the module build's own version and build it into the
+  module on Flutter 3.47.9 or later, where it may only use letters, digits, `.`,
+  `_`, `+` and `-`, up to 128 characters. With an earlier Flutter it must still
+  equal the host app's version
+
+Flutter 3.47.9 and Dart 3.13.7 are unchanged from 1.6.141.
+
+## 1.6.141 (November 17, 2026)
+
+- 🐛 Patches that crash while their code loads at launch are now rolled back,
+  in addition to patches that crash during startup
+- 🐛 Improved linking of obfuscated iOS patches
+- 🐛 Creating a release or patch no longer fails with "already exists" after a
+  dropped connection
+- 🐛 `shorebird patch` reports a damaged zip instead of using it
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
+## 1.6.140 (November 13, 2026)
+
+- ✨ `shorebird patch --share-debug-info` shares the patch's debug bundle
+  (`build/patch-debug.zip`, written by iOS and macOS patches) with Shorebird,
+  and failed patches share it automatically when your organization's setting
+  asks
+- 🐛 Patches with `--obfuscate` and `--split-debug-info` on iOS and macOS no
+  longer risk crashing the app at launch
+  ([#4407](https://github.com/shorebirdtech/shorebird/issues/4407)), for
+  releases built on Flutter 3.47.9 at revision `6f0092351b` or later. A patch
+  runs on its release's engine, so re-release apps built on an earlier
+  revision (`shorebird releases info --release-version <version>` shows it)
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
+## 1.6.139 (November 12, 2026)
+
+- ✨ Roll a patch out to a share of a track's devices with `--rollout` on
+  `shorebird patch`, `shorebird patches set-track` and `shorebird patches
+  promote`, and raise it with `shorebird patches rollout`. `shorebird patches
+  list` and `shorebird patches info` show partial rollouts
+- ✨ `shorebird patch` checks iOS and macOS native code for changes again,
+  ignoring build noise such as UUIDs, signature padding and asset rendition IDs,
+  and only notes a `Podfile.lock` change when the binaries are identical
+- ✨ Android `shorebird patch` warns about changes to native `.so` libraries, and
+  ignores rotated Sentry and Crashlytics build IDs
+- ✨ When Android dependency versions differ from the release's, `shorebird
+  patch` prints a Gradle `strictly()` constraint you can paste to build with the
+  release's versions
+- ✨ `shorebird release --no-patch-signing`, and patches to releases built
+  without signing, stop before building when your enterprise requires patch
+  signing
+- 🐛 iOS releases archived from Xcode or fastlane after `shorebird release`
+  match the CLI's build, so patches apply to them
+- 🐛 iOS releases built with `--split-debug-info` or `--obfuscate` no longer
+  lose most of their patch linking, and other iOS releases link patches a little
+  better
+- 🐛 Android apps start with the release's code instead of failing to launch
+  when a patch can't be loaded
+- 🐛 Patched iOS apps no longer risk crashing during garbage collection after
+  resuming async code
+- 🐛 A corrupt download or a patch for the wrong base is reported as a corrupt
+  patch instead of a disk write error
+- 🐛 Shorebird commands work on Windows when your user profile path has spaces
+- 🐛 `shorebird flutter versions list` lists only full Flutter releases, newest
+  first
+- 🐛 Flutter side versions such as `3.47.9-sb.1` pass the CLI's Flutter version
+  checks and report their own name in `flutter --version`
+- 🐛 The low link percentage warning links to the docs section that explains it,
+  and `--min-link-percentage` failures show the percentage to one decimal place
+- 🐛 The Android patch warning for releases on Flutter 3.24.1 and older links to
+  the docs instead of a dead issue page
+- 🔧 iOS apps are about 3 MiB smaller, as Flutter.framework no longer exports
+  the updater's internals
+- 🔧 Debug builds no longer include the updater, so
+  `package:shorebird_code_push` reports it unavailable, as on stock Flutter
+- 🔧 When `shorebird patch` stops because its flags differ from the release's,
+  `--json` reports `interactive_prompt_required`, and declining the prompt
+  prints `Aborting.` and exits 1 instead of 64
+- 🔧 `shorebird release` and `shorebird patch` report each run's outcome,
+  failure reason and timing for Enterprise build history, without logs, paths or
+  dart-define values
+
+The fixes outside the CLI also reach anyone building with
+`--flutter-version=3.47.9`.
+
 ## 1.6.138 (November 6, 2026)
 
 - ✨ `shorebird patch` stops when its dart-defines or target differ from the

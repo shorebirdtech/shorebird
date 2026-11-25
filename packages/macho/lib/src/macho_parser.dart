@@ -5,7 +5,7 @@
 // cspell:words insns iundefsym linkedit ltmp maxprot methname ncmds nextdefsym
 // cspell:words nfat nindirectsyms nlist nlocalsym nreloc nsects nsyms nundefsym
 // cspell:words objc pext reexport reflstr reloff sectname segname sizeofcmds
-// cspell:words stab stroff strsize strx symoff symtab typeref uleb undf
+// cspell:words ptrs stab stroff strsize strx symoff symtab typeref uleb undf
 // cspell:words vmaddr vmsize zerofill
 import 'dart:convert';
 import 'dart:typed_data';
@@ -157,8 +157,19 @@ abstract final class MachOSectionType {
   /// Section with only literal C strings (`S_CSTRING_LITERALS`).
   static const int cstringLiterals = 0x02;
 
+  /// Section with only non-lazy symbol pointers, such as `__got`
+  /// (`S_NON_LAZY_SYMBOL_POINTERS`).
+  static const int nonLazySymbolPointers = 0x06;
+
+  /// Section with only lazy symbol pointers (`S_LAZY_SYMBOL_POINTERS`).
+  static const int lazySymbolPointers = 0x07;
+
   /// Section with only symbol stubs (`S_SYMBOL_STUBS`).
   static const int symbolStubs = 0x08;
+
+  /// Section with only pointers to thread-local variables
+  /// (`S_THREAD_LOCAL_VARIABLE_POINTERS`).
+  static const int threadLocalVariablePointers = 0x14;
 
   /// Zero fill on demand section >4GB (`S_GB_ZEROFILL`).
   static const int gbZerofill = 0x0c;
@@ -677,6 +688,7 @@ class MachOSlice {
     required this.dwarfCompilePaths,
     required this.stubTargetNames,
     required this.referencedSymbols,
+    this.gotSymbolNames = const {},
   });
 
   /// The 64-bit Mach-O header.
@@ -741,6 +753,15 @@ class MachOSlice {
 
   /// Symbol names referenced by branch instructions in `__TEXT,__text`.
   final Set<String> referencedSymbols;
+
+  /// Maps the virtual address of each symbol pointer slot (`__got`,
+  /// `__auth_got`, `__la_symbol_ptr`, `__thread_ptrs`) to the imported symbol
+  /// the indirect symbol table binds it to.
+  ///
+  /// The linker may order these slots differently in two links of the same
+  /// code, so code and Swift metadata that load through a slot are compared
+  /// by this name rather than by the slot's address.
+  final Map<int, String> gotSymbolNames;
 
   /// Returns the `__TEXT,__text` section, or `null` if absent.
   MachOSection? get textSection {
@@ -884,13 +905,20 @@ class MachOSlice {
 
       if (header.cpuType == MachOCpuType.arm64 && funcSize % 4 == 0) {
         final insnCount = funcSize ~/ 4;
+        final tokens = List<String>.filled(insnCount, '');
+        // Registers last set by an ADRP not yet overwritten: register ->
+        // index of that ADRP.
+        final adrpByReg = <int, int>{};
+        final adrpPages = <int, int>{};
+        // ADRP index -> whether every use seen so far is a load from a
+        // symbol pointer slot named in [gotSymbolNames].
+        final adrpOnlyGotLoads = <int, bool>{};
         for (var j = 0; j < insnCount; j++) {
           final fileOff = byteStart + j * 4;
           final relOff = j * 4;
           final pc = startAddr + relOff;
           final insn = data.getUint32(fileOff, Endian.little);
 
-          startsList.add(buffer.length);
           addrsList.add(relOff);
 
           final op6 = insn >>> 26;
@@ -905,16 +933,17 @@ class MachOSlice {
 
             if (targetAddr >= startAddr && targetAddr < endAddr) {
               final funcRel = targetAddr - startAddr;
-              buffer.write('$mnemonic,+0x${funcRel.toRadixString(16)},');
+              tokens[j] = '$mnemonic,+0x${funcRel.toRadixString(16)},';
             } else if (stubTargetNames.containsKey(targetAddr)) {
-              buffer.write('$mnemonic,${stubTargetNames[targetAddr]},');
+              tokens[j] = '$mnemonic,${stubTargetNames[targetAddr]},';
             } else if (addressToName.containsKey(targetAddr)) {
-              buffer.write('$mnemonic,${addressToName[targetAddr]},');
+              tokens[j] = '$mnemonic,${addressToName[targetAddr]},';
             } else if (funcNames.containsKey(targetAddr)) {
-              buffer.write('$mnemonic,${funcNames[targetAddr]},');
+              tokens[j] = '$mnemonic,${funcNames[targetAddr]},';
             } else {
-              buffer.write('$mnemonic,0x${targetAddr.toRadixString(16)},');
+              tokens[j] = '$mnemonic,0x${targetAddr.toRadixString(16)},';
             }
+            _forgetAll(adrpByReg, adrpOnlyGotLoads);
           } else if ((insn & 0x9f000000) == 0x90000000) {
             // ADRP xRd, <page>.
             final rd = insn & 0x1f;
@@ -942,25 +971,95 @@ class MachOSlice {
             }
 
             if (resolvedCstring != null) {
-              buffer.write('adrp,$regName,S:$resolvedCstring,');
+              tokens[j] = 'adrp,$regName,S:$resolvedCstring,';
+              adrpByReg.remove(rd);
             } else {
               final targetSect = _findSectionForPage(targetPage);
               if (targetSect != null) {
                 final sectBasePage = targetSect.addr & ~0xfff;
                 final pageDelta = targetPage - sectBasePage;
-                buffer.write(
-                  'adrp,$regName,${targetSect.fullName}'
-                  '+0x${pageDelta.toRadixString(16)},',
-                );
+                tokens[j] =
+                    'adrp,$regName,${targetSect.fullName}'
+                    '+0x${pageDelta.toRadixString(16)},';
               } else {
-                buffer.write(
-                  'adrp,$regName,page(0x${targetPage.toRadixString(16)}),',
-                );
+                tokens[j] =
+                    'adrp,$regName,page(0x${targetPage.toRadixString(16)}),';
+              }
+              if (rd != 31) {
+                adrpByReg[rd] = j;
+                adrpPages[j] = targetPage;
               }
             }
+          } else if ((insn & 0xffc00000) == 0xf9400000 &&
+              adrpByReg.containsKey((insn >>> 5) & 0x1f)) {
+            // LDR xRt, [xRn, #imm12 * 8] from the page of an earlier ADRP:
+            // a load from a GOT slot names the symbol bound to it, since two
+            // links of the same code may order the GOT differently.
+            final rt = insn & 0x1f;
+            final rn = (insn >>> 5) & 0x1f;
+            final adrpIndex = adrpByReg[rn]!;
+            final slot = adrpPages[adrpIndex]! + ((insn >>> 10) & 0xfff) * 8;
+            final name = gotSymbolNames[slot];
+            if (name != null) {
+              tokens[j] = 'ldr,x$rt,x$rn,G:$name,';
+              adrpOnlyGotLoads[adrpIndex] ??= true;
+            } else {
+              tokens[j] = _rawInsnToken(insn);
+              adrpOnlyGotLoads[adrpIndex] = false;
+            }
+            adrpByReg.remove(rt);
+          } else if ((insn & 0xff000000) == 0x58000000) {
+            // LDR xRt, <literal>: the form the linker relaxes a GOT load to
+            // when the slot is in reach.
+            final rt = insn & 0x1f;
+            final imm19 = (insn >>> 5) & 0x7ffff;
+            final signedImm19 = (imm19 & 0x40000) != 0
+                ? (imm19 | ~0x7ffff)
+                : imm19;
+            final name = gotSymbolNames[pc + signedImm19 * 4];
+            tokens[j] = name != null
+                ? 'ldr,x$rt,G:$name,'
+                : _rawInsnToken(insn);
+            adrpByReg.remove(rt);
           } else {
-            buffer.write('insn,0x${insn.toRadixString(16).padLeft(8, '0')},');
+            tokens[j] = _rawInsnToken(insn);
+            if ((insn & 0x1c000000) == 0x14000000) {
+              // Branches, exception generation and system instructions.
+              _forgetAll(adrpByReg, adrpOnlyGotLoads);
+            } else {
+              // Any other instruction naming an ADRP's register (reading it,
+              // storing it, writing back to it, or overwriting it) keeps that
+              // ADRP's page in its token and ends its tracking. The fields
+              // checked are wider than any one encoding uses, which only
+              // gives up a match.
+              for (final reg in [
+                insn & 0x1f,
+                (insn >>> 5) & 0x1f,
+                (insn >>> 10) & 0x1f,
+                (insn >>> 16) & 0x1f,
+              ]) {
+                final adrpIndex = adrpByReg.remove(reg);
+                if (adrpIndex != null) adrpOnlyGotLoads[adrpIndex] = false;
+              }
+            }
           }
+        }
+        // Code past the end of this chunk (a fall-through into the next
+        // symbol) may still read a tracked page.
+        _forgetAll(adrpByReg, adrpOnlyGotLoads);
+
+        // An ADRP used only to load GOT slots carries no meaning of its own:
+        // the loads name their symbols, and the page moves with the GOT.
+        for (final MapEntry(key: adrpIndex, value: onlyGot)
+            in adrpOnlyGotLoads.entries) {
+          if (!onlyGot) continue;
+          final insn = data.getUint32(byteStart + adrpIndex * 4, Endian.little);
+          tokens[adrpIndex] = 'adrp,x${insn & 0x1f},G,';
+        }
+
+        for (final token in tokens) {
+          startsList.add(buffer.length);
+          buffer.write(token);
         }
       } else {
         // Non-ARM64 or unaligned slice: chunk into 4-byte or 1-byte words.
@@ -995,6 +1094,80 @@ class MachOSlice {
 
     return functions;
   }
+
+  /// Returns `__TEXT,__swift5_typeref` with each symbolic reference replaced
+  /// by what it points at and alignment padding dropped, or `null` if the
+  /// section is absent.
+  ///
+  /// The section holds mangled type names. A byte `0x01`-`0x17` starts a
+  /// symbolic reference: a 4-byte offset relative to itself, to a context
+  /// descriptor (`0x01`) or to a pointer slot holding one (`0x02`, for types
+  /// from other images). Those offsets change whenever the linker moves the
+  /// slot or descriptor, so each is rendered as the symbol bound to the slot
+  /// ([gotSymbolNames]) or as its target section and offset within it.
+  String? canonicalSwiftTypeRefs() {
+    MachOSection? section;
+    for (final s in sections) {
+      if (s.segname == '__TEXT' && s.sectname == '__swift5_typeref') {
+        section = s;
+        break;
+      }
+    }
+    if (section == null) return null;
+    final bytes = section.bytes;
+    final data = ByteData.sublistView(bytes);
+    final buffer = StringBuffer();
+    var i = 0;
+    while (i < bytes.length) {
+      final byte = bytes[i];
+      if (byte >= 0x01 && byte <= 0x17 && i + 5 <= bytes.length) {
+        final fieldAddr = section.addr + i + 1;
+        final target = fieldAddr + data.getInt32(i + 1, Endian.little);
+        buffer.write('{$byte:${_describeTarget(target)}}');
+        i += 5;
+      } else if (byte >= 0x18 && byte <= 0x1f && i + 9 <= bytes.length) {
+        // Absolute pointer reference: kept as raw bytes.
+        buffer.write('{$byte:0x${data.getUint64(i + 1, Endian.little)}}');
+        i += 9;
+      } else if (byte == 0xff) {
+        // Alignment padding, which no mangled name can hold: 0xff is never
+        // a valid UTF-8 byte. How much of it precedes a name depends on where
+        // that name landed, so only dropping it keeps a section whose names
+        // merely moved equal.
+        i += 1;
+      } else {
+        buffer.writeCharCode(byte);
+        i += 1;
+      }
+    }
+    return buffer.toString();
+  }
+
+  String _describeTarget(int addr) {
+    final gotName = gotSymbolNames[addr];
+    if (gotName != null) return 'G:$gotName';
+    for (final s in sections) {
+      if (addr >= s.addr && addr < s.addr + s.size) {
+        return '${s.fullName}+0x${(addr - s.addr).toRadixString(16)}';
+      }
+    }
+    return '0x${addr.toRadixString(16)}';
+  }
+
+  /// Stops tracking every ADRP register at a branch. Code after it may still
+  /// use the page the scan no longer follows, so those ADRPs keep their page.
+  static void _forgetAll(
+    Map<int, int> adrpByReg,
+    Map<int, bool> adrpOnlyGotLoads,
+  ) {
+    for (final adrpIndex in adrpByReg.values) {
+      adrpOnlyGotLoads[adrpIndex] = false;
+    }
+    adrpByReg.clear();
+  }
+
+  static String _rawInsnToken(int insn) =>
+      'insn,0x${insn.toRadixString(16).padLeft(8, '0')},';
 
   MachOSection? _findSectionForPage(int pageAddr) {
     for (final s in sections) {
@@ -1409,6 +1582,12 @@ class MachOParser {
       dysymtab: dysymtab,
     );
 
+    final gotSymbolNames = _resolveSymbolPointers(
+      sections: allSections,
+      symbols: symbols,
+      dysymtab: dysymtab,
+    );
+
     final referencedSymbols = _scanReferencedSymbols(
       sections: allSections,
       symbols: symbols,
@@ -1443,6 +1622,7 @@ class MachOParser {
       dwarfCompilePaths: dwarfCompilePaths,
       stubTargetNames: stubTargetNames,
       referencedSymbols: referencedSymbols,
+      gotSymbolNames: gotSymbolNames,
     );
   }
 
@@ -1863,6 +2043,43 @@ class MachOParser {
         }
         final stubAddr = section.addr + i * stubSize;
         result[stubAddr] = symbols[symIndex].name;
+      }
+    }
+    return result;
+  }
+
+  Map<int, String> _resolveSymbolPointers({
+    required List<MachOSection> sections,
+    required List<MachOSymbol> symbols,
+    required MachODysymtab? dysymtab,
+  }) {
+    if (dysymtab == null || dysymtab.indirectSymbols.isEmpty) {
+      return const {};
+    }
+    const pointerSize = 8;
+    final result = <int, String>{};
+    for (final section in sections) {
+      final type = section.sectionType;
+      if (type != MachOSectionType.nonLazySymbolPointers &&
+          type != MachOSectionType.lazySymbolPointers &&
+          type != MachOSectionType.threadLocalVariablePointers) {
+        continue;
+      }
+      final slotCount = section.size ~/ pointerSize;
+      for (var i = 0; i < slotCount; i++) {
+        final indirectIndex = section.reserved1 + i;
+        if (indirectIndex >= dysymtab.indirectSymbols.length) break;
+        final symIndex = dysymtab.indirectSymbols[indirectIndex];
+        // INDIRECT_SYMBOL_LOCAL / _ABS slots (and their combination) hold an
+        // address in this image and name no symbol.
+        if ((symIndex &
+                    (MachOSymbolType.indirectSymbolLocal |
+                        MachOSymbolType.indirectSymbolAbs)) !=
+                0 ||
+            symIndex >= symbols.length) {
+          continue;
+        }
+        result[section.addr + i * pointerSize] = symbols[symIndex].name;
       }
     }
     return result;

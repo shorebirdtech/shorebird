@@ -178,6 +178,15 @@ void main() {
       });
     });
 
+    group('debugInfoFileNames', () {
+      test('names the arm64 file the patch build writes', () {
+        expect(
+          patcher.debugInfoFileNames,
+          equals({Arch.arm64: 'app.ios-arm64.symbols'}),
+        );
+      });
+    });
+
     group('releaseType', () {
       test('is ReleaseType.ios', () {
         expect(patcher.releaseType, ReleaseType.ios);
@@ -849,6 +858,7 @@ This may indicate that the patch contains native changes, which cannot be applie
               appDillPath: any(named: 'appDillPath'),
               outFilePath: any(named: 'outFilePath'),
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+              additionalArgs: any(named: 'additionalArgs'),
             ),
           ).thenThrow(exception);
         });
@@ -875,6 +885,7 @@ This may indicate that the patch contains native changes, which cannot be applie
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
               ddMaxBytes: any(named: 'ddMaxBytes'),
+              releaseSupplementDir: any(named: 'releaseSupplementDir'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
@@ -901,6 +912,77 @@ This may indicate that the patch contains native changes, which cannot be applie
                 File(invocation.namedArguments[#outFilePath] as String)
                   ..createSync(recursive: true),
           );
+        });
+
+        group('when the release has TFA facts', () {
+          setUp(() {
+            final releaseSupplementDirectory = Directory.systemTemp
+                .createTempSync();
+            File(
+              p.join(releaseSupplementDirectory.path, 'App.tfa_facts.json'),
+            ).writeAsStringSync('facts');
+            patcher.releaseSupplementDirectory = releaseSupplementDirectory;
+          });
+
+          test('builds against a stable copy of them', () async {
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception {
+              // ignore
+            }
+            final staged = p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird_release',
+            );
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+                releaseSupplementDir: staged,
+              ),
+            ).called(1);
+            expect(
+              File(p.join(staged, 'App.tfa_facts.json')).readAsStringSync(),
+              'facts',
+            );
+          });
+        });
+
+        test('builds without the release supplement when it has no TFA '
+            'facts', () async {
+          patcher.releaseSupplementDirectory = Directory.systemTemp
+              .createTempSync();
+          final staged = Directory(
+            p.join(projectRoot.path, 'build', 'ios', 'shorebird_release'),
+          )..createSync(recursive: true);
+          try {
+            await runWithOverrides(patcher.buildPatchArtifact);
+          } on Exception {
+            // ignore
+          }
+          expect(
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
+                releaseSupplementDir: captureAny(
+                  named: 'releaseSupplementDir',
+                ),
+              ),
+            ).captured.single,
+            isNull,
+          );
+          expect(staged.existsSync(), isFalse);
         });
 
         group('when --split-debug-info is provided', () {
@@ -934,6 +1016,7 @@ This may indicate that the patch contains native changes, which cannot be applie
                   '--dwarf-stack-traces',
                   '--resolve-dwarf-paths',
                   '--save-debugging-info=${splitDebugInfoFile.path}',
+                  '--strip',
                 ],
               ),
             ).called(1);
@@ -963,6 +1046,7 @@ This may indicate that the patch contains native changes, which cannot be applie
                   '--dwarf-stack-traces',
                   '--resolve-dwarf-paths',
                   '--save-debugging-info=$symbolsPath',
+                  '--strip',
                 ],
               ),
             ).called(1);
@@ -1526,6 +1610,42 @@ This may indicate that the patch contains native changes, which cannot be applie
                 exitCode: ExitCode.software,
               ),
             );
+          });
+        });
+
+        group('when the release artifact is damaged', () {
+          setUp(() {
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenThrow(
+              ArchiveException('zip: end of central directory not found'),
+            );
+          });
+
+          test('fails progress and exits naming the fix', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              ),
+              exitsWithError(
+                message:
+                    'The release artifact downloaded from Shorebird is '
+                    'damaged: zip: end of central directory not found',
+                hint: allOf(
+                  startsWith('Re-run to download it again.'),
+                  endsWith('Run: shorebird release ios'),
+                ),
+                exitCode: ExitCode.software,
+              ),
+            );
+            verify(() => progress.fail()).called(1);
           });
         });
       });

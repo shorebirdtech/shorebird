@@ -3,16 +3,21 @@ name: Triage automation
 on:
   issues:
     types: [opened]
-  issue_comment:
+  # Anyone can comment, so this runs for anyone. It is safe here: no job checks
+  # out or runs the repository's code, and every event value reaches the
+  # scripts through env:, never a ${{ }} expansion. The token can only label
+  # issues.
+  issue_comment: # zizmor: ignore[dangerous-triggers]
     types: [created]
 
-permissions:
-  issues: write
+permissions: {}
 
 jobs:
   add-needs-triage:
     if: github.event_name == 'issues'
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - name: Add needs-triage label
         env:
@@ -29,6 +34,8 @@ jobs:
       github.event.issue.pull_request == null &&
       github.event.comment.user.login == github.event.issue.user.login
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - name: Swap waiting-for-response to needs-triage on author reply
         env:

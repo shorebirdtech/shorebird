@@ -28,8 +28,21 @@ class AndroidReleaser extends Releaser {
     required super.target,
   });
 
+  /// The architectures the built app bundle actually produced, once
+  /// [uploadReleaseArtifacts] has inspected it.
+  Set<Arch>? _uploadedArchitectures;
+
   @override
   ReleaseType get releaseType => ReleaseType.android;
+
+  @override
+  Map<Arch, String> get debugInfoFileNames => {
+    for (final arch in AndroidArch.availableAndroidArchs)
+      arch: 'app.${arch.targetPlatformCliArg}.symbols',
+  };
+
+  @override
+  Set<Arch> get builtArchitectures => _uploadedArchitectures ?? architectures;
 
   @override
   String get supplementPlatformSubdir => 'android';
@@ -76,6 +89,7 @@ class AndroidReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    _uploadedArchitectures = null;
     // The APK is built after the obfuscation map check, with the same
     // arguments as the AAB.
     final (aab, buildArgs, base64PublicKey) = await runReleaseBuild(
@@ -145,6 +159,8 @@ class AndroidReleaser extends Releaser {
       return;
     }
     final versionName = releaseVersion.split('+').first;
+    // An empty name is warned about by the release command.
+    if (versionName.isEmpty) return;
     if (RegExp(r'^[0-9.]+$').hasMatch(versionName)) return;
     logger.info(
       '''Android's version name $versionName has characters iOS versions can't (they are only digits and dots), so an iOS release of this build will be a different Shorebird release, and each needs its own patches. To share one release across platforms, drop the versionNameSuffix in android/app/build.gradle (or build.gradle.kts) and any pre-release part of the version.''',
@@ -160,16 +176,17 @@ class AndroidReleaser extends Releaser {
       project: projectRoot,
       flavor: flavor,
     );
-    await codePushClientWrapper.createAndroidReleaseArtifacts(
-      appId: appId,
-      releaseId: release.id,
-      projectRoot: projectRoot.path,
-      aabPath: aabFile.path,
-      platform: releaseType.releasePlatform,
-      architectures: architectures,
-      flavor: flavor,
-      signing: signing,
-    );
+    _uploadedArchitectures = await codePushClientWrapper
+        .createAndroidReleaseArtifacts(
+          appId: appId,
+          releaseId: release.id,
+          projectRoot: projectRoot.path,
+          aabPath: aabFile.path,
+          platform: releaseType.releasePlatform,
+          architectures: architectures,
+          flavor: flavor,
+          signing: signing,
+        );
   }
 
   @override

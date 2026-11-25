@@ -84,6 +84,14 @@ void main() {
         () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
       when(() => shorebirdFlutter.pruneUnusedRevisions()).thenReturn([]);
+      when(
+        () => shorebirdFlutter.isInstalled(revision: any(named: 'revision')),
+      ).thenReturn(true);
+      when(
+        () => shorebirdFlutter.installRevision(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => cache.pruneUnusedArtifacts()).thenReturn([]);
       when(() => cache.pruneUnusedPreviews()).thenReturn([]);
       when(() => cache.pruneUnusedReleaseArtifacts()).thenReturn([]);
@@ -182,20 +190,22 @@ void main() {
         final stdoutLines = <String>[];
         final stderrLines = <String>[];
         final realStderr = stderr;
-        // A real logger, so a notice printed outside runWithStdoutOnStderr
-        // would show up on the captured stdout and fail the test.
-        logger = ShorebirdLogger();
-
         await helpers.captureStdout(
-          () => IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => commandRunner.run(['reserves-stdout']),
-            ),
-            stderr: () => helpers.CapturingStdout(
-              baseStdOut: realStderr,
-              captured: stderrLines,
-            ),
-          ),
+          () {
+            // A real logger, made where stdout is captured (it keeps the
+            // stdout it was made with), so a notice printed outside
+            // runWithStdoutOnStderr shows up there and fails the test.
+            logger = ShorebirdLogger();
+            return IOOverrides.runZoned(
+              () => runWithOverrides(
+                () => commandRunner.run(['reserves-stdout']),
+              ),
+              stderr: () => helpers.CapturingStdout(
+                baseStdOut: realStderr,
+                captured: stderrLines,
+              ),
+            );
+          },
           captured: stdoutLines,
         );
 
@@ -203,6 +213,127 @@ void main() {
         expect(
           stderrLines,
           contains('::warning title=Shorebird::Patches are paused.'),
+        );
+      });
+    });
+
+    group('installing the pinned Flutter', () {
+      group('when it is not installed', () {
+        setUp(() {
+          when(
+            () => shorebirdFlutter.isInstalled(revision: flutterRevision),
+          ).thenReturn(false);
+        });
+
+        test('installs it before a command that uses it', () async {
+          commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+          await runWithOverrides(() => commandRunner.run(['test']));
+
+          verify(
+            () => shorebirdFlutter.installRevision(revision: flutterRevision),
+          ).called(1);
+        });
+
+        test('does not install it when only asked for help', () async {
+          commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+          await runWithOverrides(() => commandRunner.run(['test', '--help']));
+
+          verifyNever(
+            () => shorebirdFlutter.installRevision(
+              revision: any(named: 'revision'),
+            ),
+          );
+        });
+
+        test(
+          'does not install it for a command group without a default',
+          () async {
+            commandRunner.addCommand(
+              _GroupCommand(),
+            );
+
+            await runWithOverrides(() => commandRunner.run(['group']));
+
+            verifyNever(
+              () => shorebirdFlutter.installRevision(
+                revision: any(named: 'revision'),
+              ),
+            );
+          },
+        );
+
+        test('does not install it for a command that uses none', () async {
+          commandRunner.addCommand(_NoPinnedFlutterCommand());
+
+          final result = await runWithOverrides(
+            () => commandRunner.run(['no-pinned-flutter']),
+          );
+
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(
+            () => shorebirdFlutter.installRevision(
+              revision: any(named: 'revision'),
+            ),
+          );
+        });
+
+        test('writes what the install prints to stderr when the command '
+            'reserves stdout', () async {
+          when(
+            () => shorebirdFlutter.installRevision(revision: flutterRevision),
+          ).thenAnswer((_) async => read(loggerRef).info('Reinstalling it.'));
+          commandRunner.addCommand(_ReservesStdoutCommand(exitCode: 0));
+          final stdoutLines = <String>[];
+          final stderrLines = <String>[];
+          final realStderr = stderr;
+          await helpers.captureStdout(
+            () {
+              // A real logger, made where stdout is captured (it keeps the
+              // stdout it was made with), so a line printed outside
+              // runWithStdoutOnStderr shows up there and fails the test.
+              logger = ShorebirdLogger();
+              return IOOverrides.runZoned(
+                () => runWithOverrides(
+                  () => commandRunner.run(['reserves-stdout']),
+                ),
+                stderr: () => helpers.CapturingStdout(
+                  baseStdOut: realStderr,
+                  captured: stderrLines,
+                ),
+              );
+            },
+            captured: stdoutLines,
+          );
+
+          expect(stdoutLines, isEmpty);
+          expect(stderrLines, contains('Reinstalling it.'));
+        });
+
+        test('exits with a software error when the install fails', () async {
+          when(
+            () => shorebirdFlutter.installRevision(revision: flutterRevision),
+          ).thenThrow(Exception('offline'));
+          commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+          final result = await runWithOverrides(
+            () => commandRunner.run(['test']),
+          );
+
+          expect(result, equals(ExitCode.software.code));
+        });
+      });
+
+      test('does not reinstall it when it is installed', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+        await runWithOverrides(() => commandRunner.run(['test']));
+
+        verifyNever(
+          () => shorebirdFlutter.installRevision(
+            revision: any(named: 'revision'),
+          ),
         );
       });
     });
@@ -543,6 +674,26 @@ Engine • revision $shorebirdEngineRevision'''),
         // https://github.com/shorebirdtech/shorebird/issues/2260
         verifyNever(() => logger.info(any()));
       });
+
+      test('says when the pinned Flutter is not installed yet', () async {
+        when(
+          () => shorebirdEnv.shorebirdEngineRevision,
+        ).thenThrow(
+          const CacheCorruptedException('Could not read engine.version.'),
+        );
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--version']),
+        );
+        expect(result, equals(ExitCode.success.code));
+
+        verify(
+          () => logger.info('''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+Flutter $flutterVersion • revision $flutterRevision
+Engine • revision unknown (Flutter not installed yet)'''),
+        ).called(1);
+      });
     });
 
     group('--verbose', () {
@@ -809,20 +960,22 @@ Engine • revision $shorebirdEngineRevision'''),
         final stdoutLines = <String>[];
         final stderrLines = <String>[];
         final realStderr = stderr;
-        // A real logger, so a notice logged outside runWithStdoutOnStderr
-        // would show up on the captured stdout and fail the test.
-        logger = ShorebirdLogger();
-
         await helpers.captureStdout(
-          () => IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => commandRunner.run(['owns-stdout']),
-            ),
-            stderr: () => helpers.CapturingStdout(
-              baseStdOut: realStderr,
-              captured: stderrLines,
-            ),
-          ),
+          () {
+            // A real logger, made where stdout is captured (it keeps the
+            // stdout it was made with), so a notice logged outside
+            // runWithStdoutOnStderr shows up there and fails the test.
+            logger = ShorebirdLogger();
+            return IOOverrides.runZoned(
+              () => runWithOverrides(
+                () => commandRunner.run(['owns-stdout']),
+              ),
+              stderr: () => helpers.CapturingStdout(
+                baseStdOut: realStderr,
+                captured: stderrLines,
+              ),
+            );
+          },
           captured: stdoutLines,
         );
 
@@ -1945,6 +2098,21 @@ class _TestCommand extends ShorebirdCommand {
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
   }
+}
+
+/// Succeeds, and installs the Flutter it uses itself.
+class _NoPinnedFlutterCommand extends ShorebirdCommand {
+  @override
+  String get name => 'no-pinned-flutter';
+
+  @override
+  String get description => 'A command that uses no pinned Flutter';
+
+  @override
+  bool get usesPinnedFlutter => false;
+
+  @override
+  Future<int> run() async => ExitCode.success.code;
 }
 
 /// Throws a [CommandError], as a releaser or patcher does on a command's

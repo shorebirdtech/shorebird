@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:test/test.dart';
@@ -269,4 +270,17 @@ class CapturingStdout implements Stdout {
     captured.add(object.toString());
     baseStdOut.writeln(object);
   }
+}
+
+/// A zip holding one deflated [entryName] of 4096 bytes, with the start of
+/// that entry's deflate stream overwritten so reading its content fails.
+List<int> damagedZipBytes({String entryName = 'lib/libapp.so'}) {
+  final bytes = ZipEncoder().encode(
+    Archive()..addFile(ArchiveFile.string(entryName, 'a' * 4096)),
+  );
+  // The deflate stream follows the 30-byte local file header and the name.
+  for (var i = 30 + entryName.length; i < 38 + entryName.length; i++) {
+    bytes[i] = 0xff;
+  }
+  return bytes;
 }

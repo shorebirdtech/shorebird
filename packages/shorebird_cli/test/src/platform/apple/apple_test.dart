@@ -127,6 +127,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             'App.ct.link',
             'App.dt.link',
             'App.ft.link',
+            'App.sm.link',
+            'App.ref.link',
+            'App.pool.link',
             'App.dd.link',
             'App.dd_callers.link',
           ];
@@ -152,8 +155,32 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
               patchSnapshotDir: patchSnapshotDir,
             ),
           );
-          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(8));
-          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(8));
+          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(11));
+          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(11));
+          expect(
+            File(p.join(releaseSnapshotDir.path, 'App.sm.link')).existsSync(),
+            isTrue,
+          );
+          expect(
+            File(p.join(patchSnapshotDir.path, 'out.sm.link')).existsSync(),
+            isTrue,
+          );
+          expect(
+            File(p.join(releaseSnapshotDir.path, 'App.ref.link')).existsSync(),
+            isTrue,
+          );
+          expect(
+            File(p.join(patchSnapshotDir.path, 'out.ref.link')).existsSync(),
+            isTrue,
+          );
+          expect(
+            File(p.join(releaseSnapshotDir.path, 'App.pool.link')).existsSync(),
+            isTrue,
+          );
+          expect(
+            File(p.join(patchSnapshotDir.path, 'out.pool.link')).existsSync(),
+            isTrue,
+          );
         });
 
         test('copies only some files next to snapshots', () {
@@ -667,6 +694,33 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             ),
           ).called(1);
           expect(tempRoot.listSync(), isEmpty);
+        });
+
+        test('passes the obfuscation map to link_metadata', () async {
+          when(
+            () => aotTools.getLinkMetadata(
+              debugDir: any(named: 'debugDir'),
+              workingDirectory: any(named: 'workingDirectory'),
+              obfuscationMapPath: any(named: 'obfuscationMapPath'),
+            ),
+          ).thenAnswer((_) async => {});
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+              obfuscationMapPath: '/map.json',
+            ),
+          );
+          verify(
+            () => aotTools.getLinkMetadata(
+              debugDir: any(named: 'debugDir'),
+              workingDirectory: any(named: 'workingDirectory'),
+              obfuscationMapPath: '/map.json',
+            ),
+          ).called(1);
         });
 
         test('dumps debug info', () async {

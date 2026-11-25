@@ -148,7 +148,8 @@ void main() {
               (e) => e.toString(),
               'exception()',
               contains(
-                'Unable to uninstall app: Failure [DELETE_FAILED_INTERNAL_ERROR]',
+                'Unable to uninstall app: '
+                'Failure [DELETE_FAILED_INTERNAL_ERROR]',
               ),
             ),
           ),

@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/build_history.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -94,6 +95,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdTracerRef.overrideWith(ShorebirdTracer.new),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
@@ -130,11 +132,14 @@ void main() {
           appId: any(named: 'appId'),
           request: any(named: 'request'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => const CreateBuildRunResponse(id: 1));
       logger = MockShorebirdLogger();
       progress = MockProgress();
       releaser = MockReleaser();
       when(() => releaser.minimumFlutterVersion).thenReturn(Version(0, 0, 0));
+      when(
+        () => releaser.addsToActiveRelease(any()),
+      ).thenAnswer((_) async => false);
       shorebirdRoot = Directory.systemTemp.createTempSync();
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
@@ -202,6 +207,12 @@ void main() {
       ).thenAnswer((_) async => {});
       when(
         () => releaser.uploadSupplementArtifact(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => releaser.uploadSymbolArtifacts(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
         ),
@@ -379,6 +390,49 @@ void main() {
         ).called(1);
         verifyNever(() => releaser.buildReleaseArtifacts());
       });
+
+      group('when the releaser adds to the active release', () {
+        setUp(() {
+          when(
+            () => releaser.addsToActiveRelease(existingRelease),
+          ).thenAnswer((_) async => true);
+        });
+
+        test('uploads to it without making it a draft', () async {
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.success.code));
+          verifyNever(
+            () => codePushClientWrapper.ensureReleaseIsNotActive(
+              release: any(named: 'release'),
+              platform: any(named: 'platform'),
+            ),
+          );
+          verifyNever(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              platform: any(named: 'platform'),
+              status: ReleaseStatus.draft,
+            ),
+          );
+          verify(
+            () => releaser.uploadReleaseArtifacts(
+              release: existingRelease,
+              appId: appId,
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.updateReleaseStatus(
+              appId: appId,
+              releaseId: existingRelease.id,
+              platform: ReleasePlatform.android,
+              status: ReleaseStatus.active,
+              metadata: any(named: 'metadata'),
+            ),
+          ).called(1);
+        });
+      });
     });
 
     test('executes commands in order, completes successfully', () async {
@@ -392,8 +446,8 @@ void main() {
           flavorArg: null,
           releasePlatform: ReleasePlatform.android,
         ),
-        cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
+        () => releaser.crashReportingEnabled = false,
         () => logger.info(
           'Building $artifactDisplayName with Flutter $flutterRevision',
         ),
@@ -414,6 +468,71 @@ void main() {
           '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platforms=android --release-version=${release.version}')}''',
         ),
       ]);
+      verifyNever(
+        () => releaser.uploadSymbolArtifacts(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      );
+    });
+
+    group('when crash reporting is enabled on the app', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+        ).thenAnswer(
+          (_) async => AppMetadata(
+            appId: appId,
+            displayName: appDisplayName,
+            crashReportingEnabled: true,
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          ),
+        );
+      });
+
+      test('enables symbol extraction and uploads symbol artifacts', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+
+        verifyInOrder([
+          () => codePushClientWrapper.getApp(appId: appId),
+          () => releaser.crashReportingEnabled = true,
+          () => releaser.uploadSupplementArtifact(
+            appId: appId,
+            releaseId: release.id,
+          ),
+          () => releaser.uploadSymbolArtifacts(
+            appId: appId,
+            releaseId: release.id,
+          ),
+        ]);
+      });
+    });
+
+    group('when the release version has no version name', () {
+      setUp(() {
+        when(
+          () => releaser.getReleaseVersion(
+            releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
+          ),
+        ).thenAnswer((_) async => ' +4280');
+      });
+
+      test('warns and still releases', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.warn(
+            any(that: contains('" +4280" has a build number but no version')),
+          ),
+        ).called(1);
+      });
+    });
+
+    test('does not warn about the version name when it has one', () async {
+      await runWithOverrides(command.run);
+      verifyNever(() => logger.warn(any(that: contains('no version name'))));
     });
 
     group("when the app's enterprise requires patch signing", () {
@@ -786,7 +905,6 @@ void main() {
             flavorArg: flavor,
             releasePlatform: ReleasePlatform.android,
           ),
-          cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
           () => logger.info(
             'Building $artifactDisplayName with Flutter $flutterRevision',

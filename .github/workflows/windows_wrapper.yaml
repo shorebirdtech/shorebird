@@ -1,3 +1,4 @@
+# cspell:words errorlevel findstr LASTEXITCODE
 name: windows_wrapper
 
 # bin/shorebird.bat is what cmd.exe users and `shell: cmd` CI steps run.
@@ -44,9 +45,23 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
+      # The first run sets up Flutter and builds the CLI; that output goes to
+      # stderr, so `$(shorebird ...)` captures only the command's own.
       - name: 🧪 Install and run shorebird
-        run: bin/shorebird --version
+        run: |
+          bin/shorebird --version > out.txt
+          cat out.txt
+          # Only --version's lines: setup's own "Flutter X • channel" and
+          # "Engine • hash ... (revision" lines don't match these.
+          lines='^(Shorebird [0-9]|Flutter [0-9][0-9.]* .* revision [0-9a-f]|Engine .* revision [0-9a-f])'
+          grep -Eq '^Shorebird [0-9]' out.txt || { echo "No version on stdout."; exit 1; }
+          if grep -Ev "$lines" out.txt; then
+            echo "Setup output reached stdout."
+            exit 1
+          fi
 
   shorebird_bat:
     name: 🪟 shorebird.bat
@@ -54,11 +69,28 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: 🧪 Run shorebird through cmd.exe
-        shell: cmd
+        # cmd.exe is what this job tests; zizmor can't analyze cmd scripts,
+        # and this one expands no ${{ }} context.
+        shell: cmd # zizmor: ignore[misfeature]
         run: |
-          call bin\shorebird.bat --version || exit /b 1
+          REM The first run sets up Flutter and builds the CLI; that output
+          REM goes to stderr, so a capture of stdout holds only --version's.
+          call bin\shorebird.bat --version > out.txt || exit /b 1
+          type out.txt
+          REM Only --version's lines: setup's own "Flutter X . channel" and
+          REM "Engine . hash ... (revision" lines don't match these.
+          findstr /R /C:"^Shorebird [0-9]" out.txt > NUL || (
+            echo No version on stdout.
+            exit /b 1
+          )
+          findstr /R /V /C:"^Shorebird [0-9]" /C:"^Flutter [0-9][0-9.]* .* revision [0-9a-f]" /C:"^Engine .* revision [0-9a-f]" out.txt && (
+            echo Setup output reached stdout.
+            exit /b 1
+          )
 
           call bin\shorebird.bat no-such-command
           if not errorlevel 1 (

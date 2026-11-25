@@ -624,9 +624,88 @@ class CodePushClient {
     return CreatePatchResponse.fromJson(body);
   }
 
+  /// Registers one architecture's symbol file for [releaseId] and uploads
+  /// the compressed bytes at [symbolsPath].
+  Future<void> createReleaseSymbols({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required SymbolsCompression compression,
+    required String symbolsPath,
+  }) => _createSymbols(
+    uri: Uri.parse('$_v1/apps/$appId/releases/$releaseId/symbols'),
+    platform: platform,
+    arch: arch,
+    format: format,
+    compression: compression,
+    symbolsPath: symbolsPath,
+  );
+
+  /// Registers one architecture's symbol file for [patchId] and uploads the
+  /// compressed bytes at [symbolsPath].
+  Future<void> createPatchSymbols({
+    required String appId,
+    required int patchId,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required SymbolsCompression compression,
+    required String symbolsPath,
+  }) => _createSymbols(
+    uri: Uri.parse('$_v1/apps/$appId/patches/$patchId/symbols'),
+    platform: platform,
+    arch: arch,
+    format: format,
+    compression: compression,
+    symbolsPath: symbolsPath,
+  );
+
+  /// POSTs a [CreateSymbolsRequest] to [uri] and PUTs [symbolsPath] to the
+  /// session the server opens.
+  ///
+  /// A symbol file has no artifact row, so the response carries only the
+  /// session URI: the server addresses the object by the platform, arch and
+  /// format declared here, and a second upload of the same three replaces
+  /// the first.
+  Future<void> _createSymbols({
+    required Uri uri,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required SymbolsCompression compression,
+    required String symbolsPath,
+  }) async {
+    final request = CreateSymbolsRequest(
+      platform: platform,
+      arch: arch,
+      format: format,
+      compression: compression,
+      size: await File(symbolsPath).length(),
+    );
+    final response = await _httpClient.post(
+      uri,
+      body: json.encode(request.toJson()),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final decoded = CreateSymbolsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+
+    await _resumableUpload(
+      sessionUri: Uri.parse(decoded.url),
+      artifactPath: symbolsPath,
+    );
+  }
+
   /// Records a `shorebird release` or `shorebird patch` run of the app with
   /// the provided [appId] in its build history.
-  Future<void> createBuildRun({
+  Future<CreateBuildRunResponse> createBuildRun({
     required String appId,
     required CreateBuildRunRequest request,
   }) async {
@@ -638,7 +717,18 @@ class CodePushClient {
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
+
+    return CreateBuildRunResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
   }
+
+  /// Uploads the file at [path] to [upload], the session the server opened
+  /// for one of a run's artifacts in [CreateBuildRunResponse.artifactUploads].
+  Future<void> uploadRunArtifact({
+    required RunArtifactUpload upload,
+    required String path,
+  }) => _resumableUpload(sessionUri: upload.uploadUrl, artifactPath: path);
 
   /// Create a new release for the app with the provided [appId].
   Future<Release> createRelease({
@@ -749,6 +839,35 @@ class CodePushClient {
     }
   }
 
+  /// Archive the app with the provided [appId], stopping it serving patches
+  /// and taking it out of its account's app quota.
+  ///
+  /// Idempotent: archiving an already archived app succeeds and changes
+  /// nothing.
+  Future<void> archiveApp({required String appId}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/apps/$appId/archive'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Unarchive the app with the provided [appId], putting it back to serving
+  /// patches and counting against its account's app quota.
+  ///
+  /// Idempotent, as [archiveApp] is.
+  Future<void> unarchiveApp({required String appId}) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/apps/$appId/unarchive'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Move the app with the provided [appId] into [organizationId].
   ///
   /// Requires permission to transfer apps in both the source and destination
@@ -800,8 +919,16 @@ class CodePushClient {
   }
 
   /// List all apps for the current account.
-  Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
+  ///
+  /// The server leaves archived apps out unless [includeArchived] asks for
+  /// them.
+  Future<List<AppMetadata>> getApps({bool includeArchived = false}) async {
+    var uri = Uri.parse('$_v1/apps');
+    if (includeArchived) {
+      uri = uri.replace(queryParameters: {'includeArchived': 'true'});
+    }
+
+    final response = await _httpClient.get(uri);
 
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -918,11 +1045,20 @@ class CodePushClient {
   /// Promoting starts a new rollout on the channel at [rolloutPercentage], a
   /// multiple of 0.01 from 0.01 to 100. When it is omitted the server rolls
   /// the patch out to every device on the channel.
+  ///
+  /// [rolloutSteps] instead starts a timed rollout schedule, which the server
+  /// advances through on its own. It holds each step for its duration, and
+  /// holds over weekends in [rolloutTimezone] when [rolloutPauseWeekends] is
+  /// set. Schedules and [rolloutPercentage] are mutually exclusive, and the
+  /// server answers 403 when the app's plan does not include schedules.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
     required int channelId,
     double? rolloutPercentage,
+    List<RolloutStep>? rolloutSteps,
+    bool? rolloutPauseWeekends,
+    String? rolloutTimezone,
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches/promote'),
@@ -931,6 +1067,9 @@ class CodePushClient {
           patchId: patchId,
           channelId: channelId,
           rolloutPercentage: rolloutPercentage,
+          rolloutSteps: rolloutSteps,
+          rolloutPauseWeekends: rolloutPauseWeekends,
+          rolloutTimezone: rolloutTimezone,
         ).toJson(),
       ),
     );
@@ -941,24 +1080,29 @@ class CodePushClient {
   }
 
   /// Raises the share of its channel's devices that the patch with [patchId]
-  /// under [releaseId] for [appId] is offered to, to [rolloutPercentage].
+  /// under [releaseId] for [appId] is offered to, to a
+  /// [SetPatchRolloutPercentageRequest]'s percentage, or puts it on a
+  /// [SetPatchRolloutScheduleRequest]'s timed rollout schedule.
   ///
-  /// Rollouts only go up: the server answers 409 when [rolloutPercentage] is
-  /// lower than the current one, and when the patch is on no channel.
-  /// Setting the current percentage again succeeds and changes nothing.
+  /// Rollouts only go up: the server answers 409 when the new percentage, or
+  /// a schedule's first step, is lower than the current one, and when the
+  /// patch is on no channel. Setting the current percentage again succeeds
+  /// and changes nothing.
+  ///
+  /// A schedule holds each step for its duration, and holds over weekends in
+  /// its timezone when it pauses on weekends. The server answers
+  /// 403 when the app's plan does not include schedules.
   Future<void> setPatchRollout({
     required String appId,
     required int releaseId,
     required int patchId,
-    required double rolloutPercentage,
+    required SetPatchRolloutRequest request,
   }) async {
     final response = await _httpClient.put(
       Uri.parse(
         '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollout',
       ),
-      body: json.encode(
-        SetPatchRolloutRequest(rolloutPercentage: rolloutPercentage).toJson(),
-      ),
+      body: json.encode(request.toJson()),
     );
 
     if (!response.isSuccess) {

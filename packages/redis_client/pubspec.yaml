@@ -1,6 +1,6 @@
 name: shorebird_redis_client
 description: A lightweight Dart client library for communicating with a Redis server. Built by Shorebird.
-version: 0.0.15
+version: 0.0.16
 homepage: https://shorebird.dev
 repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/redis_client
 topics: [redis, cache, shorebird]
@@ -14,3 +14,7 @@ dependencies:
 
 dev_dependencies:
   test: ^1.33.0
+
+shorebird_ci:
+  needs_redis: true
+  min_coverage: 98.0

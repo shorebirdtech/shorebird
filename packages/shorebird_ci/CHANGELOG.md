@@ -1,5 +1,35 @@
 <!-- cspell:words toplevel -->
 
+# Unreleased
+
+- The generated `cspell` job checks dot directories, with `--dot --exclude ".git/**"`. A bare `"**"` skips every dot directory, so `.github/` and `.vscode/` went unchecked and typos in workflows and editor settings never failed a run. `.git/` stays excluded because its hooks and object text are machine-written and no word list closes them. A repository's first run on the new pin reports the words its dot directories need, which it adds to its own cspell config.
+
+# 0.3.4
+
+- Generated workflows get a `zizmor` job that lints every workflow in `.github/workflows/` with [zizmor](https://docs.zizmor.sh/) 1.33.1, and the `required` aggregator depends on it. The job downloads zizmor's own release and checks its SHA-256 rather than running a third-party action, and runs `--offline` with a read-only token that checkout doesn't keep and no secrets. `generate` runs the same zizmor after writing and prints its findings, so a repository's first run isn't a surprise red; `--no-zizmor` skips that run. Findings are accepted in `.github/zizmor.yml` or with `# zizmor: ignore[...]` comments. (#4530)
+- Generated workflows pass zizmor themselves. Every `actions/checkout` sets `persist-credentials: false`, since nothing after it pushes or fetches, so pub and test steps can't read the token from `.git/config`. `subpackages` reaches `run:` scripts through an environment variable instead of a `${{ }}` expansion. Static orchestrators call their reusable workflows as `$/.github/workflows/...`, GitHub's self-repository syntax, which zizmor requires and which lets GitHub enforce a fully-pinned policy. GitHub Enterprise Server versions without `$/` support can't run the static orchestrator. In a private repository, a force-push to `main` now fails that push's `dorny/paths-filter` step, which must fetch the old head and no longer has the checkout's credentials. (#4530)
+- `--codecov-token-secret` in `--style static` now passes that one secret to each reusable workflow call, which declares it, instead of `secrets: inherit`, which handed every repository secret to the pub and test steps. (#4530)
+- The example workflow on pub.dev's Example tab is regenerated from this version with `--required`, and a test keeps it equal to `generate`'s output. Release preps used to bump only its pin, so it still showed the `${{ matrix.subpackages }}` expansion and checkouts that kept their credentials. (#4533)
+
+# 0.3.3
+
+- Generated workflows run a Flutter package's integration tests only when it has a `linux/` directory as well as `integration_test/`, and a new per-package `shorebird_ci: integration_tests: true|false` key in `pubspec.yaml` overrides that. `flutter test integration_test` needs a device, and a hosted `ubuntu-latest` runner, where every pull request's leg runs, has only the Linux desktop, so a mobile-only app's integration tests failed every run. Since 0.3.1 `verify` fails on a hand-set `has_integration_tests: false`, so there was no way to turn them off. (#4522)
+- The generated Integration Tests step runs on the runner's desktop (`-d linux`, `-d macos`, `-d windows`) and skips with a notice when the package has no directory for that platform, so a `runners: [macos-latest]` leg no longer fails on a package with only `linux/`. On Linux it installs the Linux desktop's build packages (`clang cmake ninja-build pkg-config libgtk-3-dev xvfb`) and runs the tests under `xvfb-run`, since `ubuntu-latest` lacks GTK's dev package and has no display, so a package with `linux/` could not build or start its desktop app there. A package that set `integration_tests: true` without the runner's platform directory now passes that leg with a notice instead of failing it. (#4523)
+
+# 0.3.2
+
+- Generated workflows install Flutter with a `run:` step instead of `subosito/flutter-action`, so they no longer run a third-party action to install Flutter, and the Flutter archive is checked against the SHA-256 in Flutter's release manifest before it's used. subosito's action calls `actions/cache` by tag, which failed every generated Flutter job in repositories that require SHA-pinned actions. An exact `flutter_version` now resolves on any channel, not only stable. (#4513)
+- Bump the built-in `dart-lang/setup-dart` pin to v1.8.2. (#4477)
+
+# 0.3.1
+
+- `generate` reads repository-wide `shorebird_ci:` configuration from the repository root's `pubspec.yaml` (`required`, `fatal_infos`, `codecov_token_secret`), each mirroring the flag of the same name, with the flag winning where both are set. (#4446)
+- `verify` rebuilds every workflow carrying the `--style static` marker from the repository and fails when the checked-in copy differs, naming the line and the file, including where a dynamic workflow covers the repository's packages alongside it. Only the `uses:` refs are exempt, since `generate`'s own update step and then Dependabot move every action pin past the ones built into shorebird_ci. The coverage checks only ask whether each filter covers its package's dep graph, so a hand-added input, a job generation no longer writes, or a declaration nobody made all passed them and then vanished at the next `generate` run. (#4446)
+- The filter `verify` suggests for a package missing from CI coverage now names the orchestrator and the reusable workflow it calls, matching what `generate --style static` writes. Pasting the old suggestion gave back a filter the next `generate` run rewrote. (#4446)
+- `generate` (`--style static` and `--filters-only`) now includes the orchestrator workflow's own path in every package's `dorny/paths-filter` block, so a commit editing only the orchestrator still triggers each package's job. (#4444)
+- Generated `Run Tests` steps (static reusable workflows and dynamic jobs with coverage) now wrap `dart test` and `flutter test` in a `retry_test` helper that retries a batch once when a suite fails to load because its VM service connection closed before the full header was received. (#4420)
+- Bump `test` dev dependency constraint to `^1.33.0` (#4360), declare `shorebird_ci` runners and coverage floor in `pubspec.yaml` (#4439), and align repository CI workflows onto `_shorebird_ci_dart.yaml` (#4331) with fatal lint infos (#4430).
+
 # 0.3.0
 
 - `DependencyResolver` now parses `.gitmodules` and collapses any dependency inside a submodule to the submodule's mount point, since `git diff` reports submodule updates at the mount point rather than paths beneath it.

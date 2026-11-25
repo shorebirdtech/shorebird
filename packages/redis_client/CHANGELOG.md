@@ -1,3 +1,9 @@
+# 0.0.16
+
+- fix: a read error on an open connection, such as a reset from the server (`Connection reset by peer`), no longer raises an unhandled `SocketException`. The client logs it, drops the connection and reconnects. Plaintext connections now use the same socket handling as TLS ones
+- fix: a command that times out while waiting to connect is no longer written once the connection opens
+- fix: a reconnect scheduled before `close` no longer dials after it
+
 # 0.0.15
 
 - fix: closing a TLS connection no longer raises an unhandled `TlsException` when the server answers the hang-up with an alert, as Memorystore for Valkey does. Errors that arrive on a connection being closed are dropped, and a failed flush no longer stops the close

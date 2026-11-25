@@ -11,6 +11,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -995,7 +996,108 @@ channel: ${track.channel}
           ).called(1);
           // The partial .aab must not be mistaken for a cached download.
           expect(File(aabPath()).existsSync(), isFalse);
+          expect(previewDirectory.listSync(), isEmpty);
         });
+      });
+
+      test(
+        'stages the aab download in a sibling entry and renames on completion',
+        () async {
+          previewDirectory.deleteSync(recursive: true);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outputPath = invocation.namedArguments[#outputPath] as String;
+            expect(outputPath, isNot(equals(aabPath())));
+            final stagedFile = File(outputPath);
+            expect(
+              stagedFile.parent.parent.path,
+              equals(previewDirectory.path),
+            );
+            expect(
+              p.basename(stagedFile.parent.path),
+              startsWith(Cache.releaseArtifactDownloadPrefix),
+            );
+            expect(File(aabPath()).existsSync(), isFalse);
+            stagedFile.writeAsStringSync('aab-bytes');
+            return stagedFile;
+          });
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          expect(File(aabPath()).readAsStringSync(), equals('aab-bytes'));
+          expect(
+            previewDirectory.listSync().map((e) => p.basename(e.path)),
+            isNot(contains(startsWith(Cache.releaseArtifactDownloadPrefix))),
+          );
+        },
+      );
+
+      test(
+        'replaces a zero-byte cached aab instead of treating it as a cache hit',
+        () async {
+          File(aabPath()).createSync(recursive: true);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outputPath = invocation.namedArguments[#outputPath] as String;
+            return File(outputPath)..writeAsStringSync('fresh-aab');
+          });
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          expect(File(aabPath()).readAsStringSync(), equals('fresh-aab'));
+          verify(
+            () => artifactManager.downloadWithProgressUpdates(
+              Uri.parse(releaseArtifactUrl),
+              message: 'Downloading app',
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).called(1);
+        },
+      );
+
+      test('reuses a non-empty cached aab without downloading', () async {
+        await createAabFile(channel: null);
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(setupAndroidShorebirdYaml);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verifyNever(
+          () => artifactManager.downloadWithProgressUpdates(
+            any(),
+            message: any(named: 'message'),
+            outputPath: any(named: 'outputPath'),
+          ),
+        );
       });
 
       group('when unable to find shorebird.yaml', () {
@@ -2563,6 +2665,10 @@ channel: ${DeploymentTrack.staging.channel}
             () => artifactManager.downloadWithProgressUpdates(
               Uri.parse(releaseArtifactUrl),
               message: 'Downloading app',
+              outputPath: any(
+                named: 'outputPath',
+                that: startsWith(previewDirectory.path),
+              ),
             ),
           ).called(1);
           verify(
@@ -2634,6 +2740,10 @@ channel: ${DeploymentTrack.staging.channel}
             () => artifactManager.downloadWithProgressUpdates(
               Uri.parse(releaseArtifactUrl),
               message: 'Downloading app',
+              outputPath: any(
+                named: 'outputPath',
+                that: startsWith(previewDirectory.path),
+              ),
             ),
           ).called(1);
           verify(
@@ -3005,12 +3115,14 @@ channel: ${DeploymentTrack.staging.channel}
       late Process process;
       late Directory windowsReleaseDirectory;
       late Windows windowsMock;
+      late LocalAbi abi;
 
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
           () => runScoped(
             body,
             values: {
+              abiRef.overrideWith(() => abi),
               artifactManagerRef.overrideWith(() => artifactManager),
               authRef.overrideWith(() => auth),
               cacheRef.overrideWith(() => cache),
@@ -3029,11 +3141,11 @@ channel: ${DeploymentTrack.staging.channel}
         );
       }
 
-      void createShorebirdYaml({String? channel}) {
+      void createShorebirdYaml({Directory? directory, String? channel}) {
         final shorebirdYaml =
             File(
                 p.join(
-                  windowsReleaseDirectory.path,
+                  (directory ?? windowsReleaseDirectory).path,
                   'data',
                   'flutter_assets',
                   'shorebird.yaml',
@@ -3054,6 +3166,11 @@ channel: ${DeploymentTrack.staging.channel}
         shorebirdProcess = MockShorebirdProcess();
         process = MockProcess();
         windowsMock = MockWindows();
+        abi = MockAbi();
+        when(() => abi.hostArchitecture).thenReturn('x64');
+        when(
+          () => shorebirdEnv.flutterDirectory,
+        ).thenReturn(Directory.systemTemp.createTempSync());
 
         platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         when(
@@ -3164,6 +3281,10 @@ channel: ${DeploymentTrack.staging.channel}
             () => artifactManager.downloadWithProgressUpdates(
               Uri.parse(releaseArtifactUrl),
               message: 'Downloading app',
+              outputPath: any(
+                named: 'outputPath',
+                that: startsWith(previewDirectory.path),
+              ),
             ),
           ).called(1);
           verify(
@@ -3234,7 +3355,7 @@ channel: ${DeploymentTrack.staging.channel}
             File(
               p.join(outDirectory.path, 'runner.exe'),
             ).createSync(recursive: true);
-            createShorebirdYaml();
+            createShorebirdYaml(directory: outDirectory);
           });
         });
 
@@ -3246,6 +3367,10 @@ channel: ${DeploymentTrack.staging.channel}
             () => artifactManager.downloadWithProgressUpdates(
               Uri.parse(releaseArtifactUrl),
               message: 'Downloading app',
+              outputPath: any(
+                named: 'outputPath',
+                that: startsWith(previewDirectory.path),
+              ),
             ),
           ).called(1);
           verify(
@@ -3281,6 +3406,62 @@ channel: ${DeploymentTrack.staging.channel}
           ).called(1);
           verify(() => logger.info('hello world')).called(1);
           verify(() => logger.err('hello error')).called(1);
+        });
+      });
+
+      group('on an arm64 machine', () {
+        setUp(() {
+          when(() => abi.hostArchitecture).thenReturn('arm64');
+          File(
+            p.join(windowsReleaseDirectory.path, 'runner.exe'),
+          ).createSync(recursive: true);
+          createShorebirdYaml();
+        });
+
+        test('runs the arm64 build when the release has one', () async {
+          when(
+            () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'win_archive_arm64',
+              platform: ReleasePlatform.windows,
+            ),
+          ).thenAnswer((_) async => windowsReleaseArtifact);
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: 'win_archive_arm64',
+              platform: ReleasePlatform.windows,
+            ),
+          ).called(1);
+        });
+
+        test('runs the x64 build when the release has no arm64 one', () async {
+          when(
+            () => codePushClientWrapper.maybeGetReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenAnswer((_) async => null);
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: primaryWindowsReleaseArtifactArch,
+              platform: ReleasePlatform.windows,
+            ),
+          ).called(1);
         });
       });
 
@@ -3533,7 +3714,7 @@ channel: ${DeploymentTrack.staging.channel}
       group('when the user chooses android at the prompt', () {
         const deviceId = '1234';
 
-        setUp(() {
+        setUp(() async {
           when(
             () => logger.chooseOne<String>(
               'Which platform would you like to preview?',
@@ -3595,7 +3776,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => process.exitCode,
           ).thenAnswer((_) async => ExitCode.success.code);
 
-          unawaited(createAabFile(channel: null));
+          await createAabFile(channel: null);
         });
 
         test('exits with success and calls install and launch app', () async {
@@ -3662,6 +3843,158 @@ channel: ${DeploymentTrack.staging.channel}
           });
         });
       });
+    });
+
+    group('downloadAndExtractIfNeeded', () {
+      const artifactUrl = 'https://example.com/archive.zip';
+
+      setUp(() {
+        when(() => releaseArtifact.id).thenReturn(99);
+        when(() => releaseArtifact.arch).thenReturn('app');
+        when(() => releaseArtifact.url).thenReturn(artifactUrl);
+      });
+
+      test(
+        'stages download and extraction under parent before renaming into '
+        'target path',
+        () async {
+          final targetDir = Directory(
+            p.join(previewDirectory.path, 'nested', 'linux_1.2.3_99'),
+          );
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outputPath = invocation.namedArguments[#outputPath] as String;
+            final archive = File(outputPath)..writeAsStringSync('zip');
+            expect(archive.parent.parent.path, equals(targetDir.parent.path));
+            expect(
+              p.basename(archive.parent.path),
+              startsWith(Cache.releaseArtifactDownloadPrefix),
+            );
+            expect(targetDir.existsSync(), isFalse);
+            return archive;
+          });
+
+          await runWithOverrides(
+            () => command.downloadAndExtractIfNeeded(
+              artifact: releaseArtifact,
+              outputDirectory: targetDir,
+              extract: (archive, stagedDir) async {
+                expect(archive.readAsStringSync(), equals('zip'));
+                expect(
+                  stagedDir.parent.parent.path,
+                  equals(targetDir.parent.path),
+                );
+                expect(
+                  p.basename(stagedDir.parent.path),
+                  startsWith(Cache.releaseArtifactDownloadPrefix),
+                );
+                expect(targetDir.existsSync(), isFalse);
+                File(
+                  p.join(stagedDir.path, 'binary'),
+                ).writeAsStringSync('extracted');
+              },
+            ),
+          );
+
+          expect(
+            File(p.join(targetDir.path, 'binary')).readAsStringSync(),
+            equals('extracted'),
+          );
+          expect(
+            targetDir.parent.listSync().map((e) => e.path).toList(),
+            equals([targetDir.path]),
+          );
+        },
+      );
+
+      test(
+        'replaces an empty pre-existing directory instead of treating it as '
+        'cached',
+        () async {
+          final targetDir = Directory(
+            p.join(previewDirectory.path, 'linux_1.2.3_99'),
+          )..createSync(recursive: true);
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outputPath = invocation.namedArguments[#outputPath] as String;
+            return File(outputPath)..writeAsStringSync('zip');
+          });
+
+          await runWithOverrides(
+            () => command.downloadAndExtractIfNeeded(
+              artifact: releaseArtifact,
+              outputDirectory: targetDir,
+              extract: (_, stagedDir) async {
+                File(
+                  p.join(stagedDir.path, 'binary'),
+                ).writeAsStringSync('fresh');
+              },
+            ),
+          );
+
+          expect(
+            File(p.join(targetDir.path, 'binary')).readAsStringSync(),
+            equals('fresh'),
+          );
+          expect(
+            previewDirectory.listSync().map((e) => e.path).toList(),
+            equals([targetDir.path]),
+          );
+        },
+      );
+
+      test(
+        'keeps target directory when populated concurrently before rename',
+        () async {
+          final targetDir = Directory(
+            p.join(previewDirectory.path, 'linux_1.2.3_99'),
+          );
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outputPath = invocation.namedArguments[#outputPath] as String;
+            return File(outputPath)..writeAsStringSync('zip');
+          });
+
+          await runWithOverrides(
+            () => command.downloadAndExtractIfNeeded(
+              artifact: releaseArtifact,
+              outputDirectory: targetDir,
+              extract: (_, stagedDir) async {
+                File(
+                  p.join(stagedDir.path, 'binary'),
+                ).writeAsStringSync('ours');
+                File(p.join(targetDir.path, 'binary'))
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('concurrent');
+              },
+            ),
+          );
+
+          expect(
+            File(p.join(targetDir.path, 'binary')).readAsStringSync(),
+            equals('concurrent'),
+          );
+          expect(
+            previewDirectory.listSync().map((e) => e.path).toList(),
+            equals([targetDir.path]),
+          );
+        },
+      );
     });
   });
 

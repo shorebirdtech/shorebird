@@ -44,6 +44,10 @@ abstract class DesktopPatcher extends Patcher {
   /// Compares a release archive with a patch archive.
   ArchiveDiffer get archiveDiffer;
 
+  /// The architecture of the patch this machine builds.
+  @override
+  Arch get patchArch => Arch.x86_64;
+
   /// The directory the build writes the app to.
   Directory get appDirectory;
 
@@ -106,15 +110,17 @@ abstract class DesktopPatcher extends Patcher {
     ]);
     final releaseDirectory = Directory.systemTemp.createTempSync();
     try {
-      await artifactManager.extractZip(
+      await extractReleaseArtifact(
         zipFile: releaseArtifact,
         outputDirectory: releaseDirectory,
+        releaseType: releaseType,
+        progress: createDiffProgress,
       );
 
       // The diff is written to its own temporary directory, so the extracted
       // release can go once it has been diffed against.
       final bundle = await createDiffBundle(
-        arch: Arch.x86_64,
+        arch: patchArch,
         releaseArtifactPath: p.joinAll([
           releaseDirectory.path,
           ...dartLibraryPathSegments,
@@ -124,7 +130,7 @@ abstract class DesktopPatcher extends Patcher {
       );
       createDiffProgress.complete();
 
-      return {Arch.x86_64: bundle};
+      return {patchArch: bundle};
     } finally {
       releaseDirectory.deleteTemporarySync();
     }

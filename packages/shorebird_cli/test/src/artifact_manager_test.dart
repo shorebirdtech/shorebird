@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -34,11 +35,13 @@ void main() {
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
+    late LocalAbi abi;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
         values: {
+          abiRef.overrideWith(() => abi),
           cacheRef.overrideWith(() => cache),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
@@ -54,6 +57,8 @@ void main() {
     });
 
     setUp(() {
+      abi = MockAbi();
+      when(() => abi.hostArchitecture).thenReturn('x64');
       cacheArtifactDirectory = Directory.systemTemp.createTempSync();
       cache = MockCache();
       httpClient = MockHttpClient();
@@ -61,6 +66,9 @@ void main() {
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      when(
+        () => shorebirdEnv.flutterDirectory,
+      ).thenReturn(Directory.systemTemp.createTempSync());
 
       when(
         () => cache.getArtifactDirectory(any()),
@@ -563,6 +571,23 @@ void main() {
         );
         expect(tempDir.listSync(recursive: true), hasLength(146));
       });
+
+      test('throws when an entry is damaged', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final zipFile = File(p.join(tempDir.path, 'damaged.zip'))
+          ..writeAsBytesSync(damagedZipBytes());
+        final outputDirectory = Directory(p.join(tempDir.path, 'out'));
+
+        await expectLater(
+          runWithOverrides(
+            () => artifactManager.extractZip(
+              zipFile: zipFile,
+              outputDirectory: outputDirectory,
+            ),
+          ),
+          throwsA(isA<ArchiveException>()),
+        );
+      });
     });
 
     group('androidArchsDirectory', () {
@@ -845,8 +870,8 @@ void main() {
 
       test('falls back to the stripped dir when the aab is not a valid '
           'zip', () async {
-        // ZipDecoder yields an empty archive for unrecognized input rather
-        // than throwing, so this exercises the no-entries fallback.
+        // Extraction verifies the archive, so input without a zip central
+        // directory throws and takes the extraction-failure fallback.
         final stripped = strippedOutLib()..createSync(recursive: true);
         final invalidAab = File(p.join(projectRoot.path, 'invalid.aab'))
           ..createSync(recursive: true)
@@ -864,7 +889,7 @@ void main() {
         expect(result!.path, equals(stripped.path));
         verify(
           () => logger.detail(
-            any(that: contains('No libapp.so entries found')),
+            any(that: contains('Failed to extract libapp.so')),
           ),
         ).called(1);
       });
@@ -874,15 +899,9 @@ void main() {
         final stripped = strippedOutLib()..createSync(recursive: true);
         // A structurally valid zip whose libapp.so entry has a payload that
         // cannot be decompressed: extraction throws when the entry is read.
-        const entryName = 'base/lib/arm64-v8a/libapp.so';
-        final bytes = ZipEncoder().encode(
-          Archive()..addFile(ArchiveFile.string(entryName, 'a' * 4096)),
+        final bytes = damagedZipBytes(
+          entryName: 'base/lib/arm64-v8a/libapp.so',
         );
-        // Corrupt the deflate stream that follows the 30-byte local file
-        // header and entry name.
-        for (var i = 30 + entryName.length; i < 38 + entryName.length; i++) {
-          bytes[i] = 0xff;
-        }
         final corruptAab = File(p.join(projectRoot.path, 'corrupt.aab'))
           ..createSync(recursive: true)
           ..writeAsBytesSync(bytes);
@@ -928,6 +947,11 @@ void main() {
         expect(result, isNotNull);
         expect(result!.path, equals(stripped.path));
         expect(stripped.existsSync(), isTrue);
+        verify(
+          () => logger.detail(
+            any(that: contains('No libapp.so entries found')),
+          ),
+        ).called(1);
       });
 
       test('returns null when there is no stripped dir and no aab', () async {
@@ -976,14 +1000,22 @@ void main() {
       });
 
       test('returns null when the aab is not a valid zip', () async {
-        // Garbage decodes to an empty archive rather than throwing, and an
-        // empty archive must not be reported as a dropped libapp.so.
+        // Input with no zip structure must not be reported as a dropped
+        // libapp.so.
         final invalidAab = File(p.join(tempDir.path, 'invalid.aab'))
           ..createSync(recursive: true)
           ..writeAsStringSync('not a zip');
 
         final result = await ArtifactManager.describeMissingLibappInAab(
           invalidAab,
+        );
+
+        expect(result, isNull);
+      });
+
+      test('returns null when the aab has no entries', () async {
+        final result = await ArtifactManager.describeMissingLibappInAab(
+          aabWith([]),
         );
 
         expect(result, isNull);
@@ -1309,6 +1341,23 @@ void main() {
           ),
         );
       });
+
+      test('returns the arm64 build on an arm64 machine', () {
+        when(() => abi.hostArchitecture).thenReturn('arm64');
+        expect(
+          runWithOverrides(artifactManager.getWindowsReleaseDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'windows',
+              'arm64',
+              'runner',
+              'Release',
+            ),
+          ),
+        );
+      });
     });
 
     group('getIpa', () {
@@ -1369,6 +1418,39 @@ void main() {
           equals(
             p.join(projectRoot.path, 'build', 'ios', 'framework', 'Release'),
           ),
+        );
+      });
+    });
+
+    group('readAppXcframeworkShorebirdYaml', () {
+      test('returns null when the device slice has no shorebird.yaml', () {
+        expect(
+          runWithOverrides(artifactManager.readAppXcframeworkShorebirdYaml),
+          isNull,
+        );
+      });
+
+      test("returns the device slice's shorebird.yaml", () {
+        File(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              'App.xcframework',
+              'ios-arm64',
+              'App.framework',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: internal-app-id');
+
+        expect(
+          runWithOverrides(artifactManager.readAppXcframeworkShorebirdYaml),
+          'app_id: internal-app-id',
         );
       });
     });

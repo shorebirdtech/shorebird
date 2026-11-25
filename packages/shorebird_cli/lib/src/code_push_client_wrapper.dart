@@ -22,10 +22,12 @@ import 'package:shorebird_cli/src/extensions/directory.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
+import 'package:shorebird_cli/src/rollout_schedule.dart';
 import 'package:shorebird_cli/src/server_notices.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
+import 'package:shorebird_cli/src/symbols/symbol_extractor.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -681,9 +683,13 @@ class CodePushClientWrapper {
     );
   }
 
-  /// Fetches the apps for the current user.
-  Future<List<AppMetadata>> getApps() {
-    return _withProgress('Fetching apps', codePushClient.getApps);
+  /// Fetches the apps for the current user, including archived ones when
+  /// [includeArchived] is set.
+  Future<List<AppMetadata>> getApps({bool includeArchived = false}) {
+    return _withProgress(
+      'Fetching apps',
+      () => codePushClient.getApps(includeArchived: includeArchived),
+    );
   }
 
   /// Returns [AppMetadata] for the provided [appId].
@@ -780,6 +786,22 @@ class CodePushClientWrapper {
     return _withProgress(
       'Renaming app',
       () => codePushClient.updateApp(appId: appId, displayName: displayName),
+    );
+  }
+
+  /// Archives the app with the provided [appId].
+  Future<void> archiveApp({required String appId}) {
+    return _withProgress(
+      'Archiving app',
+      () => codePushClient.archiveApp(appId: appId),
+    );
+  }
+
+  /// Unarchives the app with the provided [appId].
+  Future<void> unarchiveApp({required String appId}) {
+    return _withProgress(
+      'Unarchiving app',
+      () => codePushClient.unarchiveApp(appId: appId),
     );
   }
 
@@ -1056,8 +1078,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     }
   }
 
-  /// Uploads android release artifacts for a specific app/release combination.
-  Future<void> createAndroidReleaseArtifacts({
+  /// Uploads android release artifacts for a specific app/release combination
+  /// and returns the architectures whose `libapp.so` was uploaded.
+  Future<Set<Arch>> createAndroidReleaseArtifacts({
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
@@ -1083,16 +1106,17 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       );
     }
 
-    await ArtifactManager.withAndroidArchsDirectoryFromAab(
-      projectRoot: Directory(projectRoot),
-      flavor: flavor,
-      aab: File(aabPath),
-      action: (archsDir) async {
-        if (archsDir == null) {
-          _handleErrorAndExit(
-            Exception('Cannot find patch build artifacts.'),
-            progress: createArtifactProgress,
-            message: '''
+    final uploadedArchs =
+        await ArtifactManager.withAndroidArchsDirectoryFromAab(
+          projectRoot: Directory(projectRoot),
+          flavor: flavor,
+          aab: File(aabPath),
+          action: (archsDir) async {
+            if (archsDir == null) {
+              _handleErrorAndExit(
+                Exception('Cannot find patch build artifacts.'),
+                progress: createArtifactProgress,
+                message: '''
 Cannot find release build artifacts.
 
 Please run `shorebird cache clean` and try again. If the issue persists, please
@@ -1102,20 +1126,20 @@ Looked in:
   - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib''',
-          );
-        }
+              );
+            }
 
-        await _uploadAndroidArchArtifacts(
-          signing: signing,
-          appId: appId,
-          releaseId: releaseId,
-          platform: platform,
-          archsDir: archsDir.path,
-          architectures: architectures,
-          progress: createArtifactProgress,
+            return _uploadAndroidArchArtifacts(
+              signing: signing,
+              appId: appId,
+              releaseId: releaseId,
+              platform: platform,
+              archsDir: archsDir.path,
+              architectures: architectures,
+              progress: createArtifactProgress,
+            );
+          },
         );
-      },
-    );
 
     await _uploadReleaseArtifact(
       signing: signing,
@@ -1130,6 +1154,7 @@ Looked in:
     );
 
     createArtifactProgress.complete();
+    return uploadedArchs;
   }
 
   /// Zips and uploads a Windows release directory.
@@ -1137,6 +1162,7 @@ Looked in:
     required String appId,
     required int releaseId,
     required Directory releaseDirectory,
+    String arch = primaryWindowsReleaseArtifactArch,
     ArtifactSigningRequest? signing,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
@@ -1148,7 +1174,7 @@ Looked in:
         releaseId: releaseId,
         file: zippedRelease,
         name: 'Windows release (exe)',
-        arch: primaryWindowsReleaseArtifactArch,
+        arch: arch,
         platform: ReleasePlatform.windows,
         canSideload: true,
         progress: createArtifactProgress,
@@ -1159,8 +1185,9 @@ Looked in:
     createArtifactProgress.complete();
   }
 
-  /// Uploads android archive release artifacts for a specific app/release combination.
-  Future<void> createAndroidArchiveReleaseArtifacts({
+  /// Uploads android archive release artifacts for a specific app/release
+  /// combination and returns the architectures whose `libapp.so` was uploaded.
+  Future<Set<Arch>> createAndroidArchiveReleaseArtifacts({
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
@@ -1171,7 +1198,7 @@ Looked in:
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
-    await _uploadAndroidArchArtifacts(
+    final uploadedArchs = await _uploadAndroidArchArtifacts(
       signing: signing,
       appId: appId,
       releaseId: releaseId,
@@ -1194,14 +1221,16 @@ Looked in:
     );
 
     createArtifactProgress.complete();
+    return uploadedArchs;
   }
 
-  /// Uploads the libapp.so under [archsDir] for each of [architectures].
+  /// Uploads the libapp.so under [archsDir] for each of [architectures] and
+  /// returns the architectures that were uploaded.
   ///
   /// Architectures with no libapp.so are skipped, and the release fails only
   /// if none were uploaded. Shared by the app bundle and archive releases so
   /// both handle ABI filtering the same way.
-  Future<void> _uploadAndroidArchArtifacts({
+  Future<Set<Arch>> _uploadAndroidArchArtifacts({
     required String appId,
     required int releaseId,
     required ReleasePlatform platform,
@@ -1217,7 +1246,7 @@ Looked in:
     // release succeed instead of crashing on the first missing arch
     // (https://github.com/shorebirdtech/shorebird/issues/3388).
     final missingArchs = <Arch>[];
-    var uploadedArchCount = 0;
+    final uploadedArchs = <Arch>{};
     for (final arch in architectures) {
       final artifactPath = p.join(
         archsDir,
@@ -1245,10 +1274,10 @@ Looked in:
         canSideload: false,
         progress: progress,
       );
-      uploadedArchCount++;
+      uploadedArchs.add(arch);
     }
 
-    if (uploadedArchCount == 0) {
+    if (uploadedArchs.isEmpty) {
       _handleErrorAndExit(
         Exception('No architecture artifacts found to upload.'),
         progress: progress,
@@ -1265,6 +1294,7 @@ relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
 to the architectures your project actually builds.''',
       );
     }
+    return uploadedArchs;
   }
 
   /// Uploads [file] as the [arch] release artifact for [platform], naming it
@@ -1300,7 +1330,10 @@ to the architectures your project actually builds.''',
         podfileLockHash: podfileLockHash,
         signing: signing,
       );
-    } on CodePushConflictException catch (_) {
+    } on CodePushConflictException catch (error) {
+      if (error.code == conflictingSigningErrorCode) {
+        _handleErrorAndExit(error, progress: progress, message: error.message);
+      }
       // Newlines are due to how logger.info interacts with logger.progress.
       logger.info('''
 
@@ -1313,6 +1346,14 @@ $name artifact already exists, continuing...''');
       );
     }
   }
+
+  /// The server's error code for an artifact whose signing differs from what
+  /// the release, already active on its platform, was signed with (such as
+  /// a second Windows architecture built with another key). Unlike other
+  /// conflicts nothing was stored, so the upload fails.
+  @visibleForTesting
+  static const conflictingSigningErrorCode =
+      'release_artifacts_create_conflicting_signing';
 
   /// Removes all .dylib files from the given .xcarchive to reduce the size of
   /// the uploaded artifact.
@@ -1522,6 +1563,93 @@ $name artifact already exists, continuing...''');
     createSupplementProgress.complete();
   }
 
+  /// Uploads one architecture's [format] symbol file for [releaseId].
+  Future<void> createReleaseSymbols({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required File symbols,
+  }) => _uploadSymbols(
+    description: 'release $releaseId',
+    arch: arch,
+    format: format,
+    symbols: symbols,
+    upload: (compressed) => codePushClient.createReleaseSymbols(
+      appId: appId,
+      releaseId: releaseId,
+      platform: platform,
+      arch: arch,
+      format: format,
+      compression: SymbolsCompression.gzip,
+      symbolsPath: compressed.path,
+    ),
+  );
+
+  /// Uploads one architecture's [format] symbol file for [patchId].
+  Future<void> createPatchSymbols({
+    required String appId,
+    required int patchId,
+    required ReleasePlatform platform,
+    required String arch,
+    required SymbolsFormat format,
+    required File symbols,
+  }) => _uploadSymbols(
+    description: 'patch $patchId',
+    arch: arch,
+    format: format,
+    symbols: symbols,
+    upload: (compressed) => codePushClient.createPatchSymbols(
+      appId: appId,
+      patchId: patchId,
+      platform: platform,
+      arch: arch,
+      format: format,
+      compression: SymbolsCompression.gzip,
+      symbolsPath: compressed.path,
+    ),
+  );
+
+  /// Gzips [symbols] and hands the compressed copy to [upload].
+  ///
+  /// A failure is logged and swallowed. Symbols only put names on a crash
+  /// report that arrives days later, and the server checks both the plan and
+  /// the app's crash reporting opt-in when opening the upload session, so
+  /// neither a refusal nor a lost connection should fail a release or a patch
+  /// whose own artifacts are already up. Symbolication reads a build with no
+  /// symbols as offsets.
+  Future<void> _uploadSymbols({
+    required String description,
+    required String arch,
+    required SymbolsFormat format,
+    required File symbols,
+    required Future<void> Function(File compressed) upload,
+  }) async {
+    final progress = logger.progress(
+      'Uploading $arch ${format.value} for $description',
+    );
+    final workingDirectory = Directory.systemTemp.createTempSync();
+    try {
+      await upload(
+        symbolExtractor.compress(
+          source: symbols,
+          destination: File(
+            p.join(workingDirectory.path, p.basename(symbols.path)),
+          ),
+        ),
+      );
+      progress.complete();
+    } on Exception catch (error) {
+      // A completed progress, not a failed one: nothing the developer asked
+      // for has failed.
+      progress.complete('Skipped $arch ${format.value} for $description');
+      logger.detail('Failed to upload ${symbols.path}: $error');
+    } finally {
+      workingDirectory.deleteTemporarySync();
+    }
+  }
+
   /// Creates a patch for the given [appId], [releaseId], and [metadata].
   @visibleForTesting
   Future<CreatePatchResponse> createPatch({
@@ -1568,16 +1696,23 @@ $name artifact already exists, continuing...''');
   }
 
   /// Promotes a patch to a specific [channel], starting a rollout there at
-  /// [rolloutPercentage], or to every device on it when that is null.
+  /// [rolloutPercentage], on the timed schedule [rolloutSchedule], or to
+  /// every device on it when both are null.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
     required Channel channel,
     double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) {
-    final share = rolloutPercentage == null
-        ? ''
-        : ' (${formatRolloutPercentage(rolloutPercentage)})';
+    final share = switch ((rolloutPercentage, rolloutSchedule)) {
+      (final double percentage, _) =>
+        ' (${formatRolloutPercentage(percentage)})',
+      (_, final RolloutSchedule schedule) =>
+        ' (${formatRolloutPercentage(schedule.initialPercentage)}, '
+            'rising on a schedule)',
+      _ => '',
+    };
     return _withProgress(
       'Promoting patch to ${channel.name}$share',
       () => codePushClient.promotePatch(
@@ -1585,12 +1720,17 @@ $name artifact already exists, continuing...''');
         patchId: patchId,
         channelId: channel.id,
         rolloutPercentage: rolloutPercentage,
+        rolloutSteps: rolloutSchedule?.steps,
+        rolloutPauseWeekends: rolloutSchedule?.pauseWeekends,
+        rolloutTimezone: rolloutSchedule?.timezone,
       ),
     );
   }
 
   /// Raises the rollout of the patch identified by [patchId] under
-  /// [releaseId] to [rolloutPercentage] of the devices on its track.
+  /// [releaseId] to [rolloutPercentage] of the devices on its track, or puts
+  /// it on the timed schedule [rolloutSchedule]. Exactly one of the two says
+  /// what the rollout becomes.
   ///
   /// [patchNumber] is used purely for the human-readable progress message.
   Future<void> setPatchRollout({
@@ -1598,16 +1738,34 @@ $name artifact already exists, continuing...''');
     required int releaseId,
     required int patchId,
     required int patchNumber,
-    required double rolloutPercentage,
+    double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) {
+    final (target, request) = switch ((rolloutPercentage, rolloutSchedule)) {
+      (final double percentage, null) => (
+        'to ${formatRolloutPercentage(percentage)}',
+        SetPatchRolloutPercentageRequest(rolloutPercentage: percentage),
+      ),
+      (null, final RolloutSchedule schedule) => (
+        'on a schedule from '
+            '${formatRolloutPercentage(schedule.initialPercentage)}',
+        SetPatchRolloutScheduleRequest(
+          rolloutSteps: schedule.steps,
+          rolloutPauseWeekends: schedule.pauseWeekends,
+          rolloutTimezone: schedule.timezone,
+        ),
+      ),
+      _ => throw ArgumentError(
+        'Pass exactly one of rolloutPercentage and rolloutSchedule.',
+      ),
+    };
     return _withProgress(
-      'Rolling out patch $patchNumber to '
-      '${formatRolloutPercentage(rolloutPercentage)}',
+      'Rolling out patch $patchNumber $target',
       () => codePushClient.setPatchRollout(
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
-        rolloutPercentage: rolloutPercentage,
+        request: request,
       ),
     );
   }
@@ -1679,7 +1837,7 @@ $name artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track], at [rolloutPercentage] of its
-  /// devices when given.
+  /// devices or on the timed schedule [rolloutSchedule] when given.
   Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
@@ -1688,6 +1846,7 @@ $name artifact already exists, continuing...''');
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
     double? rolloutPercentage,
+    RolloutSchedule? rolloutSchedule,
   }) async {
     final patch = await createPatch(
       appId: appId,
@@ -1711,9 +1870,30 @@ $name artifact already exists, continuing...''');
       patchId: patch.id,
       channel: channel,
       rolloutPercentage: rolloutPercentage,
+      rolloutSchedule: rolloutSchedule,
     );
 
     logger.success('\n✅ Published Patch ${patch.number}!');
+    return patch;
+  }
+
+  /// Adds [patchArtifactBundles] to [patch], which already exists and is on
+  /// its track: devices of the added architectures get it on their next
+  /// patch check, at the patch's rollout.
+  Future<CreatePatchResponse> addPatchArtifacts({
+    required String appId,
+    required CreatePatchResponse patch,
+    required ReleasePlatform platform,
+    required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
+  }) async {
+    await createPatchArtifacts(
+      appId: appId,
+      patch: patch,
+      platform: platform,
+      patchArtifactBundles: patchArtifactBundles,
+    );
+    final arches = patchArtifactBundles.keys.map((arch) => arch.name);
+    logger.success('\n✅ Added ${arches.join(', ')} to Patch ${patch.number}!');
     return patch;
   }
 
