@@ -33,5 +33,33 @@ void main() {
       expect(json['rollout_timezone'], equals('America/New_York'));
       expect(SetPatchRolloutRequest.fromJson(json), equals(request));
     });
+
+    test('sends platforms with a percentage when given', () {
+      const request = SetPatchRolloutPercentageRequest(
+        rolloutPercentage: 50,
+        platforms: [ReleasePlatform.android, ReleasePlatform.ios],
+      );
+      final json = request.toJson();
+      expect(json['platforms'], equals(['android', 'ios']));
+      expect(SetPatchRolloutRequest.fromJson(json), equals(request));
+    });
+
+    test('sends platforms with a schedule when given', () {
+      const request = SetPatchRolloutScheduleRequest(
+        rolloutSteps: [
+          RolloutStep(percentage: 10, durationMinutes: 720),
+          RolloutStep(percentage: 100),
+        ],
+        platforms: [ReleasePlatform.ios],
+      );
+      final json = request.toJson();
+      expect(json['platforms'], equals(['ios']));
+      expect(SetPatchRolloutRequest.fromJson(json), equals(request));
+    });
+
+    test('omits platforms when not given', () {
+      const request = SetPatchRolloutPercentageRequest(rolloutPercentage: 50);
+      expect(request.toJson(), isNot(contains('platforms')));
+    });
   });
 }

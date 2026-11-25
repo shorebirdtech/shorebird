@@ -149,6 +149,8 @@ void main() {
         rolloutPauseWeekends: true,
         rolloutTimezone: 'America/New_York',
         notes: 'notes',
+        platform: ReleasePlatform.ios,
+        linkKey: 'key',
       );
 
       test('returns an identical copy when no fields are provided', () {
@@ -169,6 +171,8 @@ void main() {
         expect(copy.rolloutPauseWeekends, equals(patch.rolloutPauseWeekends));
         expect(copy.rolloutTimezone, equals(patch.rolloutTimezone));
         expect(copy.notes, equals(patch.notes));
+        expect(copy.platform, equals(patch.platform));
+        expect(copy.linkKey, equals(patch.linkKey));
       });
 
       test('replaces every field when all are provided', () {
@@ -194,6 +198,8 @@ void main() {
           rolloutPauseWeekends: false,
           rolloutTimezone: 'Europe/Berlin',
           notes: 'other-notes',
+          platform: ReleasePlatform.android,
+          linkKey: 'other-key',
         );
         expect(
           copy,
@@ -211,6 +217,8 @@ void main() {
               rolloutPauseWeekends: false,
               rolloutTimezone: 'Europe/Berlin',
               notes: 'other-notes',
+              platform: ReleasePlatform.android,
+              linkKey: 'other-key',
             ),
           ),
         );
@@ -234,6 +242,8 @@ void main() {
         rolloutPauseWeekends: true,
         rolloutTimezone: 'America/New_York',
         notes: 'notes',
+        platform: ReleasePlatform.android,
+        linkKey: 'key',
       );
 
       test('clears every schedule field when all are null', () {
@@ -264,6 +274,8 @@ void main() {
         expect(copy.createdAt, equals(patch.createdAt));
         expect(copy.rolloutPercentage, equals(patch.rolloutPercentage));
         expect(copy.notes, equals(patch.notes));
+        expect(copy.platform, equals(patch.platform));
+        expect(copy.linkKey, equals(patch.linkKey));
       });
 
       test('replaces every schedule field when all are given', () {

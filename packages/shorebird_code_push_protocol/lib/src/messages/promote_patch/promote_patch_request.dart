@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/rollout_step.dart';
 
 /// {@template promote_patch_request}
@@ -15,6 +16,7 @@ class PromotePatchRequest {
     this.rolloutSteps,
     this.rolloutPauseWeekends,
     this.rolloutTimezone,
+    this.platforms,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PromotePatchRequest].
@@ -33,6 +35,9 @@ class PromotePatchRequest {
             .toList(),
         rolloutPauseWeekends: json['rollout_pause_weekends'] as bool?,
         rolloutTimezone: json['rollout_timezone'] as String?,
+        platforms: (json['platforms'] as List?)
+            ?.map<ReleasePlatform>((e) => ReleasePlatform.fromJson(e as String))
+            .toList(),
       ),
     );
   }
@@ -68,6 +73,11 @@ class PromotePatchRequest {
   /// to `UTC`.
   final String? rolloutTimezone;
 
+  /// The platforms whose patches under the number to promote, at
+  /// least one. Omit to promote every platform's.
+  /// Unstable: this may change shape until patch linking ships.
+  final List<ReleasePlatform>? platforms;
+
   /// Converts a [PromotePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -77,6 +87,7 @@ class PromotePatchRequest {
       'rollout_steps': ?rolloutSteps?.map((e) => e.toJson()).toList(),
       'rollout_pause_weekends': ?rolloutPauseWeekends,
       'rollout_timezone': ?rolloutTimezone,
+      'platforms': ?platforms?.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -88,6 +99,7 @@ class PromotePatchRequest {
     listHash(rolloutSteps),
     rolloutPauseWeekends,
     rolloutTimezone,
+    listHash(platforms),
   ]);
 
   @override
@@ -99,6 +111,7 @@ class PromotePatchRequest {
         rolloutPercentage == other.rolloutPercentage &&
         listsEqual(rolloutSteps, other.rolloutSteps) &&
         rolloutPauseWeekends == other.rolloutPauseWeekends &&
-        rolloutTimezone == other.rolloutTimezone;
+        rolloutTimezone == other.rolloutTimezone &&
+        listsEqual(platforms, other.platforms);
   }
 }

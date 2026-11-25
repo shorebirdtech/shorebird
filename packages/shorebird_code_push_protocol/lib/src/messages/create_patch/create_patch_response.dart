@@ -6,6 +6,7 @@
 // ignore_for_file: comment_references
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/patch_link.dart';
 
 /// {@template create_patch_response}
 /// The response body for POST /apps/{appId}/patches. Deliberately
@@ -20,6 +21,8 @@ class CreatePatchResponse {
   const CreatePatchResponse({
     required this.id,
     required this.number,
+    this.created,
+    this.link,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchResponse].
@@ -30,6 +33,8 @@ class CreatePatchResponse {
       () => CreatePatchResponse(
         id: json['id'] as int,
         number: json['number'] as int,
+        created: json['created'] as bool?,
+        link: PatchLink.maybeFromJson(json['link'] as Map<String, dynamic>?),
       ),
     );
   }
@@ -49,11 +54,24 @@ class CreatePatchResponse {
   /// The patch number. A larger number equates to a newer patch.
   final int number;
 
+  /// False when the server returned this platform's unfinished patch
+  /// from an earlier request with the same `link_key` instead of
+  /// creating one. Absent from servers that predate linking.
+  /// Unstable: this may change shape until patch linking ships.
+  final bool? created;
+
+  /// What linking did for a created patch. Absent from servers that
+  /// predate linking.
+  /// Unstable: this may change shape until patch linking ships.
+  final PatchLink? link;
+
   /// Converts a [CreatePatchResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'number': number,
+      'created': ?created,
+      'link': ?link?.toJson(),
     };
   }
 
@@ -61,6 +79,8 @@ class CreatePatchResponse {
   int get hashCode => Object.hashAll([
     id,
     number,
+    created,
+    link,
   ]);
 
   @override
@@ -68,6 +88,8 @@ class CreatePatchResponse {
     if (identical(this, other)) return true;
     return other is CreatePatchResponse &&
         id == other.id &&
-        number == other.number;
+        number == other.number &&
+        created == other.created &&
+        link == other.link;
   }
 }
