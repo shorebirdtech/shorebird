@@ -397,12 +397,14 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
   /// also records in `Generated.xcconfig` so Xcode rebuilds keep it.
   ///
   /// Everything else here is a quirk of the Flutter versions before that,
-  /// 3.44.0 through 3.47.x, and this is the only place in the CLI that
-  /// decides it: they run the DD pass only when `SHOREBIRD_DD_MAX_BYTES` is
-  /// set, so the CLI sets it, and their gen_snapshot rejects `--dd_max_bytes`
-  /// as an unknown flag. Release builds ([applyLegacyDdDefault]) default it
-  /// to 10000; patch builds set it only when the user does, as they always
-  /// have, since the patch's DD table comes from the release. A revision
+  /// 3.44.0 through 3.47.9's early cuts, and this is the only place in the
+  /// CLI that decides it: they run the DD pass only when
+  /// `SHOREBIRD_DD_MAX_BYTES` is set, so the CLI sets it, and their
+  /// gen_snapshot rejects `--dd_max_bytes` as an unknown flag. Release builds
+  /// ([applyLegacyDdDefault]) default it to 10000. Patch builds pass neither
+  /// (a patch's `--dd-max-bytes` goes to `aot_tools link`), so they set
+  /// nothing, as they always have: the patch's DD table comes from the
+  /// release. A revision
   /// whose version is unknown (a pinned dev revision) is treated as one of
   /// these: newer versions ignore the variable, while the flag would break an
   /// older build. Delete this branch once those versions are out of support.

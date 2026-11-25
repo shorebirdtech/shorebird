@@ -343,7 +343,7 @@ void main() {
                 releaseVersion: any(named: 'releaseVersion'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
-                applyLegacyDdDefault: any(named: 'applyLegacyDdDefault'),
+                applyLegacyDdDefault: true,
               ),
             ).called(1);
           },

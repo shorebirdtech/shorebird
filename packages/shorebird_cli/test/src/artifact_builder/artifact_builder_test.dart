@@ -2467,6 +2467,21 @@ Reason: Exited with code 70.'''),
         });
       });
 
+      test(
+        'treats a 3.47.9 re-cut carrying aot_tools gen-snapshot as new',
+        () async {
+          useFlutterVersion(Version(3, 47, 9));
+          when(() => shorebirdEnv.flutterRevision).thenReturn(
+            aotToolsGenSnapshotConstraint.allowedRevisions.last,
+          );
+          await runWithOverrides(
+            () => builder.buildIpa(ddMaxBytes: 0, applyLegacyDdDefault: true),
+          );
+          expect(buildArgs, contains('$ddOption=0'));
+          expect(buildEnv?['SHOREBIRD_DD_MAX_BYTES'], isNull);
+        },
+      );
+
       test('treats an unknown Flutter version as one before '
           'aot_tools gen-snapshot', () async {
         useFlutterVersion(null);
