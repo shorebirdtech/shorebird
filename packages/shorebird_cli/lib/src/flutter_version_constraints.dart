@@ -192,10 +192,8 @@ final libappStrippedByAgpConstraint = FlutterSupportConstraint(
 /// `SHOREBIRD_DD_MAX_BYTES` is set, and hand `--extra-gen-snapshot-options`
 /// to gen_snapshot as is, which rejects `--dd_max_bytes` as an unrecognized
 /// flag.
-// TODO(eseidel): set to the first Flutter release that carries
-// shorebirdtech/flutter#245 once it is cut. A floor compares X.Y.Z only, so
-// if that release is a re-cut like 3.47.9-sb.2, name its revision in
-// allowedRevisions instead: a floor of 3.47.9 would also admit 3.47.9-sb.1.
+// 3.50.0 is the first release that carries it (9fe1f8220 on
+// flutter_release/3.50.0); no 3.47.x release does.
 final aotToolsGenSnapshotConstraint = FlutterSupportConstraint(
-  minVersion: Version(3, 47, 10),
+  minVersion: Version(3, 50, 0),
 );
