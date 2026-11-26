@@ -676,6 +676,29 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     return kept;
   }
 
+  /// [published] grouped by release and patch number, so platforms that
+  /// share a number get one line.
+  Iterable<({String releaseVersion, int patchNumber, List<String>? platforms})>
+  _publishedNumbers(List<PublishedPatch> published) {
+    final groups = <(String, int), List<String>>{};
+    for (final p in published) {
+      groups
+          .putIfAbsent((p.release.version, p.patch.number), () => [])
+          .add(p.platform.value);
+    }
+    return [
+      for (final MapEntry(key: (releaseVersion, patchNumber), value: platforms)
+          in groups.entries)
+        (
+          releaseVersion: releaseVersion,
+          patchNumber: patchNumber,
+          // A linked number can hold other platforms' patches, which
+          // `patches rollout` would raise too without --platforms.
+          platforms: _link.key == null ? null : platforms,
+        ),
+    ];
+  }
+
   /// Says what a rollout below 100% means for each of [published] and how to
   /// raise it.
   void _logPartialRollout({
@@ -683,13 +706,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     required double percentage,
   }) {
     final share = formatRolloutPercentage(percentage);
-    for (final p in published) {
-      final releaseVersion = p.release.version;
-      final patchNumber = p.patch.number;
+    for (final (:releaseVersion, :patchNumber, :platforms) in _publishedNumbers(
+      published,
+    )) {
       final raiseCommand = raiseRolloutCommand(
         releaseVersion: releaseVersion,
         patchNumber: patchNumber,
         flavor: flavor,
+        platforms: platforms,
       );
       logger.info(
         'Patch $patchNumber on release $releaseVersion is rolling out to '
@@ -706,13 +730,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     required List<PublishedPatch> published,
     required RolloutSchedule schedule,
   }) {
-    for (final p in published) {
-      final releaseVersion = p.release.version;
-      final patchNumber = p.patch.number;
+    for (final (:releaseVersion, :patchNumber, :platforms) in _publishedNumbers(
+      published,
+    )) {
       final raiseCommand = raiseRolloutCommand(
         releaseVersion: releaseVersion,
         patchNumber: patchNumber,
         flavor: flavor,
+        platforms: platforms,
       );
       logger.info(
         'Patch $patchNumber on release $releaseVersion is rolling out to '

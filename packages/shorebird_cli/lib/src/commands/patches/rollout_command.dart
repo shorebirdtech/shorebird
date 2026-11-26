@@ -1,9 +1,12 @@
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/extensions/release_patch.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -70,6 +73,7 @@ class RolloutCommand extends ShorebirdCommand
         help: timezoneHelp,
         valueHelp: 'name',
       );
+    addPlatformsOption(action: 'roll out further');
     addAppScopeOptions();
   }
 
@@ -147,15 +151,52 @@ class RolloutCommand extends ShorebirdCommand
     );
     if (fetched.errorCode case final errorCode?) return errorCode;
 
-    final (patch: number, errorCode: lookupError) = findPatchNumberOrReport(
+    final (:patch, errorCode: lookupError) = findPatchNumberOrReport(
       patches: fetched.patches,
       patchNumber: patchNumber,
       releaseVersion: releaseVersion,
     );
-    if (number == null) return lookupError!;
-    final patch = number.patches.first;
+    if (patch == null) return lookupError!;
 
-    final channel = patch.channel;
+    final targetLabel = schedule == null
+        ? ' to ${formatRolloutPercentage(targetPercentage)}'
+        : ' on that schedule';
+    final chosen = choosePlatforms(
+      patch: patch,
+      releaseVersion: releaseVersion,
+      verb: 'roll out',
+      confirmSuffix: targetLabel,
+      // Ask only once the checks below pass.
+      confirm: false,
+    );
+    if (chosen.errorCode case final errorCode?) return errorCode;
+    final targets = chosen.patches;
+    final several = patch.platforms.length > 1;
+    final platformsLabel = several
+        ? ' (${targets.map(PatchNumber.platformName).join(', ')})'
+        : '';
+
+    // The server raises each patch's rollout on its own track, so patches on
+    // different tracks would each be raised on a different one.
+    final channels = targets.map((p) => p.channel).toSet();
+    if (channels.length > 1) {
+      final onTrack = targets.firstWhereOrNull((p) => p.channel != null);
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: [
+          for (final p in targets)
+            if (p.channel == onTrack?.channel) ?p.resolvedPlatform,
+        ],
+        extraArgs: _rolloutArguments(percentage, schedule),
+        reason:
+            "Patch $patchNumber's platforms are on different tracks, so "
+            'pass --${PatchLookup.platformsArgName} to choose which to roll '
+            'out.',
+      );
+    }
+
+    final channel = channels.single;
     if (channel == null) {
       final appIdArg = results[CommonArguments.appIdArg.name] as String?;
       final flavorArg = results[CommonArguments.flavorArg.name] as String?;
@@ -169,51 +210,117 @@ class RolloutCommand extends ShorebirdCommand
           '--$rolloutArgName ${formatRolloutArgument(targetPercentage)}'
         else
           ...rolloutScheduleArguments(schedule),
+        if (chosen.platforms case final platforms?)
+          '--${PatchLookup.platformsArgName} ${_platformValues(platforms)}',
       ].join(' ');
       return reportError(
         message:
-            'Patch $patchNumber on release $releaseVersion is on no track, so '
-            'it has no rollout to raise.',
+            'Patch $patchNumber on release $releaseVersion is on no '
+            'track$platformsLabel, so it has no rollout to raise.',
         hint: schedule == null
             ? 'Put it on a track at a percentage with: $promoteCommand'
             : 'Put it on a track on that schedule with: $promoteCommand',
       );
     }
 
-    // The server checks the percentage against the current one: the read
-    // above can go stale, and it answers 409 when the new one is lower.
+    // The server refuses the whole request when any patch is further along;
+    // this says which ones, and how to raise the others.
+    if (percentage case final percentage? when targets.length > 1) {
+      final higher = targets
+          .where((p) => (p.rolloutPercentage ?? 100) > percentage)
+          .toList();
+      if (higher.isNotEmpty) {
+        final raisable = [
+          for (final p in targets)
+            if (!higher.contains(p)) ?p.resolvedPlatform,
+        ];
+        final rerun = raisable.isEmpty
+            ? null
+            : commandForPlatforms(
+                patch: patch,
+                releaseVersion: releaseVersion,
+                platforms: raisable,
+                extraArgs: _rolloutArguments(percentage, schedule),
+              );
+        return reportError(
+          message:
+              'Patch $patchNumber on release $releaseVersion is already '
+              'rolling out further than '
+              '${formatRolloutPercentage(percentage)} on $channel for '
+              '${higher.map(PatchNumber.platformName).join(', ')}, and a '
+              'rollout can only be raised.',
+          hint: rerun == null ? null : 'To raise only the others, run: $rerun',
+        );
+      }
+    }
+
+    if (chosen.platforms == null) {
+      confirmAllPlatforms(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        verb: 'roll out',
+        confirmSuffix: targetLabel,
+      );
+    }
+
+    // One request: the server updates every chosen platform's patch or
+    // none. It also checks each against its current rollout, since the read
+    // above can go stale. Caught inside the guarded call, which would
+    // otherwise report the server's message for older clients in --json mode.
+    var platformsDiffer = false;
     final rolloutError = await guardApiCall(
-      () => codePushClientWrapper.setPatchRollout(
-        appId: appId,
-        releaseId: fetched.release!.id,
-        patchId: patch.id,
-        patchNumber: patch.number,
-        rolloutPercentage: percentage,
-        rolloutSchedule: schedule,
-      ),
+      () async {
+        try {
+          await codePushClientWrapper.setPatchRollout(
+            appId: appId,
+            releaseId: fetched.release!.id,
+            patchId: targets.first.id,
+            patchNumber: patchNumber,
+            rolloutPercentage: percentage,
+            rolloutSchedule: schedule,
+            platforms: chosen.platforms,
+          );
+        } on ApiErrorExit catch (e) {
+          if (!isPlatformsDiffer(e)) rethrow;
+          platformsDiffer = true;
+        }
+      },
       code: JsonErrorCode.softwareError,
       message:
-          'Failed to set the rollout of patch $patchNumber of release '
-          '"$releaseVersion".',
+          'Failed to set the rollout of patch $patchNumber '
+          'of release "$releaseVersion".',
     );
+    if (platformsDiffer) {
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: [
+          for (final p in targets)
+            if (p.channel == channel) ?p.resolvedPlatform,
+        ],
+        extraArgs: _rolloutArguments(percentage, schedule),
+      );
+    }
     if (rolloutError != null) return rolloutError;
 
     // A schedule always changes the rollout, since the server starts raising
     // it from the first step even when the patch is already there.
     final changed =
-        schedule != null || targetPercentage != patch.rolloutPercentage;
-    final updatedPatch = patch
-        .copyWith(
-          channel: channel,
-          rolloutPercentage: targetPercentage,
-        )
-        .withRolloutSchedule(
-          steps: schedule?.steps,
-          // Only the server knows when the next step applies.
-          nextStepAt: null,
-          pauseWeekends: schedule?.pauseWeekends,
-          timezone: schedule?.timezone,
-        );
+        schedule != null ||
+        targets.any((p) => targetPercentage != p.rolloutPercentage);
+    final updatedPatches = [
+      for (final p in targets)
+        p
+            .copyWith(channel: channel, rolloutPercentage: targetPercentage)
+            .withRolloutSchedule(
+              steps: schedule?.steps,
+              // Only the server knows when the next step applies.
+              nextStepAt: null,
+              pauseWeekends: schedule?.pauseWeekends,
+              timezone: schedule?.timezone,
+            ),
+    ];
+    final updatedPatch = updatedPatches.first;
 
     if (isJsonMode) {
       emitJsonSuccess({
@@ -229,6 +336,7 @@ class RolloutCommand extends ShorebirdCommand
           'rollout_timezone': ?schedule.timezone,
         },
         'patch': updatedPatch.toJson(),
+        'patches': [for (final p in updatedPatches) p.toJson()],
       });
       return ExitCode.success.code;
     }
@@ -237,20 +345,36 @@ class RolloutCommand extends ShorebirdCommand
       switch (schedule) {
         final schedule? =>
           'Patch $patchNumber on release $releaseVersion is now rolling out '
-              'on $channel on a schedule: '
+              'on $channel$platformsLabel on a schedule: '
               '${formatRolloutSchedule(schedule)}.',
         _ when changed =>
           'Patch $patchNumber on release $releaseVersion is now rolling out '
               'to ${formatRolloutPercentage(targetPercentage)} of devices on '
-              '$channel.',
+              '$channel$platformsLabel.',
         _ =>
           'Patch $patchNumber on release $releaseVersion is already rolling '
               'out to ${formatRolloutPercentage(targetPercentage)} of devices '
-              'on $channel.',
+              'on $channel$platformsLabel.',
       },
     );
     if (targetPercentage < 100) logger.info(rolloutOlderDevicesNote);
-    formatPatchDetails(updatedPatch).forEach(logger.info);
+    for (final p in updatedPatches) {
+      if (several) logger.info('${PatchNumber.platformName(p)}:');
+      formatPatchDetails(p).forEach(logger.info);
+    }
     return ExitCode.success.code;
   }
+
+  /// The arguments that ask for this run's rollout again.
+  List<String> _rolloutArguments(
+    double? percentage,
+    RolloutSchedule? schedule,
+  ) => [
+    if (percentage != null)
+      '--$_percentageArgName=${formatRolloutArgument(percentage)}',
+    if (schedule != null) ...rolloutScheduleArguments(schedule),
+  ];
+
+  String _platformValues(List<ReleasePlatform> platforms) =>
+      platforms.map((p) => p.value).join(',');
 }

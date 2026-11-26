@@ -1084,6 +1084,27 @@ void main() {
           expect(keys.last, equals(keys.first));
         });
 
+        test('says once how to raise the rollout of a shared number, for '
+            'the platforms it published', () async {
+          when(() => argResults['rollout']).thenReturn('10');
+
+          await runWithOverrides(command.run);
+
+          verify(
+            () => logger.info(
+              any(
+                that: allOf(
+                  startsWith('Patch 2 on release'),
+                  contains(
+                    '--patch-number 2 --percentage <percentage> '
+                    '--platforms android,ios',
+                  ),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
         test('says once which platforms got which number', () async {
           await runWithOverrides(command.run);
 

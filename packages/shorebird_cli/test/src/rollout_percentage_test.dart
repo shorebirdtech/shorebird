@@ -96,6 +96,21 @@ void main() {
         ),
       );
     });
+
+    test('names the platforms when given', () {
+      expect(
+        raiseRolloutCommand(
+          releaseVersion: '1.0.0+1',
+          patchNumber: 2,
+          percentage: 50,
+          platforms: ['android', 'ios'],
+        ),
+        equals(
+          'shorebird patches rollout --release-version 1.0.0+1 '
+          '--patch-number 2 --percentage 50 --platforms android,ios',
+        ),
+      );
+    });
   });
 
   test('rolloutHelp names the subject and the raise command', () {

@@ -1752,6 +1752,10 @@ $name artifact already exists, continuing...''');
   /// what the rollout becomes.
   ///
   /// [patchNumber] is used purely for the human-readable progress message.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's. The
+  /// server updates them together or not at all.
   Future<void> setPatchRollout({
     required String appId,
     required int releaseId,
@@ -1759,11 +1763,15 @@ $name artifact already exists, continuing...''');
     required int patchNumber,
     double? rolloutPercentage,
     RolloutSchedule? rolloutSchedule,
+    List<ReleasePlatform>? platforms,
   }) {
     final (target, request) = switch ((rolloutPercentage, rolloutSchedule)) {
       (final double percentage, null) => (
         'to ${formatRolloutPercentage(percentage)}',
-        SetPatchRolloutPercentageRequest(rolloutPercentage: percentage),
+        SetPatchRolloutPercentageRequest(
+          rolloutPercentage: percentage,
+          platforms: platforms,
+        ),
       ),
       (null, final RolloutSchedule schedule) => (
         'on a schedule from '
@@ -1772,6 +1780,7 @@ $name artifact already exists, continuing...''');
           rolloutSteps: schedule.steps,
           rolloutPauseWeekends: schedule.pauseWeekends,
           rolloutTimezone: schedule.timezone,
+          platforms: platforms,
         ),
       ),
       _ => throw ArgumentError(

@@ -4476,6 +4476,67 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           ).called(1);
         });
+
+        test('sends the platforms with a percentage or a schedule', () async {
+          when(
+            () => codePushClient.setPatchRollout(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              request: any(named: 'request'),
+            ),
+          ).thenAnswer((_) async {});
+          const steps = [
+            RolloutStep(percentage: 10, durationMinutes: 60),
+            RolloutStep(percentage: 100),
+          ];
+
+          await runWithOverrides(
+            () => codePushClientWrapper.setPatchRollout(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+              rolloutPercentage: 50,
+              platforms: [ReleasePlatform.ios],
+            ),
+          );
+          await runWithOverrides(
+            () => codePushClientWrapper.setPatchRollout(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+              rolloutSchedule: const RolloutSchedule(steps: steps),
+              platforms: [ReleasePlatform.ios],
+            ),
+          );
+
+          verify(
+            () => codePushClient.setPatchRollout(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              request: const SetPatchRolloutPercentageRequest(
+                rolloutPercentage: 50,
+                platforms: [ReleasePlatform.ios],
+              ),
+            ),
+          ).called(1);
+          verify(
+            () => codePushClient.setPatchRollout(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              request: const SetPatchRolloutScheduleRequest(
+                rolloutSteps: steps,
+                rolloutPauseWeekends: false,
+                platforms: [ReleasePlatform.ios],
+              ),
+            ),
+          ).called(1);
+        });
+
         test('throws without a percentage or a schedule', () {
           expect(
             () => runWithOverrides(

@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/rollout_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/rollout_percentage.dart';
@@ -91,6 +92,7 @@ void main() {
           patchNumber: any(named: 'patchNumber'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
           rolloutSchedule: any(named: 'rolloutSchedule'),
+          platforms: any(named: 'platforms'),
         ),
       );
     }
@@ -135,6 +137,7 @@ void main() {
           patchNumber: any(named: 'patchNumber'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
           rolloutSchedule: any(named: 'rolloutSchedule'),
+          platforms: any(named: 'platforms'),
         ),
       ).thenAnswer((_) async {});
 
@@ -345,6 +348,7 @@ void main() {
             patchNumber: any(named: 'patchNumber'),
             rolloutPercentage: any(named: 'rolloutPercentage'),
             rolloutSchedule: any(named: 'rolloutSchedule'),
+            platforms: any(named: 'platforms'),
           ),
         ).thenThrow(ApiErrorExit(error, ExitCode.software.code));
       });
@@ -745,6 +749,328 @@ void main() {
           isFalse,
           reason: 'only the server knows when the next step applies',
         );
+      });
+    });
+
+    group('when patches for several platforms share the number', () {
+      const androidPatch = ReleasePatch(
+        id: 10,
+        number: patchNumber,
+        channel: 'stable',
+        isRolledBack: false,
+        artifacts: [],
+        rolloutPercentage: 10,
+        platform: ReleasePlatform.android,
+      );
+      const iosPatch = ReleasePatch(
+        id: 11,
+        number: patchNumber,
+        channel: 'stable',
+        isRolledBack: false,
+        artifacts: [],
+        rolloutPercentage: 20,
+        platform: ReleasePlatform.ios,
+      );
+
+      void verifyRolloutRequest({List<ReleasePlatform>? platforms}) => verify(
+        () => codePushClientWrapper.setPatchRollout(
+          appId: appId,
+          releaseId: release.id,
+          patchId: any(named: 'patchId'),
+          patchNumber: patchNumber,
+          rolloutPercentage: 50,
+          platforms: platforms,
+        ),
+      ).called(1);
+
+      setUp(() {
+        stubPatches([androidPatch, iosPatch]);
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        when(() => logger.confirm(any())).thenReturn(true);
+      });
+
+      test('takes --platforms', () {
+        expect(
+          command.argParser.parse([
+            '--release-version=1.0.0+1',
+            '--patch-number=2',
+            '--percentage=50',
+            '--platforms=android,ios',
+          ])['platforms'],
+          equals(['android', 'ios']),
+        );
+      });
+
+      test('without --platforms asks, then raises every platform', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(() => logger.confirm('Roll out all of them to 50%?')).called(1);
+        // One request without platforms, which the server applies to every
+        // platform's patch under the number.
+        verifyRolloutRequest();
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion is now rolling out '
+            'to 50% of devices on stable (Android, iOS).',
+          ),
+        ).called(1);
+        verify(() => logger.info('Android:')).called(1);
+        verify(() => logger.info('iOS:')).called(1);
+      });
+
+      test('raises nothing when the prompt is declined', () async {
+        when(() => logger.confirm(any())).thenReturn(false);
+
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(isA<PromptDeclinedExit>()),
+        );
+        verifyNoRolloutRequest();
+      });
+
+      test('with --platforms raises only those, without asking', () async {
+        when(() => argResults['platforms']).thenReturn(['ios']);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verifyNever(() => logger.confirm(any()));
+        verifyRolloutRequest(platforms: [ReleasePlatform.ios]);
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion is now rolling out '
+            'to 50% of devices on stable (iOS).',
+          ),
+        ).called(1);
+      });
+
+      test('refuses a platform the number has no patch for', () async {
+        when(() => argResults['platforms']).thenReturn(['macos']);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verifyNoRolloutRequest();
+      });
+
+      test('refuses, before asking, tracks that differ', () async {
+        stubPatches([androidPatch, iosPatch.copyWith(channel: 'beta')]);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            "Patch $patchNumber's platforms are on different tracks, so pass "
+            '--platforms to choose which to roll out.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'To choose which to change, run:\n'
+            '  shorebird rollout --release-version=$releaseVersion '
+            '--patch-number=$patchNumber --percentage=50 '
+            '--platforms=android',
+          ),
+        ).called(1);
+        verifyNever(() => logger.confirm(any()));
+        verifyNoRolloutRequest();
+      });
+
+      test('refuses a platform already rolling out further', () async {
+        stubPatches([androidPatch.copyWith(rolloutPercentage: 60), iosPatch]);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            'Patch $patchNumber on release $releaseVersion is already '
+            'rolling out further than 50% on stable for Android, and a '
+            'rollout can only be raised.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'To raise only the others, run: shorebird rollout '
+            '--release-version=$releaseVersion --patch-number=$patchNumber '
+            '--percentage=50 --platforms=ios',
+          ),
+        ).called(1);
+        verifyNever(() => logger.confirm(any()));
+        verifyNoRolloutRequest();
+      });
+
+      test('gives no hint when every platform is further along', () async {
+        stubPatches([
+          androidPatch.copyWith(rolloutPercentage: 60),
+          iosPatch.copyWith(rolloutPercentage: 70),
+        ]);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            'Patch $patchNumber on release $releaseVersion is already '
+            'rolling out further than 50% on stable for Android, iOS, and a '
+            'rollout can only be raised.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => logger.info(any(that: startsWith('To raise only the others'))),
+        );
+        verifyNoRolloutRequest();
+      });
+
+      test(
+        'leaves a single chosen platform further along to the server',
+        () async {
+          stubPatches([androidPatch, iosPatch.copyWith(rolloutPercentage: 60)]);
+          when(() => argResults['platforms']).thenReturn(['ios']);
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(
+            () => logger.err(any(that: contains('already rolling out'))),
+          );
+          verifyRolloutRequest(platforms: [ReleasePlatform.ios]);
+        },
+      );
+
+      test(
+        'names the platforms in the promote hint when on no track',
+        () async {
+          stubPatches([
+            for (final p in [androidPatch, iosPatch])
+              ReleasePatch(
+                id: p.id,
+                number: p.number,
+                isRolledBack: false,
+                artifacts: const [],
+                platform: p.platform,
+              ),
+          ]);
+          when(() => argResults['platforms']).thenReturn(['ios']);
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err(
+              'Patch $patchNumber on release $releaseVersion is on no track '
+              '(iOS), so it has no rollout to raise.',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              'Put it on a track at a percentage with: '
+              'shorebird patches promote --release-version $releaseVersion '
+              '--patch-number $patchNumber --rollout 50 --platforms ios',
+            ),
+          ).called(1);
+        },
+      );
+
+      test('in --json mode, lists every patch it raised', () async {
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
+        final emitted = (data['patches'] as List).cast<Map<String, dynamic>>();
+        expect(emitted.map((p) => p['id']), equals([10, 11]));
+        expect(
+          emitted.map((p) => p['rollout_percentage']),
+          equals([50, 50]),
+        );
+        expect((data['patch'] as Map<String, dynamic>)['id'], equals(10));
+      });
+
+      test('reports a failed request once, for every platform', () async {
+        when(
+          () => codePushClientWrapper.setPatchRollout(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            patchId: any(named: 'patchId'),
+            patchNumber: any(named: 'patchNumber'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            rolloutSchedule: any(named: 'rolloutSchedule'),
+            platforms: any(named: 'platforms'),
+          ),
+        ).thenThrow(
+          ApiErrorExit(
+            const CodePushConflictException(
+              message: 'Rollouts only go up.',
+              response: ErrorResponse(
+                code: 'rollout_percentage_lower',
+                message: 'Rollouts only go up.',
+              ),
+            ),
+            ExitCode.software.code,
+          ),
+        );
+
+        final (:exitCode, :json) = await runJson();
+
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(
+          (json['error'] as Map<String, dynamic>)['message'],
+          'Failed to set the rollout of patch $patchNumber of release '
+          '"$releaseVersion". Rollouts only go up.',
+        );
+      });
+
+      group('when the server says the platforms differ', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.setPatchRollout(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              patchNumber: any(named: 'patchNumber'),
+              rolloutPercentage: any(named: 'rolloutPercentage'),
+              rolloutSchedule: any(named: 'rolloutSchedule'),
+              platforms: any(named: 'platforms'),
+            ),
+          ).thenThrow(
+            ApiErrorExit(
+              const CodePushConflictException(
+                message: 'Upgrade the Shorebird CLI or use the console.',
+                response: ErrorResponse(
+                  code: 'patch_platforms_differ',
+                  message: 'Upgrade the Shorebird CLI or use the console.',
+                ),
+              ),
+              ExitCode.software.code,
+            ),
+          );
+        });
+
+        test('prints each platform and the --platforms command', () async {
+          final result = await runWithOverrides(command.run);
+
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => logger.info(
+              'To choose which to change, run:\n'
+              '  shorebird rollout --release-version=$releaseVersion '
+              '--patch-number=$patchNumber --percentage=50 '
+              '--platforms=android,ios',
+            ),
+          ).called(1);
+        });
+
+        test("in --json mode, does not pass on the server's message", () async {
+          final (:exitCode, :json) = await runJson();
+
+          expect(exitCode, equals(ExitCode.software.code));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['api_code'], equals('patch_platforms_differ'));
+          expect(error['message'], isNot(contains('Upgrade')));
+          expect(error['hint'], contains('--platforms=android,ios'));
+        });
       });
     });
   });
