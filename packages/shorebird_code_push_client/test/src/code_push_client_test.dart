@@ -1776,6 +1776,54 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
+      test('sends the link fields when given', () async {
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+              platform: ReleasePlatform.ios,
+              linkKey: 'abc123',
+              gitSha: 'abc123',
+              gitDirty: false,
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'release_id': releaseId,
+            'metadata': {'foo': 'bar'},
+            'platform': 'ios',
+            'link_key': 'abc123',
+            'git_sha': 'abc123',
+            'git_dirty': false,
+          }),
+        );
+      });
+
+      test('omits the link fields when not given', () async {
+        codePushClient
+            .createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'release_id': releaseId,
+            'metadata': {'foo': 'bar'},
+          }),
+        );
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
@@ -3493,6 +3541,28 @@ void main() {
             ],
             'rollout_pause_weekends': true,
             'rollout_timezone': 'America/New_York',
+          }),
+        );
+      });
+
+      test('sends platforms when given', () async {
+        codePushClient
+            .promotePatch(
+              appId: appId,
+              patchId: patchId,
+              channelId: channelId,
+              platforms: [ReleasePlatform.android],
+            )
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(
+          json.decode(request.body),
+          equals({
+            'patch_id': patchId,
+            'channel_id': channelId,
+            'platforms': ['android'],
           }),
         );
       });

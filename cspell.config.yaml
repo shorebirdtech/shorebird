@@ -117,6 +117,7 @@ words:
   - nserror
   - OCSF # Open Cybersecurity Schema Framework, the audit log format
   - Oltman
+  - oneline # git log --oneline
   - orri # Arm64 instruction, Or Register with Immediate
   - parseable
   - patchability

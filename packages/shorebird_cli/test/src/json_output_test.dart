@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:args/args.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
@@ -64,6 +65,19 @@ void main() {
         final json = result.toJson();
         final error = json['error'] as Map<String, dynamic>;
         expect(error['hint'], equals('Run: shorebird login'));
+      });
+
+      test("carries the tracker's error data", () {
+        final tracker = JsonEnvelopeTracker()..errorData = {'key': 'value'};
+        final result = runScoped(
+          () => JsonResult.error(
+            code: JsonErrorCode.processExit,
+            message: 'Failed.',
+            command: 'patch',
+          ),
+          values: {jsonEnvelopeTrackerRef.overrideWith(() => tracker)},
+        );
+        expect(result.toJson()['data'], equals({'key': 'value'}));
       });
     });
   });

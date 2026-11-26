@@ -602,14 +602,26 @@ class CodePushClient {
   }
 
   /// Create a new patch for the given [releaseId].
+  ///
+  /// Patches for other platforms created on the release with the same
+  /// [linkKey] can share its number. [gitSha] and [gitDirty] record the commit
+  /// the patch was built from.
   Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    ReleasePlatform? platform,
+    String? linkKey,
+    String? gitSha,
+    bool? gitDirty,
   }) async {
     final request = CreatePatchRequest(
       releaseId: releaseId,
       metadata: metadata,
+      platform: platform,
+      linkKey: linkKey,
+      gitSha: gitSha,
+      gitDirty: gitDirty,
     );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
@@ -1051,6 +1063,9 @@ class CodePushClient {
   /// holds over weekends in [rolloutTimezone] when [rolloutPauseWeekends] is
   /// set. Schedules and [rolloutPercentage] are mutually exclusive, and the
   /// server answers 403 when the app's plan does not include schedules.
+  ///
+  /// [platforms] limits the promotion to those platforms' patches under the
+  /// patch's number; without it the server promotes every platform's.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
@@ -1059,6 +1074,7 @@ class CodePushClient {
     List<RolloutStep>? rolloutSteps,
     bool? rolloutPauseWeekends,
     String? rolloutTimezone,
+    List<ReleasePlatform>? platforms,
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches/promote'),
@@ -1070,6 +1086,7 @@ class CodePushClient {
           rolloutSteps: rolloutSteps,
           rolloutPauseWeekends: rolloutPauseWeekends,
           rolloutTimezone: rolloutTimezone,
+          platforms: platforms,
         ).toJson(),
       ),
     );

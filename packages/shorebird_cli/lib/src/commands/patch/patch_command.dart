@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/directory.dart';
+import 'package:shorebird_cli/src/extensions/release_patch.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/flutter_build_options.dart';
@@ -79,6 +80,21 @@ class PatchCommand extends ShorebirdCommand {
         abbr: 'p',
         help: 'The platform(s) to build this patch for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
+      )
+      ..addOption(
+        patchKeyArgName,
+        help:
+            'Give this patch the same patch number as patches for other '
+            'platforms published with the same key on the release. Defaults '
+            "to the commit's SHA when the git working tree is clean.",
+        valueHelp: 'key',
+      )
+      ..addFlag(
+        noLinkArgName,
+        negatable: false,
+        help:
+            'Do not share a patch number with patches for other platforms, '
+            'even when built from the same commit.',
       )
       ..addOption(
         CommonArguments.buildNameArg.name,
@@ -274,14 +290,16 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   /// The option naming an existing patch to add this build to.
   static const addToPatchArgName = 'add-to-patch';
 
-  /// The options that set where and to whom a new patch is published, which
-  /// a patch being added to already has.
+  /// The options that set where and to whom a new patch is published, and
+  /// what it links to, which a patch being added to already has.
   static const _publishArgNames = [
     'track',
     rolloutArgName,
     rolloutStepsArgName,
     pauseWeekendsArgName,
     timezoneArgName,
+    patchKeyArgName,
+    noLinkArgName,
   ];
 
   late final ResolvePatcher _resolvePatcher;
@@ -300,6 +318,23 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
   // Installs the Flutter it builds with (see ShorebirdFlutter.installRevision).
   @override
   bool get usesPinnedFlutter => false;
+
+  /// The option that sets the key linking this patch to other platforms'.
+  static const patchKeyArgName = 'patch-key';
+
+  /// The flag that turns linking off.
+  static const noLinkArgName = 'no-link';
+
+  /// The longest key the server accepts.
+  static const patchKeyMaxLength = 255;
+
+  /// How this run links its platforms' patches, set by [run] before any
+  /// platform is built.
+  PatchLinkPlan _link = PatchLinkPlan.none;
+
+  /// The patches of each release this run checks for already published
+  /// platforms, by release id, fetched once per release.
+  final _releasePatches = <int, Future<List<ReleasePatch>>>{};
 
   @override
   String get description =>
@@ -455,6 +490,25 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       );
     }
 
+    final patchKey = (results[patchKeyArgName] as String?)?.trim();
+    final noLink = results[noLinkArgName] == true;
+    if (patchKey != null) {
+      if (patchKey.isEmpty) {
+        usageException('--$patchKeyArgName cannot be empty.');
+      }
+      if (patchKey.length > patchKeyMaxLength) {
+        usageException(
+          '--$patchKeyArgName must be at most $patchKeyMaxLength characters '
+          '(got ${patchKey.length}).',
+        );
+      }
+      if (noLink) {
+        usageException(
+          'Pass --$patchKeyArgName or --$noLinkArgName, not both.',
+        );
+      }
+    }
+
     final patchers = [
       for (final releaseType in releaseTypes) _resolvePatcher(releaseType),
     ];
@@ -464,9 +518,46 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
       await _assertCanPatch(patcher);
     }
 
+    // Decided once, so every platform built by this run sends the same key.
+    // A build added to an existing patch joins that patch, so it has no key.
+    _link = addToPatchNumber != null
+        ? PatchLinkPlan.none
+        : await resolvePatchLink(
+            patchKey: patchKey,
+            noLink: noLink,
+            platforms: [
+              for (final p in patchers) p.releaseType.releasePlatform,
+            ],
+            projectRoot:
+                shorebirdEnv.getShorebirdProjectRoot() ?? Directory.current,
+          );
+
     final published = <PublishedPatch>[];
-    for (final patcher in patchers) {
-      published.add(await _recordPatchRun(patcher));
+    for (final (index, patcher) in patchers.indexed) {
+      try {
+        published.add(await _recordPatchRun(patcher));
+      } catch (_) {
+        if (published.any((p) => !p.alreadyPublished)) {
+          final unfinished = patchers.skip(index).toList();
+          if (isJsonMode) {
+            // A random key is not derived again on a rerun, so a script
+            // needs it to finish the remaining platforms under one number.
+            read(jsonEnvelopeTrackerRef, orElse: () => null)?.errorData = {
+              'link_key': _link.key,
+              'patches': [for (final p in published) p.toJson()],
+              'unfinished_platforms': [
+                for (final p in unfinished) p.releaseType.cliName,
+              ],
+            };
+          } else {
+            _logPublished(published);
+            if (_link.source == PatchLinkSource.random) {
+              _logResumeCommand(unfinished: unfinished);
+            }
+          }
+        }
+        rethrow;
+      }
     }
 
     final schedule = rolloutSchedule;
@@ -484,15 +575,105 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
           'rollout_pause_weekends': schedule.pauseWeekends,
           'rollout_timezone': ?schedule.timezone,
         },
+        'link_key': _link.key,
         'patches': [for (final p in published) p.toJson()],
       });
-    } else if (schedule != null) {
-      _logScheduledRollout(published: published, schedule: schedule);
+      return ExitCode.success.code;
+    }
+
+    if (_patchToAddTo == null) _logPublished(published);
+    // A skipped platform keeps the rollout an earlier run gave it.
+    final newlyPublished = [
+      for (final p in published)
+        if (!p.alreadyPublished) p,
+    ];
+    if (schedule != null) {
+      _logScheduledRollout(published: newlyPublished, schedule: schedule);
     } else if (rolloutPercentage case final percentage? when percentage < 100) {
-      _logPartialRollout(published: published, percentage: percentage);
+      _logPartialRollout(published: newlyPublished, percentage: percentage);
     }
 
     return ExitCode.success.code;
+  }
+
+  /// Says which patch number each platform this run published in [published]
+  /// has, one line for each number, and that platforms on different releases
+  /// are not linked. Platforms an earlier run published are left out; they
+  /// were reported when skipped.
+  void _logPublished(List<PublishedPatch> published) {
+    final newlyPublished = published.where((p) => !p.alreadyPublished);
+    if (newlyPublished.isEmpty) {
+      logger.info('\nNothing new to publish.');
+      return;
+    }
+    final releaseVersions = {for (final p in published) p.release.version};
+    final groups = <(String, int), List<ReleasePlatform>>{};
+    for (final p in newlyPublished) {
+      groups
+          .putIfAbsent((p.release.version, p.patch.number), () => [])
+          .add(p.platform);
+    }
+    final parts = [
+      for (final MapEntry(key: (version, number), value: platforms)
+          in groups.entries)
+        [
+          'patch $number',
+          if (releaseVersions.length > 1) 'on release $version',
+          '(${platforms.map((p) => p.displayName).join(', ')})',
+        ].join(' '),
+    ];
+    logger.success('\n✅ Published ${parts.join(' and ')}!');
+
+    if (_link.key != null && releaseVersions.length > 1) {
+      final patched = [
+        for (final p in published)
+          '${p.platform.displayName} ${p.release.version}',
+      ].join(', ');
+      logger.info(
+        'Not linked across releases: patches share a number only within one '
+        'release, and these platforms patched different ones ($patched).',
+      );
+    }
+  }
+
+  /// Prints the command that publishes the [unfinished] platforms under this
+  /// run's key, for a run whose key no rerun would derive again: this run's
+  /// own arguments with the platforms and key replaced, quoted for a shell.
+  void _logResumeCommand({required List<Patcher> unfinished}) {
+    final args = [
+      '--platforms=${unfinished.map((p) => p.releaseType.cliName).join(',')}',
+      '--$patchKeyArgName=${_link.key}',
+      ..._argumentsWithoutPlatformsOrKey(),
+    ].map(shellQuote).join(' ');
+    logger.info(
+      'To give the remaining platforms the same patch number, run:\n'
+      '  ${lightCyan.wrap('shorebird $name $args')}',
+    );
+  }
+
+  /// This run's arguments without `--platforms` (`-p`) and `--patch-key`
+  /// and their values. Arguments after `--` are kept as given.
+  List<String> _argumentsWithoutPlatformsOrKey() {
+    const names = ['platforms', patchKeyArgName];
+    final args = results.arguments;
+    final kept = <String>[];
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      if (arg == '--') {
+        kept.addAll(args.skip(i));
+        break;
+      }
+      if (arg == '-p' || names.any((name) => arg == '--$name')) {
+        i++; // Skips the value in the next argument.
+        continue;
+      }
+      if ((arg.startsWith('-p') && !arg.startsWith('--')) ||
+          names.any((name) => arg.startsWith('--$name='))) {
+        continue;
+      }
+      kept.add(arg);
+    }
+    return kept;
   }
 
   /// Says what a rollout below 100% means for each of [published] and how to
@@ -674,6 +855,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
 
     assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
+
+    final publishedUnderKey = await _findPublishedUnderKey(
+      patcher: patcher,
+      release: release,
+    );
     _assertCanSignForRelease(release: release, patcher: patcher);
     _assertReleaseSignedForPolicy(app: app, release: release, patcher: patcher);
     _warnIfFlutterRevisionHasKnownIssue(release: release, patcher: patcher);
@@ -738,6 +924,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
           releaseArtifact: downloaded.releaseArtifact,
           releaseArchive: downloaded.releaseArchive,
           supplementDirectory: downloaded.supplementDirectory,
+          publishedUnderKey: publishedUnderKey,
         ),
         values: {
           shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
@@ -748,6 +935,47 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
         directory.deleteTemporarySync();
       }
     }
+  }
+
+  /// Returns [patcher]'s platform's patch on [release] that an earlier run
+  /// published under this run's key, which is this commit's SHA, to
+  /// [track], or null when there is none to compare this run's build with.
+  ///
+  /// Only the platform's newest patch on the release counts, so a platform
+  /// that has moved on to a newer patch is published again, and only once
+  /// its artifacts are uploaded and while it is not rolled back. Null on a
+  /// dirty tree or a dry run.
+  Future<ReleasePatch?> _findPublishedUnderKey({
+    required Patcher patcher,
+    required Release release,
+  }) async {
+    final key = _link.key;
+    if (key == null || !_link.canSkipPublished) return null;
+    if (results['dry-run'] == true) return null;
+
+    // The whole list, not only the key's patches, to see whether the
+    // platform has a newer patch than the one under the key.
+    final patches = await _releasePatches.putIfAbsent(
+      release.id,
+      () => codePushClientWrapper.getReleasePatches(
+        appId: appId,
+        releaseId: release.id,
+      ),
+    );
+    final platform = patcher.releaseType.releasePlatform;
+    final platformPatches = patches
+        .where((p) => p.resolvedPlatform == platform)
+        .toList();
+    if (platformPatches.isEmpty) return null;
+    final newest = platformPatches.map((p) => p.number).max;
+    return platformPatches.firstWhereOrNull(
+      (p) =>
+          p.number == newest &&
+          p.linkKey == key &&
+          p.artifacts.isNotEmpty &&
+          !p.isRolledBack &&
+          p.channel == track.channel,
+    );
   }
 
   /// The patchers [_assertCanPatch] has already passed.
@@ -804,7 +1032,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. A patch built with different
     final publishArgs = _publishArgNames.where(results.wasParsed);
     if (publishArgs.isNotEmpty) {
       usageException(
-        'Patch $number keeps its own track and rollout. Remove '
+        'Patch $number keeps its own track, rollout and link. Remove '
         '${publishArgs.map((arg) => '--$arg').join(', ')}.',
       );
     }
@@ -1268,6 +1496,7 @@ A patch must be built with the --dart-define values and --target of its release,
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required Directory? supplementDirectory,
+    required ReleasePatch? publishedUnderKey,
   }) async {
     await cache.updateAll();
 
@@ -1315,6 +1544,40 @@ Building patch with Flutter $flutterVersionString
 
     await assertMinLinkPercentage(patcher);
 
+    // A rerun of the same commit builds the same patch unless something the
+    // commit doesn't record changed (a --dart-define, the CLI, an ignored
+    // file), so only an identical build is skipped.
+    if (publishedUnderKey case final existing?) {
+      final platform = patcher.releaseType.releasePlatform;
+      final name = platform.displayName;
+      if (_isSameBuild(
+        patch: existing,
+        platform: platform,
+        bundles: patchArtifactBundles,
+      )) {
+        logger.info('$name already published as patch ${existing.number}.');
+        if (rolloutSchedule != null ||
+            (rolloutPercentage ?? 100) != (existing.rolloutPercentage ?? 100)) {
+          logger.info(
+            'Patch ${existing.number} keeps its rollout. To change it, run:\n'
+            '  shorebird patches rollout --release-version ${release.version} '
+            '--patch-number ${existing.number} --percentage <percentage>',
+          );
+        }
+        return PublishedPatch(
+          platform: platform,
+          release: release,
+          patch: CreatePatchResponse(id: existing.id, number: existing.number),
+          linkPercentage: null,
+          alreadyPublished: true,
+        );
+      }
+      logger.info(
+        "$name's build differs from patch ${existing.number}, built from "
+        'this commit, so it is published again.',
+      );
+    }
+
     _exitIfDryRun(patcher: patcher, release: release);
 
     await logPatchSummary(
@@ -1360,7 +1623,15 @@ Building patch with Flutter $flutterVersionString
               artifacts: patchArtifactBundles,
               rolloutPercentage: rolloutPercentage,
               rolloutSchedule: rolloutSchedule,
+              linkKey: _link.key,
+              gitSha: _link.checkout?.sha,
+              gitDirty: _link.checkout?.dirty,
             ),
+    );
+    _logLink(
+      platform: patcher.releaseType.releasePlatform,
+      release: release,
+      patch: patch,
     );
     _buildRun?.patchId = patch.id;
     if (app.crashReportingEnabled) {
@@ -1384,6 +1655,73 @@ Building patch with Flutter $flutterVersionString
       patch: patch,
       linkPercentage: patcher.linkPercentage,
     );
+  }
+
+  /// Whether [bundles] are the artifacts [patch] already has for [platform]:
+  /// one per arch, each with the same hash.
+  bool _isSameBuild({
+    required ReleasePatch patch,
+    required ReleasePlatform platform,
+    required Map<Arch, PatchArtifactBundle> bundles,
+  }) {
+    final published = {
+      for (final artifact in patch.artifacts)
+        if (artifact.platform == platform) artifact.arch: artifact.hash,
+    };
+    return published.length == bundles.length &&
+        bundles.values.every((bundle) => published[bundle.arch] == bundle.hash);
+  }
+
+  /// Says what linking did for [platform]'s [patch] on [release].
+  void _logLink({
+    required ReleasePlatform platform,
+    required Release release,
+    required CreatePatchResponse patch,
+  }) {
+    final link = patch.link;
+    if (link == null) return;
+    final name = platform.displayName;
+    final number = patch.number;
+    final others = [
+      for (final p in link.platforms ?? const <String>[])
+        ReleasePlatform.values
+                .firstWhereOrNull((r) => r.value == p)
+                ?.displayName ??
+            p,
+    ];
+    switch (link.result) {
+      case 'linked':
+        final details = [
+          ...others,
+          if (_link.source == PatchLinkSource.commit)
+            'commit ${_link.checkout!.shortSha}',
+        ];
+        final suffix = details.isEmpty ? '' : ' (${details.join(', ')})';
+        logger.info('Linked $name to patch $number$suffix.');
+      case 'reused':
+        logger.info('Resumed the unfinished patch $number for $name.');
+      case 'not_linked':
+        final linkNumber = link.linkNumber;
+        final linkedPatch = linkNumber == null
+            ? 'the patch for other platforms'
+            : 'patch $linkNumber';
+        final newerPatch = switch (link.platformPatchNumber) {
+          final number? => 'patch $number',
+          null => 'a newer patch',
+        };
+        final why = switch (link.reason) {
+          'platform_already_patched' =>
+            '$name already published $linkedPatch under this key',
+          'platform_has_newer_patch' =>
+            '$name already has $newerPatch on release ${release.version}, '
+                'so it cannot join $linkedPatch',
+          'number_rolled_back' =>
+            '$linkedPatch is rolled back on a platform, so $name cannot '
+                'join it',
+          _ => '$name could not join $linkedPatch',
+        };
+        logger.info('Not linked: $why. $name is patch $number.');
+    }
   }
 
   /// Exits if [release] was built with a Flutter version older than
@@ -1911,6 +2249,7 @@ class PublishedPatch {
     required this.release,
     required this.patch,
     required this.linkPercentage,
+    this.alreadyPublished = false,
   });
 
   /// The platform the patch was built for.
@@ -1926,6 +2265,10 @@ class PublishedPatch {
   /// where the platform reports one.
   final double? linkPercentage;
 
+  /// Whether an earlier run published this patch, so this run skipped the
+  /// platform.
+  final bool alreadyPublished;
+
   /// The shape written into the `--json` envelope.
   Map<String, dynamic> toJson() => {
     'platform': platform.name,
@@ -1934,5 +2277,7 @@ class PublishedPatch {
     'patch_id': patch.id,
     'patch_number': patch.number,
     'link_percentage': linkPercentage,
+    'already_published': alreadyPublished,
+    'link_result': patch.link?.result,
   };
 }

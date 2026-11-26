@@ -29,6 +29,10 @@ final jsonSinkRef = create<io.IOSink>(() => io.stdout);
 class JsonEnvelopeTracker {
   /// Whether an envelope has been written.
   bool written = false;
+
+  /// What a failing command finished before it failed, written as `data` in
+  /// its error envelope, or null when there is nothing to report.
+  Map<String, dynamic>? errorData;
 }
 
 /// A reference to the [JsonEnvelopeTracker] for the current command run.
@@ -173,7 +177,9 @@ class JsonError {
 /// ```json
 /// {
 ///   "status": "success" | "error",
-///   "data": { ... },           // present on success
+///   "data": { ... },           // present on success, and on an error
+///                              // after the command finished part of its
+///                              // work
 ///   "error": { ... },          // present on error
 ///   "meta": { "version": "...", "command": "..." }
 /// }
@@ -226,9 +232,11 @@ class JsonResult {
       documentationUrl: documentationUrl,
     );
     final meta = JsonMeta(version: packageVersion, command: command);
+    final data = read(jsonEnvelopeTrackerRef, orElse: () => null)?.errorData;
     return JsonResult._(
       toJson: () => {
         'status': JsonStatus.error.name,
+        'data': ?data,
         'error': error.toJson(),
         'meta': meta.toJson(),
       },

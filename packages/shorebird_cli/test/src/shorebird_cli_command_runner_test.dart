@@ -1396,9 +1396,47 @@ Engine • revision unknown (Flutter not installed yet)'''),
         expect(error['code'], equals('process_exit'));
         expect(error['message'], equals('Something is wrong.'));
         expect(error['hint'], equals('Run: shorebird fix'));
+        expect(json.containsKey('data'), isFalse);
         final meta = json['meta'] as Map<String, dynamic>;
         expect(meta['command'], equals('command-error'));
         verifyNever(() => logger.err(any()));
+      });
+
+      group('when a failing command recorded errorData', () {
+        Future<Map<String, dynamic>> runFailing(Exception error) async {
+          commandRunner.addCommand(_ErrorDataCommand(error));
+          await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'error-data']),
+            ),
+          );
+          expect(stdoutOutput, hasLength(1));
+          return jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+        }
+
+        test('carries it in the CommandError envelope', () async {
+          final json = await runFailing(
+            CommandError(message: 'Build failed.', exitCode: ExitCode.software),
+          );
+          expect(json['status'], equals('error'));
+          expect(json['data'], equals(_ErrorDataCommand.data));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['message'], equals('Build failed.'));
+        });
+
+        test('carries it in the ProcessExit envelope', () async {
+          final json = await runFailing(ProcessExit(ExitCode.software.code));
+          expect(json['data'], equals(_ErrorDataCommand.data));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('process_exit'));
+        });
+
+        test('carries it in the envelope for an unexpected error', () async {
+          final json = await runFailing(Exception('boom'));
+          expect(json['data'], equals(_ErrorDataCommand.data));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('software_error'));
+        });
       });
 
       group('when a command fails without writing an envelope', () {
@@ -2131,6 +2169,31 @@ class _CommandErrorCommand extends ShorebirdCommand {
       hint: 'Run: shorebird fix',
       exitCode: ExitCode.unavailable,
     );
+  }
+}
+
+/// Records errorData, as `shorebird patch` does after publishing some
+/// platforms, then throws [error].
+class _ErrorDataCommand extends ShorebirdCommand {
+  _ErrorDataCommand(this.error);
+
+  static const data = {
+    'link_key': 'k',
+    'unfinished_platforms': ['ios'],
+  };
+
+  final Exception error;
+
+  @override
+  String get name => 'error-data';
+
+  @override
+  String get description => 'A command that records errorData and fails';
+
+  @override
+  Future<int> run() async {
+    read(jsonEnvelopeTrackerRef)?.errorData = data;
+    throw error;
   }
 }
 

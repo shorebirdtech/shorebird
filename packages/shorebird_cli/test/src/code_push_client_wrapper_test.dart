@@ -4297,6 +4297,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
               rolloutPercentage: any(named: 'rolloutPercentage'),
+              platforms: any(named: 'platforms'),
             ),
           ).thenThrow(error);
 
@@ -4320,6 +4321,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
               rolloutPercentage: any(named: 'rolloutPercentage'),
+              platforms: any(named: 'platforms'),
             ),
           ).thenAnswer((_) async => patch);
 
@@ -4341,6 +4343,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
               rolloutPercentage: any(named: 'rolloutPercentage'),
+              platforms: any(named: 'platforms'),
             ),
           ).thenAnswer((_) async {});
 
@@ -4882,6 +4885,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               metadata: any(named: 'metadata'),
+              platform: any(named: 'platform'),
+              linkKey: any(named: 'linkKey'),
+              gitSha: any(named: 'gitSha'),
+              gitDirty: any(named: 'gitDirty'),
             ),
           ).thenAnswer((_) async => patch);
           when(
@@ -4903,6 +4910,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: any(named: 'patchId'),
               channelId: any(named: 'channelId'),
               rolloutPercentage: any(named: 'rolloutPercentage'),
+              platforms: any(named: 'platforms'),
             ),
           ).thenAnswer((_) async => patch);
         });
@@ -4924,6 +4932,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               metadata: {'foo': 'bar'},
+              platform: releasePlatform,
             ),
           ).called(1);
           verify(
@@ -4948,6 +4957,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               patchId: patchId,
               channelId: channel.id,
+              platforms: [releasePlatform],
             ),
           ).called(1);
         });
@@ -4980,6 +4990,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               releaseId: releaseId,
               metadata: {'foo': 'bar'},
+              platform: releasePlatform,
             ),
           ).called(1);
           verify(
@@ -5004,6 +5015,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: appId,
               patchId: patchId,
               channelId: channel.id,
+              platforms: [releasePlatform],
             ),
           ).called(1);
         });
@@ -5027,11 +5039,40 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               patchId: patchId,
               channelId: channel.id,
               rolloutPercentage: 10,
+              platforms: [releasePlatform],
             ),
           ).called(1);
         });
 
-        test('prints patch number on success', () async {
+        test('sends the link fields', () async {
+          await runWithOverrides(
+            () => codePushClientWrapper.publishPatch(
+              appId: appId,
+              releaseId: releaseId,
+              platform: releasePlatform,
+              track: track,
+              patchArtifactBundles: patchArtifactBundles,
+              metadata: {'foo': 'bar'},
+              linkKey: 'key',
+              gitSha: 'abc',
+              gitDirty: true,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+              platform: releasePlatform,
+              linkKey: 'key',
+              gitSha: 'abc',
+              gitDirty: true,
+            ),
+          ).called(1);
+        });
+
+        test('does not print a success message', () async {
           await runWithOverrides(
             () => codePushClientWrapper.publishPatch(
               appId: appId,
@@ -5043,9 +5084,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           );
 
-          verify(
-            () => logger.success(any(that: contains('Published Patch 2!'))),
-          ).called(1);
+          verifyNever(() => logger.success(any()));
         });
       });
     });

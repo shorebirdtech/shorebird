@@ -1650,12 +1650,18 @@ $name artifact already exists, continuing...''');
     }
   }
 
-  /// Creates a patch for the given [appId], [releaseId], and [metadata].
+  /// Creates [platform]'s patch for the given [appId], [releaseId], and
+  /// [metadata], linked by [linkKey] and recording the commit [gitSha] when
+  /// given.
   @visibleForTesting
   Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    ReleasePlatform? platform,
+    String? linkKey,
+    String? gitSha,
+    bool? gitDirty,
   }) {
     return _withProgress(
       'Creating patch',
@@ -1663,6 +1669,10 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         metadata: metadata,
+        platform: platform,
+        linkKey: linkKey,
+        gitSha: gitSha,
+        gitDirty: gitDirty,
       ),
     );
   }
@@ -1698,12 +1708,16 @@ $name artifact already exists, continuing...''');
   /// Promotes a patch to a specific [channel], starting a rollout there at
   /// [rolloutPercentage], on the timed schedule [rolloutSchedule], or to
   /// every device on it when both are null.
+  ///
+  /// [platforms] limits the promotion to those platforms' patches under the
+  /// patch's number; without it the server promotes every platform's.
   Future<void> promotePatch({
     required String appId,
     required int patchId,
     required Channel channel,
     double? rolloutPercentage,
     RolloutSchedule? rolloutSchedule,
+    List<ReleasePlatform>? platforms,
   }) {
     final share = switch ((rolloutPercentage, rolloutSchedule)) {
       (final double percentage, _) =>
@@ -1723,6 +1737,7 @@ $name artifact already exists, continuing...''');
         rolloutSteps: rolloutSchedule?.steps,
         rolloutPauseWeekends: rolloutSchedule?.pauseWeekends,
         rolloutTimezone: rolloutSchedule?.timezone,
+        platforms: platforms,
       ),
     );
   }
@@ -1838,6 +1853,11 @@ $name artifact already exists, continuing...''');
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track], at [rolloutPercentage] of its
   /// devices or on the timed schedule [rolloutSchedule] when given.
+  ///
+  /// [linkKey] links the patch to patches for other platforms created with
+  /// the same key; [gitSha] and [gitDirty] record the commit it was built
+  /// from. Only [platform]'s patch is promoted, even when the patch shares
+  /// its number with other platforms.
   Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
@@ -1847,11 +1867,18 @@ $name artifact already exists, continuing...''');
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
     double? rolloutPercentage,
     RolloutSchedule? rolloutSchedule,
+    String? linkKey,
+    String? gitSha,
+    bool? gitDirty,
   }) async {
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
+      platform: platform,
+      linkKey: linkKey,
+      gitSha: gitSha,
+      gitDirty: gitDirty,
     );
 
     await createPatchArtifacts(
@@ -1871,9 +1898,9 @@ $name artifact already exists, continuing...''');
       channel: channel,
       rolloutPercentage: rolloutPercentage,
       rolloutSchedule: rolloutSchedule,
+      platforms: [platform],
     );
 
-    logger.success('\n✅ Published Patch ${patch.number}!');
     return patch;
   }
 

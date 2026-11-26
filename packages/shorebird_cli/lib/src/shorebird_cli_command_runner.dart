@@ -366,6 +366,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       // --json command always leaves exactly one on stdout: the command's if
       // it wrote one, otherwise the runner's.
       final envelope = JsonEnvelopeTracker();
+      // Runs [body] where [jsonEnvelopeTrackerRef] reads [envelope], so an
+      // envelope written here is recorded and carries the command's
+      // errorData.
+      T inEnvelope<T>(T Function() body) => runScoped(
+        body,
+        values: {
+          jsonEnvelopeTrackerRef.overrideWith(() => envelope),
+        },
+      );
       final aliasNotice = _aliasNotice(topLevelResults);
       // Under --json, human lines already go to stderr, so the notice
       // never reaches the envelope.
@@ -378,12 +387,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
       try {
         await _installPinnedFlutterIfUsed(topLevelResults);
-        exitCode = await runScoped(
-          () => super.runCommand(topLevelResults),
-          values: {
-            jsonEnvelopeTrackerRef.overrideWith(() => envelope),
-          },
-        );
+        exitCode = await inEnvelope(() => super.runCommand(topLevelResults));
         // A command that fails by returning an exit code (a failed
         // precondition, say) may not have written an envelope. Write the
         // same one a thrown ProcessExit gets.
@@ -391,16 +395,18 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             !envelope.written &&
             exitCode != null &&
             exitCode != ExitCode.success.code) {
-          JsonResult.error(
-            code: JsonErrorCode.processExit,
-            message: 'Process exited with code $exitCode.',
-            command: commandName,
-          ).write();
+          inEnvelope(
+            () => JsonResult.error(
+              code: JsonErrorCode.processExit,
+              message: 'Process exited with code $exitCode.',
+              command: commandName,
+            ).write(),
+          );
         }
       } on CommandError catch (error) {
         exitCode = error.exitCode;
         if (!(isJsonMode && envelope.written)) {
-          error.report(command: commandName);
+          inEnvelope(() => error.report(command: commandName));
         }
       } on ProcessExit catch (error) {
         exitCode = error.exitCode;
@@ -414,20 +420,22 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
               ? error.failure
               : null;
           final apiError = error is ApiErrorExit ? error.error : null;
-          JsonResult.error(
-            code: failure == null
-                ? JsonErrorCode.processExit
-                : JsonErrorCode.preconditionFailed,
-            message:
-                failure?.message ??
-                apiError?.message ??
-                'Process exited with code ${error.exitCode}.',
-            hint: failure?.hint,
-            apiCode: apiError?.code,
-            details: apiError?.details,
-            documentationUrl: apiError?.documentationUrl,
-            command: commandName,
-          ).write();
+          inEnvelope(
+            () => JsonResult.error(
+              code: failure == null
+                  ? JsonErrorCode.processExit
+                  : JsonErrorCode.preconditionFailed,
+              message:
+                  failure?.message ??
+                  apiError?.message ??
+                  'Process exited with code ${error.exitCode}.',
+              hint: failure?.hint,
+              apiCode: apiError?.code,
+              details: apiError?.details,
+              documentationUrl: apiError?.documentationUrl,
+              command: commandName,
+            ).write(),
+          );
         }
       } on UsageException catch (e) {
         if (isJsonMode) {
@@ -436,12 +444,14 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
           final hint = subcommand == null
               ? 'Run: shorebird --help'
               : 'Run: shorebird $subcommand --help'; // coverage:ignore-line
-          JsonResult.error(
-            code: JsonErrorCode.usageError,
-            message: e.message,
-            hint: hint,
-            command: commandName,
-          ).write();
+          inEnvelope(
+            () => JsonResult.error(
+              code: JsonErrorCode.usageError,
+              message: e.message,
+              hint: hint,
+              command: commandName,
+            ).write(),
+          );
         } else {
           logger
             ..err(e.message)
@@ -453,12 +463,14 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       } on InteractivePromptRequiredException catch (e) {
         if (isJsonMode) {
           if (envelope.written) return ExitCode.usage.code;
-          JsonResult.error(
-            code: JsonErrorCode.interactivePromptRequired,
-            message: e.promptText,
-            hint: e.hint,
-            command: commandName,
-          ).write();
+          inEnvelope(
+            () => JsonResult.error(
+              code: JsonErrorCode.interactivePromptRequired,
+              message: e.promptText,
+              hint: e.hint,
+              command: commandName,
+            ).write(),
+          );
         } else {
           logger
             ..err(
@@ -476,11 +488,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         // ignore: avoid_catches_without_on_clauses
       } catch (error, stackTrace) {
         if (isJsonMode && !envelope.written) {
-          JsonResult.error(
-            code: JsonErrorCode.softwareError,
-            message: '$error',
-            command: commandName,
-          ).write();
+          inEnvelope(
+            () => JsonResult.error(
+              code: JsonErrorCode.softwareError,
+              message: '$error',
+              command: commandName,
+            ).write(),
+          );
         }
         logger
           ..err('$error')
