@@ -2,6 +2,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/set_track_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -135,6 +136,7 @@ void main() {
           channel: any(named: 'channel'),
           rolloutPercentage: any(named: 'rolloutPercentage'),
           rolloutSchedule: any(named: 'rolloutSchedule'),
+          platforms: any(named: 'platforms'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -1220,6 +1222,341 @@ void main() {
             ),
           );
         });
+      });
+    });
+
+    group('when patches for several platforms share the number', () {
+      const androidPatch = ReleasePatch(
+        id: 10,
+        number: patchNumber,
+        channel: 'stable',
+        isRolledBack: false,
+        artifacts: [],
+        platform: ReleasePlatform.android,
+      );
+      const iosPatch = ReleasePatch(
+        id: 11,
+        number: patchNumber,
+        channel: 'beta',
+        isRolledBack: false,
+        artifacts: [],
+        platform: ReleasePlatform.ios,
+      );
+
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer((_) async => [androidPatch, iosPatch]);
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        when(() => logger.confirm(any())).thenReturn(true);
+      });
+
+      test('with --platforms moves only those platforms', () async {
+        when(() => argResults['platforms']).thenReturn(['ios']);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: iosPatch.id,
+            channel: targetChannel,
+            platforms: [ReleasePlatform.ios],
+          ),
+        ).called(1);
+        verifyNever(() => logger.confirm(any()));
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion is now in channel '
+            '${targetChannel.name} (iOS)!',
+          ),
+        ).called(1);
+      });
+
+      test('says so when the platforms given are already there', () async {
+        when(() => argResults['platforms']).thenReturn(['android']);
+        when(() => argResults['track']).thenReturn('stable');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            'Patch $patchNumber on release $releaseVersion is already in '
+            'channel stable (Android).',
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            platforms: any(named: 'platforms'),
+          ),
+        );
+      });
+
+      test('moves only the platforms not already on the track, so the '
+          "others' rollout does not restart", () async {
+        when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+        when(() => argResults['track']).thenReturn('stable');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: iosPatch.id,
+            channel: targetChannel,
+            platforms: [ReleasePlatform.ios],
+          ),
+        ).called(1);
+        verify(
+          () => logger.success(
+            'Patch $patchNumber on release $releaseVersion is now in channel '
+            'stable (iOS)!',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info('Android stays in channel stable.'),
+        ).called(1);
+      });
+
+      test(
+        'in --json mode, reports the platform not moved as it was',
+        () async {
+          when(() => argResults['platforms']).thenReturn(['android', 'ios']);
+          when(() => argResults['track']).thenReturn('stable');
+
+          final (:exitCode, :json) = await captureJson(
+            () => runScoped(
+              command.run,
+              values: {
+                codePushClientWrapperRef.overrideWith(
+                  () => codePushClientWrapper,
+                ),
+                isJsonModeRef.overrideWith(() => true),
+                loggerRef.overrideWith(() => logger),
+                shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+                shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+              },
+            ),
+          );
+
+          expect(exitCode, equals(ExitCode.success.code));
+          final data = json['data'] as Map<String, dynamic>;
+          final patches = (data['patches'] as List)
+              .cast<Map<String, dynamic>>();
+          expect(
+            [for (final p in patches) (p['id'], p['channel'])],
+            equals([(androidPatch.id, 'stable'), (iosPatch.id, 'stable')]),
+          );
+          verify(
+            () => codePushClientWrapper.promotePatch(
+              appId: appId,
+              patchId: iosPatch.id,
+              channel: targetChannel,
+              platforms: [ReleasePlatform.ios],
+            ),
+          ).called(1);
+        },
+      );
+
+      test('without --platforms, refuses tracks that differ', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            "Patch $patchNumber's platforms are on different tracks, so pass "
+            '--platforms to choose which to move.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'To choose which to change, run:\n'
+            '  shorebird set-track --release-version=$releaseVersion '
+            '--patch-number=$patchNumber --track=${targetChannel.name} '
+            '--platforms=android,ios',
+          ),
+        ).called(1);
+        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            platforms: any(named: 'platforms'),
+          ),
+        );
+      });
+
+      test('the suggested command keeps the requested rollout', () async {
+        when(() => argResults['rollout']).thenReturn('10');
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.info(
+            'To choose which to change, run:\n'
+            '  shorebird set-track --release-version=$releaseVersion '
+            '--patch-number=$patchNumber --track=${targetChannel.name} '
+            '--rollout=10 --platforms=android,ios',
+          ),
+        ).called(1);
+      });
+
+      test('the suggested command keeps the requested schedule', () async {
+        when(() => argResults['rollout-steps']).thenReturn('10:1d,50:2d,100');
+        when(() => argResults['pause-weekends']).thenReturn(true);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                '--track=${targetChannel.name} --rollout-steps 10:1d,50:2d,100 '
+                '--pause-weekends --platforms=android,ios',
+              ),
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('without --platforms asks before moving all of them', () async {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [androidPatch, iosPatch.copyWith(channel: 'stable')],
+        );
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.confirm('Move all of them to ${targetChannel.name}?'),
+        ).called(1);
+        verify(
+          () => codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: androidPatch.id,
+            channel: targetChannel,
+          ),
+        ).called(1);
+      });
+
+      test('prints each platform and the --platforms command when the '
+          'server says they differ', () async {
+        when(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            platforms: any(named: 'platforms'),
+          ),
+        ).thenThrow(
+          ApiErrorExit(
+            const CodePushConflictException(
+              message: 'The platforms differ.',
+              response: ErrorResponse(
+                code: 'patch_platforms_differ',
+                message: 'The platforms differ.',
+              ),
+            ),
+            ExitCode.software.code,
+          ),
+        );
+        // The tracks matched when read, then changed before the promote.
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [androidPatch, iosPatch.copyWith(channel: 'stable')],
+        );
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.software.code));
+        verifyInOrder([
+          () => logger.info('  Android: stable'),
+          () => logger.info('  iOS: stable'),
+          () => logger.info(
+            'To choose which to change, run:\n'
+            '  shorebird set-track --release-version=$releaseVersion '
+            '--patch-number=$patchNumber --track=${targetChannel.name} '
+            '--platforms=android,ios',
+          ),
+        ]);
+      });
+
+      test('in --json mode, reports the server saying they differ without '
+          "the server's message", () async {
+        when(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+            rolloutPercentage: any(named: 'rolloutPercentage'),
+            platforms: any(named: 'platforms'),
+          ),
+        ).thenThrow(
+          ApiErrorExit(
+            const CodePushConflictException(
+              message: 'The platforms differ.',
+              response: ErrorResponse(
+                code: 'patch_platforms_differ',
+                message: 'The platforms differ.',
+              ),
+            ),
+            ExitCode.software.code,
+          ),
+        );
+        // The tracks matched when read, then changed before the promote.
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [androidPatch, iosPatch.copyWith(channel: 'stable')],
+        );
+
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+
+        expect(exitCode, equals(ExitCode.software.code));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['api_code'], equals('patch_platforms_differ'));
+        expect(error['message'], isNot(contains('The platforms differ.')));
+        expect(error['hint'], contains('--platforms=android,ios'));
       });
     });
   });

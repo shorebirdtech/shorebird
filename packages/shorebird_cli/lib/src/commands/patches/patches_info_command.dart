@@ -31,6 +31,7 @@ class PatchesInfoCommand extends ShorebirdCommand
         help: 'The patch number to show details for (e.g. "1").',
         mandatory: true,
       );
+    addPlatformsOption(action: 'show');
     addAppScopeOptions();
   }
 
@@ -71,19 +72,46 @@ class PatchesInfoCommand extends ShorebirdCommand
     );
     if (fetched.errorCode case final errorCode?) return errorCode;
 
-    final (:patch, errorCode: lookupError) = findPatchOrReport(
+    final (:patch, errorCode: lookupError) = findPatchNumberOrReport(
       patches: fetched.patches,
       patchNumber: patchNumber,
       releaseVersion: releaseVersion,
     );
     if (patch == null) return lookupError!;
 
+    final chosen = choosePlatforms(
+      patch: patch,
+      releaseVersion: releaseVersion,
+      verb: 'show',
+      confirm: false,
+    );
+    if (chosen.errorCode case final errorCode?) return errorCode;
+    final patches = chosen.patches;
+
     if (isJsonMode) {
-      emitJsonSuccess({'patch': patch.toJson()});
+      emitJsonSuccess({
+        'patch': patches.first.toJson(),
+        'patches': [for (final p in patches) p.toJson()],
+      });
       return ExitCode.success.code;
     }
 
-    formatPatchDetails(patch).forEach(logger.info);
+    if (patches.length == 1) {
+      formatPatchDetails(patches.single).forEach(logger.info);
+      return ExitCode.success.code;
+    }
+    if (patch.tracksDiffer) {
+      logger.info(
+        'Patch $patchNumber has patches for several platforms, on different '
+        'tracks.',
+      );
+    }
+    for (final p in patches) {
+      logger.info('${PatchNumber.platformName(p)}:');
+      for (final line in formatPatchDetails(p)) {
+        logger.info('  $line');
+      }
+    }
 
     return ExitCode.success.code;
   }

@@ -32,6 +32,10 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// The server's error code when a request without `platforms` would act on
+/// platforms under one patch number that are in different states.
+const patchPlatformsDifferCode = 'patch_platforms_differ';
+
 /// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
 /// {@endtemplate}
@@ -1791,11 +1795,15 @@ $name artifact already exists, continuing...''');
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
     required int patchId,
     int? patchNumber,
+    List<ReleasePlatform>? platforms,
   }) async {
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling back $label');
@@ -1804,6 +1812,7 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
+        platforms: platforms,
       );
       // A completed spinner would claim the rollback happened, so say so when
       // the server reported there was nothing to change.
@@ -1824,11 +1833,15 @@ $name artifact already exists, continuing...''');
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
+  ///
+  /// [platforms] limits the change to those platforms' patches under the
+  /// patch's number; without it the server changes every platform's.
   Future<bool> rollforwardPatch({
     required String appId,
     required int releaseId,
     required int patchId,
     int? patchNumber,
+    List<ReleasePlatform>? platforms,
   }) async {
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling forward $label');
@@ -1837,6 +1850,7 @@ $name artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
+        platforms: platforms,
       );
       // A completed spinner would claim the rollforward happened, so say so
       // when the server reported there was nothing to change.
@@ -1976,6 +1990,12 @@ $name artifact already exists, continuing...''');
           '''Run ${lightCyan.wrap('shorebird upgrade')} to get the latest version.''',
         );
       }
+    } else if (error is CodePushException &&
+        error.code == patchPlatformsDifferCode) {
+      // The command reports each platform's state itself; the server's
+      // message is written for clients that cannot.
+      progress?.fail();
+      throw ApiErrorExit(error, ExitCode.software.code);
     } else if (progress != null) {
       progress.fail(message ?? '$error');
     }

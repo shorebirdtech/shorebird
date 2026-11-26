@@ -1,9 +1,11 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:shorebird_cli/src/api_error_exit.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/extensions/release_patch.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -30,6 +32,7 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
         help: 'The patch number to $verb (e.g. "1").',
         mandatory: true,
       );
+    addPlatformsOption(action: verb);
     addAppScopeOptions();
     argParser.addFlag(
       'require-change',
@@ -62,13 +65,15 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
   @protected
   String alreadyInStateMessage(int patchNumber);
 
-  /// Asks the server to change the patch's state. Returns whether it changed.
+  /// Asks the server to change the state of the patches under [patchId]'s
+  /// number, only [platforms]' when given. Returns whether any changed.
   @protected
   Future<bool> changePatchState({
     required String appId,
     required int releaseId,
     required int patchId,
     required int patchNumber,
+    List<ReleasePlatform>? platforms,
   });
 
   @override
@@ -101,34 +106,80 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     );
     if (fetched.errorCode case final errorCode?) return errorCode;
 
-    final (:patch, errorCode: lookupError) = findPatchOrReport(
+    final (:patch, errorCode: lookupError) = findPatchNumberOrReport(
       patches: fetched.patches,
       patchNumber: patchNumber,
       releaseVersion: releaseVersion,
     );
     if (patch == null) return lookupError!;
 
+    // Without --platforms the server rolls forward every platform's patch,
+    // and only when they are all rolled back or all active.
+    final rolledBackStates = patch.patches.map((p) => p.isRolledBack).toSet();
+    if (!targetIsRolledBack &&
+        requestedPlatforms == null &&
+        rolledBackStates.length > 1) {
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: _notInTargetState(patch),
+        reason:
+            "Some of patch $patchNumber's platforms are rolled back and some "
+            'are not, so pass --${PatchLookup.platformsArgName} to choose '
+            'which to $verb.',
+      );
+    }
+
+    final chosen = choosePlatforms(
+      patch: patch,
+      releaseVersion: releaseVersion,
+      verb: verb,
+    );
+    if (chosen.errorCode case final errorCode?) return errorCode;
+
     // Only the POST can say whether the patch changed: the read above can go
     // stale, and the server answers 304 when there was nothing to do.
     late final bool changed;
+    // Caught inside the guarded call, which would otherwise report the
+    // server's message for older clients in --json mode.
+    var platformsDiffer = false;
     final changeError = await guardApiCall(
-      () async => changed = await changePatchState(
-        appId: appId,
-        releaseId: fetched.release!.id,
-        patchId: patch.id,
-        patchNumber: patch.number,
-      ),
+      () async {
+        try {
+          changed = await changePatchState(
+            appId: appId,
+            releaseId: fetched.release!.id,
+            patchId: chosen.patches.first.id,
+            patchNumber: patch.number,
+            platforms: chosen.platforms,
+          );
+        } on ApiErrorExit catch (e) {
+          if (!isPlatformsDiffer(e)) rethrow;
+          platformsDiffer = true;
+        }
+      },
       code: JsonErrorCode.softwareError,
       message:
           'Failed to $verb patch $patchNumber of release "$releaseVersion".',
     );
+    if (platformsDiffer) {
+      return reportPlatformsDiffer(
+        patch: patch,
+        releaseVersion: releaseVersion,
+        suggested: _notInTargetState(patch),
+      );
+    }
     if (changeError != null) return changeError;
 
     if (!changed && results['require-change'] as bool) {
       return reportError(message: alreadyInStateMessage(patchNumber));
     }
 
-    final updatedPatch = patch.copyWith(isRolledBack: targetIsRolledBack);
+    final updatedPatches = [
+      for (final p in chosen.patches)
+        p.copyWith(isRolledBack: targetIsRolledBack),
+    ];
+    final updatedPatch = updatedPatches.first;
 
     if (isJsonMode) {
       emitJsonSuccess({
@@ -138,19 +189,35 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
         'action': name,
         'changed': changed,
         'patch': updatedPatch.toJson(),
+        'patches': [for (final p in updatedPatches) p.toJson()],
       });
       return ExitCode.success.code;
     }
 
+    final several = patch.platforms.length > 1;
+    final platformsLabel = several
+        ? ' (${updatedPatches.map(PatchNumber.platformName).join(', ')})'
+        : '';
     if (changed) {
       logger.success(
         'Patch $patchNumber on release $releaseVersion '
-        'has been $pastParticiple.',
+        'has been $pastParticiple$platformsLabel.',
       );
     } else {
       logger.info(alreadyInStateMessage(patchNumber));
     }
-    formatPatchDetails(updatedPatch).forEach(logger.info);
+    for (final p in updatedPatches) {
+      if (several) logger.info('${PatchNumber.platformName(p)}:');
+      formatPatchDetails(p).forEach(several ? _indented : logger.info);
+    }
     return ExitCode.success.code;
   }
+
+  void _indented(String line) => logger.info('  $line');
+
+  /// The platforms under [patch] whose patch is not yet in the target state.
+  List<ReleasePlatform> _notInTargetState(PatchNumber patch) => [
+    for (final p in patch.patches)
+      if (p.isRolledBack != targetIsRolledBack) ?p.resolvedPlatform,
+  ];
 }

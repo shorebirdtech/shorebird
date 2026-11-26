@@ -147,12 +147,13 @@ class RolloutCommand extends ShorebirdCommand
     );
     if (fetched.errorCode case final errorCode?) return errorCode;
 
-    final (:patch, errorCode: lookupError) = findPatchOrReport(
+    final (patch: number, errorCode: lookupError) = findPatchNumberOrReport(
       patches: fetched.patches,
       patchNumber: patchNumber,
       releaseVersion: releaseVersion,
     );
-    if (patch == null) return lookupError!;
+    if (number == null) return lookupError!;
+    final patch = number.patches.first;
 
     final channel = patch.channel;
     if (channel == null) {
