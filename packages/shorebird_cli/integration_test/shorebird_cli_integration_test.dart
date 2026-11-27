@@ -270,7 +270,10 @@ void main() {
         workingDirectory: cwd,
       );
       expect(shorebirdPatchResult.exitCode, equals(0));
-      expect(shorebirdPatchResult.stdout, contains('Published Patch 1!'));
+      expect(
+        shorebirdPatchResult.stdout,
+        contains('Published patch 1 (Android)!'),
+      );
 
       // Verify that the patch is available.
       await expectLater(
