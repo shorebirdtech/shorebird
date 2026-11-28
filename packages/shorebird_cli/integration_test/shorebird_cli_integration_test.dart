@@ -229,11 +229,11 @@ void main() {
         'shorebird release android --verbose',
         workingDirectory: cwd,
       );
+      // Assert on exit codes and server state, never on the CLI's success
+      // lines: this test runs only in e2e.yaml (nightly and on dispatch), so
+      // a wording change in lib/ would pass its PR and turn the nightly red.
+      // patch_command_test.dart and release_command_test.dart own the wording.
       expect(shorebirdReleaseResult.exitCode, equals(0));
-      expect(
-        shorebirdReleaseResult.stdout,
-        contains('Published Release $releaseVersion!'),
-      );
 
       // Verify that no patch is available.
       await expectLater(
@@ -270,10 +270,6 @@ void main() {
         workingDirectory: cwd,
       );
       expect(shorebirdPatchResult.exitCode, equals(0));
-      expect(
-        shorebirdPatchResult.stdout,
-        contains('Published patch 1 (Android)!'),
-      );
 
       // Verify that the patch is available.
       await expectLater(
